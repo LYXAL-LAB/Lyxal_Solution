@@ -3,19 +3,17 @@
 -- MODULE    : lyxal_notification
 -- ============================================================================
 -- Un parcours n'est jamais supprimé : il passe à l'état `inactive`. Il ne peut être activé que si
--- chaque étape a un gabarit et une version dans la langue par défaut de ce gabarit.
+-- chaque étape a un gabarit.
 
 -- ----------------------------------------------------------------------------
--- fn::notification_workflow_missing_templates : étapes sans gabarit prêt
+-- fn::notification_workflow_missing_templates : étapes sans gabarit
 -- ----------------------------------------------------------------------------
 
 DEFINE FUNCTION OVERWRITE fn::notification_workflow_missing_templates($params: object) -> array {
     RETURN array::filter($params.steps.key, |$step| {
-        LET $template = (SELECT id, default_locale FROM ONLY notification_template WHERE workflow = $params.workflow AND step_key = $step LIMIT 1);
-        RETURN $template == NONE
-            OR array::len(SELECT VALUE id FROM notification_template_locale WHERE template = $template.id AND locale = $template.default_locale) = 0;
+        RETURN array::len(SELECT VALUE id FROM notification_template WHERE workflow = $params.workflow AND step_key = $step) = 0;
     });
-} COMMENT "Clés des étapes ({ workflow, steps }) sans gabarit ou sans version dans la langue par défaut du gabarit";
+} COMMENT "Clés des étapes ({ workflow, steps }) sans gabarit";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_workflow_create
@@ -108,7 +106,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_workflow_update($params: object) {
     -- Un parcours actif garde un gabarit prêt pour chaque étape
     IF $workflow.status = "active" AND $p.steps IS NOT NONE {
         LET $missing = fn::notification_workflow_missing_templates({ workflow: $workflow.id, steps: $p.steps });
-        IF array::len($missing) > 0 { RETURN fn::error_result("NOTIFICATION_TEMPLATE_DEFAULT_LOCALE_REQUIRED", $p.language, { steps: $missing }); };
+        IF array::len($missing) > 0 { RETURN fn::error_result("NOTIFICATION_TEMPLATE_REQUIRED", $p.language, { steps: $missing }); };
     };
     LET $changes = object::from_entries(array::filter(
         array::map(["name", "trigger_event", "critical", "sensitive", "payload_schema", "steps", "tags"], |$f| [$f, $p[$f]]),
@@ -137,11 +135,10 @@ DEFINE FUNCTION OVERWRITE fn::notification_workflow_get($params: object) {
     LET $p = $report.value;
     LET $workflow = (SELECT * FROM ONLY $p.workflow);
     IF $workflow == NONE { RETURN fn::error_result("NOTIFICATION_WORKFLOW_NOT_FOUND", $p.language, {}); };
-    LET $templates = (SELECT id, step_key, default_locale, layout,
-        (SELECT VALUE locale FROM notification_template_locale WHERE template = $parent.id ORDER BY locale) AS locales
+    LET $templates = (SELECT id, step_key, layout, keys
         FROM notification_template WHERE workflow = $workflow.id ORDER BY step_key);
     RETURN fn::result_ok(object::extend($workflow, { templates: $templates }));
-} COMMENT "Parcours ({ workflow }) avec ses gabarits et leurs langues. Permission notification.read";
+} COMMENT "Parcours ({ workflow }) avec ses gabarits et leurs clés. Permission notification.read";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_workflow_list
@@ -194,7 +191,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_workflow_set_status($params: object) 
     IF !fn::notification_can({ action: "manage", tenant: $workflow.tenant }) { RETURN fn::error_result("NOTIFICATION_PERMISSION_DENIED", $p.language, {}); };
     IF $p.status = "active" {
         LET $missing = fn::notification_workflow_missing_templates({ workflow: $workflow.id, steps: $workflow.steps });
-        IF array::len($missing) > 0 { RETURN fn::error_result("NOTIFICATION_TEMPLATE_DEFAULT_LOCALE_REQUIRED", $p.language, { steps: $missing }); };
+        IF array::len($missing) > 0 { RETURN fn::error_result("NOTIFICATION_TEMPLATE_REQUIRED", $p.language, { steps: $missing }); };
     };
     LET $updated = (UPDATE ONLY $workflow.id SET status = $p.status);
     IF $updated == NONE { RETURN fn::error_result("NOTIFICATION_WRITE_FORBIDDEN", $p.language, { table: "notification_workflow" }); };

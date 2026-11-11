@@ -15,6 +15,9 @@ IF array::len(SELECT VALUE id FROM auth_role_grants WHERE in = auth_role:platfor
 IF !record::exists(auth_permission:⟨i18n.translation.manage⟩) THEN (
     CREATE auth_permission:⟨i18n.translation.manage⟩ CONTENT { code: "i18n.translation.manage", module: "lyxal_i18n", scope: "installation", description: { fr: "Gérer les espaces de noms, les clés et les textes de l'installation et des organisations", en: "Manage namespaces, keys and the texts of the installation and of organizations" } }
 ) END;
+IF !record::exists(auth_permission:⟨i18n.translation.read⟩) THEN (
+    CREATE auth_permission:⟨i18n.translation.read⟩ CONTENT { code: "i18n.translation.read", module: "lyxal_i18n", scope: "installation", description: { fr: "Lire les textes de toutes les organisations (compte de service, aucune écriture)", en: "Read the texts of every organization (service account, no write)" } }
+) END;
 IF !record::exists(auth_permission:⟨i18n.organization.translation.manage⟩) THEN (
     CREATE auth_permission:⟨i18n.organization.translation.manage⟩ CONTENT { code: "i18n.organization.translation.manage", module: "lyxal_i18n", scope: "organization", description: { fr: "Modifier les textes pour son organisation", en: "Override texts for one's organization" } }
 ) END;

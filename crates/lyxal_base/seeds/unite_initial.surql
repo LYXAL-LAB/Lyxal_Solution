@@ -12,7 +12,6 @@
 IF !record::exists(base_unite:KM) THEN (
     CREATE base_unite:KM CONTENT {
         code: "KM",
-        libelle: "Kilomètre",
         abreviation: "km",
         type: base_unite_type:LONGUEUR,
         enabled: true,
@@ -23,7 +22,6 @@ IF !record::exists(base_unite:KM) THEN (
 IF !record::exists(base_unite:M) THEN (
     CREATE base_unite:M CONTENT {
         code: "M",
-        libelle: "Mètre",
         abreviation: "m",
         type: base_unite_type:LONGUEUR,
         enabled: true,
@@ -34,7 +32,6 @@ IF !record::exists(base_unite:M) THEN (
 IF !record::exists(base_unite:ML) THEN (
     CREATE base_unite:ML CONTENT {
         code: "ML",
-        libelle: "Mètre linéaire",
         abreviation: "ml",
         type: base_unite_type:LONGUEUR,
         enabled: true,
@@ -45,7 +42,6 @@ IF !record::exists(base_unite:ML) THEN (
 IF !record::exists(base_unite:CM) THEN (
     CREATE base_unite:CM CONTENT {
         code: "CM",
-        libelle: "Centimètre",
         abreviation: "cm",
         type: base_unite_type:LONGUEUR,
         enabled: true,
@@ -56,7 +52,6 @@ IF !record::exists(base_unite:CM) THEN (
 IF !record::exists(base_unite:MM) THEN (
     CREATE base_unite:MM CONTENT {
         code: "MM",
-        libelle: "Millimètre",
         abreviation: "mm",
         type: base_unite_type:LONGUEUR,
         enabled: true,
@@ -71,7 +66,6 @@ IF !record::exists(base_unite:MM) THEN (
 IF !record::exists(base_unite:HA) THEN (
     CREATE base_unite:HA CONTENT {
         code: "HA",
-        libelle: "Hectare",
         abreviation: "ha",
         type: base_unite_type:SURFACE,
         enabled: true,
@@ -82,7 +76,6 @@ IF !record::exists(base_unite:HA) THEN (
 IF !record::exists(base_unite:M2) THEN (
     CREATE base_unite:M2 CONTENT {
         code: "M2",
-        libelle: "Mètre carré",
         abreviation: "m²",
         type: base_unite_type:SURFACE,
         enabled: true,
@@ -97,7 +90,6 @@ IF !record::exists(base_unite:M2) THEN (
 IF !record::exists(base_unite:M3) THEN (
     CREATE base_unite:M3 CONTENT {
         code: "M3",
-        libelle: "Mètre cube",
         abreviation: "m³",
         type: base_unite_type:VOLUME,
         enabled: true,
@@ -108,7 +100,6 @@ IF !record::exists(base_unite:M3) THEN (
 IF !record::exists(base_unite:LTR) THEN (
     CREATE base_unite:LTR CONTENT {
         code: "LTR",
-        libelle: "Litre",
         abreviation: "L",
         type: base_unite_type:VOLUME,
         enabled: true,
@@ -123,7 +114,6 @@ IF !record::exists(base_unite:LTR) THEN (
 IF !record::exists(base_unite:T) THEN (
     CREATE base_unite:T CONTENT {
         code: "T",
-        libelle: "Tonne",
         abreviation: "t",
         type: base_unite_type:MASSE,
         enabled: true,
@@ -134,7 +124,6 @@ IF !record::exists(base_unite:T) THEN (
 IF !record::exists(base_unite:KG) THEN (
     CREATE base_unite:KG CONTENT {
         code: "KG",
-        libelle: "Kilogramme",
         abreviation: "kg",
         type: base_unite_type:MASSE,
         enabled: true,
@@ -145,7 +134,6 @@ IF !record::exists(base_unite:KG) THEN (
 IF !record::exists(base_unite:G) THEN (
     CREATE base_unite:G CONTENT {
         code: "G",
-        libelle: "Gramme",
         abreviation: "g",
         type: base_unite_type:MASSE,
         enabled: true,
@@ -160,7 +148,6 @@ IF !record::exists(base_unite:G) THEN (
 IF !record::exists(base_unite:MOIS) THEN (
     CREATE base_unite:MOIS CONTENT {
         code: "MOIS",
-        libelle: "Mois",
         abreviation: "mois",
         type: base_unite_type:DUREE,
         enabled: true,
@@ -171,7 +158,6 @@ IF !record::exists(base_unite:MOIS) THEN (
 IF !record::exists(base_unite:SEM) THEN (
     CREATE base_unite:SEM CONTENT {
         code: "SEM",
-        libelle: "Semaine",
         abreviation: "sem",
         type: base_unite_type:DUREE,
         enabled: true,
@@ -182,7 +168,6 @@ IF !record::exists(base_unite:SEM) THEN (
 IF !record::exists(base_unite:J) THEN (
     CREATE base_unite:J CONTENT {
         code: "J",
-        libelle: "Jour",
         abreviation: "j",
         type: base_unite_type:DUREE,
         enabled: true,
@@ -193,7 +178,6 @@ IF !record::exists(base_unite:J) THEN (
 IF !record::exists(base_unite:H) THEN (
     CREATE base_unite:H CONTENT {
         code: "H",
-        libelle: "Heure",
         abreviation: "h",
         type: base_unite_type:DUREE,
         enabled: true,
@@ -208,7 +192,6 @@ IF !record::exists(base_unite:H) THEN (
 IF !record::exists(base_unite:U) THEN (
     CREATE base_unite:U CONTENT {
         code: "U",
-        libelle: "Unité",
         abreviation: "U",
         type: base_unite_type:QUANTITE,
         enabled: true,
@@ -219,7 +202,6 @@ IF !record::exists(base_unite:U) THEN (
 IF !record::exists(base_unite:PCE) THEN (
     CREATE base_unite:PCE CONTENT {
         code: "PCE",
-        libelle: "Pièce",
         abreviation: "pce",
         type: base_unite_type:QUANTITE,
         enabled: true,
@@ -230,7 +212,6 @@ IF !record::exists(base_unite:PCE) THEN (
 IF !record::exists(base_unite:ENS) THEN (
     CREATE base_unite:ENS CONTENT {
         code: "ENS",
-        libelle: "Ensemble",
         abreviation: "ens",
         type: base_unite_type:QUANTITE,
         enabled: true,
@@ -241,7 +222,6 @@ IF !record::exists(base_unite:ENS) THEN (
 IF !record::exists(base_unite:PAIRE) THEN (
     CREATE base_unite:PAIRE CONTENT {
         code: "PAIRE",
-        libelle: "Paire",
         abreviation: "paire",
         type: base_unite_type:QUANTITE,
         enabled: true,
@@ -252,7 +232,6 @@ IF !record::exists(base_unite:PAIRE) THEN (
 IF !record::exists(base_unite:FORFAIT) THEN (
     CREATE base_unite:FORFAIT CONTENT {
         code: "FORFAIT",
-        libelle: "Forfait",
         abreviation: "forf",
         type: base_unite_type:QUANTITE,
         enabled: true,
@@ -267,7 +246,6 @@ IF !record::exists(base_unite:FORFAIT) THEN (
 IF !record::exists(base_unite:ROUL) THEN (
     CREATE base_unite:ROUL CONTENT {
         code: "ROUL",
-        libelle: "Rouleau",
         abreviation: "roul",
         type: base_unite_type:CONDITIONNEMENT,
         enabled: true,
@@ -278,7 +256,6 @@ IF !record::exists(base_unite:ROUL) THEN (
 IF !record::exists(base_unite:SAC) THEN (
     CREATE base_unite:SAC CONTENT {
         code: "SAC",
-        libelle: "Sac",
         abreviation: "sac",
         type: base_unite_type:CONDITIONNEMENT,
         enabled: true,
@@ -289,7 +266,6 @@ IF !record::exists(base_unite:SAC) THEN (
 IF !record::exists(base_unite:PAL) THEN (
     CREATE base_unite:PAL CONTENT {
         code: "PAL",
-        libelle: "Palette",
         abreviation: "pal",
         type: base_unite_type:CONDITIONNEMENT,
         enabled: true,
@@ -300,7 +276,6 @@ IF !record::exists(base_unite:PAL) THEN (
 IF !record::exists(base_unite:BTE) THEN (
     CREATE base_unite:BTE CONTENT {
         code: "BTE",
-        libelle: "Boîte",
         abreviation: "bte",
         type: base_unite_type:CONDITIONNEMENT,
         enabled: true,
@@ -311,7 +286,6 @@ IF !record::exists(base_unite:BTE) THEN (
 IF !record::exists(base_unite:CART) THEN (
     CREATE base_unite:CART CONTENT {
         code: "CART",
-        libelle: "Carton",
         abreviation: "cart",
         type: base_unite_type:CONDITIONNEMENT,
         enabled: true,
@@ -326,7 +300,6 @@ IF !record::exists(base_unite:CART) THEN (
 IF !record::exists(base_unite:KWH) THEN (
     CREATE base_unite:KWH CONTENT {
         code: "KWH",
-        libelle: "Kilowatt-heure",
         abreviation: "kWh",
         type: base_unite_type:ENERGIE,
         enabled: true,
@@ -341,7 +314,6 @@ IF !record::exists(base_unite:KWH) THEN (
 IF !record::exists(base_unite:W) THEN (
     CREATE base_unite:W CONTENT {
         code: "W",
-        libelle: "Watt",
         abreviation: "W",
         type: base_unite_type:PUISSANCE,
         enabled: true,
@@ -356,7 +328,6 @@ IF !record::exists(base_unite:W) THEN (
 IF !record::exists(base_unite:BAR) THEN (
     CREATE base_unite:BAR CONTENT {
         code: "BAR",
-        libelle: "Bar",
         abreviation: "bar",
         type: base_unite_type:PRESSION,
         enabled: true,
@@ -371,7 +342,6 @@ IF !record::exists(base_unite:BAR) THEN (
 IF !record::exists(base_unite:M3H) THEN (
     CREATE base_unite:M3H CONTENT {
         code: "M3H",
-        libelle: "Mètre cube par heure",
         abreviation: "m³/h",
         type: base_unite_type:DEBIT,
         enabled: true,

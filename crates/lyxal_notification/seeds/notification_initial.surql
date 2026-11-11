@@ -48,7 +48,6 @@ IF array::len(SELECT VALUE id FROM auth_role_grants WHERE in = auth_role:platfor
 IF !record::exists(notification_settings:installation) THEN (
     CREATE notification_settings:installation CONTENT {
         scope_key: "installation",
-        default_locale: "fr",
         max_attempts: 8,
         retention_days_runs: 90,
         retention_days_log: 30
@@ -66,7 +65,7 @@ IF !record::exists(notification_layout:default) THEN (
 ) END;
 
 -- ----------------------------------------------------------------------------
--- Parcours de lyxal_auth (installation), gabarits fr et en
+-- Parcours de lyxal_auth (installation) ; textes : notification_texts.surql
 -- ----------------------------------------------------------------------------
 
 IF !record::exists(notification_workflow:auth_verification) THEN (
@@ -85,25 +84,11 @@ IF !record::exists(notification_workflow:auth_verification) THEN (
 ) END;
 IF !record::exists(notification_template:auth_verification_email) THEN (
     CREATE notification_template:auth_verification_email CONTENT {
-        workflow: notification_workflow:auth_verification, step_key: "email", default_locale: "fr", layout: notification_layout:default
-    }
-) END;
-IF !record::exists(notification_template_locale:auth_verification_email_fr) THEN (
-    CREATE notification_template_locale:auth_verification_email_fr CONTENT {
-        template: notification_template:auth_verification_email,
-        locale: "fr",
-        subject: "Confirmez votre adresse e-mail",
-        html_body: "<p>Bonjour{% if recipient.name %} {{ recipient.name }}{% endif %},</p>\n<p>Pour confirmer votre adresse e-mail, utilisez le code <strong>{{ secret.code }}</strong> ou ouvrez le lien ci-dessous.</p>\n<p><a href=\"{{ secret.action_url }}\">Confirmer mon adresse</a></p>\n<p>Si vous n'êtes pas à l'origine de cette demande, ignorez ce message.</p>",
-        text_body: "Bonjour{% if recipient.name %} {{ recipient.name }}{% endif %},\n\nPour confirmer votre adresse e-mail, utilisez le code {{ secret.code }} ou ouvrez ce lien :\n{{ secret.action_url }}\n\nSi vous n'êtes pas à l'origine de cette demande, ignorez ce message.\n"
-    }
-) END;
-IF !record::exists(notification_template_locale:auth_verification_email_en) THEN (
-    CREATE notification_template_locale:auth_verification_email_en CONTENT {
-        template: notification_template:auth_verification_email,
-        locale: "en",
-        subject: "Confirm your email address",
-        html_body: "<p>Hello{% if recipient.name %} {{ recipient.name }}{% endif %},</p>\n<p>To confirm your email address, use the code <strong>{{ secret.code }}</strong> or open the link below.</p>\n<p><a href=\"{{ secret.action_url }}\">Confirm my address</a></p>\n<p>If you did not request this, ignore this message.</p>",
-        text_body: "Hello{% if recipient.name %} {{ recipient.name }}{% endif %},\n\nTo confirm your email address, use the code {{ secret.code }} or open this link:\n{{ secret.action_url }}\n\nIf you did not request this, ignore this message.\n"
+        workflow: notification_workflow:auth_verification, step_key: "email", layout: notification_layout:default,
+        subject: "{{ t(\"notification.auth_verification.subject\") }}",
+        html_body: "<p>{% if recipient.name %}{{ t(\"notification.common.greeting_named\", name=recipient.name) }}{% else %}{{ t(\"notification.common.greeting\") }}{% endif %}</p>\n<p>{{ t(\"notification.auth_verification.intro\") }}</p>\n<p><strong>{{ secret.code }}</strong></p>\n<p><a href=\"{{ secret.action_url }}\">{{ t(\"notification.auth_verification.action\") }}</a></p>\n<p>{{ t(\"notification.auth_verification.ignore\") }}</p>",
+        text_body: "{% if recipient.name %}{{ t(\"notification.common.greeting_named\", name=recipient.name) }}{% else %}{{ t(\"notification.common.greeting\") }}{% endif %}\n\n{{ t(\"notification.auth_verification.intro\") }}\n\n{{ secret.code }}\n{{ secret.action_url }}\n\n{{ t(\"notification.auth_verification.ignore\") }}\n",
+        keys: ["notification.common.greeting", "notification.common.greeting_named", "notification.auth_verification.subject", "notification.auth_verification.intro", "notification.auth_verification.action", "notification.auth_verification.ignore"]
     }
 ) END;
 IF !record::exists(notification_workflow:auth_recovery) THEN (
@@ -122,25 +107,11 @@ IF !record::exists(notification_workflow:auth_recovery) THEN (
 ) END;
 IF !record::exists(notification_template:auth_recovery_email) THEN (
     CREATE notification_template:auth_recovery_email CONTENT {
-        workflow: notification_workflow:auth_recovery, step_key: "email", default_locale: "fr", layout: notification_layout:default
-    }
-) END;
-IF !record::exists(notification_template_locale:auth_recovery_email_fr) THEN (
-    CREATE notification_template_locale:auth_recovery_email_fr CONTENT {
-        template: notification_template:auth_recovery_email,
-        locale: "fr",
-        subject: "Récupération de votre compte",
-        html_body: "<p>Bonjour{% if recipient.name %} {{ recipient.name }}{% endif %},</p>\n<p>Pour récupérer l'accès à votre compte, utilisez le code <strong>{{ secret.code }}</strong> ou ouvrez le lien ci-dessous.</p>\n<p><a href=\"{{ secret.action_url }}\">Récupérer mon compte</a></p>\n<p>Si vous n'êtes pas à l'origine de cette demande, ignorez ce message : votre mot de passe reste inchangé.</p>",
-        text_body: "Bonjour{% if recipient.name %} {{ recipient.name }}{% endif %},\n\nPour récupérer l'accès à votre compte, utilisez le code {{ secret.code }} ou ouvrez ce lien :\n{{ secret.action_url }}\n\nSi vous n'êtes pas à l'origine de cette demande, ignorez ce message : votre mot de passe reste inchangé.\n"
-    }
-) END;
-IF !record::exists(notification_template_locale:auth_recovery_email_en) THEN (
-    CREATE notification_template_locale:auth_recovery_email_en CONTENT {
-        template: notification_template:auth_recovery_email,
-        locale: "en",
-        subject: "Recover your account",
-        html_body: "<p>Hello{% if recipient.name %} {{ recipient.name }}{% endif %},</p>\n<p>To recover access to your account, use the code <strong>{{ secret.code }}</strong> or open the link below.</p>\n<p><a href=\"{{ secret.action_url }}\">Recover my account</a></p>\n<p>If you did not request this, ignore this message: your password is unchanged.</p>",
-        text_body: "Hello{% if recipient.name %} {{ recipient.name }}{% endif %},\n\nTo recover access to your account, use the code {{ secret.code }} or open this link:\n{{ secret.action_url }}\n\nIf you did not request this, ignore this message: your password is unchanged.\n"
+        workflow: notification_workflow:auth_recovery, step_key: "email", layout: notification_layout:default,
+        subject: "{{ t(\"notification.auth_recovery.subject\") }}",
+        html_body: "<p>{% if recipient.name %}{{ t(\"notification.common.greeting_named\", name=recipient.name) }}{% else %}{{ t(\"notification.common.greeting\") }}{% endif %}</p>\n<p>{{ t(\"notification.auth_recovery.intro\") }}</p>\n<p><strong>{{ secret.code }}</strong></p>\n<p><a href=\"{{ secret.action_url }}\">{{ t(\"notification.auth_recovery.action\") }}</a></p>\n<p>{{ t(\"notification.auth_recovery.ignore\") }}</p>",
+        text_body: "{% if recipient.name %}{{ t(\"notification.common.greeting_named\", name=recipient.name) }}{% else %}{{ t(\"notification.common.greeting\") }}{% endif %}\n\n{{ t(\"notification.auth_recovery.intro\") }}\n\n{{ secret.code }}\n{{ secret.action_url }}\n\n{{ t(\"notification.auth_recovery.ignore\") }}\n",
+        keys: ["notification.common.greeting", "notification.common.greeting_named", "notification.auth_recovery.subject", "notification.auth_recovery.intro", "notification.auth_recovery.action", "notification.auth_recovery.ignore"]
     }
 ) END;
 IF !record::exists(notification_workflow:auth_invitation) THEN (
@@ -159,25 +130,11 @@ IF !record::exists(notification_workflow:auth_invitation) THEN (
 ) END;
 IF !record::exists(notification_template:auth_invitation_email) THEN (
     CREATE notification_template:auth_invitation_email CONTENT {
-        workflow: notification_workflow:auth_invitation, step_key: "email", default_locale: "fr", layout: notification_layout:default
-    }
-) END;
-IF !record::exists(notification_template_locale:auth_invitation_email_fr) THEN (
-    CREATE notification_template_locale:auth_invitation_email_fr CONTENT {
-        template: notification_template:auth_invitation_email,
-        locale: "fr",
-        subject: "Invitation à rejoindre {{ payload.organization_name }}",
-        html_body: "<p>Bonjour{% if recipient.name %} {{ recipient.name }}{% endif %},</p>\n<p>{% if payload.inviter_name %}{{ payload.inviter_name }} vous invite{% else %}Vous êtes invité{% endif %} à rejoindre l'organisation <strong>{{ payload.organization_name }}</strong>.</p>\n<p><a href=\"{{ secret.action_url }}\">Accepter l'invitation</a></p>\n<p>Si vous ne vous attendiez pas à cette invitation, ignorez ce message.</p>",
-        text_body: "Bonjour{% if recipient.name %} {{ recipient.name }}{% endif %},\n\n{% if payload.inviter_name %}{{ payload.inviter_name }} vous invite{% else %}Vous êtes invité{% endif %} à rejoindre l'organisation {{ payload.organization_name }}.\n\nAccepter l'invitation : {{ secret.action_url }}\n\nSi vous ne vous attendiez pas à cette invitation, ignorez ce message.\n"
-    }
-) END;
-IF !record::exists(notification_template_locale:auth_invitation_email_en) THEN (
-    CREATE notification_template_locale:auth_invitation_email_en CONTENT {
-        template: notification_template:auth_invitation_email,
-        locale: "en",
-        subject: "Invitation to join {{ payload.organization_name }}",
-        html_body: "<p>Hello{% if recipient.name %} {{ recipient.name }}{% endif %},</p>\n<p>{% if payload.inviter_name %}{{ payload.inviter_name }} invites you{% else %}You are invited{% endif %} to join the organization <strong>{{ payload.organization_name }}</strong>.</p>\n<p><a href=\"{{ secret.action_url }}\">Accept the invitation</a></p>\n<p>If you were not expecting this invitation, ignore this message.</p>",
-        text_body: "Hello{% if recipient.name %} {{ recipient.name }}{% endif %},\n\n{% if payload.inviter_name %}{{ payload.inviter_name }} invites you{% else %}You are invited{% endif %} to join the organization {{ payload.organization_name }}.\n\nAccept the invitation: {{ secret.action_url }}\n\nIf you were not expecting this invitation, ignore this message.\n"
+        workflow: notification_workflow:auth_invitation, step_key: "email", layout: notification_layout:default,
+        subject: "{{ t(\"notification.auth_invitation.subject\", organization=payload.organization_name) }}",
+        html_body: "<p>{% if recipient.name %}{{ t(\"notification.common.greeting_named\", name=recipient.name) }}{% else %}{{ t(\"notification.common.greeting\") }}{% endif %}</p>\n<p>{% if payload.inviter_name %}{{ t(\"notification.auth_invitation.intro_by\", inviter=payload.inviter_name, organization=payload.organization_name) }}{% else %}{{ t(\"notification.auth_invitation.intro\", organization=payload.organization_name) }}{% endif %}</p>\n<p><a href=\"{{ secret.action_url }}\">{{ t(\"notification.auth_invitation.action\") }}</a></p>\n<p>{{ t(\"notification.auth_invitation.ignore\") }}</p>",
+        text_body: "{% if recipient.name %}{{ t(\"notification.common.greeting_named\", name=recipient.name) }}{% else %}{{ t(\"notification.common.greeting\") }}{% endif %}\n\n{% if payload.inviter_name %}{{ t(\"notification.auth_invitation.intro_by\", inviter=payload.inviter_name, organization=payload.organization_name) }}{% else %}{{ t(\"notification.auth_invitation.intro\", organization=payload.organization_name) }}{% endif %}\n\n{{ t(\"notification.auth_invitation.action\") }} : {{ secret.action_url }}\n\n{{ t(\"notification.auth_invitation.ignore\") }}\n",
+        keys: ["notification.common.greeting", "notification.common.greeting_named", "notification.auth_invitation.subject", "notification.auth_invitation.intro", "notification.auth_invitation.intro_by", "notification.auth_invitation.action", "notification.auth_invitation.ignore"]
     }
 ) END;
 
@@ -206,24 +163,10 @@ IF !record::exists(notification_workflow:auth_security_alert) THEN (
 ) END;
 IF !record::exists(notification_template:auth_security_alert_email) THEN (
     CREATE notification_template:auth_security_alert_email CONTENT {
-        workflow: notification_workflow:auth_security_alert, step_key: "email", default_locale: "fr", layout: notification_layout:default
-    }
-) END;
-IF !record::exists(notification_template_locale:auth_security_alert_email_fr) THEN (
-    CREATE notification_template_locale:auth_security_alert_email_fr CONTENT {
-        template: notification_template:auth_security_alert_email,
-        locale: "fr",
-        subject: "Alerte de sécurité sur votre compte",
-        html_body: "<p>Bonjour{% if recipient.name %} {{ recipient.name }}{% endif %},</p>\n<p>{% if payload.alert == \"mfa_enrolled\" %}Un second facteur a été ajouté à votre compte : {% if payload.method == \"totp\" %}application d'authentification{% else %}passkey{% if payload.label %} « {{ payload.label }} »{% endif %}{% endif %}.{% elif payload.alert == \"mfa_removed\" %}{% if payload.reason == \"admin_reset\" %}Un administrateur a retiré tous les seconds facteurs de votre compte ; vos sessions ont été fermées.{% else %}Un second facteur a été retiré de votre compte : {% if payload.method == \"totp\" %}application d'authentification{% else %}passkey{% if payload.label %} « {{ payload.label }} »{% endif %}{% endif %}.{% endif %}{% elif payload.alert == \"recovery_codes_generated\" %}De nouveaux codes de secours ont été générés ; les précédents ne fonctionnent plus.{% elif payload.alert == \"recovery_code_used\" %}Un code de secours a été utilisé pour vous connecter. Il vous en reste {{ payload.remaining }}.{% elif payload.alert == \"password_changed\" %}Le mot de passe de votre compte a été changé.{% else %}Une passkey de votre compte{% if payload.label %} (« {{ payload.label }} »){% endif %} a été refusée : elle semble avoir été copiée. Retirez-la et enregistrez-en une nouvelle.{% endif %}</p>\n<p>Si vous n'êtes pas à l'origine de cette action, changez votre mot de passe et prévenez votre administrateur.</p>",
-        text_body: "Bonjour{% if recipient.name %} {{ recipient.name }}{% endif %},\n\n{% if payload.alert == \"mfa_enrolled\" %}Un second facteur a été ajouté à votre compte : {% if payload.method == \"totp\" %}application d'authentification{% else %}passkey{% if payload.label %} « {{ payload.label }} »{% endif %}{% endif %}.{% elif payload.alert == \"mfa_removed\" %}{% if payload.reason == \"admin_reset\" %}Un administrateur a retiré tous les seconds facteurs de votre compte ; vos sessions ont été fermées.{% else %}Un second facteur a été retiré de votre compte : {% if payload.method == \"totp\" %}application d'authentification{% else %}passkey{% if payload.label %} « {{ payload.label }} »{% endif %}{% endif %}.{% endif %}{% elif payload.alert == \"recovery_codes_generated\" %}De nouveaux codes de secours ont été générés ; les précédents ne fonctionnent plus.{% elif payload.alert == \"recovery_code_used\" %}Un code de secours a été utilisé pour vous connecter. Il vous en reste {{ payload.remaining }}.{% elif payload.alert == \"password_changed\" %}Le mot de passe de votre compte a été changé.{% else %}Une passkey de votre compte{% if payload.label %} (« {{ payload.label }} »){% endif %} a été refusée : elle semble avoir été copiée. Retirez-la et enregistrez-en une nouvelle.{% endif %}\n\nSi vous n'êtes pas à l'origine de cette action, changez votre mot de passe et prévenez votre administrateur.\n"
-    }
-) END;
-IF !record::exists(notification_template_locale:auth_security_alert_email_en) THEN (
-    CREATE notification_template_locale:auth_security_alert_email_en CONTENT {
-        template: notification_template:auth_security_alert_email,
-        locale: "en",
-        subject: "Security alert on your account",
-        html_body: "<p>Hello{% if recipient.name %} {{ recipient.name }}{% endif %},</p>\n<p>{% if payload.alert == \"mfa_enrolled\" %}A second factor was added to your account: {% if payload.method == \"totp\" %}authenticator app{% else %}passkey{% if payload.label %} “{{ payload.label }}”{% endif %}{% endif %}.{% elif payload.alert == \"mfa_removed\" %}{% if payload.reason == \"admin_reset\" %}An administrator removed all second factors from your account; your sessions were closed.{% else %}A second factor was removed from your account: {% if payload.method == \"totp\" %}authenticator app{% else %}passkey{% if payload.label %} “{{ payload.label }}”{% endif %}{% endif %}.{% endif %}{% elif payload.alert == \"recovery_codes_generated\" %}New recovery codes were generated; the previous ones no longer work.{% elif payload.alert == \"recovery_code_used\" %}A recovery code was used to sign in. You have {{ payload.remaining }} left.{% elif payload.alert == \"password_changed\" %}Your account password was changed.{% else %}A passkey on your account{% if payload.label %} (“{{ payload.label }}”){% endif %} was refused: it appears to have been copied. Remove it and register a new one.{% endif %}</p>\n<p>If you did not do this, change your password and tell your administrator.</p>",
-        text_body: "Hello{% if recipient.name %} {{ recipient.name }}{% endif %},\n\n{% if payload.alert == \"mfa_enrolled\" %}A second factor was added to your account: {% if payload.method == \"totp\" %}authenticator app{% else %}passkey{% if payload.label %} “{{ payload.label }}”{% endif %}{% endif %}.{% elif payload.alert == \"mfa_removed\" %}{% if payload.reason == \"admin_reset\" %}An administrator removed all second factors from your account; your sessions were closed.{% else %}A second factor was removed from your account: {% if payload.method == \"totp\" %}authenticator app{% else %}passkey{% if payload.label %} “{{ payload.label }}”{% endif %}{% endif %}.{% endif %}{% elif payload.alert == \"recovery_codes_generated\" %}New recovery codes were generated; the previous ones no longer work.{% elif payload.alert == \"recovery_code_used\" %}A recovery code was used to sign in. You have {{ payload.remaining }} left.{% elif payload.alert == \"password_changed\" %}Your account password was changed.{% else %}A passkey on your account{% if payload.label %} (“{{ payload.label }}”){% endif %} was refused: it appears to have been copied. Remove it and register a new one.{% endif %}\n\nIf you did not do this, change your password and tell your administrator.\n"
+        workflow: notification_workflow:auth_security_alert, step_key: "email", layout: notification_layout:default,
+        subject: "{{ t(\"notification.auth_security_alert.subject\") }}",
+        html_body: "<p>{% if recipient.name %}{{ t(\"notification.common.greeting_named\", name=recipient.name) }}{% else %}{{ t(\"notification.common.greeting\") }}{% endif %}</p>\n<p>{% if payload.alert == \"mfa_enrolled\" %}{% if payload.method == \"totp\" %}{{ t(\"notification.auth_security_alert.mfa_enrolled_totp\") }}{% else %}{% if payload.label %}{{ t(\"notification.auth_security_alert.mfa_enrolled_passkey_named\", label=payload.label) }}{% else %}{{ t(\"notification.auth_security_alert.mfa_enrolled_passkey\") }}{% endif %}{% endif %}{% elif payload.alert == \"mfa_removed\" %}{% if payload.reason == \"admin_reset\" %}{{ t(\"notification.auth_security_alert.mfa_removed_admin\") }}{% else %}{% if payload.method == \"totp\" %}{{ t(\"notification.auth_security_alert.mfa_removed_totp\") }}{% else %}{% if payload.label %}{{ t(\"notification.auth_security_alert.mfa_removed_passkey_named\", label=payload.label) }}{% else %}{{ t(\"notification.auth_security_alert.mfa_removed_passkey\") }}{% endif %}{% endif %}{% endif %}{% elif payload.alert == \"recovery_codes_generated\" %}{{ t(\"notification.auth_security_alert.recovery_codes_generated\") }}{% elif payload.alert == \"recovery_code_used\" %}{{ t(\"notification.auth_security_alert.recovery_code_used\", remaining=payload.remaining) }}{% elif payload.alert == \"password_changed\" %}{{ t(\"notification.auth_security_alert.password_changed\") }}{% else %}{% if payload.label %}{{ t(\"notification.auth_security_alert.passkey_clone_detected_named\", label=payload.label) }}{% else %}{{ t(\"notification.auth_security_alert.passkey_clone_detected\") }}{% endif %}{% endif %}</p>\n<p>{{ t(\"notification.auth_security_alert.advice\") }}</p>",
+        text_body: "{% if recipient.name %}{{ t(\"notification.common.greeting_named\", name=recipient.name) }}{% else %}{{ t(\"notification.common.greeting\") }}{% endif %}\n\n{% if payload.alert == \"mfa_enrolled\" %}{% if payload.method == \"totp\" %}{{ t(\"notification.auth_security_alert.mfa_enrolled_totp\") }}{% else %}{% if payload.label %}{{ t(\"notification.auth_security_alert.mfa_enrolled_passkey_named\", label=payload.label) }}{% else %}{{ t(\"notification.auth_security_alert.mfa_enrolled_passkey\") }}{% endif %}{% endif %}{% elif payload.alert == \"mfa_removed\" %}{% if payload.reason == \"admin_reset\" %}{{ t(\"notification.auth_security_alert.mfa_removed_admin\") }}{% else %}{% if payload.method == \"totp\" %}{{ t(\"notification.auth_security_alert.mfa_removed_totp\") }}{% else %}{% if payload.label %}{{ t(\"notification.auth_security_alert.mfa_removed_passkey_named\", label=payload.label) }}{% else %}{{ t(\"notification.auth_security_alert.mfa_removed_passkey\") }}{% endif %}{% endif %}{% endif %}{% elif payload.alert == \"recovery_codes_generated\" %}{{ t(\"notification.auth_security_alert.recovery_codes_generated\") }}{% elif payload.alert == \"recovery_code_used\" %}{{ t(\"notification.auth_security_alert.recovery_code_used\", remaining=payload.remaining) }}{% elif payload.alert == \"password_changed\" %}{{ t(\"notification.auth_security_alert.password_changed\") }}{% else %}{% if payload.label %}{{ t(\"notification.auth_security_alert.passkey_clone_detected_named\", label=payload.label) }}{% else %}{{ t(\"notification.auth_security_alert.passkey_clone_detected\") }}{% endif %}{% endif %}\n\n{{ t(\"notification.auth_security_alert.advice\") }}\n",
+        keys: ["notification.common.greeting", "notification.common.greeting_named", "notification.auth_security_alert.subject", "notification.auth_security_alert.mfa_enrolled_totp", "notification.auth_security_alert.mfa_enrolled_passkey", "notification.auth_security_alert.mfa_enrolled_passkey_named", "notification.auth_security_alert.mfa_removed_admin", "notification.auth_security_alert.mfa_removed_totp", "notification.auth_security_alert.mfa_removed_passkey", "notification.auth_security_alert.mfa_removed_passkey_named", "notification.auth_security_alert.recovery_codes_generated", "notification.auth_security_alert.recovery_code_used", "notification.auth_security_alert.password_changed", "notification.auth_security_alert.passkey_clone_detected", "notification.auth_security_alert.passkey_clone_detected_named", "notification.auth_security_alert.advice"]
     }
 ) END;

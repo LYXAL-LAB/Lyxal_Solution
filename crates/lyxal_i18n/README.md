@@ -70,7 +70,9 @@ de son organisation active (`auth_organization.locale`), puis `Accept-Language` 
 * **Droits** : espaces de noms, clés et textes de l'installation par `i18n.translation.manage`
   (rôle `platform_admin`) ; surcharges de son organisation par
   `i18n.organization.translation.manage` (rôle `organization_admin`) ; lecture ouverte, sauf les
-  surcharges.
+  surcharges, lues par leur organisation. `i18n.translation.read` (aucun rôle : comptes de
+  service, comme le worker d'envoi de `lyxal_notification`) lit et résout les textes de toute
+  organisation, sans rien écrire.
 
 ### Contrôle d'un texte
 

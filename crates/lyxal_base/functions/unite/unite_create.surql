@@ -40,7 +40,6 @@ DEFINE FUNCTION OVERWRITE fn::base_unite_create($params: object) {
 
     LET $created = (CREATE ONLY $record_id CONTENT {
         code: $p.code,
-        libelle: $p.libelle,
         abreviation: $p.abreviation,
         type: $p.type,
         enabled: true
@@ -48,5 +47,11 @@ DEFINE FUNCTION OVERWRITE fn::base_unite_create($params: object) {
     IF $created == NONE {
         RETURN fn::error_result("BASE_WRITE_FORBIDDEN", $language, { table: "base_unite" });
     };
-    RETURN fn::result_ok($created);
-} COMMENT "Crée une unité de mesure rattachée à un type d'unité existant et actif";
+    -- Libellé : texte source de la clé lyxal_i18n ; son échec annule la création
+    LET $failure = fn::base_libelle_create("unite", $p.code, $p.libelle);
+    IF $failure IS NOT NONE {
+        DELETE $record_id;
+        RETURN fn::error_result("BASE_LIBELLE_WRITE_FAILED", $language, { cause: $failure });
+    };
+    RETURN fn::result_ok(object::extend($created, { libelle: $p.libelle }));
+} COMMENT "Crée une unité de mesure rattachée à un type d'unité existant et actif ; le libellé devient le texte source de la clé base.unite_<code> de lyxal_i18n";

@@ -10,6 +10,7 @@ DEFINE FUNCTION OVERWRITE fn::base_unite_get($params: object) {
             id: { pipeline: [{ rule: "record", options: { expected_table: "base_unite" } }] },
             code: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 32 } }] },
             fetch_type: { pipeline: [{ rule: "boolean" }], default: false },
+            locale: { pipeline: [{ rule: "locale", options: { require_region: false } }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -36,5 +37,9 @@ DEFINE FUNCTION OVERWRITE fn::base_unite_get($params: object) {
     IF $found == NONE {
         RETURN fn::error_result("BASE_UNITE_NOT_FOUND", $language, { id: <string> $record_id });
     };
-    RETURN fn::result_ok($found);
-} COMMENT "Lit une unité par son identifiant (base_unite:<CODE>) ou par son code ; usable indique si l'unité et son type sont actifs, codes liste ses codes d'échange normalisés";
+    LET $labelled = fn::base_libelle_attach([$found], "unite", $p.locale ?? $p.language);
+    IF $labelled.error IS NOT NONE {
+        RETURN fn::error_result("BASE_LIBELLE_READ_FAILED", $p.language, { cause: $labelled.error });
+    };
+    RETURN fn::result_ok($labelled.records[0]);
+} COMMENT "Lit une unité par son identifiant (base_unite:<CODE>) ou par son code ; libellé rendu dans la langue demandée (locale, par défaut language) ; usable indique si l'unité et son type sont actifs, codes liste ses codes d'échange normalisés";

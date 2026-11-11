@@ -35,7 +35,6 @@ DEFINE FUNCTION OVERWRITE fn::notification_settings_set($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
             tenant: { pipeline: [{ rule: "record", options: { expected_table: "auth_organization" } }] },
-            default_locale: { pipeline: [{ rule: "locale", options: { require_region: false } }] },
             from_name: { pipeline: [{ rule: "display_name", options: { min_length: 1, max_length: 128, allow_emoji: false } }] },
             reply_to: { pipeline: [{ rule: "email", options: { max_length: 254 } }] },
             max_attempts: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 20 } }] },
@@ -52,7 +51,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_settings_set($params: object) {
     IF !fn::notification_can({ action: "manage", tenant: $p.tenant }) { RETURN fn::error_result("NOTIFICATION_PERMISSION_DENIED", $p.language, {}); };
     LET $scope = IF $p.tenant IS NONE { "installation" } ELSE { <string> record::id($p.tenant) };
     LET $changes = object::from_entries(array::filter(
-        array::map(["default_locale", "from_name", "reply_to", "max_attempts", "retention_days_runs", "retention_days_log"], |$f| [$f, $p[$f]]),
+        array::map(["from_name", "reply_to", "max_attempts", "retention_days_runs", "retention_days_log"], |$f| [$f, $p[$f]]),
         |$e| $e[1] IS NOT NONE
     ));
     LET $changes = IF $changes.reply_to IS NONE { $changes } ELSE {
@@ -66,7 +65,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_settings_set($params: object) {
     };
     IF $saved == NONE { RETURN fn::error_result("NOTIFICATION_WRITE_FORBIDDEN", $p.language, { table: "notification_settings" }); };
     RETURN fn::result_ok($saved);
-} COMMENT "Enregistre les réglages d'une portée ({ tenant, default_locale, from_name, reply_to, max_attempts, retention_days_runs, retention_days_log }) ; seuls les champs fournis changent. Permission notification.manage";
+} COMMENT "Enregistre les réglages d'une portée ({ tenant, from_name, reply_to, max_attempts, retention_days_runs, retention_days_log }) ; seuls les champs fournis changent. Permission notification.manage";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_suppression_add

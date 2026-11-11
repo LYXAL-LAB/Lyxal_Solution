@@ -12,7 +12,7 @@ DEFINE FUNCTION OVERWRITE fn::i18n_can_translate($params: object) -> bool {
 
 DEFINE FUNCTION OVERWRITE fn::i18n_can_read($params: object) -> bool {
     IF $params.tenant IS NONE { RETURN true; };
-    IF fn::auth_has_permission({ permission: "i18n.translation.manage" }) { RETURN true; };
+    IF fn::auth_has_permission({ permission: "i18n.translation.manage" }) OR fn::auth_has_permission({ permission: "i18n.translation.read" }) { RETURN true; };
     LET $context = fn::auth_context({});
     RETURN $context.ok AND $context.data.organization = $params.tenant;
-} COMMENT "Vrai si l'appelant peut lire les textes de la portée ({ tenant }) : installation ouverte ; surcharges lues par l'organisation active de l'appelant ou par i18n.translation.manage. Jamais d'erreur";
+} COMMENT "Vrai si l'appelant peut lire les textes de la portée ({ tenant }) : installation ouverte ; surcharges lues par l'organisation active de l'appelant, par i18n.translation.manage ou par i18n.translation.read. Jamais d'erreur";

@@ -164,3 +164,57 @@ IF !record::exists(error_definition:BASE_UNITE_TYPE_DISABLED) THEN (
         }
     }
 ) END;
+
+IF !record::exists(error_definition:BASE_LIBELLE_WRITE_FAILED) THEN (
+    CREATE error_definition:BASE_LIBELLE_WRITE_FAILED CONTENT {
+        code: "BASE_LIBELLE_WRITE_FAILED",
+        module: "base",
+        domain: "unite",
+        category: "business",
+        severity: "error",
+        message: "Libellé non enregistré",
+        default_language: "fr",
+        http_status: 422,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Libellé non enregistré",
+                description: "Le libellé n'a pas pu être écrit dans les traductions (cause : code d'erreur reçu de lyxal_i18n). Rien n'a été modifié.",
+                resolution: "Vérifiez vos droits sur les traductions et le libellé saisi."
+            },
+            en: {
+                label: "Label not saved",
+                description: "The label could not be written to the translations (cause: error code received from lyxal_i18n). Nothing was changed.",
+                resolution: "Check your rights on translations and the label entered."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:BASE_LIBELLE_READ_FAILED) THEN (
+    CREATE error_definition:BASE_LIBELLE_READ_FAILED CONTENT {
+        code: "BASE_LIBELLE_READ_FAILED",
+        module: "base",
+        domain: "unite",
+        category: "business",
+        severity: "error",
+        message: "Libellé illisible",
+        default_language: "fr",
+        http_status: 422,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Libellé illisible",
+                description: "Le libellé n'a pas pu être lu dans les traductions (cause : code d'erreur reçu de lyxal_i18n).",
+                resolution: "Vérifiez la langue demandée."
+            },
+            en: {
+                label: "Label unreadable",
+                description: "The label could not be read from the translations (cause: error code received from lyxal_i18n).",
+                resolution: "Check the requested language."
+            }
+        }
+    }
+) END;

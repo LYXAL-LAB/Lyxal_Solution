@@ -16,6 +16,10 @@ version = ">=0.1.0"
 id = "lyxal_error"
 version = ">=0.1.0"
 
+[[dependencies]]
+id = "lyxal_i18n"
+version = ">=0.1.0"
+
 [resources]
 schemas = [
     "schema/base_unite_type.surql",
@@ -23,6 +27,7 @@ schemas = [
     "schema/base_unite_code.surql"
 ]
 functions = [
+    "functions/libelle/base_libelle.surql",
     "functions/unite_type/unite_type_create.surql",
     "functions/unite_type/unite_type_get.surql",
     "functions/unite_type/unite_type_list.surql",
@@ -42,6 +47,7 @@ error_definitions = [
     "error/unite/error_unite.surql"
 ]
 seeds = [
+    "seeds/libelle_initial.surql",
     "seeds/unite_type_initial.surql",
     "seeds/unite_initial.surql",
     "seeds/unite_code_initial.surql"

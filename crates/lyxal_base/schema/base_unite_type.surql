@@ -28,20 +28,6 @@ DEFINE FIELD OVERWRITE code
     COMMENT "Code technique unique du type d'unité (alphanumérique, majuscules), clé de l'identifiant base_unite_type:<CODE>";
 
 -- ----------------------------------------------------------------------------
--- Libelle
--- Exemple : Longueur, Surface, Volume, Masse
--- ----------------------------------------------------------------------------
-
-DEFINE FIELD OVERWRITE libelle
-    ON TABLE base_unite_type
-    TYPE string
-    ASSERT
-        string::len($value) >= 1
-        AND string::len($value) <= 128
-        AND $value == string::trim($value)
-    COMMENT "Libellé du type d'unité";
-
--- ----------------------------------------------------------------------------
 -- Statut d'activation
 -- ----------------------------------------------------------------------------
 

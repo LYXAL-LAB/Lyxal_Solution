@@ -28,20 +28,6 @@ DEFINE FIELD OVERWRITE code
     COMMENT "Code technique unique de l'unité (alphanumérique, majuscules), clé de l'identifiant base_unite:<CODE>";
 
 -- ----------------------------------------------------------------------------
--- Libelle
--- Exemple : Mètre, Centimètre, Mètre carré, Kilogramme (tel que saisi, sans espaces périphériques)
--- ----------------------------------------------------------------------------
-
-DEFINE FIELD OVERWRITE libelle
-    ON TABLE base_unite
-    TYPE string
-    ASSERT
-        string::len($value) >= 1
-        AND string::len($value) <= 128
-        AND $value == string::trim($value)
-    COMMENT "Libellé de l'unité";
-
--- ----------------------------------------------------------------------------
 -- Abreviation
 -- Exemple : m, cm, m², m³, ml, kg, h
 -- ----------------------------------------------------------------------------

@@ -138,60 +138,6 @@ IF !record::exists(error_definition:NOTIFICATION_TEMPLATE_EXISTS) THEN (
     }
 ) END;
 
-IF !record::exists(error_definition:NOTIFICATION_TEMPLATE_LOCALE_MISSING) THEN (
-    CREATE error_definition:NOTIFICATION_TEMPLATE_LOCALE_MISSING CONTENT {
-        code: "NOTIFICATION_TEMPLATE_LOCALE_MISSING",
-        module: "notification",
-        domain: "parcours",
-        category: "not_found",
-        severity: "error",
-        message: "Template locale missing",
-        default_language: "fr",
-        http_status: 404,
-        retryable: false,
-        enabled: true,
-        translations: {
-            fr: {
-                label: "Langue absente du gabarit",
-                description: "Le gabarit n'a pas de version dans cette langue.",
-                resolution: "Ajoutez la version ou choisissez une autre langue."
-            },
-            en: {
-                label: "Template locale missing",
-                description: "The template has no version in this language.",
-                resolution: "Add the version or choose another language."
-            }
-        }
-    }
-) END;
-
-IF !record::exists(error_definition:NOTIFICATION_TEMPLATE_DEFAULT_LOCALE_REQUIRED) THEN (
-    CREATE error_definition:NOTIFICATION_TEMPLATE_DEFAULT_LOCALE_REQUIRED CONTENT {
-        code: "NOTIFICATION_TEMPLATE_DEFAULT_LOCALE_REQUIRED",
-        module: "notification",
-        domain: "parcours",
-        category: "conflict",
-        severity: "error",
-        message: "Template default locale required",
-        default_language: "fr",
-        http_status: 409,
-        retryable: false,
-        enabled: true,
-        translations: {
-            fr: {
-                label: "Version par défaut obligatoire",
-                description: "Chaque étape d'un parcours actif doit avoir un gabarit et sa version dans la langue par défaut ; cette version ne peut pas être supprimée.",
-                resolution: "Ajoutez la version dans la langue par défaut avant d'activer ou de modifier le parcours."
-            },
-            en: {
-                label: "Default template version required",
-                description: "Each step of an active workflow needs a template and its default-language version, which cannot be deleted.",
-                resolution: "Add the default-language version before activating or changing the workflow."
-            }
-        }
-    }
-) END;
-
 IF !record::exists(error_definition:NOTIFICATION_LAYOUT_KEY_TAKEN) THEN (
     CREATE error_definition:NOTIFICATION_LAYOUT_KEY_TAKEN CONTENT {
         code: "NOTIFICATION_LAYOUT_KEY_TAKEN",
@@ -241,6 +187,60 @@ IF !record::exists(error_definition:NOTIFICATION_LAYOUT_CONTENT_SLOT_MISSING) TH
                 label: "Content slot missing",
                 description: "A layout's HTML and text must contain {{ content }}.",
                 resolution: "Add {{ content }} where the message should appear."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:NOTIFICATION_TEMPLATE_REQUIRED) THEN (
+    CREATE error_definition:NOTIFICATION_TEMPLATE_REQUIRED CONTENT {
+        code: "NOTIFICATION_TEMPLATE_REQUIRED",
+        module: "notification",
+        domain: "parcours",
+        category: "conflict",
+        severity: "error",
+        message: "Template required",
+        default_language: "fr",
+        http_status: 409,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Gabarit obligatoire",
+                description: "Chaque étape d'un parcours actif doit avoir un gabarit.",
+                resolution: "Créez le gabarit de chaque étape avant d'activer ou de modifier le parcours."
+            },
+            en: {
+                label: "Template required",
+                description: "Each step of an active workflow needs a template.",
+                resolution: "Create the template of each step before activating or changing the workflow."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:NOTIFICATION_TEMPLATE_KEY_UNKNOWN) THEN (
+    CREATE error_definition:NOTIFICATION_TEMPLATE_KEY_UNKNOWN CONTENT {
+        code: "NOTIFICATION_TEMPLATE_KEY_UNKNOWN",
+        module: "notification",
+        domain: "parcours",
+        category: "validation",
+        severity: "error",
+        message: "Template key unknown",
+        default_language: "fr",
+        http_status: 422,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Clé de traduction inconnue",
+                description: "Le gabarit déclare une clé de traduction qui n'existe pas dans lyxal_i18n (détail : keys).",
+                resolution: "Créez la clé dans les traductions ou retirez-la du gabarit."
+            },
+            en: {
+                label: "Unknown translation key",
+                description: "The template declares a translation key that does not exist in lyxal_i18n (detail: keys).",
+                resolution: "Create the key in the translations or remove it from the template."
             }
         }
     }
