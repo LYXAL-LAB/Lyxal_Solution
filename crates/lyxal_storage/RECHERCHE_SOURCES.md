@@ -1,10 +1,7 @@
 # `lyxal_storage` — recherche de sources open source
 
-Document de travail préalable au plan d'implémentation de `lyxal_storage` (crate du Noyau
-Technique, rang 3 de [`docs/14-roadmap/ROADMAP_NOYAU.md`](../../docs/14-roadmap/ROADMAP_NOYAU.md)).
-Le crate n'existe pas encore : ce dossier ne contient que ce document. Aucun code ne sera écrit
-avant un `implementation_plan.md` validé par le CTO (`.agents/AGENTS.md` §3). Ce document est
-retiré, ou réduit aux sources retenues, quand le crate est créé.
+Document de travail du programme `lyxal_storage` (crate du Noyau Technique). Il est réduit aux
+sources retenues à la clôture du programme (lot 8 du plan `implementation_plan.md` à la racine).
 
 Recherche du 8 novembre 2026, revue le 11 novembre 2026 : états de maintenance revérifiés, et
 gestion de fichiers de SurrealDB étudiée dans son code et essayée sur le serveur 3.3.4 (§6). Cette

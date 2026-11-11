@@ -13,6 +13,7 @@ const MODULES: &[(&str, Option<&str>)] = &[
     ("lyxal_event", None),
     ("lyxal_auth", None),
     ("lyxal_i18n", None),
+    ("lyxal_storage", None),
     ("lyxal_notification", None),
     ("lyxal_base", None),
     ("lyxal_catalogue", None),

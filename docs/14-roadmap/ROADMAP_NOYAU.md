@@ -3,11 +3,14 @@
 Ordre de création des crates du noyau technique inscrits « à créer » dans
 `.agents/AGENTS.md` §6. Les crates du noyau déjà en place (`lyxal_error`, `lyxal_surreal`,
 `lyxal_crypto`, `lyxal_parsing`, `lyxal_event`, `lyxal_runtime`, `lyxal_base`, `lyxal_auth`,
-`lyxal_i18n`, `lyxal_notification`) ont leur propre `ROADMAP.md`. `lyxal_i18n` est livré
+`lyxal_i18n`, `lyxal_storage`, `lyxal_notification`) ont leur propre `ROADMAP.md`. `lyxal_i18n` est livré
 (langues, traductions, rendu, échange par fichier ; `lyxal_base` et `lyxal_notification` en
 dépendent pour leurs textes) ; ses évolutions sont dans `crates/lyxal_i18n/ROADMAP.md`. La V1 de `lyxal_auth` est livrée (lots 1 à 6 :
 socle, connexion, double facteur, bascule du catalogue et de l'ingestion, clôture avec audit et
 revue OWASP ASVS niveau 2) ; ses évolutions sont dans `crates/lyxal_auth/ROADMAP.md`.
+
+`lyxal_storage` (rang 3) est créé : son socle SurrealQL est en place, son programme (lots 2 à 8)
+est dans `implementation_plan.md` à la racine et sa `ROADMAP.md`.
 
 `lyxal_notification` a été créé avant son rang (décision D8 du programme `lyxal_auth`) avec sa
 partie e-mail et des solutions d'attente pour `lyxal_secrets` et
@@ -20,7 +23,6 @@ Un crate créé est retiré de ce document : son état est alors décrit par son
 
 | Rang | Crate | Rôle | Dépend de (noyau) |
 | :--- | :--- | :--- | :--- |
-| 3 | `lyxal_storage` | fichiers et documents stockés | `lyxal_auth` |
 | 4 | `lyxal_secrets` | secrets applicatifs stockés chiffrés | `lyxal_crypto`, `lyxal_auth` |
 | 5 | `lyxal_scheduler` | tâches planifiées | `lyxal_runtime`, `lyxal_event` |
 
@@ -30,9 +32,6 @@ Tous dépendent en outre de `lyxal_core` et `lyxal_error`.
 
 ## Raisons de l'ordre
 
-3. **`lyxal_storage`** : les modules métiers à venir (`lyxal_documents`, `lyxal_btp`) stockent des
-   fichiers ; l'accès à un fichier suit l'identité de `lyxal_auth`. `lyxal_core` fournit déjà la
-   validation des chemins (`fn::validation_lyxal_storage_path`).
 4. **`lyxal_secrets`** : conserve les secrets applicatifs (clés de fournisseurs, identifiants de
    canaux) chiffrés par `lyxal_crypto` (`CryptoEngine::seal` / `open`, `SecretContext`), lisibles
    selon l'identité de `lyxal_auth`. Les canaux de `lyxal_notification` par locataire en dépendent

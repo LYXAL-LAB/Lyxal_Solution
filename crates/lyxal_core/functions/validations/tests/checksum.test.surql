@@ -28,6 +28,14 @@ RETURN fn::validation_checksum(NULL, "crc32")
 RETURN fn::validation_checksum(42, "crc32")
     == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
 
+-- test: empreinte blake3 (64 caractères hexadécimaux), rendue en minuscules
+RETURN fn::validation_checksum("AF1349B9F5F9A1A6A0404DEA36DCC9499BCB25C9ADC112B7CC9A93CAE41F3262", "BLAKE3")
+    == { valid: true, value: "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262", code: NONE, details: {} };
+
+-- test: empreinte blake3 de mauvaise longueur
+RETURN fn::validation_checksum("AF1349B9F5F9A1A6A0404DEA36DCC9499BCB25C9", "blake3")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "blake3", length: 64 } };
+
 -- test: algorithme inconnu
 -- attendu-erreur: CORE_UNSUPPORTED_OPTION
 RETURN fn::validation_checksum("ab", "whirlpool");

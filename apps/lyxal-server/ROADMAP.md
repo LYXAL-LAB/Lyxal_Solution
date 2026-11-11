@@ -10,7 +10,7 @@ Aucune étape ne démarre sans ordre du CTO et `implementation_plan.md` validé
 | :--- | :--- | :--- |
 | 1 | Authentification des clients | `lyxal_auth` |
 | 2 | API des modules | étape 1 |
-| 3 | Hébergement des crates du noyau à venir | `lyxal_i18n`, `lyxal_storage`, `lyxal_secrets`, `lyxal_scheduler`, `lyxal_notification` |
+| 3 | Hébergement des crates du noyau à venir | `lyxal_secrets`, `lyxal_scheduler` |
 
 ---
 

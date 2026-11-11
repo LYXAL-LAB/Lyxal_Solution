@@ -5,12 +5,12 @@
 -- Fonction : fn::validation_checksum
 --
 -- Valide une empreinte hexadécimale dont la longueur correspond à
--- l'algorithme (crc32, md5, sha1, sha256, sha384, sha512) ; la valeur
--- renvoyée est en minuscules.
+-- l'algorithme (crc32, md5, sha1, sha256, sha384, sha512, blake3) ; la
+-- valeur renvoyée est en minuscules.
 --
 -- Paramètres
 --   $value     : any — valeur à contrôler
---   $algorithm : string — crc32 | md5 | sha1 | sha256 | sha384 | sha512, insensible à la casse
+--   $algorithm : string — crc32 | md5 | sha1 | sha256 | sha384 | sha512 | blake3, insensible à la casse
 --
 -- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
 --   valid = true  → value = l'empreinte en minuscules, code = NONE
@@ -36,7 +36,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_checksum(
     $algorithm: string
 ) -> object {
     LET $algo = string::lowercase(string::trim($algorithm));
-    LET $expected_length = { crc32: 8, md5: 32, sha1: 40, sha256: 64, sha384: 96, sha512: 128 }[$algo];
+    LET $expected_length = { crc32: 8, md5: 32, sha1: 40, sha256: 64, sha384: 96, sha512: 128, blake3: 64 }[$algo];
     IF $expected_length IS NONE { THROW "CORE_UNSUPPORTED_OPTION"; };
     IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
     IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
@@ -50,5 +50,5 @@ DEFINE FUNCTION OVERWRITE fn::validation_checksum(
     };
     RETURN { valid: true, value: string::lowercase($clean), code: NONE, details: {} };
 }
-COMMENT "Valide une empreinte hexadécimale dont la longueur correspond à l'algorithme (crc32, md5, sha1, sha256, sha384, sha512) ; la valeur renvoyée est en minuscules. Renvoie { valid, value, code, details }."
+COMMENT "Valide une empreinte hexadécimale dont la longueur correspond à l'algorithme (crc32, md5, sha1, sha256, sha384, sha512, blake3) ; la valeur renvoyée est en minuscules. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;
