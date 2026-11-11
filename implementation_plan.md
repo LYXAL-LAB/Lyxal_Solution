@@ -1,0 +1,136 @@
+# Plan d'implémentation — programme `lyxal_storage` V1
+
+Création du crate du Noyau Technique `lyxal_storage` (rang 3 de
+[`docs/14-roadmap/ROADMAP_NOYAU.md`](docs/14-roadmap/ROADMAP_NOYAU.md)) : fichiers et documents
+stockés, avec le contrôle de qui y accède. Sources, et étude de la gestion de fichiers de
+SurrealDB : [`crates/lyxal_storage/RECHERCHE_SOURCES.md`](crates/lyxal_storage/RECHERCHE_SOURCES.md).
+
+**Deux niveaux de validation** (`AGENTS.md` §3) : ce plan fixe le programme (architecture,
+modèle, lots, décisions). Chaque lot a ensuite son propre plan détaillé, soumis au CTO avant
+toute ligne de code : contrats Rust `XxxParams` / `XxxResult`, signatures SurrealQL, codes
+d'erreurs, tests.
+
+## 1. Architecture
+
+### 1.1. Répartition SurrealQL / Rust
+
+La gestion de fichiers de SurrealDB 3.3.4 est expérimentale, sans flux ni transaction
+(`RECHERCHE_SOURCES.md` §6). Le travail est donc partagé :
+
+| SurrealQL (données et règles) | Rust (crate `lyxal_storage`, `object_store`) |
+| :--- | :--- |
+| Buckets : nom, organisation, taille maximale, types autorisés, lecture seule | Supports : disque local, mémoire (tests), S3 et compatibles |
+| Fiche de chaque fichier : bucket, clé, propriétaire, taille, type, empreinte, état | Écriture et lecture **en flux**, sans charger un fichier en mémoire |
+| Droits : qui lit, écrit, supprime (`lyxal_auth`) | Empreinte BLAKE3 calculée pendant l'écriture (`lyxal_crypto`) |
+| États et transitions d'un fichier, quotas | Type réel du fichier, antivirus |
+| Événements `storage.*` | Nettoyage des octets orphelins et purge (workers supervisés) |
+
+### 1.2. Adresse d'un fichier
+
+Un fichier est repéré par un **bucket** et une **clé** (`plans/2026/a.pdf`), comme la valeur
+`file` de SurrealDB : la bascule future vers ses buckets ne changera pas les adresses. La fiche
+`storage_object` a un identifiant propre ; les modules consommateurs la référencent par un champ
+`record<storage_object>` déclaré `REFERENCE`.
+
+### 1.3. Écriture en deux temps
+
+Aucune transaction ne couvre la base et le support. Une écriture suit donc trois étapes :
+
+1. `fn::storage_object_begin` : droits, quota et règles du bucket vérifiés ; fiche créée à
+   l'état `pending` avec une date limite ;
+2. Rust écrit les octets en flux, calcule l'empreinte et la taille, contrôle le type ;
+3. `fn::storage_object_commit` : taille, type et empreinte enregistrés ; état `available`.
+
+Un fichier `pending` n'est jamais servi. Un worker supprime les octets et la fiche d'une écriture
+abandonnée. Une suppression marque la fiche `deleted`, puis le worker retire les octets : la
+fiche ne disparaît qu'après eux.
+
+### 1.4. Modèle (SurrealDB, préfixe `storage_`)
+
+| Table | Contenu |
+| :--- | :--- |
+| `storage_settings` | réglages de l'installation, surchargés par organisation : taille maximale par défaut, quota, délai d'une écriture en attente, conservation après suppression |
+| `storage_bucket` | nom (règle `lyxal_bucket_name` de `lyxal_core`), `tenant` (`NONE` : installation), support, taille maximale, types autorisés, lecture seule |
+| `storage_object` | bucket, clé (règle `lyxal_storage_path`), `tenant`, propriétaire, nom d'origine, taille, type déclaré et type réel, empreinte BLAKE3, état (`pending`, `available`, `quarantined`, `deleted`), dates |
+| `storage_upload` | envoi reprenable en cours : fichier visé, position atteinte, expiration |
+
+* Les données d'une organisation sont supprimées avec elle (`REFERENCE ON DELETE CASCADE` sur
+  `tenant`) ; leurs octets le sont par le worker de purge.
+* **Permissions** par `fn::auth_has_permission` : `storage.bucket.manage`, `storage.object.read`,
+  `storage.object.write` (organisation), `storage.installation.manage` et `storage.worker`
+  (installation, compte de service).
+* Les identifiants des supports (clés S3) ne sont pas en base : ils viennent de l'environnement de
+  l'hôte, en `SecretString`, puis de `lyxal_secrets` quand il existera.
+
+## 2. Dépendances
+
+`lyxal_storage` dépend de `lyxal_core`, `lyxal_error`, `lyxal_event`, `lyxal_auth` et, en Rust,
+de `lyxal_surreal`, `lyxal_runtime` et `lyxal_crypto`. Bibliothèques : `object_store` 0.13 (déjà
+dans `Cargo.lock` par le SDK `surrealdb`), `infer` (type réel), `clamav-client` (antivirus,
+optionnel). Aucun module existant ne dépend de `lyxal_storage` avant la bascule de l'ingestion.
+
+## 3. Fonctions publiques (`fn::storage_*($params: object)`)
+
+| Domaine | Fonctions |
+| :--- | :--- |
+| Réglages | `storage_settings_get`, `storage_settings_set` |
+| Buckets | `storage_bucket_create`, `storage_bucket_update`, `storage_bucket_get`, `storage_bucket_list`, `storage_bucket_delete` (vide seulement) |
+| Fichiers | `storage_object_begin`, `storage_object_commit`, `storage_object_get`, `storage_object_list`, `storage_object_delete`, `storage_object_usage` (volume d'une organisation) |
+| Envoi reprenable | `storage_upload_create`, `storage_upload_advance`, `storage_upload_get`, `storage_upload_cancel` |
+| Workers | `storage_object_expire` (écritures abandonnées), `storage_object_purge` (fichiers supprimés), `storage_object_quarantine` |
+
+Entrées par le moteur `fn::validation_object_execute` de `lyxal_core` (règles existantes
+`lyxal_bucket_name`, `lyxal_storage_path`, `filename`, `mime_type`, `checksum`) ; erreurs
+`STORAGE_*` en master data ; écriture principale vérifiée (`STORAGE_WRITE_FORBIDDEN`).
+
+## 4. Événements (`fn::event_publish`)
+
+`storage.object.created`, `storage.object.deleted`, `storage.object.quarantined` : identifiants,
+bucket, clé, taille et type ; jamais de contenu.
+
+## 5. Lots
+
+| Lot | Contenu | Touche |
+| :- | :--- | :--- |
+| **1** | Socle SurrealQL : réglages, buckets, fiches de fichiers, états, droits, quotas, événements, erreurs, banc | `lyxal_storage` |
+| **2** | Rust : supports disque et mémoire, écriture et lecture en flux, empreinte, écriture en deux temps, workers de nettoyage et de purge, module et sonde de santé | `lyxal_storage` |
+| **3** | Hôte : routes d'envoi et de téléchargement en flux (droits `lyxal_auth`, limites de taille, lecture partielle), configuration des supports | `apps/lyxal-server` |
+| **4** | Support S3 et compatibles ; identifiants par l'environnement de l'hôte | `lyxal_storage`, `apps/lyxal-server` |
+| **5** | Contrôle du contenu : type réel du fichier, antivirus, quarantaine | `lyxal_storage` |
+| **6** | Envoi reprenable (protocole tus 1.0) pour les gros fichiers | `lyxal_storage`, `apps/lyxal-server` |
+| **7** | Bascule de l'ingestion : le fichier source d'un lot est conservé par `lyxal_storage` (constat A06 de l'audit externe) | `lyxal_pipeline_ingestion` |
+| **8** | Clôture : audit `lyxal-audit`, `README.md`, `ROADMAP.md`, `AGENTS.md` §6, `ROADMAP_NOYAU.md`, `RECHERCHE_SOURCES.md` réduit en `MODELE_SOURCES.md` | docs |
+
+## 6. Tests et critères de production
+
+* **Banc SurrealQL** : chaque fonction ; droits par organisation (lecture, écriture, suppression
+  refusées hors permission, fichiers d'une organisation invisibles d'une autre) ; quota ; taille
+  et type refusés par le bucket ; fichier `pending` non servi ; transitions d'état.
+* **Rust** : fichier écrit puis relu à l'identique, empreinte vérifiée ; écriture interrompue
+  nettoyée ; fichier plus gros que la mémoire allouée au test ; mêmes tests sur disque, mémoire
+  et S3 (serveur S3 de test).
+* **Hôte** : envoi et téléchargement de bout en bout, lecture partielle, limite de taille,
+  session requise.
+* Contrôle complet : `scripts/ci/ci_local.sh` à chaque lot.
+
+## 7. Checklist (§13)
+
+* Core : règles existantes réutilisées ; aucune extension demandée à ce stade.
+* Crypto : empreinte par `lyxal_crypto` (`Blake3Hasher`) ; aucune primitive ajoutée. Le
+  chiffrement des fichiers au repos n'est pas dans cette V1 : il est inscrit à la feuille de
+  route et sera soumis au CTO (§11.3).
+* Rust : aucun `panic!`, aucune erreur silencieuse ; identifiants des supports en `SecretString`.
+* Zéro dette : versions `0.y.z`, une seule migration par module.
+* Licences : `object_store` (Apache-2.0), `infer` (MIT), `clamav-client` (MIT) ; ClamAV (GPL)
+  reste un service séparé ; Supabase Storage et fileloft en conception seule.
+
+## 8. Décisions demandées au CTO
+
+| # | Question | Recommandation |
+| :- | :--- | :--- |
+| S1 | Où stocker le contenu des fichiers ? | **Par notre code Rust (`object_store`)**, pas par les buckets de SurrealDB, encore expérimentaux et sans flux ; adresses compatibles pour basculer plus tard |
+| S2 | Quel support au départ ? | **Disque local** d'abord (lot 2), **S3** dans le même programme (lot 4) |
+| S3 | Comment repérer un fichier ? | Par un **identifiant propre**, l'empreinte étant une information de la fiche ; la déduplication par empreinte est remise à plus tard |
+| S4 | Antivirus | **Optionnel par configuration** : il demande un service ClamAV à part ; sans lui, le type réel du fichier reste contrôlé |
+| S5 | Envoi reprenable après coupure | **Dans la V1** (lot 6) : utile pour les photos et plans envoyés depuis un chantier |
+| S6 | Brancher l'ingestion sur `lyxal_storage` dans ce programme | **Oui** (lot 7) : corrige le constat A06 de l'audit externe |
