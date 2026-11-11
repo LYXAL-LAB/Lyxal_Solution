@@ -1,6 +1,7 @@
 //! File d'envoi : réservation, achèvement, échec, purge (`fn::notification_job_*`,
 //! `fn::notification_purge`).
 
+use lyxal_i18n::ResolvedText;
 use lyxal_surreal::SurrealValue;
 
 use super::trigger::Recipient;
@@ -38,14 +39,19 @@ pub struct ClaimedJob {
     pub attempt: i64,
     /// Destinataire.
     pub recipient: Recipient,
-    /// Langue résolue (absente si le gabarit n'a aucune version utilisable).
+    /// Langue de l'envoi : celle du destinataire, sinon de son organisation, sinon de
+    /// l'installation (absente si elle n'a pas pu être choisie, voir `texts_error`).
     pub locale: Option<String>,
-    /// Objet (gabarit).
+    /// Objet (gabarit) ; absent si l'étape n'a pas de gabarit.
     pub subject: Option<String>,
     /// Corps HTML (gabarit).
     pub html_body: Option<String>,
     /// Corps texte (gabarit).
     pub text_body: Option<String>,
+    /// Textes des clés `lyxal_i18n` du gabarit, dans la langue de l'envoi (repli compris).
+    pub texts: Vec<ResolvedText>,
+    /// Code `I18N_*` si la langue ou les textes n'ont pas pu être lus : rien n'est rendu.
+    pub texts_error: Option<String>,
     /// Mise en page HTML.
     pub layout_html: Option<String>,
     /// Mise en page texte.
@@ -214,8 +220,6 @@ pub struct SettingsGetParams {
 /// Réglages effectifs.
 #[derive(Debug, Clone, PartialEq, SurrealValue)]
 pub struct EffectiveSettings {
-    /// Langue par défaut.
-    pub default_locale: String,
     /// Nom d'expéditeur.
     pub from_name: Option<String>,
     /// Adresse de réponse.

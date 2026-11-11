@@ -10,13 +10,24 @@
 //! Variables : `recipient` (`email`, `locale`, `name`), `payload`, `secret`, `organization`
 //! (`name`). Le message rendu n'est conservé nulle part.
 //!
-//! Filtres de `lyxal_i18n`, dans la langue du destinataire (sinon celle du gabarit retenu, sinon
-//! `fr`) : `format_number`, `format_currency(code)`, `format_date(style, zone)`. Une valeur
-//! invalide fait échouer le rendu : rien n'est envoyé avec une valeur fausse.
+//! Un gabarit existe en une seule version. Ses phrases sont des clés `lyxal_i18n` appelées par
+//! `t("clé", nom=valeur, …)` : le texte, lu à la réservation dans la langue de l'envoi, est
+//! rendu par `lyxal_i18n` dans la **langue du texte retenu** (un texte servi en repli garde ses
+//! propres pluriels), puis échappé dans le HTML comme toute variable. Une clé que le gabarit
+//! n'a pas déclarée, une clé inconnue de `lyxal_i18n`, un argument absent ou un message
+//! invalide font échouer le rendu.
+//!
+//! Filtres de `lyxal_i18n` : `format_number`, `format_currency(code)`,
+//! `format_date(style, zone)`, dans la langue de l'envoi (avec la région du destinataire quand
+//! sa langue est celle de l'envoi : `en-GB` pour un envoi en `en`). Une valeur invalide fait
+//! échouer le rendu : rien n'est envoyé avec une valeur fausse.
 
-use lyxal_i18n::{parse_decimal, DateStyle, FormatError, Formatter, Length};
-use minijinja::value::{Value, ValueKind};
+use lyxal_i18n::{
+    parse_decimal, DateStyle, FormatError, Formatter, Length, MessageArgs, ResolvedText, Syntax,
+};
+use minijinja::value::{Kwargs, Value, ValueKind};
 use minijinja::{AutoEscape, Environment, Error, ErrorKind, UndefinedBehavior};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::error::{NotificationError, NotificationResult};
@@ -69,19 +80,23 @@ impl Renderer {
         let (Some(subject), Some(html_body), Some(text_body)) =
             (&job.subject, &job.html_body, &job.text_body)
         else {
+            return Err(NotificationError::Render("étape sans gabarit".to_string()));
+        };
+        if let Some(code) = &job.texts_error {
+            return Err(NotificationError::Render(format!(
+                "textes du gabarit illisibles : {code}"
+            )));
+        }
+        let Some(send_locale) = job.locale.as_deref() else {
             return Err(NotificationError::Render(
-                "aucune version du gabarit dans une langue utilisable".to_string(),
+                "langue de l'envoi absente".to_string(),
             ));
         };
-        let locale = job
-            .recipient
-            .locale
-            .as_deref()
-            .or(job.locale.as_deref())
-            .unwrap_or("fr");
-        let formatter =
-            Formatter::new(locale).map_err(|error| NotificationError::Render(error.to_string()))?;
-        let env = self.environment(Arc::new(formatter));
+        let unreadable = |error: FormatError| NotificationError::Render(error.to_string());
+        let formatter = Formatter::new(format_locale(job.recipient.locale.as_deref(), send_locale))
+            .map_err(unreadable)?;
+        let texts = Texts::new(&job.texts).map_err(unreadable)?;
+        let env = self.environment(Arc::new(formatter), Arc::new(texts));
         let context = Value::from_pairs([
             (
                 "recipient",
@@ -137,7 +152,7 @@ impl Renderer {
         })
     }
 
-    fn environment(&self, formatter: Arc<Formatter>) -> Environment<'static> {
+    fn environment(&self, formatter: Arc<Formatter>, texts: Arc<Texts>) -> Environment<'static> {
         let mut env = Environment::new();
         env.set_undefined_behavior(UndefinedBehavior::SemiStrict);
         env.set_fuel(Some(self.fuel));
@@ -148,6 +163,9 @@ impl Renderer {
             } else {
                 AutoEscape::None
             }
+        });
+        env.add_function("t", move |key: String, args: Kwargs| {
+            texts.render(&key, &args)
         });
         let numbers = Arc::clone(&formatter);
         env.add_filter("format_number", move |value: Value| {
@@ -173,6 +191,75 @@ impl Renderer {
             },
         );
         env
+    }
+}
+
+/// Langue des nombres et des dates : celle du destinataire quand sa langue est celle de
+/// l'envoi (sa région est gardée), sinon celle de l'envoi.
+fn format_locale<'a>(recipient: Option<&'a str>, send: &'a str) -> &'a str {
+    let language = |tag: &str| tag.split('-').next().map(str::to_ascii_lowercase);
+    match recipient {
+        Some(tag) if language(tag) == language(send) => tag,
+        _ => send,
+    }
+}
+
+/// Textes des clés du gabarit, chacun avec le rendu de sa propre langue.
+struct Texts {
+    by_key: HashMap<String, (ResolvedText, Syntax)>,
+    formatters: HashMap<String, Formatter>,
+}
+
+impl Texts {
+    fn new(texts: &[ResolvedText]) -> Result<Self, FormatError> {
+        let mut by_key = HashMap::with_capacity(texts.len());
+        let mut formatters = HashMap::new();
+        for text in texts {
+            let syntax =
+                Syntax::parse(&text.syntax).ok_or_else(|| FormatError::MessageInvalid {
+                    reason: format!("syntaxe inconnue : {}", text.syntax),
+                    offset: 0,
+                })?;
+            if let Some(locale) = &text.locale {
+                if !formatters.contains_key(locale) {
+                    formatters.insert(locale.clone(), Formatter::new(locale)?);
+                }
+            }
+            by_key.insert(text.key.clone(), (text.clone(), syntax));
+        }
+        Ok(Self { by_key, formatters })
+    }
+
+    /// Texte d'une clé, rendu avec ses arguments dans la langue du texte retenu.
+    fn render(&self, key: &str, args: &Kwargs) -> Result<String, Error> {
+        let (text, syntax) = self
+            .by_key
+            .get(key)
+            .ok_or_else(|| invalid("clé absente des clés déclarées par le gabarit"))?;
+        let formatter = text
+            .locale
+            .as_ref()
+            .and_then(|locale| self.formatters.get(locale))
+            .filter(|_| !text.missing)
+            .ok_or_else(|| invalid("clé non déclarée dans lyxal_i18n"))?;
+        let mut values = MessageArgs::new();
+        for name in args.args() {
+            let value: Value = args.get(name)?;
+            values = match value.kind() {
+                ValueKind::String => values.text(name, value.as_str().unwrap_or_default()),
+                ValueKind::Number => match i64::try_from(value.clone()) {
+                    Ok(integer) => values.integer(name, integer),
+                    Err(_) => values
+                        .decimal(name, &value.to_string())
+                        .map_err(filter_error)?,
+                },
+                _ => return Err(invalid("argument de texte : chaîne ou nombre attendu")),
+            };
+        }
+        args.assert_all_used()?;
+        formatter
+            .format_message(&text.text, *syntax, &values, "UTC")
+            .map_err(filter_error)
     }
 }
 
@@ -288,6 +375,8 @@ mod tests {
             subject: Some(subject.into()),
             html_body: Some(html.into()),
             text_body: Some(text.into()),
+            texts: Vec::new(),
+            texts_error: None,
             layout_html: None,
             layout_text: None,
             payload: serde_json::json!({ "n": "<b>D-1</b>" }),
@@ -325,6 +414,7 @@ mod tests {
     ) -> NotificationResult<String> {
         let mut j = job("Objet", "<p>x</p>", text);
         j.recipient.locale = Some(locale.into());
+        j.locale = Some(locale.into());
         j.payload = payload;
         Renderer::default()
             .render(&j, None)
@@ -354,7 +444,7 @@ mod tests {
     }
 
     #[test]
-    fn i18n_filters_fall_back_to_the_template_locale() {
+    fn i18n_filters_follow_the_send_locale() {
         let mut j = job("Objet", "<p>x</p>", "{{ payload.n | format_number }}");
         j.recipient.locale = None;
         j.locale = Some("de".into());
@@ -385,11 +475,148 @@ mod tests {
                 "{text}"
             );
         }
-        // Langue du destinataire illisible : aucun rendu
+        // Langue de l'envoi illisible : aucun rendu
         assert!(matches!(
             localized("pas une langue", "x", serde_json::json!({})),
             Err(NotificationError::Render(_))
         ));
+    }
+
+    fn resolved(key: &str, text: &str, syntax: &str, locale: &str) -> ResolvedText {
+        ResolvedText {
+            key: key.into(),
+            text: text.into(),
+            syntax: syntax.into(),
+            locale: Some(locale.into()),
+            overridden: false,
+            missing: false,
+        }
+    }
+
+    const ITEMS_FR: &str = "{count, plural, one {# article} other {# articles}}";
+    const ITEMS_EN: &str = "{count, plural, one {# item} other {# items}}";
+
+    #[test]
+    fn translated_texts_are_rendered_with_their_arguments() {
+        let mut j = job(
+            "{{ t(\"devis.objet\", number=payload.n) }}",
+            "<p>{{ t(\"devis.salut\", name=recipient.name) }} {{ t(\"devis.lignes\", count=payload.count) }}</p>",
+            "{{ t(\"devis.lignes\", count=payload.count) }} / {{ t(\"devis.total\", ratio=payload.ratio) }}",
+        );
+        j.recipient.name = Some("<Claire>".into());
+        j.payload = serde_json::json!({ "n": "D-1", "count": 1, "ratio": 2.5 });
+        j.texts = vec![
+            resolved("devis.objet", "Devis {number}", "icu_mf1", "fr"),
+            resolved(
+                "devis.salut",
+                "Bonjour {name} & bienvenue,",
+                "icu_mf1",
+                "fr",
+            ),
+            resolved("devis.lignes", ITEMS_FR, "icu_mf1", "fr"),
+            resolved(
+                "devis.total",
+                "Coefficient {ratio, number}",
+                "icu_mf1",
+                "fr",
+            ),
+        ];
+        let rendered = Renderer::default().render(&j, None).expect("rendu");
+        assert_eq!(rendered.subject, "Devis D-1");
+        // Texte traduit et arguments échappés dans le HTML, jamais dans le texte
+        assert_eq!(
+            rendered.html,
+            "<p>Bonjour &lt;Claire&gt; &amp; bienvenue, 1 article</p>"
+        );
+        assert_eq!(rendered.text, "1 article / Coefficient 2,5");
+        j.payload = serde_json::json!({ "n": "D-1", "count": 3, "ratio": 2 });
+        assert_eq!(
+            Renderer::default().render(&j, None).expect("rendu").text,
+            "3 articles / Coefficient 2"
+        );
+    }
+
+    #[test]
+    fn a_fallback_text_keeps_the_plural_rules_of_its_own_locale() {
+        // Envoi en anglais ; la clé n'a qu'un texte français, servi en repli : zéro est au
+        // singulier en français (« 0 article »), au pluriel en anglais (« 0 items »)
+        let mut j = job("Objet", "<p>x</p>", "{{ t(\"a.lignes\", count=0) }} ; {{ t(\"a.items\", count=0) }} ; {{ 1234.5 | format_number }}");
+        j.recipient.locale = Some("en-GB".into());
+        j.locale = Some("en".into());
+        j.texts = vec![
+            resolved("a.lignes", ITEMS_FR, "icu_mf1", "fr"),
+            resolved("a.items", ITEMS_EN, "icu_mf1", "en"),
+        ];
+        assert_eq!(
+            Renderer::default().render(&j, None).expect("rendu").text,
+            "0 article ; 0 items ; 1,234.5"
+        );
+        // Destinataire d'une autre langue que l'envoi : nombres dans la langue de l'envoi
+        j.recipient.locale = Some("de".into());
+        j.locale = Some("fr".into());
+        assert!(Renderer::default()
+            .render(&j, None)
+            .expect("rendu")
+            .text
+            .ends_with("1\u{202f}234,5"));
+    }
+
+    #[test]
+    fn unusable_texts_stop_the_rendering() {
+        let texts = vec![
+            resolved("a.simple", "Bonjour", "plain", "fr"),
+            resolved("a.nom", "Bonjour {name}", "icu_mf1", "fr"),
+            ResolvedText {
+                key: "a.absente".into(),
+                text: "a.absente".into(),
+                syntax: "plain".into(),
+                locale: None,
+                overridden: false,
+                missing: true,
+            },
+            resolved("a.cassee", "{count, plural, one {#}", "icu_mf1", "fr"),
+        ];
+        let render = |text: &str| {
+            let mut j = job("Objet", "<p>x</p>", text);
+            j.texts = texts.clone();
+            Renderer::default().render(&j, None).map(|r| r.text)
+        };
+        assert_eq!(render("{{ t(\"a.simple\") }}").expect("rendu"), "Bonjour");
+        for text in [
+            // clé que le gabarit n'a pas déclarée
+            "{{ t(\"a.autre\") }}",
+            // clé inconnue de lyxal_i18n
+            "{{ t(\"a.absente\") }}",
+            // argument absent, argument d'un type refusé
+            "{{ t(\"a.nom\") }}",
+            "{{ t(\"a.nom\", name=payload.absent) }}",
+            "{{ t(\"a.nom\", name=[1]) }}",
+            // message invalide
+            "{{ t(\"a.cassee\", count=1) }}",
+            // appel sans clé
+            "{{ t() }}",
+        ] {
+            assert!(
+                matches!(render(text), Err(NotificationError::Render(_))),
+                "{text}"
+            );
+        }
+        // Textes illisibles à la réservation, syntaxe inconnue, langue de l'envoi absente
+        let mut unreadable = job("Objet", "<p>x</p>", "x");
+        unreadable.texts_error = Some("I18N_PERMISSION_DENIED".into());
+        assert_eq!(
+            Renderer::default()
+                .render(&unreadable, None)
+                .expect_err("textes illisibles")
+                .to_string(),
+            "rendu impossible : textes du gabarit illisibles : I18N_PERMISSION_DENIED"
+        );
+        let mut unknown = job("Objet", "<p>x</p>", "x");
+        unknown.texts = vec![resolved("a.b", "x", "mf2", "fr")];
+        assert!(Renderer::default().render(&unknown, None).is_err());
+        let mut no_locale = job("Objet", "<p>x</p>", "x");
+        no_locale.locale = None;
+        assert!(Renderer::default().render(&no_locale, None).is_err());
     }
 
     #[test]
@@ -447,9 +674,9 @@ mod tests {
         assert_eq!(
             Renderer::default()
                 .render(&missing, None)
-                .expect_err("aucune version")
+                .expect_err("aucun gabarit")
                 .to_string(),
-            "rendu impossible : aucune version du gabarit dans une langue utilisable"
+            "rendu impossible : étape sans gabarit"
         );
     }
 }
