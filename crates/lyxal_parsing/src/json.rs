@@ -20,6 +20,9 @@ pub enum JsonLayout {
     Array,
     /// Un objet JSON par ligne (NDJSON, JSON Lines) ; les lignes vides sont ignorées.
     Lines,
+    /// La source entière est un seul objet JSON, sur une ou plusieurs lignes (fichier de
+    /// traductions à plat, par exemple) : un seul enregistrement.
+    Document,
 }
 
 /// Options du lecteur JSON.
@@ -51,6 +54,7 @@ enum State {
     /// Dans un tableau, après un séparateur `,`.
     ArrayNext,
     Lines,
+    Document,
     Done,
 }
 
@@ -204,6 +208,22 @@ impl<R: Read> JsonReader<R> {
         Ok(Some(element))
     }
 
+    /// Lit la source jusqu'à sa fin comme un seul élément.
+    fn read_document(&mut self) -> Result<Element, ParseError> {
+        let mut element = Element {
+            bytes: Vec::new(),
+            oversized: false,
+            max_depth: 0,
+            line: self.line,
+        };
+        while let Some(byte) = self.peek()? {
+            self.bump(byte);
+            self.keep(&mut element, byte);
+        }
+        element.max_depth = nesting_depth(&element.bytes);
+        Ok(element)
+    }
+
     fn keep(&self, element: &mut Element, byte: u8) {
         if element.bytes.len() < self.options.limits.max_record_bytes {
             element.bytes.push(byte);
@@ -281,9 +301,13 @@ impl<R: Read> JsonReader<R> {
                         Ok(first) => first,
                         Err(error) => return Some(Err(self.fail(error))),
                     };
+                    if self.options.layout == JsonLayout::Document {
+                        self.state = State::Document;
+                        continue;
+                    }
                     let array = match self.options.layout {
                         JsonLayout::Array => true,
-                        JsonLayout::Lines => false,
+                        JsonLayout::Lines | JsonLayout::Document => false,
                         JsonLayout::Auto => first == Some(b'['),
                     };
                     if array {
@@ -321,6 +345,14 @@ impl<R: Read> JsonReader<R> {
                         self.state = State::ArrayNext;
                     }
                     return Some(item);
+                }
+                State::Document => {
+                    let element = match self.read_document() {
+                        Ok(element) => element,
+                        Err(error) => return Some(Err(self.fail(error))),
+                    };
+                    self.state = State::Done;
+                    return Some(self.record(element));
                 }
                 State::Lines => {
                     let element = match self.read_line() {

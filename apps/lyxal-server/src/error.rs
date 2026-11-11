@@ -42,6 +42,9 @@ pub enum ServerError {
 
     #[error("authentification désactivée : clé applicative ou auth.public_url absente")]
     AuthDisabled,
+
+    #[error("commande en échec : {message}")]
+    CommandFailed { message: String },
 }
 
 /// Description d'une erreur de l'hôte, identique à sa définition dans `error/server.surql`.
@@ -129,6 +132,15 @@ const AUTH_DISABLED: ServerErrorInfo = ServerErrorInfo {
     label: "Authentification désactivée",
 };
 
+const COMMAND_FAILED: ServerErrorInfo = ServerErrorInfo {
+    code: "SERVER_COMMAND_FAILED",
+    category: "business",
+    http_status: 422,
+    retryable: false,
+    message: "An administration command reported failures",
+    label: "Commande d'administration en échec",
+};
+
 /// Toutes les erreurs de l'hôte.
 pub const SERVER_ERROR_CATALOG: &[ServerErrorInfo] = &[
     CONFIGURATION_INVALID,
@@ -139,6 +151,7 @@ pub const SERVER_ERROR_CATALOG: &[ServerErrorInfo] = &[
     SHUTDOWN_SIGNAL_FAILED,
     TELEMETRY_INIT_FAILED,
     AUTH_DISABLED,
+    COMMAND_FAILED,
 ];
 
 impl ServerError {
@@ -165,6 +178,7 @@ impl ServerError {
             Self::ShutdownSignal { .. } => SHUTDOWN_SIGNAL_FAILED,
             Self::Telemetry { .. } => TELEMETRY_INIT_FAILED,
             Self::AuthDisabled => AUTH_DISABLED,
+            Self::CommandFailed { .. } => COMMAND_FAILED,
         }
     }
 

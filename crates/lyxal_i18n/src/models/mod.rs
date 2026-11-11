@@ -1,10 +1,15 @@
 //! Contrats publics des fonctions SurrealQL `fn::i18n_*` : paramètres (`XxxParams`) et
 //! résultats.
 
+mod exchange;
 mod locale;
 mod translation;
 mod types;
 
+pub use exchange::{
+    ExportPage, ExportParams, ExportRow, ImportEntry, ImportInvalid, ImportParams, ImportResult,
+    ImportSkipped, MessageProblem, ScanPage, ScanRow,
+};
 pub use locale::{
     Locale, LocaleGetParams, LocaleList, LocaleListParams, LocaleResolveParams, ResolvedLocale,
     Settings, SettingsGetParams, SettingsUpdateParams,

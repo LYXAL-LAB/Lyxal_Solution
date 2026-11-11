@@ -213,6 +213,19 @@ Active une nouvelle clé de signature des jetons dans l'emplacement inactif ; re
 jetons signés par l'ancienne clé de cet emplacement peuvent être valides. `--force` (clé
 compromise) l'écrase et invalide ces jetons.
 
+```bash
+lyxal-server i18n export --locale en --output en.json
+lyxal-server i18n import --locale en --file en.json --dry-run
+lyxal-server i18n check
+```
+
+Textes de `lyxal_i18n` (session système) : `export` écrit les textes d'une langue dans un
+fichier (`--format json` par défaut ou `xliff`, `--namespace`, `--tenant` pour les surcharges
+d'une organisation) ; `import` les relit et affiche son rapport (créés, modifiés, inchangés,
+ignorés, invalides, illisibles ; `--tenant`, `--overwrite-reviewed` pour écraser un texte relu,
+`--dry-run` pour ne rien écrire) ; `check` liste les textes que le rendu refuse. `import` et
+`check` sortent en erreur (`SERVER_COMMAND_FAILED`) si un texte est invalide ou illisible.
+
 Chaque requête porte un identifiant `x-request-id` (repris de la requête ou généré). Couches :
 limite de corps, délai, limite de concurrence, rattrapage des paniques, CORS paramétré.
 
@@ -235,6 +248,7 @@ garde son code `RUNTIME_*`.
 | `SERVER_SHUTDOWN_SIGNAL_FAILED` | `internal` | 500 |
 | `SERVER_TELEMETRY_INIT_FAILED` | `internal` | 500 |
 | `SERVER_AUTH_DISABLED` | `dependency` | 503 |
+| `SERVER_COMMAND_FAILED` | `business` | 422 |
 
 Les définitions sont générées depuis le catalogue `SERVER_ERROR_CATALOG` (`src/error.rs`) et
 installées au démarrage ; un test vérifie leur correspondance. `manifest.toml` de l'hôte ne

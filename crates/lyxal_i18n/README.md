@@ -3,7 +3,7 @@
 Module du Noyau Technique de Lyxal OS : **langues, traductions et formats régionaux**. Réalisé :
 référentiel des langues issu d'Unicode CLDR, choix de la langue d'une requête, clés et
 traductions avec surcharges par organisation, rendu des messages, des nombres, des dates et des
-montants. Les règles sur les données vivent dans SurrealDB (fonctions `fn::i18n_*`) ; le rendu
+montants, échange des textes par fichier. Les règles sur les données vivent dans SurrealDB (fonctions `fn::i18n_*`) ; le rendu
 est en Rust (ICU4X), car SurrealDB n'a pas ICU. Sources et choix :
 [`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md) ; lots suivants dans [`ROADMAP.md`](ROADMAP.md).
 
@@ -128,6 +128,9 @@ pour un appel de la session système ; elle en sort quand la clé est déclarée
 | `i18n_resolve` | **key**, **locale**, `tenant` | `{ key, text, syntax, locale, overridden, missing }` | tous |
 | `i18n_resolve_many` | **keys** (500 au plus), **locale**, `tenant` | tableau du même objet, dans l'ordre demandé | tous |
 | `i18n_missing_key_list` | `limit`, `start` | `{ items: [{ key, locale, first_seen_at, last_seen_at }], total }` | `i18n.translation.manage` |
+| `i18n_export` | **locale**, `namespace`, `tenant`, `limit` (500), `start` | `{ items: [{ key, namespace, description, params, max_length, source_locale, source_text, text, syntax, state, outdated, overridden }], total }` | lecture de la portée |
+| `i18n_import` | **locale**, **entries** `[{ key, text, syntax }]` (500 au plus), `tenant`, `overwrite_reviewed`, `dry_run` | `{ created, updated, unchanged, skipped: [{ key, reason }], invalid: [{ key, problems }] }` | écriture de la portée |
+| `i18n_translation_scan` | `limit` (500), `start` | `{ items: [{ key, locale, tenant, text, syntax }], total }` : tous les textes, toutes portées | `i18n.translation.manage` |
 
 `key` est la clé complète (`base.unite.metre`) ; `tenant` est une organisation
 (`auth_organization:<clé>`). Toutes acceptent `language` (langue des messages d'erreur sur deux
@@ -143,7 +146,8 @@ Erreurs : `I18N_INVALID_PARAMETERS`, `I18N_PERMISSION_DENIED`, `I18N_WRITE_FORBI
 
 Fonctions internes au module : `fn::i18n_locale_set_active`, `fn::i18n_locale_chain`,
 `fn::i18n_can_read`, `fn::i18n_can_translate`, `fn::i18n_message_*`,
-`fn::i18n_translation_target`, `fn::i18n_resolve_scope`, `fn::i18n_resolve_text`.
+`fn::i18n_translation_target`, `fn::i18n_resolve_scope`, `fn::i18n_resolve_text`,
+`fn::i18n_import_entry`.
 
 ## 5. Événements
 
@@ -195,7 +199,48 @@ rend le texte avec le `Formatter` de la langue du texte **retenu** : un texte de
 pluriels et les formats de sa propre langue. Clé non déclarée : la clé, `missing: true`, sans
 erreur. Les `Formatter` sont gardés en cache par langue (64 au plus).
 
-## 7. Rust, module et sonde
+## 7. Échange par fichier (Rust, `exchange/`)
+
+`Exchange` exporte, importe et contrôle les textes. Un fichier porte **une langue** et **une
+portée** (installation, ou une organisation), données par l'appelant, jamais lues dans le
+fichier.
+
+| Format | Forme |
+| :--- | :--- |
+| `FileFormat::Json` | objet à plat `{ "base.unite.metre": "mètre" }`, textes en ICU MessageFormat 1 : le format d'échange de Tolgee, FormatJS et Crowdin. Seules les clés traduites sont écrites |
+| `FileFormat::Xliff` | XLIFF 2.0 : un `<file>` par espace de noms, un `<unit id="clé">` par clé, `<source>`, `<target>` si la clé est traduite, état (`initial`, `translated`, `reviewed`), contexte en `<notes>`. Texte seul : un élément en ligne (`<ph>`…) fait rejeter l'unité. Les textes sources doivent avoir la même langue (un espace de noms à la fois sinon) |
+
+* **Import** (`Exchange::import`) :
+  1. lecture par `lyxal_parsing` ; un fichier mal formé n'écrit rien, un enregistrement illisible
+     est listé dans `rejected` ;
+  2. chaque texte est vérifié par `Formatter::check_message` (syntaxe complète) : un texte refusé
+     va dans `invalid` et n'est pas envoyé à la base ;
+  3. envoi par paquets de 500 à `fn::i18n_import`, qui applique ses règles entrée par entrée :
+
+     | Cas | Effet |
+     | :--- | :--- |
+     | clé non déclarée | ignorée (`key_not_found`) : un import ne crée pas de clé |
+     | texte identique à celui de la base | inchangé |
+     | texte à l'état `reviewed` | ignoré (`reviewed`), sauf `overwrite_reviewed` |
+     | texte refusé par `fn::i18n_message_check` | `invalid`, non écrit |
+     | sinon | créé ou modifié par `fn::i18n_translation_set` |
+
+  Les entrées sont indépendantes ; `dry_run` rend le rapport sans rien écrire. Un import ne
+  touche que sa portée.
+* **Contrôle** (`Exchange::check`) : tous les textes (`fn::i18n_translation_scan`) sont vérifiés
+  par le rendu dans leur langue ; rien n'est modifié.
+* Commandes de `lyxal-server` (session système) :
+
+  ```text
+  lyxal-server i18n export --locale <langue> --output <fichier> [--format json|xliff] [--namespace <clé>] [--tenant <organisation>]
+  lyxal-server i18n import --locale <langue> --file <fichier> [--format json|xliff] [--tenant <organisation>] [--overwrite-reviewed] [--dry-run]
+  lyxal-server i18n check
+  ```
+
+  `import` et `check` sortent en erreur (`SERVER_COMMAND_FAILED`) si un texte est invalide ou
+  illisible, pour un usage en intégration continue.
+
+## 8. Rust, module et sonde
 
 * `I18nStore` (`Surreal<Any>`, `LyxalSurrealCall`) : un appel typé par fonction publique ;
   modèles dans `models/`.
@@ -205,23 +250,27 @@ erreur. Les `Formatter` sont gardés en cache par langue (64 au plus).
   lisibles, langue par défaut active et rendue, fuseau `Europe/Paris` connu. Le message donne la
   version CLDR du référentiel, celle des données d'ICU4X (`ICU_CLDR_VERSION`) et l'origine de la
   base des fuseaux. Aucun worker.
+* Lecture des fichiers par `lyxal_parsing` (`JsonLayout::Document`, `XmlReader`).
 * `lyxal_notification` utilise `Formatter` pour ses filtres `format_number`, `format_currency`
   et `format_date`.
 
-## 8. Vérification
+## 9. Vérification
 
 * Banc SurrealQL `tests/` : `langues`, `parametres`, `resolution`, `cles`, `traductions`,
-  `controles`, `resolution_cles`.
+  `controles`, `resolution_cles`, `echange`.
 * Tests Rust :
   * `format/tests.rs` : pluriels CLDR (`fr`, `en`, `ar`, `pl`, `ru`, `ja`), ordinaux, valeurs
     exactes, décalage, imbrication, apostrophes, arguments manquants ou mal typés, messages
     invalides avec leur position, changements d'heure, fuseau inconnu, nombres et montants par
     langue, mêmes verdicts que le contrôle de la base, codes d'erreur définis en master data ;
   * `accept_language` ;
-  * `tests/it/` (base embarquée) : chaque fonction par `I18nStore`, `Translator`, sonde de santé.
-* Hôte : choix de la langue (`auth_routes.rs`), sonde saine au démarrage (`startup.rs`).
+  * `tests/it/` (base embarquée) : chaque fonction par `I18nStore`, `Translator`, sonde de santé,
+    échange (aller-retour JSON et XLIFF, caractères à échapper, texte relu protégé, fichier
+    illisible, texte refusé par le rendu, contrôle de tous les textes).
+* Hôte : choix de la langue (`auth_routes.rs`), sonde saine au démarrage (`startup.rs`), lecture
+  des commandes `i18n` (`cli.rs`).
 
-## 9. Licences
+## 10. Licences
 
 Données Unicode CLDR 49 sous licence Unicode-3.0 (seed généré, données d'ICU4X). Dépendances
 du rendu : ICU4X (`icu`, `icu_experimental`, `fixed_decimal`, Unicode-3.0), `jiff` et `jiff-icu`

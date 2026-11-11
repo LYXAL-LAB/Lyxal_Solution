@@ -8,6 +8,8 @@ description = "Langues, traductions et formats régionaux de Lyxal OS : référe
 [dependencies]
 lyxal_surreal = { workspace = true }
 lyxal_runtime = { workspace = true }
+lyxal_parsing = { workspace = true }
+serde_json = { workspace = true }
 async-trait = { workspace = true }
 surrealdb = { workspace = true }
 thiserror = { workspace = true }

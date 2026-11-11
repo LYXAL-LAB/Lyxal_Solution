@@ -27,6 +27,11 @@ impl I18nStore {
         Self { db }
     }
 
+    /// Client SurrealDB sous-jacent.
+    pub fn client(&self) -> &Surreal<Any> {
+        &self.db
+    }
+
     /// `fn::i18n_locale_list` : langues du référentiel.
     pub async fn locale_list(
         &self,
@@ -174,5 +179,23 @@ impl I18nStore {
         params: PageParams,
     ) -> Result<MissingKeyList, LyxalSurrealError> {
         self.call_fn("i18n_missing_key_list", params).await
+    }
+
+    /// `fn::i18n_export` : textes d'une langue, par pages.
+    pub async fn export(&self, params: ExportParams) -> Result<ExportPage, LyxalSurrealError> {
+        self.call_fn("i18n_export", params).await
+    }
+
+    /// `fn::i18n_import` : import d'un paquet de textes dans une langue et une portée.
+    pub async fn import(&self, params: ImportParams) -> Result<ImportResult, LyxalSurrealError> {
+        self.call_fn("i18n_import", params).await
+    }
+
+    /// `fn::i18n_translation_scan` : tous les textes, par pages.
+    pub async fn translation_scan(
+        &self,
+        params: PageParams,
+    ) -> Result<ScanPage, LyxalSurrealError> {
+        self.call_fn("i18n_translation_scan", params).await
     }
 }

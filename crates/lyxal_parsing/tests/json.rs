@@ -177,3 +177,73 @@ fn rejection_kinds_have_stable_codes() {
     );
     assert_eq!(RejectionKind::JsonSyntax.code(), "PARSING_JSON_SYNTAX");
 }
+
+fn document() -> JsonOptions {
+    JsonOptions {
+        layout: JsonLayout::Document,
+        ..JsonOptions::default()
+    }
+}
+
+#[test]
+fn document_is_a_single_object_over_several_lines() {
+    let source =
+        "\u{feff}{\n  \"base.oui\": \"Oui\",\n  \"base.salut\": \"Bonjour {name}\\n\"\n}\n";
+    let items = read(source.as_bytes(), document());
+    assert_eq!(summary(&items), vec!["ok:1:Some(1)"]);
+    let record = items[0].as_ref().expect("objet");
+    assert_eq!(record.value["base.oui"], "Oui");
+    assert_eq!(record.value["base.salut"], "Bonjour {name}\n");
+    assert_eq!(record.value.len(), 2);
+}
+
+#[test]
+fn document_that_is_not_one_object_is_rejected() {
+    for (source, code) in [
+        ("", "PARSING_JSON_SYNTAX"),
+        ("  \n ", "PARSING_JSON_SYNTAX"),
+        (r#"[{"a": 1}]"#, "PARSING_JSON_NOT_OBJECT"),
+        (r#"{"a": 1} {"b": 2}"#, "PARSING_JSON_SYNTAX"),
+        (r#"{"a": 1"#, "PARSING_JSON_SYNTAX"),
+        ("\"texte\"", "PARSING_JSON_NOT_OBJECT"),
+    ] {
+        assert_eq!(
+            summary(&read(source.as_bytes(), document())),
+            vec![code],
+            "{source}"
+        );
+    }
+}
+
+#[test]
+fn document_limits_apply() {
+    let limits = |limits: Limits| JsonOptions {
+        limits,
+        ..document()
+    };
+    let source = br#"{"a": "0123456789", "b": {"c": {"d": 1}}}"#;
+    let too_large = read(
+        source,
+        limits(Limits {
+            max_record_bytes: 16,
+            ..Limits::default()
+        }),
+    );
+    assert_eq!(summary(&too_large), vec!["PARSING_RECORD_TOO_LARGE"]);
+    let too_deep = read(
+        source,
+        limits(Limits {
+            max_depth: 2,
+            ..Limits::default()
+        }),
+    );
+    assert_eq!(summary(&too_deep), vec!["PARSING_TOO_DEEP"]);
+    let too_many = read(
+        source,
+        limits(Limits {
+            max_fields: 1,
+            ..Limits::default()
+        }),
+    );
+    assert_eq!(summary(&too_many), vec!["PARSING_TOO_MANY_FIELDS"]);
+}
