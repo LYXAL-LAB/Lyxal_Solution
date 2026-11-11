@@ -136,6 +136,76 @@ RETURN (UPDATE storage_object SET filename = "pirate.pdf") == []
 -- test: rien n'a changé
 RETURN (SELECT VALUE filename FROM storage_object ORDER BY key) == ["a.pdf", "i.pdf"];
 
+-- préparation: écriture ouverte par l'administrateur d'alpha
+-- en tant que: admin
+fn::storage_object_begin({ bucket: <string> (SELECT VALUE id FROM ONLY storage_bucket WHERE name = "plans" LIMIT 1), key: "en-cours.pdf", filename: "en-cours.pdf", declared_size: 5 });
+
+-- test: écriture directe : un rédacteur ne rend pas disponible le fichier d'un autre
+-- en tant que: redacteur
+-- attendu-erreur: STORAGE_PERMISSION_DENIED
+UPDATE storage_object SET state = "available", size = 5, content_type = "application/pdf", blake3 = "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262", pending_expires_at = NONE WHERE key = "en-cours.pdf";
+
+-- test: écriture directe : un rédacteur ne met pas un fichier en quarantaine
+-- en tant que: redacteur
+-- attendu-erreur: STORAGE_PERMISSION_DENIED
+UPDATE storage_object SET state = "quarantined" WHERE key = "a.pdf";
+
+-- test: écriture directe : un rédacteur ne change ni la taille ni l'empreinte d'un fichier
+-- en tant que: redacteur
+-- attendu-erreur: STORAGE_PERMISSION_DENIED
+UPDATE storage_object SET size = 1 WHERE key = "a.pdf";
+
+-- test: écriture directe : l'auteur ne rend pas son fichier disponible sans taille, type ni empreinte
+-- en tant que: admin
+-- attendu-erreur: STORAGE_OBJECT_STATE_INVALID
+UPDATE storage_object SET state = "available" WHERE key = "en-cours.pdf";
+
+-- test: écriture directe : un rédacteur ne supprime pas un fichier en écourtant sa conservation
+-- en tant que: redacteur
+-- attendu-erreur: STORAGE_PERMISSION_DENIED
+UPDATE storage_object SET state = "deleted", deleted_at = time::now(), purge_after = time::now() WHERE key = "a.pdf";
+
+-- test: rien n'a changé ; un rédacteur renomme un fichier (champ libre)
+-- en tant que: redacteur
+RETURN (SELECT VALUE [state, size] FROM storage_object ORDER BY key) == [["available", 5], ["pending", NONE]]
+    AND (UPDATE storage_object SET filename = "A.pdf" WHERE key = "a.pdf" RETURN VALUE filename) == ["A.pdf"];
+
+-- préparation: nom d'origine rétabli
+UPDATE storage_object SET filename = "a.pdf" WHERE key = "a.pdf";
+
+-- test: garde des modifications, appelée directement : transitions, contenu, session système
+{
+    LET $o = (SELECT * FROM ONLY storage_object WHERE key = "en-cours.pdf" LIMIT 1);
+    RETURN fn::storage_object_update_refusal($o, object::extend($o, { state: "quarantined" })) == "STORAGE_OBJECT_STATE_INVALID"
+        AND fn::storage_object_update_refusal($o, object::extend($o, { state: "available" })) == "STORAGE_OBJECT_STATE_INVALID"
+        AND fn::storage_object_update_refusal($o, object::extend($o, { state: "available", size: 5, content_type: "application/pdf", blake3: "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262" })) == NONE
+        AND fn::storage_object_update_refusal($o, object::extend($o, { state: "deleted" })) == "STORAGE_OBJECT_STATE_INVALID"
+        AND fn::storage_object_update_refusal($o, object::extend($o, { filename: "autre.pdf", size: 9 })) == NONE;
+};
+
+-- préparation: le bucket passe en lecture seule pendant l'écriture
+-- en tant que: admin
+fn::storage_bucket_update({ bucket: <string> (SELECT VALUE id FROM ONLY storage_bucket WHERE name = "plans" LIMIT 1), readonly: true });
+
+-- test: une écriture ouverte avant la lecture seule ne se termine plus
+-- en tant que: admin
+RETURN fn::storage_object_commit({ object: <string> (SELECT VALUE id FROM ONLY storage_object WHERE key = "en-cours.pdf" LIMIT 1), size: 5, content_type: "application/pdf", blake3: "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262" }).error.code == "STORAGE_BUCKET_READONLY";
+
+-- test: la base la refuse aussi en écriture directe
+-- en tant que: admin
+-- attendu-erreur: STORAGE_BUCKET_READONLY
+UPDATE storage_object SET state = "available", size = 5, content_type = "application/pdf", blake3 = "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262", pending_expires_at = NONE WHERE key = "en-cours.pdf";
+
+-- préparation: le bucket redevient modifiable ; l'écriture est terminée par son auteur
+-- en tant que: admin
+{
+    fn::storage_bucket_update({ bucket: <string> (SELECT VALUE id FROM ONLY storage_bucket WHERE name = "plans" LIMIT 1), readonly: false });
+    fn::storage_object_commit({ object: <string> (SELECT VALUE id FROM ONLY storage_object WHERE key = "en-cours.pdf" LIMIT 1), size: 5, content_type: "application/pdf", blake3: "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262" });
+};
+
+-- test: les deux fichiers d'alpha sont disponibles
+RETURN (SELECT VALUE state FROM storage_object WHERE scope_key = "alpha" ORDER BY key) == ["available", "available"];
+
 -- test: l'organisation supprimée emporte ses buckets, ses fichiers et ses réglages
 {
     fn::storage_settings_set({ tenant: "auth_organization:alpha", quota_bytes: 10 });

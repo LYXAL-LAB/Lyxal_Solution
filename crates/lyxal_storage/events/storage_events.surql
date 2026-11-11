@@ -7,19 +7,17 @@
 -- publication refusée fait échouer la mutation. Jamais de contenu.
 
 -- ----------------------------------------------------------------------------
--- Transitions d'état autorisées (vaut aussi pour une modification directe de la table)
+-- Garde des modifications d'une fiche (vaut aussi pour une modification directe de la table)
 -- ----------------------------------------------------------------------------
+-- Les fonctions publiques rendent une erreur lisible ; cette garde est le dernier rempart : une
+-- session qui écrit directement dans la table est soumise aux mêmes règles
+-- (fn::storage_object_update_refusal). Un événement voit l'identité de l'appelant.
 
-DEFINE EVENT OVERWRITE storage_object_state_guard ON TABLE storage_object
-WHEN $event = "UPDATE" AND $before.state != $after.state
+DEFINE EVENT OVERWRITE storage_object_update_guard ON TABLE storage_object
+WHEN $event = "UPDATE"
 THEN {
-    LET $allowed = {
-        pending: ["available", "deleted"],
-        available: ["quarantined", "deleted"],
-        quarantined: ["deleted"],
-        deleted: []
-    }[$before.state];
-    IF $after.state NOTINSIDE $allowed { THROW "STORAGE_OBJECT_STATE_INVALID"; };
+    LET $refusal = fn::storage_object_update_refusal($before, $after);
+    IF $refusal IS NOT NONE { THROW $refusal; };
 };
 
 DEFINE EVENT OVERWRITE storage_object_created_guard ON TABLE storage_object

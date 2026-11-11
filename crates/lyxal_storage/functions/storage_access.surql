@@ -53,7 +53,7 @@ DEFINE FUNCTION OVERWRITE fn::storage_settings_effective($params: object) -> obj
 
 DEFINE FUNCTION OVERWRITE fn::storage_scope_usage($params: object) -> object {
     LET $scope = IF $params.tenant IS NONE { "installation" } ELSE { <string> record::id($params.tenant) };
-    LET $stored = (SELECT VALUE size FROM storage_object WHERE scope_key = $scope AND state IN ["available", "quarantined"]);
+    LET $stored = (SELECT VALUE size FROM storage_object WHERE scope_key = $scope AND state IN ["available", "quarantined"] AND id != $params.except);
     LET $pending = (SELECT VALUE declared_size ?? 0 FROM storage_object WHERE scope_key = $scope AND state = "pending" AND id != $params.except);
     RETURN { objects: array::len($stored), bytes: math::sum($stored), reserved: math::sum($pending) };
-} COMMENT "Volume d'une portée ({ tenant, except }) : { objects, bytes } des fichiers disponibles ou en quarantaine, reserved : tailles annoncées des écritures en attente (hors la fiche except)";
+} COMMENT "Volume d'une portée ({ tenant, except }) : { objects, bytes } des fichiers disponibles ou en quarantaine, reserved : tailles annoncées des écritures en attente ; la fiche except n'est comptée nulle part";

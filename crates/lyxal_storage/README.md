@@ -43,8 +43,12 @@ pending ──► available ──► quarantined ──► deleted
 * `quarantined` : retiré du service par le worker (contrôle du contenu), toujours compté ;
 * `deleted` : adresse libérée ; la fiche reste jusqu'au retrait des octets par le worker.
 
-Toute autre transition est refusée par la base, même en écriture directe
-(`STORAGE_OBJECT_STATE_INVALID`). Un bucket qui porte encore une fiche ne se supprime qu'avec
+Toute autre transition est refusée par la base (`STORAGE_OBJECT_STATE_INVALID`). Les règles des
+fonctions valent aussi pour une écriture directe dans la table : une garde
+(`storage_object_update_guard`, `fn::storage_object_update_refusal`) vérifie à chaque
+modification l'identité de l'appelant (worker, auteur de l'écriture), le délai, le contenu posé,
+les règles du bucket, les références et la durée de conservation. Hors transition, seul le
+worker modifie les champs posés par les fonctions (taille, type, empreinte, dates). Un bucket qui porte encore une fiche ne se supprime qu'avec
 son organisation (`STORAGE_BUCKET_NOT_EMPTY`).
 
 **Écriture en deux temps** (aucune transaction ne couvre la base et le support) :
@@ -102,7 +106,7 @@ l'installation.
 | `storage_object_purge` | **object** | `{ purged }` : fiche supprimée, après le retrait des octets | worker |
 
 Fonctions internes : `fn::storage_can`, `fn::storage_settings_effective`,
-`fn::storage_scope_usage`, `fn::storage_object_limits`.
+`fn::storage_scope_usage`, `fn::storage_object_limits`, `fn::storage_object_update_refusal`.
 
 ## 4. Erreurs (`error/<thème>/`)
 

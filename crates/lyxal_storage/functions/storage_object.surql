@@ -32,6 +32,50 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_limits($params: object) -> option<o
 } COMMENT "Interne : règles du bucket et quota de sa portée pour un fichier ({ bucket, size, content_type, except }) ; NONE, ou { code, details } de l'erreur STORAGE_* à rendre";
 
 -- ----------------------------------------------------------------------------
+-- fn::storage_object_update_refusal (interne)
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::storage_object_update_refusal($before: object, $after: object) -> option<string> {
+    LET $worker = fn::storage_can({ action: "worker" });
+    IF $before.state = $after.state {
+        -- Hors transition, seul le worker touche aux champs posés par les fonctions
+        LET $fixed = ["owner", "declared_type", "declared_size", "content_type", "size", "blake3", "quarantine_reason", "pending_expires_at", "deleted_at", "purge_after"];
+        RETURN IF !$worker AND array::any($fixed, |$f| $before[$f] != $after[$f]) { "STORAGE_PERMISSION_DENIED" } ELSE { NONE };
+    };
+    LET $allowed = {
+        pending: ["available", "deleted"],
+        available: ["quarantined", "deleted"],
+        quarantined: ["deleted"],
+        deleted: []
+    }[$before.state];
+    IF $after.state NOTINSIDE $allowed { RETURN "STORAGE_OBJECT_STATE_INVALID"; };
+    LET $bucket = (SELECT * FROM ONLY $after.bucket);
+    IF $after.state = "available" {
+        -- Fin d'écriture : le worker, ou l'identité qui a ouvert l'écriture ; délai, contenu et règles du bucket
+        LET $context = fn::auth_context({});
+        LET $author = $context.ok AND $context.data.identity IS NOT NONE AND $context.data.identity = $before.owner;
+        IF !$worker AND !$author { RETURN "STORAGE_PERMISSION_DENIED"; };
+        IF $before.pending_expires_at IS NONE OR $before.pending_expires_at <= time::now() { RETURN "STORAGE_OBJECT_STATE_INVALID"; };
+        IF $after.size IS NONE OR $after.content_type IS NONE OR $after.blake3 IS NONE { RETURN "STORAGE_OBJECT_STATE_INVALID"; };
+        IF $bucket.readonly { RETURN "STORAGE_BUCKET_READONLY"; };
+        RETURN fn::storage_object_limits({ bucket: $bucket, size: $after.size, content_type: $after.content_type, except: $after.id }).code;
+    };
+    IF $after.state = "quarantined" {
+        RETURN IF $worker { NONE } ELSE { "STORAGE_PERMISSION_DENIED" };
+    };
+    -- Suppression : dates posées ; hors worker, bucket modifiable, fichier non référencé, conservation respectée
+    IF $after.deleted_at IS NONE OR $after.purge_after IS NONE { RETURN "STORAGE_OBJECT_STATE_INVALID"; };
+    IF $worker { RETURN NONE; };
+    IF $bucket.readonly { RETURN "STORAGE_BUCKET_READONLY"; };
+    IF array::len((SELECT VALUE <~? FROM ONLY $after.id) ?? []) > 0 { RETURN "STORAGE_OBJECT_IN_USE"; };
+    LET $retention = fn::storage_settings_effective({ tenant: $after.tenant }).deleted_retention_days;
+    IF $before.state != "pending" AND $after.purge_after < time::now() + duration::from_days($retention) - 1m {
+        RETURN "STORAGE_PERMISSION_DENIED";
+    };
+    RETURN NONE;
+} COMMENT "Interne : garde d'une modification de fiche ($before, $after), appelée par l'événement storage_object_update_guard ; NONE, ou le code STORAGE_* du refus. Transitions permises, droits de l'appelant (worker, auteur de l'écriture), délai, contenu, règles du bucket, références, conservation";
+
+-- ----------------------------------------------------------------------------
 -- fn::storage_object_begin
 -- ----------------------------------------------------------------------------
 
@@ -104,13 +148,15 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_commit($params: object) {
         RETURN fn::error_result("STORAGE_OBJECT_STATE_INVALID", $p.language, { state: $object.state, expected: "pending" });
     };
     LET $bucket = (SELECT * FROM ONLY $object.bucket);
+    -- Bucket passé en lecture seule depuis l'ouverture de l'écriture : plus aucune écriture
+    IF $bucket.readonly { RETURN fn::error_result("STORAGE_BUCKET_READONLY", $p.language, { bucket: $bucket.name }); };
     LET $refusal = fn::storage_object_limits({ bucket: $bucket, size: $p.size, content_type: $p.content_type, except: $object.id });
     IF $refusal IS NOT NONE { RETURN fn::error_result($refusal.code, $p.language, $refusal.details); };
     LET $updated = (UPDATE ONLY $object.id SET size = $p.size, content_type = $p.content_type, blake3 = $p.blake3,
         state = "available", pending_expires_at = NONE);
     IF $updated == NONE { RETURN fn::error_result("STORAGE_WRITE_FORBIDDEN", $p.language, { table: "storage_object" }); };
     RETURN fn::result_ok($updated);
-} COMMENT "Termine l'écriture d'un fichier ({ object, size, content_type, blake3 }) : taille, type réel et empreinte enregistrés, état available ; la taille, le type et le quota réels sont revérifiés ; refus si la fiche n'est plus pending ou si son délai est passé. Droit : worker, ou l'identité qui a ouvert l'écriture";
+} COMMENT "Termine l'écriture d'un fichier ({ object, size, content_type, blake3 }) : taille, type réel et empreinte enregistrés, état available ; la taille, le type et le quota réels sont revérifiés ; refus si la fiche n'est plus pending, si son délai est passé ou si le bucket est passé en lecture seule. Droit : worker, ou l'identité qui a ouvert l'écriture";
 
 -- ----------------------------------------------------------------------------
 -- fn::storage_object_get
