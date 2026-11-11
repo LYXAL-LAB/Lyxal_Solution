@@ -102,8 +102,10 @@ supprimées. Core réutilisé : moteur `fn::validation_object_execute` (règles 
   (`TemplateCreateParams`, `TemplateUpdateParams`, `Template`) suivent le §4.2 ; les types et
   wrappers de `template_locale_*` sont supprimés. Wrappers `store.call_fn(...)` d'une ligne.
 * `render.rs` : fonction MiniJinja `t(clé, nom=valeur, …)`, rendue par
-  `lyxal_i18n::Formatter::format_message` dans la langue de l'envoi. Sa sortie est échappée
-  dans le HTML comme toute variable. Échec du rendu, sans envoi (aucune erreur silencieuse) :
+  `lyxal_i18n::Formatter::format_message` dans la **langue du texte retenu**
+  (`ResolvedText.locale`) : un texte français servi en repli à un destinataire anglais suit
+  les pluriels du français. Les filtres de nombres et de dates gardent la langue de l'envoi.
+  La sortie de `t` est échappée dans le HTML comme toute variable. Échec du rendu, sans envoi (aucune erreur silencieuse) :
   clé absente de `keys`, clé non déclarée (`missing`), argument manquant ou message invalide.
 * Les filtres `format_number`, `format_currency`, `format_date` du lot 3 sont inchangés.
 
@@ -127,7 +129,8 @@ supprimées. Core réutilisé : moteur `fn::validation_object_execute` (règles 
   les textes dans la langue du destinataire, repli sur la langue de l'organisation puis de
   l'installation, surcharge d'une organisation visible d'elle seule, activation refusée sans
   contenu.
-* **Rust** : rendu des quatre e-mails du système en `fr` et en `en` ; pluriel ; échappement
+* **Rust** : rendu des quatre e-mails du système en `fr` et en `en` ; pluriel, y compris d'un
+  texte servi en repli dans une autre langue que celle de l'envoi ; échappement
   HTML d'un texte traduit ; échec sur clé non déclarée et sur argument manquant.
 * **Hôte** : parcours d'inscription et d'invitation de bout en bout (tests existants mis à jour).
 * Contrôle complet : `scripts/ci/ci_local.sh`.
