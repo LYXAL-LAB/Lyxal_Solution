@@ -17,7 +17,7 @@ pub mod service;
 pub mod store;
 pub mod worker;
 
-pub use backend::{BackendConfig, Backends};
+pub use backend::{Backend, BackendConfig, Backends};
 pub use error::{StorageError, StorageResult};
 pub use module::{StorageHealthCheck, StorageModule, MODULE_ID};
 pub use service::{OpenedObject, PutRequest, StorageService, PART_SIZE};

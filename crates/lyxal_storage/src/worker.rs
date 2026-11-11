@@ -7,20 +7,20 @@
 //! suivant : il n'interrompt pas les autres.
 
 use async_trait::async_trait;
-use futures::StreamExt;
 use lyxal_runtime::types::ModuleId;
 use lyxal_runtime::worker::{
     CancellationToken, LyxalWorker, WorkerContext, WorkerCriticality, WorkerDescriptor, WorkerId,
 };
 use lyxal_runtime::RuntimeError;
 use lyxal_surreal::ToSql;
-use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::backend::{location, remove, Backends};
+use crate::backend::{location, Backends};
 use crate::error::StorageResult;
-use crate::models::{BatchParams, ObjectRefParams, PurgeItem, ReclaimDoneParams, ReclaimItem};
+use crate::models::{
+    BatchParams, ObjectRefParams, PageParams, PurgeItem, ReclaimDoneParams, ReclaimItem,
+};
 use crate::module::MODULE_ID;
 use crate::store::StorageStore;
 
@@ -66,6 +66,8 @@ impl StorageCleanupWorker {
                 .to_string(),
         );
         descriptor.criticality = WorkerCriticality::Optional;
+        // Le retrait en cours (un fichier, une fiche) se termine avant l'arrêt
+        descriptor.shutdown_timeout = Duration::from_secs(30);
         Ok(Self {
             descriptor,
             store,
@@ -75,71 +77,64 @@ impl StorageCleanupWorker {
         })
     }
 
-    /// Un passage : paquets successifs tant qu'un paquet est plein et avance, ou jusqu'à
-    /// l'annulation.
+    /// Un passage : paquets successifs tant qu'un paquet est plein, ou jusqu'à l'annulation.
+    /// Un élément en échec reste en tête de liste : les paquets suivants le passent (`start`),
+    /// pour qu'il ne retienne pas les autres.
     pub async fn run_once(&self, cancellation: &CancellationToken) -> StorageResult<CleanupReport> {
-        let params = BatchParams {
-            limit: i64::from(self.batch),
-        };
-        let full = |count: usize| count >= self.batch as usize;
+        let limit = i64::from(self.batch);
         let mut report = CleanupReport::default();
-        // Éléments en échec pendant ce passage : ni retentés ni recomptés avant le suivant
-        let mut failed: HashSet<String> = HashSet::new();
 
         while !cancellation.is_cancelled() {
-            let expired = self.store.object_expire(params).await?.expired;
+            let expired = self
+                .store
+                .object_expire(BatchParams { limit })
+                .await?
+                .expired;
             report.expired += u64::try_from(expired).unwrap_or(0);
-            if expired < params.limit {
+            if expired < limit {
                 break;
             }
         }
 
+        let mut start = 0;
         while !cancellation.is_cancelled() {
-            let items = self.store.object_purge_list(params).await?.items;
-            let mut purged = 0;
+            let page = PageParams { limit, start };
+            let items = self.store.object_purge_list(page).await?.items;
             for item in &items {
                 if cancellation.is_cancelled() {
-                    break;
-                }
-                if failed.contains(&item.id.to_sql()) {
-                    continue;
+                    return Ok(report);
                 }
                 match self.purge(item).await {
-                    Ok(()) => purged += 1,
+                    Ok(()) => report.purged += 1,
                     Err(error) => {
-                        failed.insert(item.id.to_sql());
+                        start += 1;
                         report.failed += 1;
                         tracing::warn!(object = %item.id.to_sql(), code = %error.code(), error = %error, "fichier supprimé non purgé");
                     }
                 }
             }
-            report.purged += purged;
-            if !full(items.len()) || purged == 0 {
+            if items.len() < self.batch as usize {
                 break;
             }
         }
 
+        let mut start = 0;
         while !cancellation.is_cancelled() {
-            let items = self.store.reclaim_list(params).await?.items;
-            let mut reclaimed = 0;
+            let page = PageParams { limit, start };
+            let items = self.store.reclaim_list(page).await?.items;
             for item in &items {
-                if cancellation.is_cancelled() {
-                    break;
-                }
-                if failed.contains(&item.id.to_sql()) {
-                    continue;
-                }
-                match self.reclaim(item).await {
-                    Ok(()) => reclaimed += 1,
+                match self.reclaim(item, cancellation).await {
+                    Ok(true) => report.reclaimed += 1,
+                    // Annulation pendant le retrait : la ligne reste, reprise au passage suivant
+                    Ok(false) => return Ok(report),
                     Err(error) => {
-                        failed.insert(item.id.to_sql());
+                        start += 1;
                         report.failed += 1;
                         tracing::warn!(prefix = %item.prefix, code = %error.code(), error = %error, "octets d'un bucket supprimé non retirés");
                     }
                 }
             }
-            report.reclaimed += reclaimed;
-            if !full(items.len()) || reclaimed == 0 {
+            if items.len() < self.batch as usize {
                 break;
             }
         }
@@ -149,7 +144,7 @@ impl StorageCleanupWorker {
     /// Octets retirés, puis fiche.
     async fn purge(&self, item: &PurgeItem) -> StorageResult<()> {
         let backend = self.backends.get(&item.backend)?;
-        remove(backend.as_ref(), &location(&item.path)?).await?;
+        backend.remove(&location(&item.path)?).await?;
         self.store
             .object_purge(ObjectRefParams {
                 object: item.id.to_sql(),
@@ -158,20 +153,25 @@ impl StorageCleanupWorker {
         Ok(())
     }
 
-    /// Octets du préfixe retirés, puis ligne.
-    async fn reclaim(&self, item: &ReclaimItem) -> StorageResult<()> {
+    /// Octets du préfixe retirés, puis ligne ; faux si l'annulation a interrompu le retrait.
+    async fn reclaim(
+        &self,
+        item: &ReclaimItem,
+        cancellation: &CancellationToken,
+    ) -> StorageResult<bool> {
         let backend = self.backends.get(&item.backend)?;
-        let prefix = location(&item.prefix)?;
-        let mut listed = backend.list(Some(&prefix));
-        while let Some(meta) = listed.next().await {
-            remove(backend.as_ref(), &meta?.location).await?;
+        if !backend
+            .remove_prefix(&location(&item.prefix)?, cancellation)
+            .await?
+        {
+            return Ok(false);
         }
         self.store
             .reclaim_done(ReclaimDoneParams {
                 reclaim: item.id.to_sql(),
             })
             .await?;
-        Ok(())
+        Ok(true)
     }
 }
 

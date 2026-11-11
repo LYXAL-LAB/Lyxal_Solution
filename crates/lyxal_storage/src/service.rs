@@ -15,7 +15,7 @@ use object_store::{GetOptions, GetRange, ObjectStore, ObjectStoreExt, WriteMulti
 use std::ops::Range;
 use std::sync::Arc;
 
-use crate::backend::{location, remove, Backends};
+use crate::backend::{location, Backends};
 use crate::error::{StorageError, StorageResult};
 use crate::models::{
     BegunObject, ObjectBeginParams, ObjectCommitParams, ObjectGetParams, ObjectRefParams,
@@ -96,7 +96,7 @@ impl StorageService {
             })
             .await?;
         let written = match self.backends.get(&begun.backend) {
-            Ok(backend) => write(backend.as_ref(), &begun, request.size, content).await,
+            Ok(backend) => write(backend.store().as_ref(), &begun, request.size, content).await,
             Err(error) => Err(error),
         };
         let committed = match written {
@@ -126,7 +126,7 @@ impl StorageService {
     async fn abandon(&self, begun: &BegunObject) {
         if let Ok(backend) = self.backends.get(&begun.backend) {
             let removed = match location(&begun.path) {
-                Ok(path) => remove(backend.as_ref(), &path).await,
+                Ok(path) => backend.remove(&path).await,
                 Err(error) => Err(error),
             };
             if let Err(error) = removed {
@@ -151,7 +151,7 @@ impl StorageService {
         range: Option<Range<u64>>,
     ) -> StorageResult<OpenedObject> {
         let object = self.store.object_open(params).await?;
-        let backend = self.backends.get(&object.backend)?;
+        let backend = self.backends.get(&object.backend)?.store();
         let options = GetOptions {
             range: range.map(GetRange::Bounded),
             ..GetOptions::default()
@@ -192,7 +192,7 @@ impl StorageService {
                 "la fiche n'a ni taille ni empreinte (écriture non terminée)".to_string(),
             ));
         };
-        let backend = self.backends.get(&object.backend)?;
+        let backend = self.backends.get(&object.backend)?.store();
         let mut content = match backend.get(&location(&object.path)?).await {
             Ok(result) => result.into_stream(),
             Err(object_store::Error::NotFound { .. }) => {

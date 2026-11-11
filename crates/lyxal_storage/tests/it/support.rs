@@ -74,7 +74,7 @@ pub struct Bench {
     pub backends: Arc<Backends>,
     pub service: StorageService,
     /// Dossier temporaire du support disque (retiré à la fin du test).
-    _root: Option<tempfile::TempDir>,
+    pub root: Option<tempfile::TempDir>,
 }
 
 /// Support `default` d'un banc.
@@ -107,7 +107,7 @@ pub async fn bench(kind: Kind) -> Bench {
         client,
         store,
         backends,
-        _root: root,
+        root,
     }
 }
 
@@ -124,7 +124,7 @@ impl Bench {
 
     /// Emplacements présents sur le support `default`.
     pub async fn stored_paths(&self) -> Vec<String> {
-        let backend = self.backends.get("default").expect("support");
+        let backend = self.backends.get("default").expect("support").store();
         let mut paths: Vec<String> = backend
             .list(None)
             .map(|meta| meta.expect("liste").location.to_string())
@@ -132,6 +132,38 @@ impl Bench {
             .await;
         paths.sort();
         paths
+    }
+
+    /// Fichiers présents sous le dossier du support disque, fichiers d'écriture en cours compris.
+    pub fn disk_files(&self) -> Vec<PathBuf> {
+        fn walk(directory: &std::path::Path, files: &mut Vec<PathBuf>) {
+            for entry in std::fs::read_dir(directory).expect("dossier").flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    walk(&path, files);
+                } else {
+                    files.push(path);
+                }
+            }
+        }
+        let mut files = Vec::new();
+        walk(
+            self.root.as_ref().expect("support disque").path(),
+            &mut files,
+        );
+        files
+    }
+
+    /// Fichier d'écriture en cours laissé par un arrêt brutal, pour un emplacement du support.
+    pub fn leave_staged_file(&self, path: &str) {
+        let file = self
+            .root
+            .as_ref()
+            .expect("support disque")
+            .path()
+            .join(format!("{path}#1"));
+        std::fs::create_dir_all(file.parent().expect("dossier")).expect("dossier");
+        std::fs::write(file, b"octets d'une ecriture coupee").expect("fichier");
     }
 
     /// Exécute une requête de préparation sous la session système.

@@ -255,11 +255,13 @@ RETURN fn::storage_object_expire({}).error.code == "STORAGE_PERMISSION_DENIED"
 {
     LET $expired = fn::storage_object_expire({ limit: 10 }).data;
     LET $list = fn::storage_object_purge_list({ limit: 10 }).data.items;
+    LET $second = fn::storage_object_purge_list({ limit: 10, start: 1 }).data.items;
     LET $available = (SELECT VALUE id FROM ONLY storage_object WHERE key = "2026/plan-a.pdf" AND state != "deleted" LIMIT 1);
     LET $purged = array::map($list, |$o| fn::storage_object_purge({ object: <string> $o.id }).data.purged);
     RETURN $expired == { expired: 1 }
         AND fn::storage_object_expire({}).data == { expired: 0 }
         AND array::len($list) == 2
+        AND $second.id == [$list[1].id]
         AND array::all($list, |$o| $o.backend == "default" AND $o.path == string::concat("alpha/", <string> record::id((SELECT VALUE id FROM ONLY storage_bucket WHERE scope_key = "alpha" AND name = "plans" LIMIT 1)), "/", <string> record::id($o.id)))
         AND $purged == [true, true]
         AND fn::storage_object_purge_list({}).data.items == []
@@ -267,6 +269,7 @@ RETURN fn::storage_object_expire({}).error.code == "STORAGE_PERMISSION_DENIED"
         AND fn::storage_object_purge({ object: "storage_object:inconnu" }).error.code == "STORAGE_OBJECT_NOT_FOUND"
         AND fn::storage_object_expire({ limit: 0 }).error.code == "STORAGE_INVALID_PARAMETERS"
         AND fn::storage_object_purge_list({ limit: 0 }).error.code == "STORAGE_INVALID_PARAMETERS"
+        AND fn::storage_object_purge_list({ start: -1 }).error.code == "STORAGE_INVALID_PARAMETERS"
         AND array::len(SELECT VALUE id FROM storage_object WHERE key = "b.png") == 0;
 };
 

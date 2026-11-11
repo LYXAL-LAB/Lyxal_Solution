@@ -119,7 +119,7 @@ impl StorageStore {
     }
 
     /// `fn::storage_object_purge_list` : fichiers supprimés dont les octets sont à retirer.
-    pub async fn object_purge_list(&self, params: BatchParams) -> Call<PurgeList> {
+    pub async fn object_purge_list(&self, params: PageParams) -> Call<PurgeList> {
         self.call_fn("storage_object_purge_list", params).await
     }
 
@@ -129,7 +129,7 @@ impl StorageStore {
     }
 
     /// `fn::storage_reclaim_list` : préfixes d'octets à retirer.
-    pub async fn reclaim_list(&self, params: BatchParams) -> Call<ReclaimList> {
+    pub async fn reclaim_list(&self, params: PageParams) -> Call<ReclaimList> {
         self.call_fn("storage_reclaim_list", params).await
     }
 

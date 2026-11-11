@@ -115,9 +115,9 @@ l'installation.
 | `storage_object_usage` | `tenant` | `{ objects, bytes, reserved_bytes, quota_bytes }` | lecture |
 | `storage_object_quarantine` | **object**, **reason** | fiche `quarantined` | worker |
 | `storage_object_expire` | `limit` | `{ expired }` : écritures hors délai passées à `deleted` | worker |
-| `storage_object_purge_list` | `limit` | `{ items: [{ id, backend, path, purge_after }] }` | worker |
+| `storage_object_purge_list` | `limit`, `start` | `{ items: [{ id, backend, path, purge_after }] }` | worker |
 | `storage_object_purge` | **object** | `{ purged }` : fiche supprimée, après le retrait des octets | worker |
-| `storage_reclaim_list` | `limit` | `{ items: [{ id, backend, prefix, created_at }] }` | worker |
+| `storage_reclaim_list` | `limit`, `start` | `{ items: [{ id, backend, prefix, created_at }] }` | worker |
 | `storage_reclaim_done` | **reclaim** | `{ done }` : ligne retirée, après le retrait des octets | worker |
 
 Fonctions internes : `fn::storage_can`, `fn::storage_settings_effective`,
@@ -162,8 +162,10 @@ Publiés par `fn::event_publish` dans la transaction de la mutation : `storage.o
   serveur est retirée par le worker à la fin de son délai.
 * **Lecture** : seul un fichier `available` est servi (`fn::storage_object_open`).
 * **Nettoyage** : les octets d'abord, la fiche ou la ligne ensuite ; des octets déjà absents ne
-  sont pas une erreur. Un élément en échec (support inconnu ou injoignable) est journalisé et
-  repris au passage suivant.
+  sont pas une erreur. Un élément en échec (support inconnu ou injoignable) est journalisé,
+  repris au passage suivant, et ne retient pas les éléments qui le suivent. Sur disque, les
+  fichiers d'écriture en cours laissés par un arrêt brutal du serveur sont retirés avec la fiche
+  ou le bucket. L'annulation est vérifiée entre deux fichiers.
 * **Sans support configuré** : `put` et `open` rendent `STORAGE_BACKEND_UNKNOWN`, la sonde est
   « dégradée ».
 

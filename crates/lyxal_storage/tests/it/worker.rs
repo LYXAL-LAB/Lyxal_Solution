@@ -4,9 +4,7 @@ use bytes::Bytes;
 use lyxal_runtime::health::{HealthStatus, ModuleHealthCheck};
 use lyxal_runtime::worker::{CancellationToken, LyxalWorker, WorkerContext};
 use lyxal_runtime::ModuleContext;
-use lyxal_storage::models::{
-    BucketCreateParams, ObjectBeginParams, ObjectGetParams, SettingsSetParams,
-};
+use lyxal_storage::models::{BucketCreateParams, ObjectBeginParams, SettingsSetParams};
 use lyxal_storage::{Backends, CleanupReport, StorageCleanupWorker, StorageHealthCheck, MODULE_ID};
 use lyxal_surreal::ToSql;
 use object_store::path::Path;
@@ -17,11 +15,15 @@ use std::time::Duration;
 use crate::support::{bench, chunks, request, Bench, Kind, KINDS};
 
 fn worker(bench: &Bench) -> StorageCleanupWorker {
+    worker_with_batch(bench, 2)
+}
+
+fn worker_with_batch(bench: &Bench, batch: u32) -> StorageCleanupWorker {
     StorageCleanupWorker::new(
         bench.store.clone(),
         bench.backends.clone(),
         Duration::from_secs(3600),
-        2,
+        batch,
     )
     .expect("worker")
 }
@@ -59,7 +61,7 @@ async fn abandoned_writes_and_deleted_files_are_removed() {
             .expect("réglages");
 
         // Trois écritures abandonnées après l'envoi d'octets (plus que la taille d'un paquet)
-        let backend = bench.backends.get("default").expect("support");
+        let backend = bench.backends.get("default").expect("support").store();
         for index in 0..3 {
             let begun = bench
                 .store
@@ -198,7 +200,7 @@ async fn the_bytes_of_a_purged_organization_are_removed() {
 }
 
 #[tokio::test]
-async fn a_failing_item_is_kept_and_does_not_stop_the_others() {
+async fn failing_items_are_kept_and_do_not_hold_back_the_others() {
     let bench = bench(Kind::Memory).await;
     let unknown = bench
         .store
@@ -210,51 +212,163 @@ async fn a_failing_item_is_kept_and_does_not_stop_the_others() {
         .expect("bucket")
         .id
         .to_sql();
-    // Fiche supprimée sur un support que ce serveur ne connaît pas
-    bench
-        .service
-        .put(request(&unknown, "a.bin"), chunks(&[b"abc"]))
-        .await
-        .expect_err("support inconnu");
+    // Les plus anciennes fiches à purger sont sur un support que ce serveur ne connaît pas :
+    // un paquet entier (2) en échec
+    for key in ["a.bin", "b.bin"] {
+        bench
+            .service
+            .put(request(&unknown, key), chunks(&[b"abc"]))
+            .await
+            .expect_err("support inconnu");
+    }
     let plans = bench.bucket("plans").await;
-    bench
-        .service
-        .put(
-            lyxal_storage::PutRequest {
-                size: Some(9),
-                ..request(&plans, "b.bin")
-            },
-            chunks(&[b"abc"]),
-        )
-        .await
-        .expect_err("écart de taille");
+    for key in ["c.bin", "d.bin", "e.bin"] {
+        bench
+            .service
+            .put(
+                lyxal_storage::PutRequest {
+                    size: Some(9),
+                    ..request(&plans, key)
+                },
+                chunks(&[b"abc"]),
+            )
+            .await
+            .expect_err("écart de taille");
+    }
 
-    let report = pass(&bench).await;
+    assert_eq!(
+        pass(&bench).await,
+        CleanupReport {
+            purged: 3,
+            failed: 2,
+            ..CleanupReport::default()
+        }
+    );
+    // Les fiches du support inconnu attendent ; elles ne sont pas perdues
+    let waiting = bench
+        .store
+        .object_purge_list(lyxal_storage::models::PageParams {
+            limit: 10,
+            start: 0,
+        })
+        .await
+        .expect("liste")
+        .items;
+    assert_eq!(waiting.len(), 2);
+    assert!(waiting.iter().all(|item| item.backend == "archive_froide"));
+    assert_eq!(count(&bench, "storage_object").await, 2);
+
+    // Même règle pour les préfixes : celui du support inconnu ne retient pas le suivant
+    bench.run("DELETE storage_object;").await;
+    for bucket in [&unknown, &plans] {
+        bench
+            .store
+            .bucket_delete(lyxal_storage::models::BucketRefParams {
+                bucket: bucket.clone(),
+            })
+            .await
+            .expect("suppression");
+    }
+    let report = worker_with_batch(&bench, 1)
+        .run_once(&CancellationToken::new())
+        .await
+        .expect("passage");
     assert_eq!(
         report,
         CleanupReport {
-            purged: 1,
+            reclaimed: 1,
             failed: 1,
             ..CleanupReport::default()
         }
     );
-    // La fiche du support inconnu attend ; elle n'est pas perdue
-    assert_eq!(count(&bench, "storage_object").await, 1);
-    let waiting = bench
-        .store
-        .object_get(ObjectGetParams::by_id(
-            bench
-                .store
-                .object_purge_list(lyxal_storage::models::BatchParams { limit: 10 })
+    assert_eq!(count(&bench, "storage_reclaim").await, 1);
+}
+
+#[tokio::test]
+async fn staged_files_left_by_a_crash_are_removed_from_disk() {
+    let bench = bench(Kind::Disk).await;
+    bench
+        .run("CREATE auth_organization:alpha CONTENT { slug: 'alpha', name: 'Alpha BTP' };")
+        .await;
+    let begin = |bucket: String, key: &str| {
+        let store = bench.store.clone();
+        let key = key.to_string();
+        async move {
+            store
+                .object_begin(ObjectBeginParams {
+                    bucket,
+                    key: key.clone(),
+                    filename: key,
+                    declared_type: None,
+                    declared_size: None,
+                })
                 .await
-                .expect("liste")
-                .items[0]
-                .id
-                .to_sql(),
+                .expect("ouverture d'écriture")
+        }
+    };
+
+    // Écriture coupée par un arrêt brutal : seul le fichier d'écriture en cours existe
+    let plans = bench.bucket("plans").await;
+    let cut = begin(plans.clone(), "coupe.bin").await;
+    bench.leave_staged_file(&cut.path);
+    let kept = bench
+        .service
+        .put(request(&plans, "garde.bin"), chunks(&[b"a conserver"]))
+        .await
+        .expect("écriture");
+    assert_eq!(bench.disk_files().len(), 2);
+    assert_eq!(
+        bench.stored_paths().await,
+        vec![kept.path.clone()],
+        "non listé"
+    );
+
+    bench
+        .run("UPDATE storage_object SET pending_expires_at = time::now() - 1m WHERE state = 'pending';")
+        .await;
+    assert_eq!(
+        pass(&bench).await,
+        CleanupReport {
+            expired: 1,
+            purged: 1,
+            ..CleanupReport::default()
+        }
+    );
+    assert_eq!(bench.disk_files().len(), 1, "{:?}", bench.disk_files());
+
+    // Même chose dans un bucket supprimé avec son organisation
+    let photos = bench
+        .store
+        .bucket_create(BucketCreateParams::named(
+            Some("auth_organization:alpha".to_string()),
+            "photos",
         ))
         .await
-        .expect("fiche");
-    assert_eq!(waiting.backend, "archive_froide");
+        .expect("bucket")
+        .id
+        .to_sql();
+    bench
+        .service
+        .put(request(&photos, "a.bin"), chunks(&[b"organisation"]))
+        .await
+        .expect("écriture");
+    let cut = begin(photos, "dossier/coupe.bin").await;
+    bench.leave_staged_file(&cut.path);
+    assert_eq!(bench.disk_files().len(), 3);
+    bench.run("DELETE auth_organization:alpha;").await;
+    assert_eq!(
+        pass(&bench).await,
+        CleanupReport {
+            reclaimed: 1,
+            ..CleanupReport::default()
+        }
+    );
+    assert_eq!(bench.disk_files().len(), 1, "{:?}", bench.disk_files());
+    bench
+        .service
+        .verify(&kept.id.to_sql())
+        .await
+        .expect("fichier intact");
 }
 
 #[tokio::test]

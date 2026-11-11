@@ -21,6 +21,6 @@ pub use settings::{
 };
 pub use types::{StorageDatetime, StorageRecordId};
 pub use worker::{
-    BatchParams, Expired, PurgeItem, PurgeList, Purged, QuarantineParams, ReclaimDone,
+    BatchParams, Expired, PageParams, PurgeItem, PurgeList, Purged, QuarantineParams, ReclaimDone,
     ReclaimDoneParams, ReclaimItem, ReclaimList,
 };

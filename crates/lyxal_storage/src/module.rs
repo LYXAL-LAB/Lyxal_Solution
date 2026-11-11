@@ -11,7 +11,7 @@ use object_store::{ObjectStore, ObjectStoreExt};
 use std::sync::Arc;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use crate::backend::{remove, Backends};
+use crate::backend::Backends;
 use crate::error::{StorageError, StorageResult};
 use crate::models::SettingsGetParams;
 use crate::store::StorageStore;
@@ -107,7 +107,10 @@ async fn probe(store: &dyn ObjectStore) -> StorageResult<()> {
         Ok(result) => result.bytes().await.map_err(StorageError::from),
         Err(error) => Err(error.into()),
     };
-    remove(store, &path).await?;
+    match store.delete(&path).await {
+        Ok(()) | Err(object_store::Error::NotFound { .. }) => {}
+        Err(error) => return Err(error.into()),
+    }
     if read?.as_ref() != PROBE_CONTENT {
         return Err(StorageError::IntegrityFailed(
             "fichier témoin relu différent".to_string(),
@@ -143,7 +146,7 @@ impl ModuleHealthCheck for StorageHealthCheck {
             ));
         }
         for (name, backend) in self.backends.iter() {
-            if let Err(error) = probe(backend.as_ref()).await {
+            if let Err(error) = probe(backend.store().as_ref()).await {
                 return Ok(HealthCheckResult::degraded(
                     self.module_id.clone(),
                     elapsed(),

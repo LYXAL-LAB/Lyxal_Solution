@@ -134,7 +134,10 @@ async fn settings_buckets_and_usage_go_through_typed_calls() {
         .expect("suppression");
     assert!(deleted.deleted);
     let reclaim = store
-        .reclaim_list(lyxal_storage::models::BatchParams { limit: 10 })
+        .reclaim_list(lyxal_storage::models::PageParams {
+            limit: 10,
+            start: 0,
+        })
         .await
         .expect("préfixes");
     assert_eq!(reclaim.items.len(), 1);

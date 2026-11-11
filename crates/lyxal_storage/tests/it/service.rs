@@ -369,7 +369,7 @@ async fn an_altered_file_is_detected() {
             .await
             .expect("écriture");
         let object = stored.id.to_sql();
-        let backend = bench.backends.get("default").expect("support");
+        let backend = bench.backends.get("default").expect("support").store();
         let path = Path::parse(&stored.path).expect("emplacement");
 
         // Même taille, contenu différent

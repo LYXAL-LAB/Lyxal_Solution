@@ -14,12 +14,20 @@ pub struct QuarantineParams {
     pub reason: String,
 }
 
-/// Paramètres des fonctions par paquets (`fn::storage_object_expire`,
-/// `fn::storage_object_purge_list`, `fn::storage_reclaim_list`).
+/// Paramètres de `fn::storage_object_expire`.
 #[derive(Debug, Clone, Copy, SurrealValue)]
 pub struct BatchParams {
     /// Éléments au plus (1 à 1000).
     pub limit: i64,
+}
+
+/// Paramètres de `fn::storage_object_purge_list` et `fn::storage_reclaim_list`.
+#[derive(Debug, Clone, Copy, SurrealValue)]
+pub struct PageParams {
+    /// Éléments au plus (1 à 1000).
+    pub limit: i64,
+    /// Rang du premier élément rendu : passe les éléments en échec, qui restent en tête.
+    pub start: i64,
 }
 
 /// Résultat de `fn::storage_object_expire`.

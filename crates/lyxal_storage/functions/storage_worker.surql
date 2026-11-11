@@ -63,6 +63,7 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_purge_list($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
             limit: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 1000 } }], default: 100 },
+            start: { pipeline: [{ rule: "integer", options: { min_value: 0 } }], default: 0 },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -73,9 +74,9 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_purge_list($params: object) {
     LET $p = $report.value;
     IF !fn::storage_can({ action: "worker" }) { RETURN fn::error_result("STORAGE_PERMISSION_DENIED", $p.language, {}); };
     LET $rows = (SELECT id, backend, path, purge_after FROM storage_object
-        WHERE state = "deleted" AND purge_after <= time::now() ORDER BY purge_after LIMIT $p.limit);
+        WHERE state = "deleted" AND purge_after <= time::now() ORDER BY purge_after, id LIMIT $p.limit START $p.start);
     RETURN fn::result_ok({ items: $rows });
-} COMMENT "Fichiers supprimés dont le délai de conservation est écoulé ({ limit }), du plus ancien au plus récent : { items: [{ id, backend, path, purge_after }] } ; le worker retire leurs octets puis appelle fn::storage_object_purge. Droit : worker";
+} COMMENT "Fichiers supprimés dont le délai de conservation est écoulé ({ limit, start }), du plus ancien au plus récent (start : rang du premier, pour passer les fichiers en échec) : { items: [{ id, backend, path, purge_after }] } ; le worker retire leurs octets puis appelle fn::storage_object_purge. Droit : worker";
 
 -- ----------------------------------------------------------------------------
 -- fn::storage_object_purge
@@ -112,6 +113,7 @@ DEFINE FUNCTION OVERWRITE fn::storage_reclaim_list($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
             limit: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 1000 } }], default: 100 },
+            start: { pipeline: [{ rule: "integer", options: { min_value: 0 } }], default: 0 },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -121,9 +123,9 @@ DEFINE FUNCTION OVERWRITE fn::storage_reclaim_list($params: object) {
     };
     LET $p = $report.value;
     IF !fn::storage_can({ action: "worker" }) { RETURN fn::error_result("STORAGE_PERMISSION_DENIED", $p.language, {}); };
-    LET $rows = (SELECT id, backend, prefix, created_at FROM storage_reclaim ORDER BY created_at LIMIT $p.limit);
+    LET $rows = (SELECT id, backend, prefix, created_at FROM storage_reclaim ORDER BY created_at, id LIMIT $p.limit START $p.start);
     RETURN fn::result_ok({ items: $rows });
-} COMMENT "Préfixes d'octets à retirer après la suppression d'un bucket ({ limit }), du plus ancien au plus récent : { items: [{ id, backend, prefix, created_at }] } ; le worker retire les octets du préfixe puis appelle fn::storage_reclaim_done. Droit : worker";
+} COMMENT "Préfixes d'octets à retirer après la suppression d'un bucket ({ limit, start }), du plus ancien au plus récent (start : rang du premier, pour passer les préfixes en échec) : { items: [{ id, backend, prefix, created_at }] } ; le worker retire les octets du préfixe puis appelle fn::storage_reclaim_done. Droit : worker";
 
 -- ----------------------------------------------------------------------------
 -- fn::storage_reclaim_done

@@ -235,12 +235,15 @@ RETURN fn::storage_reclaim_list({}).error.code == "STORAGE_PERMISSION_DENIED"
 -- en tant que: worker
 {
     LET $items = fn::storage_reclaim_list({ limit: 10 }).data.items;
+    LET $after = fn::storage_reclaim_list({ limit: 10, start: array::len($items) }).data.items;
     LET $done = array::map($items, |$r| fn::storage_reclaim_done({ reclaim: <string> $r.id }).data.done);
     RETURN array::len($items) >= 1
         AND array::all($items, |$r| $r.backend == "default" AND string::starts_with($r.prefix, "alpha/"))
+        AND $after == []
         AND array::all($done, |$d| $d == true)
         AND fn::storage_reclaim_done({ reclaim: <string> $items[0].id }).data == { done: false }
         AND fn::storage_reclaim_list({}).data.items == []
         AND fn::storage_reclaim_list({ limit: 0 }).error.code == "STORAGE_INVALID_PARAMETERS"
+        AND fn::storage_reclaim_list({ start: -1 }).error.code == "STORAGE_INVALID_PARAMETERS"
         AND fn::storage_reclaim_done({}).error.code == "STORAGE_INVALID_PARAMETERS";
 };
