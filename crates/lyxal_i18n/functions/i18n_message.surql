@@ -2,7 +2,7 @@
 -- FONCTIONS : lecture et contrôle d'un message ICU MessageFormat 1
 -- MODULE    : lyxal_i18n
 -- ============================================================================
--- Contrôle à l'écriture (décision Q4) : arguments, types, branches et formes de pluriel. La
+-- Contrôle à l'écriture : arguments, types, branches et formes de pluriel. La
 -- syntaxe complète reste vérifiée par le rendu Rust. Fonctions internes au module.
 
 -- ----------------------------------------------------------------------------
@@ -12,8 +12,8 @@
 DEFINE FUNCTION OVERWRITE fn::i18n_message_argument($head: string, $selectors: array<string>) -> object {
     LET $parts = string::split($head, ",");
     RETURN {
-        name: string::trim($parts[0]),
-        kind: IF array::len($parts) > 1 { string::trim($parts[1]) } ELSE { "none" },
+        name: fn::sanitize_trim($parts[0]),
+        kind: IF array::len($parts) > 1 { fn::sanitize_trim($parts[1]) } ELSE { "none" },
         selectors: $selectors
     };
 } COMMENT "Interne : argument { name, kind, selectors } lu dans l'en-tête « nom[, type[, style]] » d'un argument MessageFormat";

@@ -29,7 +29,7 @@ async fn store_calls_every_public_function() {
         .expect("organisation créée");
     let store = I18nStore::new(client);
 
-    // Langues et réglages (lot 1)
+    // Langues et réglages
     let listed = store
         .locale_list(LocaleListParams {
             active: Some(true),

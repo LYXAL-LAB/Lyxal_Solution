@@ -76,3 +76,9 @@ RETURN (UPDATE ONLY i18n_locale:⟨en⟩ SET name_en = "Anglais", fallback = ["f
 
 -- test: fonction interne d'activation, étiquette invalide
 RETURN fn::i18n_locale_set_active({ locale: 42 }, true).error.code == "I18N_INVALID_PARAMETERS";
+
+-- test: le code de langue est contrôlé par la règle language_code de lyxal_core, que toutes les langues du référentiel respectent
+RETURN string::contains((INFO FOR TABLE i18n_locale).fields.language, "fn::validation_language_code($value, true, NONE).value == $value")
+    AND array::len(SELECT VALUE id FROM i18n_locale WHERE fn::validation_language_code(language, true, NONE).value != language) == 0
+    AND fn::validation_language_code("FRA", true, NONE).value != "FRA"
+    AND fn::validation_language_code("f1", true, NONE).value != "f1";

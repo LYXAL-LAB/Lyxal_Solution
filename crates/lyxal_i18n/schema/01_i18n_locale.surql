@@ -24,7 +24,7 @@ DEFINE FIELD OVERWRITE tag ON TABLE i18n_locale
 DEFINE FIELD OVERWRITE language ON TABLE i18n_locale
     TYPE string
     READONLY
-    ASSERT string::matches($value, "^[a-z]{2,3}$")
+    ASSERT fn::validation_language_code($value, true, NONE).value == $value
     COMMENT "Langue seule (ISO 639)";
 
 DEFINE FIELD OVERWRITE script ON TABLE i18n_locale

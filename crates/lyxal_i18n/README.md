@@ -1,11 +1,11 @@
 # Lyxal I18n
 
-Module du Noyau Technique de Lyxal OS : **langues, traductions et formats régionaux**. Réalisé :
+Module du Noyau Technique de Lyxal OS : **langues, traductions et formats régionaux** :
 référentiel des langues issu d'Unicode CLDR, choix de la langue d'une requête, clés et
 traductions avec surcharges par organisation, rendu des messages, des nombres, des dates et des
 montants, échange des textes par fichier. Les règles sur les données vivent dans SurrealDB (fonctions `fn::i18n_*`) ; le rendu
 est en Rust (ICU4X), car SurrealDB n'a pas ICU. Sources et choix :
-[`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md) ; lots suivants dans [`ROADMAP.md`](ROADMAP.md).
+[`MODELE_SOURCES.md`](MODELE_SOURCES.md) ; évolutions à venir dans [`ROADMAP.md`](ROADMAP.md).
 
 ## 1. Modèle
 
