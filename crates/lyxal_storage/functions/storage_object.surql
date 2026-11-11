@@ -108,14 +108,14 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_begin($params: object) {
     LET $settings = fn::storage_settings_effective({ tenant: $bucket.tenant });
     LET $context = fn::auth_context({});
     LET $created = (CREATE ONLY storage_object CONTENT {
-        bucket: $bucket.id, tenant: $bucket.tenant, key: $p.key,
+        bucket: $bucket.id, tenant: $bucket.tenant, key: $p.key, backend: $bucket.backend,
         owner: IF $context.ok { $context.data.identity } ELSE { NONE },
         filename: $p.filename, declared_type: $p.declared_type, declared_size: $p.declared_size,
         state: "pending", pending_expires_at: time::now() + duration::from_secs($settings.pending_ttl_seconds)
     });
     IF $created == NONE { RETURN fn::error_result("STORAGE_WRITE_FORBIDDEN", $p.language, { table: "storage_object" }); };
-    RETURN fn::result_ok($created);
-} COMMENT "Ouvre l'écriture d'un fichier ({ bucket, key, filename, declared_type, declared_size }) : fiche créée à l'état pending avec son délai ; refus si le bucket est en lecture seule, si l'adresse est occupée (STORAGE_OBJECT_EXISTS), ou si la taille, le type ou le quota annoncés dépassent les règles. Droit : écriture";
+    RETURN fn::result_ok(object::extend($created, { max_size: $bucket.max_object_size ?? $settings.max_object_size }));
+} COMMENT "Ouvre l'écriture d'un fichier ({ bucket, key, filename, declared_type, declared_size }) : fiche créée à l'état pending avec son délai, rendue avec max_size (taille maximale acceptée, pour arrêter une écriture qui dépasse) ; refus si le bucket est en lecture seule, si l'adresse est occupée (STORAGE_OBJECT_EXISTS), ou si la taille, le type ou le quota annoncés dépassent les règles. Droit : écriture";
 
 -- ----------------------------------------------------------------------------
 -- fn::storage_object_commit
@@ -184,6 +184,19 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_get($params: object) {
     IF $object == NONE { RETURN fn::error_result("STORAGE_OBJECT_NOT_FOUND", $p.language, {}); };
     RETURN fn::result_ok($object);
 } COMMENT "Fiche d'un fichier, par son identifiant ({ object }) ou par son adresse ({ bucket, key }, fichier non supprimé) ; l'état dit si le fichier peut être servi (available seulement). Droit : lecture";
+
+-- ----------------------------------------------------------------------------
+-- fn::storage_object_open
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::storage_object_open($params: object) {
+    LET $found = fn::storage_object_get($params);
+    IF !$found.ok { RETURN $found; };
+    IF $found.data.state != "available" {
+        RETURN fn::error_result("STORAGE_OBJECT_NOT_AVAILABLE", $params.language, { state: $found.data.state });
+    };
+    RETURN $found;
+} COMMENT "Fiche d'un fichier à servir ({ object }, ou { bucket, key }) : comme fn::storage_object_get, mais refus si le fichier n'est pas à l'état available (STORAGE_OBJECT_NOT_AVAILABLE) ; backend et path disent où lire ses octets. Droit : lecture";
 
 -- ----------------------------------------------------------------------------
 -- fn::storage_object_list

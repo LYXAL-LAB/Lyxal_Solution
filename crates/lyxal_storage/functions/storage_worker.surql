@@ -1,5 +1,5 @@
 -- ============================================================================
--- FONCTIONS : opérations du worker (quarantaine, expiration, purge)
+-- FONCTIONS : opérations du worker (quarantaine, expiration, purge, préfixes à retirer)
 -- MODULE    : lyxal_storage
 -- ============================================================================
 -- Réservées au compte de service (permission storage.worker) et à la session système.
@@ -72,10 +72,10 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_purge_list($params: object) {
     };
     LET $p = $report.value;
     IF !fn::storage_can({ action: "worker" }) { RETURN fn::error_result("STORAGE_PERMISSION_DENIED", $p.language, {}); };
-    LET $rows = (SELECT id, bucket, bucket.name AS bucket_name, scope_key, key, purge_after FROM storage_object
+    LET $rows = (SELECT id, backend, path, purge_after FROM storage_object
         WHERE state = "deleted" AND purge_after <= time::now() ORDER BY purge_after LIMIT $p.limit);
     RETURN fn::result_ok({ items: $rows });
-} COMMENT "Fichiers supprimés dont le délai de conservation est écoulé ({ limit }), du plus ancien au plus récent : { items: [{ id, bucket, bucket_name, scope_key, key, purge_after }] } ; le worker retire leurs octets puis appelle fn::storage_object_purge. Droit : worker";
+} COMMENT "Fichiers supprimés dont le délai de conservation est écoulé ({ limit }), du plus ancien au plus récent : { items: [{ id, backend, path, purge_after }] } ; le worker retire leurs octets puis appelle fn::storage_object_purge. Droit : worker";
 
 -- ----------------------------------------------------------------------------
 -- fn::storage_object_purge
@@ -103,3 +103,48 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_purge($params: object) {
     IF $deleted == NONE { RETURN fn::error_result("STORAGE_WRITE_FORBIDDEN", $p.language, { table: "storage_object" }); };
     RETURN fn::result_ok({ purged: true });
 } COMMENT "Supprime la fiche d'un fichier ({ object }) dont les octets ont été retirés du support ; refus si le fichier n'est pas supprimé ou si son délai de conservation n'est pas écoulé. Droit : worker";
+
+-- ----------------------------------------------------------------------------
+-- fn::storage_reclaim_list
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::storage_reclaim_list($params: object) {
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            limit: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 1000 } }], default: 100 },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 20);
+    IF !$report.valid {
+        RETURN fn::error_result("STORAGE_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
+    };
+    LET $p = $report.value;
+    IF !fn::storage_can({ action: "worker" }) { RETURN fn::error_result("STORAGE_PERMISSION_DENIED", $p.language, {}); };
+    LET $rows = (SELECT id, backend, prefix, created_at FROM storage_reclaim ORDER BY created_at LIMIT $p.limit);
+    RETURN fn::result_ok({ items: $rows });
+} COMMENT "Préfixes d'octets à retirer après la suppression d'un bucket ({ limit }), du plus ancien au plus récent : { items: [{ id, backend, prefix, created_at }] } ; le worker retire les octets du préfixe puis appelle fn::storage_reclaim_done. Droit : worker";
+
+-- ----------------------------------------------------------------------------
+-- fn::storage_reclaim_done
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::storage_reclaim_done($params: object) {
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            reclaim: { pipeline: [{ rule: "record", options: { expected_table: "storage_reclaim" } }], required: true },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 20);
+    IF !$report.valid {
+        RETURN fn::error_result("STORAGE_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
+    };
+    LET $p = $report.value;
+    IF !fn::storage_can({ action: "worker" }) { RETURN fn::error_result("STORAGE_PERMISSION_DENIED", $p.language, {}); };
+    -- Rejeu après un arrêt : une ligne déjà retirée n'est pas une erreur
+    IF !record::exists($p.reclaim) { RETURN fn::result_ok({ done: false }); };
+    LET $deleted = (DELETE ONLY $p.reclaim RETURN BEFORE);
+    IF $deleted == NONE { RETURN fn::error_result("STORAGE_WRITE_FORBIDDEN", $p.language, { table: "storage_reclaim" }); };
+    RETURN fn::result_ok({ done: true });
+} COMMENT "Retire la ligne d'un préfixe ({ reclaim }) dont les octets ont été retirés du support : { done } (false si la ligne n'existait plus). Droit : worker";

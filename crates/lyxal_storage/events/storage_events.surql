@@ -1,7 +1,7 @@
 -- ============================================================================
 -- EVENTS : lyxal_storage
 -- MODULE : lyxal_storage
--- RÔLE   : Garde des transitions d'état et publication des événements storage.*
+-- RÔLE   : Garde des transitions d'état, préfixes à retirer et publication des événements storage.*
 -- ============================================================================
 -- Publiés par la base dans la transaction de la mutation (.agents/AGENTS.md §5.6.1) ; une
 -- publication refusée fait échouer la mutation. Jamais de contenu.
@@ -23,7 +23,8 @@ THEN {
 DEFINE EVENT OVERWRITE storage_object_created_guard ON TABLE storage_object
 WHEN $event = "CREATE"
 THEN {
-    IF $after.state != "pending" OR $after.tenant != (SELECT VALUE tenant FROM ONLY $after.bucket) { THROW "STORAGE_OBJECT_STATE_INVALID"; };
+    LET $bucket = (SELECT tenant, backend FROM ONLY $after.bucket);
+    IF $after.state != "pending" OR $after.tenant != $bucket.tenant OR $after.backend != $bucket.backend { THROW "STORAGE_OBJECT_STATE_INVALID"; };
 };
 
 -- ----------------------------------------------------------------------------
@@ -39,6 +40,22 @@ WHEN $event = "DELETE"
 THEN {
     IF !record::exists($before.bucket) AND ($before.tenant IS NONE OR record::exists($before.tenant)) {
         THROW "STORAGE_BUCKET_NOT_EMPTY";
+    };
+};
+
+-- ----------------------------------------------------------------------------
+-- Octets d'un bucket supprimé : préfixe à retirer par le worker
+-- ----------------------------------------------------------------------------
+-- Écrit dans la transaction de la suppression, dans une table du module : rien n'est publié et
+-- aucun autre module n'est modifié. Vaut aussi pour un bucket supprimé avec son organisation,
+-- dont les fiches partent en cascade sans passer par l'état deleted.
+
+DEFINE EVENT OVERWRITE storage_bucket_reclaim ON TABLE storage_bucket
+WHEN $event = "DELETE"
+THEN {
+    CREATE storage_reclaim CONTENT {
+        backend: $before.backend,
+        prefix: string::concat($before.scope_key, "/", <string> record::id($before.id))
     };
 };
 

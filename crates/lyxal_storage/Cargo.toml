@@ -1,0 +1,24 @@
+[package]
+name = "lyxal_storage"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Fichiers et documents stockés de Lyxal OS : buckets, fiches de fichiers, supports, écriture et lecture en flux"
+
+[dependencies]
+lyxal_surreal = { workspace = true }
+lyxal_runtime = { workspace = true }
+lyxal_crypto = { workspace = true }
+async-trait = { workspace = true }
+surrealdb = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+bytes = "1"
+futures = { version = "0.3", default-features = false, features = ["std"] }
+# Supports : disque local et mémoire (S3 : feuille de route)
+object_store = { version = "0.13", default-features = false, features = ["fs"] }
+
+[dev-dependencies]
+lyxal_auth = { workspace = true }
+tempfile = { workspace = true }

@@ -50,14 +50,14 @@ déclaré manque.
 | `lyxal_event` | toujours | `ManifestModule` ; moteur démarré par le runtime |
 | `lyxal_auth` | toujours | `AuthModule`, `AuthHealthCheck` |
 | `lyxal_notification` | toujours | `NotificationModule`, `NotificationConsumer` (événements `auth.*`), `NotificationEmailWorker`, `NotificationPurgeWorker`, `NotificationHealthCheck` |
-| `lyxal_storage` | toujours | `ManifestModule` (socle SurrealQL ; le code Rust arrive avec les supports) |
+| `lyxal_storage` | toujours | `StorageModule`, `StorageCleanupWorker` (si un support est configuré), `StorageHealthCheck` |
 | `lyxal_base` | toujours | `ManifestModule` |
 | `lyxal_catalogue` | toujours | `ManifestModule` (SurrealQL seul) |
 | `lyxal_pipeline_ingestion` | fonctionnalité `module-ingestion` (par défaut) | `PipelineIngestionModule`, `IngestionWorker`, `IngestionHealthCheck` |
 
 Ajouter un module : l'inscrire dans `MODULES` de `build.rs` (ordre des dépendances), et, s'il a
 du code Rust, déclarer son implémentation et ses services dans `src/modules/` (`auth.rs`,
-`notification.rs`, `ingestion.rs`).
+`notification.rs`, `storage.rs`, `ingestion.rs`).
 
 ---
 
@@ -77,6 +77,7 @@ du code Rust, déclarer son implémentation et ses services dans `src/modules/` 
 | `crypto` | `application_key` (facultative, variable d'environnement seulement), `application_key_id` |
 | `auth` | `public_url` (facultative : adresse publique de l'interface, pour les liens des messages et l'origine des passkeys), `passkey_rp_id` (facultatif : domaine des passkeys, défaut : hôte de `public_url`) |
 | `notification.smtp` | `host`, `port`, `security` (`tls`, `starttls`, `local_plain`), `username`, `password`, `from_address`, `from_name`, `timeout_seconds` (section facultative) |
+| `storage.disk` | `root` (section facultative : dossier du support de fichiers `default`) |
 
 Les identifiants Root ne figurent dans aucun fichier : `LYXAL__DATABASE__USERNAME` et
 `LYXAL__DATABASE__PASSWORD` (mot de passe en `SecretString`, masqué). Une connexion `ws://` ou
@@ -114,6 +115,13 @@ enveloppe `enc:v2`). Le relais : `LYXAL__NOTIFICATION__SMTP__HOST`, `__PORT`, `_
 `local_plain` (sans chiffrement) n'est accepté que pour un relais de la boucle locale. Sans clé
 ou sans relais, aucun e-mail n'est envoyé : les abonnements aux événements `auth.*` restent
 suspendus (les événements attendent en file) et la sonde du module est dégradée.
+
+Le stockage des fichiers (`lyxal_storage`) écrit sous un dossier du serveur :
+`LYXAL__STORAGE__DISK__ROOT` (créé s'il n'existe pas ; à placer sur un volume sauvegardé, hors
+du dossier de l'application). C'est le support `default` des buckets. Sans dossier, le serveur
+démarre : aucun fichier n'est écrit ni lu (`STORAGE_BACKEND_UNKNOWN`), le worker de nettoyage
+n'est pas lancé et la sonde du module est dégradée. Les routes d'envoi et de téléchargement
+arrivent avec le lot suivant du module.
 
 La connexion (`lyxal_auth`) demande la clé applicative et `auth.public_url`
 (`LYXAL__AUTH__PUBLIC_URL`, ex. `https://console.example.com`). Au démarrage, l'hôte crée les

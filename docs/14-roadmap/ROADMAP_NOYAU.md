@@ -9,8 +9,9 @@ dépendent pour leurs textes) ; ses évolutions sont dans `crates/lyxal_i18n/ROA
 socle, connexion, double facteur, bascule du catalogue et de l'ingestion, clôture avec audit et
 revue OWASP ASVS niveau 2) ; ses évolutions sont dans `crates/lyxal_auth/ROADMAP.md`.
 
-`lyxal_storage` (rang 3) est créé : son socle SurrealQL est en place, son programme (lots 2 à 8)
-est dans `implementation_plan.md` à la racine et sa `ROADMAP.md`.
+`lyxal_storage` (rang 3) est créé : son socle SurrealQL et son crate Rust (octets écrits et lus
+en flux sur disque, nettoyage) sont en place ; son programme (lots 3 à 8) est dans
+`implementation_plan.md` à la racine et sa `ROADMAP.md`.
 
 `lyxal_notification` a été créé avant son rang (décision D8 du programme `lyxal_auth`) avec sa
 partie e-mail et des solutions d'attente pour `lyxal_secrets` et

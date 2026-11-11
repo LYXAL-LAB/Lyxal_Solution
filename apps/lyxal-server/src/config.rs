@@ -1,7 +1,12 @@
 use crate::error::ServerError;
 use lyxal_surreal::SecretString;
 use serde::{Deserialize, Deserializer};
-use std::{fmt, net::IpAddr, path::Path, sync::Arc};
+use std::{
+    fmt,
+    net::IpAddr,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -18,6 +23,25 @@ pub struct AppConfig {
     pub notification: NotificationConfig,
     #[serde(default)]
     pub auth: AuthConfig,
+    #[serde(default)]
+    pub storage: StorageConfig,
+}
+
+/// Stockage des fichiers (`lyxal_storage`) : support `default` sur un dossier du serveur. Sans
+/// dossier, aucun fichier n'est écrit ni lu (sonde « dégradé »).
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StorageConfig {
+    #[serde(default)]
+    pub disk: Option<DiskStorageConfig>,
+}
+
+/// Support disque : `LYXAL__STORAGE__DISK__ROOT`, dossier créé s'il n'existe pas ; tous les
+/// fichiers sont écrits dessous.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DiskStorageConfig {
+    pub root: PathBuf,
 }
 
 /// Authentification (`lyxal_auth`) : adresse publique de l'interface, pour les liens des messages

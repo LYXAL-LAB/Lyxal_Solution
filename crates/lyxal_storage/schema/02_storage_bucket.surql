@@ -5,6 +5,7 @@
 -- ============================================================================
 -- Un bucket appartient à l'installation ou à une organisation. Son nom est unique dans sa
 -- portée. Il n'est supprimé que vide, sauf avec son organisation (garde storage_object_bucket_guard).
+-- Ses octets sont sur un support nommé, sous le préfixe <portée>/<clé du bucket>.
 
 DEFINE TABLE OVERWRITE storage_bucket
     TYPE NORMAL
@@ -46,6 +47,13 @@ DEFINE FIELD OVERWRITE allowed_types ON TABLE storage_bucket
     DEFAULT []
     ASSERT array::len($value) <= 100
     COMMENT "Types MIME acceptés (vide : tous)";
+
+DEFINE FIELD OVERWRITE backend ON TABLE storage_bucket
+    TYPE string
+    DEFAULT "default"
+    READONLY
+    ASSERT fn::validation_snake_case_name($value, 1, 64).value == $value
+    COMMENT "Nom du support qui porte les octets du bucket, fixé à la création";
 
 DEFINE FIELD OVERWRITE readonly ON TABLE storage_bucket
     TYPE bool

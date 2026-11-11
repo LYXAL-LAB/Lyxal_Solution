@@ -358,3 +358,66 @@ async fn publication_without_auth_service_degrades_the_ingestion_probe() {
     );
     runtime.stop_all().await.expect("arrêt");
 }
+
+/// Sonde de `lyxal_storage` : dégradée sans dossier de stockage (le serveur démarre), saine
+/// avec un dossier, où un fichier témoin est écrit, relu puis retiré.
+#[tokio::test]
+async fn storage_probe_follows_the_configured_folder() {
+    async fn probe(config: &AppConfig, name: &str) -> lyxal_runtime::health::HealthCheckResult {
+        let client = database(name).await;
+        let runtime = runtime::start(config, &client)
+            .await
+            .expect("démarrage")
+            .runtime;
+        let result = runtime
+            .health_registry()
+            .get_check(&lyxal_runtime::ModuleId::new("lyxal_storage"))
+            .expect("sonde de lyxal_storage")
+            .check(&lyxal_runtime::ModuleContext::new("lyxal_storage"))
+            .await
+            .expect("sonde");
+        runtime.stop_all().await.expect("arrêt");
+        result
+    }
+
+    let without = probe(&config("stockage_sans"), "stockage_sans").await;
+    assert_eq!(
+        without.status,
+        lyxal_runtime::health::HealthStatus::Degraded,
+        "{without:?}"
+    );
+    assert!(
+        without
+            .message
+            .as_deref()
+            .is_some_and(|m| m.contains("STORAGE_BACKEND_UNKNOWN")),
+        "{without:?}"
+    );
+
+    let folder = tempfile::tempdir().expect("dossier");
+    let root = folder.path().join("fichiers");
+    let extra = format!("\n[storage.disk]\nroot = {:?}\n", root.display().to_string());
+    let with = probe(&config_with("stockage_avec", &extra), "stockage_avec").await;
+    assert_eq!(
+        with.status,
+        lyxal_runtime::health::HealthStatus::Healthy,
+        "{with:?}"
+    );
+    assert!(root.is_dir(), "dossier créé");
+    let left: Vec<_> = walk(&root);
+    assert!(left.is_empty(), "fichier témoin retiré : {left:?}");
+}
+
+/// Fichiers présents sous un dossier.
+fn walk(directory: &std::path::Path) -> Vec<std::path::PathBuf> {
+    let mut files = Vec::new();
+    for entry in fs::read_dir(directory).expect("dossier").flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            files.extend(walk(&path));
+        } else {
+            files.push(path);
+        }
+    }
+    files
+}
