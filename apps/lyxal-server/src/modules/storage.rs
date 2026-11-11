@@ -8,8 +8,7 @@ use crate::config::AppConfig;
 use crate::error::ServerError;
 use lyxal_runtime::{LyxalModule, LyxalRuntime};
 use lyxal_storage::{
-    BackendConfig, Backends, StorageCleanupWorker, StorageHealthCheck, StorageModule,
-    StorageStore,
+    BackendConfig, Backends, StorageCleanupWorker, StorageHealthCheck, StorageModule, StorageStore,
 };
 use std::sync::Arc;
 use std::time::Duration;

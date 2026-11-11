@@ -396,7 +396,10 @@ async fn storage_probe_follows_the_configured_folder() {
 
     let folder = tempfile::tempdir().expect("dossier");
     let root = folder.path().join("fichiers");
-    let extra = format!("\n[storage.disk]\nroot = {:?}\n", root.display().to_string());
+    let extra = format!(
+        "\n[storage.disk]\nroot = {:?}\n",
+        root.display().to_string()
+    );
     let with = probe(&config_with("stockage_avec", &extra), "stockage_avec").await;
     assert_eq!(
         with.status,
