@@ -219,3 +219,30 @@ IF !record::exists(error_definition:SERVER_AUTH_DISABLED) THEN (
         }
     }
 ) END;
+
+IF !record::exists(error_definition:SERVER_COMMAND_FAILED) THEN (
+    CREATE error_definition:SERVER_COMMAND_FAILED CONTENT {
+        code: "SERVER_COMMAND_FAILED",
+        module: "server",
+        domain: "commandes",
+        category: "business",
+        severity: "error",
+        message: "An administration command reported failures",
+        default_language: "fr",
+        http_status: 422,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Commande d'administration en échec",
+                description: "Une commande du serveur a terminé en signalant des éléments refusés (textes invalides, enregistrements illisibles).",
+                resolution: "Corriger les éléments listés par la commande, puis la relancer."
+            },
+            en: {
+                label: "Administration command failed",
+                description: "A server command finished and reported refused items (invalid texts, unreadable records).",
+                resolution: "Fix the items listed by the command, then run it again."
+            }
+        }
+    }
+) END;

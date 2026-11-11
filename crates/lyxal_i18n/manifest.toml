@@ -41,7 +41,8 @@ functions = [
     "functions/i18n_message.surql",
     "functions/i18n_key.surql",
     "functions/i18n_translation.surql",
-    "functions/i18n_resolve_key.surql"
+    "functions/i18n_resolve_key.surql",
+    "functions/i18n_exchange.surql"
 ]
 error_definitions = [
     "error/parametres/error_parametres.surql",
