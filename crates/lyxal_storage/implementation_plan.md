@@ -14,6 +14,7 @@ de code avant la validation du CTO (`.agents/AGENTS.md` §3).
 | **G2** | Quand vérifie-t-on qu'un fichier n'a pas été altéré sur le disque ? | **À la demande** dans ce lot (une fonction relit le fichier et compare son empreinte). Une vérification périodique de tous les fichiers est inscrite à la feuille de route |
 | **G3** | Quand une organisation est supprimée, quand retire-t-on le contenu de ses fichiers ? | **Au prochain passage du worker** : la suppression d'une organisation est déjà un acte délibéré et différé de `lyxal_auth` ; garder ses fichiers plus longtemps n'a pas de raison |
 | **G4** | Peut-on changer le support d'un bucket après sa création ? | **Non dans cette V1** : le support est choisi à la création. Déplacer des fichiers d'un support à un autre est inscrit à la feuille de route |
+| **G5** | Comment note-t-on le contenu à retirer quand un bucket est supprimé ? | **Dans la même opération que la suppression** : une ligne `storage_reclaim` est écrite par un `DEFINE EVENT` du module, dans sa propre table. Passer par le bus d'événements (`fn::event_publish`, puis un consommateur qui écrit cette ligne) ajouterait un détour entre deux parties du même module et ferait dépendre le nettoyage du moteur d'événements. Lecture retenue du §5.6.1 : le bus sert aux échanges entre modules ; un événement peut tenir à jour une donnée de son propre module, comme le font déjà `lyxal_auth` (`permissions_version`), `lyxal_i18n` (`i18n_missing_key`) et `lyxal_notification` (`organization_locale`) |
 
 ## 2. Emplacement des octets
 
@@ -30,7 +31,7 @@ Un fichier est écrit sous `<portée>/<bucket>/<identifiant de la fiche>` :
 | :--- | :--- |
 | `storage_bucket.backend` | nouveau champ : nom du support (`default` par défaut), fixé à la création (G4) ; paramètre `backend` de `fn::storage_bucket_create` |
 | `fn::storage_object_begin` | le résultat porte aussi `max_size` (limite effective) et `backend` : le Rust arrête une écriture qui dépasse, sans attendre la fin |
-| `storage_reclaim` (nouvelle table) | préfixe d'octets à retirer : `backend`, `prefix`, `created_at`. Créée par un `DEFINE EVENT` à la suppression d'un bucket, y compris en cascade avec son organisation (G3) |
+| `storage_reclaim` (nouvelle table) | préfixe d'octets à retirer : `backend`, `prefix`, `created_at`. Créée par un `DEFINE EVENT` à la suppression d'un bucket, dans la même transaction, y compris en cascade avec son organisation (G3, G5). Aucun autre module n'est modifié ; aucun événement `storage.*` n'est ajouté |
 | `fn::storage_reclaim_list` | `limit` → `{ items: [{ id, backend, prefix }] }` ; droit : worker |
 | `fn::storage_reclaim_done` | **reclaim** → `{ done }` : ligne supprimée après le retrait des octets ; droit : worker |
 
