@@ -220,7 +220,10 @@ async fn a_failed_write_leaves_no_bytes_and_no_available_file() {
         assert_eq!(error.code(), "STORAGE_OBJECT_TOO_LARGE");
 
         // Moins d'octets que l'annonce, puis plus d'octets que l'annonce
-        for parts in [&[b"1234".as_slice()][..], &[b"1234", b"5678"][..]] {
+        for parts in [
+            &[b"1234".as_slice()][..],
+            &[b"1234".as_slice(), b"5678".as_slice()][..],
+        ] {
             let error = bench
                 .service
                 .put(

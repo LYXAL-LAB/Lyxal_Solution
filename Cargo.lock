@@ -3604,6 +3604,7 @@ dependencies = [
  "lyxal_notification",
  "lyxal_pipeline_ingestion",
  "lyxal_runtime",
+ "lyxal_storage",
  "lyxal_surreal",
  "serde",
  "serde_json",
