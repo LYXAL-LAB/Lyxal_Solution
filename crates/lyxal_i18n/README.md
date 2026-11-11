@@ -128,7 +128,7 @@ pour un appel de la session système ; elle en sort quand la clé est déclarée
 | `i18n_resolve` | **key**, **locale**, `tenant` | `{ key, text, syntax, locale, overridden, missing }` | tous |
 | `i18n_resolve_many` | **keys** (500 au plus), **locale**, `tenant` | tableau du même objet, dans l'ordre demandé | tous |
 | `i18n_missing_key_list` | `limit`, `start` | `{ items: [{ key, locale, first_seen_at, last_seen_at }], total }` | `i18n.translation.manage` |
-| `i18n_export` | **locale**, `namespace`, `tenant`, `limit` (500), `start` | `{ items: [{ key, namespace, description, params, max_length, source_locale, source_text, text, syntax, state, outdated, overridden }], total }` | lecture de la portée |
+| `i18n_export` | **locale**, `namespace`, `tenant`, `limit` (500), `start` | `{ items: [{ key, namespace, description, params, max_length, source_locale, source_text, source_syntax, text, syntax, state, outdated, overridden }], total }` | lecture de la portée |
 | `i18n_import` | **locale**, **entries** `[{ key, text, syntax }]` (500 au plus), `tenant`, `overwrite_reviewed`, `dry_run` | `{ created, updated, unchanged, skipped: [{ key, reason }], invalid: [{ key, problems }] }` | écriture de la portée |
 | `i18n_translation_scan` | `limit` (500), `start` | `{ items: [{ key, locale, tenant, text, syntax }], total }` : tous les textes, toutes portées | `i18n.translation.manage` |
 

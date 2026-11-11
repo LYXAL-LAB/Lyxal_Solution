@@ -37,6 +37,8 @@ pub struct ExportRow {
     pub source_locale: String,
     /// Texte source.
     pub source_text: Option<String>,
+    /// Syntaxe du texte source.
+    pub source_syntax: Option<String>,
     /// Texte dans la langue demandée ; absent si la clé n'est pas traduite.
     pub text: Option<String>,
     /// Syntaxe du texte, sinon celle du texte source.

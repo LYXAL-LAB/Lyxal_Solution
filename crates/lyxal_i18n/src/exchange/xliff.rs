@@ -130,7 +130,8 @@ pub(super) fn write(
     Ok(())
 }
 
-/// Échappe les cinq caractères réservés de XML.
+/// Échappe les cinq caractères réservés de XML, et le retour chariot : un lecteur XML
+/// remplace un retour chariot littéral par un saut de ligne.
 fn escape(text: &str) -> String {
     let mut escaped = String::with_capacity(text.len());
     for character in text.chars() {
@@ -140,6 +141,7 @@ fn escape(text: &str) -> String {
             '>' => escaped.push_str("&gt;"),
             '"' => escaped.push_str("&quot;"),
             '\'' => escaped.push_str("&apos;"),
+            '\r' => escaped.push_str("&#13;"),
             other => escaped.push(other),
         }
     }

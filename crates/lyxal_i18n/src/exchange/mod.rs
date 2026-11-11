@@ -233,7 +233,10 @@ impl Exchange {
             rejected,
             ..ImportReport::default()
         };
-        // Syntaxe de chaque clé (texte existant, sinon texte source), pour la vérification
+        // Syntaxe sous laquelle la base écrira chaque clé : celle du texte existant dans la
+        // portée, sinon celle du texte source (le texte de l'installation ne compte pas pour
+        // une organisation qui n'a pas encore de surcharge)
+        let scoped = options.tenant.is_some();
         let syntaxes: HashMap<String, Option<String>> = self
             .rows(&ExportOptions {
                 locale: options.locale.clone(),
@@ -242,7 +245,14 @@ impl Exchange {
             })
             .await?
             .into_iter()
-            .map(|row| (row.key, row.syntax))
+            .map(|row| {
+                let syntax = if scoped && !row.overridden {
+                    row.source_syntax
+                } else {
+                    row.syntax
+                };
+                (row.key, syntax)
+            })
             .collect();
         let formatter = Formatter::new(&options.locale)?;
         let mut accepted = Vec::with_capacity(entries.len());

@@ -37,9 +37,9 @@ RETURN fn::i18n_namespace_create({ key: "base", module: "lyxal_base" }).ok
 -- test: export d'une langue : une ligne par clé, texte source, état, clés non traduites comprises
 -- en tant que: membre
 RETURN fn::i18n_export({ locale: "en" }).data == { total: 3, items: [
-    { key: "base.oui", namespace: "base", description: "Réponse positive", params: [], max_length: NONE, source_locale: "fr", source_text: "Oui", text: "Yes", syntax: "plain", state: "reviewed", outdated: false, overridden: false },
-    { key: "base.salut", namespace: "base", description: NONE, params: [{ name: "name", type: "string" }], max_length: 40, source_locale: "fr", source_text: "Bonjour {name}", text: NONE, syntax: "icu_mf1", state: "untranslated", outdated: false, overridden: false },
-    { key: "console.save", namespace: "console", description: NONE, params: [], max_length: NONE, source_locale: "en", source_text: "Save", text: "Save", syntax: "plain", state: "translated", outdated: false, overridden: false }
+    { key: "base.oui", namespace: "base", description: "Réponse positive", params: [], max_length: NONE, source_locale: "fr", source_text: "Oui", source_syntax: "plain", text: "Yes", syntax: "plain", state: "reviewed", outdated: false, overridden: false },
+    { key: "base.salut", namespace: "base", description: NONE, params: [{ name: "name", type: "string" }], max_length: 40, source_locale: "fr", source_text: "Bonjour {name}", source_syntax: "icu_mf1", text: NONE, syntax: "icu_mf1", state: "untranslated", outdated: false, overridden: false },
+    { key: "console.save", namespace: "console", description: NONE, params: [], max_length: NONE, source_locale: "en", source_text: "Save", source_syntax: "plain", text: "Save", syntax: "plain", state: "translated", outdated: false, overridden: false }
 ] };
 
 -- test: export filtré par espace de noms, paginé ; surcharge de l'organisation avec tenant

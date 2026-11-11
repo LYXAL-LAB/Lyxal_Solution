@@ -244,6 +244,39 @@ async fn json_round_trip_and_import_rules() {
         .expect("import de l'organisation");
     assert_eq!(overridden.created, 1);
     assert_eq!(text(&store, "base.oui", "fr").await.as_deref(), Some("Oui"));
+
+    // Première surcharge d'une clé dont le texte de l'installation est en texte brut : elle sera
+    // écrite dans la syntaxe du texte source (ICU), c'est donc elle que le rendu vérifie
+    store
+        .translation_set(TranslationSetParams {
+            key: "base.articles".to_string(),
+            locale: "fr-CA".to_string(),
+            text: "{count} articles".to_string(),
+            syntax: Some("plain".to_string()),
+            tenant: None,
+        })
+        .await
+        .expect("texte brut de l'installation");
+    let mut alpha_canada = options("fr-CA");
+    alpha_canada.tenant = Some("auth_organization:alpha".to_string());
+    let first_override = exchange
+        .import(
+            &alpha_canada,
+            FileFormat::Json,
+            &mut r#"{ "base.articles": "{count, plural, one {# article} other {# articles}" }"#
+                .as_bytes(),
+        )
+        .await
+        .expect("import de l'organisation");
+    assert_eq!(first_override.created, 0);
+    assert_eq!(
+        first_override.invalid[0]
+            .error
+            .as_ref()
+            .map(|error| error.code()),
+        Some("I18N_MESSAGE_INVALID"),
+        "{first_override:?}"
+    );
 }
 
 #[tokio::test]
@@ -346,6 +379,33 @@ async fn xliff_round_trip() {
     assert_eq!(
         text(&store, "base.articles", "en").await.as_deref(),
         Some("{count, plural, one {# item} other {# items}}")
+    );
+
+    // Retour chariot : écrit en référence de caractère, sinon le lecteur XML le remplace par
+    // un saut de ligne et le texte réimporté diffère
+    store
+        .translation_set(TranslationSetParams {
+            key: "base.citation".to_string(),
+            locale: "en".to_string(),
+            text: "Line one\r\nline two\rend".to_string(),
+            syntax: None,
+            tenant: None,
+        })
+        .await
+        .expect("texte avec retours chariot");
+    let windows = exported(&exchange, "en", Some("base"), FileFormat::Xliff).await;
+    assert!(
+        windows.contains("<target>Line one&#13;\nline two&#13;end</target>"),
+        "{windows}"
+    );
+    let same = exchange
+        .import(&options("en"), FileFormat::Xliff, &mut windows.as_bytes())
+        .await
+        .expect("réimport");
+    assert_eq!((same.created, same.updated, same.unchanged), (0, 0, 3));
+    assert_eq!(
+        text(&store, "base.citation", "en").await.as_deref(),
+        Some("Line one\r\nline two\rend")
     );
 
     // Unité sans identifiant, élément en ligne, plusieurs segments : rejetés, le reste importé

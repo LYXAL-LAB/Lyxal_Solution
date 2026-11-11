@@ -53,6 +53,7 @@ DEFINE FUNCTION OVERWRITE fn::i18n_export($params: object) {
             max_length: $k.max_length,
             source_locale: $k.source_locale,
             source_text: $source.text,
+            source_syntax: $source.syntax,
             text: $row.text,
             syntax: $row.syntax ?? $source.syntax,
             state: $row.state ?? "untranslated",
@@ -61,7 +62,7 @@ DEFINE FUNCTION OVERWRITE fn::i18n_export($params: object) {
         };
     });
     RETURN fn::result_ok({ items: $items, total: array::len($keys) });
-} COMMENT "Textes d'une langue à exporter ({ locale, namespace, tenant, limit (500), start }) : une ligne par clé { key, namespace, description, params, max_length, source_locale, source_text, text, syntax, state, outdated, overridden }, triées par clé ; avec tenant, la surcharge de l'organisation remplace le texte de l'installation. { items, total }";
+} COMMENT "Textes d'une langue à exporter ({ locale, namespace, tenant, limit (500), start }) : une ligne par clé { key, namespace, description, params, max_length, source_locale, source_text, source_syntax, text, syntax, state, outdated, overridden }, triées par clé ; avec tenant, la surcharge de l'organisation remplace le texte de l'installation. { items, total }";
 
 -- ----------------------------------------------------------------------------
 -- fn::i18n_import_entry (interne)
