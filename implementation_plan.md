@@ -124,13 +124,18 @@ bucket, clé, taille et type ; jamais de contenu.
 * Licences : `object_store` (Apache-2.0), `infer` (MIT), `clamav-client` (MIT) ; ClamAV (GPL)
   reste un service séparé ; Supabase Storage et fileloft en conception seule.
 
-## 8. Décisions demandées au CTO
+## 8. Décisions du CTO (11 novembre 2026)
 
-| # | Question | Recommandation |
+S1 à S6 validées selon les recommandations, avec Bunny Storage comme service S3 de référence.
+
+| # | Question | Décision |
 | :- | :--- | :--- |
-| S1 | Où stocker le contenu des fichiers ? | **Par notre code Rust (`object_store`)**, pas par les buckets de SurrealDB, encore expérimentaux et sans flux ; adresses compatibles pour basculer plus tard |
-| S2 | Quel support au départ ? | **Disque local** d'abord (lot 2), **S3** dans le même programme (lot 4) |
-| S3 | Comment repérer un fichier ? | Par un **identifiant propre**, l'empreinte étant une information de la fiche ; la déduplication par empreinte est remise à plus tard |
-| S4 | Antivirus | **Optionnel par configuration** : il demande un service ClamAV à part ; sans lui, le type réel du fichier reste contrôlé |
-| S5 | Envoi reprenable après coupure | **Dans la V1** (lot 6) : utile pour les photos et plans envoyés depuis un chantier |
-| S6 | Brancher l'ingestion sur `lyxal_storage` dans ce programme | **Oui** (lot 7) : corrige le constat A06 de l'audit externe |
+| S1 | Où stocker le contenu des fichiers | **Par le code Rust (`object_store`)**, pas par les buckets de SurrealDB, encore expérimentaux et sans flux ; adresses compatibles pour basculer plus tard |
+| S2 | Supports | **Disque local** d'abord (lot 2), **S3** dans le même programme (lot 4). Service S3 de référence : **Bunny Storage** par son API compatible S3 (aperçu public depuis juillet 2026 ; à choisir à la création de la zone de stockage). Le lot 4 comprend un essai réel sur une zone Bunny, identifiants fournis par le CTO, jamais dans le dépôt |
+| S3 | Identité d'un fichier | **Identifiant propre** ; l'empreinte est une information de la fiche ; déduplication remise à plus tard |
+| S4 | Antivirus | **Optionnel par configuration** (service ClamAV à part) ; le type réel du fichier est toujours contrôlé |
+| S5 | Envoi reprenable | **Dans la V1** (lot 6) |
+| S6 | Ingestion | **Branchée dans ce programme** (lot 7, constat A06) |
+
+Question reportée au plan du lot 3 ou 4 : téléchargement par liens signés servis par le support
+(Bunny), ou toujours par l'hôte.
