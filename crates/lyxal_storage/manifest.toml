@@ -1,0 +1,47 @@
+manifest_version = 1
+id = "lyxal_storage"
+name = "Lyxal Storage"
+version = "0.1.0"
+description = "Fichiers et documents stockés de Lyxal OS : buckets, fiches de fichiers, états, droits et quotas"
+capabilities = ["database", "events", "storage"]
+
+[runtime]
+min_version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_core"
+version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_error"
+version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_event"
+version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_auth"
+version = ">=0.1.0"
+
+[resources]
+schemas = [
+    "schema/01_storage_settings.surql",
+    "schema/02_storage_bucket.surql",
+    "schema/03_storage_object.surql"
+]
+functions = [
+    "functions/storage_access.surql",
+    "functions/storage_settings.surql",
+    "functions/storage_bucket.surql",
+    "functions/storage_object.surql",
+    "functions/storage_worker.surql"
+]
+error_definitions = [
+    "error/parametres/error_parametres.surql",
+    "error/permissions/error_permissions.surql",
+    "error/buckets/error_buckets.surql",
+    "error/fichiers/error_fichiers.surql"
+]
+events = ["events/storage_events.surql"]
+seeds = ["seeds/storage_auth.surql"]

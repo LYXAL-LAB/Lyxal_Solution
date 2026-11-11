@@ -92,8 +92,8 @@ bucket, clé, taille et type ; jamais de contenu.
 
 | Lot | Contenu | Touche |
 | :- | :--- | :--- |
-| **1** | Socle SurrealQL : réglages, buckets, fiches de fichiers, états, droits, quotas, événements, erreurs, banc | `lyxal_storage` |
-| **2** | Rust : supports disque et mémoire, écriture et lecture en flux, empreinte, écriture en deux temps, workers de nettoyage et de purge, module et sonde de santé | `lyxal_storage` |
+| **1** | **Réalisé.** Socle SurrealQL : réglages, buckets, fiches de fichiers, états, droits, quotas, événements, erreurs, banc ; règle `checksum` de `lyxal_core` étendue à `blake3` ; module embarqué dans l'hôte. État : `crates/lyxal_storage/README.md` | `lyxal_storage`, `lyxal_core`, `apps/lyxal-server` |
+| **2** | Rust : supports disque et mémoire, écriture et lecture en flux, empreinte, écriture en deux temps, workers de nettoyage et de purge, module et sonde de santé. La purge d'une organisation supprime ses fiches en cascade : le retrait de ses octets est à concevoir dans ce lot | `lyxal_storage` |
 | **3** | Hôte : routes d'envoi et de téléchargement en flux (droits `lyxal_auth`, limites de taille, lecture partielle), configuration des supports | `apps/lyxal-server` |
 | **4** | Support S3 et compatibles ; identifiants par l'environnement de l'hôte | `lyxal_storage`, `apps/lyxal-server` |
 | **5** | Contrôle du contenu : type réel du fichier, antivirus, quarantaine | `lyxal_storage` |
