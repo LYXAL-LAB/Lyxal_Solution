@@ -94,7 +94,7 @@ droits des surcharges). Conséquences :
 * `lyxal_auth` ne dépend pas de `lyxal_i18n` (aucun cycle) : la langue de l'organisation est
   validée par la règle `locale` de `lyxal_core`, son activation est vérifiée à la résolution ;
 * `lyxal_error` reste sous `lyxal_i18n` et garde ses propres traductions (Q3) ;
-* `lyxal_base` et `lyxal_notification` dépendront de `lyxal_i18n` après leur bascule (lot 5).
+* `lyxal_base` et `lyxal_notification` dépendent de `lyxal_i18n` depuis leur bascule (lot 5).
 
 ## 3. Fonctions publiques (`fn::i18n_*($params: object)`)
 
@@ -122,7 +122,7 @@ master data (`error/<thème>/`) ; écriture principale vérifiée (`I18N_WRITE_F
 | **2** | **Réalisé.** Espaces de noms, clés, traductions et surcharges par organisation, états et obsolescence, contrôle des messages à l'écriture, résolution avec repli et clé manquante, événements, permissions. État : `crates/lyxal_i18n/README.md` | `lyxal_i18n` |
 | **3** | **Réalisé.** `Formatter` ICU4X (messages MF1, pluriels, nombres, dates avec fuseau, montants) avec les données de toutes les langues (Q5 révisée : 3,8 Mo), `Translator`, module et sonde de santé, filtres MiniJinja de `lyxal_notification`. État : `crates/lyxal_i18n/README.md` | `lyxal_i18n`, `lyxal_notification`, `apps/lyxal-server` |
 | **4** | **Réalisé.** Export et import JSON à plat (MF1) et XLIFF 2.0 par `lyxal_parsing` (`JsonLayout::Document` ajouté), rapport d'import (texte relu protégé, clé inconnue, texte invalide, essai sans écriture), contrôle de tous les textes par le rendu (Q4), commandes `i18n export`, `import` et `check` de l'hôte. État : `crates/lyxal_i18n/README.md` | `lyxal_i18n`, `lyxal_parsing`, `apps/lyxal-server` |
-| **5** | **Bascule des consommateurs (rupture coordonnée).** `lyxal_base` : libellés des unités en clés (étape 2 de sa feuille de route) ; `lyxal_notification` : gabarits par langue remplacés par des clés (`notification_template_locale` supprimée, partie « traductions » de sa V2) ; tous les tests mis à jour | `lyxal_base`, `lyxal_notification`, `apps/lyxal-server` |
+| **5** | **Réalisé.** `lyxal_base` : champ `libelle` remplacé par les clés `base.unite_<code>` et `base.unite_type_<code>`, lectures dans la langue demandée (`locale`) ; `lyxal_notification` : un seul gabarit par étape dont les phrases sont des clés rendues par `t("clé")` (`notification_template_locale` et langue par défaut des réglages supprimées), langue de l'envoi par `fn::i18n_locale_resolve` ; permission `i18n.translation.read` pour les comptes de service. État : `README.md` des trois modules | `lyxal_base`, `lyxal_notification`, `lyxal_i18n` |
 | **6** | **Clôture.** Audit `lyxal-audit`, `README.md`, `ROADMAP.md`, `AGENTS.md` §6, `ROADMAP_NOYAU.md`, `RECHERCHE_SOURCES.md` réduit aux sources retenues | docs |
 
 ## 6. Tests et critères de production

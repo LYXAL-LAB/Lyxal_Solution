@@ -48,7 +48,7 @@ de son organisation active (`auth_organization.locale`), puis `Accept-Language` 
 | Table | Contenu |
 | :--- | :--- |
 | `i18n_namespace` | espace de noms d'un module (`i18n_namespace:base`) : module propriétaire, langue source (active, non désactivable) |
-| `i18n_key` | clé (`i18n_key:⟨base.unite.metre⟩`) : espace de noms, nom en segments séparés par des points, contexte pour le traducteur, paramètres attendus `[{ name, type }]` (`string`, `number`, `datetime`), longueur maximale |
+| `i18n_key` | clé (`i18n_key:⟨base.unite_m⟩`) : espace de noms, nom en segments séparés par des points, contexte pour le traducteur, paramètres attendus `[{ name, type }]` (`string`, `number`, `datetime`), longueur maximale |
 | `i18n_translation` | texte d'une clé dans une langue, identifié par `[clé, langue, portée]` : texte de l'installation (`tenant` absent) ou surcharge d'une organisation ; syntaxe `icu_mf1` ou `plain`, état `translated` ou `reviewed`, `outdated`, empreinte du texte source |
 | `i18n_missing_key` | clés demandées par l'hôte ou un worker mais non déclarées |
 
@@ -70,7 +70,9 @@ de son organisation active (`auth_organization.locale`), puis `Accept-Language` 
 * **Droits** : espaces de noms, clés et textes de l'installation par `i18n.translation.manage`
   (rôle `platform_admin`) ; surcharges de son organisation par
   `i18n.organization.translation.manage` (rôle `organization_admin`) ; lecture ouverte, sauf les
-  surcharges.
+  surcharges, lues par leur organisation. `i18n.translation.read` (aucun rôle : comptes de
+  service, comme le worker d'envoi de `lyxal_notification`) lit et résout les textes de toute
+  organisation, sans rien écrire.
 
 ### Contrôle d'un texte
 
@@ -104,6 +106,16 @@ Clé non déclarée : `text` vaut la clé, `missing: true`. La clé n'est notée
 `i18n_missing_key` (et l'événement `i18n.key.missing` publié, une fois par clé et par langue) que
 pour un appel de la session système ; elle en sort quand la clé est déclarée.
 
+### Modules qui utilisent les clés
+
+| Module | Espace de noms | Usage |
+| :--- | :--- | :--- |
+| `lyxal_base` | `base` | libellé des unités (`base.unite_<code>`) et des types d'unités (`base.unite_type_<code>`), rendu par `fn::base_unite_get`, `_list` et `fn::base_unite_type_get`, `_list` |
+| `lyxal_notification` | `notification` | phrases des e-mails du système, appelées par `t("clé")` dans les gabarits et lues à la réservation d'un envoi |
+
+Ces modules créent leurs clés dans leurs propres seeds et n'appellent que les fonctions
+publiques de `lyxal_i18n`.
+
 ## 4. Fonctions publiques (`fn::i18n_*($params: object)`)
 
 | Fonction | Paramètres | Résultat | Droits |
@@ -132,7 +144,7 @@ pour un appel de la session système ; elle en sort quand la clé est déclarée
 | `i18n_import` | **locale**, **entries** `[{ key, text, syntax }]` (500 au plus), `tenant`, `overwrite_reviewed`, `dry_run` | `{ created, updated, unchanged, skipped: [{ key, reason }], invalid: [{ key, problems }] }` | écriture de la portée |
 | `i18n_translation_scan` | `limit` (500), `start` | `{ items: [{ key, locale, tenant, text, syntax }], total }` : tous les textes, toutes portées | `i18n.translation.manage` |
 
-`key` est la clé complète (`base.unite.metre`) ; `tenant` est une organisation
+`key` est la clé complète (`base.unite_m`) ; `tenant` est une organisation
 (`auth_organization:<clé>`). Toutes acceptent `language` (langue des messages d'erreur sur deux
 ou trois lettres, comme celle que renvoie `fn::i18n_locale_resolve` ; `fr` par défaut), valident
 leurs entrées par le moteur de `lyxal_core` et vérifient leur écriture principale
@@ -207,7 +219,7 @@ fichier.
 
 | Format | Forme |
 | :--- | :--- |
-| `FileFormat::Json` | objet à plat `{ "base.unite.metre": "mètre" }`, textes en ICU MessageFormat 1 : le format d'échange de Tolgee, FormatJS et Crowdin. Seules les clés traduites sont écrites |
+| `FileFormat::Json` | objet à plat `{ "base.unite_m": "Mètre" }`, textes en ICU MessageFormat 1 : le format d'échange de Tolgee, FormatJS et Crowdin. Seules les clés traduites sont écrites |
 | `FileFormat::Xliff` | XLIFF 2.0 : un `<file>` par espace de noms, un `<unit id="clé">` par clé, `<source>`, `<target>` si la clé est traduite, état (`initial`, `translated`, `reviewed`), contexte en `<notes>`. Texte seul : un élément en ligne (`<ph>`…) fait rejeter l'unité. Les textes sources doivent avoir la même langue (un espace de noms à la fois sinon) |
 
 * **Import** (`Exchange::import`) :

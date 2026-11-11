@@ -50,7 +50,7 @@ RETURN fn::base_unite_update({ id: "base_unite:ESS", enabled: false }).error.cod
 RETURN fn::base_unite_delete({ id: "base_unite:ESS" }).error.code == "BASE_WRITE_FORBIDDEN";
 
 -- test: le type et l'unité sont intacts
-RETURN (SELECT VALUE libelle FROM ONLY base_unite_type:ESSAI) == "Essai" AND (SELECT VALUE enabled FROM ONLY base_unite:ESS) == true;
+RETURN fn::base_unite_type_get({ code: "ESSAI" }).data.libelle == "Essai" AND (SELECT VALUE enabled FROM ONLY base_unite:ESS) == true;
 
 -- test: l'administration supprime l'unité puis le type
 RETURN fn::base_unite_delete({ id: "base_unite:ESS" }).data.deleted == true AND fn::base_unite_type_delete({ id: "base_unite_type:ESSAI" }).data.deleted == true;

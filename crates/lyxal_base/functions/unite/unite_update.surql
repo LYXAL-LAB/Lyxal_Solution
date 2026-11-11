@@ -49,7 +49,6 @@ DEFINE FUNCTION OVERWRITE fn::base_unite_update($params: object) {
     };
 
     LET $updated = (UPDATE ONLY $p.id MERGE {
-        libelle: $p.libelle ?? $existing.libelle,
         abreviation: $p.abreviation ?? $existing.abreviation,
         type: $type,
         enabled: $enabled
@@ -57,5 +56,17 @@ DEFINE FUNCTION OVERWRITE fn::base_unite_update($params: object) {
     IF $updated == NONE {
         RETURN fn::error_result("BASE_WRITE_FORBIDDEN", $language, { table: "base_unite" });
     };
-    RETURN fn::result_ok($updated);
+    -- Libellé : texte source de la clé lyxal_i18n ; son échec rétablit l'enregistrement
+    IF $p.libelle != NONE {
+        LET $failure = fn::base_libelle_update("unite", $existing.code, $p.libelle);
+        IF $failure IS NOT NONE {
+            UPDATE $p.id MERGE { abreviation: $existing.abreviation, type: $existing.type, enabled: $existing.enabled };
+            RETURN fn::error_result("BASE_LIBELLE_WRITE_FAILED", $language, { cause: $failure });
+        };
+    };
+    LET $labelled = fn::base_libelle_attach([$updated], "unite", $language);
+    IF $labelled.error IS NOT NONE {
+        RETURN fn::error_result("BASE_LIBELLE_READ_FAILED", $language, { cause: $labelled.error });
+    };
+    RETURN fn::result_ok($labelled.records[0]);
 } COMMENT "Met à jour le libellé, l'abréviation, le type ou l'activation d'une unité ; une unité n'est jamais rattachée à un type inactif ni réactivée sur un type inactif";

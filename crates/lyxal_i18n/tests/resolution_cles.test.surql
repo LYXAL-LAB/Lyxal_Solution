@@ -6,6 +6,7 @@
 -- identité alpha: { "id": "auth_session:alpha", "pv": 1, "permissions": ["i18n.organization.translation.manage"] }
 -- identité beta: { "id": "auth_session:beta", "pv": 1, "permissions": ["i18n.organization.translation.manage"] }
 -- identité membre: { "id": "auth_session:membre", "pv": 1, "permissions": [] }
+-- identité lecteur: { "id": "auth_session:lecteur", "pv": 1, "permissions": ["i18n.translation.read"] }
 
 -- préparation: organisations, identités et sessions lyxal_auth
 {
@@ -22,6 +23,8 @@
     CREATE auth_identity:membre CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "membre@lyxal.test" } };
     RELATE auth_identity:membre->auth_member_of->auth_organization:alpha;
     CREATE auth_session:membre CONTENT { identity: auth_identity:membre, organization: auth_organization:alpha, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_identity:lecteur CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "lecteur@lyxal.test" } };
+    CREATE auth_session:lecteur CONTENT { identity: auth_identity:lecteur, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
 };
 
 -- préparation: espaces de noms, clés et textes
@@ -60,6 +63,15 @@ RETURN fn::i18n_resolve({ key: "base.oui", locale: "fr" }).data.{ text, overridd
 -- en tant que: membre
 RETURN fn::i18n_resolve({ key: "base.oui", locale: "en", tenant: "auth_organization:beta" }).error.code == "I18N_PERMISSION_DENIED"
     AND fn::i18n_resolve_many({ keys: ["base.oui"], locale: "en", tenant: "auth_organization:beta" }).error.code == "I18N_PERMISSION_DENIED";
+
+-- test: un compte de service (i18n.translation.read) résout pour toute organisation, lit ses surcharges, n'écrit rien
+-- en tant que: lecteur
+RETURN fn::i18n_resolve({ key: "base.oui", locale: "en", tenant: "auth_organization:beta" }).data.{ text, overridden } == { text: "Aye", overridden: true }
+    AND fn::i18n_resolve_many({ keys: ["base.oui"], locale: "fr", tenant: "auth_organization:alpha" }).data.text == ["Oui chef"]
+    AND fn::i18n_resolve({ key: "base.oui", locale: "en" }).data.overridden == false
+    AND fn::i18n_can_read({ tenant: auth_organization:beta })
+    AND !fn::i18n_can_translate({ tenant: auth_organization:beta })
+    AND fn::i18n_translation_set({ key: "base.oui", locale: "en", text: "Yo", tenant: "auth_organization:beta" }).error.code == "I18N_PERMISSION_DENIED";
 
 -- test: la session système résout pour une organisation donnée
 RETURN fn::i18n_resolve({ key: "base.oui", locale: "en", tenant: "auth_organization:beta" }).data.{ text, overridden } == { text: "Aye", overridden: true }

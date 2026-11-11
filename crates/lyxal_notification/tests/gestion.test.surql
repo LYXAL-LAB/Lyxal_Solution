@@ -72,7 +72,7 @@ RETURN fn::notification_workflow_create({ tenant: "auth_organization:alpha", key
 {
     LET $w = (SELECT VALUE id FROM ONLY notification_workflow WHERE scope_key = "alpha" AND key = "devis_envoye" LIMIT 1);
     LET $r = fn::notification_workflow_set_status({ workflow: <string> $w, status: "active" });
-    RETURN $r.error.code == "NOTIFICATION_TEMPLATE_DEFAULT_LOCALE_REQUIRED" AND $r.error.details.steps == ["email"];
+    RETURN $r.error.code == "NOTIFICATION_TEMPLATE_REQUIRED" AND $r.error.details.steps == ["email"];
 };
 
 -- test: mise en page sans emplacement du contenu refusée
@@ -112,48 +112,55 @@ RETURN fn::notification_layout_create({ tenant: "auth_organization:alpha", key: 
         AND fn::notification_layout_get({ layout: "notification_layout:inconnue" }).error.code == "NOTIFICATION_NOT_FOUND";
 };
 
--- test: gabarit créé pour l'étape, avec une mise en page de l'organisation ; étape inconnue refusée
+-- test: gabarit créé pour l'étape, avec une mise en page de l'organisation : objet sur une ligne, HTML nettoyé ; étape inconnue, contenu absent et clé inconnue refusés
 -- en tant que: admin
 {
     LET $w = (SELECT VALUE id FROM ONLY notification_workflow WHERE scope_key = "alpha" AND key = "devis_envoye" LIMIT 1);
     LET $l = (SELECT VALUE id FROM ONLY notification_layout WHERE scope_key = "alpha" AND key = "maison" LIMIT 1);
-    RETURN fn::notification_template_create({ workflow: <string> $w, step_key: "email", default_locale: "fr", layout: <string> $l }).data.{ step_key, default_locale } == { step_key: "email", default_locale: "fr" }
-        AND fn::notification_template_create({ workflow: <string> $w, step_key: "sms", default_locale: "fr" }).error.code == "NOTIFICATION_INVALID_INPUT"
-        AND fn::notification_template_create({ workflow: <string> $w, step_key: "email", default_locale: "en" }).error.code == "NOTIFICATION_TEMPLATE_EXISTS";
+    LET $unknown = fn::notification_template_create({ workflow: <string> $w, step_key: "email", subject: "Devis {{ payload.quote_number }}", html_body: "<p>Devis {{ payload.quote_number }}</p>", text_body: "Devis {{ payload.quote_number }}", keys: ["notification.common.greeting", "notification.absente"] });
+    LET $v = fn::notification_template_create({
+        workflow: <string> $w, step_key: "email", layout: <string> $l,
+        subject: "Votre devis {{ payload.quote_number }}\r\nBcc: espion@x.test",
+        html_body: "<p onload=\"x()\">{{ t(\"notification.common.greeting\") }} Devis {{ payload.quote_number }}</p><script>x()</script>",
+        text_body: "Devis {{ payload.quote_number }}",
+        keys: ["notification.common.greeting", "notification.common.greeting"]
+    }).data;
+    RETURN $unknown.error.{ code, keys: details.keys } == { code: "NOTIFICATION_TEMPLATE_KEY_UNKNOWN", keys: ["notification.absente"] }
+        AND $v.{ step_key, keys } == { step_key: "email", keys: ["notification.common.greeting"] }
+        AND !string::contains($v.subject, "\n") AND !string::contains($v.subject, "\r")
+        AND !string::contains($v.html_body, "script") AND !string::contains($v.html_body, "onload")
+        AND fn::notification_template_create({ workflow: <string> $w, step_key: "sms", subject: "Devis {{ payload.quote_number }}", html_body: "<p>Devis {{ payload.quote_number }}</p>", text_body: "Devis {{ payload.quote_number }}" }).error.code == "NOTIFICATION_INVALID_INPUT"
+        AND fn::notification_template_create({ workflow: <string> $w, step_key: "email" }).error.code == "NOTIFICATION_INVALID_INPUT"
+        AND fn::notification_template_create({ workflow: <string> $w, step_key: "email", subject: "Devis {{ payload.quote_number }}", html_body: "<p>Devis {{ payload.quote_number }}</p>", text_body: "Devis {{ payload.quote_number }}" }).error.code == "NOTIFICATION_TEMPLATE_EXISTS";
 };
 
 -- test: une mise en page d'une autre organisation n'est pas utilisable ; celle de l'installation oui
 -- en tant que: autre
 {
     LET $w = (SELECT VALUE id FROM ONLY notification_workflow WHERE scope_key = "beta" AND key = "devis_envoye" LIMIT 1);
-    LET $alpha = fn::notification_template_create({ workflow: <string> $w, step_key: "email", default_locale: "fr", layout: "notification_layout:maison_alpha" });
+    LET $alpha = fn::notification_template_create({ workflow: <string> $w, step_key: "email", subject: "Devis {{ payload.quote_number }}", html_body: "<p>Devis {{ payload.quote_number }}</p>", text_body: "Devis {{ payload.quote_number }}", layout: "notification_layout:maison_alpha" });
     RETURN $alpha.error.code == "NOTIFICATION_NOT_FOUND"
-        AND fn::notification_template_create({ workflow: <string> $w, step_key: "email", default_locale: "fr", layout: "notification_layout:default" }).ok;
+        AND fn::notification_template_create({ workflow: <string> $w, step_key: "email", subject: "Devis {{ payload.quote_number }}", html_body: "<p>Devis {{ payload.quote_number }}</p>", text_body: "Devis {{ payload.quote_number }}", layout: "notification_layout:default" }).ok;
 };
 
--- test: version française enregistrée ; objet sur une ligne, HTML nettoyé
+-- test: gabarit modifié : seuls les champs fournis changent, HTML nettoyé, clé inconnue refusée ; lecture
 -- en tant que: admin
 {
     LET $t = (SELECT VALUE id FROM ONLY notification_template WHERE workflow.key = "devis_envoye" AND tenant = auth_organization:alpha LIMIT 1);
-    LET $v = fn::notification_template_locale_set({
-        template: <string> $t, locale: "fr",
-        subject: "Votre devis {{ payload.quote_number }}\r\nBcc: espion@x.test",
-        html_body: "<p onload=\"x()\">Devis {{ payload.quote_number }}</p><script>x()</script>",
-        text_body: "Devis {{ payload.quote_number }}"
-    }).data;
-    RETURN !string::contains($v.subject, "\n") AND !string::contains($v.subject, "\r")
-        AND !string::contains($v.html_body, "script") AND !string::contains($v.html_body, "onload");
-};
-
--- test: version remplacée (une seule version par langue), version anglaise ajoutée
--- en tant que: admin
-{
-    LET $t = (SELECT VALUE id FROM ONLY notification_template WHERE workflow.key = "devis_envoye" AND tenant = auth_organization:alpha LIMIT 1);
-    fn::notification_template_locale_set({ template: <string> $t, locale: "fr", subject: "Devis {{ payload.quote_number }}", html_body: "<p>Devis {{ payload.quote_number }}</p>", text_body: "Devis {{ payload.quote_number }}" });
-    fn::notification_template_locale_set({ template: <string> $t, locale: "en", subject: "Quote {{ payload.quote_number }}", html_body: "<p>Quote {{ payload.quote_number }}</p>", text_body: "Quote {{ payload.quote_number }}" });
+    LET $u = fn::notification_template_update({ template: <string> $t, subject: "Devis {{ payload.quote_number }}", html_body: "<p>Devis {{ payload.quote_number }}</p><iframe src=\"x\"></iframe>", keys: [] }).data;
     LET $g = fn::notification_template_get({ template: <string> $t }).data;
-    RETURN $g.locales.map(|$l| [$l.locale, $l.subject]) == [["en", "Quote {{ payload.quote_number }}"], ["fr", "Devis {{ payload.quote_number }}"]];
+    RETURN $u.{ subject, html_body, text_body, keys } == { subject: "Devis {{ payload.quote_number }}", html_body: "<p>Devis {{ payload.quote_number }}</p>", text_body: "Devis {{ payload.quote_number }}", keys: [] }
+        AND $g.{ subject, keys, step_key } == { subject: "Devis {{ payload.quote_number }}", keys: [], step_key: "email" }
+        AND $g.layout IS NOT NONE
+        AND fn::notification_template_update({ template: <string> $t, keys: ["notification.absente"] }).error.code == "NOTIFICATION_TEMPLATE_KEY_UNKNOWN"
+        AND fn::notification_template_update({ template: <string> $t, subject: "" }).error.code == "NOTIFICATION_INVALID_INPUT"
+        AND fn::notification_template_get({ template: "notification_template:inconnu" }).error.code == "NOTIFICATION_NOT_FOUND";
 };
+
+-- test: une autre organisation ne modifie pas le gabarit
+-- en tant que: autre
+RETURN fn::notification_template_update({ template: <string> (SELECT VALUE id FROM ONLY notification_template WHERE workflow.key = "devis_envoye" AND tenant = auth_organization:beta LIMIT 1), clear_layout: true }).ok
+    AND array::len(SELECT VALUE id FROM notification_template WHERE tenant = auth_organization:alpha) == 0;
 
 -- test: parcours activé une fois son gabarit prêt
 -- en tant que: admin
@@ -162,28 +169,18 @@ RETURN fn::notification_layout_create({ tenant: "auth_organization:alpha", key: 
     RETURN fn::notification_workflow_set_status({ workflow: <string> $w, status: "active" }).data.status == "active";
 };
 
--- test: la version de la langue par défaut ne peut pas être supprimée ; une autre version oui
+-- test: mise en page retirée du gabarit
 -- en tant que: admin
 {
     LET $t = (SELECT VALUE id FROM ONLY notification_template WHERE workflow.key = "devis_envoye" AND tenant = auth_organization:alpha LIMIT 1);
-    RETURN fn::notification_template_locale_delete({ template: <string> $t, locale: "fr" }).error.code == "NOTIFICATION_TEMPLATE_DEFAULT_LOCALE_REQUIRED"
-        AND fn::notification_template_locale_delete({ template: <string> $t, locale: "en" }).ok
-        AND fn::notification_template_locale_delete({ template: <string> $t, locale: "en" }).error.code == "NOTIFICATION_TEMPLATE_LOCALE_MISSING";
-};
-
--- test: gabarit d'un parcours actif : langue par défaut sans version refusée ; mise en page retirée
--- en tant que: admin
-{
-    LET $t = (SELECT VALUE id FROM ONLY notification_template WHERE workflow.key = "devis_envoye" AND tenant = auth_organization:alpha LIMIT 1);
-    RETURN fn::notification_template_update({ template: <string> $t, default_locale: "de" }).error.code == "NOTIFICATION_TEMPLATE_DEFAULT_LOCALE_REQUIRED"
-        AND fn::notification_template_update({ template: <string> $t, clear_layout: true }).data.layout IS NONE;
+    RETURN fn::notification_template_update({ template: <string> $t, clear_layout: true }).data.layout IS NONE;
 };
 
 -- test: parcours actif : une nouvelle étape sans gabarit refusée ; nom et étiquettes modifiés
 -- en tant que: admin
 {
     LET $w = (SELECT VALUE id FROM ONLY notification_workflow WHERE scope_key = "alpha" AND key = "devis_envoye" LIMIT 1);
-    RETURN fn::notification_workflow_update({ workflow: <string> $w, steps: [{ key: "email", channel: "email" }, { key: "rappel", channel: "email" }] }).error.code == "NOTIFICATION_TEMPLATE_DEFAULT_LOCALE_REQUIRED"
+    RETURN fn::notification_workflow_update({ workflow: <string> $w, steps: [{ key: "email", channel: "email" }, { key: "rappel", channel: "email" }] }).error.code == "NOTIFICATION_TEMPLATE_REQUIRED"
         AND fn::notification_workflow_update({ workflow: <string> $w, name: "Devis transmis", tags: ["crm", "devis"] }).data.{ name, tags } == { name: "Devis transmis", tags: ["crm", "devis"] };
 };
 
@@ -217,11 +214,12 @@ RETURN fn::notification_workflow_list({ tenant: "auth_organization:alpha" }).err
 -- en tant que: admin
 RETURN fn::notification_settings_set({ tenant: "auth_organization:alpha", from_name: "Alpha BTP", reply_to: "Contact@Alpha.test", max_attempts: 3 }).ok
     AND fn::notification_settings_get({ tenant: "auth_organization:alpha" }).data.effective
-        == { default_locale: "fr", from_name: "Alpha BTP", reply_to: "contact@alpha.test", max_attempts: 3, retention_days_runs: 90, retention_days_log: 30 };
+        == { from_name: "Alpha BTP", reply_to: "contact@alpha.test", max_attempts: 3, retention_days_runs: 90, retention_days_log: 30 };
 
 -- test: réglages modifiés sans recréation ; valeurs hors bornes refusées
 -- en tant que: admin
-RETURN fn::notification_settings_set({ tenant: "auth_organization:alpha", default_locale: "en" }).data.{ default_locale, max_attempts } == { default_locale: "en", max_attempts: 3 }
+RETURN fn::notification_settings_set({ tenant: "auth_organization:alpha", reply_to: "devis@alpha.test" }).data.{ reply_to, max_attempts } == { reply_to: "devis@alpha.test", max_attempts: 3 }
+    AND fn::notification_settings_set({ tenant: "auth_organization:alpha", default_locale: "en" }).error.code == "NOTIFICATION_INVALID_INPUT"
     AND fn::notification_settings_set({ tenant: "auth_organization:alpha", max_attempts: 50 }).error.code == "NOTIFICATION_INVALID_INPUT";
 
 -- test: une organisation ne lit ni ne modifie les réglages d'une autre ou de l'installation

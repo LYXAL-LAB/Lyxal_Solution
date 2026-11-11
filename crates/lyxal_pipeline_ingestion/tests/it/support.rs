@@ -25,7 +25,8 @@ pub async fn claimed_batch(store: &IngestionStore, batch: &NewBatch) -> BatchCla
 }
 
 /// Nouvelle base embarquée où `lyxal_core`, `lyxal_error`, `lyxal_event`, `lyxal_auth`,
-/// `lyxal_base`, `lyxal_catalogue` et le module sont installés depuis leurs manifestes.
+/// `lyxal_i18n`, `lyxal_base`, `lyxal_catalogue` et le module sont installés depuis leurs
+/// manifestes.
 pub async fn installed_store() -> IngestionStore {
     let client = surrealdb::engine::any::connect("mem://")
         .await
@@ -57,6 +58,7 @@ pub async fn installed_store() -> IngestionStore {
     for name in [
         "lyxal_event",
         "lyxal_auth",
+        "lyxal_i18n",
         "lyxal_base",
         "lyxal_catalogue",
         "lyxal_pipeline_ingestion",

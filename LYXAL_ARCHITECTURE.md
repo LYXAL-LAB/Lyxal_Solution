@@ -143,8 +143,8 @@ Les dépendances sont strictement unidirectionnelles. Le détail faisant foi est
 Fondation Transversale (lyxal_core : validation, sanitize, security, utils)
   │
   ▼
-Noyau Technique (lyxal_error, lyxal_surreal, lyxal_crypto, lyxal_event, lyxal_runtime, lyxal_base,
-                 lyxal_auth, lyxal_i18n, lyxal_storage, lyxal_secrets, lyxal_scheduler, lyxal_notification)
+Noyau Technique (lyxal_error, lyxal_surreal, lyxal_crypto, lyxal_event, lyxal_runtime, lyxal_auth,
+                 lyxal_i18n, lyxal_base, lyxal_storage, lyxal_secrets, lyxal_scheduler, lyxal_notification)
   │
   ▼
 Modules Métiers (lyxal_booking, lyxal_catalogue, lyxal_pipeline_ingestion, lyxal_crm, lyxal_documents, lyxal_btp)

@@ -1,9 +1,9 @@
 -- lyxal-test: assertions
--- File d'envoi : réservation (langue résolue, une étape réservée une seule fois), succès
+-- File d'envoi : réservation (langue de l'envoi et textes des clés, une étape réservée une seule fois), succès
 -- (message, journal, secret effacé, événement), échec temporaire puis définitif, destinataire
 -- refusé (suppression), échec définitif, secret expiré, réservation expirée, purge.
 --
--- identité worker: { "id": "auth_session:worker", "pv": 1, "permissions": ["notification.worker"] }
+-- identité worker: { "id": "auth_session:worker", "pv": 1, "permissions": ["notification.worker", "i18n.translation.read"] }
 -- identité admin: { "id": "auth_session:admin", "pv": 1, "permissions": ["notification.read", "notification.manage", "notification.send"] }
 
 -- préparation: organisation, sessions, réglages, parcours et deux déclenchements
@@ -16,15 +16,16 @@
     CREATE auth_session:admin CONTENT { identity: auth_identity:admin, organization: auth_organization:alpha, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
     fn::notification_settings_set({ tenant: "auth_organization:alpha", from_name: "Alpha BTP", reply_to: "contact@alpha.test", max_attempts: 2 });
     CREATE notification_workflow:devis CONTENT { tenant: auth_organization:alpha, key: "devis", name: "Devis", status: "active", steps: [{ key: "email", channel: "email" }] };
-    CREATE notification_template:devis_email CONTENT { tenant: auth_organization:alpha, workflow: notification_workflow:devis, step_key: "email", default_locale: "fr" };
-    CREATE notification_template_locale:devis_fr CONTENT { template: notification_template:devis_email, locale: "fr", subject: "Devis {{ payload.n }}", html_body: "<p>Devis</p>", text_body: "Devis" };
-    CREATE notification_template_locale:devis_en CONTENT { template: notification_template:devis_email, locale: "en", subject: "Quote {{ payload.n }}", html_body: "<p>Quote</p>", text_body: "Quote" };
+    CREATE notification_template:devis_email CONTENT { tenant: auth_organization:alpha, workflow: notification_workflow:devis, step_key: "email", subject: "Devis {{ payload.n }}", html_body: "<p>{{ t(\"notification.common.greeting\") }}</p>", text_body: "Devis", keys: ["notification.common.greeting"] };
     fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "devis-1", recipient: { email: "client@exemple.fr", locale: "en-GB" }, payload: { n: "D-1" }, secret: "enc:v2:cle-2026:AAAAAAAAAAAAAAAAAAAAAAAA" });
     fn::notification_trigger({ tenant: "auth_organization:alpha", trigger_event: "auth.invitation.created", idempotency_key: "invit-1", recipient: { email: "invitee@exemple.fr", locale: "de" }, payload: { invitation_id: "i", organization_name: "Alpha BTP" }, secret: "enc:v2:cle-2026:BBBBBBBBBBBBBBBBBBBBBBBB", expires_at: time::now() + 1d });
     DEFINE TABLE test_ref SCHEMALESS PERMISSIONS FULL;
 };
 
--- test: réservation des deux étapes : langue résolue, mise en page, réglages et secret scellé
+-- préparation: l'organisation remplace un texte de l'e-mail d'invitation
+fn::i18n_translation_set({ key: "notification.auth_invitation.action", locale: "fr", tenant: "auth_organization:alpha", text: "Rejoindre Alpha BTP" });
+
+-- test: réservation des deux étapes : langue de l'envoi, textes des clés (surcharge de l'organisation), mise en page, réglages et secret scellé
 -- en tant que: worker
 {
     LET $jobs = fn::notification_job_claim({ worker_id: "w1", limit: 10, lease_seconds: 60 }).data;
@@ -33,9 +34,13 @@
     CREATE test_ref:devis CONTENT { job: $devis.job_id, token: $devis.claim_token };
     CREATE test_ref:invit CONTENT { job: $invit.job_id, token: $invit.claim_token };
     RETURN array::len($jobs) == 2
-        AND $devis.{ locale, subject, sensitive, from_name, reply_to, attempt, layout_html, secret }
-            == { locale: "en", subject: "Quote {{ payload.n }}", sensitive: false, from_name: "Alpha BTP", reply_to: "contact@alpha.test", attempt: 1, layout_html: NONE, secret: "enc:v2:cle-2026:AAAAAAAAAAAAAAAAAAAAAAAA" }
-        AND $invit.{ locale, sensitive, tenant } == { locale: "fr", sensitive: true, tenant: auth_organization:alpha }
+        AND $devis.{ locale, subject, sensitive, from_name, reply_to, attempt, layout_html, secret, texts_error }
+            == { locale: "en", subject: "Devis {{ payload.n }}", sensitive: false, from_name: "Alpha BTP", reply_to: "contact@alpha.test", attempt: 1, layout_html: NONE, secret: "enc:v2:cle-2026:AAAAAAAAAAAAAAAAAAAAAAAA", texts_error: NONE }
+        AND $devis.texts == [{ key: "notification.common.greeting", text: "Hello,", syntax: "plain", locale: "en", overridden: false, missing: false }]
+        -- Langue du destinataire inactive (de) : langue par défaut de l'installation
+        AND $invit.{ locale, sensitive, tenant, texts_error } == { locale: "fr", sensitive: true, tenant: auth_organization:alpha, texts_error: NONE }
+        AND $invit.texts.find(|$t| $t.key = "notification.auth_invitation.action").{ text, overridden } == { text: "Rejoindre Alpha BTP", overridden: true }
+        AND $invit.texts.find(|$t| $t.key = "notification.auth_invitation.subject").{ text, syntax, overridden } == { text: "Invitation à rejoindre {organization}", syntax: "icu_mf1", overridden: false }
         AND string::contains($invit.layout_html, "{{ content }}") AND $invit.payload.organization_name == "Alpha BTP";
 };
 
@@ -217,3 +222,18 @@ RETURN array::len(SELECT * FROM notification_run WHERE idempotency_key IN ["devi
     AND array::len(SELECT * FROM notification_message WHERE to = "client@exemple.fr") == 0
     AND (SELECT VALUE code FROM notification_delivery_log WHERE run.idempotency_key = "rejet-1") == ["550"]
     AND array::len(SELECT * FROM notification_run WHERE idempotency_key = "invit-1") == 1;
+
+-- préparation: langue de l'organisation
+UPDATE auth_organization:alpha SET locale = "en";
+
+-- préparation: déclenchement pour un destinataire sans langue
+fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "devis-sans-langue", recipient: { email: "sans-langue@exemple.fr" }, payload: { n: "D-9" }, secret: "enc:v2:cle-2026:AAAAAAAAAAAAAAAAAAAAAAAA" });
+
+-- test: le worker (compte de service, sans droit de lire l'organisation) envoie dans la langue de l'organisation
+-- en tant que: worker
+{
+    LET $job = fn::notification_job_claim({ worker_id: "w1", limit: 10, lease_seconds: 60 }).data.find(|$j| $j.idempotency_key = "devis-sans-langue");
+    RETURN array::len(SELECT VALUE id FROM auth_organization) == 0
+        AND $job.{ locale, texts_error } == { locale: "en", texts_error: NONE }
+        AND $job.texts.text == ["Hello,"];
+};

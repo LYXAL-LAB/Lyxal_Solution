@@ -11,10 +11,10 @@ rend les gabarits (MiniJinja) et envoie par SMTP (`lettre`). Modèle repris de N
 
 | Table | Contenu |
 | :--- | :--- |
-| `notification_settings` | réglages de l'installation, surchargés par organisation : langue par défaut, expéditeur, adresse de réponse, tentatives au plus, durées de conservation |
+| `notification_settings` | réglages de l'installation, surchargés par organisation : expéditeur, adresse de réponse, tentatives au plus, durées de conservation |
 | `notification_workflow` | parcours : clé unique dans sa portée, événement déclencheur (`lyxal_event`), état `draft` / `active` / `inactive` (jamais supprimé), `critical`, `sensitive`, schéma des variables (`lyxal_core`), étapes ordonnées `[{ key, channel }]` |
 | `notification_layout` | mise en page HTML et texte contenant `{{ content }}` |
-| `notification_template`, `notification_template_locale` | gabarit d'une étape, sa langue par défaut et sa mise en page ; une version (objet, HTML, texte) par langue |
+| `notification_template` | gabarit d'une étape, en une seule version : objet, HTML, texte, mise en page, et `keys`, les clés `lyxal_i18n` de ses phrases |
 | `notification_run` | déclenchement pour un destinataire, **idempotent** par (portée, clé) ; secret scellé effacé dès la fin de ses étapes ou à son expiration |
 | `notification_job` | étape à exécuter : file réservée par `locked_until` et `claim_token`, tentatives, dernière erreur |
 | `notification_message` | message envoyé (destinataire, `Message-ID`) ; **aucun corps**, objet absent pour un parcours sensible |
@@ -35,10 +35,22 @@ Règles :
 * adresse supprimée (organisation ou installation) : déclenchement abandonné
   (`suppressed:<motif>`) ; un parcours **critique** n'est arrêté que par un rejet définitif ou un
   blocage manuel ;
-* activation d'un parcours seulement si chaque étape a un gabarit et sa version dans la langue
-  par défaut ; cette version ne peut pas être supprimée ;
-* langue du message : exacte, puis langue seule (`fr-CA` → `fr`), puis défaut du gabarit, puis
-  défaut des réglages ;
+* activation d'un parcours seulement si chaque étape a un gabarit
+  (`NOTIFICATION_TEMPLATE_REQUIRED`) ;
+* **traduction** : le gabarit porte la structure (HTML, liens, variables) et appelle
+  `t("clé", nom=valeur)` pour chaque phrase. Les clés sont déclarées dans `keys` (100 au plus)
+  et doivent exister dans `lyxal_i18n` (`NOTIFICATION_TEMPLATE_KEY_UNKNOWN`). Les textes
+  s'écrivent et se traduisent par `lyxal_i18n` ; une organisation surcharge ceux d'un e-mail
+  du système par `fn::i18n_translation_set` avec son `tenant`. Les e-mails du système ont
+  leurs phrases dans l'espace de noms `notification` (texte source en français, traduction
+  anglaise fournie). Un gabarit propre à une organisation peut appeler les clés existantes ou
+  écrire ses phrases en clair, dans une seule langue ;
+* langue du message (`fn::i18n_locale_resolve`) : celle du destinataire, sinon celle de son
+  organisation (`auth_organization.locale`, notée sur le déclenchement par la base : ni qui
+  déclenche ni le worker n'ont à lire l'organisation), sinon la langue par défaut de
+  l'installation ;
+  seule une langue active est retenue (`fr-CA` inactive → `fr`). Les textes des clés sont lus
+  dans cette langue à la réservation, avec le repli de `lyxal_i18n` ;
 * HTML des gabarits et mises en page nettoyé à l'enregistrement (scripts, iframes, gestionnaires
   d'événement) ; objet sans caractère de contrôle.
 
@@ -64,7 +76,7 @@ secret d'un déclenchement n'est lisible que par le worker (permission de champ)
 | Déclenchement | `notification_trigger` |
 | Parcours | `notification_workflow_create`, `_update`, `_get`, `_list`, `_set_status` |
 | Mises en page | `notification_layout_create`, `_update`, `_get`, `_list` |
-| Gabarits | `notification_template_create`, `_update`, `_get`, `notification_template_locale_set`, `_delete` |
+| Gabarits | `notification_template_create` (**workflow**, **step_key**, **subject**, **html_body**, **text_body**, `keys`, `layout`), `_update` (champs fournis seulement, `clear_layout`), `_get` |
 | Réglages | `notification_settings_get`, `_set` |
 | Liste de suppression | `notification_suppression_add`, `_remove`, `_list` |
 | Activité | `notification_run_get`, `_list` |
@@ -93,7 +105,7 @@ de même événement (idempotent par l'identifiant d'événement).
 Alertes de sécurité (sans secret) : `auth.mfa.enrolled`, `auth.mfa.removed`,
 `auth.mfa.recovery_codes_generated`, `auth.mfa.recovery_code_used`, `auth.password.changed`
 (sauf le premier mot de passe d'un compte), `auth.passkey.clone_detected` → parcours critique
-`auth_security_alert` (gabarits fr / en, nature de l'alerte dans `payload.alert`), destinataire
+`auth_security_alert` (une phrase par nature d'alerte, choisie par `payload.alert`), destinataire
 pris dans la charge utile (`recipient_*`), idempotent par l'identifiant d'événement.
 
 Publiés : `notification.message.sent`, `notification.message.failed`,
@@ -111,8 +123,15 @@ jamais de contenu ni de secret).
   `SecurityAlertHandler` : alertes de sécurité vers `auth_security_alert`.
 * `Renderer` : MiniJinja sans chargeur, variable affichée inconnue = erreur, échappement HTML
   automatique, budget d'exécution, mise en page autour du contenu.
-  Filtres de `lyxal_i18n`, dans la langue du destinataire (sinon celle du gabarit retenu, sinon
-  `fr`) ; une valeur invalide fait échouer le rendu, rien n'est envoyé :
+  Fonction `t("clé", nom=valeur, …)` : texte de la clé, lu à la réservation (`ClaimedJob.texts`),
+  rendu par `lyxal_i18n` (ICU MessageFormat 1 : arguments, pluriels) dans la **langue du texte
+  retenu** — un texte français servi en repli à un envoi en anglais garde les pluriels du
+  français — puis échappé dans le HTML comme toute variable. Le rendu échoue, sans envoi, pour
+  une clé absente de `keys`, une clé inconnue de `lyxal_i18n`, un argument absent ou d'un type
+  autre que texte ou nombre, un message invalide, ou des textes illisibles à la réservation
+  (`ClaimedJob.texts_error`).
+  Filtres de `lyxal_i18n`, dans la langue de l'envoi (avec la région du destinataire quand sa
+  langue est celle de l'envoi) ; une valeur invalide fait échouer le rendu, rien n'est envoyé :
 
   | Filtre | Exemple | Résultat (`fr`) |
   | :--- | :--- | :--- |
@@ -126,6 +145,8 @@ jamais de contenu ni de secret).
 * `SmtpTransport` (`lettre`, TLS rustls, connexions réutilisées) et `EmailTransport` ;
   classement : connexion ou 4xx → `transient`, 550 / 551 / 553 → `recipient_rejected`, autre 5xx →
   `permanent`. Signature DKIM par le relais.
+* Le worker lit les textes de toutes les organisations : il tourne sous la session système
+  de l'hôte ; un compte de service porte `notification.worker` et `i18n.translation.read`.
 * `NotificationEmailWorker` (une étape à la fois, réservation renouvelée avant l'envoi, traitement
   borné, aucun envoi commencé après l'annulation ; attente exponentielle plafonnée avec gigue
   complète, base 30 s, plafond 6 h) et `NotificationPurgeWorker` (`LyxalWorker`) ; `NotificationModule`,
@@ -139,7 +160,9 @@ aucun e-mail n'est envoyé et les abonnements `auth.*` restent suspendus.
 
 * Banc SurrealQL `tests/*.test.surql` (socle, gestion, déclenchement, file d'envoi, fonctions
   internes), exécuté par `scripts/ci/test_lyxal_modules.py`.
-* Tests Rust : rendu, classement SMTP, délais ; `tests/it/` de bout en bout sur le moteur
+* Tests Rust : rendu (textes traduits, pluriel d'un texte servi en repli, échappement, clés et
+  arguments refusés), classement SMTP, délais ; `tests/it/` de bout en bout sur le moteur
   embarqué avec un serveur SMTP de test (invitation de `lyxal_auth` reçue, aucune trace du jeton
-  en base ; enveloppe d'un autre événement refusée ; 4xx puis succès ; 550 → suppression).
+  en base ; enveloppe d'un autre événement refusée ; 4xx puis succès ; 550 → suppression) ;
+  les quatre e-mails du système et chaque alerte de sécurité rendus en français et en anglais.
 * `scripts/ci/ci_local.sh`.

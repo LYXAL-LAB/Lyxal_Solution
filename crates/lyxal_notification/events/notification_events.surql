@@ -6,6 +6,18 @@
 -- Publiés par la base dans la transaction de la mutation (.agents/AGENTS.md §5.6.1) ; une
 -- publication refusée fait échouer la mutation. Jamais de contenu, d'objet ni de secret.
 
+-- ----------------------------------------------------------------------------
+-- Langue de l'organisation, notée sur le déclenchement
+-- ----------------------------------------------------------------------------
+-- Un événement s'exécute avec tous les droits : la langue est lue quels que soient les droits
+-- de qui déclenche, et le worker (compte de service) n'a pas à lire l'organisation.
+
+DEFINE EVENT OVERWRITE notification_run_organization_locale ON TABLE notification_run
+WHEN $event = "CREATE" AND $after.tenant IS NOT NONE
+THEN {
+    UPDATE $after.id SET organization_locale = (SELECT VALUE locale FROM ONLY $after.tenant);
+};
+
 DEFINE EVENT OVERWRITE notification_message_sent_event ON TABLE notification_message
 WHEN $event = "CREATE" AND $after.status = "sent"
 THEN {

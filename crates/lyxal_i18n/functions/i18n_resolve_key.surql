@@ -11,8 +11,9 @@ DEFINE FUNCTION OVERWRITE fn::i18n_resolve_scope($tenant: option<record<auth_org
     LET $system = fn::auth_session_valid({}).system;
     LET $context = fn::auth_context({});
     LET $own = IF $context.ok { $context.data.organization } ELSE { NONE };
-    -- Seule la session système résout pour une autre organisation que celle de l'appelant
-    IF $tenant IS NOT NONE AND !$system AND $tenant != $own { RETURN { allowed: false }; };
+    -- Résoudre pour une autre organisation que la sienne : session système, ou permission de
+    -- lecture de tous les textes (compte de service, ex. worker d'envoi)
+    IF $tenant IS NOT NONE AND !$system AND $tenant != $own AND !fn::auth_has_permission({ permission: "i18n.translation.read" }) { RETURN { allowed: false }; };
     LET $organization = $tenant ?? $own;
     RETURN {
         allowed: true,

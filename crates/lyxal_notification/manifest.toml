@@ -24,6 +24,10 @@ version = ">=0.1.0"
 id = "lyxal_auth"
 version = ">=0.1.0"
 
+[[dependencies]]
+id = "lyxal_i18n"
+version = ">=0.1.0"
+
 [resources]
 schemas = [
     "schema/01_notification_settings.surql",
@@ -47,4 +51,4 @@ error_definitions = [
     "error/envoi/error_envoi.surql"
 ]
 events = ["events/notification_events.surql"]
-seeds = ["seeds/notification_initial.surql"]
+seeds = ["seeds/notification_texts.surql", "seeds/notification_initial.surql"]

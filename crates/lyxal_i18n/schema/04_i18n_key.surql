@@ -3,7 +3,7 @@
 -- MODULE : lyxal_i18n
 -- RÔLE   : Clés de traduction : nom, contexte et paramètres attendus
 -- ============================================================================
--- Identifiant = clé complète (i18n_key:⟨base.unite.metre⟩). Le texte source est la traduction
+-- Identifiant = clé complète (i18n_key:⟨base.unite_m⟩). Le texte source est la traduction
 -- de l'installation dans la langue source de l'espace de noms (i18n_translation).
 
 DEFINE TABLE OVERWRITE i18n_key

@@ -1,4 +1,4 @@
-//! Base embarquée avec `lyxal_core`, `lyxal_error`, `lyxal_event`, `lyxal_auth` et
+//! Base embarquée avec `lyxal_core`, `lyxal_error`, `lyxal_event`, `lyxal_auth`, `lyxal_i18n` et
 //! `lyxal_notification` installés comme le fait l'hôte ; trousseau de clés éphémère.
 
 use lyxal_crypto::{CryptoEngine, EncryptionKey, KeyId, KeyRingBuilder, KeyUse, StaticKeyResolver};
@@ -37,7 +37,12 @@ pub async fn installed_client() -> Surreal<Any> {
     lyxal_runtime::schema::install_batch(&client, &batch)
         .await
         .expect("noyau");
-    for name in ["lyxal_event", "lyxal_auth", "lyxal_notification"] {
+    for name in [
+        "lyxal_event",
+        "lyxal_auth",
+        "lyxal_i18n",
+        "lyxal_notification",
+    ] {
         let (manifest, provider) = load(name);
         lyxal_runtime::schema::install_resources(&client, &manifest, &provider)
             .await

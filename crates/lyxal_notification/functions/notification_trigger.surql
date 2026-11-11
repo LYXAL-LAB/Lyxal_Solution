@@ -13,7 +13,6 @@ DEFINE FUNCTION OVERWRITE fn::notification_settings_effective($params: object) -
         (SELECT * FROM ONLY notification_settings WHERE scope_key = <string> record::id($params.tenant) LIMIT 1) ?? {}
     };
     RETURN {
-        default_locale: $own.default_locale ?? $base.default_locale ?? "fr",
         from_name: $own.from_name ?? $base.from_name,
         reply_to: $own.reply_to ?? $base.reply_to,
         max_attempts: $own.max_attempts ?? $base.max_attempts ?? 8,

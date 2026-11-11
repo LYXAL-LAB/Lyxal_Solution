@@ -83,16 +83,15 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_payload($params: object) -> objec
     LET $workflow = (SELECT * FROM ONLY $run.workflow);
     LET $template = (SELECT * FROM ONLY notification_template WHERE workflow = $workflow.id AND step_key = $job.step_key LIMIT 1);
     LET $settings = fn::notification_settings_effective({ tenant: $run.tenant });
-    LET $requested = $run.recipient.locale;
-    LET $candidates = array::filter(array::distinct([
-        $requested,
-        IF $requested IS NONE { NONE } ELSE { string::split($requested, "-")[0] },
-        $template.default_locale,
-        $settings.default_locale
-    ]), |$l| $l IS NOT NONE);
-    LET $versions = (SELECT * FROM notification_template_locale WHERE template = $template.id);
-    LET $locale = array::find($candidates, |$c| array::any($versions, |$v| $v.locale = $c));
-    LET $version = array::find($versions, |$v| $v.locale = $locale);
+    -- Langue de l'envoi : celle du destinataire, sinon celle de son organisation (notée sur le
+    -- déclenchement par la base), sinon la langue
+    -- par défaut de l'installation ; textes des clés du gabarit dans cette langue (surcharge de
+    -- l'organisation, repli de lyxal_i18n)
+    LET $chosen = fn::i18n_locale_resolve({ candidates: array::filter([$run.recipient.locale, $run.organization_locale], |$l| $l IS NOT NONE) });
+    LET $locale = IF $chosen.ok { $chosen.data.locale } ELSE { NONE };
+    LET $texts = IF $locale IS NONE OR array::len($template.keys ?? []) = 0 { { ok: true, data: [] } } ELSE {
+        fn::i18n_resolve_many({ keys: $template.keys, locale: $locale, tenant: IF $run.tenant IS NONE { NONE } ELSE { <string> $run.tenant } })
+    };
     LET $layout = IF $template.layout IS NONE { NONE } ELSE { (SELECT html, text FROM ONLY $template.layout) };
     RETURN {
         job_id: $job.id,
@@ -105,9 +104,11 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_payload($params: object) -> objec
         attempt: $job.attempts,
         recipient: $run.recipient,
         locale: $locale,
-        subject: $version.subject,
-        html_body: $version.html_body,
-        text_body: $version.text_body,
+        subject: $template.subject,
+        html_body: $template.html_body,
+        text_body: $template.text_body,
+        texts: IF $texts.ok { $texts.data } ELSE { [] },
+        texts_error: IF $chosen.ok { IF $texts.ok { NONE } ELSE { $texts.error.code } } ELSE { $chosen.error.code },
         layout_html: $layout.html,
         layout_text: $layout.text,
         payload: $run.payload,
@@ -116,7 +117,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_payload($params: object) -> objec
         from_name: $settings.from_name,
         reply_to: $settings.reply_to
     };
-} COMMENT "Données de rendu d'une étape réservée ({ job }) : gabarit dans la langue résolue (exacte, langue seule, défaut du gabarit, défaut des réglages), mise en page, réglages, secret scellé";
+} COMMENT "Données de rendu d'une étape réservée ({ job }) : gabarit, langue de l'envoi (destinataire, organisation, installation), textes des clés du gabarit dans cette langue (texts ; texts_error : code I18N_* si leur lecture a échoué), mise en page, réglages, secret scellé";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_job_check : réservation encore détenue ?

@@ -4,13 +4,13 @@ Ordre de création des crates du noyau technique inscrits « à créer » dans
 `.agents/AGENTS.md` §6. Les crates du noyau déjà en place (`lyxal_error`, `lyxal_surreal`,
 `lyxal_crypto`, `lyxal_parsing`, `lyxal_event`, `lyxal_runtime`, `lyxal_base`, `lyxal_auth`,
 `lyxal_i18n`, `lyxal_notification`) ont leur propre `ROADMAP.md`. `lyxal_i18n` (rang 2) est créé :
-son programme (lots 2 à 6) est dans `implementation_plan.md` à la racine et sa `ROADMAP.md`. La V1 de `lyxal_auth` est livrée (lots 1 à 6 :
+son programme (lot 6, clôture) est dans `implementation_plan.md` à la racine et sa `ROADMAP.md` ; `lyxal_base` et `lyxal_notification` en dépendent pour leurs textes. La V1 de `lyxal_auth` est livrée (lots 1 à 6 :
 socle, connexion, double facteur, bascule du catalogue et de l'ingestion, clôture avec audit et
 revue OWASP ASVS niveau 2) ; ses évolutions sont dans `crates/lyxal_auth/ROADMAP.md`.
 
 `lyxal_notification` a été créé avant son rang (décision D8 du programme `lyxal_auth`) avec sa
-partie e-mail et des solutions d'attente pour `lyxal_i18n`, `lyxal_secrets` et
-`lyxal_scheduler` ; ses lots suivants, qui dépendent de ces trois crates, sont dans
+partie e-mail et des solutions d'attente pour `lyxal_secrets` et
+`lyxal_scheduler` ; ses lots suivants, qui dépendent de ces deux crates, sont dans
 `crates/lyxal_notification/ROADMAP.md`.
 
 Aucun crate ne démarre sans ordre du CTO et `implementation_plan.md` validé

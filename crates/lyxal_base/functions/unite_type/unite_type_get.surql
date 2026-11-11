@@ -9,6 +9,7 @@ DEFINE FUNCTION OVERWRITE fn::base_unite_type_get($params: object) {
         fields: {
             id: { pipeline: [{ rule: "record", options: { expected_table: "base_unite_type" } }] },
             code: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 32 } }] },
+            locale: { pipeline: [{ rule: "locale", options: { require_region: false } }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -30,5 +31,9 @@ DEFINE FUNCTION OVERWRITE fn::base_unite_type_get($params: object) {
     IF $found == NONE {
         RETURN fn::error_result("BASE_UNITE_TYPE_NOT_FOUND", $language, { id: <string> $record_id });
     };
-    RETURN fn::result_ok($found);
-} COMMENT "Lit un type d'unité par son identifiant (base_unite_type:<CODE>) ou par son code";
+    LET $labelled = fn::base_libelle_attach([$found], "unite_type", $p.locale ?? $p.language);
+    IF $labelled.error IS NOT NONE {
+        RETURN fn::error_result("BASE_LIBELLE_READ_FAILED", $p.language, { cause: $labelled.error });
+    };
+    RETURN fn::result_ok($labelled.records[0]);
+} COMMENT "Lit un type d'unité par son identifiant (base_unite_type:<CODE>) ou par son code ; libellé rendu dans la langue demandée (locale, par défaut language)";
