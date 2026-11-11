@@ -12,9 +12,9 @@ use crate::models::{
     BatchParams, BegunObject, Bucket, BucketCreateParams, BucketDeleted, BucketDetails, BucketList,
     BucketListParams, BucketRefParams, BucketUpdateParams, Expired, ObjectBeginParams,
     ObjectCommitParams, ObjectGetParams, ObjectList, ObjectListParams, ObjectRefParams,
-    ObjectUsageParams, PurgeList, Purged, QuarantineParams, ReclaimDone, ReclaimDoneParams,
-    ReclaimList, ScopeUsage, SettingsGetParams, SettingsSetParams, SettingsView, StoredObject,
-    StoredSettings,
+    ObjectUsageParams, PageParams, PurgeList, Purged, QuarantineParams, ReclaimDone,
+    ReclaimDoneParams, ReclaimList, ScopeUsage, SettingsGetParams, SettingsSetParams, SettingsView,
+    StoredObject, StoredSettings,
 };
 
 /// Store de `lyxal_storage` sur un client SurrealDB (`Surreal<Any>`).
