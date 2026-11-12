@@ -173,8 +173,11 @@ Publiés par `fn::event_publish` dans la transaction de la mutation : `storage.o
   (`RECHERCHE_SOURCES.md` §7) ; adresses de la forme `/<bucket>/<clé>` par défaut. Les erreurs
   passagères et les réponses `503` sont retentées par `object_store` ; un service injoignable ou
   des identifiants refusés rendent `STORAGE_BACKEND_UNAVAILABLE`, sans identifiant dans le
-  message. Un envoi en plusieurs parties coupé par un arrêt brutal est effacé par le service
-  lui-même (10 jours chez Bunny).
+  message. Un envoi en plusieurs parties coupé par un arrêt brutal du serveur n'est pas retiré
+  par le worker : c'est le service qui l'efface. Bunny le fait seul après 10 jours ; **sur un
+  autre service S3 (AWS, par exemple), une règle de cycle de vie qui abandonne les envois en
+  plusieurs parties incomplets (`AbortIncompleteMultipartUpload`) doit être posée sur le
+  bucket**, sans quoi ces parties restent stockées et facturées.
 * **Sans support configuré** : `put` et `open` rendent `STORAGE_BACKEND_UNKNOWN`, la sonde est
   « dégradée ».
 

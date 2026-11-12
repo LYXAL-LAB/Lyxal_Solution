@@ -136,7 +136,9 @@ LYXAL__STORAGE__S3__<NOM>__SECRET_ACCESS_KEY   mot de passe de la zone
 facultatifs. La clé secrète ne se lit que dans l'environnement : écrite dans un fichier de
 configuration, elle arrête le démarrage. Disque et S3 coexistent ; un support S3 peut s'appeler
 `default` s'il n'y a pas de dossier disque. Chez Bunny, l'API S3 se choisit à la création de la
-zone de stockage.
+zone de stockage. Sur un autre service S3 que Bunny, posez sur le bucket une règle de cycle de
+vie qui abandonne les envois en plusieurs parties incomplets (`AbortIncompleteMultipartUpload`,
+quelques jours) : un envoi coupé par un arrêt brutal du serveur n'est effacé que par le service.
 
 Sans aucun support, le serveur démarre : aucun fichier n'est écrit ni lu
 (`STORAGE_BACKEND_UNKNOWN`), le worker de nettoyage n'est pas lancé et la sonde du module est
