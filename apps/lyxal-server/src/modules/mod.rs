@@ -6,6 +6,7 @@ mod i18n;
 #[cfg(feature = "module-ingestion")]
 mod ingestion;
 mod notification;
+mod storage;
 
 use crate::config::AppConfig;
 use crate::error::ServerError;
@@ -130,6 +131,9 @@ fn implementation(
     if id == notification::MODULE_ID {
         return Ok(notification::module());
     }
+    if id == storage::MODULE_ID {
+        return Ok(storage::module());
+    }
     #[cfg(feature = "module-ingestion")]
     if id == ingestion::MODULE_ID {
         return Ok(ingestion::module());
@@ -160,6 +164,7 @@ pub async fn register_services(
     let crypto = crate::crypto::application_crypto(&config.crypto)?;
     let auth = auth::register_services(runtime, client, config, crypto.clone())?;
     i18n::register_services(runtime, client)?;
+    storage::register_services(runtime, client, config)?;
     let notification_delivery =
         notification::register_services(runtime, client, config, crypto).await?;
     #[cfg(feature = "module-ingestion")]

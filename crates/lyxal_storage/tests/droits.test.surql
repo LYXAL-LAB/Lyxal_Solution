@@ -131,7 +131,7 @@ RETURN (SELECT VALUE key FROM storage_object) == ["i.pdf"]
 -- en tant que: lecteur
 RETURN (UPDATE storage_object SET filename = "pirate.pdf") == []
     AND (DELETE storage_object RETURN BEFORE) == []
-    AND (CREATE storage_object CONTENT { bucket: (SELECT VALUE id FROM ONLY storage_bucket LIMIT 1), tenant: auth_organization:alpha, key: "direct.pdf", filename: "d.pdf" }) == [];
+    AND (CREATE storage_object CONTENT { bucket: (SELECT VALUE id FROM ONLY storage_bucket LIMIT 1), tenant: auth_organization:alpha, key: "direct.pdf", filename: "d.pdf", backend: "default" }) == [];
 
 -- test: rien n'a changé
 RETURN (SELECT VALUE filename FROM storage_object ORDER BY key) == ["a.pdf", "i.pdf"];
@@ -213,4 +213,37 @@ RETURN (SELECT VALUE state FROM storage_object WHERE scope_key = "alpha" ORDER B
     RETURN (SELECT VALUE scope_key FROM storage_object) == ["installation"]
         AND (SELECT VALUE scope_key FROM storage_bucket) == ["installation"]
         AND array::len(SELECT VALUE id FROM storage_settings) == 0;
+};
+
+-- test: les octets des buckets de l'organisation supprimée sont à retirer (un préfixe par bucket)
+{
+    LET $prefixes = (SELECT VALUE prefix FROM storage_reclaim);
+    RETURN array::len($prefixes) >= 1
+        AND array::all($prefixes, |$p| string::starts_with($p, "alpha/"))
+        AND array::all((SELECT VALUE backend FROM storage_reclaim), |$b| $b == "default");
+};
+
+-- test: la liste des préfixes à retirer est réservée au worker ; aucune écriture directe
+-- en tant que: plateforme
+RETURN fn::storage_reclaim_list({}).error.code == "STORAGE_PERMISSION_DENIED"
+    AND fn::storage_reclaim_done({ reclaim: "storage_reclaim:x" }).error.code == "STORAGE_PERMISSION_DENIED"
+    AND (SELECT VALUE id FROM storage_reclaim) == []
+    AND (CREATE storage_reclaim CONTENT { backend: "default", prefix: "installation/x" }) == []
+    AND (DELETE storage_reclaim RETURN BEFORE) == [];
+
+-- test: le worker lit les préfixes, puis retire chaque ligne ; un rejeu n'est pas une erreur
+-- en tant que: worker
+{
+    LET $items = fn::storage_reclaim_list({ limit: 10 }).data.items;
+    LET $after = fn::storage_reclaim_list({ limit: 10, start: array::len($items) }).data.items;
+    LET $done = array::map($items, |$r| fn::storage_reclaim_done({ reclaim: <string> $r.id }).data.done);
+    RETURN array::len($items) >= 1
+        AND array::all($items, |$r| $r.backend == "default" AND string::starts_with($r.prefix, "alpha/"))
+        AND $after == []
+        AND array::all($done, |$d| $d == true)
+        AND fn::storage_reclaim_done({ reclaim: <string> $items[0].id }).data == { done: false }
+        AND fn::storage_reclaim_list({}).data.items == []
+        AND fn::storage_reclaim_list({ limit: 0 }).error.code == "STORAGE_INVALID_PARAMETERS"
+        AND fn::storage_reclaim_list({ start: -1 }).error.code == "STORAGE_INVALID_PARAMETERS"
+        AND fn::storage_reclaim_done({}).error.code == "STORAGE_INVALID_PARAMETERS";
 };

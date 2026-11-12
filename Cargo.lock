@@ -3604,6 +3604,7 @@ dependencies = [
  "lyxal_notification",
  "lyxal_pipeline_ingestion",
  "lyxal_runtime",
+ "lyxal_storage",
  "lyxal_surreal",
  "serde",
  "serde_json",
@@ -3804,6 +3805,25 @@ dependencies = [
  "toml",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "lyxal_storage"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "futures",
+ "lyxal_auth",
+ "lyxal_crypto",
+ "lyxal_runtime",
+ "lyxal_surreal",
+ "object_store",
+ "surrealdb",
+ "tempfile",
+ "thiserror 1.0.69",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

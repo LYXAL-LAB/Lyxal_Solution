@@ -28,7 +28,8 @@ version = ">=0.1.0"
 schemas = [
     "schema/01_storage_settings.surql",
     "schema/02_storage_bucket.surql",
-    "schema/03_storage_object.surql"
+    "schema/03_storage_object.surql",
+    "schema/04_storage_reclaim.surql"
 ]
 functions = [
     "functions/storage_access.surql",
@@ -41,7 +42,8 @@ error_definitions = [
     "error/parametres/error_parametres.surql",
     "error/permissions/error_permissions.surql",
     "error/buckets/error_buckets.surql",
-    "error/fichiers/error_fichiers.surql"
+    "error/fichiers/error_fichiers.surql",
+    "error/supports/error_supports.surql"
 ]
 events = ["events/storage_events.surql"]
 seeds = ["seeds/storage_auth.surql"]

@@ -40,6 +40,20 @@
 RETURN fn::storage_bucket_create({ tenant: "auth_organization:alpha", name: "plans", description: "Plans de chantier", max_object_size: 1000, allowed_types: ["application/pdf", "image/png", "application/pdf"] }).data.{ name, scope_key, description, max_object_size, allowed_types, readonly }
     == { name: "plans", scope_key: "alpha", description: "Plans de chantier", max_object_size: 1000, allowed_types: ["application/pdf", "image/png"], readonly: false };
 
+-- test: support du bucket : « default » par défaut, nom choisi à la création, nom invalide refusé, jamais modifié
+-- en tant que: admin
+{
+    LET $froid = fn::storage_bucket_create({ tenant: "auth_organization:alpha", name: "froid", backend: "archive_froide" }).data;
+    RETURN (SELECT VALUE backend FROM ONLY storage_bucket WHERE scope_key = "alpha" AND name = "plans" LIMIT 1) == "default"
+        AND $froid.backend == "archive_froide"
+        AND fn::storage_bucket_create({ tenant: "auth_organization:alpha", name: "tiede", backend: "Pas Un Nom" }).error.code == "STORAGE_INVALID_PARAMETERS"
+        AND fn::storage_bucket_update({ bucket: <string> $froid.id, backend: "default" }).error.code == "STORAGE_INVALID_PARAMETERS"
+        AND fn::storage_bucket_delete({ bucket: <string> $froid.id }).data.deleted == true;
+};
+
+-- test: le bucket supprimé laisse un préfixe d'octets à retirer, sur son support
+RETURN (SELECT backend, string::starts_with(prefix, "alpha/") AS scope FROM storage_reclaim) == [{ backend: "archive_froide", scope: true }];
+
 -- test: nom déjà pris dans la portée ; même nom libre dans une autre portée
 -- en tant que: admin
 RETURN fn::storage_bucket_create({ tenant: "auth_organization:alpha", name: "plans" }).error.code == "STORAGE_BUCKET_EXISTS";

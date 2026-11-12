@@ -44,8 +44,14 @@ fn::storage_bucket_create({ tenant: "auth_organization:alpha", name: "plans", ma
 {
     LET $o = fn::storage_object_begin({ bucket: <string> (SELECT VALUE id FROM ONLY storage_bucket WHERE scope_key = "alpha" AND name = "plans" LIMIT 1), key: "2026/plan-a.pdf", filename: "Plan A.pdf", declared_type: "application/pdf", declared_size: 400 }).data;
     RETURN $o.{ key, tenant, scope_key, owner, filename, state, declared_size, size, blake3, slot } == { key: "2026/plan-a.pdf", tenant: auth_organization:alpha, scope_key: "alpha", owner: auth_identity:redacteur, filename: "Plan A.pdf", state: "pending", declared_size: 400, size: NONE, blake3: NONE, slot: "2026/plan-a.pdf" }
-        AND $o.pending_expires_at > time::now() + 23h;
+        AND $o.pending_expires_at > time::now() + 23h
+        AND $o.{ max_size, backend } == { max_size: 1000, backend: "default" }
+        AND $o.path == string::concat("alpha/", <string> record::id($o.bucket), "/", <string> record::id($o.id));
 };
+
+-- test: un fichier en attente n'est pas servi
+-- en tant que: lecteur
+RETURN fn::storage_object_open({ bucket: <string> (SELECT VALUE id FROM ONLY storage_bucket WHERE scope_key = "alpha" AND name = "plans" LIMIT 1), key: "2026/plan-a.pdf" }).error.{ code, state: details.state } == { code: "STORAGE_OBJECT_NOT_AVAILABLE", state: "pending" };
 
 -- test: adresse déjà occupée, même par une écriture en attente
 -- en tant que: redacteur
@@ -104,6 +110,22 @@ RETURN fn::storage_object_commit({ object: <string> (SELECT VALUE id FROM ONLY s
         AND fn::storage_object_usage({ tenant: "auth_organization:alpha" }).data == { objects: 1, bytes: 420, reserved_bytes: 0, quota_bytes: NONE }
         AND fn::storage_bucket_get({ bucket: <string> (SELECT VALUE id FROM ONLY storage_bucket WHERE scope_key = "alpha" AND name = "plans" LIMIT 1) }).data.usage == { objects: 1, bytes: 420 };
 };
+
+-- test: un fichier disponible est servi, par identifiant et par adresse ; refus hors droit de lecture ou sans adresse
+-- en tant que: lecteur
+{
+    LET $b = (SELECT VALUE id FROM ONLY storage_bucket WHERE scope_key = "alpha" AND name = "plans" LIMIT 1);
+    LET $o = fn::storage_object_open({ bucket: <string> $b, key: "2026/plan-a.pdf" }).data;
+    RETURN $o.{ state, backend } == { state: "available", backend: "default" }
+        AND $o.path == string::concat("alpha/", <string> record::id($b), "/", <string> record::id($o.id))
+        AND fn::storage_object_open({ object: <string> $o.id }).data.id == $o.id
+        AND fn::storage_object_open({ object: "storage_object:inconnu" }).error.code == "STORAGE_OBJECT_NOT_FOUND"
+        AND fn::storage_object_open({}).error.code == "STORAGE_INVALID_PARAMETERS";
+};
+
+-- test: une autre organisation ne se fait pas servir ce fichier
+-- en tant que: autre
+RETURN fn::storage_object_open({ object: <string> (SELECT VALUE id FROM ONLY storage_object LIMIT 1) ?? "storage_object:x" }).error.code == "STORAGE_OBJECT_NOT_FOUND";
 
 -- test: événement storage.object.created publié, sans contenu
 RETURN (SELECT VALUE payload FROM event_outbox WHERE event_type = "storage.object.created").{ key, tenant, size, content_type } == [{ key: "2026/plan-a.pdf", tenant: "auth_organization:alpha", size: 420, content_type: "application/pdf" }];
@@ -206,7 +228,11 @@ UPDATE storage_object SET state = "pending" WHERE key = "2026/plan-a.pdf";
 
 -- test: une fiche ne se crée pas directement dans un autre état que pending
 -- attendu-erreur: STORAGE_OBJECT_STATE_INVALID
-CREATE storage_object CONTENT { bucket: (SELECT VALUE id FROM ONLY storage_bucket WHERE scope_key = "alpha" AND name = "plans" LIMIT 1), tenant: auth_organization:alpha, key: "direct.pdf", filename: "d.pdf", state: "available" };
+CREATE storage_object CONTENT { bucket: (SELECT VALUE id FROM ONLY storage_bucket WHERE scope_key = "alpha" AND name = "plans" LIMIT 1), tenant: auth_organization:alpha, key: "direct.pdf", filename: "d.pdf", backend: "default", state: "available" };
+
+-- test: ni sur un autre support que celui de son bucket
+-- attendu-erreur: STORAGE_OBJECT_STATE_INVALID
+CREATE storage_object CONTENT { bucket: (SELECT VALUE id FROM ONLY storage_bucket WHERE scope_key = "alpha" AND name = "plans" LIMIT 1), tenant: auth_organization:alpha, key: "direct.pdf", filename: "d.pdf", backend: "ailleurs" };
 
 -- préparation: le délai de l'écriture en attente est passé ; le fichier supprimé a fini sa conservation
 {
@@ -229,17 +255,21 @@ RETURN fn::storage_object_expire({}).error.code == "STORAGE_PERMISSION_DENIED"
 {
     LET $expired = fn::storage_object_expire({ limit: 10 }).data;
     LET $list = fn::storage_object_purge_list({ limit: 10 }).data.items;
+    LET $second = fn::storage_object_purge_list({ limit: 10, start: 1 }).data.items;
     LET $available = (SELECT VALUE id FROM ONLY storage_object WHERE key = "2026/plan-a.pdf" AND state != "deleted" LIMIT 1);
     LET $purged = array::map($list, |$o| fn::storage_object_purge({ object: <string> $o.id }).data.purged);
     RETURN $expired == { expired: 1 }
         AND fn::storage_object_expire({}).data == { expired: 0 }
-        AND $list.{ bucket_name, scope_key, key } == [{ bucket_name: "plans", scope_key: "alpha", key: "b.png" }, { bucket_name: "plans", scope_key: "alpha", key: "b.png" }]
+        AND array::len($list) == 2
+        AND $second.id == [$list[1].id]
+        AND array::all($list, |$o| $o.backend == "default" AND $o.path == string::concat("alpha/", <string> record::id((SELECT VALUE id FROM ONLY storage_bucket WHERE scope_key = "alpha" AND name = "plans" LIMIT 1)), "/", <string> record::id($o.id)))
         AND $purged == [true, true]
         AND fn::storage_object_purge_list({}).data.items == []
         AND fn::storage_object_purge({ object: <string> $available }).error.code == "STORAGE_OBJECT_STATE_INVALID"
         AND fn::storage_object_purge({ object: "storage_object:inconnu" }).error.code == "STORAGE_OBJECT_NOT_FOUND"
         AND fn::storage_object_expire({ limit: 0 }).error.code == "STORAGE_INVALID_PARAMETERS"
         AND fn::storage_object_purge_list({ limit: 0 }).error.code == "STORAGE_INVALID_PARAMETERS"
+        AND fn::storage_object_purge_list({ start: -1 }).error.code == "STORAGE_INVALID_PARAMETERS"
         AND array::len(SELECT VALUE id FROM storage_object WHERE key = "b.png") == 0;
 };
 

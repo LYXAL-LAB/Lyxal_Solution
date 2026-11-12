@@ -6,11 +6,10 @@ son propre plan détaillé, validé par le CTO avant toute ligne de code (`.agen
 
 | Lot | Contenu | Touche |
 | :- | :--- | :--- |
-| 2 | Crate Rust : supports disque et mémoire (`object_store`), écriture et lecture en flux, empreinte BLAKE3, écriture en deux temps, workers de nettoyage et de purge (y compris les octets d'une organisation purgée), module et sonde de santé | `lyxal_storage` |
-| 3 | Hôte : routes d'envoi et de téléchargement en flux, limites, lecture partielle, configuration des supports | `apps/lyxal-server` |
+| 3 | Hôte : routes d'envoi et de téléchargement en flux, limites, lecture partielle | `apps/lyxal-server` |
 | 4 | Support S3 et compatibles, Bunny Storage en référence ; identifiants par l'environnement de l'hôte | `lyxal_storage`, `apps/lyxal-server` |
 | 5 | Contrôle du contenu : type réel du fichier, antivirus optionnel, quarantaine | `lyxal_storage` |
 | 6 | Envoi reprenable (protocole tus 1.0) | `lyxal_storage`, `apps/lyxal-server` |
 | 7 | Bascule de l'ingestion : fichier source d'un lot conservé par `lyxal_storage` | `lyxal_pipeline_ingestion` |
 | 8 | Clôture : audit, documentation | docs |
-| Plus tard | Buckets publics (lisibles sans session) ; versions d'un fichier ; déduplication par empreinte ; chiffrement des fichiers au repos (soumis au CTO, §11.3) ; identifiants des supports par `lyxal_secrets` ; bascule vers les buckets de SurrealDB quand ils ne seront plus expérimentaux | |
+| Plus tard | Vérification périodique de l'intégrité de tous les fichiers (aujourd'hui à la demande, `StorageService::verify`) ; déplacement des fichiers d'un bucket vers un autre support ; buckets publics (lisibles sans session) ; versions d'un fichier ; déduplication par empreinte ; chiffrement des fichiers au repos (soumis au CTO, §11.3) ; identifiants des supports par `lyxal_secrets` ; bascule vers les buckets de SurrealDB quand ils ne seront plus expérimentaux | |

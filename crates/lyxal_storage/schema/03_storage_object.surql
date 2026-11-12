@@ -41,6 +41,18 @@ DEFINE FIELD OVERWRITE key ON TABLE storage_object
     ASSERT fn::validation_lyxal_storage_path($value, NONE, true, 512).value == $value
     COMMENT "Clé dans le bucket : chemin relatif (plans/2026/a.pdf)";
 
+DEFINE FIELD OVERWRITE backend ON TABLE storage_object
+    TYPE string
+    READONLY
+    COMMENT "Support du bucket, qui porte les octets";
+
+DEFINE FIELD OVERWRITE path ON TABLE storage_object
+    TYPE string
+    VALUE string::concat(
+        IF $this.tenant IS NONE { "installation" } ELSE { <string> record::id($this.tenant) },
+        "/", <string> record::id($this.bucket), "/", <string> record::id($this.id))
+    COMMENT "Emplacement des octets sur le support : <portée>/<clé du bucket>/<clé de la fiche>";
+
 DEFINE FIELD OVERWRITE owner ON TABLE storage_object
     TYPE option<record<auth_identity>>
     REFERENCE ON DELETE UNSET

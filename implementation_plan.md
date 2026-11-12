@@ -53,6 +53,7 @@ fiche ne disparaît qu'après eux.
 | `storage_bucket` | nom (règle `lyxal_bucket_name` de `lyxal_core`), `tenant` (`NONE` : installation), support, taille maximale, types autorisés, lecture seule |
 | `storage_object` | bucket, clé (règle `lyxal_storage_path`), `tenant`, propriétaire, nom d'origine, taille, type déclaré et type réel, empreinte BLAKE3, état (`pending`, `available`, `quarantined`, `deleted`), dates |
 | `storage_upload` | envoi reprenable en cours : fichier visé, position atteinte, expiration |
+| `storage_reclaim` | préfixe d'octets à retirer après la suppression d'un bucket |
 
 * Les données d'une organisation sont supprimées avec elle (`REFERENCE ON DELETE CASCADE` sur
   `tenant`) ; leurs octets le sont par le worker de purge.
@@ -93,8 +94,8 @@ bucket, clé, taille et type ; jamais de contenu.
 | Lot | Contenu | Touche |
 | :- | :--- | :--- |
 | **1** | **Réalisé.** Socle SurrealQL : réglages, buckets, fiches de fichiers, états, droits, quotas, événements, erreurs, banc ; règle `checksum` de `lyxal_core` étendue à `blake3` ; module embarqué dans l'hôte. État : `crates/lyxal_storage/README.md` | `lyxal_storage`, `lyxal_core`, `apps/lyxal-server` |
-| **2** | Rust : supports disque et mémoire, écriture et lecture en flux, empreinte, écriture en deux temps, workers de nettoyage et de purge, module et sonde de santé. La purge d'une organisation supprime ses fiches en cascade : le retrait de ses octets est à concevoir dans ce lot | `lyxal_storage` |
-| **3** | Hôte : routes d'envoi et de téléchargement en flux (droits `lyxal_auth`, limites de taille, lecture partielle), configuration des supports | `apps/lyxal-server` |
+| **2** | **Réalisé.** Crate Rust : supports disque et mémoire, écriture et lecture en flux, empreinte, écriture en deux temps, worker de nettoyage (octets des buckets et des organisations supprimés compris), module et sonde de santé ; support `default` de l'hôte par `LYXAL__STORAGE__DISK__ROOT`. État : `crates/lyxal_storage/README.md` | `lyxal_storage`, `apps/lyxal-server` |
+| **3** | Hôte : routes d'envoi et de téléchargement en flux (droits `lyxal_auth`, limites de taille, lecture partielle) | `apps/lyxal-server` |
 | **4** | Support S3 et compatibles ; identifiants par l'environnement de l'hôte | `lyxal_storage`, `apps/lyxal-server` |
 | **5** | Contrôle du contenu : type réel du fichier, antivirus, quarantaine | `lyxal_storage` |
 | **6** | Envoi reprenable (protocole tus 1.0) pour les gros fichiers | `lyxal_storage`, `apps/lyxal-server` |
