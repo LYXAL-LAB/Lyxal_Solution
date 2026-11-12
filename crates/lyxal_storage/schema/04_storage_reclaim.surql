@@ -5,8 +5,10 @@
 -- ============================================================================
 -- Une ligne par bucket supprimé, écrite dans la transaction de la suppression par l'événement
 -- storage_bucket_reclaim (y compris quand le bucket part avec son organisation, dont les fiches
--- sont supprimées en cascade). Le worker retire les octets du préfixe, puis la ligne
--- (fn::storage_reclaim_list, fn::storage_reclaim_done). Aucune écriture directe.
+-- sont supprimées en cascade), et une ligne par envoi reprenable qui n'est plus en cours (dossier
+-- de ses parties, événement storage_object_upload_parts). Le worker retire les octets du
+-- préfixe, puis la ligne (fn::storage_reclaim_list, fn::storage_reclaim_done). Aucune écriture
+-- directe.
 
 DEFINE TABLE OVERWRITE storage_reclaim
     TYPE NORMAL
@@ -24,12 +26,12 @@ DEFINE FIELD OVERWRITE backend ON TABLE storage_reclaim
 DEFINE FIELD OVERWRITE prefix ON TABLE storage_reclaim
     TYPE string
     READONLY
-    COMMENT "Préfixe des octets à retirer : <portée>/<clé du bucket>";
+    COMMENT "Préfixe des octets à retirer : <portée>/<clé du bucket>, ou <emplacement d'un fichier>.parts";
 
 DEFINE FIELD OVERWRITE created_at ON TABLE storage_reclaim
     TYPE datetime
     DEFAULT time::now()
     READONLY
-    COMMENT "Suppression du bucket";
+    COMMENT "Inscription";
 
 DEFINE INDEX OVERWRITE storage_reclaim_created ON TABLE storage_reclaim FIELDS created_at;

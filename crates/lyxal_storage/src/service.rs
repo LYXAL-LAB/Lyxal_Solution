@@ -19,8 +19,8 @@ use crate::backend::{location, Backends};
 use crate::content::{detect, HEAD_SIZE};
 use crate::error::{StorageError, StorageResult};
 use crate::models::{
-    BegunObject, ObjectBeginParams, ObjectCommitParams, ObjectGetParams, ObjectRefParams,
-    StoredObject,
+    ObjectBeginParams, ObjectCommitParams, ObjectGetParams, ObjectRefParams, PartName,
+    StorageRecordId, StoredObject,
 };
 use crate::scanner::{ContentScanner, ScanVerdict};
 use crate::store::StorageStore;
@@ -82,9 +82,9 @@ pub struct OpenedObject {
 /// Service d'écriture et de lecture des fichiers, sur une session SurrealDB et des supports.
 #[derive(Clone)]
 pub struct StorageService {
-    store: StorageStore,
-    backends: Arc<Backends>,
-    scanner: Option<Arc<dyn ContentScanner>>,
+    pub(crate) store: StorageStore,
+    pub(crate) backends: Arc<Backends>,
+    pub(crate) scanner: Option<Arc<dyn ContentScanner>>,
 }
 
 impl StorageService {
@@ -131,60 +131,87 @@ impl StorageService {
                 filename: request.filename,
                 declared_type: request.content_type,
                 declared_size,
+                resumable: false,
             })
             .await?;
-        let written = match self.backends.get(&begun.backend) {
-            Ok(backend) => {
-                write(
-                    backend.store().as_ref(),
-                    self.scanner.as_deref(),
-                    &begun,
-                    request.size,
-                    content,
-                )
-                .await
-            }
-            Err(error) => Err(error),
+        let target = WriteTarget {
+            id: &begun.id,
+            backend: &begun.backend,
+            path: &begun.path,
+            max_size: begun.max_size,
+            declared_type: begun.declared_type.as_deref(),
         };
-        let committed = match written {
-            Ok(written) => self
-                .store
-                .object_commit(ObjectCommitParams {
-                    object: begun.id.to_sql(),
-                    size: written.size,
-                    content_type: written.content_type,
-                    blake3: written.blake3,
-                })
-                .await
-                .map_err(StorageError::from),
-            Err(error) => Err(error),
-        };
+        let content = content.map(|chunk| {
+            chunk.map_err(|error| {
+                StorageError::ContentMismatch(format!("flux interrompu : {error}"))
+            })
+        });
+        let committed = self
+            .write_and_commit(&target, request.size, None, content)
+            .await;
         if committed.is_err() {
-            self.abandon(&begun).await;
+            self.abandon(&target).await;
         }
         committed
     }
 
-    /// Écriture en échec : octets retirés du support, fiche supprimée. Un échec de ce nettoyage
-    /// est journalisé ; le worker retire alors l'écriture à la fin de son délai.
-    async fn abandon(&self, begun: &BegunObject) {
-        if let Ok(backend) = self.backends.get(&begun.backend) {
-            let removed = match location(&begun.path) {
+    /// Écrit le contenu à l'emplacement du fichier, puis rend le fichier disponible.
+    pub(crate) async fn write_and_commit<S>(
+        &self,
+        target: &WriteTarget<'_>,
+        declared_size: Option<u64>,
+        claim: Option<PartName>,
+        content: S,
+    ) -> StorageResult<StoredObject>
+    where
+        S: Stream<Item = StorageResult<Bytes>> + Send,
+    {
+        let backend = self.backends.get(target.backend)?;
+        let written = write(
+            backend.store().as_ref(),
+            self.scanner.as_deref(),
+            target,
+            declared_size,
+            content,
+        )
+        .await?;
+        Ok(self
+            .store
+            .object_commit(ObjectCommitParams {
+                object: target.id.to_sql(),
+                size: written.size,
+                content_type: written.content_type,
+                blake3: written.blake3,
+                claim,
+            })
+            .await?)
+    }
+
+    /// Retire du support les octets d'une écriture en échec ; un échec est journalisé.
+    pub(crate) async fn remove_written(&self, target: &WriteTarget<'_>) {
+        if let Ok(backend) = self.backends.get(target.backend) {
+            let removed = match location(target.path) {
                 Ok(path) => backend.remove(&path).await,
                 Err(error) => Err(error),
             };
             if let Err(error) = removed {
-                tracing::warn!(object = %begun.id.to_sql(), code = %error.code(), "octets d'une écriture en échec non retirés");
+                tracing::warn!(object = %target.id.to_sql(), code = %error.code(), "octets d'une écriture en échec non retirés");
             }
         }
+    }
+
+    /// Écriture en échec : octets retirés du support, fiche supprimée. Un échec de ce nettoyage
+    /// est journalisé ; le worker retire alors l'écriture à la fin de son délai.
+    async fn abandon(&self, target: &WriteTarget<'_>) {
+        self.remove_written(target).await;
         let deleted = self
             .store
             .object_delete(ObjectRefParams {
-                object: begun.id.to_sql(),
+                object: target.id.to_sql(),
             })
             .await;
         if let Err(error) = deleted {
-            tracing::warn!(object = %begun.id.to_sql(), error = %error, "fiche d'une écriture en échec non supprimée");
+            tracing::warn!(object = %target.id.to_sql(), error = %error, "fiche d'une écriture en échec non supprimée");
         }
     }
 
@@ -277,6 +304,20 @@ impl StorageService {
     }
 }
 
+/// Fichier en cours d'écriture : sa fiche en attente et l'emplacement de ses octets.
+pub(crate) struct WriteTarget<'a> {
+    /// Fiche.
+    pub id: &'a StorageRecordId,
+    /// Support qui porte les octets.
+    pub backend: &'a str,
+    /// Emplacement des octets sur le support.
+    pub path: &'a str,
+    /// Taille maximale acceptée, en octets.
+    pub max_size: i64,
+    /// Type MIME annoncé.
+    pub declared_type: Option<&'a str>,
+}
+
 /// Contenu écrit : taille, empreinte et type réel.
 struct Written {
     size: i64,
@@ -288,23 +329,22 @@ struct Written {
 /// branché, transmis à son analyse, dans le même passage. Rend la taille, l'empreinte et le type
 /// réel du contenu. En cas d'échec ou de menace reconnue, l'écriture est abandonnée sur le
 /// support.
-async fn write<S, E>(
+async fn write<S>(
     backend: &dyn ObjectStore,
     scanner: Option<&dyn ContentScanner>,
-    begun: &BegunObject,
+    target: &WriteTarget<'_>,
     declared_size: Option<u64>,
     content: S,
 ) -> StorageResult<Written>
 where
-    S: Stream<Item = Result<Bytes, E>> + Send,
-    E: std::fmt::Display,
+    S: Stream<Item = StorageResult<Bytes>> + Send,
 {
-    let max_size = u64::try_from(begun.max_size).unwrap_or(0);
+    let max_size = u64::try_from(target.max_size).unwrap_or(0);
     let mut scan = match scanner {
         Some(scanner) => Some(scanner.begin().await?),
         None => None,
     };
-    let upload = backend.put_multipart(&location(&begun.path)?).await?;
+    let upload = backend.put_multipart(&location(target.path)?).await?;
     let mut writer = WriteMultipart::new_with_chunk_size(upload, PART_SIZE);
     let mut hasher = Blake3Hasher::new();
     let mut head: Vec<u8> = Vec::new();
@@ -314,11 +354,7 @@ where
         let chunk = match content.next().await {
             None => break None,
             Some(Ok(chunk)) => chunk,
-            Some(Err(error)) => {
-                break Some(StorageError::ContentMismatch(format!(
-                    "flux interrompu : {error}"
-                )))
-            }
+            Some(Err(error)) => break Some(error),
         };
         size += chunk.len() as u64;
         if size > max_size || declared_size.is_some_and(|declared| size > declared) {
@@ -357,7 +393,7 @@ where
         (None, Some(scan)) => match scan.finish().await {
             Ok(ScanVerdict::Clean) => None,
             Ok(ScanVerdict::Infected(name)) => {
-                tracing::warn!(object = %begun.id.to_sql(), signature = %name, "fichier refusé par l'antivirus");
+                tracing::warn!(object = %target.id.to_sql(), signature = %name, "fichier refusé par l'antivirus");
                 Some(StorageError::Infected(name))
             }
             Err(error) => Some(error),
@@ -366,7 +402,7 @@ where
     };
     if let Some(error) = failure {
         if let Err(abort) = writer.abort().await {
-            tracing::warn!(object = %begun.id.to_sql(), error = %abort, "écriture non abandonnée sur le support");
+            tracing::warn!(object = %target.id.to_sql(), error = %abort, "écriture non abandonnée sur le support");
         }
         return Err(error);
     }
@@ -376,6 +412,6 @@ where
     Ok(Written {
         size,
         blake3: hasher.finalize_hex(),
-        content_type: detect(&head, begun.declared_type.as_deref()),
+        content_type: detect(&head, target.declared_type),
     })
 }

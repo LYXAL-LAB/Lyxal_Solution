@@ -10,11 +10,13 @@ use surrealdb::Surreal;
 
 use crate::models::{
     BatchParams, BegunObject, Bucket, BucketCreateParams, BucketDeleted, BucketDetails, BucketList,
-    BucketListParams, BucketRefParams, BucketUpdateParams, Expired, ObjectBeginParams,
-    ObjectCommitParams, ObjectGetParams, ObjectList, ObjectListParams, ObjectRefParams,
-    ObjectUsageParams, PageParams, PurgeList, Purged, QuarantineParams, ReclaimDone,
-    ReclaimDoneParams, ReclaimList, ScopeUsage, SettingsGetParams, SettingsSetParams, SettingsView,
-    StoredObject, StoredSettings,
+    BucketListParams, BucketRefParams, BucketUpdateParams, ClaimedUpload, Expired,
+    ObjectBeginParams, ObjectCommitParams, ObjectGetParams, ObjectList, ObjectListParams,
+    ObjectRefParams, ObjectUsageParams, PageParams, PurgeList, Purged, QuarantineParams,
+    ReclaimDone, ReclaimDoneParams, ReclaimList, ScopeUsage, SettingsGetParams, SettingsSetParams,
+    SettingsView, StoredObject, StoredSettings, UploadClaimParams, UploadPartAddParams,
+    UploadPartList, UploadReadyList, UploadRefParams, UploadReleaseParams, UploadReleased,
+    UploadStatus,
 };
 
 /// Store de `lyxal_storage` sur un client SurrealDB (`Surreal<Any>`).
@@ -126,6 +128,37 @@ impl StorageStore {
     /// `fn::storage_object_purge` : fiche retirée après ses octets.
     pub async fn object_purge(&self, params: ObjectRefParams) -> Call<Purged> {
         self.call_fn("storage_object_purge", params).await
+    }
+
+    /// `fn::storage_upload_get` : état d'un envoi reprenable.
+    pub async fn upload_get(&self, params: UploadRefParams) -> Call<UploadStatus> {
+        self.call_fn("storage_upload_get", params).await
+    }
+
+    /// `fn::storage_upload_part_add` : partie inscrite, nouvel état de l'envoi.
+    pub async fn upload_part_add(&self, params: UploadPartAddParams) -> Call<UploadStatus> {
+        self.call_fn("storage_upload_part_add", params).await
+    }
+
+    /// `fn::storage_upload_part_list` : parties d'un envoi, dans l'ordre du fichier.
+    pub async fn upload_part_list(&self, params: UploadRefParams) -> Call<UploadPartList> {
+        self.call_fn("storage_upload_part_list", params).await
+    }
+
+    /// `fn::storage_upload_claim` : assemblage d'un envoi complet réservé, ou réservation
+    /// prolongée.
+    pub async fn upload_claim(&self, params: UploadClaimParams) -> Call<ClaimedUpload> {
+        self.call_fn("storage_upload_claim", params).await
+    }
+
+    /// `fn::storage_upload_release` : réservation rendue, ou envoi abandonné par son détenteur.
+    pub async fn upload_release(&self, params: UploadReleaseParams) -> Call<UploadReleased> {
+        self.call_fn("storage_upload_release", params).await
+    }
+
+    /// `fn::storage_upload_ready_list` : envois complets à assembler.
+    pub async fn upload_ready_list(&self, params: BatchParams) -> Call<UploadReadyList> {
+        self.call_fn("storage_upload_ready_list", params).await
     }
 
     /// `fn::storage_reclaim_list` : préfixes d'octets à retirer.

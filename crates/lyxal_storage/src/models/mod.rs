@@ -6,6 +6,7 @@ mod bucket;
 mod object;
 mod settings;
 mod types;
+mod upload;
 mod worker;
 
 pub use bucket::{
@@ -20,6 +21,10 @@ pub use settings::{
     EffectiveSettings, SettingsGetParams, SettingsSetParams, SettingsView, StoredSettings,
 };
 pub use types::{StorageDatetime, StorageRecordId};
+pub use upload::{
+    ClaimedUpload, PartName, UploadClaimParams, UploadPart, UploadPartAddParams, UploadPartList,
+    UploadReadyList, UploadRefParams, UploadReleaseParams, UploadReleased, UploadStatus,
+};
 pub use worker::{
     BatchParams, Expired, PageParams, PurgeItem, PurgeList, Purged, QuarantineParams, ReclaimDone,
     ReclaimDoneParams, ReclaimItem, ReclaimList,

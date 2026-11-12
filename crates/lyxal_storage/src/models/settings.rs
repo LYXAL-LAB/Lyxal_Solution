@@ -26,6 +26,8 @@ pub struct StoredSettings {
     pub quota_bytes: Option<i64>,
     /// Délai d'une écriture en attente, en secondes.
     pub pending_ttl_seconds: Option<i64>,
+    /// Délai d'un envoi reprenable inachevé, en secondes.
+    pub upload_ttl_seconds: Option<i64>,
     /// Conservation d'un fichier supprimé, en jours.
     pub deleted_retention_days: Option<i64>,
     /// Types MIME refusés.
@@ -43,6 +45,8 @@ pub struct EffectiveSettings {
     pub quota_bytes: Option<i64>,
     /// Délai d'une écriture en attente, en secondes.
     pub pending_ttl_seconds: i64,
+    /// Délai d'un envoi reprenable inachevé, en secondes.
+    pub upload_ttl_seconds: i64,
     /// Conservation d'un fichier supprimé, en jours.
     pub deleted_retention_days: i64,
     /// Types MIME refusés, quel que soit le bucket.
@@ -70,6 +74,8 @@ pub struct SettingsSetParams {
     pub quota_bytes: Option<i64>,
     /// Délai d'une écriture en attente, en secondes.
     pub pending_ttl_seconds: Option<i64>,
+    /// Délai d'un envoi reprenable inachevé, en secondes.
+    pub upload_ttl_seconds: Option<i64>,
     /// Conservation d'un fichier supprimé, en jours.
     pub deleted_retention_days: Option<i64>,
     /// Types MIME refusés, quel que soit le bucket.

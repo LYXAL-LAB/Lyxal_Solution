@@ -113,15 +113,20 @@ pub fn register_services(
 ) -> Result<StorageHost, ServerError> {
     let store = StorageStore::new(client.clone());
     let backends = Arc::new(backends(config)?);
+    let scanner = scanner(config);
     if !backends.is_empty() {
-        runtime.register_worker(Arc::new(StorageCleanupWorker::new(
+        let mut worker = StorageCleanupWorker::new(
             store.clone(),
             backends.clone(),
             CLEANUP_INTERVAL,
             CLEANUP_BATCH,
-        )?))?;
+        )?;
+        // Les envois reprenables que le worker assemble passent par le même antivirus
+        if let Some(scanner) = &scanner {
+            worker = worker.with_scanner(scanner.clone());
+        }
+        runtime.register_worker(Arc::new(worker))?;
     }
-    let scanner = scanner(config);
     let mut probe = StorageHealthCheck::new(store, backends.clone());
     if let Some(scanner) = &scanner {
         probe = probe.with_scanner(scanner.clone());

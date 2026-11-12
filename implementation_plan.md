@@ -98,7 +98,7 @@ bucket, clé, taille et type ; jamais de contenu.
 | **3** | **Réalisé.** Hôte : routes `/api/v1/storage` d'envoi, de téléchargement (plage d'octets), de fiche, de liste et de suppression, en flux, sous la session de l'appelant ; taille bornée par le bucket. État : `apps/lyxal-server/README.md` | `apps/lyxal-server`, `lyxal_storage` |
 | **4** | **Réalisé.** Support S3 et compatibles par `object_store` (Bunny Storage en référence), déclaré par nom dans l'environnement de l'hôte ; disque et S3 coexistent ; tests sur un serveur S3 de test. État : `crates/lyxal_storage/README.md` | `lyxal_storage`, `apps/lyxal-server` |
 | **5** | **Réalisé.** Contrôle du contenu : type réel reconnu pendant l'écriture (`infer`), types refusés des réglages (exécutables par défaut), antivirus optionnel dans le même passage (`clamd`, `clamav-client`), affichage direct des images et des PDF. État : `crates/lyxal_storage/README.md` | `lyxal_storage`, `apps/lyxal-server` |
-| **6** | Envoi reprenable (protocole tus 1.0) pour les gros fichiers | `lyxal_storage`, `apps/lyxal-server` |
+| **6** | **Réalisé.** Envoi reprenable (protocole tus 1.0 : création, abandon, expiration) : fichier reçu en plusieurs requêtes, position tenue par la base, parties sur le support du fichier, assemblage contrôlé à la fin, repris par le worker après un arrêt. État : `crates/lyxal_storage/README.md`, `apps/lyxal-server/README.md` | `lyxal_storage`, `apps/lyxal-server` |
 | **7** | Bascule de l'ingestion : le fichier source d'un lot est conservé par `lyxal_storage` (constat A06 de l'audit externe) | `lyxal_pipeline_ingestion` |
 | **8** | Clôture : audit `lyxal-audit`, `README.md`, `ROADMAP.md`, `AGENTS.md` §6, `ROADMAP_NOYAU.md`, `RECHERCHE_SOURCES.md` réduit en `MODELE_SOURCES.md` | docs |
 

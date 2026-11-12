@@ -1,7 +1,7 @@
 -- ============================================================================
 -- EVENTS : lyxal_storage
 -- MODULE : lyxal_storage
--- RÔLE   : Garde des transitions d'état, préfixes à retirer et publication des événements storage.*
+-- RÔLE   : Garde des transitions d'état et des parties d'envoi, préfixes à retirer, publication des événements storage.*
 -- ============================================================================
 -- Publiés par la base dans la transaction de la mutation (.agents/AGENTS.md §5.6.1) ; une
 -- publication refusée fait échouer la mutation. Jamais de contenu.
@@ -57,6 +57,28 @@ THEN {
         backend: $before.backend,
         prefix: string::concat($before.scope_key, "/", <string> record::id($before.id))
     };
+};
+
+-- ----------------------------------------------------------------------------
+-- Envois reprenables : garde des parties, retrait des parties d'un envoi qui n'est plus en cours
+-- ----------------------------------------------------------------------------
+-- Une partie inscrite directement dans la table suit les règles de fn::storage_upload_part_add.
+-- Quand un envoi reprenable n'est plus en cours (assemblé, abandonné, expiré, ou fiche supprimée
+-- avec son organisation), ses lignes de parties sont retirées et le dossier de leurs octets est
+-- inscrit dans storage_reclaim, dans la même transaction : le worker le retire du support.
+
+DEFINE EVENT OVERWRITE storage_upload_part_guard ON TABLE storage_upload_part
+WHEN $event = "CREATE"
+THEN {
+    LET $refusal = fn::storage_upload_part_refusal($after);
+    IF $refusal IS NOT NONE { THROW $refusal.code; };
+};
+
+DEFINE EVENT OVERWRITE storage_object_upload_parts ON TABLE storage_object
+WHEN $before.resumable = true AND $before.state = "pending" AND ($event = "DELETE" OR ($event = "UPDATE" AND $after.state != "pending"))
+THEN {
+    DELETE storage_upload_part WHERE object = $before.id;
+    CREATE storage_reclaim CONTENT { backend: $before.backend, prefix: string::concat($before.path, ".parts") };
 };
 
 -- ----------------------------------------------------------------------------

@@ -54,7 +54,9 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_update_refusal($before: object, $af
     IF $before.state = $after.state {
         -- Hors transition, seul le worker touche aux champs posés par les fonctions
         LET $fixed = ["owner", "owner_application", "declared_type", "declared_size", "content_type", "size", "blake3", "quarantine_reason", "pending_expires_at", "deleted_at", "purge_after"];
-        RETURN IF !$worker AND array::any($fixed, |$f| $before[$f] != $after[$f]) { "STORAGE_PERMISSION_DENIED" } ELSE { NONE };
+        IF !$worker AND array::any($fixed, |$f| $before[$f] != $after[$f]) { RETURN "STORAGE_PERMISSION_DENIED"; };
+        -- Assemblage d'un envoi reprenable : réservé par son auteur ou par le worker
+        RETURN IF !$worker AND ($before.upload_claimed_until != $after.upload_claimed_until OR $before.upload_claim != $after.upload_claim) AND !fn::storage_object_is_author($before) { "STORAGE_PERMISSION_DENIED" } ELSE { NONE };
     };
     LET $allowed = {
         pending: ["available", "deleted"],
@@ -67,7 +69,11 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_update_refusal($before: object, $af
     IF $after.state = "available" {
         -- Fin d'écriture : le worker, ou l'appelant qui a ouvert l'écriture ; délai, contenu et règles du bucket
         IF !$worker AND !fn::storage_object_is_author($before) { RETURN "STORAGE_PERMISSION_DENIED"; };
-        IF $before.pending_expires_at IS NONE OR $before.pending_expires_at <= time::now() { RETURN "STORAGE_OBJECT_STATE_INVALID"; };
+        IF $before.pending_expires_at IS NONE OR ($before.pending_expires_at <= time::now() AND !fn::storage_upload_claimed($before)) { RETURN "STORAGE_OBJECT_STATE_INVALID"; };
+        -- Envoi reprenable : toutes les parties reçues, taille finale égale à l'annonce
+        IF $before.resumable AND ($after.size != $before.declared_size OR fn::storage_upload_offset($before.id, NONE) != $before.declared_size) { RETURN "STORAGE_OBJECT_STATE_INVALID"; };
+        -- Envoi reprenable : terminé sous une réservation d'assemblage en cours
+        IF $before.resumable AND !fn::storage_upload_claimed($before) { RETURN "STORAGE_UPLOAD_BUSY"; };
         IF $after.size IS NONE OR $after.content_type IS NONE OR $after.blake3 IS NONE { RETURN "STORAGE_OBJECT_STATE_INVALID"; };
         IF $bucket.readonly { RETURN "STORAGE_BUCKET_READONLY"; };
         RETURN fn::storage_object_limits({ bucket: $bucket, size: $after.size, content_type: $after.content_type, except: $after.id }).code;
@@ -99,6 +105,7 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_begin($params: object) {
             filename: { pipeline: [{ rule: "filename", options: { min_length: 1, max_length: 255 } }], required: true },
             declared_type: { pipeline: [{ rule: "mime_type" }] },
             declared_size: { pipeline: [{ rule: "integer", options: { min_value: 0 } }] },
+            resumable: { pipeline: [{ rule: "boolean" }], default: false },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -107,6 +114,10 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_begin($params: object) {
         RETURN fn::error_result("STORAGE_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
     LET $p = $report.value;
+    -- Envoi reprenable : la taille est connue dès l'ouverture
+    IF $p.resumable AND $p.declared_size IS NONE {
+        RETURN fn::error_result("STORAGE_INVALID_PARAMETERS", $p.language, { fields: { declared_size: ["required"] } });
+    };
     LET $bucket = (SELECT * FROM ONLY $p.bucket);
     IF $bucket == NONE { RETURN fn::error_result("STORAGE_BUCKET_NOT_FOUND", $p.language, { bucket: <string> $p.bucket }); };
     IF !fn::storage_can({ action: "write", tenant: $bucket.tenant }) { RETURN fn::error_result("STORAGE_PERMISSION_DENIED", $p.language, {}); };
@@ -123,12 +134,12 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_begin($params: object) {
         bucket: $bucket.id, tenant: $bucket.tenant, key: $p.key, backend: $bucket.backend,
         owner: IF $context.ok { $context.data.identity } ELSE { NONE },
         owner_application: IF $context.ok AND $context.data.identity IS NONE { $context.data.application } ELSE { NONE },
-        filename: $p.filename, declared_type: $p.declared_type, declared_size: $p.declared_size,
-        state: "pending", pending_expires_at: time::now() + duration::from_secs($settings.pending_ttl_seconds)
+        filename: $p.filename, declared_type: $p.declared_type, declared_size: $p.declared_size, resumable: $p.resumable,
+        state: "pending", pending_expires_at: time::now() + duration::from_secs(IF $p.resumable { $settings.upload_ttl_seconds } ELSE { $settings.pending_ttl_seconds })
     });
     IF $created == NONE { RETURN fn::error_result("STORAGE_WRITE_FORBIDDEN", $p.language, { table: "storage_object" }); };
     RETURN fn::result_ok(object::extend($created, { max_size: $bucket.max_object_size ?? $settings.max_object_size }));
-} COMMENT "Ouvre l'écriture d'un fichier ({ bucket, key, filename, declared_type, declared_size }) : fiche créée à l'état pending avec son délai, rendue avec max_size (taille maximale acceptée, pour arrêter une écriture qui dépasse) ; refus si le bucket est en lecture seule, si l'adresse est occupée (STORAGE_OBJECT_EXISTS), ou si la taille, le type ou le quota annoncés dépassent les règles. Droit : écriture";
+} COMMENT "Ouvre l'écriture d'un fichier ({ bucket, key, filename, declared_type, declared_size, resumable }) : fiche créée à l'état pending avec son délai (resumable : envoi reprenable, taille obligatoire, délai upload_ttl_seconds), rendue avec max_size (taille maximale acceptée, pour arrêter une écriture qui dépasse) ; refus si le bucket est en lecture seule, si l'adresse est occupée (STORAGE_OBJECT_EXISTS), ou si la taille, le type ou le quota annoncés dépassent les règles. Droit : écriture";
 
 -- ----------------------------------------------------------------------------
 -- fn::storage_object_commit
@@ -141,6 +152,7 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_commit($params: object) {
             size: { pipeline: [{ rule: "integer", options: { min_value: 0 } }], required: true },
             content_type: { pipeline: [{ rule: "mime_type" }], required: true },
             blake3: { pipeline: [{ rule: "checksum", options: { algorithm: "blake3" } }], required: true },
+            claim: { pipeline: [{ rule: "uuid" }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -155,8 +167,17 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_commit($params: object) {
     IF !fn::storage_can({ action: "worker" }) AND !(fn::storage_object_is_author($object) AND fn::storage_can({ action: "write", tenant: $object.tenant })) {
         RETURN fn::error_result("STORAGE_PERMISSION_DENIED", $p.language, {});
     };
-    IF $object.state != "pending" OR $object.pending_expires_at <= time::now() {
+    IF $object.state != "pending" OR ($object.pending_expires_at <= time::now() AND !fn::storage_upload_claimed($object)) {
         RETURN fn::error_result("STORAGE_OBJECT_STATE_INVALID", $p.language, { state: $object.state, expected: "pending" });
+    };
+    -- Envoi reprenable : toutes les parties sont reçues et la taille finale est celle de l'annonce
+    IF $object.resumable AND ($p.size != $object.declared_size OR fn::storage_upload_offset($object.id, NONE) != $object.declared_size) {
+        RETURN fn::error_result("STORAGE_OBJECT_STATE_INVALID", $p.language, { state: $object.state, expected: "complete" });
+    };
+    -- Envoi reprenable : seul le détenteur de la réservation d'assemblage en cours le termine ;
+    -- un assembleur dont la réservation a été reprise ne touche plus à l'envoi
+    IF $object.resumable AND ($p.claim IS NONE OR $p.claim != $object.upload_claim OR !fn::storage_upload_claimed($object)) {
+        RETURN fn::error_result("STORAGE_UPLOAD_BUSY", $p.language, {});
     };
     LET $bucket = (SELECT * FROM ONLY $object.bucket);
     -- Bucket passé en lecture seule depuis l'ouverture de l'écriture : plus aucune écriture
@@ -164,10 +185,10 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_commit($params: object) {
     LET $refusal = fn::storage_object_limits({ bucket: $bucket, size: $p.size, content_type: $p.content_type, except: $object.id });
     IF $refusal IS NOT NONE { RETURN fn::error_result($refusal.code, $p.language, $refusal.details); };
     LET $updated = (UPDATE ONLY $object.id SET size = $p.size, content_type = $p.content_type, blake3 = $p.blake3,
-        state = "available", pending_expires_at = NONE);
+        state = "available", pending_expires_at = NONE, upload_claim = NONE);
     IF $updated == NONE { RETURN fn::error_result("STORAGE_WRITE_FORBIDDEN", $p.language, { table: "storage_object" }); };
     RETURN fn::result_ok($updated);
-} COMMENT "Termine l'écriture d'un fichier ({ object, size, content_type, blake3 }) : taille, type réel et empreinte enregistrés, état available ; la taille, le type et le quota réels sont revérifiés ; refus si la fiche n'est plus pending, si son délai est passé ou si le bucket est passé en lecture seule. Droit : worker, ou l'appelant qui a ouvert l'écriture (son identité, ou son application pour un compte de service)";
+} COMMENT "Termine l'écriture d'un fichier ({ object, size, content_type, blake3, claim (envoi reprenable : jeton de la réservation d'assemblage, STORAGE_UPLOAD_BUSY s'il n'est plus celui en cours) }) : taille, type réel et empreinte enregistrés, état available ; la taille, le type et le quota réels sont revérifiés ; refus si la fiche n'est plus pending, si son délai est passé ou si le bucket est passé en lecture seule. Droit : worker, ou l'appelant qui a ouvert l'écriture (son identité, ou son application pour un compte de service)";
 
 -- ----------------------------------------------------------------------------
 -- fn::storage_object_get

@@ -191,3 +191,30 @@ IF !record::exists(error_definition:STORAGE_SCANNER_UNAVAILABLE) THEN (
         }
     }
 ) END;
+
+IF !record::exists(error_definition:STORAGE_OPERATION_CANCELLED) THEN (
+    CREATE error_definition:STORAGE_OPERATION_CANCELLED CONTENT {
+        code: "STORAGE_OPERATION_CANCELLED",
+        module: "storage",
+        domain: "supports",
+        category: "dependency",
+        severity: "warning",
+        message: "Storage operation cancelled",
+        default_language: "fr",
+        http_status: 503,
+        retryable: true,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Opération de stockage interrompue",
+                description: "L'opération a été interrompue par l'arrêt du serveur ; rien n'est perdu.",
+                resolution: "Réessayez après le redémarrage du serveur."
+            },
+            en: {
+                label: "Storage operation cancelled",
+                description: "The operation was interrupted by the server shutdown; nothing is lost.",
+                resolution: "Try again after the server has restarted."
+            }
+        }
+    }
+) END;

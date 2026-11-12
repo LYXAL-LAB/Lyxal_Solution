@@ -8,3 +8,4 @@ mod configuration;
 mod serve;
 mod startup;
 mod storage_routes;
+mod upload_routes;

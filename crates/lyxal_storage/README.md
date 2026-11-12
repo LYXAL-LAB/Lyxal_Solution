@@ -19,10 +19,11 @@ gestion de fichiers de SurrealDB : [`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md
 
 | Table | Contenu |
 | :--- | :--- |
-| `storage_settings` | réglages de l'installation, surchargés par organisation : taille maximale d'un fichier, quota, délai d'une écriture en attente, conservation après suppression, types refusés |
+| `storage_settings` | réglages de l'installation, surchargés par organisation : taille maximale d'un fichier, quota, délai d'une écriture en attente, délai d'un envoi reprenable, conservation après suppression, types refusés |
 | `storage_bucket` | ensemble de fichiers : nom unique dans sa portée (`[a-z0-9-]`, 3 à 63 caractères), taille maximale, types MIME acceptés (vide : tous), lecture seule, support (`backend`, `default` par défaut, fixé à la création) |
 | `storage_object` | fiche d'un fichier : bucket, clé (`plans/2026/a.pdf`), auteur (`owner` : identité ; `owner_application` : application d'un compte de service), nom d'origine, taille et type annoncés, taille, type réel et empreinte BLAKE3 posés à la fin de l'écriture, état, support et emplacement des octets (`backend`, `path`) |
-| `storage_reclaim` | préfixe d'octets à retirer après la suppression d'un bucket |
+| `storage_reclaim` | préfixe d'octets à retirer : bucket supprimé, ou parties d'un envoi reprenable qui n'est plus en cours |
+| `storage_upload_part` | partie reçue d'un envoi reprenable : envoi, position, taille, nom de ses octets sur le support ; une seule partie par position (index unique) |
 
 Portée : champ `tenant` (organisation `lyxal_auth`, absent pour l'installation) et `scope_key`
 (`installation` ou clé de l'organisation). Les buckets, les fiches et les réglages d'une
@@ -72,6 +73,32 @@ suppression, le préfixe de ses octets dans `storage_reclaim`. Il vaut aussi pou
 supprimé avec son organisation, dont les fiches partent en cascade : le worker retire alors les
 octets au passage suivant.
 
+**Envoi reprenable** (fichier reçu en plusieurs requêtes, repris après une coupure) :
+
+1. `fn::storage_object_begin` avec `resumable` crée la fiche `pending` ; la taille est annoncée
+   et le délai est celui des envois reprenables (`upload_ttl_seconds`, 24 h par défaut, de
+   1 minute à 7 jours, non prolongé par l'activité) ;
+2. chaque partie écrite sur le support, sous `<emplacement du fichier>.parts/`, est inscrite par
+   `fn::storage_upload_part_add`. La position de l'envoi est la somme des tailles inscrites :
+   la base est la seule vérité. Une partie n'est inscrite qu'à la position courante ; l'index
+   unique (envoi, position) départage deux requêtes simultanées. 10 000 parties au plus ;
+3. quand tous les octets sont reçus, l'assembleur (l'auteur de l'envoi, ou le worker) réserve
+   l'assemblage (`fn::storage_upload_claim` : un seul assembleur, plus aucune partie acceptée,
+   pas d'expiration pendant la réservation), relit les parties dans l'ordre, écrit le fichier et
+   termine par `fn::storage_object_commit`, qui exige un envoi complet. La réservation porte un
+   jeton : son détenteur la prolonge pendant un assemblage long, et lui seul termine ou
+   abandonne l'envoi. Un assembleur resté bloqué plus longtemps que sa réservation, reprise
+   entre-temps par un autre, est refusé partout (`STORAGE_UPLOAD_BUSY`) et ne touche plus ni à
+   la fiche ni aux octets ;
+4. dès que l'envoi n'est plus en cours (assemblé, abandonné, expiré, supprimé avec son
+   organisation), l'événement `storage_object_upload_parts` retire ses lignes de parties et
+   inscrit le dossier de leurs octets dans `storage_reclaim`, dans la même transaction : le
+   worker le retire du support.
+
+Seul l'auteur de l'envoi (ou le worker) le consulte et le poursuit. Une partie écrite directement
+dans la table suit les mêmes règles (garde `storage_upload_part_guard`) ; une partie inscrite ne
+se modifie pas.
+
 **Types** : le type enregistré (`content_type`) est le type réel du fichier, reconnu dans son
 contenu (§6) ; les types acceptés du bucket (`allowed_types`) et les types refusés des réglages
 (`blocked_types`) s'appliquent au type annoncé à l'ouverture de l'écriture, puis au type réel à
@@ -107,14 +134,14 @@ l'installation.
 | Fonction | Paramètres | Résultat | Droit |
 | :--- | :--- | :--- | :--- |
 | `storage_settings_get` | `tenant` | `{ own, effective }` | lecture |
-| `storage_settings_set` | `tenant`, `max_object_size`, `quota_bytes`, `pending_ttl_seconds`, `deleted_retention_days`, `blocked_types`, `clear` | réglages ; champ fourni remplacé, champ dans `clear` effacé | gestion |
+| `storage_settings_set` | `tenant`, `max_object_size`, `quota_bytes`, `pending_ttl_seconds`, `upload_ttl_seconds`, `deleted_retention_days`, `blocked_types`, `clear` | réglages ; champ fourni remplacé, champ dans `clear` effacé | gestion |
 | `storage_bucket_create` | **name**, `tenant`, `description`, `max_object_size`, `allowed_types`, `readonly`, `backend` (`default`) | bucket | gestion |
 | `storage_bucket_update` | **bucket**, `description`, `max_object_size`, `allowed_types`, `readonly`, `clear` (`description`, `max_object_size`) | bucket | gestion |
 | `storage_bucket_get` | **bucket** | bucket et `usage: { objects, bytes }` | lecture |
 | `storage_bucket_list` | `tenant`, `limit`, `start` | `{ items, total }`, triés par nom | lecture |
 | `storage_bucket_delete` | **bucket** | `{ deleted }` ; refusé s'il porte une fiche | gestion |
-| `storage_object_begin` | **bucket**, **key**, **filename**, `declared_type`, `declared_size` | fiche `pending` et `max_size` (taille maximale acceptée) | écriture |
-| `storage_object_commit` | **object**, **size**, **content_type**, **blake3** | fiche `available` | worker, ou l'appelant qui a ouvert l'écriture (son identité, ou son application pour un compte de service) |
+| `storage_object_begin` | **bucket**, **key**, **filename**, `declared_type`, `declared_size`, `resumable` (envoi reprenable : `declared_size` obligatoire) | fiche `pending` et `max_size` (taille maximale acceptée) | écriture |
+| `storage_object_commit` | **object**, **size**, **content_type**, **blake3**, `claim` (envoi reprenable : jeton de la réservation) | fiche `available` | worker, ou l'appelant qui a ouvert l'écriture (son identité, ou son application pour un compte de service) |
 | `storage_object_get` | **object**, ou **bucket** et **key** | fiche (par adresse : fichier non supprimé) | lecture |
 | `storage_object_open` | **object**, ou **bucket** et **key** | fiche d'un fichier à servir ; refus s'il n'est pas `available` | lecture |
 | `storage_object_list` | **bucket**, `prefix`, `state` (`available`), `limit`, `start` | `{ items, total }`, triés par clé | lecture |
@@ -126,10 +153,17 @@ l'installation.
 | `storage_object_purge` | **object** | `{ purged }` : fiche supprimée, après le retrait des octets | worker |
 | `storage_reclaim_list` | `limit`, `start` | `{ items: [{ id, backend, prefix, created_at }] }` | worker |
 | `storage_reclaim_done` | **reclaim** | `{ done }` : ligne retirée, après le retrait des octets | worker |
+| `storage_upload_get` | **object** | état d'un envoi reprenable : `{ id, state, backend, path, declared_type, length, offset, complete, max_size, expires_at }` ; introuvable s'il est abandonné, refusé s'il est hors délai | auteur de l'envoi, ou worker |
+| `storage_upload_part_add` | **object**, **offset**, **size**, **name** (UUID) | état de l'envoi après l'inscription de la partie | auteur de l'envoi, ou worker |
+| `storage_upload_part_list` | **object** | `{ items: [{ offset, size, name }] }`, dans l'ordre du fichier | auteur de l'envoi, ou worker |
+| `storage_upload_claim` | **object**, `seconds` (1800), `claim` (jeton, pour prolonger) | état de l'envoi et jeton de la réservation (`claim`) | auteur de l'envoi, ou worker |
+| `storage_upload_release` | **object**, **claim**, `abandon` | `{ released, abandoned }` : réservation rendue, ou envoi abandonné ; refusé si le jeton n'est plus celui en cours | auteur de l'envoi, ou worker |
+| `storage_upload_ready_list` | `limit` | `{ items }` : envois complets dont l'assemblage n'est ni fait ni en cours | worker |
 
 Fonctions internes : `fn::storage_can`, `fn::storage_settings_effective`,
 `fn::storage_scope_usage`, `fn::storage_object_limits`, `fn::storage_object_is_author`,
-`fn::storage_object_update_refusal`.
+`fn::storage_object_update_refusal`, `fn::storage_upload_offset`, `fn::storage_upload_claimed`,
+`fn::storage_upload_allowed`, `fn::storage_upload_view`, `fn::storage_upload_part_refusal`.
 
 ## 4. Erreurs (`error/<thème>/`)
 
@@ -139,7 +173,8 @@ Fonctions internes : `fn::storage_can`, `fn::storage_settings_effective`,
 | `permissions` | `STORAGE_PERMISSION_DENIED`, `STORAGE_WRITE_FORBIDDEN` |
 | `buckets` | `STORAGE_BUCKET_NOT_FOUND`, `STORAGE_BUCKET_EXISTS`, `STORAGE_BUCKET_NOT_EMPTY`, `STORAGE_BUCKET_READONLY` |
 | `fichiers` | `STORAGE_OBJECT_NOT_FOUND`, `STORAGE_OBJECT_EXISTS`, `STORAGE_OBJECT_STATE_INVALID`, `STORAGE_OBJECT_IN_USE`, `STORAGE_OBJECT_TOO_LARGE`, `STORAGE_OBJECT_TYPE_REFUSED`, `STORAGE_QUOTA_EXCEEDED`, `STORAGE_RANGE_NOT_SATISFIABLE` |
-| `supports` | `STORAGE_BACKEND_UNKNOWN`, `STORAGE_BACKEND_UNAVAILABLE` (à réessayer), `STORAGE_OBJECT_NOT_AVAILABLE`, `STORAGE_CONTENT_MISMATCH`, `STORAGE_INTEGRITY_FAILED`, `STORAGE_OBJECT_INFECTED`, `STORAGE_SCANNER_UNAVAILABLE` (à réessayer) |
+| `supports` | `STORAGE_BACKEND_UNKNOWN`, `STORAGE_BACKEND_UNAVAILABLE` (à réessayer), `STORAGE_OBJECT_NOT_AVAILABLE`, `STORAGE_CONTENT_MISMATCH`, `STORAGE_INTEGRITY_FAILED`, `STORAGE_OBJECT_INFECTED`, `STORAGE_SCANNER_UNAVAILABLE` (à réessayer), `STORAGE_OPERATION_CANCELLED` (arrêt du serveur, à réessayer) |
+| `envois` | `STORAGE_UPLOAD_OFFSET_MISMATCH` (position courante dans `details.offset`), `STORAGE_UPLOAD_EXPIRED`, `STORAGE_UPLOAD_BUSY` (à réessayer), `STORAGE_UPLOAD_TOO_MANY_PARTS`, `STORAGE_UPLOAD_INVALID_REQUEST`, `STORAGE_UPLOAD_VERSION_UNSUPPORTED` |
 
 ## 5. Événements
 
@@ -158,7 +193,8 @@ Publiés par `fn::event_publish` dans la transaction de la mutation : `storage.o
 | `StorageService` | `put` (écriture en flux), `stat` (fiche d'un fichier à servir), `open` (lecture en flux, en entier ou sur une plage `ByteRange` validée contre la taille de la fiche), `delete`, `verify` (relit les octets et compare taille et empreinte à la fiche) ; `with_scanner` branche un antivirus |
 | `content::detect` | type réel d'un fichier, reconnu à ses premiers octets (`infer`) |
 | `ContentScanner`, `ClamAvScanner`, `ScannerConfig` | antivirus branché sur l'écriture : service `clamd` de ClamAV, en TCP ou par socket Unix (`clamav-client`) |
-| `StorageCleanupWorker` | worker supervisé : écritures abandonnées, fichiers supprimés hors délai, octets des buckets supprimés |
+| `StorageService` (`upload`) | envoi reprenable : `upload_create`, `upload_status`, `upload_append` (octets à une position), `upload_complete` (assemblage), `upload_terminate` |
+| `StorageCleanupWorker` | worker supervisé : écritures abandonnées, envois reprenables complets restés sans assemblage, fichiers supprimés hors délai, octets des buckets supprimés et des parties d'envois terminés |
 | `StorageModule`, `StorageHealthCheck` | module `LyxalModule` ; la sonde écrit, relit et retire un fichier témoin sur chaque support |
 | `StorageError` | erreur SurrealQL ou du support ; `code()`, `is_retryable()` |
 
@@ -176,6 +212,20 @@ Publiés par `fn::event_publish` dans la transaction de la mutation : `storage.o
   (`StreamMaxLength` de `clamd`, à régler au moins à la taille maximale des fichiers) :
   `STORAGE_SCANNER_UNAVAILABLE`, l'envoi est refusé. Sans antivirus configuré, seul le type
   réel est contrôlé. ClamAV (GPL) reste un service séparé : aucun code GPL n'est lié.
+* **Envoi reprenable** : `upload_append` vérifie la position, puis écrit les octets reçus par
+  parties de 8 Mo au plus (une partie en mémoire) et inscrit chacune. Ce qui est reçu avant une
+  coupure du flux est conservé ; une partie refusée par la base est retirée du support ; après
+  une panne de la base pendant l'inscription, le service relit la liste des parties : inscrite,
+  la position avance ; non inscrite, ses octets sont retirés ; base toujours injoignable, ils
+  sont gardés (et partent avec le dossier des parties à la fin de l'envoi). La
+  requête qui apporte le dernier octet assemble le fichier : les parties sont relues en flux et
+  passent par l'écriture d'un envoi simple (taille, empreinte, type réel, antivirus) ; pendant
+  cette étape le fichier occupe deux fois sa place. Contenu refusé (type interdit, virus) :
+  l'envoi est abandonné. Échec passager (support, antivirus ou base indisponible), ou arrêt du
+  serveur : l'envoi reste complet et le worker l'assemble à son passage suivant (30 minutes au
+  plus après un arrêt brutal en cours d'assemblage, durée de la réservation). Le worker vérifie
+  l'arrêt du serveur entre deux parties : l'écriture en cours est abandonnée proprement et la
+  réservation rendue.
 * **Échec** (support, taille, flux interrompu, fin d'écriture refusée) : les octets écrits sont
   retirés, la fiche passe à `deleted`, l'erreur est rendue. Une écriture coupée par l'arrêt du
   serveur est retirée par le worker à la fin de son délai.
@@ -201,16 +251,21 @@ Publiés par `fn::event_publish` dans la transaction de la mutation : `storage.o
 ## 7. Vérification
 
 * Banc SurrealQL `tests/` (`scripts/ci/test_lyxal_modules.py`) : `reglages`, `buckets`,
-  `fichiers`, `droits` ; chaque fonction est appelée, sous la session système et sous des
+  `fichiers`, `droits`, `envois` ; chaque fonction est appelée, sous la session système et sous des
   identités avec et sans permission.
 * Tests Rust `tests/it/` (base embarquée ; supports mémoire, disque et S3 sur un serveur S3 de
   test `s3s-fs` lancé dans les tests) : fichier écrit puis relu
   à l'identique, plage d'octets, fichier de 64 Mo sans dépasser trois parties en mémoire, échecs
   nettoyés, fichier altéré détecté, worker, sonde, appels du store ; type réel et types refusés ;
+  envoi reprenable (plusieurs requêtes, coupure, mauvaise position, deux requêtes simultanées,
+  contenu refusé à l'assemblage, assemblage terminé par le worker, arrêt du serveur pendant
+  l'assemblage, assembleur en retard refusé, abandon, expiration) ;
   antivirus sur un faux service `clamd` lancé dans les tests (fichier sain, signature de test
   EICAR, limite de taille, service injoignable ou muet). Un essai sur un vrai service ClamAV
   n'est pas dans les contrôles automatiques : `ClamAvScanner` sur `127.0.0.1:3310` après
   `clamd` démarré, à lancer à la main.
+* Non couvert par un test : le refus au-delà de 10 000 parties (`STORAGE_UPLOAD_TOO_MANY_PARTS`) ;
+  une panne de la base pendant l'inscription d'une partie.
 * Essai réel sur un service S3 (`tests/it/real_s3.rs`, ignoré par défaut) : variables
   `LYXAL_TEST_S3_*`, puis `cargo test -p lyxal_storage --test it real_s3 -- --ignored`.
 * `apps/lyxal-server` : démarrage avec et sans dossier de stockage (`startup.rs`) ; routes des

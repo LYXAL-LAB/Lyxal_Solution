@@ -71,6 +71,8 @@ pub struct StoredObject {
     pub deleted_at: Option<StorageDatetime>,
     /// Date à partir de laquelle les octets et la fiche sont retirés.
     pub purge_after: Option<StorageDatetime>,
+    /// Envoi reprenable.
+    pub resumable: bool,
     /// Création.
     pub created_at: StorageDatetime,
     /// Dernière modification.
@@ -90,6 +92,8 @@ pub struct ObjectBeginParams {
     pub declared_type: Option<String>,
     /// Taille annoncée, en octets.
     pub declared_size: Option<i64>,
+    /// Envoi reprenable : octets reçus en plusieurs requêtes, taille annoncée obligatoire.
+    pub resumable: bool,
 }
 
 /// Résultat de `fn::storage_object_begin` : fiche en attente et ce qu'il faut pour écrire.
@@ -122,6 +126,8 @@ pub struct ObjectCommitParams {
     pub content_type: String,
     /// Empreinte BLAKE3 du contenu (64 caractères hexadécimaux).
     pub blake3: String,
+    /// Envoi reprenable : jeton de la réservation d'assemblage.
+    pub claim: Option<super::upload::PartName>,
 }
 
 /// Paramètres de `fn::storage_object_get` et `fn::storage_object_open` : la fiche par son

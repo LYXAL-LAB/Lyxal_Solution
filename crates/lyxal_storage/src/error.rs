@@ -28,6 +28,18 @@ pub enum StorageError {
     /// Antivirus configuré mais incapable d'analyser le contenu.
     #[error("antivirus indisponible : {0}")]
     ScannerUnavailable(String),
+    /// Position annoncée différente de celle d'un envoi reprenable ; porte la position courante.
+    #[error("position d'envoi incorrecte : l'envoi en est à {0} octets")]
+    UploadOffsetMismatch(u64),
+    /// Requête d'envoi reprenable contraire au protocole (en-tête absent ou mal formé).
+    #[error("requête d'envoi invalide : {0}")]
+    UploadInvalidRequest(String),
+    /// Version du protocole d'envoi reprenable non prise en charge ; porte la version demandée.
+    #[error("version du protocole d'envoi non prise en charge : {0}")]
+    UploadVersionUnsupported(String),
+    /// Opération interrompue par l'arrêt du serveur ; rien n'est perdu.
+    #[error("opération interrompue par l'arrêt du serveur")]
+    Cancelled,
     /// Contenu relu différent de la fiche (taille ou empreinte).
     #[error("fichier altéré : {0}")]
     IntegrityFailed(String),
@@ -52,8 +64,19 @@ impl StorageError {
             Self::RangeNotSatisfiable(_) => "STORAGE_RANGE_NOT_SATISFIABLE".to_string(),
             Self::Infected(_) => "STORAGE_OBJECT_INFECTED".to_string(),
             Self::ScannerUnavailable(_) => "STORAGE_SCANNER_UNAVAILABLE".to_string(),
+            Self::UploadOffsetMismatch(_) => "STORAGE_UPLOAD_OFFSET_MISMATCH".to_string(),
+            Self::UploadInvalidRequest(_) => "STORAGE_UPLOAD_INVALID_REQUEST".to_string(),
+            Self::UploadVersionUnsupported(_) => "STORAGE_UPLOAD_VERSION_UNSUPPORTED".to_string(),
+            Self::Cancelled => "STORAGE_OPERATION_CANCELLED".to_string(),
             Self::IntegrityFailed(_) => "STORAGE_INTEGRITY_FAILED".to_string(),
         }
+    }
+
+    /// Vrai si l'erreur est un refus rendu par une fonction SurrealQL (code métier) : la base a
+    /// répondu, l'opération n'a pas eu lieu. Faux pour une panne (transport, réponse illisible),
+    /// après laquelle on ne sait pas si l'opération a eu lieu.
+    pub fn is_business(&self) -> bool {
+        matches!(self, Self::Surreal(error) if matches!(error.as_ref(), LyxalSurrealError::Call(LyxalCallError::Business(_))))
     }
 
     /// Vrai si l'opération peut réussir plus tard sans changement (base ou support indisponible).
@@ -64,11 +87,14 @@ impl StorageError {
                 LyxalSurrealError::Call(_) => false,
                 other => other.transport_info().is_some_and(|info| info.retryable),
             },
-            Self::BackendUnavailable(_) | Self::ScannerUnavailable(_) => true,
+            Self::BackendUnavailable(_) | Self::ScannerUnavailable(_) | Self::Cancelled => true,
             Self::BackendUnknown(_)
             | Self::ContentMismatch(_)
             | Self::RangeNotSatisfiable(_)
             | Self::Infected(_)
+            | Self::UploadOffsetMismatch(_)
+            | Self::UploadInvalidRequest(_)
+            | Self::UploadVersionUnsupported(_)
             | Self::IntegrityFailed(_) => false,
         }
     }
