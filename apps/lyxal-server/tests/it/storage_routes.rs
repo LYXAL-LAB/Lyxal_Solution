@@ -122,11 +122,11 @@ async fn files_are_sent_served_and_protected_through_http() {
             CREATE auth_organization:beta CONTENT { slug: "beta", name: "Beta Bois" };
             CREATE auth_role:storage_reader CONTENT { scope_key: "installation", key: "storage_reader", name: "Lecteur des fichiers", scope: "organization", system: true };
             RELATE auth_role:storage_reader->auth_role_grants->auth_permission:⟨storage.object.read⟩;
-            CREATE auth_application:redacteur CONTENT { tenant: auth_organization:alpha, client_id: "redacteur-alpha", name: "Rédacteur", type: "machine", redirect_uris: [], state: "active", permissions_version: 1 };
+            CREATE auth_application:redacteur CONTENT { tenant: auth_organization:alpha, client_id: "lyxal-test-redacteur-alpha", name: "Rédacteur", type: "machine", redirect_uris: [], state: "active", permissions_version: 1 };
             RELATE auth_application:redacteur->auth_has_role->auth_role:organization_admin SET granted_at = time::now();
-            CREATE auth_application:lecteur CONTENT { tenant: auth_organization:alpha, client_id: "lecteur-alpha", name: "Lecteur", type: "machine", redirect_uris: [], state: "active", permissions_version: 1 };
+            CREATE auth_application:lecteur CONTENT { tenant: auth_organization:alpha, client_id: "lyxal-test-lecteur-alpha", name: "Lecteur", type: "machine", redirect_uris: [], state: "active", permissions_version: 1 };
             RELATE auth_application:lecteur->auth_has_role->auth_role:storage_reader SET granted_at = time::now();
-            CREATE auth_application:voisin CONTENT { tenant: auth_organization:beta, client_id: "redacteur-beta", name: "Voisin", type: "machine", redirect_uris: [], state: "active", permissions_version: 1 };
+            CREATE auth_application:voisin CONTENT { tenant: auth_organization:beta, client_id: "lyxal-test-redacteur-beta", name: "Voisin", type: "machine", redirect_uris: [], state: "active", permissions_version: 1 };
             RELATE auth_application:voisin->auth_has_role->auth_role:organization_admin SET granted_at = time::now();
             "#,
         )
@@ -158,9 +158,9 @@ async fn files_are_sent_served_and_protected_through_http() {
                 .to_string()
         }
     };
-    let writer = token("redacteur-alpha").await;
-    let reader = token("lecteur-alpha").await;
-    let neighbour = token("redacteur-beta").await;
+    let writer = token("lyxal-test-redacteur-alpha").await;
+    let reader = token("lyxal-test-lecteur-alpha").await;
+    let neighbour = token("lyxal-test-redacteur-beta").await;
     let object = format!("/api/v1/storage/buckets/{plans}/objects/2026/plan.txt");
 
     // --- Envoi ----------------------------------------------------------------------------

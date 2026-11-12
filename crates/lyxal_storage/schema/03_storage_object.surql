@@ -58,6 +58,11 @@ DEFINE FIELD OVERWRITE owner ON TABLE storage_object
     REFERENCE ON DELETE UNSET
     COMMENT "Identité qui a écrit le fichier (NONE : session système ou identité supprimée)";
 
+DEFINE FIELD OVERWRITE owner_application ON TABLE storage_object
+    TYPE option<record<auth_application>>
+    REFERENCE ON DELETE UNSET
+    COMMENT "Application qui a écrit le fichier sans identité (compte de service) ; NONE sinon";
+
 DEFINE FIELD OVERWRITE filename ON TABLE storage_object
     TYPE string
     ASSERT string::len($value) >= 1 AND string::len($value) <= 255

@@ -9,6 +9,7 @@
 -- identité autre: { "id": "auth_session:autre", "pv": 1, "permissions": ["storage.object.read", "storage.object.write", "storage.bucket.manage"] }
 -- identité membre: { "id": "auth_session:membre", "pv": 1, "permissions": [] }
 -- identité plateforme: { "id": "auth_session:plateforme", "pv": 1, "permissions": ["storage.installation.manage"] }
+-- identité robot: { "id": "auth_session:robot", "pv": 1, "permissions": ["storage.object.read", "storage.object.write"] }
 -- identité worker: { "id": "auth_session:worker", "pv": 1, "permissions": ["storage.worker"] }
 
 -- préparation: organisations, identités et sessions lyxal_auth
@@ -34,6 +35,9 @@
     CREATE auth_session:plateforme CONTENT { identity: auth_identity:plateforme, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
     CREATE auth_identity:worker CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "worker@lyxal.test" } };
     CREATE auth_session:worker CONTENT { identity: auth_identity:worker, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    -- Compte de service d'alpha : session sans identité
+    CREATE auth_application:robot CONTENT { tenant: auth_organization:alpha, client_id: "lyxal-test-robot-alpha", name: "Robot", type: "machine", redirect_uris: [], state: "active", permissions_version: 1 };
+    CREATE auth_session:robot CONTENT { application: auth_application:robot, kind: "service", organization: auth_organization:alpha, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
 };
 
 -- préparation: buckets et fichiers d'alpha et de l'installation
@@ -203,8 +207,41 @@ UPDATE storage_object SET state = "available", size = 5, content_type = "applica
     fn::storage_object_commit({ object: <string> (SELECT VALUE id FROM ONLY storage_object WHERE key = "en-cours.pdf" LIMIT 1), size: 5, content_type: "application/pdf", blake3: "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262" });
 };
 
--- test: les deux fichiers d'alpha sont disponibles
-RETURN (SELECT VALUE state FROM storage_object WHERE scope_key = "alpha" ORDER BY key) == ["available", "available"];
+-- test: un compte de service ouvre une écriture : il en est l'auteur par son application
+-- en tant que: robot
+RETURN fn::storage_object_begin({ bucket: <string> (SELECT VALUE id FROM ONLY storage_bucket WHERE name = "plans" LIMIT 1), key: "robot.pdf", filename: "robot.pdf" }).data.{ owner, owner_application } == { owner: NONE, owner_application: auth_application:robot };
+
+-- test: une identité ne termine pas l'écriture d'un compte de service, ni par la fonction ni en écriture directe
+-- en tant que: redacteur
+RETURN fn::storage_object_commit({ object: <string> (SELECT VALUE id FROM ONLY storage_object WHERE key = "robot.pdf" LIMIT 1), size: 5, content_type: "application/pdf", blake3: "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262" }).error.code == "STORAGE_PERMISSION_DENIED";
+
+-- test: le compte de service termine sa propre écriture
+-- en tant que: robot
+RETURN fn::storage_object_commit({ object: <string> (SELECT VALUE id FROM ONLY storage_object WHERE key = "robot.pdf" LIMIT 1), size: 5, content_type: "application/pdf", blake3: "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262" }).data.state == "available";
+
+-- test: l'auteur d'une fiche est reconnu par son application ; une identité n'est pas l'auteur de cette fiche
+-- en tant que: robot
+RETURN fn::storage_object_is_author((SELECT * FROM ONLY storage_object WHERE key = "robot.pdf" LIMIT 1)) == true
+    AND fn::storage_object_is_author((SELECT * FROM ONLY storage_object WHERE key = "a.pdf" LIMIT 1)) == false;
+
+-- test: l'auteur par identité n'est pas l'auteur de la fiche du compte de service
+-- en tant que: redacteur
+RETURN fn::storage_object_is_author((SELECT * FROM ONLY storage_object WHERE key = "robot.pdf" LIMIT 1)) == false;
+
+-- test: il ne termine pas l'écriture d'une identité
+-- en tant que: admin
+RETURN fn::storage_object_begin({ bucket: <string> (SELECT VALUE id FROM ONLY storage_bucket WHERE name = "plans" LIMIT 1), key: "humain.pdf", filename: "humain.pdf" }).data.owner == auth_identity:admin;
+
+-- test: refus pour le compte de service
+-- en tant que: robot
+RETURN fn::storage_object_commit({ object: <string> (SELECT VALUE id FROM ONLY storage_object WHERE key = "humain.pdf" LIMIT 1), size: 5, content_type: "application/pdf", blake3: "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262" }).error.code == "STORAGE_PERMISSION_DENIED";
+
+-- préparation: l'écriture de l'identité est abandonnée
+-- en tant que: admin
+fn::storage_object_delete({ object: <string> (SELECT VALUE id FROM ONLY storage_object WHERE key = "humain.pdf" LIMIT 1) });
+
+-- test: les fichiers d'alpha sont disponibles
+RETURN (SELECT VALUE state FROM storage_object WHERE scope_key = "alpha" AND state != "deleted" ORDER BY key) == ["available", "available", "available"];
 
 -- test: l'organisation supprimée emporte ses buckets, ses fichiers et ses réglages
 {

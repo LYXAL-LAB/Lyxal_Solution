@@ -43,6 +43,8 @@ pub struct StoredObject {
     pub key: String,
     /// Identité qui a écrit le fichier.
     pub owner: Option<StorageRecordId>,
+    /// Application qui a écrit le fichier sans identité (compte de service).
+    pub owner_application: Option<StorageRecordId>,
     /// Nom d'origine.
     pub filename: String,
     /// Type MIME annoncé.

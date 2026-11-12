@@ -21,7 +21,7 @@ gestion de fichiers de SurrealDB : [`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md
 | :--- | :--- |
 | `storage_settings` | réglages de l'installation, surchargés par organisation : taille maximale d'un fichier, quota, délai d'une écriture en attente, conservation après suppression |
 | `storage_bucket` | ensemble de fichiers : nom unique dans sa portée (`[a-z0-9-]`, 3 à 63 caractères), taille maximale, types MIME acceptés (vide : tous), lecture seule, support (`backend`, `default` par défaut, fixé à la création) |
-| `storage_object` | fiche d'un fichier : bucket, clé (`plans/2026/a.pdf`), propriétaire, nom d'origine, taille et type annoncés, taille, type réel et empreinte BLAKE3 posés à la fin de l'écriture, état, support et emplacement des octets (`backend`, `path`) |
+| `storage_object` | fiche d'un fichier : bucket, clé (`plans/2026/a.pdf`), auteur (`owner` : identité ; `owner_application` : application d'un compte de service), nom d'origine, taille et type annoncés, taille, type réel et empreinte BLAKE3 posés à la fin de l'écriture, état, support et emplacement des octets (`backend`, `path`) |
 | `storage_reclaim` | préfixe d'octets à retirer après la suppression d'un bucket |
 
 Portée : champ `tenant` (organisation `lyxal_auth`, absent pour l'installation) et `scope_key`
@@ -108,7 +108,7 @@ l'installation.
 | `storage_bucket_list` | `tenant`, `limit`, `start` | `{ items, total }`, triés par nom | lecture |
 | `storage_bucket_delete` | **bucket** | `{ deleted }` ; refusé s'il porte une fiche | gestion |
 | `storage_object_begin` | **bucket**, **key**, **filename**, `declared_type`, `declared_size` | fiche `pending` et `max_size` (taille maximale acceptée) | écriture |
-| `storage_object_commit` | **object**, **size**, **content_type**, **blake3** | fiche `available` | worker, ou l'identité qui a ouvert l'écriture |
+| `storage_object_commit` | **object**, **size**, **content_type**, **blake3** | fiche `available` | worker, ou l'appelant qui a ouvert l'écriture (son identité, ou son application pour un compte de service) |
 | `storage_object_get` | **object**, ou **bucket** et **key** | fiche (par adresse : fichier non supprimé) | lecture |
 | `storage_object_open` | **object**, ou **bucket** et **key** | fiche d'un fichier à servir ; refus s'il n'est pas `available` | lecture |
 | `storage_object_list` | **bucket**, `prefix`, `state` (`available`), `limit`, `start` | `{ items, total }`, triés par clé | lecture |
@@ -122,7 +122,8 @@ l'installation.
 | `storage_reclaim_done` | **reclaim** | `{ done }` : ligne retirée, après le retrait des octets | worker |
 
 Fonctions internes : `fn::storage_can`, `fn::storage_settings_effective`,
-`fn::storage_scope_usage`, `fn::storage_object_limits`, `fn::storage_object_update_refusal`.
+`fn::storage_scope_usage`, `fn::storage_object_limits`, `fn::storage_object_is_author`,
+`fn::storage_object_update_refusal`.
 
 ## 4. Erreurs (`error/<thème>/`)
 
