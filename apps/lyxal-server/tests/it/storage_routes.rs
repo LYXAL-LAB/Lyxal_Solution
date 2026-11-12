@@ -670,3 +670,228 @@ async fn a_bucket_on_an_s3_backend_is_served_by_the_same_routes() {
 
     started.runtime.stop_all().await.expect("arrêt");
 }
+
+/// Faux service `clamd` (commande `zINSTREAM`) : reconnaît la signature de test EICAR.
+async fn clamd() -> String {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("écoute");
+    let address = listener.local_addr().expect("adresse").to_string();
+    tokio::spawn(async move {
+        while let Ok((mut socket, _)) = listener.accept().await {
+            tokio::spawn(async move {
+                let mut command = [0u8; 10];
+                if socket.read_exact(&mut command).await.is_err() {
+                    return;
+                }
+                let mut content = Vec::new();
+                loop {
+                    let Ok(length) = socket.read_u32().await else {
+                        return;
+                    };
+                    if length == 0 {
+                        break;
+                    }
+                    let mut chunk = vec![0u8; length as usize];
+                    if socket.read_exact(&mut chunk).await.is_err() {
+                        return;
+                    }
+                    content.extend_from_slice(&chunk);
+                }
+                let infected = content
+                    .windows(34)
+                    .any(|window| window == b"EICAR-STANDARD-ANTIVIRUS-TEST-FILE");
+                let answer: &[u8] = if infected {
+                    b"stream: Eicar-Test-Signature FOUND\0"
+                } else {
+                    b"stream: OK\0"
+                };
+                let _ = socket.write_all(answer).await;
+            });
+        }
+    });
+    address
+}
+
+/// Contrôle du contenu de bout en bout : type réel enregistré, programme refusé, fichier
+/// infecté refusé sans rien conserver, affichage direct réservé aux images et aux PDF.
+#[tokio::test]
+async fn content_is_checked_and_only_safe_types_are_shown_inline() {
+    let folder = tempfile::tempdir().expect("dossier");
+    let extra = format!(
+        "[auth]\npublic_url = \"https://lyxal.test/\"\n\n[storage.disk]\nroot = {:?}\n",
+        folder.path().display().to_string()
+    );
+    let config = Arc::new(config_with("storage_routes_content", &extra));
+    let client = database("storage_routes_content").await;
+    let started = runtime::start(&config, &client).await.expect("démarrage");
+    let host = auth::host(&client, &config, Some(crypto()))
+        .expect("service")
+        .expect("service configuré");
+    auth::complete_services(Some(&host)).await.expect("clés");
+    let scanner: Arc<dyn lyxal_storage::ContentScanner> =
+        Arc::new(lyxal_storage::ClamAvScanner::new(
+            lyxal_storage::ScannerConfig::Tcp {
+                address: clamd().await,
+            },
+            std::time::Duration::from_secs(10),
+        ));
+    let router = build_router(AppContext::new(
+        config.clone(),
+        Arc::new(client.clone()),
+        HealthRegistry::default(),
+        Metrics::default(),
+        started.runtime.clone(),
+        Some(host.clone()),
+        lyxal_server::context::StorageHost {
+            backends: started.storage.backends.clone(),
+            scanner: Some(scanner),
+        },
+    ))
+    .expect("routeur");
+
+    client
+        .query(
+            r#"
+            CREATE auth_organization:alpha CONTENT { slug: "alpha", name: "Alpha BTP" };
+            CREATE auth_application:redacteur CONTENT { tenant: auth_organization:alpha, client_id: "lyxal-test-redacteur-alpha", name: "Rédacteur", type: "machine", redirect_uris: [], state: "active", permissions_version: 1 };
+            RELATE auth_application:redacteur->auth_has_role->auth_role:organization_admin SET granted_at = time::now();
+            "#,
+        )
+        .await
+        .expect("préparation")
+        .check()
+        .expect("préparation refusée");
+    let mut created = client
+        .query(r#"RETURN <string> record::id(fn::storage_bucket_create({ tenant: "auth_organization:alpha", name: "documents" }).data.id);"#)
+        .await
+        .expect("bucket");
+    let bucket: Option<String> = created.take(0).expect("bucket");
+    let bucket = bucket.expect("bucket");
+    let writer = host
+        .access
+        .internal_service_token("lyxal-test-redacteur-alpha")
+        .await
+        .expect("jeton")
+        .access_token
+        .expose_secret()
+        .to_string();
+    let object = |key: &str| format!("/api/v1/storage/buckets/{bucket}/objects/{key}");
+
+    let png: &[u8] = b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR\0\0\0\x01\0\0\0\x01\x08\x06\0\0\0";
+    let svg: &[u8] = b"<svg xmlns=\"http://www.w3.org/2000/svg\"><script>alert(1)</script></svg>";
+    for (key, declared, content, recorded, shown) in [
+        // Image annoncée comme du texte : le type réel est enregistré, l'image peut s'afficher
+        ("photo.png", "text/plain", png, "image/png", true),
+        ("plan.pdf", "application/pdf", &b"%PDF-1.7\n1 0 obj\n"[..], "application/pdf", true),
+        // SVG et texte : toujours proposés à l'enregistrement
+        ("dessin.svg", "image/svg+xml", svg, "", false),
+        ("notes.txt", "text/plain", &b"simple texte"[..], "text/plain", false),
+        // Texte annoncé comme une image : type non cru, pas d'affichage
+        ("faux.png", "image/png", &b"<html><script>alert(1)</script></html>"[..], "", false),
+    ] {
+        let sent = send(
+            &router,
+            "PUT",
+            &object(key),
+            Some(&writer),
+            &[("content-type", declared)],
+            Body::from(content.to_vec()),
+        )
+        .await;
+        assert_eq!(sent.status, StatusCode::CREATED, "{key} : {}", sent.json());
+        if !recorded.is_empty() {
+            assert_eq!(sent.json()["data"]["content_type"], recorded, "{key}");
+        }
+        let inline = send(
+            &router,
+            "GET",
+            &format!("{}?inline", object(key)),
+            Some(&writer),
+            &[],
+            Body::empty(),
+        )
+        .await;
+        assert_eq!(inline.status, StatusCode::OK, "{key}");
+        let expected = if shown { "inline; " } else { "attachment; " };
+        assert!(
+            inline.header("content-disposition").starts_with(expected),
+            "{key} : {}",
+            inline.header("content-disposition")
+        );
+        assert_eq!(inline.header("x-content-type-options"), "nosniff");
+        assert_eq!(
+            inline.header("content-security-policy"),
+            "default-src 'none'; sandbox"
+        );
+        // Sans demande d'affichage : toujours proposé à l'enregistrement
+        let saved = send(&router, "GET", &object(key), Some(&writer), &[], Body::empty()).await;
+        assert!(saved
+            .header("content-disposition")
+            .starts_with("attachment; "));
+    }
+    // Le texte annoncé comme une image n'est pas enregistré comme une image
+    let fake = send(
+        &router,
+        "GET",
+        &format!("{}?metadata", object("faux.png")),
+        Some(&writer),
+        &[],
+        Body::empty(),
+    )
+    .await;
+    assert_ne!(fake.json()["data"]["content_type"], "image/png");
+
+    // Programme exécutable annoncé comme une image : refusé
+    let mut program = vec![0u8; 64];
+    program[..7].copy_from_slice(b"\x7fELF\x02\x01\x01");
+    program[16] = 2;
+    let refused = send(
+        &router,
+        "PUT",
+        &object("outil.png"),
+        Some(&writer),
+        &[("content-type", "image/png")],
+        Body::from(program),
+    )
+    .await;
+    assert_eq!(
+        refused.status,
+        StatusCode::UNSUPPORTED_MEDIA_TYPE,
+        "{}",
+        refused.json()
+    );
+    assert_eq!(refused.code(), "STORAGE_OBJECT_TYPE_REFUSED");
+
+    // Fichier infecté (signature de test EICAR, assemblée ici) : refusé, rien n'est conservé
+    let before = files(folder.path()).len();
+    let eicar = [
+        &b"X5O!P%@AP[4\\PZX54(P^)7CC)7}$"[..],
+        b"EICAR-STANDARD-",
+        b"ANTIVIRUS-TEST-FILE",
+        b"!$H+H*",
+    ]
+    .concat();
+    let infected = send(
+        &router,
+        "PUT",
+        &object("virus.bin"),
+        Some(&writer),
+        &[],
+        Body::from(eicar),
+    )
+    .await;
+    assert_eq!(
+        infected.status,
+        StatusCode::UNPROCESSABLE_ENTITY,
+        "{}",
+        infected.json()
+    );
+    assert_eq!(infected.code(), "STORAGE_OBJECT_INFECTED");
+    let missing = send(&router, "GET", &object("virus.bin"), Some(&writer), &[], Body::empty()).await;
+    assert_eq!(missing.status, StatusCode::NOT_FOUND);
+    assert_eq!(files(folder.path()).len(), before, "aucun octet laissé");
+
+    started.runtime.stop_all().await.expect("arrêt");
+}

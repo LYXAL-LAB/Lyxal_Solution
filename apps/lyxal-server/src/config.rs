@@ -38,6 +38,9 @@ pub struct StorageConfig {
     /// Supports S3 ou compatibles, par nom de support (`LYXAL__STORAGE__S3__<NOM>__*`).
     #[serde(default)]
     pub s3: BTreeMap<String, S3StorageConfig>,
+    /// Antivirus qui analyse tout fichier envoyé (facultatif).
+    #[serde(default)]
+    pub antivirus: Option<AntivirusConfig>,
     /// Délai d'inactivité d'un envoi ou d'un téléchargement, en secondes (5 à 600).
     #[serde(default = "default_storage_idle_timeout")]
     pub idle_timeout_seconds: u64,
@@ -48,6 +51,7 @@ impl Default for StorageConfig {
         Self {
             disk: None,
             s3: BTreeMap::new(),
+            antivirus: None,
             idle_timeout_seconds: default_storage_idle_timeout(),
         }
     }
@@ -55,6 +59,25 @@ impl Default for StorageConfig {
 
 fn default_storage_idle_timeout() -> u64 {
     60
+}
+
+/// Antivirus ClamAV (service `clamd` séparé) : `LYXAL__STORAGE__ANTIVIRUS__ADDRESS`
+/// (`hôte:port`) ou `__SOCKET` (chemin d'une socket Unix), l'un des deux ; `__TIMEOUT_SECONDS`
+/// (attente maximale du service, 1 à 300, 30 par défaut). Configuré mais injoignable : les envois
+/// sont refusés.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AntivirusConfig {
+    #[serde(default)]
+    pub address: Option<String>,
+    #[serde(default)]
+    pub socket: Option<PathBuf>,
+    #[serde(default = "default_antivirus_timeout")]
+    pub timeout_seconds: u64,
+}
+
+fn default_antivirus_timeout() -> u64 {
+    30
 }
 
 /// Support S3 ou compatible (Bunny Storage, par exemple) : `LYXAL__STORAGE__S3__<NOM>__ENDPOINT`,
@@ -358,6 +381,19 @@ impl AppConfig {
                     message: format!(
                         "storage.s3.{name} : nom de support invalide (minuscules, chiffres et _, 64 caractères au plus)"
                     ),
+                });
+            }
+        }
+        if let Some(antivirus) = &self.storage.antivirus {
+            if antivirus.address.is_some() == antivirus.socket.is_some() {
+                return Err(ServerError::Configuration {
+                    message: "storage.antivirus : address ou socket, l'un des deux".into(),
+                });
+            }
+            if !(1..=300).contains(&antivirus.timeout_seconds) {
+                return Err(ServerError::Configuration {
+                    message: "storage.antivirus.timeout_seconds doit être compris entre 1 et 300"
+                        .into(),
                 });
             }
         }

@@ -2,6 +2,7 @@
 //! mémoire et disque : écriture et lecture en flux, empreinte, échecs nettoyés, vérification
 //! d'intégrité, worker de nettoyage, sonde de santé, appels typés du store.
 
+mod content;
 mod real_s3;
 mod service;
 mod store;

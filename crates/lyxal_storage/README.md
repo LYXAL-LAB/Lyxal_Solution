@@ -3,8 +3,8 @@
 Module du Noyau Technique de Lyxal OS : **fichiers et documents stockés**. Les règles sont dans
 SurrealDB (réglages, buckets, fiche de chaque fichier, états, droits, quotas, événements) ; le
 crate Rust écrit et lit les octets en flux sur un support (disque local, service S3 ou
-compatible, mémoire pour les tests), calcule leur empreinte et retire les octets devenus
-inutiles. L'hôte expose l'envoi et le téléchargement par HTTP (`apps/lyxal-server/README.md`).
+compatible, mémoire pour les tests), calcule leur empreinte, reconnaît leur type réel, les fait
+analyser par un antivirus s'il y en a un, et retire les octets devenus inutiles. L'hôte expose l'envoi et le téléchargement par HTTP (`apps/lyxal-server/README.md`).
 Les lots suivants sont dans la [`ROADMAP.md`](ROADMAP.md). Sources et étude de la
 gestion de fichiers de SurrealDB : [`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md).
 
@@ -12,14 +12,14 @@ gestion de fichiers de SurrealDB : [`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md
 | :--- | :--- |
 | Identifiant | `lyxal_storage` (version `0.1.0`) |
 | Dépendances (`manifest.toml`) | `lyxal_core`, `lyxal_error`, `lyxal_event`, `lyxal_auth` |
-| Dépendances Rust | `lyxal_surreal`, `lyxal_runtime`, `lyxal_crypto` ; `object_store` 0.13 |
+| Dépendances Rust | `lyxal_surreal`, `lyxal_runtime`, `lyxal_crypto` ; `object_store` 0.13, `infer`, `clamav-client` |
 | Hébergement | `apps/lyxal-server` (`StorageModule`, `StorageCleanupWorker`, `StorageHealthCheck`) |
 
 ## 1. Modèle
 
 | Table | Contenu |
 | :--- | :--- |
-| `storage_settings` | réglages de l'installation, surchargés par organisation : taille maximale d'un fichier, quota, délai d'une écriture en attente, conservation après suppression |
+| `storage_settings` | réglages de l'installation, surchargés par organisation : taille maximale d'un fichier, quota, délai d'une écriture en attente, conservation après suppression, types refusés |
 | `storage_bucket` | ensemble de fichiers : nom unique dans sa portée (`[a-z0-9-]`, 3 à 63 caractères), taille maximale, types MIME acceptés (vide : tous), lecture seule, support (`backend`, `default` par défaut, fixé à la création) |
 | `storage_object` | fiche d'un fichier : bucket, clé (`plans/2026/a.pdf`), auteur (`owner` : identité ; `owner_application` : application d'un compte de service), nom d'origine, taille et type annoncés, taille, type réel et empreinte BLAKE3 posés à la fin de l'écriture, état, support et emplacement des octets (`backend`, `path`) |
 | `storage_reclaim` | préfixe d'octets à retirer après la suppression d'un bucket |
@@ -72,6 +72,12 @@ suppression, le préfixe de ses octets dans `storage_reclaim`. Il vaut aussi pou
 supprimé avec son organisation, dont les fiches partent en cascade : le worker retire alors les
 octets au passage suivant.
 
+**Types** : le type enregistré (`content_type`) est le type réel du fichier, reconnu dans son
+contenu (§6) ; les types acceptés du bucket (`allowed_types`) et les types refusés des réglages
+(`blocked_types`) s'appliquent au type annoncé à l'ouverture de l'écriture, puis au type réel à
+sa fin. Par défaut, les programmes exécutables (Windows, Linux, macOS) sont refusés partout ;
+la liste se règle par installation et par organisation.
+
 **Limites** : 100 Mo par fichier par défaut, réglable par installation, organisation et bucket
 (5 Go au plus) ; quota par portée, absent par défaut. Le quota compte les fichiers disponibles ou
 en quarantaine et les tailles annoncées des écritures en attente.
@@ -101,7 +107,7 @@ l'installation.
 | Fonction | Paramètres | Résultat | Droit |
 | :--- | :--- | :--- | :--- |
 | `storage_settings_get` | `tenant` | `{ own, effective }` | lecture |
-| `storage_settings_set` | `tenant`, `max_object_size`, `quota_bytes`, `pending_ttl_seconds`, `deleted_retention_days`, `clear` | réglages ; champ fourni remplacé, champ dans `clear` effacé | gestion |
+| `storage_settings_set` | `tenant`, `max_object_size`, `quota_bytes`, `pending_ttl_seconds`, `deleted_retention_days`, `blocked_types`, `clear` | réglages ; champ fourni remplacé, champ dans `clear` effacé | gestion |
 | `storage_bucket_create` | **name**, `tenant`, `description`, `max_object_size`, `allowed_types`, `readonly`, `backend` (`default`) | bucket | gestion |
 | `storage_bucket_update` | **bucket**, `description`, `max_object_size`, `allowed_types`, `readonly`, `clear` (`description`, `max_object_size`) | bucket | gestion |
 | `storage_bucket_get` | **bucket** | bucket et `usage: { objects, bytes }` | lecture |
@@ -133,7 +139,7 @@ Fonctions internes : `fn::storage_can`, `fn::storage_settings_effective`,
 | `permissions` | `STORAGE_PERMISSION_DENIED`, `STORAGE_WRITE_FORBIDDEN` |
 | `buckets` | `STORAGE_BUCKET_NOT_FOUND`, `STORAGE_BUCKET_EXISTS`, `STORAGE_BUCKET_NOT_EMPTY`, `STORAGE_BUCKET_READONLY` |
 | `fichiers` | `STORAGE_OBJECT_NOT_FOUND`, `STORAGE_OBJECT_EXISTS`, `STORAGE_OBJECT_STATE_INVALID`, `STORAGE_OBJECT_IN_USE`, `STORAGE_OBJECT_TOO_LARGE`, `STORAGE_OBJECT_TYPE_REFUSED`, `STORAGE_QUOTA_EXCEEDED`, `STORAGE_RANGE_NOT_SATISFIABLE` |
-| `supports` | `STORAGE_BACKEND_UNKNOWN`, `STORAGE_BACKEND_UNAVAILABLE` (à réessayer), `STORAGE_OBJECT_NOT_AVAILABLE`, `STORAGE_CONTENT_MISMATCH`, `STORAGE_INTEGRITY_FAILED` |
+| `supports` | `STORAGE_BACKEND_UNKNOWN`, `STORAGE_BACKEND_UNAVAILABLE` (à réessayer), `STORAGE_OBJECT_NOT_AVAILABLE`, `STORAGE_CONTENT_MISMATCH`, `STORAGE_INTEGRITY_FAILED`, `STORAGE_OBJECT_INFECTED`, `STORAGE_SCANNER_UNAVAILABLE` (à réessayer) |
 
 ## 5. Événements
 
@@ -149,7 +155,9 @@ Publiés par `fn::event_publish` dans la transaction de la mutation : `storage.o
 | `StorageStore` | un appel typé par fonction publique (`LyxalSurrealCall::call_fn`) ; la session du client détermine les droits |
 | `models` | `XxxParams` et résultats nommés de chaque fonction |
 | `Backends`, `BackendConfig` | supports nommés : `Disk { root }` (tout est écrit sous `root`), `S3 { endpoint, region, bucket, access_key_id, secret_access_key, path_style, allow_http }` (service S3 ou compatible, par `object_store` ; clé secrète en `SecretString`) et `Memory` (tests) |
-| `StorageService` | `put` (écriture en flux), `stat` (fiche d'un fichier à servir), `open` (lecture en flux, en entier ou sur une plage `ByteRange` validée contre la taille de la fiche), `delete`, `verify` (relit les octets et compare taille et empreinte à la fiche) |
+| `StorageService` | `put` (écriture en flux), `stat` (fiche d'un fichier à servir), `open` (lecture en flux, en entier ou sur une plage `ByteRange` validée contre la taille de la fiche), `delete`, `verify` (relit les octets et compare taille et empreinte à la fiche) ; `with_scanner` branche un antivirus |
+| `content::detect` | type réel d'un fichier, reconnu à ses premiers octets (`infer`) |
+| `ContentScanner`, `ClamAvScanner`, `ScannerConfig` | antivirus branché sur l'écriture : service `clamd` de ClamAV, en TCP ou par socket Unix (`clamav-client`) |
 | `StorageCleanupWorker` | worker supervisé : écritures abandonnées, fichiers supprimés hors délai, octets des buckets supprimés |
 | `StorageModule`, `StorageHealthCheck` | module `LyxalModule` ; la sonde écrit, relit et retire un fichier témoin sur chaque support |
 | `StorageError` | erreur SurrealQL ou du support ; `code()`, `is_retryable()` |
@@ -158,7 +166,16 @@ Publiés par `fn::event_publish` dans la transaction de la mutation : `storage.o
   gardé en mémoire. L'empreinte BLAKE3 (`lyxal_crypto`) et la taille sont calculées au passage.
 * **Taille** : l'écriture s'arrête dès que le contenu dépasse `max_size` ou la taille annoncée ;
   une taille annoncée doit être exacte (`STORAGE_CONTENT_MISMATCH`).
-* **Type** : le type enregistré est le type annoncé, sinon `application/octet-stream`.
+* **Type réel** : le type enregistré est celui reconnu dans les premiers octets du fichier ;
+  sinon le type annoncé, s'il n'est pas de ceux que le contenu permet de reconnaître (texte,
+  CSV, JSON…) ; sinon `application/octet-stream`. Un type annoncé que le contenu dément n'est
+  pas cru : le fichier est accepté, jugé et servi sous son type réel.
+* **Antivirus** (optionnel) : chaque morceau écrit est transmis à `clamd` dans le même
+  passage, sans tâche de fond ni relecture. Menace reconnue : `STORAGE_OBJECT_INFECTED`, rien
+  n'est conservé. Antivirus injoignable, muet ou fichier au-delà de sa limite
+  (`StreamMaxLength` de `clamd`, à régler au moins à la taille maximale des fichiers) :
+  `STORAGE_SCANNER_UNAVAILABLE`, l'envoi est refusé. Sans antivirus configuré, seul le type
+  réel est contrôlé. ClamAV (GPL) reste un service séparé : aucun code GPL n'est lié.
 * **Échec** (support, taille, flux interrompu, fin d'écriture refusée) : les octets écrits sont
   retirés, la fiche passe à `deleted`, l'erreur est rendue. Une écriture coupée par l'arrêt du
   serveur est retirée par le worker à la fin de son délai.
@@ -189,7 +206,11 @@ Publiés par `fn::event_publish` dans la transaction de la mutation : `storage.o
 * Tests Rust `tests/it/` (base embarquée ; supports mémoire, disque et S3 sur un serveur S3 de
   test `s3s-fs` lancé dans les tests) : fichier écrit puis relu
   à l'identique, plage d'octets, fichier de 64 Mo sans dépasser trois parties en mémoire, échecs
-  nettoyés, fichier altéré détecté, worker, sonde, appels du store.
+  nettoyés, fichier altéré détecté, worker, sonde, appels du store ; type réel et types refusés ;
+  antivirus sur un faux service `clamd` lancé dans les tests (fichier sain, signature de test
+  EICAR, limite de taille, service injoignable ou muet). Un essai sur un vrai service ClamAV
+  n'est pas dans les contrôles automatiques : `ClamAvScanner` sur `127.0.0.1:3310` après
+  `clamd` démarré, à lancer à la main.
 * Essai réel sur un service S3 (`tests/it/real_s3.rs`, ignoré par défaut) : variables
   `LYXAL_TEST_S3_*`, puis `cargo test -p lyxal_storage --test it real_s3 -- --ignored`.
 * `apps/lyxal-server` : démarrage avec et sans dossier de stockage (`startup.rs`) ; routes des

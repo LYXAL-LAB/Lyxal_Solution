@@ -28,6 +28,14 @@ mod tests {
 
     const PNG: &[u8] = b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR";
 
+    /// Début d'un programme Linux (ELF exécutable).
+    fn elf() -> Vec<u8> {
+        let mut program = vec![0u8; 64];
+        program[..7].copy_from_slice(b"\x7fELF\x02\x01\x01");
+        program[16] = 2;
+        program
+    }
+
     #[test]
     fn the_content_decides_over_the_announcement() {
         assert_eq!(detect(PNG, Some("image/png")), "image/png");
@@ -36,10 +44,7 @@ mod tests {
         assert_eq!(detect(b"%PDF-1.7\n", Some("image/png")), "application/pdf");
         // Programme Linux annoncé comme une image
         assert_eq!(
-            detect(
-                b"\x7fELF\x02\x01\x01\0\0\0\0\0\0\0\0\0\x02\0",
-                Some("image/png")
-            ),
+            detect(&elf(), Some("image/png")),
             "application/x-executable"
         );
     }

@@ -77,7 +77,7 @@ du code Rust, déclarer son implémentation et ses services dans `src/modules/` 
 | `crypto` | `application_key` (facultative, variable d'environnement seulement), `application_key_id` |
 | `auth` | `public_url` (facultative : adresse publique de l'interface, pour les liens des messages et l'origine des passkeys), `passkey_rp_id` (facultatif : domaine des passkeys, défaut : hôte de `public_url`) |
 | `notification.smtp` | `host`, `port`, `security` (`tls`, `starttls`, `local_plain`), `username`, `password`, `from_address`, `from_name`, `timeout_seconds` (section facultative) |
-| `storage` | `disk.root` (facultatif : dossier du support de fichiers `default`), `s3.<nom>` (facultatif : `endpoint`, `region`, `bucket`, `access_key_id`, `secret_access_key` par variable d'environnement seulement, `path_style`, `allow_http`), `idle_timeout_seconds` (délai d'inactivité d'un envoi ou d'un téléchargement, 5 à 600, 60 par défaut) |
+| `storage` | `disk.root` (facultatif : dossier du support de fichiers `default`), `s3.<nom>` (facultatif : `endpoint`, `region`, `bucket`, `access_key_id`, `secret_access_key` par variable d'environnement seulement, `path_style`, `allow_http`), `antivirus` (facultatif : `address` ou `socket`, `timeout_seconds`), `idle_timeout_seconds` (délai d'inactivité d'un envoi ou d'un téléchargement, 5 à 600, 60 par défaut) |
 
 Les identifiants Root ne figurent dans aucun fichier : `LYXAL__DATABASE__USERNAME` et
 `LYXAL__DATABASE__PASSWORD` (mot de passe en `SecretString`, masqué). Une connexion `ws://` ou
@@ -165,8 +165,17 @@ fichier, par exemple `plans/2026/a.pdf`) :
   la clé. Une adresse occupée est refusée (`STORAGE_OBJECT_EXISTS`).
 * **Téléchargement** : `ETag` (empreinte BLAKE3), `Last-Modified`, `Accept-Ranges`, une plage
   par requête (`206`, `416` hors du fichier), `If-None-Match` (`304`), `If-Range`. Le fichier
-  est toujours proposé à l'enregistrement (`Content-Disposition: attachment`,
-  `X-Content-Type-Options: nosniff`), jamais mis en cache (`Cache-Control: private, no-store`).
+  est proposé à l'enregistrement (`Content-Disposition: attachment`) ; avec `?inline`, une
+  image PNG, JPEG, GIF ou WebP ou un PDF est affiché par le navigateur (SVG et HTML, qui
+  peuvent contenir du code, jamais). Toujours : `X-Content-Type-Options: nosniff`,
+  `Content-Security-Policy: default-src 'none'; sandbox`, `Cache-Control: private, no-store`.
+* **Contrôle du contenu** : le type enregistré est le type réel du fichier ; les programmes
+  exécutables sont refusés par défaut (`STORAGE_OBJECT_TYPE_REFUSED`). Avec un antivirus
+  (`LYXAL__STORAGE__ANTIVIRUS__ADDRESS=hôte:port` ou `__SOCKET=chemin`, service `clamd` de
+  ClamAV ; `__TIMEOUT_SECONDS`, 30 par défaut), tout fichier envoyé est analysé pendant son
+  écriture : infecté, il est refusé (`STORAGE_OBJECT_INFECTED`) et rien n'est conservé ;
+  antivirus injoignable ou fichier au-delà de sa limite (`StreamMaxLength`), l'envoi est refusé
+  (`STORAGE_SCANNER_UNAVAILABLE`) et la sonde du module est dégradée.
 * **Limites** : ces routes ne sont pas soumises à `server.body_limit_bytes` ni au délai total
   d'une requête ; la taille est bornée par le bucket (100 Mo par défaut, 5 Go au plus), vérifiée
   pendant l'écriture. Un envoi ou une lecture du support qui ne transmet plus rien pendant

@@ -12,8 +12,9 @@ use crate::context::AppContext;
 use axum::body::Body;
 use axum::extract::{Path, Query, State};
 use axum::http::header::{
-    ACCEPT_RANGES, CACHE_CONTROL, CONTENT_DISPOSITION, CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYPE,
-    ETAG, IF_NONE_MATCH, IF_RANGE, LAST_MODIFIED, RANGE, X_CONTENT_TYPE_OPTIONS,
+    ACCEPT_RANGES, CACHE_CONTROL, CONTENT_DISPOSITION, CONTENT_LENGTH, CONTENT_RANGE,
+    CONTENT_SECURITY_POLICY, CONTENT_TYPE, ETAG, IF_NONE_MATCH, IF_RANGE, LAST_MODIFIED, RANGE,
+    X_CONTENT_TYPE_OPTIONS,
 };
 use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
@@ -65,10 +66,11 @@ async fn service(context: &AppContext, headers: &HeaderMap) -> Result<StorageSer
             tracing::warn!(error = %error, "session SurrealDB de l'appelant refusée");
             ApiError::Auth(AuthError::Rejected("AUTH_SESSION_REQUIRED"))
         })?;
-    Ok(StorageService::new(
-        StorageStore::new(session),
-        context.storage.clone(),
-    ))
+    let service = StorageService::new(StorageStore::new(session), context.storage.backends.clone());
+    Ok(match &context.storage.scanner {
+        Some(scanner) => service.with_scanner(scanner.clone()),
+        None => service,
+    })
 }
 
 fn bucket_id(bucket: &str) -> String {
@@ -101,8 +103,18 @@ fn etag(object: &StoredObject) -> String {
     format!("\"{}\"", object.blake3.as_deref().unwrap_or_default())
 }
 
-/// `Content-Disposition: attachment` : nom ASCII de repli et nom complet encodé (RFC 6266).
-fn content_disposition(filename: &str) -> String {
+/// Types qu'un navigateur peut afficher sans exécuter de code : images matricielles et PDF. SVG
+/// et HTML, qui peuvent en contenir, n'en font pas partie.
+const INLINE_TYPES: [&str; 5] = [
+    "image/png",
+    "image/jpeg",
+    "image/gif",
+    "image/webp",
+    "application/pdf",
+];
+
+/// `Content-Disposition` : nom ASCII de repli et nom complet encodé (RFC 6266).
+fn content_disposition(disposition: &str, filename: &str) -> String {
     let fallback: String = filename
         .chars()
         .map(|c| {
@@ -114,14 +126,15 @@ fn content_disposition(filename: &str) -> String {
         })
         .collect();
     format!(
-        "attachment; filename=\"{fallback}\"; filename*=UTF-8''{}",
+        "{disposition}; filename=\"{fallback}\"; filename*=UTF-8''{}",
         utf8_percent_encode(filename, NON_ALPHANUMERIC)
     )
 }
 
-/// En-têtes communs à `GET` et `HEAD` : le fichier est toujours proposé à l'enregistrement,
-/// jamais interprété par le navigateur.
-fn object_headers(object: &StoredObject) -> HeaderMap {
+/// En-têtes communs à `GET` et `HEAD`. Le fichier est proposé à l'enregistrement ; à la demande
+/// (`inline`), une image ou un PDF est affiché par le navigateur. Dans tous les cas le type
+/// n'est pas deviné et aucun code du fichier ne s'exécute.
+fn object_headers(object: &StoredObject, inline: bool) -> HeaderMap {
     let mut headers = HeaderMap::new();
     let mut set = |name, value: String| {
         if let Ok(value) = HeaderValue::from_str(&value) {
@@ -143,7 +156,22 @@ fn object_headers(object: &StoredObject) -> HeaderMap {
             .format("%a, %d %b %Y %H:%M:%S GMT")
             .to_string(),
     );
-    set(CONTENT_DISPOSITION, content_disposition(&object.filename));
+    let shown = inline
+        && object
+            .content_type
+            .as_deref()
+            .is_some_and(|kind| INLINE_TYPES.contains(&kind));
+    set(
+        CONTENT_DISPOSITION,
+        content_disposition(
+            if shown { "inline" } else { "attachment" },
+            &object.filename,
+        ),
+    );
+    set(
+        CONTENT_SECURITY_POLICY,
+        "default-src 'none'; sandbox".to_string(),
+    );
     set(ACCEPT_RANGES, "bytes".to_string());
     set(X_CONTENT_TYPE_OPTIONS, "nosniff".to_string());
     set(CACHE_CONTROL, "private, no-store".to_string());
@@ -257,6 +285,8 @@ async fn upload(
 struct DownloadQuery {
     /// Présent : la fiche du fichier est rendue, quel que soit son état, à la place du contenu.
     metadata: Option<String>,
+    /// Présent : une image ou un PDF est affiché par le navigateur au lieu d'être enregistré.
+    inline: Option<String>,
 }
 
 async fn download(
@@ -277,7 +307,7 @@ async fn download(
             return ok(StatusCode::OK, object_json(&object));
         }
         let object = service.stat(address).await?;
-        let mut response_headers = object_headers(&object);
+        let mut response_headers = object_headers(&object, query.inline.is_some());
         if not_modified(&headers, &object) {
             return Ok((StatusCode::NOT_MODIFIED, response_headers).into_response());
         }
@@ -335,7 +365,7 @@ async fn head(
         let object = service
             .stat(ObjectGetParams::by_address(bucket_id(&bucket), key))
             .await?;
-        let mut response_headers = object_headers(&object);
+        let mut response_headers = object_headers(&object, false);
         response_headers.insert(
             CONTENT_LENGTH,
             HeaderValue::from(object.size.unwrap_or_default()),
@@ -422,7 +452,7 @@ mod tests {
     #[test]
     fn attachment_name_is_safe_and_complete() {
         assert_eq!(
-            content_disposition("Plan \"été\".pdf"),
+            content_disposition("attachment", "Plan \"été\".pdf"),
             "attachment; filename=\"Plan __t__.pdf\"; filename*=UTF-8''Plan%20%22%C3%A9t%C3%A9%22%2Epdf"
         );
     }
