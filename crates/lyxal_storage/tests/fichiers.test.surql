@@ -71,6 +71,10 @@ RETURN fn::storage_object_begin({ bucket: <string> (SELECT VALUE id FROM ONLY st
 RETURN fn::storage_object_begin({ bucket: <string> (SELECT VALUE id FROM ONLY storage_bucket WHERE scope_key = "alpha" AND name = "plans" LIMIT 1), key: "gros.pdf", filename: "gros.pdf", declared_size: 1001 }).error.{ code, max: details.max_object_size } == { code: "STORAGE_OBJECT_TOO_LARGE", max: 1000 }
     AND fn::storage_object_begin({ bucket: <string> (SELECT VALUE id FROM ONLY storage_bucket WHERE scope_key = "alpha" AND name = "plans" LIMIT 1), key: "tableur.xlsx", filename: "t.xlsx", declared_type: "application/zip" }).error.code == "STORAGE_OBJECT_TYPE_REFUSED";
 
+-- test: programme exécutable annoncé : refusé par les réglages, quel que soit le bucket
+-- en tant que: redacteur
+RETURN fn::storage_object_begin({ bucket: <string> (SELECT VALUE id FROM ONLY storage_bucket WHERE scope_key = "alpha" AND name = "plans" LIMIT 1), key: "outil.exe", filename: "outil.exe", declared_type: "application/x-msdownload" }).error.{ code, blocked: details.blocked } == { code: "STORAGE_OBJECT_TYPE_REFUSED", blocked: true };
+
 -- test: un fichier en attente n'apparaît pas dans la liste par défaut
 -- en tant que: lecteur
 RETURN fn::storage_object_list({ bucket: <string> (SELECT VALUE id FROM ONLY storage_bucket WHERE scope_key = "alpha" AND name = "plans" LIMIT 1) }).data == { items: [], total: 0 }

@@ -47,6 +47,11 @@ DEFINE FIELD OVERWRITE deleted_retention_days ON TABLE storage_settings
     ASSERT $value IS NONE OR ($value >= 0 AND $value <= 3650)
     COMMENT "Conservation d'un fichier supprimé avant le retrait de ses octets, en jours";
 
+DEFINE FIELD OVERWRITE blocked_types ON TABLE storage_settings
+    TYPE option<array<string>>
+    ASSERT $value IS NONE OR array::len($value) <= 100
+    COMMENT "Types MIME refusés, quel que soit le bucket (NONE : ceux de l'installation, sinon du module)";
+
 DEFINE FIELD OVERWRITE updated_at ON TABLE storage_settings
     TYPE datetime
     VALUE time::now()

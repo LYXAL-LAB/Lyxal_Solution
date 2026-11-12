@@ -10,9 +10,11 @@
 //! santé.
 
 pub mod backend;
+pub mod content;
 pub mod error;
 pub mod models;
 pub mod module;
+pub mod scanner;
 pub mod service;
 pub mod store;
 pub mod worker;
@@ -20,6 +22,7 @@ pub mod worker;
 pub use backend::{Backend, BackendConfig, Backends};
 pub use error::{StorageError, StorageResult};
 pub use module::{StorageHealthCheck, StorageModule, MODULE_ID};
+pub use scanner::{ClamAvScanner, ContentScanner, ScanSession, ScanVerdict, ScannerConfig};
 pub use service::{ByteRange, OpenedObject, PutRequest, StorageService, PART_SIZE};
 pub use store::StorageStore;
 pub use worker::{CleanupReport, StorageCleanupWorker};
