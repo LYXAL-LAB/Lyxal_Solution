@@ -14,6 +14,8 @@ pub struct Started {
     pub runtime: Arc<LyxalRuntime>,
     /// Service de connexion (routes `/auth/*`), absent sans clé applicative ou `auth.public_url`.
     pub auth: Option<Arc<modules::auth::AuthHost>>,
+    /// Supports des fichiers (routes `/storage/*`).
+    pub storage: Arc<lyxal_storage::Backends>,
 }
 
 /// Construit le runtime, installe le noyau et les modules hébergés, puis les démarre.
@@ -74,5 +76,6 @@ pub async fn start(config: &AppConfig, client: &Surreal<Any>) -> Result<Started,
     Ok(Started {
         runtime: Arc::new(runtime),
         auth: services.auth,
+        storage: services.storage,
     })
 }

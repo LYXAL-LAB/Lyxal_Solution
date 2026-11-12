@@ -32,6 +32,17 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_limits($params: object) -> option<o
 } COMMENT "Interne : règles du bucket et quota de sa portée pour un fichier ({ bucket, size, content_type, except }) ; NONE, ou { code, details } de l'erreur STORAGE_* à rendre";
 
 -- ----------------------------------------------------------------------------
+-- fn::storage_object_is_author (interne)
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::storage_object_is_author($object: object) -> bool {
+    LET $context = fn::auth_context({});
+    IF !$context.ok { RETURN false; };
+    IF $context.data.identity IS NOT NONE { RETURN $context.data.identity = $object.owner; };
+    RETURN $context.data.application IS NOT NONE AND $context.data.application = $object.owner_application;
+} COMMENT "Interne : vrai si l'appelant a ouvert l'écriture de cette fiche ($object) : son identité, ou, pour une session sans identité (compte de service), son application";
+
+-- ----------------------------------------------------------------------------
 -- fn::storage_object_update_refusal (interne)
 -- ----------------------------------------------------------------------------
 
@@ -39,7 +50,7 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_update_refusal($before: object, $af
     LET $worker = fn::storage_can({ action: "worker" });
     IF $before.state = $after.state {
         -- Hors transition, seul le worker touche aux champs posés par les fonctions
-        LET $fixed = ["owner", "declared_type", "declared_size", "content_type", "size", "blake3", "quarantine_reason", "pending_expires_at", "deleted_at", "purge_after"];
+        LET $fixed = ["owner", "owner_application", "declared_type", "declared_size", "content_type", "size", "blake3", "quarantine_reason", "pending_expires_at", "deleted_at", "purge_after"];
         RETURN IF !$worker AND array::any($fixed, |$f| $before[$f] != $after[$f]) { "STORAGE_PERMISSION_DENIED" } ELSE { NONE };
     };
     LET $allowed = {
@@ -51,10 +62,8 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_update_refusal($before: object, $af
     IF $after.state NOTINSIDE $allowed { RETURN "STORAGE_OBJECT_STATE_INVALID"; };
     LET $bucket = (SELECT * FROM ONLY $after.bucket);
     IF $after.state = "available" {
-        -- Fin d'écriture : le worker, ou l'identité qui a ouvert l'écriture ; délai, contenu et règles du bucket
-        LET $context = fn::auth_context({});
-        LET $author = $context.ok AND $context.data.identity IS NOT NONE AND $context.data.identity = $before.owner;
-        IF !$worker AND !$author { RETURN "STORAGE_PERMISSION_DENIED"; };
+        -- Fin d'écriture : le worker, ou l'appelant qui a ouvert l'écriture ; délai, contenu et règles du bucket
+        IF !$worker AND !fn::storage_object_is_author($before) { RETURN "STORAGE_PERMISSION_DENIED"; };
         IF $before.pending_expires_at IS NONE OR $before.pending_expires_at <= time::now() { RETURN "STORAGE_OBJECT_STATE_INVALID"; };
         IF $after.size IS NONE OR $after.content_type IS NONE OR $after.blake3 IS NONE { RETURN "STORAGE_OBJECT_STATE_INVALID"; };
         IF $bucket.readonly { RETURN "STORAGE_BUCKET_READONLY"; };
@@ -110,6 +119,7 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_begin($params: object) {
     LET $created = (CREATE ONLY storage_object CONTENT {
         bucket: $bucket.id, tenant: $bucket.tenant, key: $p.key, backend: $bucket.backend,
         owner: IF $context.ok { $context.data.identity } ELSE { NONE },
+        owner_application: IF $context.ok AND $context.data.identity IS NONE { $context.data.application } ELSE { NONE },
         filename: $p.filename, declared_type: $p.declared_type, declared_size: $p.declared_size,
         state: "pending", pending_expires_at: time::now() + duration::from_secs($settings.pending_ttl_seconds)
     });
@@ -138,10 +148,8 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_commit($params: object) {
     LET $p = $report.value;
     LET $object = (SELECT * FROM ONLY $p.object);
     IF $object == NONE { RETURN fn::error_result("STORAGE_OBJECT_NOT_FOUND", $p.language, { object: <string> $p.object }); };
-    -- Le worker, ou l'identité qui a ouvert l'écriture
-    LET $context = fn::auth_context({});
-    LET $author = $context.ok AND $context.data.identity IS NOT NONE AND $context.data.identity = $object.owner;
-    IF !fn::storage_can({ action: "worker" }) AND !($author AND fn::storage_can({ action: "write", tenant: $object.tenant })) {
+    -- Le worker, ou l'appelant qui a ouvert l'écriture (identité, ou application d'un compte de service)
+    IF !fn::storage_can({ action: "worker" }) AND !(fn::storage_object_is_author($object) AND fn::storage_can({ action: "write", tenant: $object.tenant })) {
         RETURN fn::error_result("STORAGE_PERMISSION_DENIED", $p.language, {});
     };
     IF $object.state != "pending" OR $object.pending_expires_at <= time::now() {
@@ -156,7 +164,7 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_commit($params: object) {
         state = "available", pending_expires_at = NONE);
     IF $updated == NONE { RETURN fn::error_result("STORAGE_WRITE_FORBIDDEN", $p.language, { table: "storage_object" }); };
     RETURN fn::result_ok($updated);
-} COMMENT "Termine l'écriture d'un fichier ({ object, size, content_type, blake3 }) : taille, type réel et empreinte enregistrés, état available ; la taille, le type et le quota réels sont revérifiés ; refus si la fiche n'est plus pending, si son délai est passé ou si le bucket est passé en lecture seule. Droit : worker, ou l'identité qui a ouvert l'écriture";
+} COMMENT "Termine l'écriture d'un fichier ({ object, size, content_type, blake3 }) : taille, type réel et empreinte enregistrés, état available ; la taille, le type et le quota réels sont revérifiés ; refus si la fiche n'est plus pending, si son délai est passé ou si le bucket est passé en lecture seule. Droit : worker, ou l'appelant qui a ouvert l'écriture (son identité, ou son application pour un compte de service)";
 
 -- ----------------------------------------------------------------------------
 -- fn::storage_object_get

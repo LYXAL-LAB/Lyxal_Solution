@@ -191,3 +191,30 @@ IF !record::exists(error_definition:STORAGE_QUOTA_EXCEEDED) THEN (
         }
     }
 ) END;
+
+IF !record::exists(error_definition:STORAGE_RANGE_NOT_SATISFIABLE) THEN (
+    CREATE error_definition:STORAGE_RANGE_NOT_SATISFIABLE CONTENT {
+        code: "STORAGE_RANGE_NOT_SATISFIABLE",
+        module: "storage",
+        domain: "fichiers",
+        category: "validation",
+        severity: "error",
+        message: "Byte range not satisfiable",
+        default_language: "fr",
+        http_status: 416,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Plage d'octets hors du fichier",
+                description: "La partie du fichier demandée ne contient aucun octet : elle commence après la fin du fichier.",
+                resolution: "Demandez une plage comprise dans la taille du fichier, ou le fichier entier."
+            },
+            en: {
+                label: "Byte range outside the file",
+                description: "The requested part of the file contains no byte: it starts after the end of the file.",
+                resolution: "Request a range within the file size, or the whole file."
+            }
+        }
+    }
+) END;

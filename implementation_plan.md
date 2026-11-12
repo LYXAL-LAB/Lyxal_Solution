@@ -95,9 +95,9 @@ bucket, clé, taille et type ; jamais de contenu.
 | :- | :--- | :--- |
 | **1** | **Réalisé.** Socle SurrealQL : réglages, buckets, fiches de fichiers, états, droits, quotas, événements, erreurs, banc ; règle `checksum` de `lyxal_core` étendue à `blake3` ; module embarqué dans l'hôte. État : `crates/lyxal_storage/README.md` | `lyxal_storage`, `lyxal_core`, `apps/lyxal-server` |
 | **2** | **Réalisé.** Crate Rust : supports disque et mémoire, écriture et lecture en flux, empreinte, écriture en deux temps, worker de nettoyage (octets des buckets et des organisations supprimés compris), module et sonde de santé ; support `default` de l'hôte par `LYXAL__STORAGE__DISK__ROOT`. État : `crates/lyxal_storage/README.md` | `lyxal_storage`, `apps/lyxal-server` |
-| **3** | Hôte : routes d'envoi et de téléchargement en flux (droits `lyxal_auth`, limites de taille, lecture partielle) | `apps/lyxal-server` |
+| **3** | **Réalisé.** Hôte : routes `/api/v1/storage` d'envoi, de téléchargement (plage d'octets), de fiche, de liste et de suppression, en flux, sous la session de l'appelant ; taille bornée par le bucket. État : `apps/lyxal-server/README.md` | `apps/lyxal-server`, `lyxal_storage` |
 | **4** | Support S3 et compatibles ; identifiants par l'environnement de l'hôte | `lyxal_storage`, `apps/lyxal-server` |
-| **5** | Contrôle du contenu : type réel du fichier, antivirus, quarantaine | `lyxal_storage` |
+| **5** | Contrôle du contenu : type réel du fichier, antivirus, quarantaine ; affichage direct des images et des PDF dans le navigateur (décision H2 du lot 3) | `lyxal_storage`, `apps/lyxal-server` |
 | **6** | Envoi reprenable (protocole tus 1.0) pour les gros fichiers | `lyxal_storage`, `apps/lyxal-server` |
 | **7** | Bascule de l'ingestion : le fichier source d'un lot est conservé par `lyxal_storage` (constat A06 de l'audit externe) | `lyxal_pipeline_ingestion` |
 | **8** | Clôture : audit `lyxal-audit`, `README.md`, `ROADMAP.md`, `AGENTS.md` §6, `ROADMAP_NOYAU.md`, `RECHERCHE_SOURCES.md` réduit en `MODELE_SOURCES.md` | docs |

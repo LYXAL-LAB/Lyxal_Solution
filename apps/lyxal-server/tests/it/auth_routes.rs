@@ -57,7 +57,7 @@ fn totp_code(uri: &str) -> String {
         .to_string()
 }
 
-fn crypto() -> Arc<CryptoEngine<StaticKeyResolver>> {
+pub(crate) fn crypto() -> Arc<CryptoEngine<StaticKeyResolver>> {
     let mut builder = KeyRingBuilder::new();
     builder
         .insert(
@@ -154,6 +154,7 @@ async fn login_sessions_and_logout_through_http() {
         Metrics::default(),
         started.runtime.clone(),
         None,
+        Default::default(),
     ))
     .expect("routeur");
     let (status, body) = call(
@@ -191,6 +192,7 @@ async fn login_sessions_and_logout_through_http() {
         Metrics::default(),
         started.runtime.clone(),
         Some(host.clone()),
+        Default::default(),
     ))
     .expect("routeur");
 

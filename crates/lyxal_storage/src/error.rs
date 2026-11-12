@@ -19,6 +19,9 @@ pub enum StorageError {
     /// Contenu reçu différent de l'annonce : taille, dépassement, flux interrompu.
     #[error("contenu différent de l'annonce : {0}")]
     ContentMismatch(String),
+    /// Plage d'octets demandée hors du fichier ; porte la taille du fichier.
+    #[error("plage d'octets hors du fichier ({0} octets)")]
+    RangeNotSatisfiable(u64),
     /// Contenu relu différent de la fiche (taille ou empreinte).
     #[error("fichier altéré : {0}")]
     IntegrityFailed(String),
@@ -40,6 +43,7 @@ impl StorageError {
             Self::BackendUnknown(_) => "STORAGE_BACKEND_UNKNOWN".to_string(),
             Self::BackendUnavailable(_) => "STORAGE_BACKEND_UNAVAILABLE".to_string(),
             Self::ContentMismatch(_) => "STORAGE_CONTENT_MISMATCH".to_string(),
+            Self::RangeNotSatisfiable(_) => "STORAGE_RANGE_NOT_SATISFIABLE".to_string(),
             Self::IntegrityFailed(_) => "STORAGE_INTEGRITY_FAILED".to_string(),
         }
     }
@@ -53,7 +57,10 @@ impl StorageError {
                 other => other.transport_info().is_some_and(|info| info.retryable),
             },
             Self::BackendUnavailable(_) => true,
-            Self::BackendUnknown(_) | Self::ContentMismatch(_) | Self::IntegrityFailed(_) => false,
+            Self::BackendUnknown(_)
+            | Self::ContentMismatch(_)
+            | Self::RangeNotSatisfiable(_)
+            | Self::IntegrityFailed(_) => false,
         }
     }
 }

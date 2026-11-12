@@ -6,7 +6,7 @@ use lyxal_storage::models::{
     BucketCreateParams, ObjectBeginParams, ObjectGetParams, ObjectListParams, ObjectState,
     QuarantineParams,
 };
-use lyxal_storage::{Backends, PutRequest, StorageError, StorageService, PART_SIZE};
+use lyxal_storage::{Backends, ByteRange, PutRequest, StorageError, StorageService, PART_SIZE};
 use lyxal_surreal::ToSql;
 use object_store::path::Path;
 use object_store::ObjectStoreExt;
@@ -69,11 +69,59 @@ async fn a_file_is_written_then_read_back_identical() {
 
         let part = bench
             .service
-            .open(ObjectGetParams::by_id(stored.id.to_sql()), Some(5..12))
+            .open(
+                ObjectGetParams::by_id(stored.id.to_sql()),
+                Some(ByteRange::FromTo(5, 11)),
+            )
             .await
             .expect("plage");
         assert_eq!(part.range, 5..12);
         assert_eq!(read_all(part).await, &content[5..12]);
+
+        // Fin et début ouverts ; fin au-delà du fichier ramenée à sa fin ; plages sans octet
+        let size = content.len() as u64;
+        for (range, expected) in [
+            (ByteRange::From(20), 20..size),
+            (ByteRange::Last(4), size - 4..size),
+            (ByteRange::Last(1000), 0..size),
+            (ByteRange::FromTo(10, 10_000), 10..size),
+            (ByteRange::FromTo(0, 0), 0..1),
+        ] {
+            let part = bench
+                .service
+                .open(ObjectGetParams::by_id(stored.id.to_sql()), Some(range))
+                .await
+                .unwrap_or_else(|e| panic!("{range:?} : {e}"));
+            assert_eq!(part.range, expected, "{range:?}");
+            assert_eq!(
+                read_all(part).await,
+                &content[expected.start as usize..expected.end as usize]
+            );
+        }
+        for range in [
+            ByteRange::From(size),
+            ByteRange::FromTo(size, size + 5),
+            ByteRange::FromTo(8, 3),
+            ByteRange::Last(0),
+        ] {
+            let error = bench
+                .service
+                .open(ObjectGetParams::by_id(stored.id.to_sql()), Some(range))
+                .await
+                .err()
+                .unwrap_or_else(|| panic!("{range:?} accepté"));
+            assert_eq!(error.code(), "STORAGE_RANGE_NOT_SATISFIABLE", "{range:?}");
+            assert!(matches!(error, StorageError::RangeNotSatisfiable(s) if s == size));
+        }
+        assert_eq!(
+            bench
+                .service
+                .stat(ObjectGetParams::by_id(stored.id.to_sql()))
+                .await
+                .expect("fiche")
+                .id,
+            stored.id
+        );
 
         bench
             .service

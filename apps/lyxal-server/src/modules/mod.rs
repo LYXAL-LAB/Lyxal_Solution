@@ -148,6 +148,8 @@ fn implementation(
 pub struct HostedServices {
     /// Service de connexion (routes `/auth/*`), si la configuration le permet.
     pub auth: Option<Arc<auth::AuthHost>>,
+    /// Supports des fichiers (routes `/storage/*`).
+    pub storage: Arc<lyxal_storage::Backends>,
     #[cfg(feature = "module-ingestion")]
     publication: bool,
     /// Envoi des notifications configuré (clé applicative et relais SMTP).
@@ -164,7 +166,7 @@ pub async fn register_services(
     let crypto = crate::crypto::application_crypto(&config.crypto)?;
     let auth = auth::register_services(runtime, client, config, crypto.clone())?;
     i18n::register_services(runtime, client)?;
-    storage::register_services(runtime, client, config)?;
+    let storage = storage::register_services(runtime, client, config)?;
     let notification_delivery =
         notification::register_services(runtime, client, config, crypto).await?;
     #[cfg(feature = "module-ingestion")]
@@ -172,6 +174,7 @@ pub async fn register_services(
         let publication = ingestion::register_services(runtime, client, auth.as_ref()).await?;
         Ok(HostedServices {
             auth,
+            storage,
             publication,
             notification_delivery,
         })
@@ -179,6 +182,7 @@ pub async fn register_services(
     #[cfg(not(feature = "module-ingestion"))]
     Ok(HostedServices {
         auth,
+        storage,
         notification_delivery,
     })
 }

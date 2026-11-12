@@ -3593,9 +3593,13 @@ dependencies = [
  "async-trait",
  "axum 0.7.9",
  "base64 0.22.1",
+ "bytes",
  "chrono",
  "config",
+ "futures",
  "http",
+ "hyper",
+ "hyper-util",
  "lyxal_auth",
  "lyxal_crypto",
  "lyxal_error",
@@ -3606,12 +3610,14 @@ dependencies = [
  "lyxal_runtime",
  "lyxal_storage",
  "lyxal_surreal",
+ "percent-encoding",
  "serde",
  "serde_json",
  "surrealdb",
  "tempfile",
  "thiserror 1.0.69",
  "tokio",
+ "tokio-io-timeout",
  "toml",
  "tower 0.4.13",
  "tower-http 0.5.2",
@@ -7361,6 +7367,16 @@ dependencies = [
  "socket2",
  "tokio-macros",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "tokio-io-timeout"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0bd86198d9ee903fedd2f9a2e72014287c0d9167e4ae43b5853007205dda1b76"
+dependencies = [
+ "pin-project-lite",
+ "tokio",
 ]
 
 [[package]]

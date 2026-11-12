@@ -18,6 +18,18 @@ pub enum ObjectState {
     Deleted,
 }
 
+impl ObjectState {
+    /// Nom de l'état, tel qu'il est enregistré.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Pending => "pending",
+            Self::Available => "available",
+            Self::Quarantined => "quarantined",
+            Self::Deleted => "deleted",
+        }
+    }
+}
+
 /// Fiche d'un fichier.
 #[derive(Debug, Clone, SurrealValue)]
 pub struct StoredObject {
@@ -31,6 +43,8 @@ pub struct StoredObject {
     pub key: String,
     /// Identité qui a écrit le fichier.
     pub owner: Option<StorageRecordId>,
+    /// Application qui a écrit le fichier sans identité (compte de service).
+    pub owner_application: Option<StorageRecordId>,
     /// Nom d'origine.
     pub filename: String,
     /// Type MIME annoncé.

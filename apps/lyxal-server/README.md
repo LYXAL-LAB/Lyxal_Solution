@@ -77,7 +77,7 @@ du code Rust, déclarer son implémentation et ses services dans `src/modules/` 
 | `crypto` | `application_key` (facultative, variable d'environnement seulement), `application_key_id` |
 | `auth` | `public_url` (facultative : adresse publique de l'interface, pour les liens des messages et l'origine des passkeys), `passkey_rp_id` (facultatif : domaine des passkeys, défaut : hôte de `public_url`) |
 | `notification.smtp` | `host`, `port`, `security` (`tls`, `starttls`, `local_plain`), `username`, `password`, `from_address`, `from_name`, `timeout_seconds` (section facultative) |
-| `storage.disk` | `root` (section facultative : dossier du support de fichiers `default`) |
+| `storage` | `disk.root` (facultatif : dossier du support de fichiers `default`), `idle_timeout_seconds` (délai d'inactivité d'un envoi ou d'un téléchargement, 5 à 600, 60 par défaut) |
 
 Les identifiants Root ne figurent dans aucun fichier : `LYXAL__DATABASE__USERNAME` et
 `LYXAL__DATABASE__PASSWORD` (mot de passe en `SecretString`, masqué). Une connexion `ws://` ou
@@ -120,8 +120,39 @@ Le stockage des fichiers (`lyxal_storage`) écrit sous un dossier du serveur :
 `LYXAL__STORAGE__DISK__ROOT` (créé s'il n'existe pas ; à placer sur un volume sauvegardé, hors
 du dossier de l'application). C'est le support `default` des buckets. Sans dossier, le serveur
 démarre : aucun fichier n'est écrit ni lu (`STORAGE_BACKEND_UNKNOWN`), le worker de nettoyage
-n'est pas lancé et la sonde du module est dégradée. Les routes d'envoi et de téléchargement
-arrivent avec le lot suivant du module.
+n'est pas lancé et la sonde du module est dégradée.
+
+Routes des fichiers, sous `/api/v1/storage` (`{bucket}` : clé du bucket, `{clé}` : clé du
+fichier, par exemple `plans/2026/a.pdf`) :
+
+| Méthode et chemin | Effet |
+| :--- | :--- |
+| `PUT /buckets/{bucket}/objects/{clé}` | envoie un fichier : le corps de la requête est son contenu ; `201` et sa fiche |
+| `GET /buckets/{bucket}/objects/{clé}` | télécharge le fichier, en entier ou sur une plage (`Range`) |
+| `GET /buckets/{bucket}/objects/{clé}?metadata` | fiche du fichier, quel que soit son état |
+| `HEAD /buckets/{bucket}/objects/{clé}` | en-têtes du téléchargement, sans contenu |
+| `DELETE /buckets/{bucket}/objects/{clé}` | supprime le fichier |
+| `GET /buckets/{bucket}/objects?prefix=&limit=&start=` | liste les fichiers disponibles |
+
+* **Droits** : jeton d'accès de l'appelant (`Authorization: Bearer`), de toute session valide
+  (utilisateur, clé d'API, compte de service). Chaque requête s'exécute sous une session
+  SurrealDB à son nom : les fonctions `fn::storage_*` et les permissions des tables décident ;
+  l'hôte ne recopie aucune règle. Sans service de connexion : `SERVER_AUTH_DISABLED`.
+* **Envoi** : `Content-Type` est le type annoncé, `Content-Length` la taille annoncée,
+  `X-Lyxal-Filename` (texte encodé en pourcent) le nom d'origine, sinon le dernier segment de
+  la clé. Une adresse occupée est refusée (`STORAGE_OBJECT_EXISTS`).
+* **Téléchargement** : `ETag` (empreinte BLAKE3), `Last-Modified`, `Accept-Ranges`, une plage
+  par requête (`206`, `416` hors du fichier), `If-None-Match` (`304`), `If-Range`. Le fichier
+  est toujours proposé à l'enregistrement (`Content-Disposition: attachment`,
+  `X-Content-Type-Options: nosniff`), jamais mis en cache (`Cache-Control: private, no-store`).
+* **Limites** : ces routes ne sont pas soumises à `server.body_limit_bytes` ni au délai total
+  d'une requête ; la taille est bornée par le bucket (100 Mo par défaut, 5 Go au plus), vérifiée
+  pendant l'écriture. Un envoi ou une lecture du support qui ne transmet plus rien pendant
+  `storage.idle_timeout_seconds` est coupé. Ce même délai est le délai d'écriture de toute
+  connexion du serveur (`src/serve.rs`) : un client qui cesse de lire sa réponse est déconnecté,
+  ce qui libère le fichier ouvert et sa place dans la limite de requêtes simultanées.
+* **Réponses** : contrat `LyxalResult`, sauf le contenu d'un fichier ; erreurs `STORAGE_*` dans
+  la langue de la requête.
 
 La connexion (`lyxal_auth`) demande la clé applicative et `auth.public_url`
 (`LYXAL__AUTH__PUBLIC_URL`, ex. `https://console.example.com`). Au démarrage, l'hôte crée les
@@ -253,7 +284,6 @@ garde son code `RUNTIME_*`.
 | `SERVER_DATABASE_UNAVAILABLE` | `dependency` | 503 (réessayable) |
 | `SERVER_MODULE_INSTALL_FAILED` | `internal` | 500 |
 | `SERVER_BIND_FAILED` | `internal` | 500 |
-| `SERVER_HTTP_SERVE_FAILED` | `internal` | 500 |
 | `SERVER_SHUTDOWN_SIGNAL_FAILED` | `internal` | 500 |
 | `SERVER_TELEMETRY_INIT_FAILED` | `internal` | 500 |
 | `SERVER_AUTH_DISABLED` | `dependency` | 503 |

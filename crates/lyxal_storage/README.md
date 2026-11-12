@@ -3,8 +3,9 @@
 Module du Noyau Technique de Lyxal OS : **fichiers et documents stockés**. Les règles sont dans
 SurrealDB (réglages, buckets, fiche de chaque fichier, états, droits, quotas, événements) ; le
 crate Rust écrit et lit les octets en flux sur un support (disque local, mémoire pour les
-tests), calcule leur empreinte et retire les octets devenus inutiles. Les routes HTTP d'envoi et
-de téléchargement, puis S3, sont dans la [`ROADMAP.md`](ROADMAP.md). Sources et étude de la
+tests), calcule leur empreinte et retire les octets devenus inutiles. L'hôte expose l'envoi et le
+téléchargement par HTTP (`apps/lyxal-server/README.md`). S3 et les lots suivants sont dans la
+[`ROADMAP.md`](ROADMAP.md). Sources et étude de la
 gestion de fichiers de SurrealDB : [`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md).
 
 | | |
@@ -20,7 +21,7 @@ gestion de fichiers de SurrealDB : [`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md
 | :--- | :--- |
 | `storage_settings` | réglages de l'installation, surchargés par organisation : taille maximale d'un fichier, quota, délai d'une écriture en attente, conservation après suppression |
 | `storage_bucket` | ensemble de fichiers : nom unique dans sa portée (`[a-z0-9-]`, 3 à 63 caractères), taille maximale, types MIME acceptés (vide : tous), lecture seule, support (`backend`, `default` par défaut, fixé à la création) |
-| `storage_object` | fiche d'un fichier : bucket, clé (`plans/2026/a.pdf`), propriétaire, nom d'origine, taille et type annoncés, taille, type réel et empreinte BLAKE3 posés à la fin de l'écriture, état, support et emplacement des octets (`backend`, `path`) |
+| `storage_object` | fiche d'un fichier : bucket, clé (`plans/2026/a.pdf`), auteur (`owner` : identité ; `owner_application` : application d'un compte de service), nom d'origine, taille et type annoncés, taille, type réel et empreinte BLAKE3 posés à la fin de l'écriture, état, support et emplacement des octets (`backend`, `path`) |
 | `storage_reclaim` | préfixe d'octets à retirer après la suppression d'un bucket |
 
 Portée : champ `tenant` (organisation `lyxal_auth`, absent pour l'installation) et `scope_key`
@@ -107,7 +108,7 @@ l'installation.
 | `storage_bucket_list` | `tenant`, `limit`, `start` | `{ items, total }`, triés par nom | lecture |
 | `storage_bucket_delete` | **bucket** | `{ deleted }` ; refusé s'il porte une fiche | gestion |
 | `storage_object_begin` | **bucket**, **key**, **filename**, `declared_type`, `declared_size` | fiche `pending` et `max_size` (taille maximale acceptée) | écriture |
-| `storage_object_commit` | **object**, **size**, **content_type**, **blake3** | fiche `available` | worker, ou l'identité qui a ouvert l'écriture |
+| `storage_object_commit` | **object**, **size**, **content_type**, **blake3** | fiche `available` | worker, ou l'appelant qui a ouvert l'écriture (son identité, ou son application pour un compte de service) |
 | `storage_object_get` | **object**, ou **bucket** et **key** | fiche (par adresse : fichier non supprimé) | lecture |
 | `storage_object_open` | **object**, ou **bucket** et **key** | fiche d'un fichier à servir ; refus s'il n'est pas `available` | lecture |
 | `storage_object_list` | **bucket**, `prefix`, `state` (`available`), `limit`, `start` | `{ items, total }`, triés par clé | lecture |
@@ -121,7 +122,8 @@ l'installation.
 | `storage_reclaim_done` | **reclaim** | `{ done }` : ligne retirée, après le retrait des octets | worker |
 
 Fonctions internes : `fn::storage_can`, `fn::storage_settings_effective`,
-`fn::storage_scope_usage`, `fn::storage_object_limits`, `fn::storage_object_update_refusal`.
+`fn::storage_scope_usage`, `fn::storage_object_limits`, `fn::storage_object_is_author`,
+`fn::storage_object_update_refusal`.
 
 ## 4. Erreurs (`error/<thème>/`)
 
@@ -130,7 +132,7 @@ Fonctions internes : `fn::storage_can`, `fn::storage_settings_effective`,
 | `parametres` | `STORAGE_INVALID_PARAMETERS` |
 | `permissions` | `STORAGE_PERMISSION_DENIED`, `STORAGE_WRITE_FORBIDDEN` |
 | `buckets` | `STORAGE_BUCKET_NOT_FOUND`, `STORAGE_BUCKET_EXISTS`, `STORAGE_BUCKET_NOT_EMPTY`, `STORAGE_BUCKET_READONLY` |
-| `fichiers` | `STORAGE_OBJECT_NOT_FOUND`, `STORAGE_OBJECT_EXISTS`, `STORAGE_OBJECT_STATE_INVALID`, `STORAGE_OBJECT_IN_USE`, `STORAGE_OBJECT_TOO_LARGE`, `STORAGE_OBJECT_TYPE_REFUSED`, `STORAGE_QUOTA_EXCEEDED` |
+| `fichiers` | `STORAGE_OBJECT_NOT_FOUND`, `STORAGE_OBJECT_EXISTS`, `STORAGE_OBJECT_STATE_INVALID`, `STORAGE_OBJECT_IN_USE`, `STORAGE_OBJECT_TOO_LARGE`, `STORAGE_OBJECT_TYPE_REFUSED`, `STORAGE_QUOTA_EXCEEDED`, `STORAGE_RANGE_NOT_SATISFIABLE` |
 | `supports` | `STORAGE_BACKEND_UNKNOWN`, `STORAGE_BACKEND_UNAVAILABLE` (à réessayer), `STORAGE_OBJECT_NOT_AVAILABLE`, `STORAGE_CONTENT_MISMATCH`, `STORAGE_INTEGRITY_FAILED` |
 
 ## 5. Événements
@@ -147,7 +149,7 @@ Publiés par `fn::event_publish` dans la transaction de la mutation : `storage.o
 | `StorageStore` | un appel typé par fonction publique (`LyxalSurrealCall::call_fn`) ; la session du client détermine les droits |
 | `models` | `XxxParams` et résultats nommés de chaque fonction |
 | `Backends`, `BackendConfig` | supports nommés : `Disk { root }` (tout est écrit sous `root`) et `Memory` (tests) |
-| `StorageService` | `put` (écriture en flux), `open` (lecture en flux, en entier ou sur une plage d'octets), `delete`, `verify` (relit les octets et compare taille et empreinte à la fiche) |
+| `StorageService` | `put` (écriture en flux), `stat` (fiche d'un fichier à servir), `open` (lecture en flux, en entier ou sur une plage `ByteRange` validée contre la taille de la fiche), `delete`, `verify` (relit les octets et compare taille et empreinte à la fiche) |
 | `StorageCleanupWorker` | worker supervisé : écritures abandonnées, fichiers supprimés hors délai, octets des buckets supprimés |
 | `StorageModule`, `StorageHealthCheck` | module `LyxalModule` ; la sonde écrit, relit et retire un fichier témoin sur chaque support |
 | `StorageError` | erreur SurrealQL ou du support ; `code()`, `is_retryable()` |
@@ -177,5 +179,6 @@ Publiés par `fn::event_publish` dans la transaction de la mutation : `storage.o
 * Tests Rust `tests/it/` (base embarquée, supports mémoire et disque) : fichier écrit puis relu
   à l'identique, plage d'octets, fichier de 64 Mo sans dépasser trois parties en mémoire, échecs
   nettoyés, fichier altéré détecté, worker, sonde, appels du store.
-* `apps/lyxal-server` : démarrage avec et sans dossier de stockage (`startup.rs`).
+* `apps/lyxal-server` : démarrage avec et sans dossier de stockage (`startup.rs`) ; routes des
+  fichiers de bout en bout (`storage_routes.rs`).
 * `scripts/ci/ci_local.sh` rejoue la CI complète.
