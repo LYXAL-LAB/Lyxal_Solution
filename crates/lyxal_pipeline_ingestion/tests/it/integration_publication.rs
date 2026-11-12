@@ -90,11 +90,11 @@ async fn approved_manifest(
             source_format_version: "1.0".to_string(),
             source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
             fournisseur_id: "FOURN_PLACO".to_string(),
-            nom_fichier: format!("{batch}.csv"),
-            file_hash_blake3: lyxal_crypto::blake3_hex(batch.as_bytes()),
-            taille_octets: 512,
+            source_object: crate::support::source(store, &format!("{batch}.csv"), batch.as_bytes())
+                .await,
             chunk_size: 50,
             provenance_details: serde_json::json!({}),
+            commercial_proof: None,
         },
     )
     .await;
@@ -500,12 +500,14 @@ async fn staged_item_batch_is_immutable() {
         Some(proof("EDI-2026-PLACO-001", "EDI_HUB_SAINT_GOBAIN")),
     )];
     approved_manifest(&store, "lot_fixe", "MAN-FIXE", &items).await;
+    let source_object = crate::support::source(&store, "libre.csv", b"libre.csv").await;
     let moved = store
         .client()
         .query(
-            "RETURN fn::ingestion_batch_create({ id: 'lot_libre', source_type: 'CSV', fournisseur_id: 'FOURN_PLACO', nom_fichier: 'libre.csv', file_hash_blake3: crypto::blake3('libre.csv') }).ok;
+            "RETURN fn::ingestion_batch_create({ id: 'lot_libre', source_type: 'CSV', fournisseur_id: 'FOURN_PLACO', source_object: $source_object }).ok;
              UPDATE ingestion_staged_item SET batch = ingestion_batch:lot_libre WHERE batch = ingestion_batch:lot_fixe;",
         )
+        .bind(("source_object", source_object))
         .await
         .expect("requête")
         .check();

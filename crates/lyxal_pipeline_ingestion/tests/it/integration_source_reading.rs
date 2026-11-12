@@ -4,35 +4,52 @@
 
 use lyxal_pipeline_ingestion::storage::{BatchProgress, IngestionStore, NewBatch};
 use lyxal_pipeline_ingestion::types::{BatchStatus, SourceEncoding, SourceFormat};
-use lyxal_pipeline_ingestion::worker::IngestionWorker;
 use lyxal_runtime::worker::CancellationToken;
 
-fn batch(id: &str, format: SourceFormat, encoding: SourceEncoding, chunk_size: i64) -> NewBatch {
-    NewBatch {
-        id: Some(id.to_string()),
-        source_type: format,
-        source_format_version: "1.0".to_string(),
-        source_encoding: encoding,
-        fournisseur_id: "FOURN_TEST".to_string(),
-        nom_fichier: format!("{id}.src"),
-        file_hash_blake3: lyxal_crypto::blake3_hex(id.as_bytes()),
-        taille_octets: 512,
-        chunk_size,
-        provenance_details: serde_json::json!({}),
-    }
+/// Envoie le fichier source dans le stockage et crée son lot.
+async fn batch(
+    store: &IngestionStore,
+    id: &str,
+    format: SourceFormat,
+    encoding: SourceEncoding,
+    chunk_size: i64,
+    source: &[u8],
+) {
+    let source_object = crate::support::source(store, &format!("{id}.src"), source).await;
+    store
+        .create_batch(&NewBatch {
+            id: Some(id.to_string()),
+            source_type: format,
+            source_format_version: "1.0".to_string(),
+            source_encoding: encoding,
+            fournisseur_id: "FOURN_TEST".to_string(),
+            source_object,
+            chunk_size,
+            provenance_details: serde_json::json!({}),
+            commercial_proof: None,
+        })
+        .await
+        .expect("lot");
 }
 
 async fn process(
     store: &IngestionStore,
     id: &str,
-    format: SourceFormat,
-    source: &[u8],
 ) -> lyxal_pipeline_ingestion::IngestionResult<
     lyxal_pipeline_ingestion::worker::BatchProcessingReport,
 > {
-    IngestionWorker::new(store.clone())
-        .expect("worker")
-        .process_batch(id, source, format, None, &CancellationToken::new())
+    process_until(store, id, &CancellationToken::new()).await
+}
+
+async fn process_until(
+    store: &IngestionStore,
+    id: &str,
+    cancellation: &CancellationToken,
+) -> lyxal_pipeline_ingestion::IngestionResult<
+    lyxal_pipeline_ingestion::worker::BatchProcessingReport,
+> {
+    crate::support::worker(store)
+        .process_batch(id, cancellation)
         .await
 }
 
@@ -51,24 +68,17 @@ async fn labels(store: &IngestionStore, id: &str) -> Vec<(usize, String)> {
 #[tokio::test]
 async fn csv_designation_over_several_lines_is_one_article() {
     let store = crate::support::installed_store().await;
-    store
-        .create_batch(&batch(
-            "lot_multiligne",
-            SourceFormat::Csv,
-            SourceEncoding::Utf8,
-            10,
-        ))
-        .await
-        .expect("lot");
     let source = "reference;designation;fabricant;unite;prix\nBA13;\"Plaque\nde plâtre\nstandard\";Placo;M2;8,50\nBA18;Plaque BA18;Placo;M2;9,10\n";
-    let report = process(
+    batch(
         &store,
         "lot_multiligne",
         SourceFormat::Csv,
+        SourceEncoding::Utf8,
+        10,
         source.as_bytes(),
     )
-    .await
-    .expect("traitement");
+    .await;
+    let report = process(&store, "lot_multiligne").await.expect("traitement");
     assert_eq!(report.total_lignes, 2, "deux articles, pas cinq lignes");
     let labels = labels(&store, "lot_multiligne").await;
     assert_eq!(labels.len(), 2);
@@ -78,19 +88,17 @@ async fn csv_designation_over_several_lines_is_one_article() {
 #[tokio::test]
 async fn json_element_that_is_not_an_object_is_quarantined() {
     let store = crate::support::installed_store().await;
-    store
-        .create_batch(&batch(
-            "lot_json",
-            SourceFormat::Json,
-            SourceEncoding::Utf8,
-            10,
-        ))
-        .await
-        .expect("lot");
     let source = br#"[{"ref":"A1","designation":"Article A","fabricant":"Placo","unite":"M2"}, 42, {"ref":"B2","designation":"Article B","fabricant":"Placo","unite":"M2"}]"#;
-    let report = process(&store, "lot_json", SourceFormat::Json, source)
-        .await
-        .expect("traitement");
+    batch(
+        &store,
+        "lot_json",
+        SourceFormat::Json,
+        SourceEncoding::Utf8,
+        10,
+        source,
+    )
+    .await;
+    let report = process(&store, "lot_json").await.expect("traitement");
     assert_eq!(report.final_status, BatchStatus::Staged);
     assert_eq!(report.total_lignes, 3);
     assert_eq!(report.rejected_count, 1);
@@ -122,15 +130,6 @@ async fn json_element_that_is_not_an_object_is_quarantined() {
 #[tokio::test]
 async fn xml_entities_are_decoded_in_staging() {
     let store = crate::support::installed_store().await;
-    store
-        .create_batch(&batch(
-            "lot_xml",
-            SourceFormat::Xml,
-            SourceEncoding::Utf8,
-            10,
-        ))
-        .await
-        .expect("lot");
     let source = r#"<?xml version="1.0"?>
 <BMECAT><T_NEW_CATALOG>
   <ARTICLE>
@@ -142,9 +141,16 @@ async fn xml_entities_are_decoded_in_staging() {
     <ARTICLE_ORDER_DETAILS><ORDER_UNIT>M2</ORDER_UNIT></ARTICLE_ORDER_DETAILS>
   </ARTICLE>
 </T_NEW_CATALOG></BMECAT>"#;
-    process(&store, "lot_xml", SourceFormat::Xml, source.as_bytes())
-        .await
-        .expect("traitement");
+    batch(
+        &store,
+        "lot_xml",
+        SourceFormat::Xml,
+        SourceEncoding::Utf8,
+        10,
+        source.as_bytes(),
+    )
+    .await;
+    process(&store, "lot_xml").await.expect("traitement");
     assert_eq!(
         labels(&store, "lot_xml").await,
         vec![(1, "Plaque épaisseur 12,5 & bords amincis".to_string())]
@@ -154,25 +160,23 @@ async fn xml_entities_are_decoded_in_staging() {
 #[tokio::test]
 async fn declared_windows_1252_batch_is_decoded() {
     let store = crate::support::installed_store().await;
-    store
-        .create_batch(&batch(
-            "lot_excel",
-            SourceFormat::Csv,
-            SourceEncoding::Windows1252,
-            10,
-        ))
-        .await
-        .expect("lot");
+    let source = b"reference;designation;fabricant;unite\nBA13;Plaque pl\xE2tre \xE9paisseur 12,5;Placo;M2\n";
+    batch(
+        &store,
+        "lot_excel",
+        SourceFormat::Csv,
+        SourceEncoding::Windows1252,
+        10,
+        source,
+    )
+    .await;
     let lot = store
         .get_batch("lot_excel")
         .await
         .expect("lecture")
         .expect("lot");
     assert_eq!(lot.source_encoding, SourceEncoding::Windows1252);
-    let source = b"reference;designation;fabricant;unite\nBA13;Plaque pl\xE2tre \xE9paisseur 12,5;Placo;M2\n";
-    process(&store, "lot_excel", SourceFormat::Csv, source)
-        .await
-        .expect("traitement");
+    process(&store, "lot_excel").await.expect("traitement");
     assert_eq!(
         labels(&store, "lot_excel").await,
         vec![(1, "Plaque plâtre épaisseur 12,5".to_string())]
@@ -182,17 +186,17 @@ async fn declared_windows_1252_batch_is_decoded() {
 #[tokio::test]
 async fn unreadable_source_fails_the_batch_before_staging() {
     let store = crate::support::installed_store().await;
-    store
-        .create_batch(&batch(
-            "lot_casse",
-            SourceFormat::Xml,
-            SourceEncoding::Utf8,
-            1,
-        ))
-        .await
-        .expect("lot");
     let source = b"<BMECAT><ARTICLE><SUPPLIER_AID>A</SUPPLIER_AID></ARTICLE>\n<ARTICLE><SUPPLIER_AID>B</X></ARTICLE></BMECAT>";
-    let error = process(&store, "lot_casse", SourceFormat::Xml, source)
+    batch(
+        &store,
+        "lot_casse",
+        SourceFormat::Xml,
+        SourceEncoding::Utf8,
+        1,
+        source,
+    )
+    .await;
+    let error = process(&store, "lot_casse")
         .await
         .expect_err("source illisible");
     assert_eq!(error.code(), "INGESTION_SOURCE_INVALID");
@@ -214,11 +218,20 @@ async fn unreadable_source_fails_the_batch_before_staging() {
 async fn resume_keeps_numbers_after_a_rejection() {
     let store = crate::support::installed_store().await;
     // Blocs de deux éléments : [A, rejet], [C, D] ; reprise après le premier bloc
-    let claim = crate::support::claimed_batch(
+    let source = br#"[{"ref":"A","designation":"A","fabricant":"Placo","unite":"M2"}, "x", {"ref":"C","designation":"C","fabricant":"Placo","unite":"M2"}, {"ref":"D","designation":"D","fabricant":"Placo","unite":"M2"}]"#;
+    batch(
         &store,
-        &batch("lot_reprise", SourceFormat::Json, SourceEncoding::Utf8, 2),
+        "lot_reprise",
+        SourceFormat::Json,
+        SourceEncoding::Utf8,
+        2,
+        source,
     )
     .await;
+    let claim = store
+        .claim_batch("lot_reprise", "test", 600)
+        .await
+        .expect("réservation du lot");
     store
         .save_checkpoint(
             &claim,
@@ -238,10 +251,7 @@ async fn resume_keeps_numbers_after_a_rejection() {
         .await
         .expect("libération");
 
-    let source = br#"[{"ref":"A","designation":"A","fabricant":"Placo","unite":"M2"}, "x", {"ref":"C","designation":"C","fabricant":"Placo","unite":"M2"}, {"ref":"D","designation":"D","fabricant":"Placo","unite":"M2"}]"#;
-    let report = process(&store, "lot_reprise", SourceFormat::Json, source)
-        .await
-        .expect("reprise");
+    let report = process(&store, "lot_reprise").await.expect("reprise");
     assert_eq!(report.total_lignes, 4);
     assert_eq!(
         report.rejected_count, 1,
@@ -257,4 +267,112 @@ async fn resume_keeps_numbers_after_a_rejection() {
         vec![3, 4],
         "les éléments repris gardent leur numéro dans la source"
     );
+}
+
+#[tokio::test]
+async fn altered_source_fails_the_batch_before_staging() {
+    let store = crate::support::installed_store().await;
+    let source = b"reference;designation;fabricant;unite\nBA13;Plaque BA13;Placo;M2\nBA18;Plaque BA18;Placo;M2\n";
+    batch(
+        &store,
+        "lot_altere",
+        SourceFormat::Csv,
+        SourceEncoding::Utf8,
+        1,
+        source,
+    )
+    .await;
+    let lot = store
+        .get_batch("lot_altere")
+        .await
+        .expect("lecture")
+        .expect("lot");
+    assert_eq!(lot.taille_octets, source.len());
+    assert_eq!(lot.file_hash_blake3, lyxal_crypto::blake3_hex(source));
+
+    // Octets remplacés sur le support après la création du lot : même taille, autre contenu
+    let altered = b"reference;designation;fabricant;unite\nBA13;Plaque XXXX;Placo;M2\nBA18;Plaque BA18;Placo;M2\n";
+    assert_eq!(altered.len(), source.len());
+    crate::support::tamper(&store, &lot.source_object, altered).await;
+
+    let error = process(&store, "lot_altere")
+        .await
+        .expect_err("fichier altéré");
+    assert_eq!(error.code(), "INGESTION_SOURCE_ALTERED");
+    let lot = store
+        .get_batch("lot_altere")
+        .await
+        .expect("lecture")
+        .expect("lot");
+    assert_eq!(lot.statut, BatchStatus::Failed);
+    assert!(
+        labels(&store, "lot_altere").await.is_empty(),
+        "aucun article en staging"
+    );
+}
+
+#[tokio::test]
+async fn a_batch_interrupted_by_a_shutdown_is_resumed_by_another_worker_from_the_database() {
+    use lyxal_runtime::worker::{LyxalWorker, WorkerContext};
+    let store = crate::support::installed_store().await;
+    let mut source = String::from("reference;designation;fabricant;unite\n");
+    for line in 0..6 {
+        source.push_str(&format!("REF{line};Article {line};Placo;M2\n"));
+    }
+    batch(
+        &store,
+        "lot_arret",
+        SourceFormat::Csv,
+        SourceEncoding::Utf8,
+        2,
+        source.as_bytes(),
+    )
+    .await;
+
+    // Arrêt du serveur demandé avant la fin : le lot reste à traiter, rien n'est en mémoire
+    let stopped = CancellationToken::new();
+    stopped.cancel();
+    let report = process_until(&store, "lot_arret", &stopped)
+        .await
+        .expect("interruption");
+    assert!(report.interrupted);
+    assert_eq!(
+        store.pending_batches(10).await.expect("lots à traiter"),
+        vec!["lot_arret".to_string()]
+    );
+
+    // Un nouveau worker (serveur redémarré) le trouve dans la base et le termine
+    let worker =
+        crate::support::worker(&store).with_poll_interval(std::time::Duration::from_millis(50));
+    let cancellation = CancellationToken::new();
+    let descriptor = worker.descriptor().clone();
+    let context = WorkerContext::new(
+        descriptor.module_id.clone(),
+        descriptor.id.clone(),
+        lyxal_runtime::ModuleContext::new("lyxal_pipeline_ingestion"),
+        cancellation.clone(),
+    );
+    let running = tokio::spawn(async move { worker.run(context).await });
+    let mut staged = false;
+    for _ in 0..200 {
+        let lot = store
+            .get_batch("lot_arret")
+            .await
+            .expect("lecture")
+            .expect("lot");
+        if lot.statut == BatchStatus::Staged {
+            staged = true;
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
+    cancellation.cancel();
+    running.await.expect("worker").expect("arrêt du worker");
+    assert!(staged, "lot repris et terminé par le worker");
+    assert_eq!(labels(&store, "lot_arret").await.len(), 6);
+    assert!(store
+        .pending_batches(10)
+        .await
+        .expect("lots à traiter")
+        .is_empty());
 }

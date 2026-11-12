@@ -14,6 +14,7 @@ pub struct IngestionHealthCheck {
     module_id: ModuleId,
     store: Option<IngestionStore>,
     publication_enabled: bool,
+    source_storage: bool,
 }
 
 impl IngestionHealthCheck {
@@ -23,6 +24,7 @@ impl IngestionHealthCheck {
             module_id: ModuleId::new("lyxal_pipeline_ingestion"),
             store: None,
             publication_enabled: true,
+            source_storage: true,
         }
     }
 
@@ -32,6 +34,7 @@ impl IngestionHealthCheck {
             module_id: ModuleId::new("lyxal_pipeline_ingestion"),
             store: Some(store),
             publication_enabled: true,
+            source_storage: true,
         }
     }
 
@@ -39,6 +42,15 @@ impl IngestionHealthCheck {
     /// publication, la sonde est dégradée.
     pub fn with_publication(mut self, enabled: bool) -> Self {
         self.publication_enabled = enabled;
+        self
+    }
+}
+
+impl IngestionHealthCheck {
+    /// Stockage des fichiers sources configuré ou non (un support `lyxal_storage` au moins) ;
+    /// sans lui, aucun lot n'est traité et la sonde est dégradée.
+    pub fn with_source_storage(mut self, configured: bool) -> Self {
+        self.source_storage = configured;
         self
     }
 }
@@ -60,14 +72,21 @@ impl ModuleHealthCheck for IngestionHealthCheck {
         let start = std::time::Instant::now();
         if let Some(store) = &self.store {
             match store.get_dashboard_metrics(None).await {
-                Ok(_metrics) if !self.publication_enabled => Ok(HealthCheckResult::degraded(
-                    self.module_id.clone(),
-                    start.elapsed().as_millis() as u64,
-                    Some(
-                        "Publication vers le catalogue désactivée : clé de signature du jeton de service absente (LYXAL__CATALOGUE_SYNC__SIGNING_KEY)"
-                            .to_string(),
-                    ),
-                )),
+                // Toutes les causes sont rendues : l'une ne masque pas l'autre
+                Ok(_metrics) if !self.source_storage || !self.publication_enabled => {
+                    let mut causes = Vec::new();
+                    if !self.source_storage {
+                        causes.push("Aucun lot traité : stockage des fichiers sources non configuré (LYXAL__STORAGE__DISK__ROOT)");
+                    }
+                    if !self.publication_enabled {
+                        causes.push("Publication vers le catalogue désactivée : clé de signature du jeton de service absente (LYXAL__CATALOGUE_SYNC__SIGNING_KEY)");
+                    }
+                    Ok(HealthCheckResult::degraded(
+                        self.module_id.clone(),
+                        start.elapsed().as_millis() as u64,
+                        Some(causes.join(" ; ")),
+                    ))
+                }
                 Ok(_metrics) => {
                     let latency = start.elapsed().as_millis() as u64;
                     Ok(HealthCheckResult::healthy(

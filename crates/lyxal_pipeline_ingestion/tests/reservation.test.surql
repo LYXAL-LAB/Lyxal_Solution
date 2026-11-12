@@ -3,8 +3,21 @@
 -- avec le même jeton, renouvellement par le point de reprise, cloisonnement des écritures,
 -- reprise après expiration, libération).
 --
--- identité ingestion: { "id": "auth_session:ingestion", "pv": 1, "permissions": ["ingestion.read", "ingestion.batch.write"] }
+-- identité ingestion: { "id": "auth_session:ingestion", "pv": 1, "permissions": ["ingestion.read", "ingestion.batch.write", "storage.installation.manage"] }
 -- identité intrus: { "id": "auth_session:intrus", "pv": 1, "permissions": [] }
+
+-- préparation: fichiers sources dans lyxal_storage (fonction du banc : un fichier disponible dont l'empreinte est celle du contenu donné ; rend sa fiche)
+{
+    DEFINE FUNCTION OVERWRITE fn::test_source($name: string, $content: string) {
+        IF array::len(SELECT VALUE id FROM storage_bucket WHERE scope_key = "installation" AND name = "ingestion-sources") = 0 {
+            fn::storage_bucket_create({ name: "ingestion-sources" });
+        };
+        LET $bucket = (SELECT VALUE id FROM ONLY storage_bucket WHERE scope_key = "installation" AND name = "ingestion-sources" LIMIT 1);
+        LET $begun = fn::storage_object_begin({ bucket: <string> $bucket, key: $name, filename: $name, declared_size: 2048 });
+        LET $done = fn::storage_object_commit({ object: <string> $begun.data.id, size: 2048, content_type: "text/csv", blake3: crypto::blake3($content) });
+        RETURN <string> $done.data.id;
+    };
+};
 
 -- préparation: identités et sessions lyxal_auth (Data Steward en double facteur : AAL2 ; synchronisation : compte de service)
 {
@@ -15,7 +28,7 @@
 };
 
 -- préparation: lot
-RETURN fn::ingestion_batch_create({ id: "lot_r", source_type: "CSV", fournisseur_id: "FOURN_PLACO", nom_fichier: "r.csv", file_hash_blake3: crypto::blake3("r.csv") });
+RETURN fn::ingestion_batch_create({ id: "lot_r", source_type: "CSV", fournisseur_id: "FOURN_PLACO", source_object: fn::test_source("r.csv", "r.csv") });
 
 -- test: un lot libre est réservé (génération 1, échéance dans la durée demandée)
 -- en tant que: ingestion

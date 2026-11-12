@@ -20,7 +20,6 @@ use lyxal_pipeline_ingestion::storage::NewBatch;
 use lyxal_pipeline_ingestion::types::{
     ItemQualification, PackagingDetails, PublicationAction, SourceFormat,
 };
-use lyxal_pipeline_ingestion::worker::IngestionWorker;
 use lyxal_runtime::health::HealthStatus;
 use lyxal_runtime::worker::CancellationToken;
 use lyxal_runtime::{ModuleContext, ModuleHealthCheck};
@@ -230,11 +229,10 @@ async fn test_staging_system_session_writes_and_reads() {
         source_format_version: "3.0".to_string(),
         source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "FOURN_RLS".to_string(),
-        nom_fichier: "catalogue_rls.csv".to_string(),
-        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_rls_01"),
-        taille_octets: 4096,
+        source_object: crate::support::source(&store, "catalogue_rls.csv", b"hash_rls_01").await,
         chunk_size: 500,
         provenance_details: serde_json::json!({ "agent": "system" }),
+        commercial_proof: None,
     };
     store.create_batch(&batch).await.expect("Création du lot");
 
@@ -269,17 +267,16 @@ async fn test_staging_worker_batch_checkpoint_and_interruption_resumption() {
         source_format_version: "3.0".to_string(),
         source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "FOURN_WORKER".to_string(),
-        nom_fichier: "worker_batch.csv".to_string(),
-        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_worker_01"),
-        taille_octets: 8192,
+        source_object: crate::support::source(&store, "worker_batch.csv", b"hash_worker_01").await,
         chunk_size: 5,
         provenance_details: serde_json::json!({}),
+        commercial_proof: None,
     };
     let claim = crate::support::claimed_batch(&store, &batch).await;
 
     // Phase 1 : Traitement partiel interrompu par CancellationToken
     let token1 = CancellationToken::new();
-    let _worker1 = IngestionWorker::new(store.clone()).expect("worker");
+    let _worker1 = crate::support::worker(&store);
 
     // Simulation d'un traitement avec interruption à l'offset 10
     let checkpoint_offset = 10;
@@ -356,11 +353,11 @@ async fn test_staging_real_performance_metrics() {
         source_format_version: "3.0".to_string(),
         source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "FOURN_BENCH".to_string(),
-        nom_fichier: "bench_catalogue.csv".to_string(),
-        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_bench_01"),
-        taille_octets: 1024 * 1024,
+        source_object: crate::support::source(&store, "bench_catalogue.csv", b"hash_bench_01")
+            .await,
         chunk_size: 500,
         provenance_details: serde_json::json!({}),
+        commercial_proof: None,
     };
     let claim = crate::support::claimed_batch(&store, &batch).await;
 

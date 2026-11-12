@@ -171,7 +171,8 @@ pub async fn register_services(
         notification::register_services(runtime, client, config, crypto).await?;
     #[cfg(feature = "module-ingestion")]
     {
-        let publication = ingestion::register_services(runtime, client, auth.as_ref()).await?;
+        let publication =
+            ingestion::register_services(runtime, client, auth.as_ref(), &storage).await?;
         Ok(HostedServices {
             auth,
             storage,
@@ -191,11 +192,17 @@ pub async fn register_services(
 /// démarrage.
 pub async fn complete_services(
     runtime: &LyxalRuntime,
+    client: &Surreal<Any>,
     services: &HostedServices,
 ) -> Result<(), ServerError> {
+    #[cfg(not(feature = "module-ingestion"))]
+    let _ = client;
     auth::complete_services(services.auth.as_ref()).await?;
     #[cfg(feature = "module-ingestion")]
-    ingestion::reconcile_publication(runtime, services.publication).await?;
+    {
+        ingestion::ensure_source_bucket(client).await?;
+        ingestion::reconcile_publication(runtime, services.publication).await?;
+    }
     notification::reconcile_subscriptions(runtime, services.notification_delivery).await?;
     Ok(())
 }

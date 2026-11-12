@@ -15,6 +15,7 @@ use surrealdb::Surreal;
 use crate::adapters::RawRecordDto;
 use crate::error::{IngestionError, IngestionResult};
 use crate::normalization::{BlockReferentials, ResolvedManufacturer};
+use crate::proof::CommercialProof;
 
 /// Taille maximale d'un appel de résolution (`fn::ingestion_resolve_units` / `_manufacturers`).
 const RESOLVE_CHUNK: usize = 500;
@@ -84,12 +85,13 @@ pub struct NewBatch {
     /// Encodage déclaré du fichier source.
     pub source_encoding: SourceEncoding,
     pub fournisseur_id: String,
-    pub nom_fichier: String,
-    /// Empreinte BLAKE3 (64 caractères hexadécimaux) du fichier : clé d'idempotence.
-    pub file_hash_blake3: String,
-    pub taille_octets: i64,
+    /// Fichier source conservé par `lyxal_storage` (`storage_object:<clé>`, disponible) : son
+    /// nom, sa taille et son empreinte BLAKE3 (clé d'idempotence) sont lus sur sa fiche.
+    pub source_object: String,
     pub chunk_size: i64,
     pub provenance_details: serde_json::Value,
+    /// Preuve commerciale appliquée aux articles du lot.
+    pub commercial_proof: Option<CommercialProof>,
 }
 
 /// Manifeste brouillon ou scellé (`fn::ingestion_manifest_save`).
@@ -112,6 +114,16 @@ pub struct ManifestDraft {
 #[derive(SurrealValue)]
 struct IdParams {
     id: String,
+}
+
+#[derive(SurrealValue)]
+struct LimitParams {
+    limit: i64,
+}
+
+#[derive(SurrealValue)]
+struct PendingBatches {
+    items: Vec<String>,
 }
 
 #[derive(SurrealValue)]
@@ -489,6 +501,20 @@ impl IngestionStore {
         Ok(self
             .call_fn("ingestion_batch_create", batch.clone())
             .await?)
+    }
+
+    /// Lots à traiter (`fn::ingestion_batch_pending_list`) : reçus ou en cours, sans réservation
+    /// en cours, du plus ancien au plus récent.
+    pub async fn pending_batches(&self, limit: u32) -> IngestionResult<Vec<String>> {
+        let pending: PendingBatches = self
+            .call_fn(
+                "ingestion_batch_pending_list",
+                LimitParams {
+                    limit: i64::from(limit),
+                },
+            )
+            .await?;
+        Ok(pending.items)
     }
 
     /// Lit un lot ; `None` s'il n'existe pas.

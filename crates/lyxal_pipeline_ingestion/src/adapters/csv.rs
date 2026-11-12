@@ -8,7 +8,7 @@ use lyxal_parsing::{CsvOptions, CsvReader, CsvRecord, Delimiter};
 
 use super::{
     fields_hash, read_item, source_invalid, RawDimensionsDto, RawRecordDto, RawWeightDto,
-    SourceAdapter, SourceItem,
+    SourceAdapter, SourceBytes, SourceItems,
 };
 use crate::error::IngestionError;
 use crate::types::{SourceEncoding, SourceFormat};
@@ -184,22 +184,22 @@ impl CsvAdapter {
         }
     }
 
-    /// Lit une source CSV et met en correspondance chaque enregistrement ; `format` est repris
-    /// dans `raw_payload` (FAB-DIS 3.0 tabulaire réutilise cette lecture).
-    pub(crate) fn read_with_format(
-        source: &[u8],
+    /// Ouvre une source CSV : chaque enregistrement lu est mis en correspondance à la demande ;
+    /// `format` est repris dans `raw_payload` (FAB-DIS 3.0 tabulaire réutilise cette lecture).
+    pub(crate) fn read_with_format<'a>(
+        source: SourceBytes<'a>,
         encoding: SourceEncoding,
-        format: &str,
-    ) -> Result<Vec<SourceItem>, IngestionError> {
+        format: &'static str,
+    ) -> Result<SourceItems<'a>, IngestionError> {
         let options = CsvOptions {
             delimiter: Delimiter::Auto,
             encoding: encoding.parsing(),
             ..Default::default()
         };
         let reader = CsvReader::new(source, options).map_err(source_invalid)?;
-        reader
-            .map(|item| read_item(item, |record| Self::map_record(&record, format)))
-            .collect()
+        Ok(Box::new(reader.map(move |item| {
+            read_item(item, |record| Self::map_record(&record, format))
+        })))
     }
 }
 
@@ -208,11 +208,11 @@ impl SourceAdapter for CsvAdapter {
         SourceFormat::Csv
     }
 
-    fn read(
+    fn read<'a>(
         &self,
-        source: &[u8],
+        source: SourceBytes<'a>,
         encoding: SourceEncoding,
-    ) -> Result<Vec<SourceItem>, IngestionError> {
+    ) -> Result<SourceItems<'a>, IngestionError> {
         Self::read_with_format(source, encoding, "CSV")
     }
 }
@@ -246,9 +246,11 @@ fn find_field(
 mod tests {
     use super::*;
     use crate::adapters::records_only;
+    #[allow(unused_imports)]
+    use crate::adapters::{ReadAll, SourceItem};
 
     fn read(content: &str) -> Result<Vec<SourceItem>, IngestionError> {
-        CsvAdapter::new().read(content.as_bytes(), SourceEncoding::Utf8)
+        CsvAdapter::new().read_all(content.as_bytes(), SourceEncoding::Utf8)
     }
 
     #[test]
@@ -321,7 +323,7 @@ mod tests {
     #[test]
     fn declared_windows_1252_is_decoded() {
         let items = CsvAdapter::new()
-            .read(
+            .read_all(
                 b"ref;designation\nA;Caf\xE9 \x80\n",
                 SourceEncoding::Windows1252,
             )

@@ -7,16 +7,20 @@
 
 use serde_json::json;
 use std::collections::{HashMap, HashSet};
+use std::io::{Cursor, Read};
 
 use lyxal_parsing::{CsvHeader, CsvOptions, CsvReader, CsvRecord, Delimiter, ReadFailure};
 
 use super::csv::CsvAdapter;
 use super::{
     fields_hash, source_invalid, RawDimensionsDto, RawRecordDto, RawWeightDto, SourceAdapter,
-    SourceItem, SourceRejection,
+    SourceBytes, SourceItem, SourceItems, SourceRejection,
 };
 use crate::error::IngestionError;
 use crate::types::{SourceEncoding, SourceFormat};
+
+/// Taille du début de la source lu pour reconnaître sa forme.
+const HEAD_SIZE: usize = 16 * 1024;
 
 /// Bloc FAB-DIS 2.3 invalide : orphelin, en double, sans référence ou de type inconnu.
 const BLOCK_INVALID: &str = "INGESTION_FABDIS_BLOCK_INVALID";
@@ -38,10 +42,25 @@ impl FabDisAdapter {
         Self
     }
 
+    /// Début de la source (16 Ko au plus), lu pour reconnaître sa forme ; la lecture reprend
+    /// ensuite depuis le premier octet.
+    fn head(source: &mut SourceBytes<'_>) -> Result<Vec<u8>, IngestionError> {
+        let mut head = Vec::with_capacity(HEAD_SIZE);
+        source
+            .by_ref()
+            .take(HEAD_SIZE as u64)
+            .read_to_end(&mut head)
+            .map_err(|error| IngestionError::SourceInvalid {
+                code: "PARSING_IO_ERROR".to_string(),
+                detail: error.to_string(),
+            })?;
+        Ok(head)
+    }
+
     /// Détermine si le flux est au format multi-blocs (lignes préfixées C, L, M, R) ou tabulaire
     /// (marqueurs ASCII cherchés dans le début de la source, quel que soit son encodage).
-    fn is_multi_block(source: &[u8]) -> bool {
-        let sample = String::from_utf8_lossy(&source[..source.len().min(16 * 1024)]);
+    fn is_multi_block(head: &[u8]) -> bool {
+        let sample = String::from_utf8_lossy(head);
         for line in sample.lines().take(15) {
             let trimmed = line.trim().trim_start_matches('\u{feff}');
             if trimmed.starts_with("C;")
@@ -59,8 +78,8 @@ impl FabDisAdapter {
 
     /// Séparateur des blocs, déterminé sur le premier bloc réel (lignes vides et commentaires
     /// passés) : `;` s'il y figure, tabulation sinon.
-    fn block_delimiter(source: &[u8]) -> u8 {
-        let sample = String::from_utf8_lossy(&source[..source.len().min(16 * 1024)]);
+    fn block_delimiter(head: &[u8]) -> u8 {
+        let sample = String::from_utf8_lossy(head);
         sample
             .lines()
             .map(|line| line.trim().trim_start_matches('\u{feff}'))
@@ -82,14 +101,18 @@ impl FabDisAdapter {
             .collect()
     }
 
-    /// Parse le format multi-blocs FAB-DIS 2.3
+    /// Lit le format multi-blocs FAB-DIS 2.3. Les blocs d'un article (C, L, R) peuvent être
+    /// éloignés dans le fichier : ils sont regroupés par référence après lecture complète. Les
+    /// octets sont lus au fil de l'eau, mais les articles lus sont gardés en mémoire jusqu'à la
+    /// fin de la lecture (seul format dans ce cas).
     fn read_multi_block(
-        source: &[u8],
+        source: SourceBytes<'_>,
+        delimiter: u8,
         encoding: SourceEncoding,
     ) -> Result<Vec<SourceItem>, IngestionError> {
         let options = CsvOptions {
             header: CsvHeader::None,
-            delimiter: Delimiter::Byte(Self::block_delimiter(source)),
+            delimiter: Delimiter::Byte(delimiter),
             encoding: encoding.parsing(),
             ..Default::default()
         };
@@ -304,13 +327,18 @@ impl SourceAdapter for FabDisAdapter {
         SourceFormat::FabDis
     }
 
-    fn read(
+    fn read<'a>(
         &self,
-        source: &[u8],
+        mut source: SourceBytes<'a>,
         encoding: SourceEncoding,
-    ) -> Result<Vec<SourceItem>, IngestionError> {
-        if Self::is_multi_block(source) {
-            Self::read_multi_block(source, encoding)
+    ) -> Result<SourceItems<'a>, IngestionError> {
+        let head = Self::head(&mut source)?;
+        let multi_block = Self::is_multi_block(&head);
+        let delimiter = Self::block_delimiter(&head);
+        let source: SourceBytes<'a> = Box::new(Cursor::new(head).chain(source));
+        if multi_block {
+            let items = Self::read_multi_block(source, delimiter, encoding)?;
+            Ok(Box::new(items.into_iter().map(Ok)))
         } else {
             CsvAdapter::read_with_format(source, encoding, "FAB-DIS_3.0")
         }
@@ -320,6 +348,8 @@ impl SourceAdapter for FabDisAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[allow(unused_imports)]
+    use crate::adapters::{ReadAll, SourceItem};
 
     #[test]
     fn test_fab_dis_multi_block_parsing() {
@@ -333,7 +363,7 @@ L;RAIL_R48;1.5;1.6;3000;48;40
         let adapter = FabDisAdapter::new();
         let records = crate::adapters::records_only(
             adapter
-                .read(content.as_bytes(), SourceEncoding::Utf8)
+                .read_all(content.as_bytes(), SourceEncoding::Utf8)
                 .unwrap(),
         );
 
@@ -376,7 +406,7 @@ L;RAIL_R48;1.5;1.6;3000;48;40
         let adapter = FabDisAdapter::new();
         let records = crate::adapters::records_only(
             adapter
-                .read(content.as_bytes(), SourceEncoding::Utf8)
+                .read_all(content.as_bytes(), SourceEncoding::Utf8)
                 .unwrap(),
         );
 
@@ -390,7 +420,7 @@ L;RAIL_R48;1.5;1.6;3000;48;40
     fn quoted_field_and_orphan_block() {
         let content = "C;BA13;3456789012345;\"Plaque; standard\";PLACO;M2;8.50\nL;RAIL;1.5;1.6;3000;48;40\nX;BA13\n";
         let items = FabDisAdapter::new()
-            .read(content.as_bytes(), SourceEncoding::Utf8)
+            .read_all(content.as_bytes(), SourceEncoding::Utf8)
             .unwrap();
         assert_eq!(items.len(), 3);
         let SourceItem::Record(ba13) = &items[0] else {
@@ -412,7 +442,7 @@ L;RAIL_R48;1.5;1.6;3000;48;40
         let content = "\n# export FAB-DIS\nC\tBA13\t3456789012345\tPlaque BA13\tPLACO\tM2\t8.50\nL\tBA13\t28.5\t29.0\t2500\t1200\t12.5\n";
         let records = crate::adapters::records_only(
             FabDisAdapter::new()
-                .read(content.as_bytes(), SourceEncoding::Utf8)
+                .read_all(content.as_bytes(), SourceEncoding::Utf8)
                 .unwrap(),
         );
         assert_eq!(records.len(), 1);

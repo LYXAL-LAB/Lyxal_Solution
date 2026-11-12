@@ -9,12 +9,12 @@ blocs et publie vers le catalogue.
 | | |
 | :--- | :--- |
 | Identifiant | `lyxal_pipeline_ingestion` (version `0.1.0`) |
-| Dépendances (`manifest.toml`) | `lyxal_core`, `lyxal_base`, `lyxal_error`, `lyxal_event`, `lyxal_auth`, `lyxal_catalogue` |
+| Dépendances (`manifest.toml`) | `lyxal_core`, `lyxal_base`, `lyxal_error`, `lyxal_event`, `lyxal_auth`, `lyxal_storage`, `lyxal_catalogue` |
 | Hébergement | `apps/lyxal-server` (fonctionnalité `module-ingestion`) |
 | Évolutions prévues | [`ROADMAP.md`](ROADMAP.md) |
 
 ```text
-fichier → lot (RECEIVED) → lignes brutes immuables → normalisation → articles en staging
+fichier envoyé dans lyxal_storage → lot (RECEIVED) → lignes brutes immuables → normalisation → articles en staging
         → (anomalies en quarantaine) → manifeste scellé (BLAKE3) → approbation du Data Steward
         → ingestion.manifest.approved → publication au catalogue (compte de service lyxal-catalogue-sync)
 ```
@@ -27,7 +27,7 @@ fichier → lot (RECEIVED) → lignes brutes immuables → normalisation → art
 
 | Table | Contenu | Lecture | Écriture |
 | :--- | :--- | :--- | :--- |
-| `ingestion_batch` | lot : source, encodage déclaré (`UTF-8`, `WINDOWS-1252`, `ISO-8859-1`), empreinte du fichier (unique par format), statut, compteurs, point de reprise, réservation du traitement, transitions | `read` | création : `batch.write` ; mise à jour : `batch.write`, `staged.qualify` ou `manifest.approve` |
+| `ingestion_batch` | lot : fichier source conservé par `lyxal_storage` (`source_object`, référence : le fichier ne se supprime pas tant que le lot existe), nom, taille et empreinte lus sur sa fiche (empreinte unique par format), encodage déclaré (`UTF-8`, `WINDOWS-1252`, `ISO-8859-1`), preuve commerciale jointe, statut, compteurs, point de reprise, réservation du traitement, transitions | `read` | création : `batch.write` ; mise à jour : `batch.write`, `staged.qualify` ou `manifest.approve` |
 | `ingestion_raw_record` | ligne brute immuable (`<lot>_<ligne>`) | `batch.write`, `staged.qualify`, `manifest.approve` ou `rule.manage` | création : `batch.write` ; jamais modifiée |
 | `ingestion_staged_item` | article normalisé : identité (lot, fabricant, référence uniques), code-barres, conditionnement, qualification, preuve, approbation, transitions | `staged.qualify`, `manifest.approve`, `rule.manage` ou `manifest.execute` | création : `staged.qualify` ; mise à jour : `staged.qualify` ou `manifest.approve` |
 | `ingestion_quarantine_record` | anomalie : ligne, code, sévérité, champ, valeur, cause, résolution | `staged.qualify`, `manifest.approve` ou `rule.manage` | création : `staged.qualify` ; résolution : `manifest.approve` ou `rule.manage` |
@@ -77,11 +77,19 @@ brouillon (`SEALED` ou `FAILED` → `DRAFT` : contenu et sceau effacés, lot dé
 rescelle puis réapprouve. `fn::ingestion_manifest_get_detail` renvoie `seal_valid`, le sceau
 recalculé par le serveur sur le contenu.
 
+**Fichier source d'un lot.** Le fichier d'un catalogue est d'abord envoyé dans `lyxal_storage`
+(routes de fichiers de l'hôte, envoi simple ou reprenable), dans le bucket de l'installation
+`ingestion-sources` que l'hôte crée au démarrage ; le lot est ensuite créé avec la fiche du
+fichier. Le lot référence la fiche : le fichier ne se supprime pas tant que le lot existe. Créer
+un lot demande donc, en plus de `ingestion.batch.write`, le droit de lire le fichier, soit
+aujourd'hui `storage.installation.manage` (bucket de l'installation). Le worker lit le fichier
+sous la session système de l'hôte.
+
 ---
 
 ## 2. Fonctions (`functions/`)
 
-26 fonctions `fn::ingestion_*($params: object)`, au contrat `fn::result_ok` /
+27 fonctions `fn::ingestion_*($params: object)`, au contrat `fn::result_ok` /
 `fn::error_result`. Entrées contrôlées par `lyxal_core` : moteur
 `fn::validation_object_execute` / `fn::sanitize_object_execute` (`unknown_keys: "reject"`) pour
 les fonctions appelées de l'extérieur ou une fois par lot ou par bloc ; primitives, en contrôles
@@ -92,7 +100,7 @@ par SurrealQL au nom de l'opérateur de la session (`triggered_by`) et horodaté
 
 | Groupe | Fonctions |
 | :--- | :--- |
-| Lots (`batch/`) | `batch_create` (état `RECEIVED` ; fichier ou identifiant déjà reçu : `INGESTION_BATCH_DUPLICATE`), `batch_get`, `batch_claim`, `batch_release`, `batch_claim_verify` (interne), `batch_transition`, `batch_checkpoint` (renouvelle la réservation), `raw_records_save` (bloc ; ligne existante jamais réécrite) ; écritures du traitement sous réservation (`claim`) |
+| Lots (`batch/`) | `batch_create` (état `RECEIVED`, sur un fichier disponible de `lyxal_storage` désigné par `source_object` : son nom, sa taille et son empreinte sont lus sur sa fiche par `fn::storage_object_get`, sous les droits de l'appelant ; fichier absent, illisible ou non disponible : `INGESTION_SOURCE_NOT_AVAILABLE` ; fichier ou identifiant déjà reçu : `INGESTION_BATCH_DUPLICATE` ; `commercial_proof` facultatif), `batch_get`, `batch_pending_list` (lots à traiter par le worker : reçus ou en cours, sans réservation en cours), `batch_claim`, `batch_release`, `batch_claim_verify` (interne), `batch_transition`, `batch_checkpoint` (renouvelle la réservation), `raw_records_save` (bloc ; ligne existante jamais réécrite) ; écritures du traitement sous réservation (`claim`) |
 | Staging (`staged/`) | `staged_save` (bloc d'articles d'un lot, un résultat par article ; code-barres contrôlé par `fn::validation_gtin` : `INGESTION_GTIN_INVALID`), `staged_list`, `staged_requalify` (`ingestion.manifest.approve` ; `VERIFIED` exige une unité du référentiel et une preuve commerciale) ; unité et unité de vente facultatives tant que l'unité fournisseur n'est pas résolue |
 | Quarantaine (`quarantine/`) | `quarantine_log` (rejouable : une anomalie ouverte par ligne et par code), `quarantine_list`, `quarantine_resolve` (`ingestion.manifest.approve` ; corrections contrôlées, article repassé `TO_CONFIRM`) |
 | Manifestes (`manifest/`) | `manifest_save` (`DRAFT` / `SEALED`, modifiable tant qu'il n'est pas approuvé ; une version par lot), `manifest_approve` (`ingestion.manifest.approve`, AAL2, justification journalisée), `manifest_execution_item_update`, `manifest_record_exec` (`ingestion.manifest.execute`), `manifest_list`, `manifest_get_detail` |
@@ -172,10 +180,10 @@ publie chaque manifeste approuvé ; la livraison est au moins une fois, la publi
 
 | Composant | Rôle |
 | :--- | :--- |
-| `adapters/` | correspondance métier des sources lues par `lyxal_parsing` (encodage déclaré du lot, rejets explicites) : CSV (séparateur détecté, champs multilignes), JSON / NDJSON (élément non objet rejeté), XML / BMEcat (entités décodées, éléments `ARTICLE` / `PRODUCT` / `ITEM`), FAB-DIS 3.0 (tabulaire) et 2.3 (blocs `C` / `L` / `R` sans en-tête, regroupés par référence ; bloc orphelin, en double, sans référence ou inconnu : `INGESTION_FABDIS_BLOCK_INVALID`) ; `SourceAdapter::read` rend la suite des éléments (enregistrement ou rejet) ou `IngestionError::SourceInvalid` |
+| `adapters/` | correspondance métier des sources lues par `lyxal_parsing` (encodage déclaré du lot, rejets explicites) : CSV (séparateur détecté, champs multilignes), JSON / NDJSON (élément non objet rejeté), XML / BMEcat (entités décodées, éléments `ARTICLE` / `PRODUCT` / `ITEM`), FAB-DIS 3.0 (tabulaire) et 2.3 (blocs `C` / `L` / `R` sans en-tête, regroupés par référence ; bloc orphelin, en double, sans référence ou inconnu : `INGESTION_FABDIS_BLOCK_INVALID`) ; `SourceAdapter::read` reçoit un lecteur d'octets et rend les éléments un par un (enregistrement ou rejet), sans charger la source en entier (seul FAB-DIS 2.3 garde ses articles en mémoire jusqu'à la fin de la lecture, pour regrouper ses blocs), ou `IngestionError::SourceInvalid` |
 | `normalization/` | nettoyage, dimensions et poids, attributs techniques, qualification initiale (`VERIFIED` exige une preuve commerciale valide et une unité) ; unités et fabricants lus dans les résolutions du bloc (`BlockReferentials`), sans table de correspondance en Rust |
 | `fingerprint.rs` | empreintes canoniques et sceau des manifestes (BLAKE3, `lyxal_crypto`) |
-| `worker/` | `IngestionWorker` (`LyxalWorker`) : traitement par blocs, point de reprise ; chaque `process_batch` tire un jeton (UUID v7), réserve le lot en base, présente la réservation à chaque écriture et la libère quelle que soit l'issue (lot déjà réservé : `IngestionError::BatchAlreadyClaimed`, ni traité ni marqué `FAILED` ; réservation perdue : travail remis en file ; réservation ou passage en `FAILED` impossibles pour une raison technique : `IngestionError::FailureNotRecorded`, travail conservé et worker arrêté pour relance par le superviseur) ; unités et fabricants du bloc résolus en base en deux appels (`IngestionStore::block_referentials`) ; source lue en entier avant le premier bloc (illisible : lot `FAILED`, `INGESTION_SOURCE_INVALID`, rien en staging) ; un enregistrement écarté à la lecture garde son numéro, reçoit une ligne brute de rejet (cause, sans contenu) et une anomalie `INGESTION_SOURCE_RECORD_REJECTED` (cause `PARSING_*` en détail) ; GTIN refusé ou article rejeté consigné en quarantaine ; unité inconnue : article en staging sans unité et anomalie `INGESTION_UNIT_UNRESOLVED` (jamais de valeur par défaut) ; un lot en échec passe en `FAILED` pendant que la réservation est détenue, sans arrêter le worker |
+| `worker/` | `IngestionWorker` (`LyxalWorker`) : la file de travail est dans la base (`fn::ingestion_batch_pending_list`, relue à chaque passage : un lot interrompu par l'arrêt du serveur est repris au démarrage suivant, sans rien remettre en file) ; le fichier source est lu au fil de l'eau dans `lyxal_storage` (`worker/source.rs` : lecture dans une tâche bloquante attendue par le worker, blocs transmis par un canal borné, arrêt avec le worker) ; un contrôle de lecture précède toute mise en staging (source lisible, taille et empreinte du lot : `INGESTION_SOURCE_INVALID`, `INGESTION_SOURCE_ALTERED`, fichier illisible dans le stockage : `IngestionError::SourceUnavailable`) ; traitement par blocs, point de reprise ; chaque `process_batch` tire un jeton (UUID v7), réserve le lot en base, présente la réservation à chaque écriture et la libère quelle que soit l'issue (lot déjà réservé : `IngestionError::BatchAlreadyClaimed`, ni traité ni marqué `FAILED` ; réservation perdue : lot repris à un prochain passage ; réservation ou passage en `FAILED` impossibles pour une raison technique : `IngestionError::FailureNotRecorded`, lot laissé à traiter et worker arrêté pour relance par le superviseur) ; unités et fabricants du bloc résolus en base en deux appels (`IngestionStore::block_referentials`) ; source lue en entier avant le premier bloc (illisible : lot `FAILED`, `INGESTION_SOURCE_INVALID`, rien en staging) ; un enregistrement écarté à la lecture garde son numéro, reçoit une ligne brute de rejet (cause, sans contenu) et une anomalie `INGESTION_SOURCE_RECORD_REJECTED` (cause `PARSING_*` en détail) ; GTIN refusé ou article rejeté consigné en quarantaine ; unité inconnue : article en staging sans unité et anomalie `INGESTION_UNIT_UNRESOLVED` (jamais de valeur par défaut) ; un lot en échec passe en `FAILED` pendant que la réservation est détenue, sans arrêter le worker |
 | `storage/` | `IngestionStore` : appels `call_fn` des fonctions du module ; erreur métier transmise avec son code (`IngestionError::Surreal`) |
 | `publisher/` | publication (§5) |
 | `rules.rs` | modèles des référentiels |
@@ -186,7 +194,7 @@ publie chaque manifeste approuvé ; la livraison est au moins une fois, la publi
 
 ## 7. Erreurs (`error/`) et seeds
 
-40 définitions `INGESTION_*` par thème (`articles`, `lots`, `manifestes`, `parametres`,
+42 définitions `INGESTION_*` par thème (`articles`, `lots`, `manifestes`, `parametres`,
 `permissions`, `preuves`, `quarantaine`, `referentiels`, `techniques`), créées seulement si elles
 n'existent pas. Seeds rejouables : familles (`01`), spécifications (`02`), alias de fabricants (44) et
 libellés d'unités fournisseurs (46) (`03`) ; les codes Lyxal et d'échange des unités sont résolus par
@@ -198,9 +206,12 @@ libellés d'unités fournisseurs (46) (`03`) ; les codes Lyxal et d'échange des
 
 * Banc SurrealQL (`scripts/ci/test_lyxal_modules.py`, module installé depuis son manifeste,
   identités simulées) : `lots`, `qualification`, `quarantaine`, `manifestes`, `referentiels`,
-  `permissions`, `securite` ; chaque fonction publique est appelée.
+  `permissions`, `securite`, `reservation` ; chaque fonction publique est appelée. Les lots sont créés
+  sur un fichier de `lyxal_storage` (fichier absent ou non disponible refusé, fichier d'un lot non
+  supprimable, liste des lots à traiter).
 * `cargo test -p lyxal_pipeline_ingestion` : module installé depuis son manifeste
-  (`tests/it/support.rs`), adaptateurs, normalisation, worker (reprise, interruption, lot en
+  (`tests/it/support.rs`, fichiers sources sur un support de stockage en mémoire), adaptateurs,
+  normalisation, worker (file de travail dans la base, reprise, interruption, lot en
   échec, GTIN, unité inconnue), console du steward, publication réelle dans le catalogue, débit
   (1 600 articles, seuil 50 articles/s).
   Les tests « serveur réel » utilisent le serveur de recette démarré par `scripts/ci/test_all.sh`

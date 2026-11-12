@@ -29,6 +29,11 @@ version = ">=0.1.0"
 id = "lyxal_auth"
 version = ">=0.1.0"
 
+# Fichier source d'un lot : fiche lue par fn::storage_object_get, octets lus par le worker
+[[dependencies]]
+id = "lyxal_storage"
+version = ">=0.1.0"
+
 # Publication des manifestes approuvés : fonctions publiques d'articles du catalogue
 [[dependencies]]
 id = "lyxal_catalogue"
@@ -56,6 +61,7 @@ functions = [
     "functions/batch/ingestion_batch_checkpoint.surql",
     "functions/batch/ingestion_batch_transition.surql",
     "functions/batch/ingestion_batch_get.surql",
+    "functions/batch/ingestion_batch_pending_list.surql",
     "functions/batch/ingestion_raw_records_save.surql",
     "functions/staged/ingestion_staged_save.surql",
     "functions/quarantine/ingestion_quarantine_log.surql",

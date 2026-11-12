@@ -14,6 +14,10 @@ pub struct IngestionBatch {
     pub source_format_version: String,
     pub source_encoding: SourceEncoding,
     pub fournisseur_id: String,
+    /// Fichier source conservé par `lyxal_storage` (`storage_object:<clé>`).
+    pub source_object: String,
+    /// Preuve commerciale jointe au lot à sa création.
+    pub commercial_proof: Option<CommercialProof>,
     pub nom_fichier: String,
     pub file_hash_blake3: String,
     pub taille_octets: usize,

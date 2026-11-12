@@ -4037,13 +4037,17 @@ name = "lyxal_pipeline_ingestion"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "bytes",
+ "futures",
  "lyxal_auth",
  "lyxal_crypto",
  "lyxal_error",
  "lyxal_event",
  "lyxal_parsing",
  "lyxal_runtime",
+ "lyxal_storage",
  "lyxal_surreal",
+ "object_store",
  "serde",
  "serde_json",
  "surrealdb",

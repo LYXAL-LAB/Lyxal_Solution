@@ -71,7 +71,7 @@ pub async fn start(config: &AppConfig, client: &Surreal<Any>) -> Result<Started,
         "modules installés"
     );
 
-    modules::complete_services(&runtime, &services).await?;
+    modules::complete_services(&runtime, client, &services).await?;
     runtime.start_all().await?;
     Ok(Started {
         runtime: Arc::new(runtime),

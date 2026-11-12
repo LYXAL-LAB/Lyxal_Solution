@@ -231,9 +231,10 @@ async fn test_streaming_and_volume_large_scale() {
     let records = crate::support::records_of(
         csv_adapter
             .read(
-                csv_buffer.as_bytes(),
+                Box::new(csv_buffer.as_bytes()),
                 lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
             )
+            .and_then(|items| items.collect::<Result<Vec<_>, _>>())
             .expect("Échec du streaming CSV à grande échelle"),
     );
     assert_eq!(records.len(), 1500);

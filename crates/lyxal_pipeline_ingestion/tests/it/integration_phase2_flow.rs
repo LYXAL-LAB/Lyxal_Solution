@@ -32,9 +32,10 @@ R;RAIL_R48_3M;EC000382;NF EN 14195;A1
     let raw_records = crate::support::records_of(
         fab_adapter
             .read(
-                fab_dis_content.as_bytes(),
+                Box::new(fab_dis_content.as_bytes()),
                 lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
             )
+            .and_then(|items| items.collect::<Result<Vec<_>, _>>())
             .expect("Échec du parsing FAB-DIS"),
     );
     assert_eq!(raw_records.len(), 2);
@@ -81,9 +82,10 @@ R;RAIL_R48_3M;EC000382;NF EN 14195;A1
     let raw_knauf = crate::support::records_of(
         csv_adapter
             .read(
-                csv_content.as_bytes(),
+                Box::new(csv_content.as_bytes()),
                 lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
             )
+            .and_then(|items| items.collect::<Result<Vec<_>, _>>())
             .expect("Échec du parsing CSV"),
     );
     assert_eq!(raw_knauf.len(), 1);
@@ -127,9 +129,10 @@ R;RAIL_R48_3M;EC000382;NF EN 14195;A1
     let raw_siniat = crate::support::records_of(
         xml_adapter
             .read(
-                xml_content.as_bytes(),
+                Box::new(xml_content.as_bytes()),
                 lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
             )
+            .and_then(|items| items.collect::<Result<Vec<_>, _>>())
             .expect("Échec du parsing XML"),
     );
     let norm_ba13_siniat = norm_engine.normalize(

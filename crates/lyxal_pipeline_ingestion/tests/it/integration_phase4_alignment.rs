@@ -183,11 +183,10 @@ async fn test_4_exclusive_use_of_public_functions_for_business_ops() {
         source_format_version: "1.0".to_string(),
         source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "PLACO".to_string(),
-        nom_fichier: "test.csv".to_string(),
-        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_001"),
-        taille_octets: 1000,
+        source_object: crate::support::source(&store, "test.csv", b"hash_001").await,
         chunk_size: 50,
         provenance_details: serde_json::json!({}),
+        commercial_proof: None,
     };
     let claim = crate::support::claimed_batch(&store, &batch).await;
 
@@ -348,11 +347,11 @@ async fn test_8_crash_recovery_and_idempotence_after_realignment() {
         source_format_version: "1.0".to_string(),
         source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "ISOVER".to_string(),
-        nom_fichier: "isover_100_items.csv".to_string(),
-        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_crash_01"),
-        taille_octets: 5000,
+        source_object: crate::support::source(&store, "isover_100_items.csv", b"hash_crash_01")
+            .await,
         chunk_size: 10,
         provenance_details: serde_json::json!({}),
+        commercial_proof: None,
     };
     let claim = crate::support::claimed_batch(&store, &batch).await;
 

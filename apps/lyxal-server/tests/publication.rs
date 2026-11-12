@@ -8,8 +8,13 @@
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 use lyxal_server::{config::AppConfig, runtime};
+use lyxal_storage::models::BucketListParams;
+use lyxal_storage::{BackendConfig, Backends, PutRequest, StorageService, StorageStore};
+use lyxal_surreal::ToSql;
 use std::fs;
-use surrealdb::engine::any::connect;
+use std::sync::Arc;
+use surrealdb::engine::any::{connect, Any};
+use surrealdb::Surreal;
 
 const KEY_VAR: &str = "LYXAL__CRYPTO__APPLICATION_KEY";
 const KEY_ID_VAR: &str = "LYXAL__CRYPTO__APPLICATION_KEY_ID";
@@ -70,6 +75,47 @@ allowed_headers = []
     AppConfig::load_from(directory.path()).expect("configuration valide")
 }
 
+/// Envoie un fichier source dans le bucket de l'ingestion, créé par l'hôte au démarrage, sur un
+/// support en mémoire propre au test (l'hôte n'a pas de support configuré : son worker laisse le
+/// lot au test) ; rend sa fiche `storage_object:<clé>`.
+async fn source_object(client: &Surreal<Any>, name: &str, content: &[u8]) -> String {
+    let backends = Backends::new()
+        .with("default", BackendConfig::Memory)
+        .expect("support mémoire");
+    let service = StorageService::new(StorageStore::new(client.clone()), Arc::new(backends));
+    let bucket = service
+        .store()
+        .bucket_list(BucketListParams {
+            tenant: None,
+            limit: 100,
+            start: 0,
+        })
+        .await
+        .expect("buckets")
+        .items
+        .into_iter()
+        .find(|bucket| bucket.name == lyxal_pipeline_ingestion::SOURCE_BUCKET)
+        .expect("bucket des fichiers sources créé au démarrage")
+        .id;
+    let chunk: Result<bytes::Bytes, std::convert::Infallible> =
+        Ok(bytes::Bytes::copy_from_slice(content));
+    service
+        .put(
+            PutRequest {
+                bucket: bucket.to_sql(),
+                key: name.to_string(),
+                filename: name.to_string(),
+                content_type: None,
+                size: Some(content.len() as u64),
+            },
+            futures::stream::iter([chunk]),
+        )
+        .await
+        .expect("fichier source")
+        .id
+        .to_sql()
+}
+
 /// Hôte configuré (clé applicative et `auth.public_url`) → abonnement actif ; l'approbation
 /// d'un manifeste publie ses articles au catalogue sous une session du compte de service
 /// `lyxal-catalogue-sync`, sans clé de signature partagée.
@@ -118,15 +164,17 @@ async fn approved_manifest_is_published_by_the_sync_service_account() {
 
     // Lot, article vérifié avec preuve éligible, manifeste scellé puis approuvé (session système)
     let fingerprint = lyxal_crypto::blake3_hex(b"lot_srv:BA13");
+    let source = source_object(&client, "srv.csv", b"srv.csv").await;
     client
         .query(
-            "RETURN fn::ingestion_batch_create({ id: 'lot_srv', source_type: 'CSV', fournisseur_id: 'FOURN_PLACO', nom_fichier: 'srv.csv', file_hash_blake3: crypto::blake3('srv.csv') }).ok;
+            "RETURN fn::ingestion_batch_create({ id: 'lot_srv', source_type: 'CSV', fournisseur_id: 'FOURN_PLACO', source_object: $source }).ok;
              RETURN fn::ingestion_batch_claim({ id: 'lot_srv', owner: 'test' }).ok;
              RETURN fn::ingestion_staged_save({ claim: { owner: 'test', generation: 1 }, batch_id: 'lot_srv', rules_version: '1', items: [{ ligne_numero: 1, canonical_fingerprint: $fp, fabricant: 'PLACO', reference_fabricant: 'BA13', libelle_commercial: 'Plaque BA13', unite_reference: 'M2', conditionnement: { unite_vente: 'PCE', quantite_par_colis: 1.0 }, qualification: 'VERIFIED', commercial_proof: { proof_type: 'CERTIFIED_MANUFACTURER_EDI', proof_reference: 'EDI-2026-PLACO-001', source_authority: 'EDI_HUB_SAINT_GOBAIN', verified_by: 'system:edi_receiver', verified_at: '2026-10-25T10:00:00Z' } }] }).data[0].ok;
              RETURN fn::ingestion_manifest_save({ manifest_ref: 'MAN-SRV', batch_id: 'lot_srv', statut: 'SEALED', nb_articles_insert: 1 }).ok;
              RETURN fn::ingestion_manifest_approve({ manifest_ref: 'MAN-SRV', justification: 'Manifeste contrôlé avant publication' }).ok;",
         )
         .bind(("fp", fingerprint))
+        .bind(("source", source))
         .await
         .expect("préparation")
         .check()

@@ -1,6 +1,6 @@
 # Feuille de route — `lyxal_pipeline_ingestion`
 
-Évolutions prévues du pipeline d'ingestion. L'état actuel (10 tables, 25 fonctions, worker par
+Évolutions prévues du pipeline d'ingestion. L'état actuel (10 tables, 27 fonctions, fichier source conservé par `lyxal_storage` et lu au fil de l'eau, file de travail dans la base, worker par
 blocs, unités et fabricants résolus par bloc sur les référentiels en base, quarantaine, manifestes scellés, publication réelle vers le catalogue par
 le compte de service `lyxal_auth` `lyxal-catalogue-sync`, permissions `ingestion.*`, banc de
 tests) est décrit dans le [`README.md`](README.md). Aucune étape
@@ -11,7 +11,7 @@ tables restent en `TYPE NORMAL` ; toute table `TYPE RELATION` est soumise à val
 | Étape | Thème | Dépendances |
 | :--- | :--- | :--- |
 | 1 | Regroupement technique en SurrealQL | — |
-| 2 | Connecteurs fabricants et preuves documentaires | services de fichiers et de secrets de Lyxal OS |
+| 2 | Connecteurs fabricants et preuves documentaires | `lyxal_storage` ; service de secrets de Lyxal OS |
 | 3 | Synchronisation incrémentale et retraits | étape 2 ; `lyxal_catalogue` |
 | 4 | Résolution des conflits multisources | étape 3 |
 | 5 | Ingestion assistée par agents IA | étape 4 ; bus `lyxal_event` ; validation humaine obligatoire |

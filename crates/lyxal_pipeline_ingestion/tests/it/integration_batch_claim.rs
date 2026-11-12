@@ -5,21 +5,21 @@
 use lyxal_pipeline_ingestion::error::{IngestionError, IngestionResult};
 use lyxal_pipeline_ingestion::storage::{IngestionStore, NewBatch};
 use lyxal_pipeline_ingestion::types::{BatchStatus, SourceFormat};
-use lyxal_pipeline_ingestion::worker::{BatchProcessingReport, IngestionWorker};
+use lyxal_pipeline_ingestion::worker::BatchProcessingReport;
 use lyxal_runtime::worker::CancellationToken;
 
-fn batch(id: &str) -> NewBatch {
+/// Envoie le fichier source du lot dans le stockage et rend le lot à créer.
+async fn batch(store: &IngestionStore, id: &str, source: &[u8]) -> NewBatch {
     NewBatch {
         id: Some(id.to_string()),
         source_type: SourceFormat::Csv,
         source_format_version: "1.0".to_string(),
         source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "FOURNISSEUR_TEST".to_string(),
-        nom_fichier: format!("{id}.csv"),
-        file_hash_blake3: lyxal_crypto::blake3_hex(id.as_bytes()),
-        taille_octets: 4096,
+        source_object: crate::support::source(store, &format!("{id}.csv"), source).await,
         chunk_size: 5,
         provenance_details: serde_json::json!({}),
+        commercial_proof: None,
     }
 }
 
@@ -118,28 +118,15 @@ async fn assert_processed_once(
 async fn same_worker_concurrent_calls_process_the_batch_once() {
     let store = crate::support::installed_store().await;
     store
-        .create_batch(&batch("lot_meme_worker"))
+        .create_batch(&batch(&store, "lot_meme_worker", csv(30).as_bytes()).await)
         .await
         .expect("lot");
-    let worker = IngestionWorker::new(store.clone()).expect("worker");
-    let source = csv(30);
+    let worker = crate::support::worker(&store);
     let token = CancellationToken::new();
 
     let (first, second) = tokio::join!(
-        worker.process_batch(
-            "lot_meme_worker",
-            source.as_bytes(),
-            SourceFormat::Csv,
-            None,
-            &token
-        ),
-        worker.process_batch(
-            "lot_meme_worker",
-            source.as_bytes(),
-            SourceFormat::Csv,
-            None,
-            &token
-        ),
+        worker.process_batch("lot_meme_worker", &token),
+        worker.process_batch("lot_meme_worker", &token),
     );
     assert_processed_once(&store, "lot_meme_worker", [first, second]).await;
 }
@@ -148,29 +135,16 @@ async fn same_worker_concurrent_calls_process_the_batch_once() {
 async fn two_workers_process_the_batch_once() {
     let store = crate::support::installed_store().await;
     store
-        .create_batch(&batch("lot_deux_workers"))
+        .create_batch(&batch(&store, "lot_deux_workers", csv(30).as_bytes()).await)
         .await
         .expect("lot");
-    let worker_a = IngestionWorker::new(store.clone()).expect("worker A");
-    let worker_b = IngestionWorker::new(store.clone()).expect("worker B");
-    let source = csv(30);
+    let worker_a = crate::support::worker(&store);
+    let worker_b = crate::support::worker(&store);
     let token = CancellationToken::new();
 
     let (first, second) = tokio::join!(
-        worker_a.process_batch(
-            "lot_deux_workers",
-            source.as_bytes(),
-            SourceFormat::Csv,
-            None,
-            &token
-        ),
-        worker_b.process_batch(
-            "lot_deux_workers",
-            source.as_bytes(),
-            SourceFormat::Csv,
-            None,
-            &token
-        ),
+        worker_a.process_batch("lot_deux_workers", &token),
+        worker_b.process_batch("lot_deux_workers", &token),
     );
     assert_processed_once(&store, "lot_deux_workers", [first, second]).await;
 }
@@ -179,17 +153,13 @@ async fn two_workers_process_the_batch_once() {
 async fn refused_execution_neither_writes_nor_releases_the_other_claim() {
     let store = crate::support::installed_store().await;
     // Une autre exécution (autre worker, autre instance) détient le lot.
-    let claim = crate::support::claimed_batch(&store, &batch("lot_tenu")).await;
-    let worker = IngestionWorker::new(store.clone()).expect("worker");
+    let claim =
+        crate::support::claimed_batch(&store, &batch(&store, "lot_tenu", csv(5).as_bytes()).await)
+            .await;
+    let worker = crate::support::worker(&store);
 
     let refused = worker
-        .process_batch(
-            "lot_tenu",
-            csv(5).as_bytes(),
-            SourceFormat::Csv,
-            None,
-            &CancellationToken::new(),
-        )
+        .process_batch("lot_tenu", &CancellationToken::new())
         .await;
     assert!(
         matches!(refused, Err(IngestionError::BatchAlreadyClaimed { .. })),
@@ -215,7 +185,11 @@ async fn refused_execution_neither_writes_nor_releases_the_other_claim() {
 #[tokio::test]
 async fn expired_claim_is_taken_over_and_the_old_execution_is_fenced() {
     let store = crate::support::installed_store().await;
-    let old = crate::support::claimed_batch(&store, &batch("lot_expire")).await;
+    let old = crate::support::claimed_batch(
+        &store,
+        &batch(&store, "lot_expire", csv(5).as_bytes()).await,
+    )
+    .await;
     // L'ancienne exécution s'est arrêtée sans libérer : sa réservation expire.
     store
         .client()
@@ -225,15 +199,9 @@ async fn expired_claim_is_taken_over_and_the_old_execution_is_fenced() {
         .check()
         .expect("réservation expirée");
 
-    let worker = IngestionWorker::new(store.clone()).expect("worker");
+    let worker = crate::support::worker(&store);
     let report = worker
-        .process_batch(
-            "lot_expire",
-            csv(5).as_bytes(),
-            SourceFormat::Csv,
-            None,
-            &CancellationToken::new(),
-        )
+        .process_batch("lot_expire", &CancellationToken::new())
         .await
         .expect("reprise de la réservation expirée");
     assert_eq!(report.final_status, BatchStatus::Staged);
@@ -275,18 +243,21 @@ async fn expired_claim_is_taken_over_and_the_old_execution_is_fenced() {
 #[tokio::test]
 async fn claim_is_released_after_failure_and_interruption() {
     let store = crate::support::installed_store().await;
-    store.create_batch(&batch("lot_casse")).await.expect("lot");
-    let worker = IngestionWorker::new(store.clone()).expect("worker");
+    // Le fichier source d'un lot ne change pas : un lot illisible pour l'échec, un lot lisible
+    // pour l'interruption et sa reprise.
+    store
+        .create_batch(&batch(&store, "lot_casse", &[0xff, 0xfe, 0xfd]).await)
+        .await
+        .expect("lot illisible");
+    store
+        .create_batch(&batch(&store, "lot_interrompu", csv(10).as_bytes()).await)
+        .await
+        .expect("lot lisible");
+    let worker = crate::support::worker(&store);
 
     // Échec : le lot passe en FAILED pendant que la réservation est détenue, puis est libéré.
     let failure = worker
-        .process_batch(
-            "lot_casse",
-            &[0xff, 0xfe, 0xfd],
-            SourceFormat::Csv,
-            None,
-            &CancellationToken::new(),
-        )
+        .process_batch("lot_casse", &CancellationToken::new())
         .await
         .expect_err("contenu non UTF-8");
     assert_eq!(failure.code(), "INGESTION_SOURCE_INVALID");
@@ -302,31 +273,19 @@ async fn claim_is_released_after_failure_and_interruption() {
     let cancelled = CancellationToken::new();
     cancelled.cancel();
     let report = worker
-        .process_batch(
-            "lot_casse",
-            csv(10).as_bytes(),
-            SourceFormat::Csv,
-            None,
-            &cancelled,
-        )
+        .process_batch("lot_interrompu", &cancelled)
         .await
         .expect("interruption");
     assert!(report.interrupted);
-    assert_eq!(claim_state(&store, "lot_casse").await, (None, 2));
+    assert_eq!(claim_state(&store, "lot_interrompu").await, (None, 1));
 
     // Nouvelle exécution : le lot est de nouveau réservable et va au bout.
     let report = worker
-        .process_batch(
-            "lot_casse",
-            csv(10).as_bytes(),
-            SourceFormat::Csv,
-            None,
-            &CancellationToken::new(),
-        )
+        .process_batch("lot_interrompu", &CancellationToken::new())
         .await
         .expect("reprise");
     assert_eq!(report.final_status, BatchStatus::Staged);
-    assert_eq!(claim_state(&store, "lot_casse").await, (None, 3));
+    assert_eq!(claim_state(&store, "lot_interrompu").await, (None, 2));
 }
 
 /// Remplace `fn::ingestion_resolve_units` (appelée une fois par bloc) par une version qui attend
@@ -356,22 +315,17 @@ async fn slow_down_blocks(store: &IngestionStore, seconds: u64) {
 #[tokio::test]
 async fn claim_is_renewed_while_a_block_outlasts_its_duration() {
     let store = crate::support::installed_store().await;
-    store.create_batch(&batch("lot_lent")).await.expect("lot");
+    store
+        .create_batch(&batch(&store, "lot_lent", csv(5).as_bytes()).await)
+        .await
+        .expect("lot");
     // Réservation de 5 s, bloc de 7 s : sans renouvellement pendant le bloc, la réservation
     // expirerait et ses écritures seraient refusées.
     slow_down_blocks(&store, 7).await;
-    let worker = IngestionWorker::new(store.clone())
-        .expect("worker")
-        .with_claim_ttl(5);
+    let worker = crate::support::worker(&store).with_claim_ttl(5);
 
     let report = worker
-        .process_batch(
-            "lot_lent",
-            csv(5).as_bytes(),
-            SourceFormat::Csv,
-            None,
-            &CancellationToken::new(),
-        )
+        .process_batch("lot_lent", &CancellationToken::new())
         .await
         .expect("réservation renouvelée pendant le bloc");
     assert_eq!(report.final_status, BatchStatus::Staged);
@@ -385,7 +339,10 @@ async fn technical_claim_failure_keeps_the_job_and_stops_the_worker() {
     use lyxal_runtime::ModuleContext;
 
     let store = crate::support::installed_store().await;
-    store.create_batch(&batch("lot_panne")).await.expect("lot");
+    store
+        .create_batch(&batch(&store, "lot_panne", csv(5).as_bytes()).await)
+        .await
+        .expect("lot");
     // Panne de la base pendant la prise de réservation (erreur de requête, pas réponse métier).
     let original = std::fs::read_to_string(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -400,15 +357,9 @@ async fn technical_claim_failure_keeps_the_job_and_stops_the_worker() {
         .check()
         .expect("fonction en panne");
 
-    let worker = IngestionWorker::new(store.clone()).expect("worker");
-    worker
-        .enqueue_batch(
-            "lot_panne".to_string(),
-            csv(5).into_bytes(),
-            SourceFormat::Csv,
-            None,
-        )
-        .await;
+    // La file de travail est dans la base : le lot créé (RECEIVED, sans réservation) est à traiter.
+    let worker =
+        crate::support::worker(&store).with_poll_interval(std::time::Duration::from_millis(50));
     let context = || {
         let descriptor = worker.descriptor().clone();
         WorkerContext::new(
@@ -429,7 +380,7 @@ async fn technical_claim_failure_keeps_the_job_and_stops_the_worker() {
         .expect("lot");
     assert_eq!(lot.statut, BatchStatus::Received, "rien n'a été écrit");
 
-    // Base rétablie : le worker relancé par le superviseur traite le travail resté en file.
+    // Base rétablie : le worker relancé par le superviseur traite le lot resté à traiter en base.
     store
         .client()
         .query(original)

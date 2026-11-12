@@ -22,15 +22,19 @@ async fn test_full_pilot_41_btp_references_lifecycle() {
         source_format_version: "1.0".to_string(),
         source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "DISTRIBUTEUR_BTP_PILOTE".to_string(),
-        nom_fichier: "catalogue_btp_lot1_41_refs.csv".to_string(),
-        file_hash_blake3: lyxal_crypto::blake3_hex(b"blake3_btp_lot1_pilot_hash_20261025"),
-        taille_octets: 16384,
+        source_object: crate::support::source(
+            &store,
+            "catalogue_btp_lot1_41_refs.csv",
+            b"blake3_btp_lot1_pilot_hash_20261025",
+        )
+        .await,
         chunk_size: 500,
         provenance_details: serde_json::json!({
             "pilot_project": "Lyxal BTP Lot 1",
             "source_authority": "Federation Francaise du Batiment (FFB) & Industriels",
             "audit_date": "2026-10-25"
         }),
+        commercial_proof: None,
     };
     let claim = crate::support::claimed_batch(&store, &batch).await;
 

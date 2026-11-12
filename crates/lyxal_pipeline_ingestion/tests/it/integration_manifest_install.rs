@@ -2,23 +2,22 @@
 //! (garde `evt_batch_guard` : RECEIVED -> PARSING -> VALIDATING -> STAGED), tel que l'installe
 //! `lyxal_runtime` pour le serveur hôte.
 
-use lyxal_pipeline_ingestion::storage::NewBatch;
+use lyxal_pipeline_ingestion::storage::{IngestionStore, NewBatch};
 use lyxal_pipeline_ingestion::types::{BatchStatus, SourceFormat};
-use lyxal_pipeline_ingestion::worker::IngestionWorker;
 use lyxal_runtime::worker::CancellationToken;
 
-fn batch(id: &str) -> NewBatch {
+/// Envoie le fichier source du lot dans le stockage et rend le lot à créer.
+async fn batch(store: &IngestionStore, id: &str, source: &[u8]) -> NewBatch {
     NewBatch {
         id: Some(id.to_string()),
         source_type: SourceFormat::Csv,
         source_format_version: "1.0".to_string(),
         source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "FOURNISSEUR_TEST".to_string(),
-        nom_fichier: "test.csv".to_string(),
-        file_hash_blake3: lyxal_crypto::blake3_hex(id.as_bytes()),
-        taille_octets: 128,
+        source_object: crate::support::source(store, &format!("{id}.csv"), source).await,
         chunk_size: 10,
         provenance_details: serde_json::json!({}),
+        commercial_proof: None,
     }
 }
 
@@ -29,28 +28,28 @@ async fn worker_follows_installed_batch_state_machine() {
     for i in 1..=5 {
         csv.push_str(&format!("REF_{i};Plaque de plâtre {i};;Placo;M2;8.50\n"));
     }
-    let worker = IngestionWorker::new(store.clone()).expect("worker");
+    let worker = crate::support::worker(&store);
     let token = CancellationToken::new();
 
     store
-        .create_batch(&batch("batch_manifest"))
+        .create_batch(&batch(&store, "batch_manifest", csv.as_bytes()).await)
         .await
         .expect("lot");
     let report = worker
-        .process_batch(
-            "batch_manifest",
-            csv.as_bytes(),
-            SourceFormat::Csv,
-            None,
-            &token,
-        )
+        .process_batch("batch_manifest", &token)
         .await
         .expect("traitement");
     assert_eq!(report.final_status, BatchStatus::Staged);
     assert_eq!(report.total_lignes, 5);
 
-    // Un lot en échec est repris : FAILED -> PARSING -> VALIDATING -> STAGED.
-    let claim = crate::support::claimed_batch(&store, &batch("batch_retry")).await;
+    // Un lot en échec est repris : FAILED -> PARSING -> VALIDATING -> STAGED (une ligne de plus
+    // que le premier lot : deux lots d'un même format ne portent pas le même contenu).
+    let csv_retry = format!("{csv}REF_6;Plaque de plâtre 6;;Placo;M2;8.50\n");
+    let claim = crate::support::claimed_batch(
+        &store,
+        &batch(&store, "batch_retry", csv_retry.as_bytes()).await,
+    )
+    .await;
     store
         .fail_batch(
             &claim,
@@ -65,13 +64,7 @@ async fn worker_follows_installed_batch_state_machine() {
         .await
         .expect("réservation libérée");
     let report = worker
-        .process_batch(
-            "batch_retry",
-            csv.as_bytes(),
-            SourceFormat::Csv,
-            None,
-            &token,
-        )
+        .process_batch("batch_retry", &token)
         .await
         .expect("reprise");
     assert_eq!(report.final_status, BatchStatus::Staged);
@@ -81,34 +74,20 @@ async fn worker_follows_installed_batch_state_machine() {
 async fn failed_batch_does_not_block_the_next_one() {
     let store = crate::support::installed_store().await;
     let csv = "reference;designation;gtin;fabricant;unite;prix\nREF_1;Plaque;;Placo;M2;8.50\n";
-    let worker = IngestionWorker::new(store.clone()).expect("worker");
+    let worker = crate::support::worker(&store);
     let token = CancellationToken::new();
 
     // Lot inconnu : la réservation est refusée, rien n'est écrit.
-    let failure = worker
-        .process_batch(
-            "lot_absent",
-            csv.as_bytes(),
-            SourceFormat::Csv,
-            None,
-            &token,
-        )
-        .await;
+    let failure = worker.process_batch("lot_absent", &token).await;
     assert!(failure.is_err());
 
     // Le worker n'est pas bloqué : un autre lot se traite normalement.
     store
-        .create_batch(&batch("lot_suivant"))
+        .create_batch(&batch(&store, "lot_suivant", csv.as_bytes()).await)
         .await
         .expect("lot");
     let report = worker
-        .process_batch(
-            "lot_suivant",
-            csv.as_bytes(),
-            SourceFormat::Csv,
-            None,
-            &token,
-        )
+        .process_batch("lot_suivant", &token)
         .await
         .expect("le lot suivant n'est pas bloqué");
     assert_eq!(report.final_status, BatchStatus::Staged);
@@ -120,17 +99,14 @@ async fn invalid_barcode_line_goes_to_quarantine() {
     let csv = "reference;designation;gtin;fabricant;unite;prix\n\
                REF_OK;Plaque de plâtre BA13;3017620422003;Placo;M2;8.50\n\
                REF_KO;Plaque de plâtre BA18;3017620422009;Placo;M2;9.50\n";
-    let worker = IngestionWorker::new(store.clone()).expect("worker");
-    store.create_batch(&batch("lot_gtin")).await.expect("lot");
+    let worker = crate::support::worker(&store);
+    store
+        .create_batch(&batch(&store, "lot_gtin", csv.as_bytes()).await)
+        .await
+        .expect("lot");
 
     let report = worker
-        .process_batch(
-            "lot_gtin",
-            csv.as_bytes(),
-            SourceFormat::Csv,
-            None,
-            &CancellationToken::new(),
-        )
+        .process_batch("lot_gtin", &CancellationToken::new())
         .await
         .expect("traitement");
     assert_eq!(report.final_status, BatchStatus::Staged);
@@ -166,33 +142,26 @@ async fn failed_batch_does_not_stop_the_worker() {
     use std::sync::Arc;
 
     let store = crate::support::installed_store().await;
-    let worker = Arc::new(IngestionWorker::new(store.clone()).expect("worker"));
+    let worker = Arc::new(
+        crate::support::worker(&store).with_poll_interval(std::time::Duration::from_millis(50)),
+    );
+    // Premier lot : contenu non décodable en UTF-8, source illisible ; second lot : valide.
+    // La file de travail est dans la base : les deux lots créés sont à traiter.
     store
-        .create_batch(&batch("lot_illisible"))
+        .create_batch(&batch(&store, "lot_illisible", &[0xff, 0xfe, 0xfd]).await)
         .await
         .expect("lot 1");
     store
-        .create_batch(&batch("lot_valide"))
+        .create_batch(
+            &batch(
+                &store,
+                "lot_valide",
+                b"reference;designation;gtin;fabricant;unite;prix\nREF_1;Plaque;;Placo;M2;8.50\n",
+            )
+            .await,
+        )
         .await
         .expect("lot 2");
-    // Premier lot : contenu non décodable en UTF-8, source illisible ; second lot : valide.
-    worker
-        .enqueue_batch(
-            "lot_illisible".to_string(),
-            vec![0xff, 0xfe, 0xfd],
-            SourceFormat::Csv,
-            None,
-        )
-        .await;
-    worker
-        .enqueue_batch(
-            "lot_valide".to_string(),
-            b"reference;designation;gtin;fabricant;unite;prix\nREF_1;Plaque;;Placo;M2;8.50\n"
-                .to_vec(),
-            SourceFormat::Csv,
-            None,
-        )
-        .await;
 
     let token = CancellationToken::new();
     let descriptor = worker.descriptor().clone();

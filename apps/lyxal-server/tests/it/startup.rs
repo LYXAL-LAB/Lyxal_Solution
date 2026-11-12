@@ -331,8 +331,8 @@ async fn every_emitted_error_code_is_defined() {
     );
 }
 
-/// Sans service de connexion `lyxal_auth`, la publication est désactivée et la sonde du module
-/// le signale.
+/// Sans service de connexion `lyxal_auth`, la publication est désactivée ; sans dossier de
+/// stockage, aucun lot n'est traité : la sonde du module signale les deux.
 #[cfg(feature = "module-ingestion")]
 #[tokio::test]
 async fn publication_without_auth_service_degrades_the_ingestion_probe() {
@@ -355,6 +355,12 @@ async fn publication_without_auth_service_degrades_the_ingestion_probe() {
     let ingestion = format!("{result:?}");
     assert!(
         ingestion.contains("Publication vers le catalogue désactivée"),
+        "{ingestion}"
+    );
+    // Sans dossier de stockage, les fichiers sources des lots ne sont pas lisibles : les deux
+    // causes sont rendues
+    assert!(
+        ingestion.contains("stockage des fichiers sources non configuré"),
         "{ingestion}"
     );
     runtime.stop_all().await.expect("arrêt");

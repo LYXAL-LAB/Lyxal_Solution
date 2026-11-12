@@ -11,6 +11,10 @@ lyxal_runtime = { path = "../lyxal_runtime" }
 lyxal_event = { path = "../lyxal_event" }
 lyxal_crypto = { path = "../lyxal_crypto" }
 lyxal_parsing = { workspace = true }
+# Fichier source d'un lot : lu en flux dans le stockage
+lyxal_storage = { workspace = true }
+bytes = "1"
+futures = { version = "0.3", default-features = false, features = ["std"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
@@ -23,3 +27,5 @@ uuid = { workspace = true }
 [dev-dependencies]
 lyxal_auth = { path = "../lyxal_auth" }
 tempfile = "3.10"
+# Octets d'un fichier source remplacés sur le support (test du fichier altéré)
+object_store = { version = "0.13", default-features = false }

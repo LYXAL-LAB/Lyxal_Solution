@@ -8,6 +8,19 @@
 -- identité steward_aal1: { "id": "auth_session:steward_aal1", "pv": 1, "permissions": ["ingestion.read", "ingestion.rule.manage", "ingestion.manifest.approve"] }
 -- identité steward_revoque: { "id": "auth_session:steward_revoque", "pv": 1, "permissions": ["ingestion.read", "ingestion.rule.manage", "ingestion.manifest.approve"] }
 
+-- préparation: fichiers sources dans lyxal_storage (fonction du banc : un fichier disponible dont l'empreinte est celle du contenu donné ; rend sa fiche)
+{
+    DEFINE FUNCTION OVERWRITE fn::test_source($name: string, $content: string) {
+        IF array::len(SELECT VALUE id FROM storage_bucket WHERE scope_key = "installation" AND name = "ingestion-sources") = 0 {
+            fn::storage_bucket_create({ name: "ingestion-sources" });
+        };
+        LET $bucket = (SELECT VALUE id FROM ONLY storage_bucket WHERE scope_key = "installation" AND name = "ingestion-sources" LIMIT 1);
+        LET $begun = fn::storage_object_begin({ bucket: <string> $bucket, key: $name, filename: $name, declared_size: 2048 });
+        LET $done = fn::storage_object_commit({ object: <string> $begun.data.id, size: 2048, content_type: "text/csv", blake3: crypto::blake3($content) });
+        RETURN <string> $done.data.id;
+    };
+};
+
 -- préparation: identités et sessions lyxal_auth (Data Steward en double facteur : AAL2 ; synchronisation : compte de service)
 {
     CREATE auth_identity:qualif CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "qualif@exemple.fr" } };
@@ -20,7 +33,7 @@
 };
 
 -- préparation: lot
-RETURN fn::ingestion_batch_create({ id: "lot_m", source_type: "CSV", fournisseur_id: "FOURN_ISOVER", nom_fichier: "m.csv", file_hash_blake3: crypto::blake3("m.csv") });
+RETURN fn::ingestion_batch_create({ id: "lot_m", source_type: "CSV", fournisseur_id: "FOURN_ISOVER", source_object: fn::test_source("m.csv", "m.csv") });
 
 -- test: le steward enregistre un brouillon
 -- en tant que: steward

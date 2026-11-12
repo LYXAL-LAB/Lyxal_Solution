@@ -37,11 +37,10 @@ async fn test_1_dashboard_metrics_aggregation() {
         source_format_version: "3.0".to_string(),
         source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "FOURN_PLACO".to_string(),
-        nom_fichier: "placo_catalogue.csv".to_string(),
-        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_dash_01"),
-        taille_octets: 1024,
+        source_object: crate::support::source(&store, "placo_catalogue.csv", b"hash_dash_01").await,
         chunk_size: 500,
         provenance_details: serde_json::json!({}),
+        commercial_proof: None,
     };
     let claim = crate::support::claimed_batch(&store, &batch).await;
 
@@ -132,11 +131,10 @@ async fn test_2_staged_listing_and_filtering() {
         source_format_version: "1.0".to_string(),
         source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "FOURN_ISOVER".to_string(),
-        nom_fichier: "isover.csv".to_string(),
-        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_list_01"),
-        taille_octets: 512,
+        source_object: crate::support::source(&store, "isover.csv", b"hash_list_01").await,
         chunk_size: 500,
         provenance_details: serde_json::json!({}),
+        commercial_proof: None,
     };
     let claim = crate::support::claimed_batch(&store, &batch).await;
 
@@ -232,11 +230,10 @@ async fn test_3_steward_requalification_session_security() {
         source_format_version: "1.0".to_string(),
         source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "FOURN_PLACO".to_string(),
-        nom_fichier: "placo.csv".to_string(),
-        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_sec_01"),
-        taille_octets: 512,
+        source_object: crate::support::source(&store, "placo.csv", b"hash_sec_01").await,
         chunk_size: 500,
         provenance_details: serde_json::json!({}),
+        commercial_proof: None,
     };
     let claim = crate::support::claimed_batch(&store, &batch).await;
 
@@ -300,11 +297,10 @@ async fn test_4_requalification_verified_requires_strict_commercial_proof() {
         source_format_version: "1.0".to_string(),
         source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "FOURN_KNAUF".to_string(),
-        nom_fichier: "knauf.csv".to_string(),
-        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_proof_01"),
-        taille_octets: 512,
+        source_object: crate::support::source(&store, "knauf.csv", b"hash_proof_01").await,
         chunk_size: 500,
         provenance_details: serde_json::json!({}),
+        commercial_proof: None,
     };
     let claim = crate::support::claimed_batch(&store, &batch).await;
 
@@ -401,11 +397,11 @@ async fn test_5_quarantine_listing_and_resolution_forces_to_confirm() {
         source_format_version: "1.0".to_string(),
         source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "FOURN_SINIAT".to_string(),
-        nom_fichier: "siniat_anomalies.csv".to_string(),
-        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_quar_01"),
-        taille_octets: 256,
+        source_object: crate::support::source(&store, "siniat_anomalies.csv", b"hash_quar_01")
+            .await,
         chunk_size: 500,
         provenance_details: serde_json::json!({}),
+        commercial_proof: None,
     };
     let claim = crate::support::claimed_batch(&store, &batch).await;
 
@@ -534,11 +530,10 @@ async fn test_6_manifest_listing_and_detail_integrity() {
         source_format_version: "1.0".to_string(),
         source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "FOURN_LEGRAND".to_string(),
-        nom_fichier: "legrand.csv".to_string(),
-        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_manif_01"),
-        taille_octets: 1024,
+        source_object: crate::support::source(&store, "legrand.csv", b"hash_manif_01").await,
         chunk_size: 500,
         provenance_details: serde_json::json!({}),
+        commercial_proof: None,
     };
     store.create_batch(&batch).await.expect("Création lot");
 
