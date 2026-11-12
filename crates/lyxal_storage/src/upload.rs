@@ -237,7 +237,7 @@ impl StorageService {
                 object: status.id.to_sql(),
                 offset: i64::try_from(offset).unwrap_or(i64::MAX),
                 size: i64::try_from(size).unwrap_or(i64::MAX),
-                name: name,
+                name,
             })
             .await;
         let error = match added.map_err(StorageError::from) {
