@@ -64,3 +64,6 @@ base64 = "0.22"
 tempfile.workspace = true
 tower = { workspace = true, features = ["util"] }
 tokio = { workspace = true, features = ["net", "io-util"] }
+# Serveur S3 de test, lancé dans les tests sur un dossier temporaire
+s3s = "0.17"
+s3s-fs = "0.17"

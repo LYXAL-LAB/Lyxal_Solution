@@ -130,7 +130,27 @@ dizaines de mégaoctets. `lyxal_storage` est conçu pour pouvoir y basculer plus
 * les octets passent par `object_store`, que SurrealDB utilise aussi ;
 * à réévaluer quand la fonction ne sera plus expérimentale et que les flux existeront.
 
-## 7. Questions
+## 7. Bunny Storage par son API S3 (documentation du 12 novembre 2026)
+
+Service S3 de référence (décision S2).
+
+* L'API S3 s'active à la création de la zone de stockage, pas après ; elle est en aperçu et
+  n'existe que dans certaines régions (Francfort, New York, Singapour). Une région sans S3
+  répond `501`.
+* Une zone = un bucket S3. Clé d'accès : nom de la zone ; clé secrète : mot de passe de la
+  zone. Point d'accès `https://<région>-s3.storage.bunnycdn.com`, adresses `/<zone>/<clé>`
+  seulement (`path_style`).
+* Pris en charge : écriture, lecture par plage, suppression, `HEAD`, liste, copie, envoi en
+  plusieurs parties (10 000 parties au plus, session abandonnée effacée après 10 jours), liens
+  signés (7 jours au plus). Non pris en charge : chiffrement côté serveur, versions.
+* Limites : 500 requêtes par seconde par zone, 100 connexions par adresse ; au-delà,
+  `503 SlowDown` à réessayer.
+* Sources : <https://docs.bunny.net/storage/s3>, <https://bunny.net/docs/storage/limits>.
+
+Serveur S3 des tests : `s3s` et `s3s-fs` (Apache-2.0), dépendances de test seulement, lancés
+dans les tests sur un dossier temporaire.
+
+## 8. Questions
 
 Les questions à trancher sont posées dans le plan du programme (`implementation_plan.md` à la
 racine).

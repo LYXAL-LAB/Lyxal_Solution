@@ -183,11 +183,17 @@ fn s3_storage_backends_are_read_from_the_environment() {
     let config = AppConfig::load_with_environment(
         directory.path(),
         variables(&[
-            ("LYXAL__STORAGE__S3__BUNNY__ENDPOINT", "https://de-s3.storage.bunnycdn.com"),
+            (
+                "LYXAL__STORAGE__S3__BUNNY__ENDPOINT",
+                "https://de-s3.storage.bunnycdn.com",
+            ),
             ("LYXAL__STORAGE__S3__BUNNY__REGION", "de"),
             ("LYXAL__STORAGE__S3__BUNNY__BUCKET", "zone-de-test"),
             ("LYXAL__STORAGE__S3__BUNNY__ACCESS_KEY_ID", "zone-de-test"),
-            ("LYXAL__STORAGE__S3__BUNNY__SECRET_ACCESS_KEY", "mot-de-passe-de-zone"),
+            (
+                "LYXAL__STORAGE__S3__BUNNY__SECRET_ACCESS_KEY",
+                "mot-de-passe-de-zone",
+            ),
             ("LYXAL__STORAGE__IDLE_TIMEOUT_SECONDS", "30"),
         ]),
     )
@@ -265,7 +271,10 @@ access_key_id = "zone-de-test"
     );
     let config = AppConfig::load_with_environment(
         directory.path(),
-        variables(&[("LYXAL__STORAGE__S3__BUNNY__SECRET_ACCESS_KEY", "mot-de-passe-de-zone")]),
+        variables(&[(
+            "LYXAL__STORAGE__S3__BUNNY__SECRET_ACCESS_KEY",
+            "mot-de-passe-de-zone",
+        )]),
     )
     .expect("configuration valide");
     assert!(config.storage.s3.contains_key("bunny"));

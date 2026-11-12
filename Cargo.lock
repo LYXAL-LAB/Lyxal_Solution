@@ -3841,6 +3841,8 @@ dependencies = [
  "lyxal_storage",
  "lyxal_surreal",
  "percent-encoding",
+ "s3s",
+ "s3s-fs",
  "serde",
  "serde_json",
  "surrealdb",

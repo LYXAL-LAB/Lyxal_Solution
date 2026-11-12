@@ -64,7 +64,9 @@ fn backends(config: &AppConfig) -> Result<Backends, ServerError> {
                     access_key_id: s3.access_key_id.clone(),
                     secret_access_key: s3.secret_access_key.to_secret().map_err(|_| {
                         ServerError::Configuration {
-                            message: format!("storage.s3.{name}.secret_access_key : valeur refusée"),
+                            message: format!(
+                                "storage.s3.{name}.secret_access_key : valeur refusée"
+                            ),
                         }
                     })?,
                     path_style: s3.path_style,
