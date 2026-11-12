@@ -1,5 +1,5 @@
 //! Routes des fichiers `/storage/*` (`lyxal_storage`) : envoi, téléchargement, fiche, liste et
-//! suppression, en flux.
+//! suppression, en flux ; envoi reprenable sous `/storage/uploads` (module `uploads`).
 //!
 //! L'appelant est identifié par son jeton d'accès (`Authorization: Bearer`). Chaque requête ouvre
 //! une session SurrealDB à son nom (client de l'hôte cloné, authentifié par le jeton) : les
@@ -42,6 +42,7 @@ pub fn routes() -> Router<AppContext> {
             "/buckets/:bucket/objects/*key",
             get(download).head(head).put(upload).delete(remove),
         )
+        .merge(super::uploads::routes())
 }
 
 // ----------------------------------------------------------------------------------------------
@@ -49,7 +50,10 @@ pub fn routes() -> Router<AppContext> {
 // ----------------------------------------------------------------------------------------------
 
 /// Service de stockage sur une session SurrealDB au nom de l'appelant.
-async fn service(context: &AppContext, headers: &HeaderMap) -> Result<StorageService, ApiError> {
+pub(super) async fn service(
+    context: &AppContext,
+    headers: &HeaderMap,
+) -> Result<StorageService, ApiError> {
     let host = auth::host(context)?;
     // Signature du jeton et session contrôlées (révocation, expiration, version des droits)
     auth::caller(&host, headers).await?;
@@ -215,7 +219,7 @@ fn not_modified(headers: &HeaderMap, object: &StoredObject) -> bool {
 }
 
 /// Coupe un flux qui ne transmet plus rien pendant `idle`.
-fn with_idle_timeout<S, T, E>(
+pub(super) fn with_idle_timeout<S, T, E>(
     stream: S,
     idle: Duration,
 ) -> impl Stream<Item = Result<T, std::io::Error>> + Send
@@ -237,7 +241,7 @@ where
     })
 }
 
-fn idle(context: &AppContext) -> Duration {
+pub(super) fn idle(context: &AppContext) -> Duration {
     Duration::from_secs(context.config.storage.idle_timeout_seconds)
 }
 

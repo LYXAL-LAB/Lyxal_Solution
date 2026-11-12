@@ -50,7 +50,7 @@ déclaré manque.
 | `lyxal_event` | toujours | `ManifestModule` ; moteur démarré par le runtime |
 | `lyxal_auth` | toujours | `AuthModule`, `AuthHealthCheck` |
 | `lyxal_notification` | toujours | `NotificationModule`, `NotificationConsumer` (événements `auth.*`), `NotificationEmailWorker`, `NotificationPurgeWorker`, `NotificationHealthCheck` |
-| `lyxal_storage` | toujours | `StorageModule`, `StorageCleanupWorker` (si un support est configuré), `StorageHealthCheck` ; supports disque et S3 |
+| `lyxal_storage` | toujours | `StorageModule`, `StorageCleanupWorker` (si un support est configuré), `StorageHealthCheck` ; supports disque et S3 ; envoi reprenable |
 | `lyxal_base` | toujours | `ManifestModule` |
 | `lyxal_catalogue` | toujours | `ManifestModule` (SurrealQL seul) |
 | `lyxal_pipeline_ingestion` | fonctionnalité `module-ingestion` (par défaut) | `PipelineIngestionModule`, `IngestionWorker`, `IngestionHealthCheck` |
@@ -155,6 +155,11 @@ fichier, par exemple `plans/2026/a.pdf`) :
 | `HEAD /buckets/{bucket}/objects/{clé}` | en-têtes du téléchargement, sans contenu |
 | `DELETE /buckets/{bucket}/objects/{clé}` | supprime le fichier |
 | `GET /buckets/{bucket}/objects?prefix=&limit=&start=` | liste les fichiers disponibles |
+| `OPTIONS /uploads` | envoi reprenable (tus 1.0) : version, extensions (`creation`, `termination`, `expiration`) et taille maximale ; sans authentification |
+| `POST /uploads` | ouvre un envoi reprenable : `Upload-Length` (taille), `Upload-Metadata` (`bucket` : clé du bucket, `key` : clé du fichier, `filename` et `filetype` facultatifs) ; `201`, `Location`, `Upload-Expires` |
+| `HEAD /uploads/{id}` | position de l'envoi : `Upload-Offset`, `Upload-Length` |
+| `PATCH /uploads/{id}` | écrit le corps à la position `Upload-Offset` (`Content-Type: application/offset+octet-stream`) ; `204` et la nouvelle position |
+| `DELETE /uploads/{id}` | abandonne l'envoi ; `204` |
 
 * **Droits** : jeton d'accès de l'appelant (`Authorization: Bearer`), de toute session valide
   (utilisateur, clé d'API, compte de service). Chaque requête s'exécute sous une session
@@ -182,6 +187,16 @@ fichier, par exemple `plans/2026/a.pdf`) :
   `storage.idle_timeout_seconds` est coupé. Ce même délai est le délai d'écriture de toute
   connexion du serveur (`src/serve.rs`) : un client qui cesse de lire sa réponse est déconnecté,
   ce qui libère le fichier ouvert et sa place dans la limite de requêtes simultanées.
+* **Envoi reprenable** (protocole tus 1.0, pour les gros fichiers) : après une coupure, le
+  client demande la position (`HEAD`) et reprend (`PATCH`). Toute requête, sauf `OPTIONS`, porte
+  `Tus-Resumable: 1.0.0` (sinon `412`). Seul l'appelant qui a ouvert l'envoi le poursuit. Une
+  mauvaise position est refusée (`409`, `STORAGE_UPLOAD_OFFSET_MISMATCH`, position courante
+  dans `Upload-Offset`). La requête qui apporte le dernier octet assemble le fichier, le
+  contrôle (type réel, antivirus) et le rend disponible : sa réponse peut prendre le temps de
+  relire le fichier, et un contenu refusé l'est à ce moment. Un envoi inachevé est retiré après
+  son délai (`Upload-Expires`, 24 h par défaut). Les réponses de succès suivent le protocole
+  (corps vide). Si CORS est activé, les en-têtes du protocole sont autorisés et lisibles ; les
+  méthodes `PATCH`, `HEAD` et `DELETE` restent à déclarer dans `cors.allowed_methods`.
 * **Réponses** : contrat `LyxalResult`, sauf le contenu d'un fichier ; erreurs `STORAGE_*` dans
   la langue de la requête.
 

@@ -1,4 +1,4 @@
-use super::{auth, handlers, middleware, storage};
+use super::{auth, handlers, middleware, storage, uploads};
 use crate::{config::CorsConfig, context::AppContext, error::ServerError};
 use axum::{
     http::{HeaderName, HeaderValue, Method},
@@ -10,7 +10,7 @@ use std::{str::FromStr, time::Duration};
 use tower::ServiceBuilder;
 use tower_http::{
     catch_panic::CatchPanicLayer,
-    cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer},
+    cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer, ExposeHeaders},
     limit::RequestBodyLimitLayer,
     timeout::TimeoutLayer,
     trace::TraceLayer,
@@ -93,9 +93,13 @@ fn cors_layer(config: &CorsConfig) -> Result<CorsLayer, ServerError> {
         })
         .collect::<Result<Vec<_>, _>>()?;
 
+    // En-têtes de l'envoi reprenable (tus) : autorisés et lisibles pour un client navigateur
+    let headers = headers.into_iter().chain(uploads::REQUEST_HEADERS);
+
     Ok(CorsLayer::new()
         .allow_origin(AllowOrigin::list(origins))
         .allow_methods(AllowMethods::list(methods))
         .allow_headers(AllowHeaders::list(headers))
+        .expose_headers(ExposeHeaders::list(uploads::RESPONSE_HEADERS))
         .allow_credentials(config.allow_credentials))
 }
