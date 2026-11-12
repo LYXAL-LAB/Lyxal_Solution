@@ -21,7 +21,7 @@ Périmètre : `crates/lyxal_storage` et ses routes dans `apps/lyxal-server`.
 | 7 bis. Zéro dette | conforme après ce lot (A3) | version `0.1.0` ; pas de code mort ; reste un document de recherche à réduire et le plan de programme à retirer |
 | 8. Tests | conforme, limites connues (A2) | banc SurrealQL 128 assertions ; tests Rust sur mémoire, disque et S3 de test ; routes de bout en bout ; `scripts/ci/ci_local.sh` vert ; **essai réel sur Bunny Storage réussi le 12 novembre 2026** (`real_s3_service_stores_serves_and_cleans`, variables `LYXAL_TEST_S3_*`) |
 
-Aucun écart P0 ni P1.
+Aucun écart P0 ni P1 dans le module.
 
 ### Écarts relevés (P2)
 
@@ -31,6 +31,12 @@ Aucun écart P0 ni P1.
 | **A2** | Quatre cas ne sont couverts par aucun test automatique : refus au-delà de 10 000 parties d'un envoi reprenable ; panne de la base pendant l'inscription d'une partie ; antivirus ClamAV réel (seul un faux service est testé) ; mémoire utilisée sur un gros fichier | **Documenter** dans le `README.md` (déjà fait pour trois d'entre eux) ; essai ClamAV réel à lancer à la main avant la mise en production |
 | **A3** | `RECHERCHE_SOURCES.md` est un document de recherche de 156 lignes ; le plan de programme à la racine est exécuté | **Réduire** le premier en `MODELE_SOURCES.md` (ce qui a été repris, de quelle source, sous quelle licence) ; **supprimer** le second (§0.3) |
 | **A4** | Montée en charge : quand un quota est réglé, le volume d'une portée est recalculé en relisant toutes ses fiches à chaque écriture ; les listes sont paginées après lecture complète ; la liste des envois à assembler recalcule la position de chaque envoi | Voir la décision N1 |
+
+### Constat hors module, relevé pendant ce programme
+
+| N° | Constat | Proposition |
+| :- | :--- | :--- |
+| **A5** | Le contrôle « SurrealQL » de la CI échoue par moments avant tout test : le serveur SurrealDB de test « n'a pas démarré en 30 s » (`scripts/ci/test_lyxal_core.py`). Vu deux fois le 12 novembre 2026 sur GitHub (dont une fois sur une demande ne contenant qu'un document) et plusieurs fois sur la machine de développement. La cause n'est pas connue : le script jette la sortie d'erreur du serveur, et il choisit un port libre puis le relâche avant que le serveur ne le prenne | **Rendre la cause visible et le démarrage robuste** : en cas d'échec, afficher le code de sortie et la sortie d'erreur du serveur ; si le serveur s'est arrêté (port pris entre-temps), redémarrer sur un autre port, trois essais au plus. Aucun test n'est sauté ni relancé |
 
 ## 2. Décisions demandées au CTO
 
@@ -48,6 +54,7 @@ Aucun écart P0 ni P1.
 | `ROADMAP.md` | plus de lots ; évolutions à venir seules, dont les compteurs de volume (N1) |
 | `RECHERCHE_SOURCES.md` → `MODELE_SOURCES.md` | réduit aux sources reprises et à leurs licences (A3) |
 | `implementation_plan.md` (racine) | supprimé : programme exécuté (A3) |
+| `scripts/ci/test_lyxal_core.py` (classe `SurrealServer`, partagée par les bancs) | A5 : sortie d'erreur du serveur gardée et affichée en cas d'échec ; redémarrage sur un autre port si le serveur s'est arrêté, trois essais au plus |
 | `.agents/AGENTS.md` §6, `docs/14-roadmap/ROADMAP_NOYAU.md` | `lyxal_storage` livré ; prochain service du noyau selon l'ordre de la feuille de route |
 
 Aucune fonction Core nouvelle, aucun besoin cryptographique, aucun changement de contrat public.
