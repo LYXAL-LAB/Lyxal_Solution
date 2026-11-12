@@ -20,6 +20,7 @@ use lyxal_auth::{AuthError, CodeProof, IssuedTokens, LoginActions, LoginOutcome,
 use lyxal_crypto::SecretString;
 use lyxal_error::{LyxalError, LyxalResult};
 use lyxal_i18n::{accept_language, I18nStore, LocaleResolveParams};
+use lyxal_storage::StorageError;
 use lyxal_surreal::{LyxalCallError, LyxalSurrealError, SurrealValue, ToSql};
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -70,12 +71,20 @@ async fn no_store(mut response: Response) -> Response {
 // Réponses
 // ----------------------------------------------------------------------------------------------
 
-/// Erreur d'une route d'authentification.
+/// Erreur d'une route de l'API.
 pub enum ApiError {
     /// Erreur métier ou du service de connexion.
     Auth(AuthError),
+    /// Erreur métier ou du service de stockage.
+    Storage(StorageError),
     /// Erreur de l'hôte.
     Server(ServerError),
+}
+
+impl From<StorageError> for ApiError {
+    fn from(error: StorageError) -> Self {
+        Self::Storage(error)
+    }
 }
 
 impl From<AuthError> for ApiError {
@@ -101,47 +110,63 @@ pub(super) fn ok(status: StatusCode, data: Value) -> ApiResult {
     Ok((status, Json(body)).into_response())
 }
 
+/// Erreur métier de SurrealQL : définition relue dans la langue de la requête, détails
+/// d'origine conservés ; toute autre erreur de la base : rien.
+async fn business(
+    context: &AppContext,
+    error: &LyxalSurrealError,
+    language: &str,
+) -> Option<LyxalError> {
+    let LyxalSurrealError::Call(LyxalCallError::Business(business)) = error else {
+        return None;
+    };
+    Some(match resolve(context, &business.code, language).await {
+        Some(mut localized) => {
+            localized.details = business.details.clone();
+            localized
+        }
+        None => business.clone(),
+    })
+}
+
 /// Erreur rendue au client : définition de master data résolue par la base pour un code
-/// `AUTH_*` ; erreur de l'hôte sinon. Aucun détail interne.
+/// `AUTH_*` ou `STORAGE_*` ; erreur de l'hôte sinon. Aucun détail interne.
 pub(super) async fn render_error(
     context: &AppContext,
     error: ApiError,
     language: &str,
 ) -> Response {
-    let error = match error {
-        ApiError::Server(error) => return error.into_response(),
-        ApiError::Auth(error) => error,
-    };
     let trace_id = request_id::current();
-    let resolved = match &error {
-        // Erreur métier de SurrealQL : définition relue dans la langue de la requête, détails
-        // d'origine conservés
-        AuthError::Surreal(inner) => match inner.as_ref() {
-            LyxalSurrealError::Call(LyxalCallError::Business(business)) => {
-                Some(match resolve(context, &business.code, language).await {
-                    Some(mut localized) => {
-                        localized.details = business.details.clone();
-                        localized
-                    }
-                    None => business.clone(),
-                })
-            }
-            _ => None,
-        },
-        AuthError::Rejected(code) => resolve(context, code, language).await,
-        AuthError::InvalidParameter(_) => {
-            resolve(context, "AUTH_INVALID_PARAMETERS", language).await
+    let (resolved, code, message) = match &error {
+        ApiError::Server(_) => (None, String::new(), String::new()),
+        ApiError::Auth(error) => {
+            let resolved = match error {
+                AuthError::Surreal(inner) => business(context, inner, language).await,
+                AuthError::Rejected(code) => resolve(context, code, language).await,
+                AuthError::InvalidParameter(_) => {
+                    resolve(context, "AUTH_INVALID_PARAMETERS", language).await
+                }
+                AuthError::Crypto(_) | AuthError::Dns(_) => None,
+            };
+            (resolved, error.code().to_string(), error.to_string())
         }
-        AuthError::Crypto(_) | AuthError::Dns(_) => None,
+        ApiError::Storage(error) => {
+            let resolved = match error {
+                StorageError::Surreal(inner) => business(context, inner, language).await,
+                // Erreurs du service Rust : leur définition est dans la master data du module
+                _ => resolve(context, &error.code(), language).await,
+            };
+            (resolved, error.code(), error.to_string())
+        }
     };
+    if let ApiError::Server(error) = error {
+        return error.into_response();
+    }
     let Some(mut resolved) = resolved else {
-        tracing::error!(trace_id = %trace_id, code = %error.code(), error = %error, "authentification en échec");
-        return ServerError::Database {
-            message: error.to_string(),
-        }
-        .into_response();
+        tracing::error!(trace_id = %trace_id, code = %code, error = %message, "requête en échec");
+        return ServerError::Database { message }.into_response();
     };
-    tracing::info!(trace_id = %trace_id, code = %resolved.code, "authentification refusée");
+    tracing::info!(trace_id = %trace_id, code = %resolved.code, "requête refusée");
     resolved.details = json!({ "trace_id": trace_id, "fields": resolved.details.get("fields").cloned().unwrap_or(Value::Null) });
     let status = resolved
         .http_status
@@ -382,6 +407,7 @@ pub(super) async fn respond(
             Err(failure) => {
                 let original = match &error {
                     ApiError::Auth(error) => error.to_string(),
+                    ApiError::Storage(error) => error.to_string(),
                     ApiError::Server(error) => error.to_string(),
                 };
                 tracing::warn!(error = %original, "erreur d'origine remplacée par une panne de lecture de la langue");

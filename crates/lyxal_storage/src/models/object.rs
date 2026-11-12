@@ -18,6 +18,18 @@ pub enum ObjectState {
     Deleted,
 }
 
+impl ObjectState {
+    /// Nom de l'état, tel qu'il est enregistré.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Pending => "pending",
+            Self::Available => "available",
+            Self::Quarantined => "quarantined",
+            Self::Deleted => "deleted",
+        }
+    }
+}
+
 /// Fiche d'un fichier.
 #[derive(Debug, Clone, SurrealValue)]
 pub struct StoredObject {

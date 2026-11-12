@@ -43,6 +43,32 @@ pub struct PutRequest {
     pub size: Option<u64>,
 }
 
+/// Plage d'octets demandée à la lecture (bornes en octets, à partir de 0).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ByteRange {
+    /// Du premier au dernier octet inclus ; un dernier octet au-delà du fichier est ramené à sa fin.
+    FromTo(u64, u64),
+    /// D'un octet à la fin du fichier.
+    From(u64),
+    /// Les derniers octets du fichier.
+    Last(u64),
+}
+
+impl ByteRange {
+    /// Plage réelle dans un fichier de `size` octets ; refus si elle ne contient aucun octet.
+    pub fn resolve(self, size: u64) -> StorageResult<Range<u64>> {
+        let range = match self {
+            Self::FromTo(first, last) if first <= last && first < size => {
+                first..last.saturating_add(1).min(size)
+            }
+            Self::From(first) if first < size => first..size,
+            Self::Last(count) if count > 0 && size > 0 => size.saturating_sub(count)..size,
+            _ => return Err(StorageError::RangeNotSatisfiable(size)),
+        };
+        Ok(range)
+    }
+}
+
 /// Fichier ouvert en lecture : sa fiche et le flux de ses octets.
 pub struct OpenedObject {
     /// Fiche.
@@ -144,13 +170,23 @@ impl StorageService {
         }
     }
 
+    /// Fiche d'un fichier à servir (disponible seulement), sans ouvrir ses octets.
+    pub async fn stat(&self, params: ObjectGetParams) -> StorageResult<StoredObject> {
+        Ok(self.store.object_open(params).await?)
+    }
+
     /// Ouvre un fichier disponible en lecture, en entier ou sur une plage d'octets.
     pub async fn open(
         &self,
         params: ObjectGetParams,
-        range: Option<Range<u64>>,
+        range: Option<ByteRange>,
     ) -> StorageResult<OpenedObject> {
         let object = self.store.object_open(params).await?;
+        let size = object.size.and_then(|size| u64::try_from(size).ok());
+        let range = match (range, size) {
+            (Some(range), Some(size)) => Some(range.resolve(size)?),
+            _ => None,
+        };
         let backend = self.backends.get(&object.backend)?.store();
         let options = GetOptions {
             range: range.map(GetRange::Bounded),

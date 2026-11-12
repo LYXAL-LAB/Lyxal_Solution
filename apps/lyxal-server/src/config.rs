@@ -29,11 +29,27 @@ pub struct AppConfig {
 
 /// Stockage des fichiers (`lyxal_storage`) : support `default` sur un dossier du serveur. Sans
 /// dossier, aucun fichier n'est écrit ni lu (sonde « dégradé »).
-#[derive(Clone, Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct StorageConfig {
     #[serde(default)]
     pub disk: Option<DiskStorageConfig>,
+    /// Délai d'inactivité d'un envoi ou d'un téléchargement, en secondes (5 à 600).
+    #[serde(default = "default_storage_idle_timeout")]
+    pub idle_timeout_seconds: u64,
+}
+
+impl Default for StorageConfig {
+    fn default() -> Self {
+        Self {
+            disk: None,
+            idle_timeout_seconds: default_storage_idle_timeout(),
+        }
+    }
+}
+
+fn default_storage_idle_timeout() -> u64 {
+    60
 }
 
 /// Support disque : `LYXAL__STORAGE__DISK__ROOT`, dossier créé s'il n'existe pas ; tous les
@@ -261,6 +277,11 @@ impl AppConfig {
         if self.database.namespace.trim().is_empty() || self.database.database.trim().is_empty() {
             return Err(ServerError::Configuration {
                 message: "namespace et database sont obligatoires".into(),
+            });
+        }
+        if !(5..=600).contains(&self.storage.idle_timeout_seconds) {
+            return Err(ServerError::Configuration {
+                message: "storage.idle_timeout_seconds doit être compris entre 5 et 600".into(),
             });
         }
         if self.server.max_concurrency == 0 {

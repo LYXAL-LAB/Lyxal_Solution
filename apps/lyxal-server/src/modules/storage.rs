@@ -48,12 +48,13 @@ fn backends(config: &AppConfig) -> Result<Backends, ServerError> {
         })
 }
 
-/// Sonde, et worker de nettoyage si un support est configuré.
+/// Sonde, et worker de nettoyage si un support est configuré. Rend les supports, utilisés par
+/// les routes `/storage/*`.
 pub fn register_services(
     runtime: &LyxalRuntime,
     client: &Surreal<Any>,
     config: &AppConfig,
-) -> Result<(), ServerError> {
+) -> Result<Arc<Backends>, ServerError> {
     let store = StorageStore::new(client.clone());
     let backends = Arc::new(backends(config)?);
     if !backends.is_empty() {
@@ -66,6 +67,6 @@ pub fn register_services(
     }
     runtime
         .health_registry()
-        .register_check(Arc::new(StorageHealthCheck::new(store, backends)))?;
-    Ok(())
+        .register_check(Arc::new(StorageHealthCheck::new(store, backends.clone())))?;
+    Ok(backends)
 }

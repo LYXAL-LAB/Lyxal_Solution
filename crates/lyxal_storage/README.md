@@ -3,8 +3,9 @@
 Module du Noyau Technique de Lyxal OS : **fichiers et documents stockés**. Les règles sont dans
 SurrealDB (réglages, buckets, fiche de chaque fichier, états, droits, quotas, événements) ; le
 crate Rust écrit et lit les octets en flux sur un support (disque local, mémoire pour les
-tests), calcule leur empreinte et retire les octets devenus inutiles. Les routes HTTP d'envoi et
-de téléchargement, puis S3, sont dans la [`ROADMAP.md`](ROADMAP.md). Sources et étude de la
+tests), calcule leur empreinte et retire les octets devenus inutiles. L'hôte expose l'envoi et le
+téléchargement par HTTP (`apps/lyxal-server/README.md`). S3 et les lots suivants sont dans la
+[`ROADMAP.md`](ROADMAP.md). Sources et étude de la
 gestion de fichiers de SurrealDB : [`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md).
 
 | | |
@@ -130,7 +131,7 @@ Fonctions internes : `fn::storage_can`, `fn::storage_settings_effective`,
 | `parametres` | `STORAGE_INVALID_PARAMETERS` |
 | `permissions` | `STORAGE_PERMISSION_DENIED`, `STORAGE_WRITE_FORBIDDEN` |
 | `buckets` | `STORAGE_BUCKET_NOT_FOUND`, `STORAGE_BUCKET_EXISTS`, `STORAGE_BUCKET_NOT_EMPTY`, `STORAGE_BUCKET_READONLY` |
-| `fichiers` | `STORAGE_OBJECT_NOT_FOUND`, `STORAGE_OBJECT_EXISTS`, `STORAGE_OBJECT_STATE_INVALID`, `STORAGE_OBJECT_IN_USE`, `STORAGE_OBJECT_TOO_LARGE`, `STORAGE_OBJECT_TYPE_REFUSED`, `STORAGE_QUOTA_EXCEEDED` |
+| `fichiers` | `STORAGE_OBJECT_NOT_FOUND`, `STORAGE_OBJECT_EXISTS`, `STORAGE_OBJECT_STATE_INVALID`, `STORAGE_OBJECT_IN_USE`, `STORAGE_OBJECT_TOO_LARGE`, `STORAGE_OBJECT_TYPE_REFUSED`, `STORAGE_QUOTA_EXCEEDED`, `STORAGE_RANGE_NOT_SATISFIABLE` |
 | `supports` | `STORAGE_BACKEND_UNKNOWN`, `STORAGE_BACKEND_UNAVAILABLE` (à réessayer), `STORAGE_OBJECT_NOT_AVAILABLE`, `STORAGE_CONTENT_MISMATCH`, `STORAGE_INTEGRITY_FAILED` |
 
 ## 5. Événements
@@ -147,7 +148,7 @@ Publiés par `fn::event_publish` dans la transaction de la mutation : `storage.o
 | `StorageStore` | un appel typé par fonction publique (`LyxalSurrealCall::call_fn`) ; la session du client détermine les droits |
 | `models` | `XxxParams` et résultats nommés de chaque fonction |
 | `Backends`, `BackendConfig` | supports nommés : `Disk { root }` (tout est écrit sous `root`) et `Memory` (tests) |
-| `StorageService` | `put` (écriture en flux), `open` (lecture en flux, en entier ou sur une plage d'octets), `delete`, `verify` (relit les octets et compare taille et empreinte à la fiche) |
+| `StorageService` | `put` (écriture en flux), `stat` (fiche d'un fichier à servir), `open` (lecture en flux, en entier ou sur une plage `ByteRange` validée contre la taille de la fiche), `delete`, `verify` (relit les octets et compare taille et empreinte à la fiche) |
 | `StorageCleanupWorker` | worker supervisé : écritures abandonnées, fichiers supprimés hors délai, octets des buckets supprimés |
 | `StorageModule`, `StorageHealthCheck` | module `LyxalModule` ; la sonde écrit, relit et retire un fichier témoin sur chaque support |
 | `StorageError` | erreur SurrealQL ou du support ; `code()`, `is_retryable()` |
@@ -177,5 +178,6 @@ Publiés par `fn::event_publish` dans la transaction de la mutation : `storage.o
 * Tests Rust `tests/it/` (base embarquée, supports mémoire et disque) : fichier écrit puis relu
   à l'identique, plage d'octets, fichier de 64 Mo sans dépasser trois parties en mémoire, échecs
   nettoyés, fichier altéré détecté, worker, sonde, appels du store.
-* `apps/lyxal-server` : démarrage avec et sans dossier de stockage (`startup.rs`).
+* `apps/lyxal-server` : démarrage avec et sans dossier de stockage (`startup.rs`) ; routes des
+  fichiers de bout en bout (`storage_routes.rs`).
 * `scripts/ci/ci_local.sh` rejoue la CI complète.

@@ -1,4 +1,4 @@
-use super::{auth, handlers, middleware};
+use super::{auth, handlers, middleware, storage};
 use crate::{config::CorsConfig, context::AppContext, error::ServerError};
 use axum::{
     http::{HeaderName, HeaderValue, Method},
@@ -22,13 +22,28 @@ pub fn build_router(context: AppContext) -> Result<Router, ServerError> {
         .route("/system/modules", get(handlers::modules))
         .nest("/auth", auth::routes());
 
-    let mut router = Router::new()
+    // Limite du corps et délai total : toutes les routes, sauf les fichiers
+    let general = Router::new()
         .route("/", get(handlers::root))
         .route("/live", get(handlers::live))
         .route("/ready", get(handlers::ready))
         .route("/health", get(handlers::health))
         .route("/metrics", get(handlers::metrics))
         .nest("/api/v1", api)
+        .layer(
+            ServiceBuilder::new()
+                .layer(RequestBodyLimitLayer::new(
+                    context.config.server.body_limit_bytes,
+                ))
+                .layer(TimeoutLayer::new(Duration::from_secs(
+                    context.config.server.request_timeout_seconds,
+                ))),
+        );
+    // Fichiers : taille bornée par le bucket pendant l'écriture, délai d'inactivité sur les flux
+    let files = Router::new().nest("/api/v1/storage", storage::routes());
+
+    let mut router = general
+        .merge(files)
         .with_state(context.clone())
         .layer(from_fn_with_state(
             context.clone(),
@@ -37,13 +52,7 @@ pub fn build_router(context: AppContext) -> Result<Router, ServerError> {
         .layer(
             ServiceBuilder::new()
                 .layer(CatchPanicLayer::new())
-                .layer(RequestBodyLimitLayer::new(
-                    context.config.server.body_limit_bytes,
-                ))
                 .layer(TraceLayer::new_for_http())
-                .layer(TimeoutLayer::new(Duration::from_secs(
-                    context.config.server.request_timeout_seconds,
-                )))
                 .concurrency_limit(context.config.server.max_concurrency),
         );
 

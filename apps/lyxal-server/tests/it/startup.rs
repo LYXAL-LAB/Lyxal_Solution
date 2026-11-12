@@ -113,6 +113,7 @@ async fn server_installs_and_starts_hosted_modules() {
         Metrics::default(),
         runtime.clone(),
         None,
+        Default::default(),
     );
     let router = build_router(context).expect("routeur");
 

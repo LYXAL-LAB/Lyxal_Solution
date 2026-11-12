@@ -61,6 +61,7 @@ async fn run_inner() -> Result<(), ServerError> {
         metrics,
         runtime.clone(),
         started.auth,
+        started.storage,
     );
     let router = http::build_router(context)?;
 

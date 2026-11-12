@@ -6,3 +6,4 @@
 mod auth_routes;
 mod configuration;
 mod startup;
+mod storage_routes;

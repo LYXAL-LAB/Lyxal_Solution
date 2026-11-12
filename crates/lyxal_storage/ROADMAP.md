@@ -6,9 +6,8 @@ son propre plan détaillé, validé par le CTO avant toute ligne de code (`.agen
 
 | Lot | Contenu | Touche |
 | :- | :--- | :--- |
-| 3 | Hôte : routes d'envoi et de téléchargement en flux, limites, lecture partielle | `apps/lyxal-server` |
 | 4 | Support S3 et compatibles, Bunny Storage en référence ; identifiants par l'environnement de l'hôte | `lyxal_storage`, `apps/lyxal-server` |
-| 5 | Contrôle du contenu : type réel du fichier, antivirus optionnel, quarantaine | `lyxal_storage` |
+| 5 | Contrôle du contenu : type réel du fichier, antivirus optionnel, quarantaine ; affichage direct des images et des PDF dans le navigateur (aujourd'hui tout fichier est proposé à l'enregistrement) | `lyxal_storage`, `apps/lyxal-server` |
 | 6 | Envoi reprenable (protocole tus 1.0) | `lyxal_storage`, `apps/lyxal-server` |
 | 7 | Bascule de l'ingestion : fichier source d'un lot conservé par `lyxal_storage` | `lyxal_pipeline_ingestion` |
 | 8 | Clôture : audit, documentation | docs |
