@@ -56,31 +56,71 @@ def strip_comments(text: str) -> str:
     return "\n".join(line for line in text.splitlines() if not line.strip().startswith("--")).strip()
 
 
+START_ATTEMPTS = 3
+START_TIMEOUT = 30
+PROBE_TIMEOUT = 5
+
+
+def free_port() -> int:
+    """Port local libre à cet instant (relâché aussitôt : il peut être repris)."""
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        return sock.getsockname()[1]
+
+
 class SurrealServer:
     """Serveur SurrealDB en mémoire, démarré pour la durée d'un bloc `with`."""
 
     def __init__(self) -> None:
         self.user, self.password = "core_ci", secrets.token_urlsafe(24)
-        with socket.socket() as sock:
-            sock.bind(("127.0.0.1", 0))
-            self.port = sock.getsockname()[1]
+        self.port = free_port()
         self.auth = base64.b64encode(f"{self.user}:{self.password}".encode()).decode()
         self.process = None
 
     def __enter__(self) -> "SurrealServer":
-        self.process = subprocess.Popen(
-            [SURREAL, "start", "--log", "error", "--user", self.user, "--pass", self.password,
-             "--bind", f"127.0.0.1:{self.port}", "memory"],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-        )
-        deadline = time.monotonic() + 30
-        while time.monotonic() < deadline:
-            ready = subprocess.run([SURREAL, "is-ready", "--endpoint", self.endpoint], capture_output=True)
-            if ready.returncode == 0:
-                return self
-            time.sleep(0.2)
-        self.__exit__()
-        raise RuntimeError("Le serveur SurrealDB n'a pas démarré en 30 s.")
+        # Le port libre est choisi puis relâché avant que le serveur ne le prenne : s'il est
+        # pris entre-temps, le serveur s'arrête aussitôt. On recommence alors sur un autre port.
+        failures = []
+        for _attempt in range(START_ATTEMPTS):
+            # Sortie d'erreur du serveur gardée dans un fichier temporaire (jamais un tube, qui
+            # bloquerait le serveur une fois plein) et affichée si le démarrage échoue
+            log = tempfile.TemporaryFile()
+            self.process = subprocess.Popen(
+                [SURREAL, "start", "--log", "error", "--user", self.user, "--pass", self.password,
+                 "--bind", f"127.0.0.1:{self.port}", "memory"],
+                stdout=subprocess.DEVNULL, stderr=log,
+            )
+            deadline = time.monotonic() + START_TIMEOUT
+            while time.monotonic() < deadline and self.process.poll() is None:
+                # Délai sur la sonde : un port pris par un programme qui ne répond pas la bloquerait
+                try:
+                    ready = subprocess.run(
+                        [SURREAL, "is-ready", "--endpoint", self.endpoint],
+                        capture_output=True, timeout=PROBE_TIMEOUT,
+                    ).returncode == 0
+                except subprocess.TimeoutExpired:
+                    ready = False
+                if ready:
+                    return self
+                time.sleep(0.2)
+            exited = self.process.poll()
+            if exited is None:
+                self.process.terminate()
+            self.process.wait(timeout=10)
+            log.seek(0)
+            stderr = log.read()
+            log.close()
+            failures.append(
+                f"port {self.port} : "
+                + (f"arrêté avec le code {exited}" if exited is not None else f"pas prêt en {START_TIMEOUT} s")
+                + f" ; sortie d'erreur : {stderr.decode(errors='replace').strip()[-2000:] or '(vide)'}"
+            )
+            self.process = None
+            if exited is None:
+                # Serveur lancé mais jamais prêt : un autre port n'y changerait rien
+                break
+            self.port = free_port()
+        raise RuntimeError("Le serveur SurrealDB n'a pas démarré.\n" + "\n".join(failures))
 
     def __exit__(self, *_exc) -> None:
         if self.process:

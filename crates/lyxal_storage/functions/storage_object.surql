@@ -225,7 +225,8 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_open($params: object) {
     LET $found = fn::storage_object_get($params);
     IF !$found.ok { RETURN $found; };
     IF $found.data.state != "available" {
-        RETURN fn::error_result("STORAGE_OBJECT_NOT_AVAILABLE", $params.language, { state: $found.data.state });
+        -- Langue déjà validée par fn::storage_object_get, qui a réussi : absente, « fr » par défaut
+        RETURN fn::error_result("STORAGE_OBJECT_NOT_AVAILABLE", $params.language ?? "fr", { state: $found.data.state });
     };
     RETURN $found;
 } COMMENT "Fiche d'un fichier à servir ({ object }, ou { bucket, key }) : comme fn::storage_object_get, mais refus si le fichier n'est pas à l'état available (STORAGE_OBJECT_NOT_AVAILABLE) ; backend et path disent où lire ses octets. Droit : lecture";
