@@ -6,7 +6,7 @@ crate Rust écrit et lit les octets en flux sur un support (disque local, servic
 compatible, mémoire pour les tests), calcule leur empreinte, reconnaît leur type réel, les fait
 analyser par un antivirus s'il y en a un, et retire les octets devenus inutiles. L'hôte expose l'envoi et le téléchargement par HTTP (`apps/lyxal-server/README.md`).
 Les lots suivants sont dans la [`ROADMAP.md`](ROADMAP.md). Sources et étude de la
-gestion de fichiers de SurrealDB : [`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md).
+gestion de fichiers de SurrealDB : [`MODELE_SOURCES.md`](MODELE_SOURCES.md).
 
 | | |
 | :--- | :--- |
@@ -108,6 +108,12 @@ la liste se règle par installation et par organisation.
 **Limites** : 100 Mo par fichier par défaut, réglable par installation, organisation et bucket
 (5 Go au plus) ; quota par portée, absent par défaut. Le quota compte les fichiers disponibles ou
 en quarantaine et les tailles annoncées des écritures en attente.
+
+**Montée en charge** : quand un quota est réglé, le volume de la portée est recalculé à chaque
+ouverture et fin d'écriture en relisant ses fiches ; sans quota, rien n'est recompté. Les listes
+sont paginées après lecture des fiches correspondantes. Le module convient ainsi jusqu'à
+quelques dizaines de milliers de fichiers par organisation (ordre de grandeur estimé, non
+mesuré) ; au-delà, des compteurs tenus à jour sont à la feuille de route.
 
 ## 2. Droits
 
@@ -237,7 +243,7 @@ Publiés par `fn::event_publish` dans la transaction de la mutation : `storage.o
   ou le bucket. L'annulation est vérifiée entre deux fichiers.
 * **S3** : un bucket du service porte les octets de tous les buckets Lyxal qui nomment ce
   support, sous les mêmes emplacements que sur disque. Service de référence : Bunny Storage
-  (`RECHERCHE_SOURCES.md` §7) ; adresses de la forme `/<bucket>/<clé>` par défaut. Les erreurs
+  (`MODELE_SOURCES.md` §4) ; adresses de la forme `/<bucket>/<clé>` par défaut. Les erreurs
   passagères et les réponses `503` sont retentées par `object_store` ; un service injoignable ou
   des identifiants refusés rendent `STORAGE_BACKEND_UNAVAILABLE`, sans identifiant dans le
   message. Un envoi en plusieurs parties coupé par un arrêt brutal du serveur n'est pas retiré
@@ -264,10 +270,14 @@ Publiés par `fn::event_publish` dans la transaction de la mutation : `storage.o
   EICAR, limite de taille, service injoignable ou muet). Un essai sur un vrai service ClamAV
   n'est pas dans les contrôles automatiques : `ClamAvScanner` sur `127.0.0.1:3310` après
   `clamd` démarré, à lancer à la main.
-* Non couvert par un test : le refus au-delà de 10 000 parties (`STORAGE_UPLOAD_TOO_MANY_PARTS`) ;
-  une panne de la base pendant l'inscription d'une partie.
+* Non couvert par un test automatique : le refus au-delà de 10 000 parties
+  (`STORAGE_UPLOAD_TOO_MANY_PARTS`) ; une panne de la base pendant l'inscription d'une partie ;
+  un antivirus ClamAV réel (essai à la main ci-dessus, à faire avant la mise en production) ; la
+  mémoire utilisée sur un gros fichier (bornée par construction, non mesurée).
 * Essai réel sur un service S3 (`tests/it/real_s3.rs`, ignoré par défaut) : variables
-  `LYXAL_TEST_S3_*`, puis `cargo test -p lyxal_storage --test it real_s3 -- --ignored`.
+  `LYXAL_TEST_S3_*`, puis `cargo test -p lyxal_storage --test it real_s3 -- --ignored`. Réussi
+  sur Bunny Storage le 12 novembre 2026.
+* Audit de conformité (`lyxal-audit`) du 12 novembre 2026 : aucun écart P0 ni P1.
 * `apps/lyxal-server` : démarrage avec et sans dossier de stockage (`startup.rs`) ; routes des
   fichiers de bout en bout, sur disque et sur S3 (`storage_routes.rs`).
 * `scripts/ci/ci_local.sh` rejoue la CI complète.

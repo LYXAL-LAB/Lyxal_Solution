@@ -53,6 +53,19 @@ fn::storage_bucket_create({ tenant: "auth_organization:alpha", name: "plans", ma
 -- en tant que: lecteur
 RETURN fn::storage_object_open({ bucket: <string> (SELECT VALUE id FROM ONLY storage_bucket WHERE scope_key = "alpha" AND name = "plans" LIMIT 1), key: "2026/plan-a.pdf" }).error.{ code, state: details.state } == { code: "STORAGE_OBJECT_NOT_AVAILABLE", state: "pending" };
 
+-- test: le refus d'un fichier non disponible est rendu dans la langue demandée, en français par défaut
+-- en tant que: lecteur
+{
+    LET $address = { bucket: <string> (SELECT VALUE id FROM ONLY storage_bucket WHERE scope_key = "alpha" AND name = "plans" LIMIT 1), key: "2026/plan-a.pdf" };
+    LET $fr = fn::storage_object_open($address).error;
+    LET $en = fn::storage_object_open(object::extend($address, { language: "en" })).error;
+    RETURN $fr.code == "STORAGE_OBJECT_NOT_AVAILABLE" AND $en.code == "STORAGE_OBJECT_NOT_AVAILABLE"
+        AND $fr.label == fn::error_result("STORAGE_OBJECT_NOT_AVAILABLE", "fr", {}).error.label
+        AND $en.label == fn::error_result("STORAGE_OBJECT_NOT_AVAILABLE", "en", {}).error.label
+        AND $fr.label != $en.label
+        AND fn::storage_object_open(object::extend($address, { language: "xx-invalide" })).error.code == "STORAGE_INVALID_PARAMETERS";
+};
+
 -- test: adresse déjà occupée, même par une écriture en attente
 -- en tant que: redacteur
 RETURN fn::storage_object_begin({ bucket: <string> (SELECT VALUE id FROM ONLY storage_bucket WHERE scope_key = "alpha" AND name = "plans" LIMIT 1), key: "2026/plan-a.pdf", filename: "x.pdf" }).error.code == "STORAGE_OBJECT_EXISTS";
