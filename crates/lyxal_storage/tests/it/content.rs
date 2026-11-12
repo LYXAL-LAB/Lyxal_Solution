@@ -99,14 +99,26 @@ async fn the_real_type_is_recorded_and_ruled() {
             .await
             .expect_err("image annoncée PDF");
         assert_eq!(error.code(), "STORAGE_OBJECT_TYPE_REFUSED");
-        bench
+        // Un type annoncé hors des types du bucket est refusé dès l'ouverture de l'écriture
+        let error = bench
             .service
             .put(
-                announced(&pdf_only, "vrai.pdf", "text/plain"),
+                announced(&pdf_only, "annonce.pdf", "text/plain"),
                 chunks(&[b"%PDF-1.7\n1 0 obj\n"]),
             )
             .await
-            .expect("PDF annoncé texte");
+            .expect_err("type annoncé refusé");
+        assert_eq!(error.code(), "STORAGE_OBJECT_TYPE_REFUSED");
+        // Sans type annoncé, c'est le type réel qui décide
+        let stored = bench
+            .service
+            .put(
+                request(&pdf_only, "vrai.pdf"),
+                chunks(&[b"%PDF-1.7\n1 0 obj\n"]),
+            )
+            .await
+            .expect("PDF sans type annoncé");
+        assert_eq!(stored.content_type.as_deref(), Some("application/pdf"));
 
         assert_eq!(bench.stored_paths().await.len(), before + 1, "{kind:?}");
         assert_eq!(count(&bench, &bucket, ObjectState::Available).await, 4);

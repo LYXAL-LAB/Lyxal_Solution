@@ -784,12 +784,30 @@ async fn content_is_checked_and_only_safe_types_are_shown_inline() {
     for (key, declared, content, recorded, shown) in [
         // Image annoncée comme du texte : le type réel est enregistré, l'image peut s'afficher
         ("photo.png", "text/plain", png, "image/png", true),
-        ("plan.pdf", "application/pdf", &b"%PDF-1.7\n1 0 obj\n"[..], "application/pdf", true),
+        (
+            "plan.pdf",
+            "application/pdf",
+            &b"%PDF-1.7\n1 0 obj\n"[..],
+            "application/pdf",
+            true,
+        ),
         // SVG et texte : toujours proposés à l'enregistrement
         ("dessin.svg", "image/svg+xml", svg, "", false),
-        ("notes.txt", "text/plain", &b"simple texte"[..], "text/plain", false),
+        (
+            "notes.txt",
+            "text/plain",
+            &b"simple texte"[..],
+            "text/plain",
+            false,
+        ),
         // Texte annoncé comme une image : type non cru, pas d'affichage
-        ("faux.png", "image/png", &b"<html><script>alert(1)</script></html>"[..], "", false),
+        (
+            "faux.png",
+            "image/png",
+            &b"<html><script>alert(1)</script></html>"[..],
+            "",
+            false,
+        ),
     ] {
         let sent = send(
             &router,
@@ -826,7 +844,15 @@ async fn content_is_checked_and_only_safe_types_are_shown_inline() {
             "default-src 'none'; sandbox"
         );
         // Sans demande d'affichage : toujours proposé à l'enregistrement
-        let saved = send(&router, "GET", &object(key), Some(&writer), &[], Body::empty()).await;
+        let saved = send(
+            &router,
+            "GET",
+            &object(key),
+            Some(&writer),
+            &[],
+            Body::empty(),
+        )
+        .await;
         assert!(saved
             .header("content-disposition")
             .starts_with("attachment; "));
@@ -889,7 +915,15 @@ async fn content_is_checked_and_only_safe_types_are_shown_inline() {
         infected.json()
     );
     assert_eq!(infected.code(), "STORAGE_OBJECT_INFECTED");
-    let missing = send(&router, "GET", &object("virus.bin"), Some(&writer), &[], Body::empty()).await;
+    let missing = send(
+        &router,
+        "GET",
+        &object("virus.bin"),
+        Some(&writer),
+        &[],
+        Body::empty(),
+    )
+    .await;
     assert_eq!(missing.status, StatusCode::NOT_FOUND);
     assert_eq!(files(folder.path()).len(), before, "aucun octet laissé");
 
