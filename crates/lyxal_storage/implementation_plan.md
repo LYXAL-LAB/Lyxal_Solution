@@ -29,9 +29,14 @@ la validation du CTO (`.agents/AGENTS.md` §3).
    position n'est écrite qu'une fois, même si deux requêtes arrivent en même temps sur deux
    serveurs ; la perdante reçoit un refus et ses octets sont retirés.
 4. **Fin** : quand la position atteint la taille annoncée, le fichier est assemblé (L3), contrôlé
-   et rendu disponible, puis les morceaux sont retirés. Si le serveur s'arrête pendant cette
-   étape, le worker la termine à son prochain passage.
-5. **Abandon ou expiration** : fiche supprimée, morceaux retirés par le worker.
+   et rendu disponible. Si le serveur s'arrête pendant cette étape, le worker la termine à son
+   prochain passage.
+5. **Abandon ou expiration** : fiche supprimée.
+6. **Retrait des morceaux** : dès qu'un envoi reprenable n'est plus en cours (terminé, abandonné
+   ou expiré), la base inscrit, dans la même transaction, le dossier de ses morceaux dans la
+   table `storage_reclaim` (lot 2). Le worker le retire du support et n'efface cette ligne
+   qu'après y être parvenu : un arrêt du serveur à n'importe quel moment ne laisse aucun morceau
+   oublié.
 
 Seul l'appelant qui a créé l'envoi peut le poursuivre, le consulter ou l'abandonner.
 
@@ -47,7 +52,7 @@ Seul l'appelant qui a créé l'envoi peut le poursuivre, le consulter ou l'aband
 | `fn::storage_upload_part_add` | inscrit une partie ({ object, offset, size, name }) : l'envoi est en cours et non expiré, la position est exactement la position courante, la taille annoncée n'est pas dépassée, 10 000 parties au plus |
 | `fn::storage_upload_part_list` | parties d'un envoi dans l'ordre, pour l'assemblage (auteur ou worker) |
 | `fn::storage_upload_ready_list` | worker : envois complets non assemblés |
-| Événement `storage_object_upload_parts` | retire les lignes de parties quand la fiche quitte l'état `pending` ou est supprimée |
+| Événement `storage_object_upload_parts` | quand la fiche d'un envoi reprenable quitte l'état `pending` ou est supprimée : retire les lignes de parties et inscrit le dossier des morceaux (`<chemin du fichier>.parts`) dans `storage_reclaim`, dans la même transaction |
 
 Fonctions Core réutilisées : `fn::validation_object_execute` (règles `record`, `integer`,
 `boolean`, `uuid`). Aucune fonction Core manquante.
@@ -62,8 +67,8 @@ Erreurs ajoutées (thème `envois`) : `STORAGE_UPLOAD_OFFSET_MISMATCH` (409),
 | :--- | :--- |
 | `upload.rs` | `StorageService::upload_create`, `upload_status`, `upload_append` (flux d'octets), `upload_terminate`, `upload_complete` (assemblage : les parties sont relues en flux et passent par l'écriture existante, donc par le type réel, l'antivirus et l'empreinte) |
 | `models/upload.rs`, `store.rs` | `UploadGetParams`, `UploadPartAddParams`, `UploadStatus`, `UploadPart` ; un wrapper `call_fn` par fonction |
-| `backend.rs` | les parties sont rangées sous `<chemin du fichier>.parts/` ; `remove` retire aussi ce dossier |
-| `worker.rs` | `StorageCleanupWorker` termine les envois complets non assemblés (avec l'antivirus configuré) ; l'expiration existante retire les morceaux |
+| `backend.rs` | les parties sont rangées sous `<chemin du fichier>.parts/` ; ce dossier est retiré par le chemin existant de `storage_reclaim` (`remove_prefix`) |
+| `worker.rs` | `StorageCleanupWorker` termine les envois complets non assemblés (avec l'antivirus configuré) ; le retrait des morceaux passe par `storage_reclaim`, sans code nouveau |
 | `error.rs` | `StorageError::UploadOffsetMismatch`, `UploadExpired` |
 
 Aucune nouvelle dépendance. Mémoire bornée à une partie de 8 Mo par requête.
@@ -90,7 +95,8 @@ navigateur. Erreurs au format `LyxalResult`, comme les autres routes.
   appelant, trop de parties), retrait des parties, écriture directe refusée.
 * Module, sur les trois supports (mémoire, disque, S3 de test) : envoi en plusieurs morceaux,
   reprise après coupure, deux requêtes concurrentes sur la même position, assemblage contrôlé
-  (type interdit, virus), abandon, expiration, assemblage terminé par le worker.
+  (type interdit, virus), abandon, expiration, assemblage terminé par le worker, morceaux
+  retirés par le worker après un arrêt simulé juste après la fin de l'envoi.
 * Hôte : parcours complet par HTTP d'après la spécification tus, en-têtes compris.
 
 ## 7. Documents
