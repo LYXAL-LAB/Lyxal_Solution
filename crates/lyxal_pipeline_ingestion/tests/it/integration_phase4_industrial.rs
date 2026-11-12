@@ -16,7 +16,6 @@ use lyxal_pipeline_ingestion::normalization::NormalizationEngine;
 use lyxal_pipeline_ingestion::proof::{CommercialProof, CommercialProofType};
 use lyxal_pipeline_ingestion::storage::NewBatch;
 use lyxal_pipeline_ingestion::types::{BatchStatus, ItemQualification, SourceFormat};
-use lyxal_pipeline_ingestion::worker::IngestionWorker;
 
 /// Générateur d'enregistrement brut pour les tests.
 fn make_test_dto(
@@ -117,19 +116,6 @@ async fn test_worker_interruption_checkpoint_and_resume_no_duplication() {
     let store = crate::support::installed_store().await;
 
     let batch_id = "batch_test_interruption_01";
-    let batch = NewBatch {
-        id: Some(batch_id.to_string()),
-        source_type: SourceFormat::Csv,
-        source_format_version: "1.0".to_string(),
-        source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
-        fournisseur_id: "FOURNISSEUR_PLACO".to_string(),
-        source_object: crate::support::source(&store, "catalogue_placo_60.csv", b"blake3_hash_60_items_test").await,
-        chunk_size: 20, // 3 chunks de 20 lignes
-        provenance_details: serde_json::json!({ "format": "CSV" }),
-        commercial_proof: None,
-    };
-    store.create_batch(&batch).await.expect("Lot créé en base");
-
     // Génération de 60 lignes CSV
     let mut csv_data = String::from("reference;designation;gtin;fabricant;unite;prix\n");
     for i in 1..=60 {
@@ -137,6 +123,24 @@ async fn test_worker_interruption_checkpoint_and_resume_no_duplication() {
             "REF_ITEM_{i:03};Plaque BA13 Ref {i};3017620422003;Placo Saint-Gobain;M2;8.50\n"
         ));
     }
+
+    let batch = NewBatch {
+        id: Some(batch_id.to_string()),
+        source_type: SourceFormat::Csv,
+        source_format_version: "1.0".to_string(),
+        source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
+        fournisseur_id: "FOURNISSEUR_PLACO".to_string(),
+        source_object: crate::support::source(
+            &store,
+            "catalogue_placo_60.csv",
+            csv_data.as_bytes(),
+        )
+        .await,
+        chunk_size: 20, // 3 chunks de 20 lignes
+        provenance_details: serde_json::json!({ "format": "CSV" }),
+        commercial_proof: None,
+    };
+    store.create_batch(&batch).await.expect("Lot créé en base");
 
     let worker = crate::support::worker(&store);
 
@@ -197,39 +201,33 @@ async fn test_batch_reexecution_idempotence() {
     let store = crate::support::installed_store().await;
     let batch_id = "batch_test_idempotence";
 
+    let mut csv_data = String::from("reference;designation;gtin;fabricant;unite;prix\n");
+    for i in 1..=10 {
+        csv_data.push_str(&format!("ISO_{i};Isolant GR32 Roul {i};;Isover;M2;14.20\n"));
+    }
+
     let batch = NewBatch {
         id: Some(batch_id.to_string()),
         source_type: SourceFormat::Csv,
         source_format_version: "1.0".to_string(),
         source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "FOURNISSEUR_ISOVER".to_string(),
-        source_object: crate::support::source(&store, "isover_10.csv", b"hash_isover_idempotence").await,
+        source_object: crate::support::source(&store, "isover_10.csv", csv_data.as_bytes()).await,
         chunk_size: 10,
         provenance_details: serde_json::json!({}),
         commercial_proof: None,
     };
     store.create_batch(&batch).await.unwrap();
 
-    let mut csv_data = String::from("reference;designation;gtin;fabricant;unite;prix\n");
-    for i in 1..=10 {
-        csv_data.push_str(&format!("ISO_{i};Isolant GR32 Roul {i};;Isover;M2;14.20\n"));
-    }
-
     let worker = crate::support::worker(&store);
     let token = CancellationToken::new();
 
     // 1ère exécution -> Passe en STAGED
-    let rep1 = worker
-        .process_batch(batch_id, &token)
-        .await
-        .unwrap();
+    let rep1 = worker.process_batch(batch_id, &token).await.unwrap();
     assert_eq!(rep1.final_status, BatchStatus::Staged);
 
     // 2ème exécution immédiate du même lot -> Retourne directement sans retraiter
-    let rep2 = worker
-        .process_batch(batch_id, &token)
-        .await
-        .unwrap();
+    let rep2 = worker.process_batch(batch_id, &token).await.unwrap();
     assert_eq!(rep2.final_status, BatchStatus::Staged);
     assert_eq!(rep2.total_lignes, 10);
     assert_eq!(rep2.cursor_offset, 10);
@@ -250,27 +248,24 @@ async fn test_concurrent_batch_locking_prevention() {
     let store = crate::support::installed_store().await;
     let worker = crate::support::worker(&store);
 
+    let csv_a = "reference;designation\nREF_1;Item 1\n";
     let batch1 = NewBatch {
         id: Some("batch_A".to_string()),
         source_type: SourceFormat::Csv,
         source_format_version: "1.0".to_string(),
         source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "F1".to_string(),
-        source_object: crate::support::source(&store, "a.csv", b"hash_a").await,
+        source_object: crate::support::source(&store, "a.csv", csv_a.as_bytes()).await,
         chunk_size: 50,
         provenance_details: serde_json::json!({}),
         commercial_proof: None,
     };
     store.create_batch(&batch1).await.unwrap();
 
-    let csv_a = "reference;designation\nREF_1;Item 1\n";
     let token = CancellationToken::new();
 
     // Lancement normal
-    let rep = worker
-        .process_batch("batch_A", &token)
-        .await
-        .unwrap();
+    let rep = worker.process_batch("batch_A", &token).await.unwrap();
     assert_eq!(rep.final_status, BatchStatus::Staged);
 }
 
@@ -285,34 +280,35 @@ async fn test_graceful_shutdown_under_cancellation_token() {
     let token = CancellationToken::new();
     token.cancel(); // Annulé immédiatement
 
+    let mut csv = String::from("reference;designation\n");
+    for i in 1..=50 {
+        csv.push_str(&format!("REF_{i};Designation {i}\n"));
+    }
+
     let batch = NewBatch {
         id: Some("batch_shutdown_test".to_string()),
         source_type: SourceFormat::Csv,
         source_format_version: "1.0".to_string(),
         source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "F1".to_string(),
-        source_object: crate::support::source(&store, "shutdown.csv", b"hash_shutdown").await,
+        source_object: crate::support::source(&store, "shutdown.csv", csv.as_bytes()).await,
         chunk_size: 10,
         provenance_details: serde_json::json!({}),
         commercial_proof: None,
     };
     store.create_batch(&batch).await.unwrap();
 
-    let mut csv = String::from("reference;designation\n");
-    for i in 1..=50 {
-        csv.push_str(&format!("REF_{i};Designation {i}\n"));
-    }
-
     let rep = worker
         .process_batch("batch_shutdown_test", &token)
         .await
         .unwrap();
 
-    // Arrêt avant le premier bloc : aucune ligne traitée, point de reprise enregistré.
+    // Arrêt avant le premier bloc, pendant le contrôle de lecture du fichier : aucune ligne
+    // traitée, le nombre de lignes n'est pas encore connu, le lot reste à son point de reprise.
     assert!(rep.interrupted, "Le worker doit interrompre son exécution");
     assert_eq!(rep.final_status, BatchStatus::Parsing);
     assert_eq!(rep.cursor_offset, 0);
-    assert_eq!(rep.total_lignes, 50);
+    assert_eq!(rep.total_lignes, 0);
     assert_eq!(
         rep.verified_count + rep.to_confirm_count + rep.rejected_count,
         0
@@ -325,7 +321,17 @@ async fn test_graceful_shutdown_under_cancellation_token() {
         .expect("lot enregistré");
     assert_eq!(saved.statut, BatchStatus::Parsing);
     assert_eq!(saved.cursor_offset, 0);
-    assert_eq!(saved.total_lignes, 50);
+    assert_eq!(saved.total_lignes, 0);
+
+    // Reprise : le lot interrompu est traité en entier, ses 50 lignes sont comptées.
+    let resumed = worker
+        .process_batch("batch_shutdown_test", &CancellationToken::new())
+        .await
+        .unwrap();
+    assert!(!resumed.interrupted);
+    assert_eq!(resumed.final_status, BatchStatus::Staged);
+    assert_eq!(resumed.cursor_offset, 50);
+    assert_eq!(resumed.total_lignes, 50);
 }
 
 // =============================================================================
@@ -337,19 +343,6 @@ async fn test_industrial_benchmark_over_1500_items() {
 
     let batch_id = "batch_benchmark_1600_items";
     let total_items = 1600;
-
-    let batch = NewBatch {
-        id: Some(batch_id.to_string()),
-        source_type: SourceFormat::Csv,
-        source_format_version: "1.0".to_string(),
-        source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
-        fournisseur_id: "FOURNISSEUR_BTP_GLOBAL".to_string(),
-        source_object: crate::support::source(&store, "catalogue_btp_1600.csv", b"blake3_benchmark_1600_btp").await,
-        chunk_size: 200, // 8 blocs de 200 lignes avec checkpoints persistants
-        provenance_details: serde_json::json!({ "benchmark": true }),
-        commercial_proof: None,
-    };
-    store.create_batch(&batch).await.unwrap();
 
     // Génération de 1 600 articles représentatifs des familles BTP
     let mut csv_data = String::from("reference;designation;gtin;fabricant;unite;prix\n");
@@ -370,7 +363,6 @@ async fn test_industrial_benchmark_over_1500_items() {
         ));
     }
 
-    let worker = crate::support::worker(&store);
     let proof = CommercialProof::new(
         CommercialProofType::CertifiedManufacturerEdi,
         "EDI-BENCHMARK-2026-X1600",
@@ -378,6 +370,26 @@ async fn test_industrial_benchmark_over_1500_items() {
         "2026-10-25T00:00:00Z",
         "Bordereau certifié pour validation industrielle de charge",
     );
+
+    let batch = NewBatch {
+        id: Some(batch_id.to_string()),
+        source_type: SourceFormat::Csv,
+        source_format_version: "1.0".to_string(),
+        source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
+        fournisseur_id: "FOURNISSEUR_BTP_GLOBAL".to_string(),
+        source_object: crate::support::source(
+            &store,
+            "catalogue_btp_1600.csv",
+            csv_data.as_bytes(),
+        )
+        .await,
+        chunk_size: 200, // 8 blocs de 200 lignes avec checkpoints persistants
+        provenance_details: serde_json::json!({ "benchmark": true }),
+        commercial_proof: Some(proof),
+    };
+    store.create_batch(&batch).await.unwrap();
+
+    let worker = crate::support::worker(&store);
 
     let start_time = Instant::now();
     let token = CancellationToken::new();
@@ -439,26 +451,23 @@ async fn test_industrial_benchmark_over_1500_items() {
 async fn test_unresolved_unit_is_quarantined_never_defaulted() {
     let store = crate::support::installed_store().await;
     let worker = crate::support::worker(&store);
+    // Libellé commercial (alias), code d'échange (lyxal_base) et unité inconnue
+    let csv = "reference;designation;unite\nREF_1;Plaque BA13 standard;Mètre carré\nREF_2;Rouleau isolant 100mm;RO\nREF_3;Article en bidons;BIDON\n";
     let batch = NewBatch {
         id: Some("batch_unites".to_string()),
         source_type: SourceFormat::Csv,
         source_format_version: "1.0".to_string(),
         source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "Saint-Gobain Placo SAS".to_string(),
-        source_object: crate::support::source(&store, "unites.csv", b"unites").await,
+        source_object: crate::support::source(&store, "unites.csv", csv.as_bytes()).await,
         chunk_size: 50,
         provenance_details: serde_json::json!({}),
         commercial_proof: None,
     };
     store.create_batch(&batch).await.unwrap();
 
-    // Libellé commercial (alias), code d'échange (lyxal_base) et unité inconnue
-    let csv = "reference;designation;unite\nREF_1;Plaque BA13 standard;Mètre carré\nREF_2;Rouleau isolant 100mm;RO\nREF_3;Article en bidons;BIDON\n";
     let token = CancellationToken::new();
-    let report = worker
-        .process_batch("batch_unites", &token)
-        .await
-        .unwrap();
+    let report = worker.process_batch("batch_unites", &token).await.unwrap();
     assert_eq!(report.final_status, BatchStatus::Staged);
 
     let items = store

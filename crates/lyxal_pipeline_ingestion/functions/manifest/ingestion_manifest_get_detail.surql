@@ -23,7 +23,7 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_manifest_get_detail($params: object) {
         RETURN fn::error_result("INGESTION_MANIFEST_NOT_FOUND", $p.language, { manifest_ref: $p.manifest_ref });
     };
     LET $manifest = object::extend($found, { id: <string> record::id($found.id), batch: <string> record::id($found.batch) });
-    LET $batch = (SELECT *, <string> record::id(id) AS id FROM ONLY $found.batch);
+    LET $batch = (SELECT *, <string> record::id(id) AS id, <string> source_object AS source_object FROM ONLY $found.batch);
 
     RETURN fn::result_ok({
         manifest: $manifest,

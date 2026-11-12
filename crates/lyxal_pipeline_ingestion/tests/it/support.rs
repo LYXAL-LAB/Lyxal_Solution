@@ -8,11 +8,11 @@ use lyxal_crypto::{
 use lyxal_pipeline_ingestion::error::{IngestionError, IngestionResult};
 use lyxal_pipeline_ingestion::publisher::{CatalogueTokenIssuer, CATALOGUE_SYNC_CLIENT_ID};
 use lyxal_pipeline_ingestion::storage::{BatchClaim, IngestionStore, NewBatch};
-use lyxal_runtime::manifest::{ManifestParser, ModuleManifest};
-use lyxal_runtime::resource::ResourceProvider;
 use lyxal_pipeline_ingestion::worker::IngestionWorker;
 use lyxal_pipeline_ingestion::SOURCE_BUCKET;
-use lyxal_storage::models::{BucketCreateParams, BucketListParams};
+use lyxal_runtime::manifest::{ManifestParser, ModuleManifest};
+use lyxal_runtime::resource::ResourceProvider;
+use lyxal_storage::models::{BucketCreateParams, BucketListParams, ObjectGetParams};
 use lyxal_storage::{BackendConfig, Backends, PutRequest, StorageService, StorageStore};
 use lyxal_surreal::ToSql;
 use std::path::PathBuf;
@@ -117,7 +117,10 @@ pub async fn source(store: &IngestionStore, name: &str, content: &[u8]) -> Strin
         .await
         .expect("buckets")
         .items;
-    let bucket = match buckets.into_iter().find(|bucket| bucket.name == SOURCE_BUCKET) {
+    let bucket = match buckets
+        .into_iter()
+        .find(|bucket| bucket.name == SOURCE_BUCKET)
+    {
         Some(bucket) => bucket.id,
         None => {
             service
@@ -145,6 +148,27 @@ pub async fn source(store: &IngestionStore, name: &str, content: &[u8]) -> Strin
         .expect("fichier source")
         .id
         .to_sql()
+}
+
+/// Remplace sur le support les octets d'un fichier source, sans toucher à sa fiche (fichier
+/// altéré après la création du lot).
+pub async fn tamper(store: &IngestionStore, source_object: &str, content: &[u8]) {
+    use object_store::ObjectStoreExt;
+    let fiche = storage(store)
+        .store()
+        .object_get(ObjectGetParams::by_id(source_object))
+        .await
+        .expect("fiche");
+    backends()
+        .get(&fiche.backend)
+        .expect("support")
+        .store()
+        .put(
+            &object_store::path::Path::from(fiche.path.as_str()),
+            content.to_vec().into(),
+        )
+        .await
+        .expect("octets remplacés");
 }
 
 /// Émetteur de test : sessions du compte de service `lyxal-catalogue-sync` ouvertes par

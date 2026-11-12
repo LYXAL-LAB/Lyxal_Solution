@@ -397,7 +397,8 @@ async fn test_5_quarantine_listing_and_resolution_forces_to_confirm() {
         source_format_version: "1.0".to_string(),
         source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "FOURN_SINIAT".to_string(),
-        source_object: crate::support::source(&store, "siniat_anomalies.csv", b"hash_quar_01").await,
+        source_object: crate::support::source(&store, "siniat_anomalies.csv", b"hash_quar_01")
+            .await,
         chunk_size: 500,
         provenance_details: serde_json::json!({}),
         commercial_proof: None,

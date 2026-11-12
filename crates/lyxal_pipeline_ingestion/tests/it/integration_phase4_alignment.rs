@@ -347,7 +347,8 @@ async fn test_8_crash_recovery_and_idempotence_after_realignment() {
         source_format_version: "1.0".to_string(),
         source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "ISOVER".to_string(),
-        source_object: crate::support::source(&store, "isover_100_items.csv", b"hash_crash_01").await,
+        source_object: crate::support::source(&store, "isover_100_items.csv", b"hash_crash_01")
+            .await,
         chunk_size: 10,
         provenance_details: serde_json::json!({}),
         commercial_proof: None,

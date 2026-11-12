@@ -20,7 +20,6 @@ use lyxal_pipeline_ingestion::storage::NewBatch;
 use lyxal_pipeline_ingestion::types::{
     ItemQualification, PackagingDetails, PublicationAction, SourceFormat,
 };
-use lyxal_pipeline_ingestion::worker::IngestionWorker;
 use lyxal_runtime::health::HealthStatus;
 use lyxal_runtime::worker::CancellationToken;
 use lyxal_runtime::{ModuleContext, ModuleHealthCheck};
@@ -354,7 +353,8 @@ async fn test_staging_real_performance_metrics() {
         source_format_version: "3.0".to_string(),
         source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "FOURN_BENCH".to_string(),
-        source_object: crate::support::source(&store, "bench_catalogue.csv", b"hash_bench_01").await,
+        source_object: crate::support::source(&store, "bench_catalogue.csv", b"hash_bench_01")
+            .await,
         chunk_size: 500,
         provenance_details: serde_json::json!({}),
         commercial_proof: None,

@@ -19,9 +19,9 @@ async fn batch(store: &IngestionStore, id: &str, source: &[u8]) -> NewBatch {
         source_object: crate::support::source(store, &format!("{id}.csv"), source).await,
         chunk_size: 5,
         provenance_details: serde_json::json!({}),
-    }
         commercial_proof: None,
     }
+}
 
 fn csv(lines: usize) -> String {
     let mut csv = String::from("reference;designation;gtin;fabricant;unite;prix\n");
@@ -153,7 +153,9 @@ async fn two_workers_process_the_batch_once() {
 async fn refused_execution_neither_writes_nor_releases_the_other_claim() {
     let store = crate::support::installed_store().await;
     // Une autre exécution (autre worker, autre instance) détient le lot.
-    let claim = crate::support::claimed_batch(&store, &batch(&store, "lot_tenu", csv(5).as_bytes()).await).await;
+    let claim =
+        crate::support::claimed_batch(&store, &batch(&store, "lot_tenu", csv(5).as_bytes()).await)
+            .await;
     let worker = crate::support::worker(&store);
 
     let refused = worker
@@ -183,7 +185,11 @@ async fn refused_execution_neither_writes_nor_releases_the_other_claim() {
 #[tokio::test]
 async fn expired_claim_is_taken_over_and_the_old_execution_is_fenced() {
     let store = crate::support::installed_store().await;
-    let old = crate::support::claimed_batch(&store, &batch(&store, "lot_expire", csv(5).as_bytes()).await).await;
+    let old = crate::support::claimed_batch(
+        &store,
+        &batch(&store, "lot_expire", csv(5).as_bytes()).await,
+    )
+    .await;
     // L'ancienne exécution s'est arrêtée sans libérer : sa réservation expire.
     store
         .client()
@@ -237,7 +243,16 @@ async fn expired_claim_is_taken_over_and_the_old_execution_is_fenced() {
 #[tokio::test]
 async fn claim_is_released_after_failure_and_interruption() {
     let store = crate::support::installed_store().await;
-    store.create_batch(&batch("lot_casse")).await.expect("lot");
+    // Le fichier source d'un lot ne change pas : un lot illisible pour l'échec, un lot lisible
+    // pour l'interruption et sa reprise.
+    store
+        .create_batch(&batch(&store, "lot_casse", &[0xff, 0xfe, 0xfd]).await)
+        .await
+        .expect("lot illisible");
+    store
+        .create_batch(&batch(&store, "lot_interrompu", csv(10).as_bytes()).await)
+        .await
+        .expect("lot lisible");
     let worker = crate::support::worker(&store);
 
     // Échec : le lot passe en FAILED pendant que la réservation est détenue, puis est libéré.
@@ -258,19 +273,19 @@ async fn claim_is_released_after_failure_and_interruption() {
     let cancelled = CancellationToken::new();
     cancelled.cancel();
     let report = worker
-        .process_batch("lot_casse", &cancelled)
+        .process_batch("lot_interrompu", &cancelled)
         .await
         .expect("interruption");
     assert!(report.interrupted);
-    assert_eq!(claim_state(&store, "lot_casse").await, (None, 2));
+    assert_eq!(claim_state(&store, "lot_interrompu").await, (None, 1));
 
     // Nouvelle exécution : le lot est de nouveau réservable et va au bout.
     let report = worker
-        .process_batch("lot_casse", &CancellationToken::new())
+        .process_batch("lot_interrompu", &CancellationToken::new())
         .await
         .expect("reprise");
     assert_eq!(report.final_status, BatchStatus::Staged);
-    assert_eq!(claim_state(&store, "lot_casse").await, (None, 3));
+    assert_eq!(claim_state(&store, "lot_interrompu").await, (None, 2));
 }
 
 /// Remplace `fn::ingestion_resolve_units` (appelée une fois par bloc) par une version qui attend
@@ -307,8 +322,7 @@ async fn claim_is_renewed_while_a_block_outlasts_its_duration() {
     // Réservation de 5 s, bloc de 7 s : sans renouvellement pendant le bloc, la réservation
     // expirerait et ses écritures seraient refusées.
     slow_down_blocks(&store, 7).await;
-    let worker = crate::support::worker(&store)
-        .with_claim_ttl(5);
+    let worker = crate::support::worker(&store).with_claim_ttl(5);
 
     let report = worker
         .process_batch("lot_lent", &CancellationToken::new())

@@ -4047,6 +4047,7 @@ dependencies = [
  "lyxal_runtime",
  "lyxal_storage",
  "lyxal_surreal",
+ "object_store",
  "serde",
  "serde_json",
  "surrealdb",

@@ -22,7 +22,12 @@ async fn test_full_pilot_41_btp_references_lifecycle() {
         source_format_version: "1.0".to_string(),
         source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "DISTRIBUTEUR_BTP_PILOTE".to_string(),
-        source_object: crate::support::source(&store, "catalogue_btp_lot1_41_refs.csv", b"blake3_btp_lot1_pilot_hash_20261025").await,
+        source_object: crate::support::source(
+            &store,
+            "catalogue_btp_lot1_41_refs.csv",
+            b"blake3_btp_lot1_pilot_hash_20261025",
+        )
+        .await,
         chunk_size: 500,
         provenance_details: serde_json::json!({
             "pilot_project": "Lyxal BTP Lot 1",

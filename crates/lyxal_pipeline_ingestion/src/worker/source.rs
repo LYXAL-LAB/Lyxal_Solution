@@ -185,7 +185,7 @@ impl BatchSource {
             for item in self.items()? {
                 item?;
                 total += 1;
-                if total % STOP_CHECK_EVERY == 0 && stop.load(Ordering::Relaxed) {
+                if total.is_multiple_of(STOP_CHECK_EVERY) && stop.load(Ordering::Relaxed) {
                     return Ok(None);
                 }
             }
