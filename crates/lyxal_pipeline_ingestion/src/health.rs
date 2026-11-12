@@ -72,22 +72,21 @@ impl ModuleHealthCheck for IngestionHealthCheck {
         let start = std::time::Instant::now();
         if let Some(store) = &self.store {
             match store.get_dashboard_metrics(None).await {
-                Ok(_metrics) if !self.source_storage => Ok(HealthCheckResult::degraded(
-                    self.module_id.clone(),
-                    start.elapsed().as_millis() as u64,
-                    Some(
-                        "Aucun lot traité : stockage des fichiers sources non configuré (LYXAL__STORAGE__DISK__ROOT)"
-                            .to_string(),
-                    ),
-                )),
-                Ok(_metrics) if !self.publication_enabled => Ok(HealthCheckResult::degraded(
-                    self.module_id.clone(),
-                    start.elapsed().as_millis() as u64,
-                    Some(
-                        "Publication vers le catalogue désactivée : clé de signature du jeton de service absente (LYXAL__CATALOGUE_SYNC__SIGNING_KEY)"
-                            .to_string(),
-                    ),
-                )),
+                // Toutes les causes sont rendues : l'une ne masque pas l'autre
+                Ok(_metrics) if !self.source_storage || !self.publication_enabled => {
+                    let mut causes = Vec::new();
+                    if !self.source_storage {
+                        causes.push("Aucun lot traité : stockage des fichiers sources non configuré (LYXAL__STORAGE__DISK__ROOT)");
+                    }
+                    if !self.publication_enabled {
+                        causes.push("Publication vers le catalogue désactivée : clé de signature du jeton de service absente (LYXAL__CATALOGUE_SYNC__SIGNING_KEY)");
+                    }
+                    Ok(HealthCheckResult::degraded(
+                        self.module_id.clone(),
+                        start.elapsed().as_millis() as u64,
+                        Some(causes.join(" ; ")),
+                    ))
+                }
                 Ok(_metrics) => {
                     let latency = start.elapsed().as_millis() as u64;
                     Ok(HealthCheckResult::healthy(
