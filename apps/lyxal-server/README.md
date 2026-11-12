@@ -147,8 +147,10 @@ fichier, par exemple `plans/2026/a.pdf`) :
   `X-Content-Type-Options: nosniff`), jamais mis en cache (`Cache-Control: private, no-store`).
 * **Limites** : ces routes ne sont pas soumises à `server.body_limit_bytes` ni au délai total
   d'une requête ; la taille est bornée par le bucket (100 Mo par défaut, 5 Go au plus), vérifiée
-  pendant l'écriture. Un flux qui ne transmet plus rien pendant `storage.idle_timeout_seconds`
-  est coupé.
+  pendant l'écriture. Un envoi ou une lecture du support qui ne transmet plus rien pendant
+  `storage.idle_timeout_seconds` est coupé. Ce même délai est le délai d'écriture de toute
+  connexion du serveur (`src/serve.rs`) : un client qui cesse de lire sa réponse est déconnecté,
+  ce qui libère le fichier ouvert et sa place dans la limite de requêtes simultanées.
 * **Réponses** : contrat `LyxalResult`, sauf le contenu d'un fichier ; erreurs `STORAGE_*` dans
   la langue de la requête.
 
@@ -282,7 +284,6 @@ garde son code `RUNTIME_*`.
 | `SERVER_DATABASE_UNAVAILABLE` | `dependency` | 503 (réessayable) |
 | `SERVER_MODULE_INSTALL_FAILED` | `internal` | 500 |
 | `SERVER_BIND_FAILED` | `internal` | 500 |
-| `SERVER_HTTP_SERVE_FAILED` | `internal` | 500 |
 | `SERVER_SHUTDOWN_SIGNAL_FAILED` | `internal` | 500 |
 | `SERVER_TELEMETRY_INIT_FAILED` | `internal` | 500 |
 | `SERVER_AUTH_DISABLED` | `dependency` | 503 |

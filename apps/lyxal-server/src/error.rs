@@ -31,9 +31,6 @@ pub enum ServerError {
     #[error("adresse d'écoute `{address}` indisponible : {message}")]
     Bind { address: String, message: String },
 
-    #[error("arrêt du serveur HTTP sur erreur : {message}")]
-    HttpServe { message: String },
-
     #[error("signal d'arrêt indisponible : {message}")]
     ShutdownSignal { message: String },
 
@@ -96,15 +93,6 @@ const BIND_FAILED: ServerErrorInfo = ServerErrorInfo {
     label: "Adresse d'écoute indisponible",
 };
 
-const HTTP_SERVE_FAILED: ServerErrorInfo = ServerErrorInfo {
-    code: "SERVER_HTTP_SERVE_FAILED",
-    category: "internal",
-    http_status: 500,
-    retryable: false,
-    message: "HTTP server stopped on an error",
-    label: "Arrêt du serveur HTTP sur erreur",
-};
-
 const SHUTDOWN_SIGNAL_FAILED: ServerErrorInfo = ServerErrorInfo {
     code: "SERVER_SHUTDOWN_SIGNAL_FAILED",
     category: "internal",
@@ -147,7 +135,6 @@ pub const SERVER_ERROR_CATALOG: &[ServerErrorInfo] = &[
     DATABASE_UNAVAILABLE,
     MODULE_INSTALL_FAILED,
     BIND_FAILED,
-    HTTP_SERVE_FAILED,
     SHUTDOWN_SIGNAL_FAILED,
     TELEMETRY_INIT_FAILED,
     AUTH_DISABLED,
@@ -174,7 +161,6 @@ impl ServerError {
             Self::Database { .. } => DATABASE_UNAVAILABLE,
             Self::ModuleInstall { .. } => MODULE_INSTALL_FAILED,
             Self::Bind { .. } => BIND_FAILED,
-            Self::HttpServe { .. } => HTTP_SERVE_FAILED,
             Self::ShutdownSignal { .. } => SHUTDOWN_SIGNAL_FAILED,
             Self::Telemetry { .. } => TELEMETRY_INIT_FAILED,
             Self::AuthDisabled => AUTH_DISABLED,

@@ -14,6 +14,7 @@ pub mod metrics;
 pub mod modules;
 pub mod net;
 pub mod runtime;
+pub mod serve;
 pub mod shutdown;
 pub mod telemetry;
 

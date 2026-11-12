@@ -112,33 +112,6 @@ IF !record::exists(error_definition:SERVER_BIND_FAILED) THEN (
     }
 ) END;
 
-IF !record::exists(error_definition:SERVER_HTTP_SERVE_FAILED) THEN (
-    CREATE error_definition:SERVER_HTTP_SERVE_FAILED CONTENT {
-        code: "SERVER_HTTP_SERVE_FAILED",
-        module: "server",
-        domain: "http",
-        category: "internal",
-        severity: "error",
-        message: "HTTP server stopped on an error",
-        default_language: "fr",
-        http_status: 500,
-        retryable: false,
-        enabled: true,
-        translations: {
-            fr: {
-                label: "Arrêt du serveur HTTP sur erreur",
-                description: "Le serveur HTTP s'est arrêté sur une erreur d'entrée-sortie.",
-                resolution: "Consulter le journal."
-            },
-            en: {
-                label: "HTTP server failed",
-                description: "HTTP server stopped on an error.",
-                resolution: "Check the log."
-            }
-        }
-    }
-) END;
-
 IF !record::exists(error_definition:SERVER_SHUTDOWN_SIGNAL_FAILED) THEN (
     CREATE error_definition:SERVER_SHUTDOWN_SIGNAL_FAILED CONTENT {
         code: "SERVER_SHUTDOWN_SIGNAL_FAILED",
