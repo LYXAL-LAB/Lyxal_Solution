@@ -18,6 +18,9 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_limits($params: object) -> option<o
     IF $params.size IS NOT NONE AND $params.size > $max {
         RETURN { code: "STORAGE_OBJECT_TOO_LARGE", details: { size: $params.size, max_object_size: $max } };
     };
+    IF $params.content_type IS NOT NONE AND $params.content_type INSIDE $settings.blocked_types {
+        RETURN { code: "STORAGE_OBJECT_TYPE_REFUSED", details: { content_type: $params.content_type, blocked: true } };
+    };
     IF $params.content_type IS NOT NONE AND array::len($bucket.allowed_types) > 0 AND $params.content_type NOTINSIDE $bucket.allowed_types {
         RETURN { code: "STORAGE_OBJECT_TYPE_REFUSED", details: { content_type: $params.content_type, allowed_types: $bucket.allowed_types } };
     };
@@ -29,7 +32,7 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_limits($params: object) -> option<o
         };
     };
     RETURN NONE;
-} COMMENT "Interne : règles du bucket et quota de sa portée pour un fichier ({ bucket, size, content_type, except }) ; NONE, ou { code, details } de l'erreur STORAGE_* à rendre";
+} COMMENT "Interne : règles du bucket, types refusés des réglages et quota de sa portée pour un fichier ({ bucket, size, content_type, except }) ; NONE, ou { code, details } de l'erreur STORAGE_* à rendre";
 
 -- ----------------------------------------------------------------------------
 -- fn::storage_object_is_author (interne)

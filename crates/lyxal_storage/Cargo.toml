@@ -12,9 +12,13 @@ lyxal_crypto = { workspace = true }
 async-trait = { workspace = true }
 surrealdb = { workspace = true }
 thiserror = { workspace = true }
-tokio = { workspace = true, features = ["fs"] }
+tokio = { workspace = true, features = ["fs", "net"] }
 tracing = { workspace = true }
 bytes = "1"
+# Type réel d'un fichier, reconnu à ses premiers octets
+infer = "0.22"
+# Antivirus : protocole du service clamd de ClamAV (service séparé)
+clamav-client = { version = "2.3", default-features = false, features = ["tokio-stream"] }
 futures = { version = "0.3", default-features = false, features = ["std"] }
 # Supports : disque local, mémoire, S3 et compatibles
 object_store = { version = "0.13", default-features = false, features = ["fs", "aws"] }
@@ -22,7 +26,7 @@ object_store = { version = "0.13", default-features = false, features = ["fs", "
 [dev-dependencies]
 lyxal_auth = { workspace = true }
 tempfile = { workspace = true }
-tokio = { workspace = true, features = ["net"] }
+tokio = { workspace = true, features = ["net", "io-util"] }
 # Serveur S3 de test, lancé dans les tests sur un dossier temporaire
 s3s = "0.17"
 s3s-fs = "0.17"

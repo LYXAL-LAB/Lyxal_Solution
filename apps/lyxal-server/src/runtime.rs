@@ -14,8 +14,8 @@ pub struct Started {
     pub runtime: Arc<LyxalRuntime>,
     /// Service de connexion (routes `/auth/*`), absent sans clé applicative ou `auth.public_url`.
     pub auth: Option<Arc<modules::auth::AuthHost>>,
-    /// Supports des fichiers (routes `/storage/*`).
-    pub storage: Arc<lyxal_storage::Backends>,
+    /// Supports et antivirus des fichiers (routes `/storage/*`).
+    pub storage: crate::context::StorageHost,
 }
 
 /// Construit le runtime, installe le noyau et les modules hébergés, puis les démarre.

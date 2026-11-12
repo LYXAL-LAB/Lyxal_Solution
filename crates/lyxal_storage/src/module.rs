@@ -14,6 +14,7 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use crate::backend::Backends;
 use crate::error::{StorageError, StorageResult};
 use crate::models::SettingsGetParams;
+use crate::scanner::ContentScanner;
 use crate::store::StorageStore;
 
 /// Identifiant du module.
@@ -75,12 +76,13 @@ impl LyxalModule for StorageModule {
     }
 }
 
-/// Sonde de santé : réglages lisibles, et chaque support écrit, relit puis retire un petit
-/// fichier témoin. Sans support configuré : « dégradé », aucun fichier n'est écrit ni lu.
+/// Sonde de santé : réglages lisibles, chaque support écrit, relit puis retire un petit
+/// fichier témoin, et l'antivirus configuré répond. Sans support configuré : « dégradé », aucun fichier n'est écrit ni lu.
 pub struct StorageHealthCheck {
     module_id: ModuleId,
     store: StorageStore,
     backends: Arc<Backends>,
+    scanner: Option<Arc<dyn ContentScanner>>,
 }
 
 impl StorageHealthCheck {
@@ -90,7 +92,15 @@ impl StorageHealthCheck {
             module_id: ModuleId::new(MODULE_ID),
             store,
             backends,
+            scanner: None,
         }
+    }
+
+    /// Interroge aussi cet antivirus : injoignable, les envois sont refusés et la sonde est
+    /// « dégradée ».
+    pub fn with_scanner(mut self, scanner: Arc<dyn ContentScanner>) -> Self {
+        self.scanner = Some(scanner);
+        self
     }
 }
 
@@ -151,6 +161,15 @@ impl ModuleHealthCheck for StorageHealthCheck {
                     self.module_id.clone(),
                     elapsed(),
                     Some(format!("support {name} : {error}")),
+                ));
+            }
+        }
+        if let Some(scanner) = &self.scanner {
+            if let Err(error) = scanner.ping().await {
+                return Ok(HealthCheckResult::degraded(
+                    self.module_id.clone(),
+                    elapsed(),
+                    Some(format!("{} : {error}", error.code())),
                 ));
             }
         }

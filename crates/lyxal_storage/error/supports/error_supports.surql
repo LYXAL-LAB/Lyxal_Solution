@@ -137,3 +137,57 @@ IF !record::exists(error_definition:STORAGE_INTEGRITY_FAILED) THEN (
         }
     }
 ) END;
+
+IF !record::exists(error_definition:STORAGE_OBJECT_INFECTED) THEN (
+    CREATE error_definition:STORAGE_OBJECT_INFECTED CONTENT {
+        code: "STORAGE_OBJECT_INFECTED",
+        module: "storage",
+        domain: "supports",
+        category: "validation",
+        severity: "error",
+        message: "File refused by the antivirus",
+        default_language: "fr",
+        http_status: 422,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Fichier refusé par l'antivirus",
+                description: "L'antivirus a reconnu une menace dans le fichier envoyé : il est refusé et rien n'est conservé.",
+                resolution: "Vérifiez l'origine du fichier ; n'essayez pas de l'envoyer de nouveau."
+            },
+            en: {
+                label: "File refused by the antivirus",
+                description: "The antivirus recognised a threat in the uploaded file: it is refused and nothing is kept.",
+                resolution: "Check where the file comes from; do not try to send it again."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:STORAGE_SCANNER_UNAVAILABLE) THEN (
+    CREATE error_definition:STORAGE_SCANNER_UNAVAILABLE CONTENT {
+        code: "STORAGE_SCANNER_UNAVAILABLE",
+        module: "storage",
+        domain: "supports",
+        category: "dependency",
+        severity: "error",
+        message: "Antivirus unavailable",
+        default_language: "fr",
+        http_status: 503,
+        retryable: true,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Antivirus indisponible",
+                description: "L'antivirus configuré n'a pas pu analyser le fichier (service injoignable, délai dépassé ou fichier au-delà de sa limite) : l'envoi est refusé.",
+                resolution: "Réessayez plus tard ; si l'erreur persiste, vérifiez le service antivirus et sa limite de taille."
+            },
+            en: {
+                label: "Antivirus unavailable",
+                description: "The configured antivirus could not scan the file (service unreachable, timeout or file beyond its limit): the upload is refused.",
+                resolution: "Try again later; if the error persists, check the antivirus service and its size limit."
+            }
+        }
+    }
+) END;

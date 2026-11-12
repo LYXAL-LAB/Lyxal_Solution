@@ -236,6 +236,15 @@ RETURN fn::storage_object_begin({ bucket: <string> (SELECT VALUE id FROM ONLY st
 -- en tant que: robot
 RETURN fn::storage_object_commit({ object: <string> (SELECT VALUE id FROM ONLY storage_object WHERE key = "humain.pdf" LIMIT 1), size: 5, content_type: "application/pdf", blake3: "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262" }).error.code == "STORAGE_PERMISSION_DENIED";
 
+-- test: type réel interdit par les réglages (programme exécutable) : fin d'écriture refusée
+-- en tant que: admin
+RETURN fn::storage_object_commit({ object: <string> (SELECT VALUE id FROM ONLY storage_object WHERE key = "humain.pdf" LIMIT 1), size: 5, content_type: "application/x-executable", blake3: "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262" }).error.{ code, blocked: details.blocked } == { code: "STORAGE_OBJECT_TYPE_REFUSED", blocked: true };
+
+-- test: la base la refuse aussi en écriture directe
+-- en tant que: admin
+-- attendu-erreur: STORAGE_OBJECT_TYPE_REFUSED
+UPDATE storage_object SET state = "available", size = 5, content_type = "application/x-executable", blake3 = "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262", pending_expires_at = NONE WHERE key = "humain.pdf";
+
 -- préparation: l'écriture de l'identité est abandonnée
 -- en tant que: admin
 fn::storage_object_delete({ object: <string> (SELECT VALUE id FROM ONLY storage_object WHERE key = "humain.pdf" LIMIT 1) });

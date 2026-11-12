@@ -6,10 +6,12 @@
 //! aucun fichier n'est écrit ni lu, le worker n'est pas lancé et la sonde le signale.
 
 use crate::config::AppConfig;
+use crate::context::StorageHost;
 use crate::error::ServerError;
 use lyxal_runtime::{LyxalModule, LyxalRuntime};
 use lyxal_storage::{
-    BackendConfig, Backends, StorageCleanupWorker, StorageHealthCheck, StorageModule, StorageStore,
+    BackendConfig, Backends, ClamAvScanner, ContentScanner, ScannerConfig, StorageCleanupWorker,
+    StorageHealthCheck, StorageModule, StorageStore,
 };
 use std::sync::Arc;
 use std::time::Duration;
@@ -85,13 +87,30 @@ fn backends(config: &AppConfig) -> Result<Backends, ServerError> {
     Ok(backends)
 }
 
-/// Sonde, et worker de nettoyage si un support est configuré. Rend les supports, utilisés par
-/// les routes `/storage/*`.
+/// Antivirus de l'installation, s'il est configuré (`LYXAL__STORAGE__ANTIVIRUS__*`).
+fn scanner(config: &AppConfig) -> Option<Arc<dyn ContentScanner>> {
+    let antivirus = config.storage.antivirus.as_ref()?;
+    let address = match (&antivirus.address, &antivirus.socket) {
+        (Some(address), _) => ScannerConfig::Tcp {
+            address: address.clone(),
+        },
+        (None, Some(path)) => ScannerConfig::Socket { path: path.clone() },
+        // Écarté par la validation de la configuration
+        (None, None) => return None,
+    };
+    Some(Arc::new(ClamAvScanner::new(
+        address,
+        Duration::from_secs(antivirus.timeout_seconds),
+    )))
+}
+
+/// Sonde, et worker de nettoyage si un support est configuré. Rend les supports et l'antivirus,
+/// utilisés par les routes `/storage/*`.
 pub fn register_services(
     runtime: &LyxalRuntime,
     client: &Surreal<Any>,
     config: &AppConfig,
-) -> Result<Arc<Backends>, ServerError> {
+) -> Result<StorageHost, ServerError> {
     let store = StorageStore::new(client.clone());
     let backends = Arc::new(backends(config)?);
     if !backends.is_empty() {
@@ -102,8 +121,11 @@ pub fn register_services(
             CLEANUP_BATCH,
         )?))?;
     }
-    runtime
-        .health_registry()
-        .register_check(Arc::new(StorageHealthCheck::new(store, backends.clone())))?;
-    Ok(backends)
+    let scanner = scanner(config);
+    let mut probe = StorageHealthCheck::new(store, backends.clone());
+    if let Some(scanner) = &scanner {
+        probe = probe.with_scanner(scanner.clone());
+    }
+    runtime.health_registry().register_check(Arc::new(probe))?;
+    Ok(StorageHost { backends, scanner })
 }

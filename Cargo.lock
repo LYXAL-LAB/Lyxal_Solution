@@ -912,6 +912,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "cfb"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a347dcabdae9c31b0825fd6a8bed285ec9c2acb89c47827126d52fa4f59cece3"
+dependencies = [
+ "fnv",
+ "uuid",
+ "web-time",
+]
+
+[[package]]
 name = "cfg-if"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -994,6 +1005,17 @@ dependencies = [
  "block-buffer 0.12.1",
  "crypto-common 0.2.2",
  "inout 0.2.6",
+]
+
+[[package]]
+name = "clamav-client"
+version = "2.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e65db2ab3296d6ccf440230ee401ad828ffcf70b907f4dc642168f39454a8120"
+dependencies = [
+ "bytes",
+ "tokio",
+ "tokio-stream",
 ]
 
 [[package]]
@@ -3394,6 +3416,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "infer"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f4200d433cbd5178df7797c9c2e75b348b728e39631cf14520d1e2fc424201f4"
+dependencies = [
+ "cfb",
+]
+
+[[package]]
 name = "inout"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4051,8 +4082,10 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "bytes",
+ "clamav-client",
  "futures",
  "hyper-util",
+ "infer",
  "lyxal_auth",
  "lyxal_crypto",
  "lyxal_runtime",

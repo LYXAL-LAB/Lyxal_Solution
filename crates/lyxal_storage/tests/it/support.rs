@@ -259,3 +259,78 @@ pub async fn read_all(mut opened: OpenedObject) -> Vec<u8> {
     }
     content
 }
+
+/// Comportement du faux service `clamd` des tests.
+#[derive(Clone, Copy)]
+pub enum Clamd {
+    /// Analyse le flux : signature de test EICAR reconnue, limite de taille appliquée.
+    Scanning { stream_max_length: usize },
+    /// Accepte la connexion et ne répond jamais.
+    Silent,
+}
+
+/// Lance un faux service `clamd` (commandes `zPING` et `zINSTREAM`) sur un port local ; rend
+/// son adresse.
+pub async fn clamd(behaviour: Clamd) -> String {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("écoute");
+    let address = listener.local_addr().expect("adresse").to_string();
+    tokio::spawn(async move {
+        while let Ok((mut socket, _)) = listener.accept().await {
+            tokio::spawn(async move {
+                let Clamd::Scanning { stream_max_length } = behaviour else {
+                    // Connexion gardée ouverte sans réponse
+                    let mut sink = [0u8; 1024];
+                    while matches!(socket.read(&mut sink).await, Ok(read) if read > 0) {}
+                    return;
+                };
+                let mut command = Vec::new();
+                loop {
+                    let Ok(byte) = socket.read_u8().await else {
+                        return;
+                    };
+                    if byte == 0 {
+                        break;
+                    }
+                    command.push(byte);
+                }
+                if command == b"zPING" {
+                    let _ = socket.write_all(b"PONG\0").await;
+                    return;
+                }
+                let mut content = Vec::new();
+                loop {
+                    let Ok(length) = socket.read_u32().await else {
+                        return;
+                    };
+                    if length == 0 {
+                        break;
+                    }
+                    let mut chunk = vec![0u8; length as usize];
+                    if socket.read_exact(&mut chunk).await.is_err() {
+                        return;
+                    }
+                    content.extend_from_slice(&chunk);
+                    if content.len() > stream_max_length {
+                        let _ = socket
+                            .write_all(b"INSTREAM size limit exceeded. ERROR\0")
+                            .await;
+                        return;
+                    }
+                }
+                let infected = content
+                    .windows(34)
+                    .any(|window| window == b"EICAR-STANDARD-ANTIVIRUS-TEST-FILE");
+                let answer: &[u8] = if infected {
+                    b"stream: Eicar-Test-Signature FOUND\0"
+                } else {
+                    b"stream: OK\0"
+                };
+                let _ = socket.write_all(answer).await;
+            });
+        }
+    });
+    address
+}

@@ -39,7 +39,8 @@ DEFINE FUNCTION OVERWRITE fn::storage_settings_set($params: object) {
             quota_bytes: { pipeline: [{ rule: "integer", options: { min_value: 0 } }] },
             pending_ttl_seconds: { pipeline: [{ rule: "integer", options: { min_value: 60, max_value: 604800 } }] },
             deleted_retention_days: { pipeline: [{ rule: "integer", options: { min_value: 0, max_value: 3650 } }] },
-            clear: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: true } }, { rule: "each", options: { pipeline: [{ rule: "enum", options: { allowed: ["max_object_size", "quota_bytes", "pending_ttl_seconds", "deleted_retention_days"], case_sensitive: true } }] } }], default: [] },
+            blocked_types: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: true } }, { rule: "array_length", options: { max_length: 100 } }, { rule: "each", options: { pipeline: [{ rule: "mime_type" }] } }] },
+            clear: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: true } }, { rule: "each", options: { pipeline: [{ rule: "enum", options: { allowed: ["max_object_size", "quota_bytes", "pending_ttl_seconds", "deleted_retention_days", "blocked_types"], case_sensitive: true } }] } }], default: [] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -50,7 +51,7 @@ DEFINE FUNCTION OVERWRITE fn::storage_settings_set($params: object) {
     LET $p = $report.value;
     IF !fn::storage_can({ action: "manage", tenant: $p.tenant }) { RETURN fn::error_result("STORAGE_PERMISSION_DENIED", $p.language, {}); };
     LET $scope = IF $p.tenant IS NONE { "installation" } ELSE { <string> record::id($p.tenant) };
-    LET $fields = ["max_object_size", "quota_bytes", "pending_ttl_seconds", "deleted_retention_days"];
+    LET $fields = ["max_object_size", "quota_bytes", "pending_ttl_seconds", "deleted_retention_days", "blocked_types"];
     -- Champ fourni : remplacé ; champ dans clear : effacé ; sinon conservé
     LET $changes = object::from_entries(array::filter(
         array::map($fields, |$f| [$f, IF $f IN $p.clear { NONE } ELSE { $p[$f] }]),
@@ -64,4 +65,4 @@ DEFINE FUNCTION OVERWRITE fn::storage_settings_set($params: object) {
     };
     IF $saved == NONE { RETURN fn::error_result("STORAGE_WRITE_FORBIDDEN", $p.language, { table: "storage_settings" }); };
     RETURN fn::result_ok($saved);
-} COMMENT "Enregistre les réglages d'une portée ({ tenant, max_object_size, quota_bytes, pending_ttl_seconds, deleted_retention_days, clear }) : un champ fourni est remplacé, un champ nommé dans clear est effacé, les autres sont conservés. Droit : gestion";
+} COMMENT "Enregistre les réglages d'une portée ({ tenant, max_object_size, quota_bytes, pending_ttl_seconds, deleted_retention_days, blocked_types, clear }) : un champ fourni est remplacé, un champ nommé dans clear est effacé, les autres sont conservés. Droit : gestion";

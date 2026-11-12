@@ -28,6 +28,8 @@ pub struct StoredSettings {
     pub pending_ttl_seconds: Option<i64>,
     /// Conservation d'un fichier supprimé, en jours.
     pub deleted_retention_days: Option<i64>,
+    /// Types MIME refusés.
+    pub blocked_types: Option<Vec<String>>,
     /// Dernière modification.
     pub updated_at: StorageDatetime,
 }
@@ -43,6 +45,8 @@ pub struct EffectiveSettings {
     pub pending_ttl_seconds: i64,
     /// Conservation d'un fichier supprimé, en jours.
     pub deleted_retention_days: i64,
+    /// Types MIME refusés, quel que soit le bucket.
+    pub blocked_types: Vec<String>,
 }
 
 /// Résultat de `fn::storage_settings_get`.
@@ -68,6 +72,8 @@ pub struct SettingsSetParams {
     pub pending_ttl_seconds: Option<i64>,
     /// Conservation d'un fichier supprimé, en jours.
     pub deleted_retention_days: Option<i64>,
+    /// Types MIME refusés, quel que soit le bucket.
+    pub blocked_types: Option<Vec<String>>,
     /// Champs à effacer.
     pub clear: Vec<String>,
 }

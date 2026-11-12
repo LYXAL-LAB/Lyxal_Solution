@@ -11,7 +11,7 @@ revue OWASP ASVS niveau 2) ; ses évolutions sont dans `crates/lyxal_auth/ROADMA
 
 `lyxal_storage` (rang 3) est créé : son socle SurrealQL, son crate Rust (octets écrits et lus
 en flux sur disque ou sur un service S3, nettoyage) et ses routes d'envoi et de téléchargement
-sont en place ; son programme (lots 5 à 8) est dans
+et le contrôle du contenu sont en place ; son programme (lots 6 à 8) est dans
 `implementation_plan.md` à la racine et sa `ROADMAP.md`.
 
 `lyxal_notification` a été créé avant son rang (décision D8 du programme `lyxal_auth`) avec sa

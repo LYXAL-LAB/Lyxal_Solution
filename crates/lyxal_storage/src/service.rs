@@ -16,17 +16,17 @@ use std::ops::Range;
 use std::sync::Arc;
 
 use crate::backend::{location, Backends};
+use crate::content::{detect, HEAD_SIZE};
 use crate::error::{StorageError, StorageResult};
 use crate::models::{
     BegunObject, ObjectBeginParams, ObjectCommitParams, ObjectGetParams, ObjectRefParams,
     StoredObject,
 };
+use crate::scanner::{ContentScanner, ScanVerdict};
 use crate::store::StorageStore;
 
 /// Taille d'une partie écrite sur le support : rien n'est gardé en mémoire au-delà.
 pub const PART_SIZE: usize = 8 * 1024 * 1024;
-/// Type enregistré quand aucun type n'est annoncé.
-const DEFAULT_CONTENT_TYPE: &str = "application/octet-stream";
 
 /// Fichier à écrire.
 #[derive(Debug, Clone)]
@@ -84,12 +84,24 @@ pub struct OpenedObject {
 pub struct StorageService {
     store: StorageStore,
     backends: Arc<Backends>,
+    scanner: Option<Arc<dyn ContentScanner>>,
 }
 
 impl StorageService {
-    /// Service sur la session du store (elle détermine les droits) et les supports de l'hôte.
+    /// Service sur la session du store (elle détermine les droits) et les supports de l'hôte,
+    /// sans antivirus.
     pub fn new(store: StorageStore, backends: Arc<Backends>) -> Self {
-        Self { store, backends }
+        Self {
+            store,
+            backends,
+            scanner: None,
+        }
+    }
+
+    /// Fait analyser par cet antivirus tout fichier écrit.
+    pub fn with_scanner(mut self, scanner: Arc<dyn ContentScanner>) -> Self {
+        self.scanner = Some(scanner);
+        self
     }
 
     /// Store sous-jacent.
@@ -122,20 +134,26 @@ impl StorageService {
             })
             .await?;
         let written = match self.backends.get(&begun.backend) {
-            Ok(backend) => write(backend.store().as_ref(), &begun, request.size, content).await,
+            Ok(backend) => {
+                write(
+                    backend.store().as_ref(),
+                    self.scanner.as_deref(),
+                    &begun,
+                    request.size,
+                    content,
+                )
+                .await
+            }
             Err(error) => Err(error),
         };
         let committed = match written {
-            Ok((size, blake3)) => self
+            Ok(written) => self
                 .store
                 .object_commit(ObjectCommitParams {
                     object: begun.id.to_sql(),
-                    size,
-                    content_type: begun
-                        .declared_type
-                        .clone()
-                        .unwrap_or_else(|| DEFAULT_CONTENT_TYPE.to_string()),
-                    blake3,
+                    size: written.size,
+                    content_type: written.content_type,
+                    blake3: written.blake3,
                 })
                 .await
                 .map_err(StorageError::from),
@@ -259,22 +277,37 @@ impl StorageService {
     }
 }
 
-/// Écrit le flux par parties ; rend la taille et l'empreinte du contenu. En cas d'échec,
-/// l'écriture est abandonnée sur le support.
+/// Contenu écrit : taille, empreinte et type réel.
+struct Written {
+    size: i64,
+    blake3: String,
+    content_type: String,
+}
+
+/// Écrit le flux par parties ; chaque morceau est compté, haché et, si un antivirus est
+/// branché, transmis à son analyse, dans le même passage. Rend la taille, l'empreinte et le type
+/// réel du contenu. En cas d'échec ou de menace reconnue, l'écriture est abandonnée sur le
+/// support.
 async fn write<S, E>(
     backend: &dyn ObjectStore,
+    scanner: Option<&dyn ContentScanner>,
     begun: &BegunObject,
     declared_size: Option<u64>,
     content: S,
-) -> StorageResult<(i64, String)>
+) -> StorageResult<Written>
 where
     S: Stream<Item = Result<Bytes, E>> + Send,
     E: std::fmt::Display,
 {
     let max_size = u64::try_from(begun.max_size).unwrap_or(0);
+    let mut scan = match scanner {
+        Some(scanner) => Some(scanner.begin().await?),
+        None => None,
+    };
     let upload = backend.put_multipart(&location(&begun.path)?).await?;
     let mut writer = WriteMultipart::new_with_chunk_size(upload, PART_SIZE);
     let mut hasher = Blake3Hasher::new();
+    let mut head: Vec<u8> = Vec::new();
     let mut size: u64 = 0;
     let mut content = std::pin::pin!(content);
     let failure = loop {
@@ -295,6 +328,15 @@ where
             )));
         }
         hasher.update(&chunk);
+        if head.len() < HEAD_SIZE {
+            let wanted = (HEAD_SIZE - head.len()).min(chunk.len());
+            head.extend_from_slice(&chunk[..wanted]);
+        }
+        if let Some(scan) = &mut scan {
+            if let Err(error) = scan.feed(&chunk).await {
+                break Some(error);
+            }
+        }
         // Une seule partie en cours d'envoi : la mémoire reste bornée à deux parties
         if let Err(error) = writer.wait_for_capacity(1).await {
             break Some(error.into());
@@ -308,6 +350,20 @@ where
                 StorageError::ContentMismatch(format!("{size} octets reçus, {declared} annoncés"))
             })
     });
+    // Verdict de l'antivirus avant de terminer l'écriture : un fichier infecté n'est jamais
+    // présent en entier sur le support
+    let failure = match (failure, scan) {
+        (Some(error), _) => Some(error),
+        (None, Some(scan)) => match scan.finish().await {
+            Ok(ScanVerdict::Clean) => None,
+            Ok(ScanVerdict::Infected(name)) => {
+                tracing::warn!(object = %begun.id.to_sql(), signature = %name, "fichier refusé par l'antivirus");
+                Some(StorageError::Infected(name))
+            }
+            Err(error) => Some(error),
+        },
+        (None, None) => None,
+    };
     if let Some(error) = failure {
         if let Err(abort) = writer.abort().await {
             tracing::warn!(object = %begun.id.to_sql(), error = %abort, "écriture non abandonnée sur le support");
@@ -317,5 +373,9 @@ where
     writer.finish().await?;
     let size = i64::try_from(size)
         .map_err(|_| StorageError::ContentMismatch("contenu trop grand".to_string()))?;
-    Ok((size, hasher.finalize_hex()))
+    Ok(Written {
+        size,
+        blake3: hasher.finalize_hex(),
+        content_type: detect(&head, begun.declared_type.as_deref()),
+    })
 }

@@ -36,7 +36,7 @@
 };
 
 -- test: valeurs par défaut du module
-RETURN fn::storage_settings_get({}).data == { own: NONE, effective: { max_object_size: 104857600, quota_bytes: NONE, pending_ttl_seconds: 86400, deleted_retention_days: 7 } }
+RETURN fn::storage_settings_get({}).data == { own: NONE, effective: { max_object_size: 104857600, quota_bytes: NONE, pending_ttl_seconds: 86400, deleted_retention_days: 7, blocked_types: ["application/vnd.microsoft.portable-executable", "application/x-executable", "application/x-mach-binary", "application/x-msdownload"] } }
     AND fn::storage_settings_effective({ tenant: auth_organization:alpha }).max_object_size == 104857600;
 
 -- test: l'administrateur de l'installation règle l'installation
@@ -46,7 +46,7 @@ RETURN fn::storage_settings_set({ max_object_size: 52428800, deleted_retention_d
 -- test: l'organisation surcharge un champ ; les autres viennent de l'installation
 -- en tant que: admin
 RETURN fn::storage_settings_set({ tenant: "auth_organization:alpha", quota_bytes: 1000, pending_ttl_seconds: 600 }).data.scope_key == "alpha"
-    AND fn::storage_settings_get({ tenant: "auth_organization:alpha" }).data.effective == { max_object_size: 52428800, quota_bytes: 1000, pending_ttl_seconds: 600, deleted_retention_days: 30 };
+    AND fn::storage_settings_get({ tenant: "auth_organization:alpha" }).data.effective == { max_object_size: 52428800, quota_bytes: 1000, pending_ttl_seconds: 600, deleted_retention_days: 30, blocked_types: ["application/vnd.microsoft.portable-executable", "application/x-executable", "application/x-mach-binary", "application/x-msdownload"] };
 
 -- test: un champ fourni est remplacé, un champ nommé dans clear est effacé, les autres sont conservés
 -- en tant que: admin
@@ -80,3 +80,15 @@ RETURN (UPDATE ONLY storage_settings:alpha SET quota_bytes = 1) == NONE;
 
 -- test: les réglages sont intacts
 RETURN (SELECT VALUE quota_bytes FROM ONLY storage_settings:alpha) == NONE;
+
+-- test: types refusés : surcharge par organisation, liste vide, effacement (retour à l'installation), valeur invalide
+{
+    LET $own = fn::storage_settings_set({ tenant: "auth_organization:alpha", blocked_types: ["application/zip"] }).data.blocked_types;
+    LET $effective = fn::storage_settings_effective({ tenant: auth_organization:alpha }).blocked_types;
+    LET $installation = fn::storage_settings_set({ blocked_types: [] }).data.blocked_types;
+    LET $cleared = fn::storage_settings_set({ tenant: "auth_organization:alpha", clear: ["blocked_types"] }).data.blocked_types;
+    RETURN $own == ["application/zip"] AND $effective == ["application/zip"]
+        AND $installation == [] AND $cleared == NONE
+        AND fn::storage_settings_effective({ tenant: auth_organization:alpha }).blocked_types == []
+        AND fn::storage_settings_set({ blocked_types: ["pas un type"] }).error.code == "STORAGE_INVALID_PARAMETERS";
+};

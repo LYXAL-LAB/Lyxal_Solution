@@ -43,9 +43,14 @@ DEFINE FUNCTION OVERWRITE fn::storage_settings_effective($params: object) -> obj
         max_object_size: $own.max_object_size ?? $base.max_object_size ?? 104857600,
         quota_bytes: $own.quota_bytes ?? $base.quota_bytes,
         pending_ttl_seconds: $own.pending_ttl_seconds ?? $base.pending_ttl_seconds ?? 86400,
-        deleted_retention_days: $own.deleted_retention_days ?? $base.deleted_retention_days ?? 7
+        deleted_retention_days: $own.deleted_retention_days ?? $base.deleted_retention_days ?? 7,
+        -- Par défaut : programmes exécutables (Windows, Linux, macOS)
+        blocked_types: $own.blocked_types ?? $base.blocked_types ?? [
+            "application/vnd.microsoft.portable-executable", "application/x-executable",
+            "application/x-mach-binary", "application/x-msdownload"
+        ]
     };
-} COMMENT "Réglages effectifs ({ tenant }) : organisation, sinon installation, sinon valeurs par défaut (100 Mo par fichier, sans quota, 24 h d'attente, 7 jours de conservation)";
+} COMMENT "Réglages effectifs ({ tenant }) : organisation, sinon installation, sinon valeurs par défaut (100 Mo par fichier, sans quota, 24 h d'attente, 7 jours de conservation, programmes exécutables refusés)";
 
 -- ----------------------------------------------------------------------------
 -- fn::storage_scope_usage

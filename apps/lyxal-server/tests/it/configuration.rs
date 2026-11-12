@@ -280,6 +280,37 @@ access_key_id = "zone-de-test"
     assert!(config.storage.s3.contains_key("bunny"));
 }
 
+#[test]
+fn the_antivirus_is_configured_by_one_address() {
+    let directory = tempfile::tempdir().expect("tempdir");
+    write_config(directory.path(), "");
+    let config = AppConfig::load_with_environment(
+        directory.path(),
+        variables(&[("LYXAL__STORAGE__ANTIVIRUS__ADDRESS", "127.0.0.1:3310")]),
+    )
+    .expect("configuration valide");
+    let antivirus = config.storage.antivirus.expect("antivirus");
+    assert_eq!(antivirus.address.as_deref(), Some("127.0.0.1:3310"));
+    assert_eq!(antivirus.timeout_seconds, 30);
+
+    for pairs in [
+        // Ni adresse ni socket ; les deux ; délai hors bornes
+        vec![("LYXAL__STORAGE__ANTIVIRUS__TIMEOUT_SECONDS", "10")],
+        vec![
+            ("LYXAL__STORAGE__ANTIVIRUS__ADDRESS", "127.0.0.1:3310"),
+            ("LYXAL__STORAGE__ANTIVIRUS__SOCKET", "/run/clamav/clamd.ctl"),
+        ],
+        vec![
+            ("LYXAL__STORAGE__ANTIVIRUS__ADDRESS", "127.0.0.1:3310"),
+            ("LYXAL__STORAGE__ANTIVIRUS__TIMEOUT_SECONDS", "0"),
+        ],
+    ] {
+        let error = AppConfig::load_with_environment(directory.path(), variables(&pairs))
+            .expect_err("configuration refusée");
+        assert!(error.to_string().contains("storage.antivirus"), "{error}");
+    }
+}
+
 /// Serveur SurrealDB réel (`LYXAL_SURREAL_BIN`, à défaut `surreal` dans le `PATH`), arrêté à la
 /// fin du test.
 struct SurrealServer(std::process::Child);

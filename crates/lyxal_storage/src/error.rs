@@ -22,6 +22,12 @@ pub enum StorageError {
     /// Plage d'octets demandée hors du fichier ; porte la taille du fichier.
     #[error("plage d'octets hors du fichier ({0} octets)")]
     RangeNotSatisfiable(u64),
+    /// Menace reconnue par l'antivirus dans le contenu envoyé ; porte le nom de la signature.
+    #[error("fichier refusé par l'antivirus : {0}")]
+    Infected(String),
+    /// Antivirus configuré mais incapable d'analyser le contenu.
+    #[error("antivirus indisponible : {0}")]
+    ScannerUnavailable(String),
     /// Contenu relu différent de la fiche (taille ou empreinte).
     #[error("fichier altéré : {0}")]
     IntegrityFailed(String),
@@ -44,6 +50,8 @@ impl StorageError {
             Self::BackendUnavailable(_) => "STORAGE_BACKEND_UNAVAILABLE".to_string(),
             Self::ContentMismatch(_) => "STORAGE_CONTENT_MISMATCH".to_string(),
             Self::RangeNotSatisfiable(_) => "STORAGE_RANGE_NOT_SATISFIABLE".to_string(),
+            Self::Infected(_) => "STORAGE_OBJECT_INFECTED".to_string(),
+            Self::ScannerUnavailable(_) => "STORAGE_SCANNER_UNAVAILABLE".to_string(),
             Self::IntegrityFailed(_) => "STORAGE_INTEGRITY_FAILED".to_string(),
         }
     }
@@ -56,10 +64,11 @@ impl StorageError {
                 LyxalSurrealError::Call(_) => false,
                 other => other.transport_info().is_some_and(|info| info.retryable),
             },
-            Self::BackendUnavailable(_) => true,
+            Self::BackendUnavailable(_) | Self::ScannerUnavailable(_) => true,
             Self::BackendUnknown(_)
             | Self::ContentMismatch(_)
             | Self::RangeNotSatisfiable(_)
+            | Self::Infected(_)
             | Self::IntegrityFailed(_) => false,
         }
     }
