@@ -299,3 +299,57 @@ IF !record::exists(error_definition:INGESTION_FABDIS_BLOCK_INVALID) THEN (
         }
     }
 ) END;
+
+IF !record::exists(error_definition:INGESTION_SOURCE_NOT_AVAILABLE) THEN (
+    CREATE error_definition:INGESTION_SOURCE_NOT_AVAILABLE CONTENT {
+        code: "INGESTION_SOURCE_NOT_AVAILABLE",
+        module: "ingestion",
+        domain: "batch",
+        category: "validation",
+        severity: "error",
+        message: "Le fichier source du lot est absent ou non disponible",
+        default_language: "fr",
+        http_status: 422,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Fichier source non disponible",
+                description: "Le fichier désigné pour ce lot n'existe pas dans le stockage, n'est pas lisible par l'appelant ou n'est pas à l'état disponible.",
+                resolution: "Envoyer le fichier dans le stockage, attendre la fin de son envoi, puis créer le lot avec sa fiche."
+            },
+            en: {
+                label: "Source file not available",
+                description: "The file named for this batch does not exist in storage, cannot be read by the caller or is not in the available state.",
+                resolution: "Send the file to storage, wait for the upload to finish, then create the batch with its record."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:INGESTION_SOURCE_ALTERED) THEN (
+    CREATE error_definition:INGESTION_SOURCE_ALTERED CONTENT {
+        code: "INGESTION_SOURCE_ALTERED",
+        module: "ingestion",
+        domain: "batch",
+        category: "validation",
+        severity: "error",
+        message: "Le fichier source relu ne correspond plus à son empreinte",
+        default_language: "fr",
+        http_status: 422,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Fichier source altéré",
+                description: "Les octets relus dans le stockage n'ont plus la taille ou l'empreinte enregistrées à la création du lot : rien n'a été mis en staging.",
+                resolution: "Vérifier le support de stockage, renvoyer le fichier et créer un nouveau lot."
+            },
+            en: {
+                label: "Source file altered",
+                description: "The bytes read back from storage no longer have the size or fingerprint recorded when the batch was created: nothing was staged.",
+                resolution: "Check the storage backend, send the file again and create a new batch."
+            }
+        }
+    }
+) END;

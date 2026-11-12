@@ -7,32 +7,40 @@ use lyxal_pipeline_ingestion::types::{BatchStatus, SourceEncoding, SourceFormat}
 use lyxal_pipeline_ingestion::worker::IngestionWorker;
 use lyxal_runtime::worker::CancellationToken;
 
-fn batch(id: &str, format: SourceFormat, encoding: SourceEncoding, chunk_size: i64) -> NewBatch {
-    NewBatch {
-        id: Some(id.to_string()),
-        source_type: format,
-        source_format_version: "1.0".to_string(),
-        source_encoding: encoding,
-        fournisseur_id: "FOURN_TEST".to_string(),
-        nom_fichier: format!("{id}.src"),
-        file_hash_blake3: lyxal_crypto::blake3_hex(id.as_bytes()),
-        taille_octets: 512,
-        chunk_size,
-        provenance_details: serde_json::json!({}),
-    }
+/// Envoie le fichier source dans le stockage et crée son lot.
+async fn batch(
+    store: &IngestionStore,
+    id: &str,
+    format: SourceFormat,
+    encoding: SourceEncoding,
+    chunk_size: i64,
+    source: &[u8],
+) {
+    let source_object = crate::support::source(store, &format!("{id}.src"), source).await;
+    store
+        .create_batch(&NewBatch {
+            id: Some(id.to_string()),
+            source_type: format,
+            source_format_version: "1.0".to_string(),
+            source_encoding: encoding,
+            fournisseur_id: "FOURN_TEST".to_string(),
+            source_object,
+            chunk_size,
+            provenance_details: serde_json::json!({}),
+            commercial_proof: None,
+        })
+        .await
+        .expect("lot");
 }
 
 async fn process(
     store: &IngestionStore,
     id: &str,
-    format: SourceFormat,
-    source: &[u8],
 ) -> lyxal_pipeline_ingestion::IngestionResult<
     lyxal_pipeline_ingestion::worker::BatchProcessingReport,
 > {
-    IngestionWorker::new(store.clone())
-        .expect("worker")
-        .process_batch(id, source, format, None, &CancellationToken::new())
+    crate::support::worker(store)
+        .process_batch(id, &CancellationToken::new())
         .await
 }
 

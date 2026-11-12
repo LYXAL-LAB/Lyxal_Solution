@@ -47,6 +47,20 @@ pub enum IngestionError {
         detail: String,
     },
 
+    /// Fichier source du lot illisible dans `lyxal_storage` (fichier absent, support
+    /// indisponible) ; porte le code `STORAGE_*`.
+    #[error("Fichier source indisponible ({code}) : {detail}")]
+    SourceUnavailable {
+        /// Code `STORAGE_*` de l'erreur de `lyxal_storage`.
+        code: String,
+        /// Diagnostic, sans contenu de la source.
+        detail: String,
+    },
+
+    /// Octets relus différents de l'empreinte ou de la taille enregistrées à la création du lot.
+    #[error("Fichier source altéré : {0}")]
+    SourceAltered(String),
+
     #[error("Transition d'état illégale : {0}")]
     IllegalTransition(String),
 
@@ -145,7 +159,10 @@ impl IngestionError {
                 info("INGESTION_FINGERPRINT_TAMPERED", "conflict", 409, false)
             }
             Self::Unauthorized(_) => info("INGESTION_UNAUTHORIZED", "authorization", 403, false),
-            Self::Storage(_) => info("INGESTION_STORAGE_ERROR", "dependency", 503, true),
+            Self::Storage(_) | Self::SourceUnavailable { .. } => {
+                info("INGESTION_STORAGE_ERROR", "dependency", 503, true)
+            }
+            Self::SourceAltered(_) => info("INGESTION_SOURCE_ALTERED", "validation", 422, false),
             Self::BatchAlreadyClaimed { .. } => {
                 info("INGESTION_BATCH_ALREADY_CLAIMED", "conflict", 409, true)
             }
@@ -242,6 +259,11 @@ mod tests {
             IngestionError::InvalidSourceFormat(text()),
             IngestionError::Validation(text()),
             IngestionError::DuplicateBatch { hash: text() },
+            IngestionError::SourceUnavailable {
+                code: text(),
+                detail: text(),
+            },
+            IngestionError::SourceAltered(text()),
             IngestionError::MissingManufacturerRef { fabricant: text() },
             IngestionError::UnresolvedBaseUnit { unite: text() },
             IngestionError::IncoherentPackaging { details: text() },

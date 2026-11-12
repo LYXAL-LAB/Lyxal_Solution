@@ -1,8 +1,9 @@
 //! Adaptateurs de sources pour l'ingestion multiformat de Lyxal OS.
 //!
-//! La lecture des formats (CSV, JSON, XML, encodage, rejets) est faite par `lyxal_parsing` ; un
-//! adaptateur ne fait que la correspondance métier des colonnes et balises vers un
-//! [`RawRecordDto`] :
+//! La lecture des formats (CSV, JSON, XML, encodage, rejets) est faite par `lyxal_parsing`, au
+//! fil de l'eau : la source est un lecteur d'octets, jamais chargée en entier, et ses éléments
+//! sont rendus un par un. Un adaptateur ne fait que la correspondance métier des colonnes et
+//! balises vers un [`RawRecordDto`] :
 //! - FAB-DIS 2.3 (blocs sans en-tête) et 3.0 (tabulaire)
 //! - CSV (séparateur détecté)
 //! - XML (BMEcat et catalogues hiérarchiques)
@@ -20,6 +21,7 @@ pub use xml::XmlAdapter;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::io::Read;
 use std::sync::Arc;
 
 use crate::error::IngestionError;
@@ -156,19 +158,48 @@ pub(crate) fn read_item<T>(
     }
 }
 
+/// Octets d'une source, lus au fil de l'eau.
+pub type SourceBytes<'a> = Box<dyn Read + Send + 'a>;
+
+/// Éléments d'une source, rendus un par un dans l'ordre de la source : un enregistrement, un
+/// rejet, ou l'erreur qui rend la source illisible ([`IngestionError::SourceInvalid`]), après
+/// laquelle la lecture s'arrête.
+pub type SourceItems<'a> = Box<dyn Iterator<Item = Result<SourceItem, IngestionError>> + Send + 'a>;
+
 /// Contrat universel d'un adaptateur de source d'ingestion.
 pub trait SourceAdapter: Send + Sync {
     /// Format de source géré par l'adaptateur
     fn format(&self) -> SourceFormat;
 
-    /// Lit toute la source (encodage déclaré du lot) : chaque élément est un enregistrement ou
-    /// un rejet, dans l'ordre de la source ; une source illisible renvoie
-    /// [`IngestionError::SourceInvalid`] sans aucun élément.
-    fn read(
+    /// Ouvre la lecture d'une source (encodage déclaré du lot) : ses éléments sont lus à la
+    /// demande, sans charger la source en entier. Une source illisible dès son début renvoie
+    /// [`IngestionError::SourceInvalid`].
+    fn read<'a>(
+        &self,
+        source: SourceBytes<'a>,
+        encoding: SourceEncoding,
+    ) -> Result<SourceItems<'a>, IngestionError>;
+}
+
+/// Lecture complète d'une source en mémoire (tests des adaptateurs).
+#[cfg(test)]
+pub(crate) trait ReadAll {
+    fn read_all(
         &self,
         source: &[u8],
         encoding: SourceEncoding,
     ) -> Result<Vec<SourceItem>, IngestionError>;
+}
+
+#[cfg(test)]
+impl<T: SourceAdapter> ReadAll for T {
+    fn read_all(
+        &self,
+        source: &[u8],
+        encoding: SourceEncoding,
+    ) -> Result<Vec<SourceItem>, IngestionError> {
+        self.read(Box::new(source), encoding)?.collect()
+    }
 }
 
 /// Registre des adaptateurs de sources disponibles.

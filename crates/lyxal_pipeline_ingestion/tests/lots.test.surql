@@ -2,10 +2,23 @@
 -- Lots d'ingestion : création idempotente, lignes brutes immuables, machine à états,
 -- points de reprise, sous l'identité de l'agent d'ingestion.
 --
--- identité ingestion: { "id": "auth_session:ingestion", "pv": 1, "permissions": ["ingestion.read", "ingestion.batch.write"] }
+-- identité ingestion: { "id": "auth_session:ingestion", "pv": 1, "permissions": ["ingestion.read", "ingestion.batch.write", "storage.installation.manage"] }
 -- identité qualif: { "id": "auth_session:qualif", "pv": 1, "permissions": ["ingestion.read", "ingestion.staged.qualify"] }
--- identité steward: { "id": "auth_session:steward", "pv": 1, "permissions": ["ingestion.read", "ingestion.rule.manage", "ingestion.manifest.approve"] }
+-- identité steward: { "id": "auth_session:steward", "pv": 1, "permissions": ["ingestion.read", "ingestion.rule.manage", "ingestion.manifest.approve", "storage.installation.manage"] }
 -- identité intrus: { "id": "auth_session:intrus", "pv": 1, "permissions": [] }
+
+-- préparation: fichiers sources dans lyxal_storage (fonction du banc : un fichier disponible dont l'empreinte est celle du contenu donné ; rend sa fiche)
+{
+    DEFINE FUNCTION OVERWRITE fn::test_source($name: string, $content: string) {
+        IF array::len(SELECT VALUE id FROM storage_bucket WHERE scope_key = "installation" AND name = "ingestion-sources") = 0 {
+            fn::storage_bucket_create({ name: "ingestion-sources" });
+        };
+        LET $bucket = (SELECT VALUE id FROM ONLY storage_bucket WHERE scope_key = "installation" AND name = "ingestion-sources" LIMIT 1);
+        LET $begun = fn::storage_object_begin({ bucket: <string> $bucket, key: $name, filename: $name, declared_size: 2048 });
+        LET $done = fn::storage_object_commit({ object: <string> $begun.data.id, size: 2048, content_type: "text/csv", blake3: crypto::blake3($content) });
+        RETURN <string> $done.data.id;
+    };
+};
 
 -- préparation: identités et sessions lyxal_auth (Data Steward en double facteur : AAL2 ; synchronisation : compte de service)
 {
@@ -21,7 +34,7 @@
 
 -- test: l'agent d'ingestion crée un lot (format normalisé, état RECEIVED, transition journalisée)
 -- en tant que: ingestion
-RETURN fn::ingestion_batch_create({ id: "lot_a", source_type: "csv", fournisseur_id: " FOURN_PLACO ", nom_fichier: "placo.csv", file_hash_blake3: crypto::blake3("placo.csv"), taille_octets: 2048, chunk_size: 2 }).data == "lot_a"
+RETURN fn::ingestion_batch_create({ id: "lot_a", source_type: "csv", fournisseur_id: " FOURN_PLACO ", source_object: fn::test_source("placo.csv", "placo.csv"), chunk_size: 2 }).data == "lot_a"
     AND (fn::ingestion_batch_get({ id: "lot_a" }).data).{ source_type, fournisseur_id, statut, chunk_size, source_format_version, j: transitions.map(|$t| [$t.from_state, $t.to_state, $t.triggered_by]) }
         == { source_type: "CSV", fournisseur_id: "FOURN_PLACO", statut: "RECEIVED", chunk_size: 2, source_format_version: "1.0", j: [[NONE, "RECEIVED", "auth_identity:ingestion"]] };
 
@@ -31,39 +44,81 @@ RETURN fn::ingestion_batch_claim({ id: "lot_a", owner: "banc" }).data.generation
 -- test: l'encodage déclaré par défaut est UTF-8
 RETURN ingestion_batch:lot_a.source_encoding == "UTF-8";
 
+-- test: le nom, la taille et l'empreinte du lot sont lus sur la fiche du fichier source
+{
+    LET $lot = (SELECT * FROM ONLY ingestion_batch:lot_a);
+    LET $fiche = (SELECT * FROM ONLY $lot.source_object);
+    RETURN $lot.{ nom_fichier, taille_octets, file_hash_blake3 } == { nom_fichier: "placo.csv", taille_octets: 2048, file_hash_blake3: crypto::blake3("placo.csv") }
+        AND $fiche.{ filename, size, blake3, state } == { filename: "placo.csv", size: 2048, blake3: crypto::blake3("placo.csv"), state: "available" }
+        AND $lot.commercial_proof IS NONE;
+};
+
+-- test: le fichier source d'un lot ne se supprime pas tant que le lot existe
+-- en tant que: ingestion
+RETURN fn::storage_object_delete({ object: <string> ingestion_batch:lot_a.source_object }).error.code == "STORAGE_OBJECT_IN_USE";
+
+-- test: fichier source absent, ou dont l'envoi n'est pas terminé : lot refusé
+-- en tant que: ingestion
+{
+    LET $bucket = <string> (SELECT VALUE id FROM ONLY storage_bucket WHERE scope_key = "installation" AND name = "ingestion-sources" LIMIT 1);
+    LET $pending = <string> fn::storage_object_begin({ bucket: $bucket, key: "en-cours.csv", filename: "en-cours.csv" }).data.id;
+    RETURN fn::ingestion_batch_create({ id: "lot_absent", source_type: "CSV", fournisseur_id: "F", source_object: "storage_object:absent" }).error.{ code, cause: details.cause } == { code: "INGESTION_SOURCE_NOT_AVAILABLE", cause: "STORAGE_OBJECT_NOT_FOUND" }
+        AND fn::ingestion_batch_create({ id: "lot_en_cours", source_type: "CSV", fournisseur_id: "F", source_object: $pending }).error.{ code, cause: details.cause } == { code: "INGESTION_SOURCE_NOT_AVAILABLE", cause: "pending" }
+        AND fn::ingestion_batch_create({ id: "lot_sans_fichier", source_type: "CSV", fournisseur_id: "F" }).error.{ code, f: object::keys(details.fields) } == { code: "INGESTION_SOURCE_INVALID", f: ["source_object"] }
+        AND array::len(SELECT VALUE id FROM ingestion_batch WHERE id IN [ingestion_batch:lot_absent, ingestion_batch:lot_en_cours, ingestion_batch:lot_sans_fichier]) == 0;
+};
+
+-- test: sans droit de lecture sur le fichier, l'agent de qualification ne crée pas de lot
+-- en tant que: qualif
+RETURN fn::ingestion_batch_create({ id: "lot_qualif", source_type: "CSV", fournisseur_id: "F", source_object: <string> ingestion_batch:lot_a.source_object }).error.{ code, cause: details.cause } == { code: "INGESTION_SOURCE_NOT_AVAILABLE", cause: "STORAGE_OBJECT_NOT_FOUND" };
+
+-- test: la preuve commerciale jointe à la création est conservée sur le lot
+-- en tant que: ingestion
+RETURN fn::ingestion_batch_create({ id: "lot_preuve", source_type: "CSV", fournisseur_id: "FOURN_PLACO", source_object: fn::test_source("preuve.csv", "preuve.csv"), commercial_proof: { proof_type: "EDI_BORDEREAU", proof_reference: "EDI-BORD-2026-0012", source_authority: "EDI_HUB", verified_by: "steward", verified_at: "2026-11-12T10:00:00Z" } }).ok
+    AND ingestion_batch:lot_preuve.commercial_proof.proof_reference == "EDI-BORD-2026-0012";
+
+-- test: lots à traiter : reçus et sans réservation, du plus ancien au plus récent (lot_a est réservé par le banc)
+-- en tant que: ingestion
+RETURN fn::ingestion_batch_pending_list({}).data.items == ["lot_preuve"]
+    AND fn::ingestion_batch_pending_list({ limit: 0 }).error.code == "INGESTION_INVALID_PARAMETERS";
+
+-- test: la liste des lots à traiter est réservée au traitement des lots
+-- en tant que: qualif
+RETURN fn::ingestion_batch_pending_list({}).error.code == "INGESTION_UNAUTHORIZED";
+
 -- test: un encodage déclaré est normalisé et conservé
 -- en tant que: ingestion
-RETURN fn::ingestion_batch_create({ id: "lot_excel", source_type: "CSV", source_encoding: "windows-1252", fournisseur_id: "FOURN_PLACO", nom_fichier: "excel.csv", file_hash_blake3: crypto::blake3("excel.csv") }).ok
+RETURN fn::ingestion_batch_create({ id: "lot_excel", source_type: "CSV", source_encoding: "windows-1252", fournisseur_id: "FOURN_PLACO", source_object: fn::test_source("excel.csv", "excel.csv") }).ok
     AND ingestion_batch:lot_excel.source_encoding == "WINDOWS-1252";
 
 -- test: un encodage inconnu est refusé
 -- en tant que: ingestion
-RETURN fn::ingestion_batch_create({ id: "lot_ebcdic", source_type: "CSV", source_encoding: "EBCDIC", fournisseur_id: "FOURN_PLACO", nom_fichier: "e.csv", file_hash_blake3: crypto::blake3("e.csv") }).error.{ code, f: object::keys(details.fields) }
+RETURN fn::ingestion_batch_create({ id: "lot_ebcdic", source_type: "CSV", source_encoding: "EBCDIC", fournisseur_id: "FOURN_PLACO", source_object: fn::test_source("e.csv", "e.csv") }).error.{ code, f: object::keys(details.fields) }
     == { code: "INGESTION_SOURCE_INVALID", f: ["source_encoding"] };
 
 -- test: un fichier déjà reçu (même format, même empreinte) est refusé
 -- en tant que: ingestion
-RETURN fn::ingestion_batch_create({ id: "lot_a_bis", source_type: "CSV", fournisseur_id: "FOURN_PLACO", nom_fichier: "placo_copie.csv", file_hash_blake3: crypto::blake3("placo.csv") }).error.{ code, batch_id: details.batch_id } == { code: "INGESTION_BATCH_DUPLICATE", batch_id: "lot_a" };
+RETURN fn::ingestion_batch_create({ id: "lot_a_bis", source_type: "CSV", fournisseur_id: "FOURN_PLACO", source_object: fn::test_source("placo_copie.csv", "placo.csv") }).error.{ code, batch_id: details.batch_id } == { code: "INGESTION_BATCH_DUPLICATE", batch_id: "lot_a" };
 
 -- test: un identifiant de lot déjà pris est refusé
 -- en tant que: ingestion
-RETURN fn::ingestion_batch_create({ id: "lot_a", source_type: "XML", fournisseur_id: "FOURN_PLACO", nom_fichier: "autre.xml", file_hash_blake3: crypto::blake3("autre.xml") }).error.code == "INGESTION_BATCH_DUPLICATE";
+RETURN fn::ingestion_batch_create({ id: "lot_a", source_type: "XML", fournisseur_id: "FOURN_PLACO", source_object: fn::test_source("autre.xml", "autre.xml") }).error.code == "INGESTION_BATCH_DUPLICATE";
 
 -- test: format source inconnu
 -- en tant que: ingestion
-RETURN fn::ingestion_batch_create({ id: "lot_pdf", source_type: "PDF", fournisseur_id: "F", nom_fichier: "x.pdf", file_hash_blake3: crypto::blake3("x.pdf") }).error.code == "INGESTION_SOURCE_INVALID";
+RETURN fn::ingestion_batch_create({ id: "lot_pdf", source_type: "PDF", fournisseur_id: "F", source_object: fn::test_source("x.pdf", "x.pdf") }).error.code == "INGESTION_SOURCE_INVALID";
 
 -- test: fournisseur absent
 -- en tant que: ingestion
-RETURN fn::ingestion_batch_create({ id: "lot_sans_fournisseur", source_type: "CSV", nom_fichier: "x.csv", file_hash_blake3: crypto::blake3("x.csv") }).error.code == "INGESTION_MANUFACTURER_REF_MISSING";
+RETURN fn::ingestion_batch_create({ id: "lot_sans_fournisseur", source_type: "CSV", source_object: fn::test_source("x.csv", "x.csv") }).error.code == "INGESTION_MANUFACTURER_REF_MISSING";
 
 -- test: taille de bloc hors bornes
 -- en tant que: ingestion
-RETURN fn::ingestion_batch_create({ id: "lot_bloc", source_type: "CSV", fournisseur_id: "F", nom_fichier: "b.csv", file_hash_blake3: crypto::blake3("b.csv"), chunk_size: 0 }).error.{ code, f: object::keys(details.fields) } == { code: "INGESTION_INVALID_PARAMETERS", f: ["chunk_size"] };
+RETURN fn::ingestion_batch_create({ id: "lot_bloc", source_type: "CSV", fournisseur_id: "F", source_object: fn::test_source("b.csv", "b.csv"), chunk_size: 0 }).error.{ code, f: object::keys(details.fields) } == { code: "INGESTION_INVALID_PARAMETERS", f: ["chunk_size"] };
 
 -- test: sans la permission ingestion.batch.write, le steward ne crée pas de lot
 -- en tant que: steward
-RETURN fn::ingestion_batch_create({ id: "lot_steward", source_type: "CSV", fournisseur_id: "F", nom_fichier: "s.csv", file_hash_blake3: crypto::blake3("s.csv") }).error.code == "INGESTION_WRITE_FORBIDDEN";
+RETURN fn::ingestion_batch_create({ id: "lot_steward", source_type: "CSV", fournisseur_id: "F", source_object: fn::test_source("s.csv", "s.csv") }).error.code == "INGESTION_WRITE_FORBIDDEN";
 
 -- test: l'agent d'ingestion enregistre les lignes brutes d'un bloc
 -- en tant que: ingestion
@@ -116,7 +171,7 @@ RETURN (SELECT VALUE payload FROM event_outbox WHERE event_type = "ingestion.bat
     == [{ batch_id: "ingestion_batch:lot_a", source_type: "CSV", total_lignes: 0, verified_count: 0, to_confirm_count: 0, rejected_count: 0 }];
 
 -- préparation: second lot
-RETURN fn::ingestion_batch_create({ id: "lot_b", source_type: "JSON", fournisseur_id: "FOURN_ISOVER", nom_fichier: "isover.json", file_hash_blake3: crypto::blake3("isover.json") });
+RETURN fn::ingestion_batch_create({ id: "lot_b", source_type: "JSON", fournisseur_id: "FOURN_ISOVER", source_object: fn::test_source("isover.json", "isover.json") });
 
 -- préparation: le banc réserve le lot lot_b (génération 1)
 RETURN fn::ingestion_batch_claim({ id: "lot_b", owner: "banc" }).data.generation == 1;
@@ -177,7 +232,7 @@ RETURN fn::ingestion_batch_get({ id: "catalogue_item:lot_b" }).error.code == "IN
 
 -- test: lot sans identifiant fourni, retrouvé par l'identifiant renvoyé (clé texte)
 -- en tant que: ingestion
-RETURN fn::ingestion_batch_get({ id: fn::ingestion_batch_create({ source_type: "XML", fournisseur_id: "FOURN_KNAUF", nom_fichier: "knauf.xml", file_hash_blake3: crypto::blake3("knauf.xml") }).data }).data.{ statut, cle_texte: type::is_string(id) AND string::len(id) == 36 } == { statut: "RECEIVED", cle_texte: true };
+RETURN fn::ingestion_batch_get({ id: fn::ingestion_batch_create({ source_type: "XML", fournisseur_id: "FOURN_KNAUF", source_object: fn::test_source("knauf.xml", "knauf.xml") }).data }).data.{ statut, cle_texte: type::is_string(id) AND string::len(id) == 36 } == { statut: "RECEIVED", cle_texte: true };
 
 -- test: une session sans permission d'ingestion ne voit aucun lot
 -- en tant que: intrus

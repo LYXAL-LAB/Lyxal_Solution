@@ -40,10 +40,14 @@ pub use types::{
     PublicationAction, SourceEncoding, SourceFormat, StateTransitionRecord,
 };
 
+/// Bucket de l'installation qui conserve les fichiers sources des lots (`lyxal_storage`), créé
+/// par l'hôte au démarrage.
+pub const SOURCE_BUCKET: &str = "ingestion-sources";
+
 // Ré-exports : adaptateurs, normalisation, référentiels
 pub use adapters::{
     AdapterRegistry, CsvAdapter, FabDisAdapter, JsonAdapter, RawDimensionsDto, RawRecordDto,
-    RawWeightDto, SourceAdapter, XmlAdapter,
+    RawWeightDto, SourceAdapter, SourceBytes, SourceItems, XmlAdapter,
 };
 pub use normalization::{
     normalize_dimensions, normalize_technical_attributes, normalize_weight, BlockReferentials,

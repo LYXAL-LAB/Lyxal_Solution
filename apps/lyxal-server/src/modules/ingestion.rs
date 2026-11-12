@@ -1,6 +1,7 @@
 //! Module `lyxal_pipeline_ingestion` : implémentation `LyxalModule`, worker supervisé et sonde de
 //! santé, enregistrés auprès du runtime.
 
+use crate::context::StorageHost;
 use crate::error::ServerError;
 use crate::modules::auth::AuthHost;
 use async_trait::async_trait;
@@ -13,9 +14,11 @@ use lyxal_pipeline_ingestion::publisher::{
 };
 use lyxal_pipeline_ingestion::{
     ControlledPublisher, IngestionHealthCheck, IngestionStore, IngestionWorker,
-    PipelineIngestionModule, PublicationConsumer,
+    PipelineIngestionModule, PublicationConsumer, SOURCE_BUCKET,
 };
 use lyxal_runtime::{LyxalModule, LyxalRuntime};
+use lyxal_storage::models::BucketCreateParams;
+use lyxal_storage::{StorageService, StorageStore};
 use std::sync::Arc;
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
@@ -59,9 +62,18 @@ pub async fn register_services(
     runtime: &LyxalRuntime,
     client: &Surreal<Any>,
     auth: Option<&Arc<AuthHost>>,
+    storage: &StorageHost,
 ) -> Result<bool, ServerError> {
     let store = IngestionStore::new(client.clone());
-    runtime.register_worker(Arc::new(IngestionWorker::new(store.clone())?))?;
+    // Fichiers sources des lots lus dans lyxal_storage, sous la session système de l'hôte
+    let sources = StorageService::new(StorageStore::new(client.clone()), storage.backends.clone());
+    let source_storage = sources.is_configured();
+    if !source_storage {
+        tracing::warn!(
+            "ingestion en attente : stockage des fichiers sources non configuré (LYXAL__STORAGE__DISK__ROOT)"
+        );
+    }
+    runtime.register_worker(Arc::new(IngestionWorker::new(store.clone(), sources)?))?;
 
     let publication = match auth {
         Some(host) => {
@@ -81,9 +93,30 @@ pub async fn register_services(
     };
 
     runtime.health_registry().register_check(Arc::new(
-        IngestionHealthCheck::with_store(store).with_publication(publication),
+        IngestionHealthCheck::with_store(store)
+            .with_publication(publication)
+            .with_source_storage(source_storage),
     ))?;
     Ok(publication)
+}
+
+/// Après l'installation des modules : bucket de l'installation qui conserve les fichiers sources
+/// des lots, créé s'il n'existe pas (rejouable).
+pub async fn ensure_source_bucket(client: &Surreal<Any>) -> Result<(), ServerError> {
+    let created = StorageStore::new(client.clone())
+        .bucket_create(BucketCreateParams::named(None, SOURCE_BUCKET))
+        .await;
+    match created {
+        Ok(_) => {
+            tracing::info!(bucket = SOURCE_BUCKET, "bucket des fichiers sources créé");
+            Ok(())
+        }
+        Err(error) if error.is_business_code("STORAGE_BUCKET_EXISTS") => Ok(()),
+        Err(error) => Err(ServerError::ModuleInstall {
+            module: MODULE_ID.to_string(),
+            message: format!("bucket {SOURCE_BUCKET} non créé : {error}"),
+        }),
+    }
 }
 
 /// Après l'installation des modules : abonnement de la publication à

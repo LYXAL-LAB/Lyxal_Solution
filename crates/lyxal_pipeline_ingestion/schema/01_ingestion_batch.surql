@@ -45,21 +45,32 @@ DEFINE FIELD OVERWRITE fournisseur_id ON TABLE ingestion_batch
     ASSERT string::len($value) >= 1
     COMMENT "Identifiant canonique de l'émetteur ou du fabricant (ex: SAINT_GOBAIN_PLACO)";
 
+DEFINE FIELD OVERWRITE source_object ON TABLE ingestion_batch
+    TYPE record<storage_object>
+    REFERENCE ON DELETE REJECT
+    READONLY
+    COMMENT "Fichier source du lot, conservé par lyxal_storage : tant que le lot existe, il ne se supprime pas (STORAGE_OBJECT_IN_USE)";
+
+DEFINE FIELD OVERWRITE commercial_proof ON TABLE ingestion_batch
+    TYPE option<object> FLEXIBLE
+    READONLY
+    COMMENT "Preuve commerciale jointe au lot à sa création (CommercialProof), appliquée à ses articles par le worker";
+
 DEFINE FIELD OVERWRITE nom_fichier ON TABLE ingestion_batch
     TYPE string
     VALUE string::trim($value)
-    COMMENT "Nom d'origine du fichier importé";
+    COMMENT "Nom d'origine du fichier importé, lu sur la fiche du fichier source";
 
 DEFINE FIELD OVERWRITE file_hash_blake3 ON TABLE ingestion_batch
     TYPE string
     VALUE string::lowercase(string::trim($value))
     ASSERT string::len($value) = 64
-    COMMENT "Empreinte cryptographique BLAKE3 du fichier brut assurant l'idempotence globale";
+    COMMENT "Empreinte BLAKE3 du fichier source, lue sur sa fiche : idempotence globale, et contrôle des octets relus par le worker";
 
 DEFINE FIELD OVERWRITE taille_octets ON TABLE ingestion_batch
     TYPE int
     ASSERT $value >= 0
-    COMMENT "Taille en octets du flux ou fichier reçu";
+    COMMENT "Taille en octets du fichier source, lue sur sa fiche";
 
 -- ----------------------------------------------------------------------------
 -- MACHINE À ÉTATS & CHECKPOINTING

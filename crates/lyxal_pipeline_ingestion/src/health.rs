@@ -14,6 +14,7 @@ pub struct IngestionHealthCheck {
     module_id: ModuleId,
     store: Option<IngestionStore>,
     publication_enabled: bool,
+    source_storage: bool,
 }
 
 impl IngestionHealthCheck {
@@ -23,6 +24,7 @@ impl IngestionHealthCheck {
             module_id: ModuleId::new("lyxal_pipeline_ingestion"),
             store: None,
             publication_enabled: true,
+            source_storage: true,
         }
     }
 
@@ -32,6 +34,7 @@ impl IngestionHealthCheck {
             module_id: ModuleId::new("lyxal_pipeline_ingestion"),
             store: Some(store),
             publication_enabled: true,
+            source_storage: true,
         }
     }
 
@@ -39,6 +42,15 @@ impl IngestionHealthCheck {
     /// publication, la sonde est dégradée.
     pub fn with_publication(mut self, enabled: bool) -> Self {
         self.publication_enabled = enabled;
+        self
+    }
+}
+
+impl IngestionHealthCheck {
+    /// Stockage des fichiers sources configuré ou non (un support `lyxal_storage` au moins) ;
+    /// sans lui, aucun lot n'est traité et la sonde est dégradée.
+    pub fn with_source_storage(mut self, configured: bool) -> Self {
+        self.source_storage = configured;
         self
     }
 }
@@ -60,6 +72,14 @@ impl ModuleHealthCheck for IngestionHealthCheck {
         let start = std::time::Instant::now();
         if let Some(store) = &self.store {
             match store.get_dashboard_metrics(None).await {
+                Ok(_metrics) if !self.source_storage => Ok(HealthCheckResult::degraded(
+                    self.module_id.clone(),
+                    start.elapsed().as_millis() as u64,
+                    Some(
+                        "Aucun lot traité : stockage des fichiers sources non configuré (LYXAL__STORAGE__DISK__ROOT)"
+                            .to_string(),
+                    ),
+                )),
                 Ok(_metrics) if !self.publication_enabled => Ok(HealthCheckResult::degraded(
                     self.module_id.clone(),
                     start.elapsed().as_millis() as u64,

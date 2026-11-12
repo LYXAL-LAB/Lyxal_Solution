@@ -6,7 +6,10 @@ use std::collections::HashMap;
 
 use lyxal_parsing::{JsonOptions, JsonReader, JsonRecord};
 
-use super::{read_item, RawDimensionsDto, RawRecordDto, RawWeightDto, SourceAdapter, SourceItem};
+use super::{
+    read_item, RawDimensionsDto, RawRecordDto, RawWeightDto, SourceAdapter, SourceBytes,
+    SourceItems,
+};
 use crate::error::IngestionError;
 use crate::types::{SourceEncoding, SourceFormat};
 
@@ -151,18 +154,18 @@ impl SourceAdapter for JsonAdapter {
         SourceFormat::Json
     }
 
-    fn read(
+    fn read<'a>(
         &self,
-        source: &[u8],
+        source: SourceBytes<'a>,
         encoding: SourceEncoding,
-    ) -> Result<Vec<SourceItem>, IngestionError> {
+    ) -> Result<SourceItems<'a>, IngestionError> {
         let options = JsonOptions {
             encoding: encoding.parsing(),
             ..Default::default()
         };
-        JsonReader::new(source, options)
-            .map(|item| read_item(item, Self::map_record))
-            .collect()
+        Ok(Box::new(
+            JsonReader::new(source, options).map(|item| read_item(item, Self::map_record)),
+        ))
     }
 }
 
@@ -203,9 +206,11 @@ fn find_f64(map: &serde_json::Map<String, Value>, candidates: &[&str]) -> Option
 mod tests {
     use super::*;
     use crate::adapters::records_only;
+    #[allow(unused_imports)]
+    use crate::adapters::{ReadAll, SourceItem};
 
     fn read(content: &str) -> Result<Vec<SourceItem>, IngestionError> {
-        JsonAdapter::new().read(content.as_bytes(), SourceEncoding::Utf8)
+        JsonAdapter::new().read_all(content.as_bytes(), SourceEncoding::Utf8)
     }
 
     #[test]

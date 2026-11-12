@@ -2,9 +2,22 @@
 -- Quarantaine : consignation rejouable des anomalies par l'agent de qualification,
 -- résolution auditable par le Data Steward avec corrections contrôlées.
 --
--- identité ingestion: { "id": "auth_session:ingestion", "pv": 1, "permissions": ["ingestion.read", "ingestion.batch.write"] }
+-- identité ingestion: { "id": "auth_session:ingestion", "pv": 1, "permissions": ["ingestion.read", "ingestion.batch.write", "storage.installation.manage"] }
 -- identité qualif: { "id": "auth_session:qualif", "pv": 1, "permissions": ["ingestion.read", "ingestion.staged.qualify"] }
 -- identité steward: { "id": "auth_session:steward", "pv": 1, "permissions": ["ingestion.read", "ingestion.rule.manage", "ingestion.manifest.approve"] }
+
+-- préparation: fichiers sources dans lyxal_storage (fonction du banc : un fichier disponible dont l'empreinte est celle du contenu donné ; rend sa fiche)
+{
+    DEFINE FUNCTION OVERWRITE fn::test_source($name: string, $content: string) {
+        IF array::len(SELECT VALUE id FROM storage_bucket WHERE scope_key = "installation" AND name = "ingestion-sources") = 0 {
+            fn::storage_bucket_create({ name: "ingestion-sources" });
+        };
+        LET $bucket = (SELECT VALUE id FROM ONLY storage_bucket WHERE scope_key = "installation" AND name = "ingestion-sources" LIMIT 1);
+        LET $begun = fn::storage_object_begin({ bucket: <string> $bucket, key: $name, filename: $name, declared_size: 2048 });
+        LET $done = fn::storage_object_commit({ object: <string> $begun.data.id, size: 2048, content_type: "text/csv", blake3: crypto::blake3($content) });
+        RETURN <string> $done.data.id;
+    };
+};
 
 -- préparation: identités et sessions lyxal_auth (Data Steward en double facteur : AAL2 ; synchronisation : compte de service)
 {
@@ -20,7 +33,7 @@
 DEFINE TABLE test_ref SCHEMALESS PERMISSIONS FULL;
 
 -- préparation: lot
-RETURN fn::ingestion_batch_create({ id: "lot_z", source_type: "CSV", fournisseur_id: "FOURN_LEGRAND", nom_fichier: "z.csv", file_hash_blake3: crypto::blake3("z.csv") });
+RETURN fn::ingestion_batch_create({ id: "lot_z", source_type: "CSV", fournisseur_id: "FOURN_LEGRAND", source_object: fn::test_source("z.csv", "z.csv") });
 
 -- préparation: le banc réserve le lot lot_z (génération 1)
 RETURN fn::ingestion_batch_claim({ id: "lot_z", owner: "banc" }).data.generation == 1;

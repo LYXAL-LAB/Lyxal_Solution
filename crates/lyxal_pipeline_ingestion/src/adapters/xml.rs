@@ -7,7 +7,8 @@ use std::collections::HashMap;
 use lyxal_parsing::{XmlOptions, XmlReader, XmlRecord};
 
 use super::{
-    fields_hash, read_item, RawDimensionsDto, RawRecordDto, RawWeightDto, SourceAdapter, SourceItem,
+    fields_hash, read_item, RawDimensionsDto, RawRecordDto, RawWeightDto, SourceAdapter,
+    SourceBytes, SourceItems,
 };
 use crate::error::IngestionError;
 use crate::types::{SourceEncoding, SourceFormat};
@@ -143,25 +144,27 @@ impl SourceAdapter for XmlAdapter {
         SourceFormat::Xml
     }
 
-    fn read(
+    fn read<'a>(
         &self,
-        source: &[u8],
+        source: SourceBytes<'a>,
         encoding: SourceEncoding,
-    ) -> Result<Vec<SourceItem>, IngestionError> {
+    ) -> Result<SourceItems<'a>, IngestionError> {
         let options = XmlOptions {
             record_elements: RECORD_ELEMENTS.iter().map(|e| e.to_string()).collect(),
             encoding: encoding.parsing(),
             ..Default::default()
         };
-        XmlReader::new(source, options)
-            .map(|item| read_item(item, Self::map_record))
-            .collect()
+        Ok(Box::new(
+            XmlReader::new(source, options).map(|item| read_item(item, Self::map_record)),
+        ))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[allow(unused_imports)]
+    use crate::adapters::{ReadAll, SourceItem};
 
     #[test]
     fn test_bmecat_xml_parsing() {
@@ -191,7 +194,7 @@ mod tests {
         let adapter = XmlAdapter::new();
         let records = crate::adapters::records_only(
             adapter
-                .read(xml_content.as_bytes(), SourceEncoding::Utf8)
+                .read_all(xml_content.as_bytes(), SourceEncoding::Utf8)
                 .unwrap(),
         );
 
@@ -213,7 +216,7 @@ mod tests {
         let xml_content = "<BMECAT><ARTICLE><SUPPLIER_AID>BA13&amp;co</SUPPLIER_AID><DESCRIPTION_SHORT>Plaque &#233;paisseur &lt;12,5&gt;</DESCRIPTION_SHORT></ARTICLE></BMECAT>";
         let records = crate::adapters::records_only(
             XmlAdapter::new()
-                .read(xml_content.as_bytes(), SourceEncoding::Utf8)
+                .read_all(xml_content.as_bytes(), SourceEncoding::Utf8)
                 .unwrap(),
         );
         assert_eq!(records[0].raw_reference, "BA13&co");
@@ -223,7 +226,7 @@ mod tests {
     #[test]
     fn malformed_xml_makes_the_source_invalid() {
         let error = XmlAdapter::new()
-            .read(
+            .read_all(
                 b"<BMECAT><ARTICLE><SUPPLIER_AID>A</X></ARTICLE></BMECAT>",
                 SourceEncoding::Utf8,
             )

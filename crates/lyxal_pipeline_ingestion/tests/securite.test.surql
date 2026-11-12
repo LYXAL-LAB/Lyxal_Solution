@@ -3,10 +3,23 @@
 -- approbations réservées à la permission ingestion.manifest.approve (AAL2), gardes des articles et des manifestes.
 -- Exécuté par scripts/ci/test_lyxal_modules.py (format en tête du script).
 --
--- identité ingestion: { "id": "auth_session:ingestion", "pv": 1, "permissions": ["ingestion.read", "ingestion.batch.write"] }
+-- identité ingestion: { "id": "auth_session:ingestion", "pv": 1, "permissions": ["ingestion.read", "ingestion.batch.write", "storage.installation.manage"] }
 -- identité qualif: { "id": "auth_session:qualif", "pv": 1, "permissions": ["ingestion.read", "ingestion.staged.qualify"] }
 -- identité steward: { "id": "auth_session:steward", "pv": 1, "permissions": ["ingestion.read", "ingestion.rule.manage", "ingestion.manifest.approve"] }
 -- identité sync: { "id": "auth_session:sync", "pv": 1, "permissions": ["ingestion.read", "ingestion.manifest.execute"] }
+
+-- préparation: fichiers sources dans lyxal_storage (fonction du banc : un fichier disponible dont l'empreinte est celle du contenu donné ; rend sa fiche)
+{
+    DEFINE FUNCTION OVERWRITE fn::test_source($name: string, $content: string) {
+        IF array::len(SELECT VALUE id FROM storage_bucket WHERE scope_key = "installation" AND name = "ingestion-sources") = 0 {
+            fn::storage_bucket_create({ name: "ingestion-sources" });
+        };
+        LET $bucket = (SELECT VALUE id FROM ONLY storage_bucket WHERE scope_key = "installation" AND name = "ingestion-sources" LIMIT 1);
+        LET $begun = fn::storage_object_begin({ bucket: <string> $bucket, key: $name, filename: $name, declared_size: 2048 });
+        LET $done = fn::storage_object_commit({ object: <string> $begun.data.id, size: 2048, content_type: "text/csv", blake3: crypto::blake3($content) });
+        RETURN <string> $done.data.id;
+    };
+};
 
 -- préparation: identités et sessions lyxal_auth (Data Steward en double facteur : AAL2 ; synchronisation : compte de service)
 {
@@ -24,7 +37,7 @@ DEFINE TABLE test_ref SCHEMALESS PERMISSIONS FULL;
 
 -- test: l'agent d'ingestion crée un lot
 -- en tant que: ingestion
-RETURN fn::ingestion_batch_create({ id: "lot_sec", source_type: "CSV", fournisseur_id: "FOURN_PLACO", nom_fichier: "placo.csv", file_hash_blake3: crypto::blake3("placo.csv") }).data == "lot_sec";
+RETURN fn::ingestion_batch_create({ id: "lot_sec", source_type: "CSV", fournisseur_id: "FOURN_PLACO", source_object: fn::test_source("placo.csv", "placo.csv") }).data == "lot_sec";
 
 -- préparation: le banc réserve le lot lot_sec (génération 1)
 RETURN fn::ingestion_batch_claim({ id: "lot_sec", owner: "banc" }).data.generation == 1;

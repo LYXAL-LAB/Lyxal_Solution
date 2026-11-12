@@ -2,7 +2,12 @@
 //!
 //! Implémente le contrat officiel [`LyxalWorker`] de `lyxal_runtime` avec :
 //! - Surveillance continue du [`CancellationToken`] pour un arrêt gracieux immédiat.
-//! - Découpage en blocs de traitement (`chunk_size`) avec sauvegarde systématique de checkpoints.
+//! - File de travail dans la base : le worker y prend les lots à traiter
+//!   (`fn::ingestion_batch_pending_list`) ; rien n'est gardé en mémoire entre deux lots, et un lot
+//!   interrompu par l'arrêt du serveur est repris au démarrage suivant.
+//! - Fichier source lu au fil de l'eau dans `lyxal_storage` : un contrôle de lecture (source
+//!   lisible, taille et empreinte du lot) précède toute mise en staging, puis les éléments sont
+//!   traités par blocs (`chunk_size`) avec sauvegarde systématique de checkpoints.
 //! - Reprise sur incident (crash, interruption réseau, redémarrage du processus) sans retraiter les lignes antérieures.
 //! - Idempotence durable et détection des doublons.
 //! - Exclusion entre exécutions, workers et instances par la réservation du lot en base
@@ -12,8 +17,7 @@
 //!   dans la transaction de la transition d'état (`events/01_events.surql`).
 
 use async_trait::async_trait;
-use std::collections::VecDeque;
-use std::sync::Arc;
+use lyxal_storage::StorageService;
 use std::time::Duration;
 use tokio::sync::Mutex;
 
@@ -24,15 +28,21 @@ use lyxal_runtime::worker::{
     WorkerDescriptor, WorkerId,
 };
 
-use crate::adapters::{AdapterRegistry, RawRecordDto, SourceItem};
+use super::source::{stop_flag, BatchSource};
+use crate::adapters::{RawRecordDto, SourceItem};
 use crate::error::{IngestionError, IngestionResult};
 use crate::models::{QuarantineRecord, RawRecord, StagedItem};
 use crate::normalization::NormalizationEngine;
-use crate::proof::CommercialProof;
 use crate::storage::{BatchClaim, BatchProgress, IngestionStore};
 use crate::types::{
-    BatchStatus, Dimensions, ItemQualification, PackagingDetails, PublicationAction, SourceFormat,
+    BatchStatus, Dimensions, ItemQualification, PackagingDetails, PublicationAction,
 };
+
+/// Lots à traiter demandés à la base à chaque passage.
+const PENDING_BATCHES: u32 = 20;
+
+/// Attente par défaut entre deux passages quand aucun lot n'est à traiter.
+const POLL_INTERVAL: Duration = Duration::from_secs(2);
 
 /// Durée par défaut de la réservation d'un lot, renouvelée par le point de reprise (fin de
 /// bloc, et rejoué au tiers de cette durée pendant le traitement).
@@ -146,27 +156,20 @@ pub struct BatchProcessingReport {
     pub interrupted: bool,
 }
 
-/// Description d'un travail d'ingestion en file d'attente.
-#[derive(Clone)]
-struct IngestionJob {
-    batch_id: String,
-    raw_bytes: Vec<u8>,
-    format: SourceFormat,
-    commercial_proof: Option<CommercialProof>,
-}
-
 /// Worker supervisé d'ingestion industrielle pour Lyxal OS.
 pub struct IngestionWorker {
     descriptor: WorkerDescriptor,
     store: IngestionStore,
-    queue: Arc<Mutex<VecDeque<IngestionJob>>>,
+    storage: StorageService,
     claim_ttl_seconds: u32,
+    poll_interval: Duration,
     norm_engine: NormalizationEngine,
 }
 
 impl IngestionWorker {
-    /// Initialise un nouveau worker supervisé d'ingestion raccordé au store SurrealDB.
-    pub fn new(store: IngestionStore) -> Result<Self, RuntimeError> {
+    /// Initialise un nouveau worker supervisé d'ingestion raccordé au store SurrealDB et au
+    /// service de stockage qui conserve les fichiers sources (session du worker).
+    pub fn new(store: IngestionStore, storage: StorageService) -> Result<Self, RuntimeError> {
         let module_id = ModuleId::new("lyxal_pipeline_ingestion");
         let worker_id = WorkerId::new(&module_id, "batch_worker")?;
 
@@ -180,8 +183,9 @@ impl IngestionWorker {
         Ok(Self {
             descriptor,
             store,
-            queue: Arc::new(Mutex::new(VecDeque::new())),
+            storage,
             claim_ttl_seconds: CLAIM_TTL_SECONDS,
+            poll_interval: POLL_INTERVAL,
             norm_engine: NormalizationEngine::new(),
         })
     }
@@ -193,24 +197,14 @@ impl IngestionWorker {
         self
     }
 
-    /// Enfile un lot brut pour traitement supervisé avec preuve commerciale optionnelle.
-    pub async fn enqueue_batch(
-        &self,
-        batch_id: String,
-        raw_bytes: Vec<u8>,
-        format: SourceFormat,
-        commercial_proof: Option<CommercialProof>,
-    ) {
-        let mut q = self.queue.lock().await;
-        q.push_back(IngestionJob {
-            batch_id,
-            raw_bytes,
-            format,
-            commercial_proof,
-        });
+    /// Attente entre deux passages quand aucun lot n'est à traiter (2 s par défaut).
+    pub fn with_poll_interval(mut self, interval: Duration) -> Self {
+        self.poll_interval = interval;
+        self
     }
 
     /// Traitement contrôlé d'un lot avec streaming par blocs, checkpoints et reprise sur incident.
+    /// Le fichier source, son format, son encodage et la preuve commerciale sont ceux du lot.
     ///
     /// L'exécution tire son propre jeton et réserve le lot en base : un lot déjà réservé
     /// (autre exécution, autre worker, autre instance) renvoie
@@ -222,9 +216,6 @@ impl IngestionWorker {
     pub async fn process_batch(
         &self,
         batch_id: &str,
-        raw_bytes: &[u8],
-        format: SourceFormat,
-        commercial_proof: Option<CommercialProof>,
         cancellation: &CancellationToken,
     ) -> IngestionResult<BatchProcessingReport> {
         // 1. Exclusion : réservation du lot pour cette exécution (jeton propre à l'appel)
@@ -257,14 +248,7 @@ impl IngestionWorker {
             Duration::from_millis(u64::from(self.claim_ttl_seconds) * 1000 / 3),
         );
         let processed = tokio::select! {
-            result = self.process_claimed_batch(
-                &claimed,
-                batch_id,
-                raw_bytes,
-                format,
-                commercial_proof,
-                cancellation,
-            ) => result,
+            result = self.process_claimed_batch(&claimed, batch_id, cancellation) => result,
             err = claimed.keep_claim() => Err(err),
         };
         let result = match processed {
@@ -307,9 +291,6 @@ impl IngestionWorker {
         &self,
         claimed: &ClaimedBatch<'_>,
         batch_id: &str,
-        raw_bytes: &[u8],
-        format: SourceFormat,
-        commercial_proof: Option<CommercialProof>,
         cancellation: &CancellationToken,
     ) -> IngestionResult<BatchProcessingReport> {
         // 2. Vérification et transition d'état du lot
@@ -355,18 +336,8 @@ impl IngestionWorker {
                 .await?;
         }
 
-        // 3. Lecture complète de la source (encodage déclaré du lot) avant le premier bloc : une
-        // source illisible fait échouer le lot sans rien mettre en staging
-        let registry = AdapterRegistry::new();
-        let adapter = registry.get(format).ok_or_else(|| {
-            IngestionError::Adapter(format!(
-                "Aucun adaptateur disponible pour le format {:?}",
-                format
-            ))
-        })?;
-
-        let source_items = adapter.read(raw_bytes, batch.source_encoding)?;
-        let total_lines = source_items.len();
+        let format = batch.source_type;
+        let commercial_proof = batch.commercial_proof.clone();
         let chunk_size = if batch.chunk_size > 0 {
             batch.chunk_size
         } else {
@@ -376,36 +347,76 @@ impl IngestionWorker {
         let mut verified_count = batch.lignes_verifiees;
         let mut to_confirm_count = batch.lignes_a_confirmer;
         let mut rejected_count = batch.lignes_rejetees;
+        // Lecture arrêtée dès que ce traitement s'arrête (fin, erreur, arrêt du serveur)
+        let (stop, _stop_reading) = stop_flag();
+        let interrupted =
+            |cursor_offset, total_lignes, verified, to_confirm, rejected| BatchProcessingReport {
+                batch_id: batch_id.to_string(),
+                final_status: BatchStatus::Parsing,
+                cursor_offset,
+                total_lignes,
+                verified_count: verified,
+                to_confirm_count: to_confirm,
+                rejected_count: rejected,
+                interrupted: true,
+            };
 
-        // 4. Boucle de streaming par chunks avec reprise exacte depuis cursor_offset
-        while current_offset < total_lines {
+        // 3. Contrôle de lecture avant le premier bloc : la source est lue en entier, au fil de
+        // l'eau, sans rien garder. Une source illisible, ou dont les octets n'ont plus la taille
+        // ou l'empreinte du lot, fait échouer le lot sans rien mettre en staging.
+        let counted = tokio::select! {
+            counted = async {
+                BatchSource::open(&self.storage, &batch).await?.count(stop.clone()).await
+            } => counted?,
+            _ = cancellation.cancelled() => None,
+        };
+        let Some(total_lines) = counted else {
+            return Ok(interrupted(
+                current_offset,
+                batch.total_lignes,
+                verified_count,
+                to_confirm_count,
+                rejected_count,
+            ));
+        };
+
+        // 4. Traitement par blocs, lus à la demande, avec reprise exacte depuis cursor_offset :
+        // les éléments déjà traités sont relus et passés
+        let (mut chunks, reading) = BatchSource::open(&self.storage, &batch).await?.chunks(
+            current_offset,
+            chunk_size,
+            stop.clone(),
+        );
+        loop {
             // Vérification coopérative de l'arrêt gracieux
-            if cancellation.is_cancelled() {
-                // Sauvegarde du checkpoint actuel avant coupure
-                claimed
-                    .checkpoint(BatchProgress {
-                        cursor_offset: current_offset,
-                        total_lignes: total_lines,
-                        verified: verified_count,
-                        to_confirm: to_confirm_count,
-                        rejected: rejected_count,
-                    })
-                    .await?;
-
-                return Ok(BatchProcessingReport {
-                    batch_id: batch_id.to_string(),
-                    final_status: BatchStatus::Parsing,
-                    cursor_offset: current_offset,
-                    total_lignes: total_lines,
-                    verified_count,
-                    to_confirm_count,
-                    rejected_count,
-                    interrupted: true,
-                });
-            }
-
-            let end_offset = (current_offset + chunk_size).min(total_lines);
-            let slice = &source_items[current_offset..end_offset];
+            let next = tokio::select! {
+                next = chunks.recv() => next,
+                _ = cancellation.cancelled() => {
+                    // Sauvegarde du checkpoint actuel avant coupure
+                    claimed
+                        .checkpoint(BatchProgress {
+                            cursor_offset: current_offset,
+                            total_lignes: total_lines,
+                            verified: verified_count,
+                            to_confirm: to_confirm_count,
+                            rejected: rejected_count,
+                        })
+                        .await?;
+                    return Ok(interrupted(
+                        current_offset,
+                        total_lines,
+                        verified_count,
+                        to_confirm_count,
+                        rejected_count,
+                    ));
+                }
+            };
+            let Some(chunk) = next else {
+                break;
+            };
+            let chunk = chunk?;
+            let slice = chunk.as_slice();
+            let end_offset = current_offset + slice.len();
             let records: Vec<RawRecordDto> = slice
                 .iter()
                 .filter_map(|item| match item {
@@ -654,6 +665,18 @@ impl IngestionWorker {
                 .await?;
         }
 
+        // Fin de la lecture : une tâche de lecture arrêtée anormalement est une erreur
+        if let Err(error) = reading.await {
+            return Err(IngestionError::Storage(format!(
+                "lecture du fichier source interrompue : {error}"
+            )));
+        }
+        if current_offset != total_lines {
+            return Err(IngestionError::SourceAltered(format!(
+                "{current_offset} éléments lus pour {total_lines} au contrôle de lecture"
+            )));
+        }
+
         // 5. Clôture avec succès : VALIDATING puis STAGED
         if !resume_validating {
             claimed
@@ -691,36 +714,31 @@ impl LyxalWorker for IngestionWorker {
 
     async fn run(&self, ctx: WorkerContext) -> Result<(), RuntimeError> {
         while !ctx.is_cancelled() {
-            // Dépilement du travail suivant
-            let next_job = {
-                let mut q = self.queue.lock().await;
-                q.pop_front()
+            // Lots à traiter, lus dans la base : rien n'est gardé en mémoire entre deux passages.
+            // Sans stockage configuré, aucun fichier source n'est lisible : les lots attendent
+            // (la sonde du module le signale) au lieu d'être mis en échec.
+            let pending = match self.store.pending_batches(PENDING_BATCHES).await {
+                Ok(_) if !self.storage.is_configured() => Vec::new(),
+                Ok(pending) => pending,
+                Err(err) => {
+                    tracing::warn!(code = %err.code(), error = %err, "lots à traiter illisibles");
+                    Vec::new()
+                }
             };
-
-            if let Some(job) = next_job {
-                match self
-                    .process_batch(
-                        &job.batch_id,
-                        &job.raw_bytes,
-                        job.format,
-                        job.commercial_proof.clone(),
-                        &ctx.cancellation,
-                    )
-                    .await
-                {
-                    Ok(report) => {
-                        if report.interrupted {
-                            // Si interrompu, réenfiler pour reprise ultérieure
-                            let mut q = self.queue.lock().await;
-                            q.push_front(job);
-                            break;
-                        }
-                    }
+            let idle = pending.is_empty();
+            for batch_id in pending {
+                if ctx.is_cancelled() {
+                    return Ok(());
+                }
+                match self.process_batch(&batch_id, &ctx.cancellation).await {
+                    // Interrompu par l'arrêt du serveur : le lot garde son point de reprise et
+                    // sera repris au démarrage suivant
+                    Ok(report) if report.interrupted => return Ok(()),
+                    Ok(_) => {}
                     // Échec non consigné (réservation impossible ou passage en FAILED refusé
-                    // pour une raison technique) : le travail reste en file et le worker
+                    // pour une raison technique) : le lot reste à traiter et le worker
                     // s'arrête, le superviseur le signale et le relance.
                     Err(err @ IngestionError::FailureNotRecorded { .. }) => {
-                        self.queue.lock().await.push_front(job);
                         return Err(RuntimeError::WorkerFailed {
                             worker: self.descriptor.id.to_string(),
                             message: format!("INGESTION_BATCH_FAILED: {err}"),
@@ -730,44 +748,45 @@ impl LyxalWorker for IngestionWorker {
                     // marqué en échec ici.
                     Err(err @ IngestionError::BatchAlreadyClaimed { .. }) => {
                         tracing::warn!(
-                            batch_id = %job.batch_id,
+                            batch_id = %batch_id,
                             code = %err.code(),
                             error = %err,
-                            "Lot traité par une autre exécution : travail abandonné par ce worker"
+                            "Lot traité par une autre exécution : laissé à cette exécution"
                         );
                     }
                     // Réservation perdue en cours de traitement : rien de plus n'a été écrit. Le
-                    // travail est rejoué : il reprend au dernier point de reprise si le lot est
-                    // libre, et il est abandonné si une autre exécution le détient.
+                    // lot reste à traiter : il reprendra au dernier point de reprise s'il est
+                    // libre.
                     Err(err) if err.is_claim_lost() => {
                         tracing::warn!(
-                            batch_id = %job.batch_id,
+                            batch_id = %batch_id,
                             code = %err.code(),
                             error = %err,
-                            "Réservation du lot perdue : travail remis en file"
+                            "Réservation du lot perdue : lot repris à un prochain passage"
                         );
-                        self.queue.lock().await.push_back(job);
                     }
                     // Échec du lot : passé en FAILED (la base a émis ingestion.batch.failed),
                     // ou lot refusé avant toute écriture (introuvable, accès refusé) ; le
                     // worker continue avec les lots suivants.
                     Err(err) => {
                         tracing::error!(
-                            batch_id = %job.batch_id,
+                            batch_id = %batch_id,
                             code = %err.code(),
                             error = %err,
                             "INGESTION_BATCH_FAILED : échec du lot, traitement des lots suivants"
                         );
                     }
                 }
+            }
+            // Passage à vide, ou lots laissés à d'autres exécutions : attente avant le suivant
+            let wait = if idle {
+                self.poll_interval
             } else {
-                // Attente courte ou interruption
-                tokio::select! {
-                    _ = ctx.cancellation.cancelled() => {
-                        break;
-                    }
-                    _ = tokio::time::sleep(Duration::from_millis(50)) => {}
-                }
+                self.poll_interval.min(Duration::from_millis(200))
+            };
+            tokio::select! {
+                _ = ctx.cancellation.cancelled() => break,
+                _ = tokio::time::sleep(wait) => {}
             }
         }
 

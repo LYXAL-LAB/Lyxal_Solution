@@ -104,6 +104,11 @@ impl StorageService {
         self
     }
 
+    /// Vrai si au moins un support est configuré : sans support, rien ne peut être écrit ni lu.
+    pub fn is_configured(&self) -> bool {
+        !self.backends.is_empty()
+    }
+
     /// Store sous-jacent.
     pub fn store(&self) -> &StorageStore {
         &self.store
