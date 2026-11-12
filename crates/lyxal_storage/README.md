@@ -5,7 +5,7 @@ SurrealDB (réglages, buckets, fiche de chaque fichier, états, droits, quotas, 
 crate Rust écrit et lit les octets en flux sur un support (disque local, service S3 ou
 compatible, mémoire pour les tests), calcule leur empreinte, reconnaît leur type réel, les fait
 analyser par un antivirus s'il y en a un, et retire les octets devenus inutiles. L'hôte expose l'envoi et le téléchargement par HTTP (`apps/lyxal-server/README.md`).
-Les lots suivants sont dans la [`ROADMAP.md`](ROADMAP.md). Sources et étude de la
+Les évolutions à venir sont dans la [`ROADMAP.md`](ROADMAP.md). Sources, décisions et étude de la
 gestion de fichiers de SurrealDB : [`MODELE_SOURCES.md`](MODELE_SOURCES.md).
 
 | | |
