@@ -2,10 +2,10 @@
 
 Module du Noyau Technique de Lyxal OS : **fichiers et documents stockés**. Les règles sont dans
 SurrealDB (réglages, buckets, fiche de chaque fichier, états, droits, quotas, événements) ; le
-crate Rust écrit et lit les octets en flux sur un support (disque local, mémoire pour les
-tests), calcule leur empreinte et retire les octets devenus inutiles. L'hôte expose l'envoi et le
-téléchargement par HTTP (`apps/lyxal-server/README.md`). S3 et les lots suivants sont dans la
-[`ROADMAP.md`](ROADMAP.md). Sources et étude de la
+crate Rust écrit et lit les octets en flux sur un support (disque local, service S3 ou
+compatible, mémoire pour les tests), calcule leur empreinte et retire les octets devenus
+inutiles. L'hôte expose l'envoi et le téléchargement par HTTP (`apps/lyxal-server/README.md`).
+Les lots suivants sont dans la [`ROADMAP.md`](ROADMAP.md). Sources et étude de la
 gestion de fichiers de SurrealDB : [`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md).
 
 | | |
@@ -148,7 +148,7 @@ Publiés par `fn::event_publish` dans la transaction de la mutation : `storage.o
 | :--- | :--- |
 | `StorageStore` | un appel typé par fonction publique (`LyxalSurrealCall::call_fn`) ; la session du client détermine les droits |
 | `models` | `XxxParams` et résultats nommés de chaque fonction |
-| `Backends`, `BackendConfig` | supports nommés : `Disk { root }` (tout est écrit sous `root`) et `Memory` (tests) |
+| `Backends`, `BackendConfig` | supports nommés : `Disk { root }` (tout est écrit sous `root`), `S3 { endpoint, region, bucket, access_key_id, secret_access_key, path_style, allow_http }` (service S3 ou compatible, par `object_store` ; clé secrète en `SecretString`) et `Memory` (tests) |
 | `StorageService` | `put` (écriture en flux), `stat` (fiche d'un fichier à servir), `open` (lecture en flux, en entier ou sur une plage `ByteRange` validée contre la taille de la fiche), `delete`, `verify` (relit les octets et compare taille et empreinte à la fiche) |
 | `StorageCleanupWorker` | worker supervisé : écritures abandonnées, fichiers supprimés hors délai, octets des buckets supprimés |
 | `StorageModule`, `StorageHealthCheck` | module `LyxalModule` ; la sonde écrit, relit et retire un fichier témoin sur chaque support |
@@ -168,6 +168,16 @@ Publiés par `fn::event_publish` dans la transaction de la mutation : `storage.o
   repris au passage suivant, et ne retient pas les éléments qui le suivent. Sur disque, les
   fichiers d'écriture en cours laissés par un arrêt brutal du serveur sont retirés avec la fiche
   ou le bucket. L'annulation est vérifiée entre deux fichiers.
+* **S3** : un bucket du service porte les octets de tous les buckets Lyxal qui nomment ce
+  support, sous les mêmes emplacements que sur disque. Service de référence : Bunny Storage
+  (`RECHERCHE_SOURCES.md` §7) ; adresses de la forme `/<bucket>/<clé>` par défaut. Les erreurs
+  passagères et les réponses `503` sont retentées par `object_store` ; un service injoignable ou
+  des identifiants refusés rendent `STORAGE_BACKEND_UNAVAILABLE`, sans identifiant dans le
+  message. Un envoi en plusieurs parties coupé par un arrêt brutal du serveur n'est pas retiré
+  par le worker : c'est le service qui l'efface. Bunny le fait seul après 10 jours ; **sur un
+  autre service S3 (AWS, par exemple), une règle de cycle de vie qui abandonne les envois en
+  plusieurs parties incomplets (`AbortIncompleteMultipartUpload`) doit être posée sur le
+  bucket**, sans quoi ces parties restent stockées et facturées.
 * **Sans support configuré** : `put` et `open` rendent `STORAGE_BACKEND_UNKNOWN`, la sonde est
   « dégradée ».
 
@@ -176,9 +186,12 @@ Publiés par `fn::event_publish` dans la transaction de la mutation : `storage.o
 * Banc SurrealQL `tests/` (`scripts/ci/test_lyxal_modules.py`) : `reglages`, `buckets`,
   `fichiers`, `droits` ; chaque fonction est appelée, sous la session système et sous des
   identités avec et sans permission.
-* Tests Rust `tests/it/` (base embarquée, supports mémoire et disque) : fichier écrit puis relu
+* Tests Rust `tests/it/` (base embarquée ; supports mémoire, disque et S3 sur un serveur S3 de
+  test `s3s-fs` lancé dans les tests) : fichier écrit puis relu
   à l'identique, plage d'octets, fichier de 64 Mo sans dépasser trois parties en mémoire, échecs
   nettoyés, fichier altéré détecté, worker, sonde, appels du store.
+* Essai réel sur un service S3 (`tests/it/real_s3.rs`, ignoré par défaut) : variables
+  `LYXAL_TEST_S3_*`, puis `cargo test -p lyxal_storage --test it real_s3 -- --ignored`.
 * `apps/lyxal-server` : démarrage avec et sans dossier de stockage (`startup.rs`) ; routes des
-  fichiers de bout en bout (`storage_routes.rs`).
+  fichiers de bout en bout, sur disque et sur S3 (`storage_routes.rs`).
 * `scripts/ci/ci_local.sh` rejoue la CI complète.

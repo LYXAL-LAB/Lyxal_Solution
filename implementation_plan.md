@@ -96,7 +96,7 @@ bucket, clé, taille et type ; jamais de contenu.
 | **1** | **Réalisé.** Socle SurrealQL : réglages, buckets, fiches de fichiers, états, droits, quotas, événements, erreurs, banc ; règle `checksum` de `lyxal_core` étendue à `blake3` ; module embarqué dans l'hôte. État : `crates/lyxal_storage/README.md` | `lyxal_storage`, `lyxal_core`, `apps/lyxal-server` |
 | **2** | **Réalisé.** Crate Rust : supports disque et mémoire, écriture et lecture en flux, empreinte, écriture en deux temps, worker de nettoyage (octets des buckets et des organisations supprimés compris), module et sonde de santé ; support `default` de l'hôte par `LYXAL__STORAGE__DISK__ROOT`. État : `crates/lyxal_storage/README.md` | `lyxal_storage`, `apps/lyxal-server` |
 | **3** | **Réalisé.** Hôte : routes `/api/v1/storage` d'envoi, de téléchargement (plage d'octets), de fiche, de liste et de suppression, en flux, sous la session de l'appelant ; taille bornée par le bucket. État : `apps/lyxal-server/README.md` | `apps/lyxal-server`, `lyxal_storage` |
-| **4** | Support S3 et compatibles ; identifiants par l'environnement de l'hôte | `lyxal_storage`, `apps/lyxal-server` |
+| **4** | **Réalisé.** Support S3 et compatibles par `object_store` (Bunny Storage en référence), déclaré par nom dans l'environnement de l'hôte ; disque et S3 coexistent ; tests sur un serveur S3 de test. État : `crates/lyxal_storage/README.md` | `lyxal_storage`, `apps/lyxal-server` |
 | **5** | Contrôle du contenu : type réel du fichier, antivirus, quarantaine ; affichage direct des images et des PDF dans le navigateur (décision H2 du lot 3) | `lyxal_storage`, `apps/lyxal-server` |
 | **6** | Envoi reprenable (protocole tus 1.0) pour les gros fichiers | `lyxal_storage`, `apps/lyxal-server` |
 | **7** | Bascule de l'ingestion : le fichier source d'un lot est conservé par `lyxal_storage` (constat A06 de l'audit externe) | `lyxal_pipeline_ingestion` |
@@ -138,5 +138,6 @@ S1 à S6 validées selon les recommandations, avec Bunny Storage comme service S
 | S5 | Envoi reprenable | **Dans la V1** (lot 6) |
 | S6 | Ingestion | **Branchée dans ce programme** (lot 7, constat A06) |
 
-Question reportée au plan du lot 3 ou 4 : téléchargement par liens signés servis par le support
-(Bunny), ou toujours par l'hôte.
+Décisions des lots : téléchargement toujours par l'hôte dans cette V1, les liens signés servis
+par le support S3 sont à la feuille de route du module (J1, lot 4) ; un fichier téléchargé est
+proposé à l'enregistrement, son affichage direct vient avec le contrôle du contenu (H2, lot 3).

@@ -1,8 +1,11 @@
-//! Supports : où sont écrits les octets (`object_store`). Chaque bucket nomme son support ;
-//! l'hôte construit les supports depuis sa configuration.
+//! Supports : où sont écrits les octets (`object_store`) : disque local, service S3 ou
+//! compatible, mémoire. Chaque bucket nomme son support ; l'hôte construit les supports depuis sa
+//! configuration.
 
 use futures::StreamExt;
 use lyxal_runtime::worker::CancellationToken;
+use lyxal_surreal::SecretString;
+use object_store::aws::AmazonS3Builder;
 use object_store::local::LocalFileSystem;
 use object_store::memory::InMemory;
 use object_store::path::Path;
@@ -15,12 +18,31 @@ use std::sync::Arc;
 use crate::error::{StorageError, StorageResult};
 
 /// Configuration d'un support.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum BackendConfig {
     /// Disque local : tout est écrit sous `root`, créé s'il n'existe pas.
     Disk {
         /// Dossier racine du support.
         root: PathBuf,
+    },
+    /// Service S3 ou compatible (Bunny Storage, par exemple) : un bucket du service porte les
+    /// octets.
+    S3 {
+        /// Point d'accès du service (`https://de-s3.storage.bunnycdn.com`).
+        endpoint: String,
+        /// Région attendue par le service.
+        region: String,
+        /// Bucket du service (chez Bunny : nom de la zone de stockage).
+        bucket: String,
+        /// Clé d'accès (chez Bunny : nom de la zone de stockage).
+        access_key_id: String,
+        /// Clé secrète (chez Bunny : mot de passe de la zone de stockage).
+        secret_access_key: SecretString,
+        /// Adresses de la forme `/<bucket>/<clé>` (seule forme admise par Bunny) ; sinon le
+        /// bucket est dans le nom d'hôte.
+        path_style: bool,
+        /// Autorise un point d'accès `http://` (tests, réseau privé).
+        allow_http: bool,
     },
     /// Mémoire du processus (tests).
     Memory,
@@ -156,6 +178,30 @@ impl Backends {
                     root: Some(root),
                 }
             }
+            BackendConfig::S3 {
+                endpoint,
+                region,
+                bucket,
+                access_key_id,
+                secret_access_key,
+                path_style,
+                allow_http,
+            } => Backend {
+                // Requêtes signées par `object_store` ; ses nouvelles tentatives par défaut
+                // couvrent les erreurs passagères et les réponses `503` du service
+                store: Arc::new(
+                    AmazonS3Builder::new()
+                        .with_endpoint(endpoint)
+                        .with_region(region)
+                        .with_bucket_name(bucket)
+                        .with_access_key_id(access_key_id)
+                        .with_secret_access_key(secret_access_key.expose_secret())
+                        .with_virtual_hosted_style_request(!path_style)
+                        .with_allow_http(allow_http)
+                        .build()?,
+                ),
+                root: None,
+            },
             BackendConfig::Memory => Backend {
                 store: Arc::new(InMemory::new()),
                 root: None,

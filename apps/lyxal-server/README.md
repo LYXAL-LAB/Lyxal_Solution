@@ -50,7 +50,7 @@ déclaré manque.
 | `lyxal_event` | toujours | `ManifestModule` ; moteur démarré par le runtime |
 | `lyxal_auth` | toujours | `AuthModule`, `AuthHealthCheck` |
 | `lyxal_notification` | toujours | `NotificationModule`, `NotificationConsumer` (événements `auth.*`), `NotificationEmailWorker`, `NotificationPurgeWorker`, `NotificationHealthCheck` |
-| `lyxal_storage` | toujours | `StorageModule`, `StorageCleanupWorker` (si un support est configuré), `StorageHealthCheck` |
+| `lyxal_storage` | toujours | `StorageModule`, `StorageCleanupWorker` (si un support est configuré), `StorageHealthCheck` ; supports disque et S3 |
 | `lyxal_base` | toujours | `ManifestModule` |
 | `lyxal_catalogue` | toujours | `ManifestModule` (SurrealQL seul) |
 | `lyxal_pipeline_ingestion` | fonctionnalité `module-ingestion` (par défaut) | `PipelineIngestionModule`, `IngestionWorker`, `IngestionHealthCheck` |
@@ -77,7 +77,7 @@ du code Rust, déclarer son implémentation et ses services dans `src/modules/` 
 | `crypto` | `application_key` (facultative, variable d'environnement seulement), `application_key_id` |
 | `auth` | `public_url` (facultative : adresse publique de l'interface, pour les liens des messages et l'origine des passkeys), `passkey_rp_id` (facultatif : domaine des passkeys, défaut : hôte de `public_url`) |
 | `notification.smtp` | `host`, `port`, `security` (`tls`, `starttls`, `local_plain`), `username`, `password`, `from_address`, `from_name`, `timeout_seconds` (section facultative) |
-| `storage` | `disk.root` (facultatif : dossier du support de fichiers `default`), `idle_timeout_seconds` (délai d'inactivité d'un envoi ou d'un téléchargement, 5 à 600, 60 par défaut) |
+| `storage` | `disk.root` (facultatif : dossier du support de fichiers `default`), `s3.<nom>` (facultatif : `endpoint`, `region`, `bucket`, `access_key_id`, `secret_access_key` par variable d'environnement seulement, `path_style`, `allow_http`), `idle_timeout_seconds` (délai d'inactivité d'un envoi ou d'un téléchargement, 5 à 600, 60 par défaut) |
 
 Les identifiants Root ne figurent dans aucun fichier : `LYXAL__DATABASE__USERNAME` et
 `LYXAL__DATABASE__PASSWORD` (mot de passe en `SecretString`, masqué). Une connexion `ws://` ou
@@ -118,9 +118,31 @@ suspendus (les événements attendent en file) et la sonde du module est dégrad
 
 Le stockage des fichiers (`lyxal_storage`) écrit sous un dossier du serveur :
 `LYXAL__STORAGE__DISK__ROOT` (créé s'il n'existe pas ; à placer sur un volume sauvegardé, hors
-du dossier de l'application). C'est le support `default` des buckets. Sans dossier, le serveur
-démarre : aucun fichier n'est écrit ni lu (`STORAGE_BACKEND_UNKNOWN`), le worker de nettoyage
-n'est pas lancé et la sonde du module est dégradée.
+du dossier de l'application). C'est le support `default` des buckets.
+
+Un bucket peut aussi être porté par un service S3 ou compatible (Bunny Storage en référence),
+déclaré sous un nom de support : celui que le bucket reçoit à sa création (`backend`).
+
+```text
+LYXAL__STORAGE__S3__<NOM>__ENDPOINT            https://de-s3.storage.bunnycdn.com
+LYXAL__STORAGE__S3__<NOM>__REGION              de
+LYXAL__STORAGE__S3__<NOM>__BUCKET              nom de la zone
+LYXAL__STORAGE__S3__<NOM>__ACCESS_KEY_ID       nom de la zone
+LYXAL__STORAGE__S3__<NOM>__SECRET_ACCESS_KEY   mot de passe de la zone
+```
+
+`<NOM>` est en minuscules, chiffres et `_`. `__PATH_STYLE` (vrai par défaut : adresses
+`/<bucket>/<clé>`, seule forme admise par Bunny) et `__ALLOW_HTTP` (faux par défaut) sont
+facultatifs. La clé secrète ne se lit que dans l'environnement : écrite dans un fichier de
+configuration, elle arrête le démarrage. Disque et S3 coexistent ; un support S3 peut s'appeler
+`default` s'il n'y a pas de dossier disque. Chez Bunny, l'API S3 se choisit à la création de la
+zone de stockage. Sur un autre service S3 que Bunny, posez sur le bucket une règle de cycle de
+vie qui abandonne les envois en plusieurs parties incomplets (`AbortIncompleteMultipartUpload`,
+quelques jours) : un envoi coupé par un arrêt brutal du serveur n'est effacé que par le service.
+
+Sans aucun support, le serveur démarre : aucun fichier n'est écrit ni lu
+(`STORAGE_BACKEND_UNKNOWN`), le worker de nettoyage n'est pas lancé et la sonde du module est
+dégradée. La sonde écrit, relit et retire un fichier témoin sur chaque support.
 
 Routes des fichiers, sous `/api/v1/storage` (`{bucket}` : clé du bucket, `{clé}` : clé du
 fichier, par exemple `plans/2026/a.pdf`) :

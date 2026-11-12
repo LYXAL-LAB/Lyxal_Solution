@@ -16,9 +16,14 @@ tokio = { workspace = true, features = ["fs"] }
 tracing = { workspace = true }
 bytes = "1"
 futures = { version = "0.3", default-features = false, features = ["std"] }
-# Supports : disque local et mémoire (S3 : feuille de route)
-object_store = { version = "0.13", default-features = false, features = ["fs"] }
+# Supports : disque local, mémoire, S3 et compatibles
+object_store = { version = "0.13", default-features = false, features = ["fs", "aws"] }
 
 [dev-dependencies]
 lyxal_auth = { workspace = true }
 tempfile = { workspace = true }
+tokio = { workspace = true, features = ["net"] }
+# Serveur S3 de test, lancé dans les tests sur un dossier temporaire
+s3s = "0.17"
+s3s-fs = "0.17"
+hyper-util = { version = "0.1", features = ["server-auto", "tokio"] }

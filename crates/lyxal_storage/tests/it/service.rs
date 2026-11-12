@@ -177,57 +177,60 @@ impl Drop for Tracked {
 async fn a_large_file_is_streamed_within_bounded_memory() {
     const CHUNK: usize = 1024 * 1024;
     const CHUNKS: usize = 64;
-    let bench = bench(Kind::Disk).await;
-    let bucket = bench.bucket("gros").await;
-    let live = Arc::new(AtomicUsize::new(0));
-    let peak = Arc::new(AtomicUsize::new(0));
-    let mut expected = lyxal_crypto::hash::Blake3Hasher::new();
-    for index in 0..CHUNKS {
-        expected.update(&vec![index as u8; CHUNK]);
-    }
-    let source = {
-        let (live, peak) = (live.clone(), peak.clone());
-        stream::iter(0..CHUNKS).map(move |index| {
-            let now = live.fetch_add(CHUNK, Ordering::SeqCst) + CHUNK;
-            peak.fetch_max(now, Ordering::SeqCst);
-            Ok::<_, std::convert::Infallible>(Bytes::from_owner(Tracked {
-                data: vec![index as u8; CHUNK],
-                live: live.clone(),
-            }))
-        })
-    };
-    let stored = bench
-        .service
-        .put(request(&bucket, "gros.bin"), source)
-        .await
-        .expect("écriture");
-    assert_eq!(stored.size, Some((CHUNK * CHUNKS) as i64));
-    assert_eq!(
-        stored.blake3.as_deref(),
-        Some(expected.finalize_hex().as_str())
-    );
-    assert_eq!(live.load(Ordering::SeqCst), 0, "tout est libéré");
-    let peak = peak.load(Ordering::SeqCst);
-    assert!(
-        peak <= 3 * PART_SIZE,
-        "{peak} octets du flux en mémoire au plus haut, pour un fichier de {} octets",
-        CHUNK * CHUNKS
-    );
+    // Disque, et S3 où le fichier est envoyé en plusieurs parties
+    for kind in [Kind::Disk, Kind::S3] {
+        let bench = bench(kind).await;
+        let bucket = bench.bucket("gros").await;
+        let live = Arc::new(AtomicUsize::new(0));
+        let peak = Arc::new(AtomicUsize::new(0));
+        let mut expected = lyxal_crypto::hash::Blake3Hasher::new();
+        for index in 0..CHUNKS {
+            expected.update(&vec![index as u8; CHUNK]);
+        }
+        let source = {
+            let (live, peak) = (live.clone(), peak.clone());
+            stream::iter(0..CHUNKS).map(move |index| {
+                let now = live.fetch_add(CHUNK, Ordering::SeqCst) + CHUNK;
+                peak.fetch_max(now, Ordering::SeqCst);
+                Ok::<_, std::convert::Infallible>(Bytes::from_owner(Tracked {
+                    data: vec![index as u8; CHUNK],
+                    live: live.clone(),
+                }))
+            })
+        };
+        let stored = bench
+            .service
+            .put(request(&bucket, "gros.bin"), source)
+            .await
+            .expect("écriture");
+        assert_eq!(stored.size, Some((CHUNK * CHUNKS) as i64));
+        assert_eq!(
+            stored.blake3.as_deref(),
+            Some(expected.finalize_hex().as_str())
+        );
+        assert_eq!(live.load(Ordering::SeqCst), 0, "tout est libéré");
+        let peak = peak.load(Ordering::SeqCst);
+        assert!(
+            peak <= 3 * PART_SIZE,
+            "{peak} octets du flux en mémoire au plus haut, pour un fichier de {} octets",
+            CHUNK * CHUNKS
+        );
 
-    let mut opened = bench
-        .service
-        .open(ObjectGetParams::by_id(stored.id.to_sql()), None)
-        .await
-        .expect("ouverture");
-    let mut read = lyxal_crypto::hash::Blake3Hasher::new();
-    let mut largest = 0;
-    while let Some(chunk) = opened.content.next().await {
-        let chunk = chunk.expect("lecture");
-        largest = largest.max(chunk.len());
-        read.update(&chunk);
+        let mut opened = bench
+            .service
+            .open(ObjectGetParams::by_id(stored.id.to_sql()), None)
+            .await
+            .expect("ouverture");
+        let mut read = lyxal_crypto::hash::Blake3Hasher::new();
+        let mut largest = 0;
+        while let Some(chunk) = opened.content.next().await {
+            let chunk = chunk.expect("lecture");
+            largest = largest.max(chunk.len());
+            read.update(&chunk);
+        }
+        assert_eq!(Some(read.finalize_hex()), stored.blake3);
+        assert!(largest <= PART_SIZE, "lecture par morceaux ({largest})");
     }
-    assert_eq!(Some(read.finalize_hex()), stored.blake3);
-    assert!(largest <= PART_SIZE, "lecture par morceaux ({largest})");
 }
 
 #[tokio::test]
@@ -345,6 +348,37 @@ async fn an_unconfigured_backend_refuses_the_write() {
         .expect_err("aucun support");
     assert_eq!(error.code(), "STORAGE_BACKEND_UNKNOWN");
     assert_eq!(states(&bench, &plans, ObjectState::Deleted).await, 0);
+}
+
+#[tokio::test]
+async fn refused_credentials_are_a_backend_failure() {
+    let reference = bench(Kind::S3).await;
+    let root = tempfile::tempdir().expect("dossier temporaire");
+    let endpoint = crate::support::s3_server(root.path()).await;
+    let backends = Arc::new(
+        Backends::new()
+            .with(
+                "default",
+                crate::support::s3_config(&endpoint, "mauvais-secret-0123456789"),
+            )
+            .expect("support"),
+    );
+    let service = StorageService::new(reference.store.clone(), backends);
+    let bucket = reference.bucket("plans").await;
+    let error = service
+        .put(request(&bucket, "a.bin"), chunks(&[b"abc"]))
+        .await
+        .expect_err("identifiants refusés");
+    assert_eq!(error.code(), "STORAGE_BACKEND_UNAVAILABLE");
+    assert!(error.is_retryable());
+    // Ni la clé secrète ni la clé d'accès dans le message
+    let message = error.to_string();
+    assert!(
+        !message.contains("mauvais-secret") && !message.contains(crate::support::S3_SECRET_KEY)
+    );
+    // L'écriture en échec ne laisse pas de fichier disponible
+    assert_eq!(states(&reference, &bucket, ObjectState::Available).await, 0);
+    assert_eq!(states(&reference, &bucket, ObjectState::Pending).await, 0);
 }
 
 #[tokio::test]

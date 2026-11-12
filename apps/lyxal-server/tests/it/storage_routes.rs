@@ -500,3 +500,173 @@ async fn files_are_sent_served_and_protected_through_http() {
 
     started.runtime.stop_all().await.expect("arrêt");
 }
+
+/// Serveur S3 de test (`s3s-fs`) sur un dossier temporaire et un port local ; rend son point
+/// d'accès.
+async fn s3_server(root: &std::path::Path, bucket: &str, access: &str, secret: &str) -> String {
+    std::fs::create_dir_all(root.join(bucket)).expect("bucket");
+    let mut builder = s3s::service::S3ServiceBuilder::new(
+        s3s_fs::FileSystem::new(root).expect("serveur S3 de test"),
+    );
+    builder.set_auth(s3s::auth::SimpleAuth::from_single(access, secret));
+    let service = builder.build();
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("écoute");
+    let address = listener.local_addr().expect("adresse");
+    tokio::spawn(async move {
+        let server =
+            hyper_util::server::conn::auto::Builder::new(hyper_util::rt::TokioExecutor::new());
+        while let Ok((socket, _)) = listener.accept().await {
+            let connection = server
+                .serve_connection(hyper_util::rt::TokioIo::new(socket), service.clone())
+                .into_owned();
+            tokio::spawn(async move {
+                let _ = connection.await;
+            });
+        }
+    });
+    format!("http://{address}")
+}
+
+/// Un bucket dont le support est un service S3 : envoi, lecture partielle et suppression par
+/// les mêmes routes ; la sonde du module est saine ; disque et S3 coexistent.
+#[tokio::test]
+async fn a_bucket_on_an_s3_backend_is_served_by_the_same_routes() {
+    let folder = tempfile::tempdir().expect("dossier");
+    let endpoint = s3_server(
+        &folder.path().join("s3"),
+        "lyxal-test",
+        "lyxal-test-access",
+        "lyxal-test-secret-0123456789",
+    )
+    .await;
+    let extra = format!(
+        "[auth]\npublic_url = \"https://lyxal.test/\"\n\n[storage.disk]\nroot = {:?}\n",
+        folder.path().join("disque").display().to_string()
+    );
+    let mut config = config_with("storage_routes_s3", &extra);
+    // La clé secrète ne se lit pas dans un fichier : le support est déclaré ici
+    config.storage.s3.insert(
+        "objets".to_string(),
+        lyxal_server::config::S3StorageConfig {
+            endpoint,
+            region: "us-east-1".to_string(),
+            bucket: "lyxal-test".to_string(),
+            access_key_id: "lyxal-test-access".to_string(),
+            secret_access_key: lyxal_server::config::SecretPassword::new(
+                "lyxal-test-secret-0123456789".to_string(),
+            )
+            .expect("clé secrète"),
+            path_style: true,
+            allow_http: true,
+        },
+    );
+    let config = Arc::new(config);
+    let client = database("storage_routes_s3").await;
+    let started = runtime::start(&config, &client).await.expect("démarrage");
+    let host = auth::host(&client, &config, Some(crypto()))
+        .expect("service")
+        .expect("service configuré");
+    auth::complete_services(Some(&host)).await.expect("clés");
+    let router = build_router(AppContext::new(
+        config.clone(),
+        Arc::new(client.clone()),
+        HealthRegistry::default(),
+        Metrics::default(),
+        started.runtime.clone(),
+        Some(host.clone()),
+        started.storage.clone(),
+    ))
+    .expect("routeur");
+
+    // Sonde : les deux supports (disque et S3) écrivent, relisent et retirent leur fichier témoin
+    let probe = started
+        .runtime
+        .health_registry()
+        .get_check(&lyxal_runtime::ModuleId::new("lyxal_storage"))
+        .expect("sonde de lyxal_storage")
+        .check(&lyxal_runtime::ModuleContext::new("lyxal_storage"))
+        .await
+        .expect("sonde");
+    assert_eq!(
+        probe.status,
+        lyxal_runtime::health::HealthStatus::Healthy,
+        "{probe:?}"
+    );
+
+    client
+        .query(
+            r#"
+            CREATE auth_organization:alpha CONTENT { slug: "alpha", name: "Alpha BTP" };
+            CREATE auth_application:redacteur CONTENT { tenant: auth_organization:alpha, client_id: "lyxal-test-redacteur-alpha", name: "Rédacteur", type: "machine", redirect_uris: [], state: "active", permissions_version: 1 };
+            RELATE auth_application:redacteur->auth_has_role->auth_role:organization_admin SET granted_at = time::now();
+            "#,
+        )
+        .await
+        .expect("préparation")
+        .check()
+        .expect("préparation refusée");
+    let mut created = client
+        .query(
+            r#"
+            RETURN <string> record::id(fn::storage_bucket_create({ tenant: "auth_organization:alpha", name: "sur-s3", backend: "objets" }).data.id);
+            RETURN <string> record::id(fn::storage_bucket_create({ tenant: "auth_organization:alpha", name: "sur-disque" }).data.id);
+            "#,
+        )
+        .await
+        .expect("buckets");
+    let on_s3: Option<String> = created.take(0).expect("bucket");
+    let on_disk: Option<String> = created.take(1).expect("bucket");
+    let writer = host
+        .access
+        .internal_service_token("lyxal-test-redacteur-alpha")
+        .await
+        .expect("jeton")
+        .access_token
+        .expose_secret()
+        .to_string();
+
+    let content = vec![9u8; 3 * 1024 * 1024];
+    for bucket in [on_s3.expect("bucket"), on_disk.expect("bucket")] {
+        let object = format!("/api/v1/storage/buckets/{bucket}/objects/dossier/fichier.bin");
+        let sent = send(
+            &router,
+            "PUT",
+            &object,
+            Some(&writer),
+            &[],
+            Body::from(content.clone()),
+        )
+        .await;
+        assert_eq!(sent.status, StatusCode::CREATED, "{}", sent.json());
+        let part = send(
+            &router,
+            "GET",
+            &object,
+            Some(&writer),
+            &[("range", "bytes=-5")],
+            Body::empty(),
+        )
+        .await;
+        assert_eq!(part.status, StatusCode::PARTIAL_CONTENT);
+        assert_eq!(part.body, &content[content.len() - 5..]);
+        let got = send(&router, "GET", &object, Some(&writer), &[], Body::empty()).await;
+        assert!(got.body == content);
+        let deleted = send(
+            &router,
+            "DELETE",
+            &object,
+            Some(&writer),
+            &[],
+            Body::empty(),
+        )
+        .await;
+        assert_eq!(deleted.status, StatusCode::OK, "{}", deleted.json());
+    }
+    // Les octets du premier bucket sont bien sur le service S3, ceux du second sur le disque
+    assert!(!files(&folder.path().join("s3")).is_empty());
+    assert_eq!(files(&folder.path().join("disque")).len(), 1);
+
+    started.runtime.stop_all().await.expect("arrêt");
+}

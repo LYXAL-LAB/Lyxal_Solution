@@ -73,7 +73,7 @@ pub struct Bench {
     pub store: StorageStore,
     pub backends: Arc<Backends>,
     pub service: StorageService,
-    /// Dossier temporaire du support disque (retiré à la fin du test).
+    /// Dossier temporaire du support disque ou du serveur S3 de test (retiré à la fin du test).
     pub root: Option<tempfile::TempDir>,
 }
 
@@ -82,9 +82,59 @@ pub struct Bench {
 pub enum Kind {
     Memory,
     Disk,
+    /// Serveur S3 de test (`s3s-fs`), lancé sur un port local et un dossier temporaire.
+    S3,
 }
 
-pub const KINDS: [Kind; 2] = [Kind::Memory, Kind::Disk];
+pub const KINDS: [Kind; 3] = [Kind::Memory, Kind::Disk, Kind::S3];
+
+pub const S3_BUCKET: &str = "lyxal-test";
+pub const S3_ACCESS_KEY: &str = "lyxal-test-access";
+pub const S3_SECRET_KEY: &str = "lyxal-test-secret-0123456789";
+
+/// Lance un serveur S3 de test sur `root` ; rend son point d'accès. Le serveur s'arrête avec le
+/// runtime du test.
+pub async fn s3_server(root: &std::path::Path) -> String {
+    std::fs::create_dir_all(root.join(S3_BUCKET)).expect("bucket");
+    let mut builder = s3s::service::S3ServiceBuilder::new(
+        s3s_fs::FileSystem::new(root).expect("serveur S3 de test"),
+    );
+    builder.set_auth(s3s::auth::SimpleAuth::from_single(
+        S3_ACCESS_KEY,
+        S3_SECRET_KEY,
+    ));
+    let service = builder.build();
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("écoute");
+    let address = listener.local_addr().expect("adresse");
+    tokio::spawn(async move {
+        let server =
+            hyper_util::server::conn::auto::Builder::new(hyper_util::rt::TokioExecutor::new());
+        while let Ok((socket, _)) = listener.accept().await {
+            let connection = server
+                .serve_connection(hyper_util::rt::TokioIo::new(socket), service.clone())
+                .into_owned();
+            tokio::spawn(async move {
+                let _ = connection.await;
+            });
+        }
+    });
+    format!("http://{address}")
+}
+
+/// Support S3 sur le serveur de test.
+pub fn s3_config(endpoint: &str, secret: &str) -> BackendConfig {
+    BackendConfig::S3 {
+        endpoint: endpoint.to_string(),
+        region: "us-east-1".to_string(),
+        bucket: S3_BUCKET.to_string(),
+        access_key_id: S3_ACCESS_KEY.to_string(),
+        secret_access_key: lyxal_surreal::SecretString::new(secret.to_string()).expect("secret"),
+        path_style: true,
+        allow_http: true,
+    }
+}
 
 pub async fn bench(kind: Kind) -> Bench {
     let client = installed_client().await;
@@ -98,6 +148,11 @@ pub async fn bench(kind: Kind) -> Bench {
                 },
                 Some(root),
             )
+        }
+        Kind::S3 => {
+            let root = tempfile::tempdir().expect("dossier temporaire");
+            let endpoint = s3_server(root.path()).await;
+            (s3_config(&endpoint, S3_SECRET_KEY), Some(root))
         }
     };
     let backends = Arc::new(Backends::new().with("default", config).expect("support"));

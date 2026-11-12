@@ -2,6 +2,7 @@ use crate::error::ServerError;
 use lyxal_surreal::SecretString;
 use serde::{Deserialize, Deserializer};
 use std::{
+    collections::BTreeMap,
     fmt,
     net::IpAddr,
     path::{Path, PathBuf},
@@ -34,6 +35,9 @@ pub struct AppConfig {
 pub struct StorageConfig {
     #[serde(default)]
     pub disk: Option<DiskStorageConfig>,
+    /// Supports S3 ou compatibles, par nom de support (`LYXAL__STORAGE__S3__<NOM>__*`).
+    #[serde(default)]
+    pub s3: BTreeMap<String, S3StorageConfig>,
     /// Délai d'inactivité d'un envoi ou d'un téléchargement, en secondes (5 à 600).
     #[serde(default = "default_storage_idle_timeout")]
     pub idle_timeout_seconds: u64,
@@ -43,6 +47,7 @@ impl Default for StorageConfig {
     fn default() -> Self {
         Self {
             disk: None,
+            s3: BTreeMap::new(),
             idle_timeout_seconds: default_storage_idle_timeout(),
         }
     }
@@ -50,6 +55,28 @@ impl Default for StorageConfig {
 
 fn default_storage_idle_timeout() -> u64 {
     60
+}
+
+/// Support S3 ou compatible (Bunny Storage, par exemple) : `LYXAL__STORAGE__S3__<NOM>__ENDPOINT`,
+/// `__REGION`, `__BUCKET`, `__ACCESS_KEY_ID`, `__SECRET_ACCESS_KEY` (variable d'environnement
+/// seulement), `__PATH_STYLE` (vrai par défaut : adresses `/<bucket>/<clé>`), `__ALLOW_HTTP`
+/// (faux par défaut). `<NOM>` est le nom du support, celui du champ `backend` d'un bucket.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct S3StorageConfig {
+    pub endpoint: String,
+    pub region: String,
+    pub bucket: String,
+    pub access_key_id: String,
+    pub secret_access_key: SecretPassword,
+    #[serde(default = "default_true")]
+    pub path_style: bool,
+    #[serde(default)]
+    pub allow_http: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 /// Support disque : `LYXAL__STORAGE__DISK__ROOT`, dossier créé s'il n'existe pas ; tous les
@@ -225,32 +252,72 @@ pub struct CorsConfig {
     pub allowed_headers: Vec<String>,
 }
 
+/// La clé secrète d'un support S3 ne se lit que dans l'environnement : présente dans un fichier
+/// de configuration, elle arrête le démarrage.
+fn refuse_storage_secret_in_files(
+    files: config::ConfigBuilder<config::builder::DefaultState>,
+) -> Result<(), ServerError> {
+    let files = files.build().map_err(|error| ServerError::Configuration {
+        message: error.to_string(),
+    })?;
+    let Ok(backends) = files.get_table("storage.s3") else {
+        return Ok(());
+    };
+    for (name, backend) in backends {
+        let in_file = backend
+            .into_table()
+            .is_ok_and(|fields| fields.contains_key("secret_access_key"));
+        if in_file {
+            return Err(ServerError::Configuration {
+                message: format!(
+                    "storage.s3.{name}.secret_access_key ne doit pas figurer dans un fichier : \
+                     LYXAL__STORAGE__S3__{}__SECRET_ACCESS_KEY seulement",
+                    name.to_uppercase()
+                ),
+            });
+        }
+    }
+    Ok(())
+}
+
 impl AppConfig {
     pub fn load() -> Result<Self, ServerError> {
         Self::load_from("config")
     }
 
     pub fn load_from(directory: impl AsRef<Path>) -> Result<Self, ServerError> {
+        Self::load_with_environment(directory, None)
+    }
+
+    /// Charge la configuration ; `variables` remplace les variables d'environnement du
+    /// processus (tests).
+    pub fn load_with_environment(
+        directory: impl AsRef<Path>,
+        variables: Option<config::Map<String, String>>,
+    ) -> Result<Self, ServerError> {
         let directory = directory.as_ref();
         let environment = std::env::var("LYXAL_ENV").unwrap_or_else(|_| "development".into());
 
-        let builder = config::Config::builder()
+        let files = config::Config::builder()
             .add_source(config::File::from(directory.join("default.toml")).required(true))
             .add_source(
                 config::File::from(directory.join(format!("{environment}.toml"))).required(false),
-            )
-            .add_source(
-                config::Environment::with_prefix("LYXAL")
-                    .prefix_separator("__")
-                    .separator("__")
-                    .try_parsing(true)
-                    .list_separator(",")
-                    // Seules ces clés sont des listes ; les autres restent des chaînes
-                    .with_list_parse_key("server.trusted_proxies")
-                    .with_list_parse_key("cors.allowed_origins")
-                    .with_list_parse_key("cors.allowed_methods")
-                    .with_list_parse_key("cors.allowed_headers"),
             );
+        refuse_storage_secret_in_files(files.clone())?;
+
+        let builder = files.add_source(
+            config::Environment::with_prefix("LYXAL")
+                .source(variables)
+                .prefix_separator("__")
+                .separator("__")
+                .try_parsing(true)
+                .list_separator(",")
+                // Seules ces clés sont des listes ; les autres restent des chaînes
+                .with_list_parse_key("server.trusted_proxies")
+                .with_list_parse_key("cors.allowed_origins")
+                .with_list_parse_key("cors.allowed_methods")
+                .with_list_parse_key("cors.allowed_headers"),
+        );
 
         let value: Self = builder
             .build()
@@ -278,6 +345,21 @@ impl AppConfig {
             return Err(ServerError::Configuration {
                 message: "namespace et database sont obligatoires".into(),
             });
+        }
+        // Nom d'un support : celui que porte le champ `backend` d'un bucket (snake_case)
+        for name in self.storage.s3.keys() {
+            let valid = name.len() <= 64
+                && name.starts_with(|c: char| c.is_ascii_lowercase())
+                && name
+                    .chars()
+                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_');
+            if !valid {
+                return Err(ServerError::Configuration {
+                    message: format!(
+                        "storage.s3.{name} : nom de support invalide (minuscules, chiffres et _, 64 caractères au plus)"
+                    ),
+                });
+            }
         }
         if !(5..=600).contains(&self.storage.idle_timeout_seconds) {
             return Err(ServerError::Configuration {
