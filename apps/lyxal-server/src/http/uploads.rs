@@ -347,10 +347,11 @@ mod tests {
             UPLOAD_METADATA,
             HeaderValue::from_static("bucket cGxhbnM=, key MjAyNi9maWxtLm1wNA==,vide"),
         );
-        let values = metadata(&headers).expect("métadonnées");
-        assert_eq!(values["bucket"], "plans");
-        assert_eq!(values["key"], "2026/film.mp4");
-        assert_eq!(values["vide"], "");
+        let values = metadata(&headers).ok().unwrap_or_default();
+        let value = |key: &str| values.get(key).map(String::as_str);
+        assert_eq!(value("bucket"), Some("plans"));
+        assert_eq!(value("key"), Some("2026/film.mp4"));
+        assert_eq!(value("vide"), Some(""));
 
         headers.insert(
             UPLOAD_METADATA,
@@ -361,7 +362,10 @@ mod tests {
 
     #[test]
     fn upload_identifier_is_a_plain_key() {
-        assert_eq!(upload_id("abc123").expect("clé"), "storage_object:abc123");
+        assert_eq!(
+            upload_id("abc123").ok().as_deref(),
+            Some("storage_object:abc123")
+        );
         assert!(upload_id("").is_err());
         assert!(upload_id("a:b").is_err());
         assert!(upload_id("a/b").is_err());
