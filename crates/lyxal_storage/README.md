@@ -85,7 +85,11 @@ octets au passage suivant.
 3. quand tous les octets sont reçus, l'assembleur (l'auteur de l'envoi, ou le worker) réserve
    l'assemblage (`fn::storage_upload_claim` : un seul assembleur, plus aucune partie acceptée,
    pas d'expiration pendant la réservation), relit les parties dans l'ordre, écrit le fichier et
-   termine par `fn::storage_object_commit`, qui exige un envoi complet ;
+   termine par `fn::storage_object_commit`, qui exige un envoi complet. La réservation porte un
+   jeton : son détenteur la prolonge pendant un assemblage long, et lui seul termine ou
+   abandonne l'envoi. Un assembleur resté bloqué plus longtemps que sa réservation, reprise
+   entre-temps par un autre, est refusé partout (`STORAGE_UPLOAD_BUSY`) et ne touche plus ni à
+   la fiche ni aux octets ;
 4. dès que l'envoi n'est plus en cours (assemblé, abandonné, expiré, supprimé avec son
    organisation), l'événement `storage_object_upload_parts` retire ses lignes de parties et
    inscrit le dossier de leurs octets dans `storage_reclaim`, dans la même transaction : le
@@ -137,7 +141,7 @@ l'installation.
 | `storage_bucket_list` | `tenant`, `limit`, `start` | `{ items, total }`, triés par nom | lecture |
 | `storage_bucket_delete` | **bucket** | `{ deleted }` ; refusé s'il porte une fiche | gestion |
 | `storage_object_begin` | **bucket**, **key**, **filename**, `declared_type`, `declared_size`, `resumable` (envoi reprenable : `declared_size` obligatoire) | fiche `pending` et `max_size` (taille maximale acceptée) | écriture |
-| `storage_object_commit` | **object**, **size**, **content_type**, **blake3** | fiche `available` | worker, ou l'appelant qui a ouvert l'écriture (son identité, ou son application pour un compte de service) |
+| `storage_object_commit` | **object**, **size**, **content_type**, **blake3**, `claim` (envoi reprenable : jeton de la réservation) | fiche `available` | worker, ou l'appelant qui a ouvert l'écriture (son identité, ou son application pour un compte de service) |
 | `storage_object_get` | **object**, ou **bucket** et **key** | fiche (par adresse : fichier non supprimé) | lecture |
 | `storage_object_open` | **object**, ou **bucket** et **key** | fiche d'un fichier à servir ; refus s'il n'est pas `available` | lecture |
 | `storage_object_list` | **bucket**, `prefix`, `state` (`available`), `limit`, `start` | `{ items, total }`, triés par clé | lecture |
@@ -152,7 +156,8 @@ l'installation.
 | `storage_upload_get` | **object** | état d'un envoi reprenable : `{ id, state, backend, path, declared_type, length, offset, complete, max_size, expires_at }` ; introuvable s'il est abandonné, refusé s'il est hors délai | auteur de l'envoi, ou worker |
 | `storage_upload_part_add` | **object**, **offset**, **size**, **name** (UUID) | état de l'envoi après l'inscription de la partie | auteur de l'envoi, ou worker |
 | `storage_upload_part_list` | **object** | `{ items: [{ offset, size, name }] }`, dans l'ordre du fichier | auteur de l'envoi, ou worker |
-| `storage_upload_claim` | **object**, `seconds` (1800), `release` | état de l'envoi ; assemblage réservé, ou réservation rendue | auteur de l'envoi, ou worker |
+| `storage_upload_claim` | **object**, `seconds` (1800), `claim` (jeton, pour prolonger) | état de l'envoi et jeton de la réservation (`claim`) | auteur de l'envoi, ou worker |
+| `storage_upload_release` | **object**, **claim**, `abandon` | `{ released, abandoned }` : réservation rendue, ou envoi abandonné ; refusé si le jeton n'est plus celui en cours | auteur de l'envoi, ou worker |
 | `storage_upload_ready_list` | `limit` | `{ items }` : envois complets dont l'assemblage n'est ni fait ni en cours | worker |
 
 Fonctions internes : `fn::storage_can`, `fn::storage_settings_effective`,
@@ -168,7 +173,7 @@ Fonctions internes : `fn::storage_can`, `fn::storage_settings_effective`,
 | `permissions` | `STORAGE_PERMISSION_DENIED`, `STORAGE_WRITE_FORBIDDEN` |
 | `buckets` | `STORAGE_BUCKET_NOT_FOUND`, `STORAGE_BUCKET_EXISTS`, `STORAGE_BUCKET_NOT_EMPTY`, `STORAGE_BUCKET_READONLY` |
 | `fichiers` | `STORAGE_OBJECT_NOT_FOUND`, `STORAGE_OBJECT_EXISTS`, `STORAGE_OBJECT_STATE_INVALID`, `STORAGE_OBJECT_IN_USE`, `STORAGE_OBJECT_TOO_LARGE`, `STORAGE_OBJECT_TYPE_REFUSED`, `STORAGE_QUOTA_EXCEEDED`, `STORAGE_RANGE_NOT_SATISFIABLE` |
-| `supports` | `STORAGE_BACKEND_UNKNOWN`, `STORAGE_BACKEND_UNAVAILABLE` (à réessayer), `STORAGE_OBJECT_NOT_AVAILABLE`, `STORAGE_CONTENT_MISMATCH`, `STORAGE_INTEGRITY_FAILED`, `STORAGE_OBJECT_INFECTED`, `STORAGE_SCANNER_UNAVAILABLE` (à réessayer) |
+| `supports` | `STORAGE_BACKEND_UNKNOWN`, `STORAGE_BACKEND_UNAVAILABLE` (à réessayer), `STORAGE_OBJECT_NOT_AVAILABLE`, `STORAGE_CONTENT_MISMATCH`, `STORAGE_INTEGRITY_FAILED`, `STORAGE_OBJECT_INFECTED`, `STORAGE_SCANNER_UNAVAILABLE` (à réessayer), `STORAGE_OPERATION_CANCELLED` (arrêt du serveur, à réessayer) |
 | `envois` | `STORAGE_UPLOAD_OFFSET_MISMATCH` (position courante dans `details.offset`), `STORAGE_UPLOAD_EXPIRED`, `STORAGE_UPLOAD_BUSY` (à réessayer), `STORAGE_UPLOAD_TOO_MANY_PARTS`, `STORAGE_UPLOAD_INVALID_REQUEST`, `STORAGE_UPLOAD_VERSION_UNSUPPORTED` |
 
 ## 5. Événements
@@ -209,13 +214,18 @@ Publiés par `fn::event_publish` dans la transaction de la mutation : `storage.o
   réel est contrôlé. ClamAV (GPL) reste un service séparé : aucun code GPL n'est lié.
 * **Envoi reprenable** : `upload_append` vérifie la position, puis écrit les octets reçus par
   parties de 8 Mo au plus (une partie en mémoire) et inscrit chacune. Ce qui est reçu avant une
-  coupure du flux est conservé ; une partie refusée par la base est retirée du support. La
+  coupure du flux est conservé ; une partie refusée par la base est retirée du support ; après
+  une panne de la base pendant l'inscription, le service relit la liste des parties : inscrite,
+  la position avance ; non inscrite, ses octets sont retirés ; base toujours injoignable, ils
+  sont gardés (et partent avec le dossier des parties à la fin de l'envoi). La
   requête qui apporte le dernier octet assemble le fichier : les parties sont relues en flux et
   passent par l'écriture d'un envoi simple (taille, empreinte, type réel, antivirus) ; pendant
   cette étape le fichier occupe deux fois sa place. Contenu refusé (type interdit, virus) :
   l'envoi est abandonné. Échec passager (support, antivirus ou base indisponible), ou arrêt du
-  serveur : l'envoi reste complet et le worker l'assemble à son passage suivant (au plus tard
-  30 minutes après un arrêt en cours d'assemblage, durée de la réservation).
+  serveur : l'envoi reste complet et le worker l'assemble à son passage suivant (30 minutes au
+  plus après un arrêt brutal en cours d'assemblage, durée de la réservation). Le worker vérifie
+  l'arrêt du serveur entre deux parties : l'écriture en cours est abandonnée proprement et la
+  réservation rendue.
 * **Échec** (support, taille, flux interrompu, fin d'écriture refusée) : les octets écrits sont
   retirés, la fiche passe à `deleted`, l'erreur est rendue. Une écriture coupée par l'arrêt du
   serveur est retirée par le worker à la fin de son délai.
@@ -248,12 +258,14 @@ Publiés par `fn::event_publish` dans la transaction de la mutation : `storage.o
   à l'identique, plage d'octets, fichier de 64 Mo sans dépasser trois parties en mémoire, échecs
   nettoyés, fichier altéré détecté, worker, sonde, appels du store ; type réel et types refusés ;
   envoi reprenable (plusieurs requêtes, coupure, mauvaise position, deux requêtes simultanées,
-  contenu refusé à l'assemblage, assemblage terminé par le worker, abandon, expiration) ;
+  contenu refusé à l'assemblage, assemblage terminé par le worker, arrêt du serveur pendant
+  l'assemblage, assembleur en retard refusé, abandon, expiration) ;
   antivirus sur un faux service `clamd` lancé dans les tests (fichier sain, signature de test
   EICAR, limite de taille, service injoignable ou muet). Un essai sur un vrai service ClamAV
   n'est pas dans les contrôles automatiques : `ClamAvScanner` sur `127.0.0.1:3310` après
   `clamd` démarré, à lancer à la main.
-* Non couvert par un test : le refus au-delà de 10 000 parties (`STORAGE_UPLOAD_TOO_MANY_PARTS`).
+* Non couvert par un test : le refus au-delà de 10 000 parties (`STORAGE_UPLOAD_TOO_MANY_PARTS`) ;
+  une panne de la base pendant l'inscription d'une partie.
 * Essai réel sur un service S3 (`tests/it/real_s3.rs`, ignoré par défaut) : variables
   `LYXAL_TEST_S3_*`, puis `cargo test -p lyxal_storage --test it real_s3 -- --ignored`.
 * `apps/lyxal-server` : démarrage avec et sans dossier de stockage (`startup.rs`) ; routes des

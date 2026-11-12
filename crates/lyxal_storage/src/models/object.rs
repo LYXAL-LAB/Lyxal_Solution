@@ -126,6 +126,8 @@ pub struct ObjectCommitParams {
     pub content_type: String,
     /// Empreinte BLAKE3 du contenu (64 caractères hexadécimaux).
     pub blake3: String,
+    /// Envoi reprenable : jeton de la réservation d'assemblage.
+    pub claim: Option<super::upload::PartName>,
 }
 
 /// Paramètres de `fn::storage_object_get` et `fn::storage_object_open` : la fiche par son

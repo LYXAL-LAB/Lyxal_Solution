@@ -179,6 +179,13 @@ RETURN fn::storage_upload_ready_list({}).data.items == [(SELECT VALUE id FROM ON
     LET $o = <string> (SELECT VALUE id FROM ONLY storage_object WHERE key = "a.bin" AND state != "deleted" LIMIT 1);
     LET $claimed = fn::storage_upload_claim({ object: $o, seconds: 600 });
     RETURN $claimed.data.{ offset, complete, length } == { offset: 300, complete: true, length: 300 }
+        AND type::is_uuid($claimed.data.claim)
+        -- Prolongation par le détenteur ; un autre jeton est refusé
+        AND fn::storage_upload_claim({ object: $o, claim: $claimed.data.claim, seconds: 900 }).data.claim == $claimed.data.claim
+        AND fn::storage_upload_claim({ object: $o, claim: rand::uuid::v7() }).error.code == "STORAGE_UPLOAD_BUSY"
+        AND fn::storage_upload_release({ object: $o, claim: rand::uuid::v7() }).error.code == "STORAGE_UPLOAD_BUSY"
+        AND fn::storage_object_commit({ object: $o, size: 300, content_type: "application/octet-stream", blake3: "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262" }).error.code == "STORAGE_UPLOAD_BUSY"
+        AND fn::storage_object_commit({ object: $o, size: 300, content_type: "application/octet-stream", blake3: "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262", claim: rand::uuid::v7() }).error.code == "STORAGE_UPLOAD_BUSY"
         AND fn::storage_upload_claim({ object: $o }).error.code == "STORAGE_UPLOAD_BUSY"
         AND fn::storage_upload_part_add({ object: $o, offset: 300, size: 1, name: rand::uuid::v7() }).error.code == "STORAGE_UPLOAD_BUSY";
 };
@@ -188,8 +195,8 @@ RETURN fn::storage_upload_ready_list({}).data.items == [(SELECT VALUE id FROM ON
 {
     LET $o = <string> (SELECT VALUE id FROM ONLY storage_object WHERE key = "a.bin" AND state != "deleted" LIMIT 1);
     LET $hidden = fn::storage_upload_ready_list({}).data.items;
-    LET $released = fn::storage_upload_claim({ object: $o, release: true });
-    RETURN $hidden == [] AND $released.ok AND array::len(fn::storage_upload_ready_list({}).data.items) == 1
+    LET $released = fn::storage_upload_release({ object: $o, claim: (SELECT VALUE upload_claim FROM ONLY <record> $o) });
+    RETURN $hidden == [] AND $released.data == { released: true, abandoned: false } AND array::len(fn::storage_upload_ready_list({}).data.items) == 1
         AND fn::storage_upload_claim({ object: $o }).ok;
 };
 
@@ -197,7 +204,7 @@ RETURN fn::storage_upload_ready_list({}).data.items == [(SELECT VALUE id FROM ON
 -- en tant que: redacteur
 {
     LET $o = (SELECT VALUE id FROM ONLY storage_object WHERE key = "a.bin" AND state != "deleted" LIMIT 1);
-    LET $done = fn::storage_object_commit({ object: <string> $o, size: 300, content_type: "application/octet-stream", blake3: "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262" });
+    LET $done = fn::storage_object_commit({ object: <string> $o, size: 300, content_type: "application/octet-stream", blake3: "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262", claim: (SELECT VALUE upload_claim FROM ONLY $o) });
     LET $u = fn::storage_upload_get({ object: <string> $o }).data;
     RETURN $done.data.state == "available" AND $u.{ state, offset, complete } == { state: "available", offset: 300, complete: true }
         AND fn::storage_upload_part_list({ object: <string> $o }).data.items == [];
@@ -266,7 +273,7 @@ RETURN fn::storage_object_expire({}).data.expired == 0;
 
 -- test: et son assemblage se termine
 -- en tant que: redacteur
-RETURN fn::storage_object_commit({ object: <string> (SELECT VALUE id FROM ONLY storage_object WHERE key = "d.bin" AND state != "deleted" LIMIT 1), size: 10, content_type: "application/octet-stream", blake3: "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262" }).data.state == "available";
+RETURN fn::storage_object_commit({ object: <string> (SELECT VALUE id FROM ONLY storage_object WHERE key = "d.bin" AND state != "deleted" LIMIT 1), size: 10, content_type: "application/octet-stream", blake3: "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262", claim: (SELECT VALUE upload_claim FROM ONLY (SELECT VALUE id FROM ONLY storage_object WHERE key = "d.bin" AND state != "deleted" LIMIT 1)) }).data.state == "available";
 
 -- test: délai des envois reprenables réglable par organisation
 -- en tant que: admin
@@ -284,4 +291,25 @@ RETURN fn::storage_object_commit({ object: <string> (SELECT VALUE id FROM ONLY s
     LET $s = fn::storage_object_begin({ bucket: <string> (SELECT VALUE id FROM ONLY storage_bucket WHERE scope_key = "alpha" AND name = "videos" LIMIT 1), key: "f.bin", filename: "f.bin", declared_size: 10 }).data;
     RETURN $r.pending_expires_at < time::now() + 2h AND $s.pending_expires_at > time::now() + 23h AND !$s.resumable
         AND fn::storage_upload_get({ object: <string> $s.id }).error.code == "STORAGE_OBJECT_NOT_FOUND";
+};
+
+-- test: contenu refusé à l'assemblage : le détenteur de la réservation abandonne l'envoi
+-- en tant que: redacteur
+{
+    LET $o = <string> (SELECT VALUE id FROM ONLY storage_object WHERE key = "e.bin" AND state != "deleted" LIMIT 1);
+    LET $part = fn::storage_upload_part_add({ object: $o, offset: 0, size: 10, name: rand::uuid::v7() });
+    LET $claim = fn::storage_upload_claim({ object: $o }).data.claim;
+    LET $abandoned = fn::storage_upload_release({ object: $o, claim: $claim, abandon: true });
+    RETURN $part.data.complete AND $abandoned.data == { released: true, abandoned: true }
+        AND fn::storage_upload_get({ object: $o }).error.code == "STORAGE_OBJECT_NOT_FOUND"
+        AND fn::storage_upload_release({ object: $o, claim: $claim }).error.code == "STORAGE_UPLOAD_BUSY";
+};
+
+-- test: un envoi complet ne se termine pas par écriture directe sans réservation
+-- en tant que: redacteur
+-- attendu-erreur: STORAGE_UPLOAD_BUSY
+{
+    LET $o = fn::storage_object_begin({ bucket: <string> (SELECT VALUE id FROM ONLY storage_bucket WHERE scope_key = "alpha" AND name = "videos" LIMIT 1), key: "g.bin", filename: "g.bin", declared_size: 10, resumable: true }).data.id;
+    fn::storage_upload_part_add({ object: <string> $o, offset: 0, size: 10, name: rand::uuid::v7() });
+    UPDATE $o SET state = "available", size = 10, content_type = "application/octet-stream", blake3 = "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262";
 };

@@ -196,7 +196,8 @@ fichier, par exemple `plans/2026/a.pdf`) :
   relire le fichier, et un contenu refusé l'est à ce moment. Un envoi inachevé est retiré après
   son délai (`Upload-Expires`, 24 h par défaut). Les réponses de succès suivent le protocole
   (corps vide). Si CORS est activé, les en-têtes du protocole sont autorisés et lisibles ; les
-  méthodes `PATCH`, `HEAD` et `DELETE` restent à déclarer dans `cors.allowed_methods`.
+  méthodes du protocole (`HEAD`, `PATCH`, `DELETE`) sont dans la liste par défaut de
+  `cors.allowed_methods` et doivent y rester si cette liste est remplacée.
 * **Réponses** : contrat `LyxalResult`, sauf le contenu d'un fichier ; erreurs `STORAGE_*` dans
   la langue de la requête.
 

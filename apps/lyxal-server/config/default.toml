@@ -33,6 +33,6 @@ include_thread_ids = false
 enabled = true
 allow_credentials = false
 allowed_origins = ["http://localhost:3000", "http://localhost:5173"]
-allowed_methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+allowed_methods = ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
 allowed_headers = ["authorization", "content-type", "x-request-id"]
 

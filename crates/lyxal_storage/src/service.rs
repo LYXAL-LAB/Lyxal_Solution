@@ -19,8 +19,8 @@ use crate::backend::{location, Backends};
 use crate::content::{detect, HEAD_SIZE};
 use crate::error::{StorageError, StorageResult};
 use crate::models::{
-    ObjectBeginParams, ObjectCommitParams, ObjectGetParams, ObjectRefParams, StorageRecordId,
-    StoredObject,
+    ObjectBeginParams, ObjectCommitParams, ObjectGetParams, ObjectRefParams, PartName,
+    StorageRecordId, StoredObject,
 };
 use crate::scanner::{ContentScanner, ScanVerdict};
 use crate::store::StorageStore;
@@ -146,7 +146,9 @@ impl StorageService {
                 StorageError::ContentMismatch(format!("flux interrompu : {error}"))
             })
         });
-        let committed = self.write_and_commit(&target, request.size, content).await;
+        let committed = self
+            .write_and_commit(&target, request.size, None, content)
+            .await;
         if committed.is_err() {
             self.abandon(&target).await;
         }
@@ -158,6 +160,7 @@ impl StorageService {
         &self,
         target: &WriteTarget<'_>,
         declared_size: Option<u64>,
+        claim: Option<PartName>,
         content: S,
     ) -> StorageResult<StoredObject>
     where
@@ -179,13 +182,13 @@ impl StorageService {
                 size: written.size,
                 content_type: written.content_type,
                 blake3: written.blake3,
+                claim,
             })
             .await?)
     }
 
-    /// Écriture en échec : octets retirés du support, fiche supprimée. Un échec de ce nettoyage
-    /// est journalisé ; le worker retire alors l'écriture à la fin de son délai.
-    pub(crate) async fn abandon(&self, target: &WriteTarget<'_>) {
+    /// Retire du support les octets d'une écriture en échec ; un échec est journalisé.
+    pub(crate) async fn remove_written(&self, target: &WriteTarget<'_>) {
         if let Ok(backend) = self.backends.get(target.backend) {
             let removed = match location(target.path) {
                 Ok(path) => backend.remove(&path).await,
@@ -195,6 +198,12 @@ impl StorageService {
                 tracing::warn!(object = %target.id.to_sql(), code = %error.code(), "octets d'une écriture en échec non retirés");
             }
         }
+    }
+
+    /// Écriture en échec : octets retirés du support, fiche supprimée. Un échec de ce nettoyage
+    /// est journalisé ; le worker retire alors l'écriture à la fin de son délai.
+    async fn abandon(&self, target: &WriteTarget<'_>) {
+        self.remove_written(target).await;
         let deleted = self
             .store
             .object_delete(ObjectRefParams {

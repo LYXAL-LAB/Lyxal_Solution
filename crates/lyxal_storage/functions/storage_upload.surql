@@ -5,7 +5,7 @@
 -- Un envoi reprenable est une fiche à l'état pending ouverte avec resumable (fn::storage_object_begin).
 -- Ses octets arrivent en plusieurs requêtes : chaque partie écrite sur le support est inscrite
 -- par fn::storage_upload_part_add. Quand toutes les parties sont là, l'assembleur (l'auteur de
--- l'envoi ou le worker) réserve l'assemblage (fn::storage_upload_claim), relit les parties dans
+-- l'envoi ou le worker) réserve l'assemblage (fn::storage_upload_claim, qui rend un jeton), relit les parties dans
 -- l'ordre (fn::storage_upload_part_list), écrit le fichier et termine par fn::storage_object_commit.
 
 -- ----------------------------------------------------------------------------
@@ -166,7 +166,7 @@ DEFINE FUNCTION OVERWRITE fn::storage_upload_claim($params: object) {
         fields: {
             object: { pipeline: [{ rule: "record", options: { expected_table: "storage_object" } }], required: true },
             seconds: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 86400 } }], default: 1800 },
-            release: { pipeline: [{ rule: "boolean" }], default: false },
+            claim: { pipeline: [{ rule: "uuid" }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -181,10 +181,13 @@ DEFINE FUNCTION OVERWRITE fn::storage_upload_claim($params: object) {
     IF $object.state != "pending" {
         RETURN fn::error_result("STORAGE_OBJECT_STATE_INVALID", $p.language, { state: $object.state, expected: "pending" });
     };
-    IF $p.release {
-        LET $released = (UPDATE ONLY $object.id SET upload_claimed_until = NONE);
-        IF $released == NONE { RETURN fn::error_result("STORAGE_WRITE_FORBIDDEN", $p.language, { table: "storage_object" }); };
-        RETURN fn::result_ok(fn::storage_upload_view($released));
+    LET $until = time::now() + duration::from_secs($p.seconds);
+    IF $p.claim IS NOT NONE {
+        -- Prolongation : seulement par le détenteur d'une réservation toujours en cours
+        IF $p.claim != $object.upload_claim OR !fn::storage_upload_claimed($object) { RETURN fn::error_result("STORAGE_UPLOAD_BUSY", $p.language, {}); };
+        LET $renewed = (UPDATE ONLY $object.id SET upload_claimed_until = $until);
+        IF $renewed == NONE { RETURN fn::error_result("STORAGE_WRITE_FORBIDDEN", $p.language, { table: "storage_object" }); };
+        RETURN fn::result_ok(object::extend(fn::storage_upload_view($renewed), { claim: $renewed.upload_claim }));
     };
     IF fn::storage_upload_claimed($object) { RETURN fn::error_result("STORAGE_UPLOAD_BUSY", $p.language, {}); };
     IF $object.pending_expires_at <= time::now() { RETURN fn::error_result("STORAGE_UPLOAD_EXPIRED", $p.language, {}); };
@@ -192,10 +195,42 @@ DEFINE FUNCTION OVERWRITE fn::storage_upload_claim($params: object) {
     IF $offset != $object.declared_size {
         RETURN fn::error_result("STORAGE_UPLOAD_OFFSET_MISMATCH", $p.language, { offset: $offset });
     };
-    LET $claimed = (UPDATE ONLY $object.id SET upload_claimed_until = time::now() + duration::from_secs($p.seconds));
+    LET $claimed = (UPDATE ONLY $object.id SET upload_claimed_until = $until, upload_claim = rand::uuid::v7());
     IF $claimed == NONE { RETURN fn::error_result("STORAGE_WRITE_FORBIDDEN", $p.language, { table: "storage_object" }); };
-    RETURN fn::result_ok(fn::storage_upload_view($claimed));
-} COMMENT "Réserve l'assemblage d'un envoi reprenable complet ({ object, seconds (1800) }) et rend son état (fn::storage_upload_get) : un seul assembleur à la fois (STORAGE_UPLOAD_BUSY), aucune partie n'est plus acceptée et l'envoi n'expire pas pendant la réservation ; refus si des octets manquent (STORAGE_UPLOAD_OFFSET_MISMATCH). release : rend la réservation après un échec passager. Droit : auteur de l'envoi, ou worker";
+    RETURN fn::result_ok(object::extend(fn::storage_upload_view($claimed), { claim: $claimed.upload_claim }));
+} COMMENT "Réserve l'assemblage d'un envoi reprenable complet ({ object, seconds (1800) }) et rend son état avec le jeton de la réservation (claim) : un seul assembleur à la fois (STORAGE_UPLOAD_BUSY), aucune partie n'est plus acceptée et l'envoi n'expire pas pendant la réservation ; refus si des octets manquent (STORAGE_UPLOAD_OFFSET_MISMATCH). Avec claim : prolonge la réservation, si ce jeton est toujours celui en cours (sinon STORAGE_UPLOAD_BUSY : l'assemblage a été repris par un autre). Droit : auteur de l'envoi, ou worker";
+
+-- ----------------------------------------------------------------------------
+-- fn::storage_upload_release
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::storage_upload_release($params: object) {
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            object: { pipeline: [{ rule: "record", options: { expected_table: "storage_object" } }], required: true },
+            claim: { pipeline: [{ rule: "uuid" }], required: true },
+            abandon: { pipeline: [{ rule: "boolean" }], default: false },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 20);
+    IF !$report.valid {
+        RETURN fn::error_result("STORAGE_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
+    };
+    LET $p = $report.value;
+    LET $object = (SELECT * FROM ONLY $p.object);
+    IF $object == NONE OR !$object.resumable { RETURN fn::error_result("STORAGE_OBJECT_NOT_FOUND", $p.language, { object: <string> $p.object }); };
+    IF !fn::storage_upload_allowed($object) { RETURN fn::error_result("STORAGE_PERMISSION_DENIED", $p.language, {}); };
+    -- Seul le détenteur de la réservation en cours la rend ou abandonne l'envoi
+    IF $object.state != "pending" OR $p.claim != $object.upload_claim { RETURN fn::error_result("STORAGE_UPLOAD_BUSY", $p.language, {}); };
+    LET $updated = IF $p.abandon {
+        (UPDATE ONLY $object.id SET state = "deleted", deleted_at = time::now(), purge_after = time::now(), pending_expires_at = NONE, upload_claimed_until = NONE, upload_claim = NONE)
+    } ELSE {
+        (UPDATE ONLY $object.id SET upload_claimed_until = NONE, upload_claim = NONE)
+    };
+    IF $updated == NONE { RETURN fn::error_result("STORAGE_WRITE_FORBIDDEN", $p.language, { table: "storage_object" }); };
+    RETURN fn::result_ok({ released: true, abandoned: $p.abandon });
+} COMMENT "Rend la réservation d'assemblage d'un envoi reprenable ({ object, claim, abandon }) : après un échec passager, l'envoi reste complet et sera assemblé plus tard ; avec abandon (contenu refusé), l'envoi passe à l'état deleted. Refus si le jeton n'est plus celui de la réservation en cours (STORAGE_UPLOAD_BUSY) : rien n'est modifié. Droit : auteur de l'envoi, ou worker";
 
 -- ----------------------------------------------------------------------------
 -- fn::storage_upload_ready_list

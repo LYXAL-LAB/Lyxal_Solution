@@ -4,7 +4,9 @@
 use bytes::Bytes;
 use futures::stream;
 use lyxal_runtime::worker::CancellationToken;
-use lyxal_storage::models::{ObjectGetParams, ObjectState};
+use lyxal_storage::models::{
+    ObjectCommitParams, ObjectGetParams, ObjectState, UploadClaimParams, UploadReleaseParams,
+};
 use lyxal_storage::{
     ClamAvScanner, CleanupReport, ScannerConfig, StorageCleanupWorker, StorageError,
     StorageService, UploadRequest, PART_SIZE,
@@ -412,4 +414,169 @@ async fn an_abandoned_or_expired_upload_leaves_nothing() {
         assert_eq!(count(&bench, "storage_upload_part").await, 0);
         assert_eq!(count(&bench, "storage_reclaim").await, 0);
     }
+}
+
+#[tokio::test]
+async fn an_assembly_stopped_by_the_shutdown_leaves_the_upload_complete() {
+    for kind in KINDS {
+        let bench = bench(kind).await;
+        let bucket = bench.bucket("libre").await;
+        let unreachable = bench.service.clone().with_scanner(scanner("127.0.0.1:1"));
+        let content = b"plan de chantier";
+        let (id, _) = send(&unreachable, &bucket, "plan.txt", content).await;
+
+        // Arrêt demandé : l'assemblage s'interrompt, rien n'est écrit, la réservation est rendue
+        let cancellation = CancellationToken::new();
+        cancellation.cancel();
+        let error = bench
+            .service
+            .upload_complete_until(&id, &cancellation)
+            .await
+            .expect_err("arrêt");
+        assert!(matches!(error, StorageError::Cancelled), "{error}");
+        assert!(error.is_retryable());
+        let status = bench.service.upload_status(&id).await.expect("état");
+        assert_eq!(
+            (status.state, status.complete),
+            (ObjectState::Pending, true),
+            "{kind:?}"
+        );
+        assert_eq!(parts_of(&bench.stored_paths().await), 2, "{kind:?}");
+        assert_eq!(bench.stored_paths().await.len(), 2, "{kind:?}");
+
+        // Le worker arrêté pendant un assemblage ne compte ni succès ni échec
+        let stopped = StorageCleanupWorker::new(
+            bench.store.clone(),
+            bench.backends.clone(),
+            Duration::from_secs(3600),
+            10,
+        )
+        .expect("worker")
+        .run_once(&cancellation)
+        .await
+        .expect("passage");
+        assert_eq!(stopped, CleanupReport::default());
+
+        // Au redémarrage, l'envoi est assemblé
+        assert_eq!(pass(&bench).await.assembled, 1, "{kind:?}");
+        let opened = bench
+            .service
+            .open(ObjectGetParams::by_address(&bucket, "plan.txt"), None)
+            .await
+            .expect("lecture");
+        assert_eq!(read_all(opened).await, content);
+    }
+}
+
+#[tokio::test]
+async fn a_late_assembler_cannot_finish_or_abandon_an_upload_taken_over() {
+    let bench = bench(Kind::Memory).await;
+    let bucket = bench.bucket("libre").await;
+    let unreachable = bench.service.clone().with_scanner(scanner("127.0.0.1:1"));
+    let content = b"plan de chantier";
+    let (id, _) = send(&unreachable, &bucket, "plan.txt", content).await;
+
+    // Un premier assembleur réserve l'assemblage, puis reste bloqué plus longtemps que sa
+    // réservation
+    let late = bench
+        .store
+        .upload_claim(UploadClaimParams {
+            object: id.clone(),
+            seconds: 60,
+            claim: None,
+        })
+        .await
+        .expect("réservation");
+    bench
+        .run(&format!(
+            "UPDATE {id} SET upload_claimed_until = time::now() - 1m;"
+        ))
+        .await;
+
+    // Le worker reprend l'assemblage et rend le fichier disponible
+    assert_eq!(pass(&bench).await.assembled, 1);
+
+    // L'assembleur en retard ne prolonge plus, ne termine plus et n'abandonne plus rien
+    let error = bench
+        .store
+        .upload_claim(UploadClaimParams {
+            object: id.clone(),
+            seconds: 60,
+            claim: Some(late.claim),
+        })
+        .await
+        .map_err(StorageError::from)
+        .expect_err("prolongation");
+    assert_eq!(error.code(), "STORAGE_OBJECT_STATE_INVALID");
+    let error = bench
+        .store
+        .upload_release(UploadReleaseParams {
+            object: id.clone(),
+            claim: late.claim,
+            abandon: true,
+        })
+        .await
+        .map_err(StorageError::from)
+        .expect_err("abandon");
+    assert_eq!(error.code(), "STORAGE_UPLOAD_BUSY");
+    assert!(error.is_business());
+    let opened = bench
+        .service
+        .open(ObjectGetParams::by_address(&bucket, "plan.txt"), None)
+        .await
+        .expect("lecture");
+    assert_eq!(read_all(opened).await, content);
+}
+
+#[tokio::test]
+async fn a_takeover_during_an_assembly_stops_the_first_assembler() {
+    let bench = bench(Kind::Memory).await;
+    let bucket = bench.bucket("libre").await;
+    let unreachable = bench.service.clone().with_scanner(scanner("127.0.0.1:1"));
+    let (id, _) = send(&unreachable, &bucket, "plan.txt", b"plan de chantier").await;
+
+    // Réservation reprise par un autre pendant qu'un assembleur détient un jeton périmé : sa
+    // fin d'écriture est refusée, et il ne supprime ni la fiche ni les octets
+    let first = bench
+        .store
+        .upload_claim(UploadClaimParams {
+            object: id.clone(),
+            seconds: 60,
+            claim: None,
+        })
+        .await
+        .expect("réservation");
+    bench
+        .run(&format!(
+            "UPDATE {id} SET upload_claimed_until = time::now() - 1m;"
+        ))
+        .await;
+    let second = bench
+        .store
+        .upload_claim(UploadClaimParams {
+            object: id.clone(),
+            seconds: 60,
+            claim: None,
+        })
+        .await
+        .expect("reprise");
+    assert_ne!(first.claim.to_string(), second.claim.to_string());
+    let error = bench
+        .store
+        .object_commit(ObjectCommitParams {
+            object: id.clone(),
+            size: 16,
+            content_type: "text/plain".to_string(),
+            blake3: lyxal_crypto::hash::blake3_hex(b"plan de chantier"),
+            claim: Some(first.claim),
+        })
+        .await
+        .map_err(StorageError::from)
+        .expect_err("fin d'écriture par l'assembleur en retard");
+    assert_eq!(error.code(), "STORAGE_UPLOAD_BUSY");
+    let status = bench.service.upload_status(&id).await.expect("état");
+    assert_eq!(
+        (status.state, status.complete),
+        (ObjectState::Pending, true)
+    );
 }

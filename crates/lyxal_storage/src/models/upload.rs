@@ -78,8 +78,47 @@ pub struct UploadClaimParams {
     pub object: String,
     /// Durée de la réservation, en secondes.
     pub seconds: i64,
-    /// Vrai pour rendre la réservation.
-    pub release: bool,
+    /// Jeton d'une réservation en cours, pour la prolonger ; absent pour réserver.
+    pub claim: Option<PartName>,
+}
+
+/// Résultat de `fn::storage_upload_claim` : envoi complet dont l'assemblage est réservé.
+#[derive(Debug, Clone, SurrealValue)]
+pub struct ClaimedUpload {
+    /// Envoi : la fiche du fichier.
+    pub id: StorageRecordId,
+    /// Support qui porte les octets.
+    pub backend: String,
+    /// Emplacement du fichier final sur le support.
+    pub path: String,
+    /// Type MIME annoncé.
+    pub declared_type: Option<String>,
+    /// Taille annoncée du fichier, en octets.
+    pub length: i64,
+    /// Taille maximale acceptée, en octets.
+    pub max_size: i64,
+    /// Jeton de la réservation : seul son détenteur termine ou abandonne l'envoi.
+    pub claim: PartName,
+}
+
+/// Paramètres de `fn::storage_upload_release`.
+#[derive(Debug, Clone, SurrealValue)]
+pub struct UploadReleaseParams {
+    /// Envoi (`storage_object:<clé>`).
+    pub object: String,
+    /// Jeton de la réservation.
+    pub claim: PartName,
+    /// Vrai pour abandonner l'envoi (contenu refusé) ; faux pour le laisser complet.
+    pub abandon: bool,
+}
+
+/// Résultat de `fn::storage_upload_release`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, SurrealValue)]
+pub struct UploadReleased {
+    /// Réservation rendue.
+    pub released: bool,
+    /// Envoi abandonné.
+    pub abandoned: bool,
 }
 
 /// Résultat de `fn::storage_upload_ready_list`.

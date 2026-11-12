@@ -11,22 +11,27 @@
 use bytes::{Bytes, BytesMut};
 use futures::stream::BoxStream;
 use futures::{Stream, StreamExt, TryStreamExt};
+use lyxal_runtime::worker::CancellationToken;
 use lyxal_surreal::ToSql;
 use object_store::path::Path;
 use object_store::{ObjectStore, ObjectStoreExt};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use crate::backend::location;
 use crate::error::{StorageError, StorageResult};
 use crate::models::{
-    ObjectBeginParams, ObjectRefParams, ObjectState, PartName, StoredObject, UploadClaimParams,
-    UploadPartAddParams, UploadRefParams, UploadStatus,
+    ClaimedUpload, ObjectBeginParams, ObjectRefParams, ObjectState, PartName, StoredObject,
+    UploadClaimParams, UploadPartAddParams, UploadRefParams, UploadReleaseParams, UploadStatus,
 };
 use crate::service::{StorageService, WriteTarget, PART_SIZE};
+use crate::store::StorageStore;
 
-/// Durée de la réservation de l'assemblage, en secondes : au-delà, un assemblage interrompu est
-/// repris par le worker.
+/// Durée de la réservation de l'assemblage, en secondes : au-delà, un assemblage interrompu
+/// brutalement est repris par le worker.
 const CLAIM_SECONDS: i64 = 1800;
+/// Délai après lequel un assemblage en cours prolonge sa réservation.
+const RENEW_AFTER: Duration = Duration::from_secs(300);
 
 /// Envoi reprenable à ouvrir.
 #[derive(Debug, Clone)]
@@ -52,13 +57,45 @@ pub struct Appended {
     pub object: Option<StoredObject>,
 }
 
-/// Octets d'une partie, lus en flux sur le support.
-async fn read_part(
+/// Lecture des parties pendant un assemblage : avant chaque partie, l'arrêt du serveur est
+/// vérifié et la réservation est prolongée si une part notable de sa durée est écoulée.
+#[derive(Clone)]
+struct PartReader {
+    store: StorageStore,
     backend: Arc<dyn ObjectStore>,
-    path: Path,
-) -> StorageResult<BoxStream<'static, StorageResult<Bytes>>> {
-    let part = backend.get(&path).await?;
-    Ok(part.into_stream().map_err(StorageError::from).boxed())
+    object: String,
+    claim: PartName,
+    cancellation: CancellationToken,
+    renewed: Arc<Mutex<Instant>>,
+}
+
+impl PartReader {
+    /// Octets d'une partie, lus en flux sur le support.
+    async fn read(self, path: Path) -> StorageResult<BoxStream<'static, StorageResult<Bytes>>> {
+        if self.cancellation.is_cancelled() {
+            return Err(StorageError::Cancelled);
+        }
+        let due = self
+            .renewed
+            .lock()
+            .map(|renewed| renewed.elapsed() >= RENEW_AFTER)
+            .unwrap_or(true);
+        if due {
+            // Refus : la réservation a été reprise par un autre assembleur, celui-ci s'arrête
+            self.store
+                .upload_claim(UploadClaimParams {
+                    object: self.object.clone(),
+                    seconds: CLAIM_SECONDS,
+                    claim: Some(self.claim),
+                })
+                .await?;
+            if let Ok(mut renewed) = self.renewed.lock() {
+                *renewed = Instant::now();
+            }
+        }
+        let part = self.backend.get(&path).await?;
+        Ok(part.into_stream().map_err(StorageError::from).boxed())
+    }
 }
 
 /// Emplacement d'une partie : `<emplacement du fichier>.parts/<nom>`.
@@ -181,7 +218,8 @@ impl StorageService {
     }
 
     /// Écrit une partie sur le support, puis l'inscrit ; rend la nouvelle position. Une partie
-    /// refusée par la base (position prise par une autre requête, envoi terminé) est retirée.
+    /// refusée par la base (position prise par une autre requête, envoi terminé) est retirée ;
+    /// après une panne de la base, on vérifie si elle a été inscrite.
     async fn store_part(
         &self,
         status: &UploadStatus,
@@ -199,17 +237,39 @@ impl StorageService {
                 object: status.id.to_sql(),
                 offset: i64::try_from(offset).unwrap_or(i64::MAX),
                 size: i64::try_from(size).unwrap_or(i64::MAX),
-                name,
+                name: name,
             })
             .await;
-        match added {
-            Ok(status) => Ok(position(status.offset)),
-            Err(error) => {
+        let error = match added.map_err(StorageError::from) {
+            Ok(status) => return Ok(position(status.offset)),
+            Err(error) => error,
+        };
+        // Refus de la base : la partie n'est pas inscrite. Panne (connexion coupée, réponse
+        // illisible, conflit de transaction) : la base a pu l'inscrire ; on le lui demande
+        let registered = if error.is_business() {
+            Some(false)
+        } else {
+            self.store
+                .upload_part_list(UploadRefParams {
+                    object: status.id.to_sql(),
+                })
+                .await
+                .ok()
+                .map(|parts| parts.items.iter().any(|part| part.name == name))
+        };
+        match registered {
+            // Inscrite malgré la panne : la position a avancé
+            Some(true) => Ok(offset + size),
+            // Non inscrite : ses octets sont retirés
+            Some(false) => {
                 if let Err(removal) = backend.remove(&path).await {
                     tracing::warn!(object = %status.id.to_sql(), code = %removal.code(), "octets d'une partie refusée non retirés");
                 }
-                Err(error.into())
+                Err(error)
             }
+            // Base toujours injoignable : les octets restent sur le support ; s'ils ne sont pas
+            // inscrits, ils partent avec le dossier des parties quand l'envoi n'est plus en cours
+            None => Err(error),
         }
     }
 
@@ -219,65 +279,99 @@ impl StorageService {
     /// passager (support, antivirus ou base indisponible) le laisse complet : le worker
     /// l'assemblera.
     pub async fn upload_complete(&self, upload: &str) -> StorageResult<StoredObject> {
-        let status = self
+        self.upload_complete_until(upload, &CancellationToken::new())
+            .await
+    }
+
+    /// Comme [`Self::upload_complete`], interrompu proprement par `cancellation` (arrêt du
+    /// serveur) entre deux parties : l'écriture en cours est abandonnée sur le support, la
+    /// réservation est rendue, l'envoi reste complet (`StorageError::Cancelled`).
+    ///
+    /// La réservation porte un jeton : elle est prolongée pendant un assemblage long, et un
+    /// assembleur dont la réservation a été reprise par un autre (après un blocage plus long
+    /// qu'elle) ne termine ni n'abandonne plus rien.
+    pub async fn upload_complete_until(
+        &self,
+        upload: &str,
+        cancellation: &CancellationToken,
+    ) -> StorageResult<StoredObject> {
+        let claimed = self
             .store
             .upload_claim(UploadClaimParams {
                 object: upload.to_string(),
                 seconds: CLAIM_SECONDS,
-                release: false,
+                claim: None,
             })
             .await?;
         let target = WriteTarget {
-            id: &status.id,
-            backend: &status.backend,
-            path: &status.path,
-            max_size: status.max_size,
-            declared_type: status.declared_type.as_deref(),
+            id: &claimed.id,
+            backend: &claimed.backend,
+            path: &claimed.path,
+            max_size: claimed.max_size,
+            declared_type: claimed.declared_type.as_deref(),
         };
-        let assembled = self.assemble(&status, &target).await;
-        match &assembled {
+        let assembled = self.assemble(&claimed, &target, cancellation).await;
+        let Err(error) = &assembled else {
+            return assembled;
+        };
+        // Contenu refusé : l'envoi est abandonné. Échec passager : il reste complet. Dans les
+        // deux cas seulement si cette réservation est toujours celle en cours
+        let abandon = !error.is_retryable() && error.code() != "STORAGE_UPLOAD_BUSY";
+        let released = self
+            .store
+            .upload_release(UploadReleaseParams {
+                object: upload.to_string(),
+                claim: claimed.claim,
+                abandon,
+            })
+            .await;
+        match released {
+            Ok(_) if abandon => self.remove_written(&target).await,
             Ok(_) => {}
-            Err(error) if error.is_retryable() => {
-                let released = self
-                    .store
-                    .upload_claim(UploadClaimParams {
-                        object: upload.to_string(),
-                        seconds: CLAIM_SECONDS,
-                        release: true,
-                    })
-                    .await;
-                if let Err(release) = released {
-                    tracing::warn!(object = %status.id.to_sql(), error = %release, "réservation d'un assemblage en échec non rendue");
-                }
+            Err(release) => {
+                tracing::warn!(object = %claimed.id.to_sql(), error = %release, "réservation d'un assemblage en échec non rendue");
             }
-            Err(_) => self.abandon(&target).await,
         }
         assembled
     }
 
     async fn assemble(
         &self,
-        status: &UploadStatus,
+        claimed: &ClaimedUpload,
         target: &WriteTarget<'_>,
+        cancellation: &CancellationToken,
     ) -> StorageResult<StoredObject> {
         let parts = self
             .store
             .upload_part_list(UploadRefParams {
-                object: status.id.to_sql(),
+                object: claimed.id.to_sql(),
             })
             .await?
             .items;
-        let backend = self.backends.get(&status.backend)?.store().clone();
+        let backend = self.backends.get(&claimed.backend)?.store().clone();
         let mut locations = Vec::with_capacity(parts.len());
         for part in &parts {
-            locations.push(part_location(&status.path, &part.name)?);
+            locations.push(part_location(&claimed.path, &part.name)?);
         }
+        let reader = PartReader {
+            store: self.store.clone(),
+            backend,
+            object: claimed.id.to_sql(),
+            claim: claimed.claim,
+            cancellation: cancellation.clone(),
+            renewed: Arc::new(Mutex::new(Instant::now())),
+        };
         let content = futures::stream::iter(locations)
-            .then(move |path| read_part(backend.clone(), path))
+            .then(move |path| reader.clone().read(path))
             .try_flatten()
             .boxed();
-        self.write_and_commit(target, Some(position(status.length)), content)
-            .await
+        self.write_and_commit(
+            target,
+            Some(position(claimed.length)),
+            Some(claimed.claim),
+            content,
+        )
+        .await
     }
 
     /// Abandonne un envoi : sa fiche est supprimée, ses parties sont retirées par le worker.

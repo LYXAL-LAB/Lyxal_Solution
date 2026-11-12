@@ -22,8 +22,8 @@ pub use settings::{
 };
 pub use types::{StorageDatetime, StorageRecordId};
 pub use upload::{
-    PartName, UploadClaimParams, UploadPart, UploadPartAddParams, UploadPartList, UploadReadyList,
-    UploadRefParams, UploadStatus,
+    ClaimedUpload, PartName, UploadClaimParams, UploadPart, UploadPartAddParams, UploadPartList,
+    UploadReadyList, UploadRefParams, UploadReleaseParams, UploadReleased, UploadStatus,
 };
 pub use worker::{
     BatchParams, Expired, PageParams, PurgeItem, PurgeList, Purged, QuarantineParams, ReclaimDone,

@@ -10,12 +10,13 @@ use surrealdb::Surreal;
 
 use crate::models::{
     BatchParams, BegunObject, Bucket, BucketCreateParams, BucketDeleted, BucketDetails, BucketList,
-    BucketListParams, BucketRefParams, BucketUpdateParams, Expired, ObjectBeginParams,
-    ObjectCommitParams, ObjectGetParams, ObjectList, ObjectListParams, ObjectRefParams,
-    ObjectUsageParams, PageParams, PurgeList, Purged, QuarantineParams, ReclaimDone,
-    ReclaimDoneParams, ReclaimList, ScopeUsage, SettingsGetParams, SettingsSetParams, SettingsView,
-    StoredObject, StoredSettings, UploadClaimParams, UploadPartAddParams, UploadPartList,
-    UploadReadyList, UploadRefParams, UploadStatus,
+    BucketListParams, BucketRefParams, BucketUpdateParams, ClaimedUpload, Expired,
+    ObjectBeginParams, ObjectCommitParams, ObjectGetParams, ObjectList, ObjectListParams,
+    ObjectRefParams, ObjectUsageParams, PageParams, PurgeList, Purged, QuarantineParams,
+    ReclaimDone, ReclaimDoneParams, ReclaimList, ScopeUsage, SettingsGetParams, SettingsSetParams,
+    SettingsView, StoredObject, StoredSettings, UploadClaimParams, UploadPartAddParams,
+    UploadPartList, UploadReadyList, UploadRefParams, UploadReleaseParams, UploadReleased,
+    UploadStatus,
 };
 
 /// Store de `lyxal_storage` sur un client SurrealDB (`Surreal<Any>`).
@@ -144,9 +145,15 @@ impl StorageStore {
         self.call_fn("storage_upload_part_list", params).await
     }
 
-    /// `fn::storage_upload_claim` : assemblage d'un envoi complet réservé, ou réservation rendue.
-    pub async fn upload_claim(&self, params: UploadClaimParams) -> Call<UploadStatus> {
+    /// `fn::storage_upload_claim` : assemblage d'un envoi complet réservé, ou réservation
+    /// prolongée.
+    pub async fn upload_claim(&self, params: UploadClaimParams) -> Call<ClaimedUpload> {
         self.call_fn("storage_upload_claim", params).await
+    }
+
+    /// `fn::storage_upload_release` : réservation rendue, ou envoi abandonné par son détenteur.
+    pub async fn upload_release(&self, params: UploadReleaseParams) -> Call<UploadReleased> {
+        self.call_fn("storage_upload_release", params).await
     }
 
     /// `fn::storage_upload_ready_list` : envois complets à assembler.

@@ -18,7 +18,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use crate::backend::{location, Backends};
-use crate::error::StorageResult;
+use crate::error::{StorageError, StorageResult};
 use crate::models::{
     BatchParams, ObjectRefParams, PageParams, PurgeItem, ReclaimDoneParams, ReclaimItem,
 };
@@ -124,8 +124,14 @@ impl StorageCleanupWorker {
             if cancellation.is_cancelled() {
                 return Ok(report);
             }
-            match service.upload_complete(&upload.to_sql()).await {
+            match service
+                .upload_complete_until(&upload.to_sql(), cancellation)
+                .await
+            {
                 Ok(_) => report.assembled += 1,
+                // Arrêt du serveur pendant l'assemblage : l'envoi reste complet, repris au
+                // prochain démarrage
+                Err(StorageError::Cancelled) => return Ok(report),
                 Err(error) => {
                     report.failed += 1;
                     tracing::warn!(object = %upload.to_sql(), code = %error.code(), error = %error, "envoi reprenable non assemblé");
