@@ -28,7 +28,7 @@ use lyxal_runtime::worker::{
     WorkerDescriptor, WorkerId,
 };
 
-use super::source::{stop_flag, BatchSource};
+use super::source::{joined, BatchSource};
 use crate::adapters::{RawRecordDto, SourceItem};
 use crate::error::{IngestionError, IngestionResult};
 use crate::models::{QuarantineRecord, RawRecord, StagedItem};
@@ -347,8 +347,10 @@ impl IngestionWorker {
         let mut verified_count = batch.lignes_verifiees;
         let mut to_confirm_count = batch.lignes_a_confirmer;
         let mut rejected_count = batch.lignes_rejetees;
-        // Lecture arrêtée dès que ce traitement s'arrête (fin, erreur, arrêt du serveur)
-        let (stop, _stop_reading) = stop_flag();
+        // Lecture arrêtée avec le serveur, et dès que ce traitement s'arrête (fin, erreur,
+        // réservation perdue)
+        let stop = cancellation.child_token();
+        let _stop_reading = stop.clone().drop_guard();
         let interrupted =
             |cursor_offset, total_lignes, verified, to_confirm, rejected| BatchProcessingReport {
                 batch_id: batch_id.to_string(),
@@ -364,11 +366,14 @@ impl IngestionWorker {
         // 3. Contrôle de lecture avant le premier bloc : la source est lue en entier, au fil de
         // l'eau, sans rien garder. Une source illisible, ou dont les octets n'ont plus la taille
         // ou l'empreinte du lot, fait échouer le lot sans rien mettre en staging.
-        let counted = tokio::select! {
-            counted = async {
-                BatchSource::open(&self.storage, &batch).await?.count(stop.clone()).await
-            } => counted?,
+        // La tâche de lecture est attendue : à l'arrêt, elle se termine d'elle-même.
+        let source = tokio::select! {
+            source = BatchSource::open(&self.storage, &batch, stop.clone()) => Some(source?),
             _ = cancellation.cancelled() => None,
+        };
+        let counted = match source {
+            Some(source) => joined(source.count().await)?,
+            None => None,
         };
         let Some(total_lines) = counted else {
             return Ok(interrupted(
@@ -382,36 +387,15 @@ impl IngestionWorker {
 
         // 4. Traitement par blocs, lus à la demande, avec reprise exacte depuis cursor_offset :
         // les éléments déjà traités sont relus et passés
-        let (mut chunks, reading) = BatchSource::open(&self.storage, &batch).await?.chunks(
-            current_offset,
-            chunk_size,
-            stop.clone(),
-        );
+        let (mut chunks, reading) = BatchSource::open(&self.storage, &batch, stop.clone())
+            .await?
+            .chunks(current_offset, chunk_size);
+        // Les blocs sont traités dans un bloc à part : quelle que soit son issue, la lecture est
+        // arrêtée puis attendue avant de rendre la main
+        let processed: IngestionResult<()> = async {
         loop {
-            // Vérification coopérative de l'arrêt gracieux
-            let next = tokio::select! {
-                next = chunks.recv() => next,
-                _ = cancellation.cancelled() => {
-                    // Sauvegarde du checkpoint actuel avant coupure
-                    claimed
-                        .checkpoint(BatchProgress {
-                            cursor_offset: current_offset,
-                            total_lignes: total_lines,
-                            verified: verified_count,
-                            to_confirm: to_confirm_count,
-                            rejected: rejected_count,
-                        })
-                        .await?;
-                    return Ok(interrupted(
-                        current_offset,
-                        total_lines,
-                        verified_count,
-                        to_confirm_count,
-                        rejected_count,
-                    ));
-                }
-            };
-            let Some(chunk) = next else {
+            // À l'arrêt du serveur, la lecture ferme le canal : le bloc en cours se termine
+            let Some(chunk) = chunks.recv().await else {
                 break;
             };
             let chunk = chunk?;
@@ -664,12 +648,37 @@ impl IngestionWorker {
                 })
                 .await?;
         }
-
-        // Fin de la lecture : une tâche de lecture arrêtée anormalement est une erreur
-        if let Err(error) = reading.await {
+        Ok(())
+        }
+        .await;
+        stop.cancel();
+        drop(chunks);
+        // Fin de la lecture : une tâche de lecture terminée anormalement est une erreur
+        let reading = reading.await;
+        processed?;
+        if let Err(error) = reading {
             return Err(IngestionError::Storage(format!(
                 "lecture du fichier source interrompue : {error}"
             )));
+        }
+        // Arrêt du serveur avant la fin : point de reprise enregistré, le lot reste à traiter
+        if current_offset != total_lines && cancellation.is_cancelled() {
+            claimed
+                .checkpoint(BatchProgress {
+                    cursor_offset: current_offset,
+                    total_lignes: total_lines,
+                    verified: verified_count,
+                    to_confirm: to_confirm_count,
+                    rejected: rejected_count,
+                })
+                .await?;
+            return Ok(interrupted(
+                current_offset,
+                total_lines,
+                verified_count,
+                to_confirm_count,
+                rejected_count,
+            ));
         }
         if current_offset != total_lines {
             return Err(IngestionError::SourceAltered(format!(

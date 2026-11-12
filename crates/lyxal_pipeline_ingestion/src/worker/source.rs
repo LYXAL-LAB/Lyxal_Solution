@@ -4,30 +4,31 @@
 //! (`lyxal_parsing`) sont synchrones. La lecture tourne donc dans une tâche bloquante, attendue
 //! par le worker : elle tire les octets du flux à la demande et rend les éléments de la source,
 //! comptés (contrôle de lecture) ou regroupés en blocs envoyés par un canal borné. Rien n'est
-//! chargé en entier ; la tâche s'arrête dès que le worker abandonne la lecture.
+//! chargé en entier. La tâche s'arrête avec le worker : chaque lecture d'octets attend le
+//! stockage ou le signal d'arrêt, le premier des deux ; le worker attend ensuite sa fin.
 
 use bytes::Bytes;
 use futures::stream::BoxStream;
 use futures::StreamExt;
 use lyxal_crypto::hash::Blake3Hasher;
+use lyxal_runtime::worker::CancellationToken;
 use lyxal_storage::models::ObjectGetParams;
 use lyxal_storage::{StorageError, StorageResult, StorageService};
 use std::io::Read;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 use tokio::runtime::Handle;
 use tokio::sync::mpsc;
+use tokio::task::JoinHandle;
 
 use crate::adapters::{AdapterRegistry, SourceItem};
 use crate::error::{IngestionError, IngestionResult};
 use crate::models::IngestionBatch;
 
-/// Éléments lus entre deux contrôles de l'arrêt pendant le contrôle de lecture.
-const STOP_CHECK_EVERY: usize = 256;
-
 /// État de la lecture des octets, partagé entre le lecteur de format et la tâche de lecture.
 struct SourceState {
     handle: Handle,
+    /// Signal d'arrêt de la lecture (arrêt du serveur, ou traitement abandonné).
+    stop: CancellationToken,
     stream: BoxStream<'static, StorageResult<Bytes>>,
     current: Bytes,
     hasher: Option<Blake3Hasher>,
@@ -86,8 +87,23 @@ impl Read for SourceReader {
         let mut state = self.state();
         while state.current.is_empty() {
             let handle = state.handle.clone();
-            match handle.block_on(state.stream.next()) {
+            let stop = state.stop.clone();
+            // Le stockage, ou l'arrêt : une lecture bloquée sur le support ne retient pas l'arrêt
+            let next = handle.block_on(async {
+                tokio::select! {
+                    biased;
+                    _ = stop.cancelled() => Some(Err(None)),
+                    next = state.stream.next() => next.map(|chunk| chunk.map_err(Some)),
+                }
+            });
+            match next {
                 None => return Ok(0),
+                Some(Err(None)) => {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::Interrupted,
+                        "lecture arrêtée",
+                    ))
+                }
                 Some(Ok(chunk)) => {
                     state.size += chunk.len() as u64;
                     if let Some(hasher) = state.hasher.as_mut() {
@@ -95,7 +111,7 @@ impl Read for SourceReader {
                     }
                     state.current = chunk;
                 }
-                Some(Err(error)) => {
+                Some(Err(Some(error))) => {
                     let message = error.to_string();
                     state.failure = Some(error);
                     return Err(std::io::Error::other(message));
@@ -116,27 +132,19 @@ fn unavailable(error: &StorageError) -> IngestionError {
     }
 }
 
-/// Arrêt de la tâche de lecture demandé quand le worker abandonne la lecture (fin, erreur,
-/// arrêt du serveur).
-pub(super) struct StopOnDrop(Arc<AtomicBool>);
-
-impl Drop for StopOnDrop {
-    fn drop(&mut self) {
-        self.0.store(true, Ordering::Relaxed);
-    }
-}
-
 /// Fichier source d'un lot, ouvert dans le stockage.
 pub(super) struct BatchSource {
     reader: SourceReader,
     batch: IngestionBatch,
+    stop: CancellationToken,
 }
 
 impl BatchSource {
-    /// Ouvre le fichier source du lot dans `lyxal_storage`.
+    /// Ouvre le fichier source du lot dans `lyxal_storage` ; `stop` arrête la lecture.
     pub(super) async fn open(
         storage: &StorageService,
         batch: &IngestionBatch,
+        stop: CancellationToken,
     ) -> IngestionResult<Self> {
         let opened = storage
             .open(ObjectGetParams::by_id(batch.source_object.clone()), None)
@@ -145,6 +153,7 @@ impl BatchSource {
         Ok(Self {
             reader: SourceReader(Arc::new(Mutex::new(SourceState {
                 handle: Handle::current(),
+                stop: stop.clone(),
                 stream: opened.content,
                 current: Bytes::new(),
                 hasher: Some(Blake3Hasher::new()),
@@ -152,6 +161,7 @@ impl BatchSource {
                 failure: None,
             }))),
             batch: batch.clone(),
+            stop,
         })
     }
 
@@ -178,60 +188,72 @@ impl BatchSource {
 
     /// Contrôle de lecture : lit toute la source sans rien garder et rend le nombre de ses
     /// éléments. Une source illisible, ou dont les octets n'ont plus la taille ou l'empreinte
-    /// du lot, est refusée avant toute mise en staging. `None` si la lecture a été arrêtée.
-    pub(super) async fn count(self, stop: Arc<AtomicBool>) -> IngestionResult<Option<usize>> {
-        let task = tokio::task::spawn_blocking(move || {
-            let mut total = 0usize;
-            for item in self.items()? {
-                item?;
-                total += 1;
-                if total.is_multiple_of(STOP_CHECK_EVERY) && stop.load(Ordering::Relaxed) {
-                    return Ok(None);
-                }
+    /// du lot, est refusée avant toute mise en staging. `None` si la lecture a été arrêtée. La
+    /// tâche rendue est à attendre : elle se termine d'elle-même à l'arrêt.
+    pub(super) fn count(self) -> JoinHandle<IngestionResult<Option<usize>>> {
+        tokio::task::spawn_blocking(move || {
+            let counted = self.count_items();
+            // Une lecture arrêtée n'est pas une erreur de la source
+            if self.stop.is_cancelled() {
+                return Ok(None);
             }
-            let (size, hash) = self.reader.finish()?;
-            if size != self.batch.taille_octets as u64 || hash != self.batch.file_hash_blake3 {
-                return Err(IngestionError::SourceAltered(format!(
-                    "{size} octets relus pour {} enregistrés, ou empreinte différente",
-                    self.batch.taille_octets
-                )));
+            counted.map(Some)
+        })
+    }
+
+    fn count_items(&self) -> IngestionResult<usize> {
+        let mut total = 0usize;
+        for item in self.items()? {
+            item?;
+            total += 1;
+            if self.stop.is_cancelled() {
+                return Ok(total);
             }
-            Ok(Some(total))
-        });
-        joined(task.await)
+        }
+        let (size, hash) = self.reader.finish()?;
+        if size != self.batch.taille_octets as u64 || hash != self.batch.file_hash_blake3 {
+            return Err(IngestionError::SourceAltered(format!(
+                "{size} octets relus pour {} enregistrés, ou empreinte différente",
+                self.batch.taille_octets
+            )));
+        }
+        Ok(total)
     }
 
     /// Lit la source par blocs de `chunk_size` éléments, après en avoir passé `skip` (déjà
     /// traités avant une reprise). Les blocs arrivent par un canal borné : au plus un bloc en
-    /// attente et un en cours de lecture. La tâche de lecture est rendue pour être attendue à
-    /// la fin.
+    /// attente et un en cours de lecture. La tâche de lecture est rendue pour être attendue ;
+    /// à l'arrêt, elle ferme le canal sans rendre d'erreur.
     pub(super) fn chunks(
         self,
         skip: usize,
         chunk_size: usize,
-        stop: Arc<AtomicBool>,
     ) -> (
         mpsc::Receiver<IngestionResult<Vec<SourceItem>>>,
-        tokio::task::JoinHandle<()>,
+        JoinHandle<()>,
     ) {
         let (sender, receiver) = mpsc::channel(1);
         let task = tokio::task::spawn_blocking(move || {
             let items = match self.items() {
                 Ok(items) => items,
                 Err(error) => {
-                    let _ = sender.blocking_send(Err(error));
+                    if !self.stop.is_cancelled() {
+                        let _ = sender.blocking_send(Err(error));
+                    }
                     return;
                 }
             };
             let mut chunk = Vec::with_capacity(chunk_size);
             for item in items.skip(skip) {
-                if stop.load(Ordering::Relaxed) {
+                if self.stop.is_cancelled() {
                     return;
                 }
                 match item {
                     Ok(item) => chunk.push(item),
                     Err(error) => {
-                        let _ = sender.blocking_send(Err(error));
+                        if !self.stop.is_cancelled() {
+                            let _ = sender.blocking_send(Err(error));
+                        }
                         return;
                     }
                 }
@@ -261,18 +283,15 @@ impl SourceReader {
     }
 }
 
-/// Résultat d'une tâche de lecture ; une tâche interrompue est une erreur de traitement.
-fn joined<T>(result: Result<IngestionResult<T>, tokio::task::JoinError>) -> IngestionResult<T> {
+/// Résultat d'une tâche de lecture ; une tâche terminée anormalement est une erreur de
+/// traitement.
+pub(super) fn joined<T>(
+    result: Result<IngestionResult<T>, tokio::task::JoinError>,
+) -> IngestionResult<T> {
     match result {
         Ok(result) => result,
         Err(error) => Err(IngestionError::Storage(format!(
             "lecture du fichier source interrompue : {error}"
         ))),
     }
-}
-
-/// Indicateur d'arrêt d'une lecture et sa garde : la lecture s'arrête quand la garde est lâchée.
-pub(super) fn stop_flag() -> (Arc<AtomicBool>, StopOnDrop) {
-    let flag = Arc::new(AtomicBool::new(false));
-    (flag.clone(), StopOnDrop(flag))
 }
