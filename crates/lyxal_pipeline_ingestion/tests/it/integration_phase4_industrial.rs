@@ -123,11 +123,10 @@ async fn test_worker_interruption_checkpoint_and_resume_no_duplication() {
         source_format_version: "1.0".to_string(),
         source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "FOURNISSEUR_PLACO".to_string(),
-        nom_fichier: "catalogue_placo_60.csv".to_string(),
-        file_hash_blake3: lyxal_crypto::blake3_hex(b"blake3_hash_60_items_test"),
-        taille_octets: 4096,
+        source_object: crate::support::source(&store, "catalogue_placo_60.csv", b"blake3_hash_60_items_test").await,
         chunk_size: 20, // 3 chunks de 20 lignes
         provenance_details: serde_json::json!({ "format": "CSV" }),
+        commercial_proof: None,
     };
     store.create_batch(&batch).await.expect("Lot créé en base");
 
@@ -139,20 +138,14 @@ async fn test_worker_interruption_checkpoint_and_resume_no_duplication() {
         ));
     }
 
-    let worker = IngestionWorker::new(store.clone()).expect("worker");
+    let worker = crate::support::worker(&store);
 
     // 1. Première passe : Annulation anticipée du CancellationToken pour forcer l'interruption
     let cancel_token = CancellationToken::new();
     cancel_token.cancel(); // Annulé dès le départ pour interrompre au premier point de contrôle
 
     let report_interrupted = worker
-        .process_batch(
-            batch_id,
-            csv_data.as_bytes(),
-            SourceFormat::Csv,
-            None,
-            &cancel_token,
-        )
+        .process_batch(batch_id, &cancel_token)
         .await
         .expect("Traitement sous annulation exécuté");
 
@@ -172,13 +165,7 @@ async fn test_worker_interruption_checkpoint_and_resume_no_duplication() {
     // 2. Seconde passe : Reprise avec CancellationToken actif jusqu'au bout
     let active_token = CancellationToken::new();
     let report_completed = worker
-        .process_batch(
-            batch_id,
-            csv_data.as_bytes(),
-            SourceFormat::Csv,
-            None,
-            &active_token,
-        )
+        .process_batch(batch_id, &active_token)
         .await
         .expect("Reprise réussie");
 
@@ -216,11 +203,10 @@ async fn test_batch_reexecution_idempotence() {
         source_format_version: "1.0".to_string(),
         source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "FOURNISSEUR_ISOVER".to_string(),
-        nom_fichier: "isover_10.csv".to_string(),
-        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_isover_idempotence"),
-        taille_octets: 1024,
+        source_object: crate::support::source(&store, "isover_10.csv", b"hash_isover_idempotence").await,
         chunk_size: 10,
         provenance_details: serde_json::json!({}),
+        commercial_proof: None,
     };
     store.create_batch(&batch).await.unwrap();
 
@@ -229,31 +215,19 @@ async fn test_batch_reexecution_idempotence() {
         csv_data.push_str(&format!("ISO_{i};Isolant GR32 Roul {i};;Isover;M2;14.20\n"));
     }
 
-    let worker = IngestionWorker::new(store.clone()).expect("worker");
+    let worker = crate::support::worker(&store);
     let token = CancellationToken::new();
 
     // 1ère exécution -> Passe en STAGED
     let rep1 = worker
-        .process_batch(
-            batch_id,
-            csv_data.as_bytes(),
-            SourceFormat::Csv,
-            None,
-            &token,
-        )
+        .process_batch(batch_id, &token)
         .await
         .unwrap();
     assert_eq!(rep1.final_status, BatchStatus::Staged);
 
     // 2ème exécution immédiate du même lot -> Retourne directement sans retraiter
     let rep2 = worker
-        .process_batch(
-            batch_id,
-            csv_data.as_bytes(),
-            SourceFormat::Csv,
-            None,
-            &token,
-        )
+        .process_batch(batch_id, &token)
         .await
         .unwrap();
     assert_eq!(rep2.final_status, BatchStatus::Staged);
@@ -274,7 +248,7 @@ async fn test_batch_reexecution_idempotence() {
 #[tokio::test]
 async fn test_concurrent_batch_locking_prevention() {
     let store = crate::support::installed_store().await;
-    let worker = IngestionWorker::new(store.clone()).expect("worker");
+    let worker = crate::support::worker(&store);
 
     let batch1 = NewBatch {
         id: Some("batch_A".to_string()),
@@ -282,11 +256,10 @@ async fn test_concurrent_batch_locking_prevention() {
         source_format_version: "1.0".to_string(),
         source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "F1".to_string(),
-        nom_fichier: "a.csv".to_string(),
-        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_a"),
-        taille_octets: 100,
+        source_object: crate::support::source(&store, "a.csv", b"hash_a").await,
         chunk_size: 50,
         provenance_details: serde_json::json!({}),
+        commercial_proof: None,
     };
     store.create_batch(&batch1).await.unwrap();
 
@@ -295,7 +268,7 @@ async fn test_concurrent_batch_locking_prevention() {
 
     // Lancement normal
     let rep = worker
-        .process_batch("batch_A", csv_a.as_bytes(), SourceFormat::Csv, None, &token)
+        .process_batch("batch_A", &token)
         .await
         .unwrap();
     assert_eq!(rep.final_status, BatchStatus::Staged);
@@ -307,7 +280,7 @@ async fn test_concurrent_batch_locking_prevention() {
 #[tokio::test]
 async fn test_graceful_shutdown_under_cancellation_token() {
     let store = crate::support::installed_store().await;
-    let worker = IngestionWorker::new(store.clone()).expect("worker");
+    let worker = crate::support::worker(&store);
 
     let token = CancellationToken::new();
     token.cancel(); // Annulé immédiatement
@@ -318,11 +291,10 @@ async fn test_graceful_shutdown_under_cancellation_token() {
         source_format_version: "1.0".to_string(),
         source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "F1".to_string(),
-        nom_fichier: "shutdown.csv".to_string(),
-        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_shutdown"),
-        taille_octets: 1000,
+        source_object: crate::support::source(&store, "shutdown.csv", b"hash_shutdown").await,
         chunk_size: 10,
         provenance_details: serde_json::json!({}),
+        commercial_proof: None,
     };
     store.create_batch(&batch).await.unwrap();
 
@@ -332,13 +304,7 @@ async fn test_graceful_shutdown_under_cancellation_token() {
     }
 
     let rep = worker
-        .process_batch(
-            "batch_shutdown_test",
-            csv.as_bytes(),
-            SourceFormat::Csv,
-            None,
-            &token,
-        )
+        .process_batch("batch_shutdown_test", &token)
         .await
         .unwrap();
 
@@ -378,11 +344,10 @@ async fn test_industrial_benchmark_over_1500_items() {
         source_format_version: "1.0".to_string(),
         source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "FOURNISSEUR_BTP_GLOBAL".to_string(),
-        nom_fichier: "catalogue_btp_1600.csv".to_string(),
-        file_hash_blake3: lyxal_crypto::blake3_hex(b"blake3_benchmark_1600_btp"),
-        taille_octets: 128 * 1024,
+        source_object: crate::support::source(&store, "catalogue_btp_1600.csv", b"blake3_benchmark_1600_btp").await,
         chunk_size: 200, // 8 blocs de 200 lignes avec checkpoints persistants
         provenance_details: serde_json::json!({ "benchmark": true }),
+        commercial_proof: None,
     };
     store.create_batch(&batch).await.unwrap();
 
@@ -405,7 +370,7 @@ async fn test_industrial_benchmark_over_1500_items() {
         ));
     }
 
-    let worker = IngestionWorker::new(store.clone()).expect("worker");
+    let worker = crate::support::worker(&store);
     let proof = CommercialProof::new(
         CommercialProofType::CertifiedManufacturerEdi,
         "EDI-BENCHMARK-2026-X1600",
@@ -418,13 +383,7 @@ async fn test_industrial_benchmark_over_1500_items() {
     let token = CancellationToken::new();
 
     let report = worker
-        .process_batch(
-            batch_id,
-            csv_data.as_bytes(),
-            SourceFormat::Csv,
-            Some(proof),
-            &token,
-        )
+        .process_batch(batch_id, &token)
         .await
         .expect("Exécution benchmark réussie");
 
@@ -479,18 +438,17 @@ async fn test_industrial_benchmark_over_1500_items() {
 #[tokio::test]
 async fn test_unresolved_unit_is_quarantined_never_defaulted() {
     let store = crate::support::installed_store().await;
-    let worker = IngestionWorker::new(store.clone()).expect("worker");
+    let worker = crate::support::worker(&store);
     let batch = NewBatch {
         id: Some("batch_unites".to_string()),
         source_type: SourceFormat::Csv,
         source_format_version: "1.0".to_string(),
         source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "Saint-Gobain Placo SAS".to_string(),
-        nom_fichier: "unites.csv".to_string(),
-        file_hash_blake3: lyxal_crypto::blake3_hex(b"unites"),
-        taille_octets: 100,
+        source_object: crate::support::source(&store, "unites.csv", b"unites").await,
         chunk_size: 50,
         provenance_details: serde_json::json!({}),
+        commercial_proof: None,
     };
     store.create_batch(&batch).await.unwrap();
 
@@ -498,13 +456,7 @@ async fn test_unresolved_unit_is_quarantined_never_defaulted() {
     let csv = "reference;designation;unite\nREF_1;Plaque BA13 standard;Mètre carré\nREF_2;Rouleau isolant 100mm;RO\nREF_3;Article en bidons;BIDON\n";
     let token = CancellationToken::new();
     let report = worker
-        .process_batch(
-            "batch_unites",
-            csv.as_bytes(),
-            SourceFormat::Csv,
-            None,
-            &token,
-        )
+        .process_batch("batch_unites", &token)
         .await
         .unwrap();
     assert_eq!(report.final_status, BatchStatus::Staged);

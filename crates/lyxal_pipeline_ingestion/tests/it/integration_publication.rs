@@ -90,11 +90,10 @@ async fn approved_manifest(
             source_format_version: "1.0".to_string(),
             source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
             fournisseur_id: "FOURN_PLACO".to_string(),
-            nom_fichier: format!("{batch}.csv"),
-            file_hash_blake3: lyxal_crypto::blake3_hex(batch.as_bytes()),
-            taille_octets: 512,
+            source_object: crate::support::source(&store, &format!("{batch}.csv"), batch.as_bytes()).await,
             chunk_size: 50,
             provenance_details: serde_json::json!({}),
+            commercial_proof: None,
         },
     )
     .await;

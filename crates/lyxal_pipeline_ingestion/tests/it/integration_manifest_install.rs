@@ -14,13 +14,12 @@ fn batch(id: &str) -> NewBatch {
         source_format_version: "1.0".to_string(),
         source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "FOURNISSEUR_TEST".to_string(),
-        nom_fichier: "test.csv".to_string(),
-        file_hash_blake3: lyxal_crypto::blake3_hex(id.as_bytes()),
-        taille_octets: 128,
+        source_object: crate::support::source(&store, "test.csv", id.as_bytes()).await,
         chunk_size: 10,
         provenance_details: serde_json::json!({}),
     }
-}
+        commercial_proof: None,
+    }
 
 #[tokio::test]
 async fn worker_follows_installed_batch_state_machine() {
@@ -29,7 +28,7 @@ async fn worker_follows_installed_batch_state_machine() {
     for i in 1..=5 {
         csv.push_str(&format!("REF_{i};Plaque de plâtre {i};;Placo;M2;8.50\n"));
     }
-    let worker = IngestionWorker::new(store.clone()).expect("worker");
+    let worker = crate::support::worker(&store);
     let token = CancellationToken::new();
 
     store
@@ -37,13 +36,7 @@ async fn worker_follows_installed_batch_state_machine() {
         .await
         .expect("lot");
     let report = worker
-        .process_batch(
-            "batch_manifest",
-            csv.as_bytes(),
-            SourceFormat::Csv,
-            None,
-            &token,
-        )
+        .process_batch("batch_manifest", &token)
         .await
         .expect("traitement");
     assert_eq!(report.final_status, BatchStatus::Staged);
@@ -65,13 +58,7 @@ async fn worker_follows_installed_batch_state_machine() {
         .await
         .expect("réservation libérée");
     let report = worker
-        .process_batch(
-            "batch_retry",
-            csv.as_bytes(),
-            SourceFormat::Csv,
-            None,
-            &token,
-        )
+        .process_batch("batch_retry", &token)
         .await
         .expect("reprise");
     assert_eq!(report.final_status, BatchStatus::Staged);
@@ -81,18 +68,12 @@ async fn worker_follows_installed_batch_state_machine() {
 async fn failed_batch_does_not_block_the_next_one() {
     let store = crate::support::installed_store().await;
     let csv = "reference;designation;gtin;fabricant;unite;prix\nREF_1;Plaque;;Placo;M2;8.50\n";
-    let worker = IngestionWorker::new(store.clone()).expect("worker");
+    let worker = crate::support::worker(&store);
     let token = CancellationToken::new();
 
     // Lot inconnu : la réservation est refusée, rien n'est écrit.
     let failure = worker
-        .process_batch(
-            "lot_absent",
-            csv.as_bytes(),
-            SourceFormat::Csv,
-            None,
-            &token,
-        )
+        .process_batch("lot_absent", &token)
         .await;
     assert!(failure.is_err());
 
@@ -102,13 +83,7 @@ async fn failed_batch_does_not_block_the_next_one() {
         .await
         .expect("lot");
     let report = worker
-        .process_batch(
-            "lot_suivant",
-            csv.as_bytes(),
-            SourceFormat::Csv,
-            None,
-            &token,
-        )
+        .process_batch("lot_suivant", &token)
         .await
         .expect("le lot suivant n'est pas bloqué");
     assert_eq!(report.final_status, BatchStatus::Staged);
@@ -120,17 +95,11 @@ async fn invalid_barcode_line_goes_to_quarantine() {
     let csv = "reference;designation;gtin;fabricant;unite;prix\n\
                REF_OK;Plaque de plâtre BA13;3017620422003;Placo;M2;8.50\n\
                REF_KO;Plaque de plâtre BA18;3017620422009;Placo;M2;9.50\n";
-    let worker = IngestionWorker::new(store.clone()).expect("worker");
+    let worker = crate::support::worker(&store);
     store.create_batch(&batch("lot_gtin")).await.expect("lot");
 
     let report = worker
-        .process_batch(
-            "lot_gtin",
-            csv.as_bytes(),
-            SourceFormat::Csv,
-            None,
-            &CancellationToken::new(),
-        )
+        .process_batch("lot_gtin", &CancellationToken::new())
         .await
         .expect("traitement");
     assert_eq!(report.final_status, BatchStatus::Staged);
@@ -166,7 +135,7 @@ async fn failed_batch_does_not_stop_the_worker() {
     use std::sync::Arc;
 
     let store = crate::support::installed_store().await;
-    let worker = Arc::new(IngestionWorker::new(store.clone()).expect("worker"));
+    let worker = Arc::new(crate::support::worker(&store));
     store
         .create_batch(&batch("lot_illisible"))
         .await
