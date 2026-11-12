@@ -393,6 +393,7 @@ async fn only_an_available_file_is_served() {
             filename: "en-cours.bin".to_string(),
             declared_type: None,
             declared_size: None,
+            resumable: false,
         })
         .await
         .expect("ouverture d'écriture");

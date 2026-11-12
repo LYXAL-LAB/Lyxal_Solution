@@ -17,7 +17,7 @@ const PNG: &[u8] = b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR\0\0\0\x01\0\0\0\x01\x08\x06\0
 const TEXT: &[u8] = b"nom;prix\nvis;0,12\n";
 
 /// Début d'un programme Linux (ELF exécutable).
-fn elf() -> Vec<u8> {
+pub fn elf() -> Vec<u8> {
     let mut program = vec![0u8; 64];
     program[..7].copy_from_slice(b"\x7fELF\x02\x01\x01");
     program[16] = 2;
@@ -136,7 +136,7 @@ fn scanner(address: &str, timeout: Duration) -> Arc<ClamAvScanner> {
 }
 
 /// Signature de test EICAR, assemblée ici pour ne pas figurer telle quelle dans le dépôt.
-fn eicar() -> Vec<u8> {
+pub fn eicar() -> Vec<u8> {
     [
         &b"X5O!P%@AP[4\\PZX54(P^)7CC)7}$"[..],
         b"EICAR-STANDARD-",

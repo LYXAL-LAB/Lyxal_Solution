@@ -42,6 +42,11 @@ DEFINE FIELD OVERWRITE pending_ttl_seconds ON TABLE storage_settings
     ASSERT $value IS NONE OR ($value >= 60 AND $value <= 604800)
     COMMENT "Délai d'une écriture en attente, en secondes";
 
+DEFINE FIELD OVERWRITE upload_ttl_seconds ON TABLE storage_settings
+    TYPE option<int>
+    ASSERT $value IS NONE OR ($value >= 60 AND $value <= 604800)
+    COMMENT "Délai d'un envoi reprenable inachevé, en secondes";
+
 DEFINE FIELD OVERWRITE deleted_retention_days ON TABLE storage_settings
     TYPE option<int>
     ASSERT $value IS NONE OR ($value >= 0 AND $value <= 3650)

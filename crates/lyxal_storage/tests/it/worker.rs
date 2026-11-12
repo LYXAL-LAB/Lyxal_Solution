@@ -71,6 +71,7 @@ async fn abandoned_writes_and_deleted_files_are_removed() {
                     filename: "abandon.bin".to_string(),
                     declared_type: None,
                     declared_size: None,
+                    resumable: false,
                 })
                 .await
                 .expect("ouverture d'écriture");
@@ -301,6 +302,7 @@ async fn staged_files_left_by_a_crash_are_removed_from_disk() {
                     filename: "coupe.bin".to_string(),
                     declared_type: None,
                     declared_size: None,
+                    resumable: false,
                 })
                 .await
                 .expect("ouverture d'écriture")

@@ -111,6 +111,16 @@ DEFINE FIELD OVERWRITE pending_expires_at ON TABLE storage_object
     TYPE option<datetime>
     COMMENT "Fin du délai d'une écriture en attente";
 
+DEFINE FIELD OVERWRITE resumable ON TABLE storage_object
+    TYPE bool
+    DEFAULT false
+    READONLY
+    COMMENT "Envoi reprenable : octets reçus par parties (storage_upload_part), assemblées à la fin";
+
+DEFINE FIELD OVERWRITE upload_claimed_until ON TABLE storage_object
+    TYPE option<datetime>
+    COMMENT "Assemblage d'un envoi reprenable en cours jusqu'à cette date : un seul assembleur à la fois";
+
 DEFINE FIELD OVERWRITE deleted_at ON TABLE storage_object
     TYPE option<datetime>
     COMMENT "Suppression";

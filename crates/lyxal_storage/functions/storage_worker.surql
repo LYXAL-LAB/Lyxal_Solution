@@ -50,10 +50,10 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_expire($params: object) {
     LET $p = $report.value;
     IF !fn::storage_can({ action: "worker" }) { RETURN fn::error_result("STORAGE_PERMISSION_DENIED", $p.language, {}); };
     LET $now = time::now();
-    LET $due = (SELECT VALUE id FROM storage_object WHERE state = "pending" AND pending_expires_at <= $now ORDER BY pending_expires_at LIMIT $p.limit);
+    LET $due = (SELECT VALUE id FROM storage_object WHERE state = "pending" AND pending_expires_at <= $now AND (upload_claimed_until IS NONE OR upload_claimed_until <= $now) ORDER BY pending_expires_at LIMIT $p.limit);
     LET $expired = (UPDATE $due SET state = "deleted", deleted_at = $now, purge_after = $now, pending_expires_at = NONE RETURN VALUE id);
     RETURN fn::result_ok({ expired: array::len($expired) });
-} COMMENT "Abandonne les écritures en attente hors délai ({ limit }) : état deleted, octets à retirer au plus tôt ; { expired }. Droit : worker";
+} COMMENT "Abandonne les écritures en attente hors délai ({ limit }), sauf un envoi reprenable en cours d'assemblage : état deleted, octets à retirer au plus tôt ; { expired }. Droit : worker";
 
 -- ----------------------------------------------------------------------------
 -- fn::storage_object_purge_list
