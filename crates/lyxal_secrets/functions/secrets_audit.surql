@@ -6,6 +6,19 @@
 -- transaction de l'opération journalisée : sans entrée au journal, pas d'opération.
 
 -- ----------------------------------------------------------------------------
+-- fn::secrets_audit_clean (interne)
+-- ----------------------------------------------------------------------------
+-- Une valeur NONE disparaît d'un objet enregistré : l'empreinte serait calculée sur un objet
+-- différent de celui relu. Les NONE deviennent NULL, conservé tel quel.
+
+DEFINE FUNCTION OVERWRITE fn::secrets_audit_clean($value: any) -> any {
+    IF $value IS NONE { RETURN NULL; };
+    IF type::is_object($value) { RETURN object::from_entries(array::map(object::entries($value), |$e| [$e[0], fn::secrets_audit_clean($e[1])])); };
+    IF type::is_array($value) { RETURN array::map($value, |$v| fn::secrets_audit_clean($v)); };
+    RETURN $value;
+} COMMENT "Interne : remplace récursivement NONE par NULL (entrée du journal identique avant et après enregistrement)";
+
+-- ----------------------------------------------------------------------------
 -- fn::secrets_audit_write (interne, appelée par les événements)
 -- ----------------------------------------------------------------------------
 
@@ -29,6 +42,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_audit_write($entry: object) -> object {
         details: $entry.details ?? {},
         at: time::now()
     };
+    LET $event = fn::secrets_audit_clean($event);
     LET $chained = fn::security_audit_entry($event, $head.last_hash);
     UPSERT type::record("secrets_audit_head", $scope) SET tenant = $entry.tenant, seq = $seq, last_hash = $chained.entry_hash;
     CREATE secrets_audit CONTENT {
@@ -102,20 +116,18 @@ DEFINE FUNCTION OVERWRITE fn::secrets_audit_verify($params: object) {
         WHERE scope_key = $scope AND seq >= $first ORDER BY seq ASC LIMIT $p.limit + 1);
     LET $head = (SELECT seq, last_hash FROM ONLY type::record("secrets_audit_head", $scope));
     LET $results = fn::security_audit_verify($entries).results;
-    -- Rangs contigus, entrées intactes ; l'ancre n'est vérifiée que pour son empreinte
+    -- Rangs contigus, entrées intactes ; l'ancre ne sert qu'au lien de la première entrée de la plage (elle est vérifiée avec sa propre plage)
     LET $broken = array::filter(array::map($results, |$r| {
         seq: $entries[$r.index].seq,
-        ok: $r.valid_hash
-            AND ($r.valid_previous OR ($r.index = 0 AND $p.from_seq > 1))
+        ok: (($r.index = 0 AND $p.from_seq > 1) OR ($r.valid_hash AND $r.valid_previous))
             AND $entries[$r.index].seq = $first + $r.index
             AND $entries[$r.index].event.seq = $entries[$r.index].seq
     }), |$r| !$r.ok);
     LET $last = $entries[array::len($entries) - 1];
     -- Fin de chaîne : la dernière entrée doit être celle de la tête (aucune entrée retirée à la fin)
     LET $complete = array::len($entries) <= $p.limit;
-    LET $head_ok = IF array::len($entries) = 0 { ($head IS NONE) } ELSE IF !$complete { true } ELSE {
-        ($head IS NOT NONE AND $head.seq = $last.seq AND $head.last_hash = $last.entry_hash)
-    };
+    LET $tail_ok = $head IS NOT NONE AND $head.seq = $last.seq AND $head.last_hash = $last.entry_hash;
+    LET $head_ok = (array::len($entries) = 0 AND $head IS NONE) OR (array::len($entries) > 0 AND (!$complete OR $tail_ok));
     RETURN fn::result_ok({
         valid: array::len($broken) = 0 AND $head_ok,
         checked: array::len($entries),
