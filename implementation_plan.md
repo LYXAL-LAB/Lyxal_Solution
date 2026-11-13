@@ -122,7 +122,7 @@ et rappels, sans que `lyxal_secrets` le connaisse.
 
 | Lot | Contenu | Touche |
 | :- | :--- | :--- |
-| **1** | Socle SurrealQL : réglages, fiches, versions, étiquettes, états, suppression en trois temps, écriture conditionnelle, droits par opération, visibilité, journal chaîné des écritures, événements, erreurs, banc | `lyxal_secrets` |
+| **1** | Socle SurrealQL (plan détaillé : `crates/lyxal_secrets/implementation_plan.md`) : réglages, fiches, versions, étiquettes, états, suppression en trois temps, écriture conditionnelle, droits par opération, visibilité, journal chaîné des écritures, événements, erreurs, banc | `lyxal_secrets` |
 | **2** | Rust : clés par organisation, scellement et ouverture, lecture tracée avant remise, `SecretsClient`, workers de rescellement et de purge, module et sonde de santé, hébergement par l'hôte | `lyxal_secrets`, `apps/lyxal-server` |
 | **3** | Cycle de vie : expiration appliquée, alertes avant échéance, rotation en quatre étapes (`pending` → test → `current`, ancienne en `previous`) pour les modules qui savent tourner leurs identifiants, essai de rotation sans bascule, rotation manuelle d'urgence, worker des échéances | `lyxal_secrets` |
 | **4** | Accès avancés : accès temporaires par chemin, demandes d'accès approuvées, approbation des changements par N personnes (auto-approbation interdite), accès d'urgence tracé et signalé | `lyxal_secrets` |
@@ -159,9 +159,11 @@ envoi du journal vers un outil de sécurité (SIEM) et durée de conservation r�
 * Licences : aucun code repris ; Vault (BUSL), Doppler, AWS, Azure, Google, Bitwarden et
   Akeyless en conception seule ; OpenBao (MPL-2.0) et Infisical (MIT) en conception seule.
 
-## 8. Décisions demandées au CTO
+## 8. Décisions du CTO (13 novembre 2026)
 
-| # | Question | Recommandation |
+K1 à B1 validées selon les recommandations.
+
+| # | Question | Décision |
 | :- | :--- | :--- |
 | K1 | Hiérarchie de clés | **Une clé par organisation**, scellée par la clé maîtresse de l'hôte (modèle Infisical) : isolation entre organisations et effacement d'une organisation entière par sa clé (base en service ; sauvegardes antérieures effacées à leur expiration, §1.2) |
 | K2 | Après rotation d'une clé | **Rescellement automatique de toutes les versions conservées**, puis révocation de l'ancienne clé (AWS ne rescelle que les versions étiquetées) |
