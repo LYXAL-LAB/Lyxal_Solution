@@ -174,11 +174,30 @@ async fn an_envelope_copied_elsewhere_does_not_open() {
         code(bench.service.reveal(reveal(&first)).await),
         "SECRETS_VALUE_CORRUPTED"
     );
-    // Vers une autre organisation
-    overwrite(&bench, &other, 1, &copied).await;
+    // Vers une autre organisation : refusée dès l'écriture, la clé n'est pas celle de beta
+    let refused = bench
+        .client
+        .query(format!(
+            "UPDATE secrets_version SET envelope = $envelope, key_id = $key_id, resealed_at = time::now() WHERE secret = {other} AND number = 1"
+        ))
+        .bind(("envelope", copied.envelope.clone()))
+        .bind(("key_id", copied.key_id.clone()))
+        .await
+        .and_then(|r| r.check())
+        .expect_err("clé d'une autre organisation");
+    assert!(
+        refused.to_string().contains("SECRETS_TENANT_KEY_CONFLICT"),
+        "{refused}"
+    );
     assert_eq!(
-        code(bench.service.reveal(reveal(&other)).await),
-        "SECRETS_VALUE_CORRUPTED"
+        bench
+            .service
+            .reveal(reveal(&other))
+            .await
+            .expect("intacte")
+            .value
+            .expose_secret(),
+        b"valeur de beta"
     );
     // La version d'origine reste lisible
     let original = bench

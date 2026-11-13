@@ -140,6 +140,10 @@ pub struct RewrapListParams {
     pub master_key_id: String,
     /// Éléments par liste (1000 au plus).
     pub limit: Option<i64>,
+    /// Versions en échec à passer (elles n'empêchent pas le reste du travail).
+    pub skip_versions: Option<i64>,
+    /// Clés d'organisation en échec à passer.
+    pub skip_keys: Option<i64>,
 }
 
 /// Version scellée par une clé d'organisation retirée.

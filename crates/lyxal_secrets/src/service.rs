@@ -102,13 +102,10 @@ impl SecretsService {
             return Err(SecretsError::ValueTooLarge { size, max });
         }
         let keys = json_keys(&request.value);
-        let ring = self.keys.active_ring(&scope).await?;
+        let mut ring = self.keys.active_ring(&scope).await?;
 
-        let attempts = if request.expected_version.is_some() {
-            1
-        } else {
-            PUT_ATTEMPTS
-        };
+        // Conflit de version : rejoué seulement sans numéro attendu (écriture conditionnelle).
+        // Clé devenue inactive entre-temps (rotation) : trousseau relu et valeur rescellée.
         let mut attempt = 0;
         loop {
             attempt += 1;
@@ -128,12 +125,17 @@ impl SecretsService {
                 })
                 .await;
             match added {
-                Err(error) if attempt < attempts => {
+                Err(error) if attempt < PUT_ATTEMPTS => {
                     let error = SecretsError::from(error);
-                    if !error.is_conflict("SECRETS_VERSION_CONFLICT") {
+                    if error.is_code("SECRETS_TENANT_KEY_CONFLICT") {
+                        ring = self.keys.active_ring(&scope).await?;
+                    } else if request.expected_version.is_none()
+                        && error.is_conflict("SECRETS_VERSION_CONFLICT")
+                    {
+                        secret = self.reload(&secret).await?;
+                    } else {
                         return Err(error);
                     }
-                    secret = self.reload(&secret).await?;
                 }
                 other => return Ok(other?),
             }

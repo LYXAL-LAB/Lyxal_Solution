@@ -106,11 +106,17 @@ impl SecretsMaintenanceWorker {
             return Ok(report);
         };
         let master_key_id = master.active_id().as_str().to_string();
+        // Éléments en échec de ce passage : passés aux paquets suivants, pour qu'une version
+        // illisible ou une clé non rescellable n'arrête pas le travail des autres organisations
+        let mut skip_versions: i64 = 0;
+        let mut skip_keys: i64 = 0;
         while !cancellation.is_cancelled() {
             let work = system
                 .rewrap_list(RewrapListParams {
                     master_key_id: master_key_id.clone(),
                     limit: Some(limit),
+                    skip_versions: Some(skip_versions),
+                    skip_keys: Some(skip_keys),
                 })
                 .await?;
             let before = report;
@@ -122,9 +128,10 @@ impl SecretsMaintenanceWorker {
                 }
                 match self.keys.rewrap(key).await {
                     Ok(true) => report.rewrapped += 1,
-                    Ok(false) => {}
+                    Ok(false) => skip_keys += 1,
                     Err(error) => {
                         report.failed += 1;
+                        skip_keys += 1;
                         tracing::warn!(key_id = %key.key_id, code = %error.code(), error = %error, "clé d'organisation non rescellée");
                     }
                 }
@@ -137,9 +144,10 @@ impl SecretsMaintenanceWorker {
                 }
                 match self.reseal(version, &mut rings).await {
                     Ok(true) => report.resealed += 1,
-                    Ok(false) => {}
+                    Ok(false) => skip_versions += 1,
                     Err(error) => {
                         report.failed += 1;
+                        skip_versions += 1;
                         tracing::warn!(secret = %version.secret.to_sql(), number = version.number, code = %error.code(), error = %error, "version non rescellée");
                     }
                 }
@@ -169,7 +177,9 @@ impl SecretsMaintenanceWorker {
             let progressed = report.resealed > before.resealed
                 || report.rewrapped > before.rewrapped
                 || report.destroyed_keys > before.destroyed_keys;
-            if !progressed {
+            // Un paquet plein en échec est passé : le paquet suivant commence après lui
+            let full = work.versions.len() as i64 >= limit || work.keys.len() as i64 >= limit;
+            if !progressed && !full {
                 break;
             }
         }

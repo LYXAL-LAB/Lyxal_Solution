@@ -38,6 +38,7 @@
 
 -- préparation: opérations d'alpha (réglages, fiche, versions, étiquette, lecture, suppression, restauration)
 {
+    fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", key_id: "k1", wrapped: "enc:v2:m1:K1" });
     fn::secrets_settings_set({ tenant: "auth_organization:alpha", max_versions: 5 });
     LET $s = fn::secrets_secret_create({ tenant: "auth_organization:alpha", path: "smtp", kind: "password", consumers: ["lyxal_notification"] }).data.id;
     fn::secrets_version_add({ secret: <string> $s, number: 1, envelope: "enc:v2:k1:SECRETVALEUR1", key_id: "k1" });
@@ -53,10 +54,10 @@
 -- test: une entrée par opération, dans l'ordre, rangs contigus
 {
     LET $e = (SELECT VALUE event FROM secrets_audit WHERE scope_key = "alpha" ORDER BY seq ASC);
-    RETURN $e.action = ["settings.update", "secret.create", "version.create", "version.create", "version.label", "secret.update", "secret.read", "secret.delete", "secret.restore"]
-        AND $e.seq = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-        AND $e[5].details.fields = ["description"] AND $e[4].details.after.current = 1
-        AND (SELECT VALUE seq FROM ONLY secrets_audit_head:alpha) = 9;
+    RETURN $e.action = ["key.create", "settings.update", "secret.create", "version.create", "version.create", "version.label", "secret.update", "secret.read", "secret.delete", "secret.restore"]
+        AND $e.seq = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        AND $e[6].details.fields = ["description"] AND $e[5].details.after.current = 1
+        AND (SELECT VALUE seq FROM ONLY secrets_audit_head:alpha) = 10;
 };
 
 -- test: aucune valeur au journal ni sur le bus
@@ -79,7 +80,7 @@ RETURN (SELECT VALUE event_type FROM event_outbox WHERE producer = "lyxal_secret
     LET $all = fn::secrets_audit_list({ tenant: "auth_organization:alpha" }).data;
     LET $reads = fn::secrets_audit_list({ tenant: "auth_organization:alpha", action: "secret.read" }).data;
     LET $of = fn::secrets_audit_list({ tenant: "auth_organization:alpha", secret: $s, limit: 2 }).data;
-    RETURN $all.total = 9 AND $all.items[0].seq = 9 AND $reads.total = 1 AND $reads.items[0].event.session_kind = "system"
+    RETURN $all.total = 10 AND $all.items[0].seq = 10 AND $reads.total = 1 AND $reads.items[0].event.session_kind = "system"
         AND $of.total = 8 AND array::len($of.items) = 2
         AND $all.items[1].event.actor = NULL AND $all.items[1].event.session_kind = "system";
 };
@@ -89,7 +90,7 @@ RETURN (SELECT VALUE event_type FROM event_outbox WHERE producer = "lyxal_secret
 {
     LET $v = fn::secrets_audit_verify({ tenant: "auth_organization:alpha" }).data;
     LET $part = fn::secrets_audit_verify({ tenant: "auth_organization:alpha", from_seq: 5 }).data;
-    RETURN $v.valid AND $v.checked = 9 AND $v.head_matches AND $v.broken_at IS NONE AND $part.valid AND $part.checked = 6;
+    RETURN $v.valid AND $v.checked = 10 AND $v.head_matches AND $v.broken_at IS NONE AND $part.valid AND $part.checked = 7;
 };
 
 -- test: un utilisateur n'écrit ni ne modifie ni ne supprime le journal
@@ -99,7 +100,7 @@ RETURN (SELECT VALUE event_type FROM event_outbox WHERE producer = "lyxal_secret
     UPDATE secrets_audit SET event.action = "falsifie" WHERE seq = 3;
     DELETE secrets_audit WHERE seq = 4;
     RETURN fn::secrets_audit_verify({ tenant: "auth_organization:alpha" }).data.valid
-        AND fn::secrets_audit_list({ tenant: "auth_organization:alpha" }).data.total = 9;
+        AND fn::secrets_audit_list({ tenant: "auth_organization:alpha" }).data.total = 10;
 };
 
 -- test: journal d'une autre organisation : invisible et séparé

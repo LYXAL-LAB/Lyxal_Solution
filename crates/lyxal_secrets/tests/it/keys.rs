@@ -182,3 +182,43 @@ async fn a_deleted_organization_takes_its_keys_and_secrets_with_it() {
     // Les autres organisations ne sont pas touchées
     assert_eq!(bench.read(&alpha).await, b"valeur alpha");
 }
+
+/// Versions de secrets supprimés : rescellées comme les autres (la valeur ne change pas), sans
+/// bloquer le reste du travail ; l'ancienne clé est détruite au même passage.
+#[tokio::test]
+async fn versions_of_deleted_secrets_are_resealed_without_blocking_the_others() {
+    let bench = bench().await;
+    let mut deleted = Vec::new();
+    for index in 0..3 {
+        let secret = bench
+            .secret(Some(ALPHA), &format!("supprime/{index}"))
+            .await;
+        bench.put(&secret, b"ancienne").await;
+        deleted.push(secret);
+    }
+    let live = bench.secret(Some(ALPHA), "vivant").await;
+    bench.put(&live, b"vivante").await;
+    for secret in &deleted {
+        bench
+            .run(&format!(
+                "RETURN fn::secrets_secret_delete({{ secret: '{secret}' }})"
+            ))
+            .await;
+    }
+    bench
+        .service
+        .rotate_tenant_key(Some(ALPHA.to_string()))
+        .await
+        .expect("rotation");
+
+    // Paquets de 2 : les trois versions supprimées passent avant la version vivante
+    let report = pass(&bench, Some(bench.master.clone())).await;
+    assert_eq!(report.failed, 0, "{report:?}");
+    assert_eq!(report.resealed, 4, "{report:?}");
+    assert_eq!(report.destroyed_keys, 1, "{report:?}");
+    assert_eq!(bench.read(&live).await, b"vivante");
+    let retired: Vec<String> = bench
+        .values("SELECT VALUE key_id FROM secrets_tenant_key WHERE scope_key = 'alpha' AND state = 'decrypt_only'")
+        .await;
+    assert!(retired.is_empty(), "{retired:?}");
+}

@@ -38,6 +38,7 @@
 
 -- préparation: secrets d'alpha, un restreint (réservé au robot et au module de notification) et un révélable
 {
+    fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", key_id: "k1", wrapped: "enc:v2:m1:K1" });
     LET $r = fn::secrets_secret_create({ tenant: "auth_organization:alpha", path: "smtp", kind: "password", consumers: ["auth_application:robot", "lyxal_notification"] }).data.id;
     fn::secrets_version_add({ secret: <string> $r, number: 1, envelope: "enc:v2:k1:R1", key_id: "k1" });
     fn::secrets_version_add({ secret: <string> $r, number: 2, envelope: "enc:v2:k1:R2", key_id: "k1" });

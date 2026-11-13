@@ -15,6 +15,14 @@ DEFINE FUNCTION OVERWRITE fn::secrets_keys_trusted() -> bool {
 } COMMENT "Interne : vrai pour la session système ou le compte de service du coffre-fort";
 
 -- ----------------------------------------------------------------------------
+-- fn::secrets_key_is_active (interne)
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::secrets_key_is_active($scope_key: string, $key_id: string) -> bool {
+    RETURN (SELECT VALUE state FROM ONLY secrets_tenant_key WHERE key_id = $key_id AND scope_key = $scope_key LIMIT 1) = "active";
+} COMMENT "Interne : vrai si key_id est la clé active de la portée (une valeur ne se scelle que par elle)";
+
+-- ----------------------------------------------------------------------------
 -- fn::secrets_tenant_key_ring
 -- ----------------------------------------------------------------------------
 
@@ -163,6 +171,8 @@ DEFINE FUNCTION OVERWRITE fn::secrets_rewrap_list($params: object) {
         fields: {
             master_key_id: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 64 } }], required: true },
             limit: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 1000 } }], default: 100 },
+            skip_versions: { pipeline: [{ rule: "integer", options: { min_value: 0 } }], default: 0 },
+            skip_keys: { pipeline: [{ rule: "integer", options: { min_value: 0 } }], default: 0 },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -176,11 +186,11 @@ DEFINE FUNCTION OVERWRITE fn::secrets_rewrap_list($params: object) {
     LET $retired_ids = $retired.key_id;
     -- Versions encore scellées par une clé retirée
     LET $versions = (SELECT secret, tenant, number, key_id, envelope FROM secrets_version
-        WHERE state != "destroyed" AND key_id IN $retired_ids LIMIT $p.limit);
+        WHERE state != "destroyed" AND key_id IN $retired_ids ORDER BY id LIMIT $p.limit START $p.skip_versions);
     -- Clés d'organisation scellées par une autre clé maîtresse que l'active
     LET $keys = (SELECT key_id, tenant, wrapped, master_key_id FROM secrets_tenant_key
-        WHERE state IN ["active", "decrypt_only"] AND master_key_id != $p.master_key_id LIMIT $p.limit);
+        WHERE state IN ["active", "decrypt_only"] AND master_key_id != $p.master_key_id ORDER BY id LIMIT $p.limit START $p.skip_keys);
     -- Clés retirées que plus aucune version n'utilise
     LET $unused = array::filter($retired, |$k| array::len(SELECT VALUE id FROM secrets_version WHERE scope_key = $k.scope_key AND key_id = $k.key_id LIMIT 1) = 0);
     RETURN fn::result_ok({ versions: $versions, keys: $keys, unused: $unused.key_id });
-} COMMENT "Travail de rescellement ({ master_key_id : clé maîtresse active, limit }) : versions scellées par une clé retirée (avec leur enveloppe), clés d'organisation scellées par une autre clé maîtresse, clés retirées inutilisées (à détruire). Session système ou worker";
+} COMMENT "Travail de rescellement ({ master_key_id : clé maîtresse active, limit, skip_versions, skip_keys : éléments en échec à passer, pour qu'ils n'empêchent pas le reste }) : versions scellées par une clé retirée (avec leur enveloppe), clés d'organisation scellées par une autre clé maîtresse, clés retirées inutilisées (à détruire). Session système ou worker";

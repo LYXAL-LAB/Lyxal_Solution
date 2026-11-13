@@ -37,6 +37,7 @@
 
 -- préparation: un secret d'alpha avec une version
 {
+    fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", key_id: "k1", wrapped: "enc:v2:m1:K1" });
     LET $s = fn::secrets_secret_create({ tenant: "auth_organization:alpha", path: "interne", kind: "token" }).data.id;
     fn::secrets_version_add({ secret: <string> $s, number: 1, envelope: "enc:v2:k1:I1", key_id: "k1" });
     CREATE passe:s SET id_secret = $s;
@@ -53,6 +54,7 @@
 
 -- test: réglages effectifs par défaut
 RETURN fn::secrets_settings_effective({ tenant: auth_organization:alpha }).max_versions = 10
+    AND fn::secrets_key_is_active("alpha", "k1") AND !fn::secrets_key_is_active("alpha", "k9") AND !fn::secrets_key_is_active("beta", "k1")
     AND fn::secrets_settings_effective({}).deleted_retention_days = 30;
 
 -- test: nettoyage : NONE devient NULL, y compris en profondeur
@@ -64,9 +66,9 @@ RETURN fn::secrets_audit_clean({ a: NONE, b: { c: NONE, d: 1 }, e: [NONE, 2] }) 
     LET $s = (SELECT * FROM ONLY (SELECT VALUE id_secret FROM ONLY passe:s));
     RETURN fn::secrets_secret_create_refusal(object::extend($s, { latest_version: 0, labels: {} })) IS NONE
         AND fn::secrets_secret_create_refusal(object::extend($s, { latest_version: 0, labels: {}, state: "disabled" })) = "SECRETS_SECRET_STATE_INVALID"
-        AND fn::secrets_version_create_refusal({ secret: $s.id, tenant: $s.tenant, number: 2, state: "enabled", envelope: "enc:v2:k1:X" }) IS NONE
-        AND fn::secrets_version_create_refusal({ secret: $s.id, tenant: $s.tenant, number: 5, state: "enabled", envelope: "enc:v2:k1:X" }) = "SECRETS_VERSION_CONFLICT"
-        AND fn::secrets_version_create_refusal({ secret: $s.id, tenant: NONE, number: 2, state: "enabled", envelope: "enc:v2:k1:X" }) = "SECRETS_VERSION_STATE_INVALID";
+        AND fn::secrets_version_create_refusal({ secret: $s.id, tenant: $s.tenant, scope_key: "alpha", number: 2, state: "enabled", envelope: "enc:v2:k1:X", key_id: "k1" }) IS NONE
+        AND fn::secrets_version_create_refusal({ secret: $s.id, tenant: $s.tenant, scope_key: "alpha", number: 5, state: "enabled", envelope: "enc:v2:k1:X", key_id: "k1" }) = "SECRETS_VERSION_CONFLICT"
+        AND fn::secrets_version_create_refusal({ secret: $s.id, tenant: NONE, scope_key: "alpha", number: 2, state: "enabled", envelope: "enc:v2:k1:X", key_id: "k1" }) = "SECRETS_VERSION_STATE_INVALID";
 };
 
 -- test: gardes de modification : transitions

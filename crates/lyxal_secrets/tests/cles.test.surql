@@ -49,9 +49,10 @@
 RETURN fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", key_id: "alpha-x", wrapped: "enc:v2:m1:KX" }).error.code = "SECRETS_TENANT_KEY_CONFLICT"
     AND fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", key_id: "alpha-x", wrapped: "enc:v2:m1:KX", replaces: "inconnue" }).error.code = "SECRETS_TENANT_KEY_CONFLICT";
 
--- test: aucun accès utilisateur, même administrateur
+-- test: aucun accès utilisateur à la clé scellée, même administrateur ; identifiant et état visibles
 -- en tant que: admin
-RETURN array::len(SELECT * FROM secrets_tenant_key) = 0
+RETURN (SELECT VALUE key_id FROM secrets_tenant_key) = ["alpha-1"] AND (SELECT VALUE state FROM secrets_tenant_key) = ["active"]
+    AND (SELECT VALUE wrapped FROM secrets_tenant_key).all(|$w| $w IS NONE)
     AND fn::secrets_tenant_key_ring({ tenant: "auth_organization:alpha" }).error.code = "SECRETS_PERMISSION_DENIED"
     AND fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", key_id: "pirate", wrapped: "enc:v2:m1:P" }).error.code = "SECRETS_PERMISSION_DENIED"
     AND fn::secrets_rewrap_list({ master_key_id: "m1" }).error.code = "SECRETS_PERMISSION_DENIED"

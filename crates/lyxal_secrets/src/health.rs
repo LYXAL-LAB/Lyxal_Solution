@@ -67,6 +67,8 @@ impl ModuleHealthCheck for SecretsHealthCheck {
             .rewrap_list(RewrapListParams {
                 master_key_id: master.active_id().as_str().to_string(),
                 limit: Some(PROBE_LIMIT),
+                skip_versions: None,
+                skip_keys: None,
             })
             .await
         {

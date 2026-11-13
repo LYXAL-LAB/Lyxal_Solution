@@ -3,7 +3,7 @@
 -- MODULE : lyxal_secrets
 -- RÔLE   : Clé de chiffrement d'une organisation, scellée par la clé maîtresse de l'hôte
 -- ============================================================================
--- Aucun accès utilisateur : seule la session système (service Rust) lit et écrit cette table,
+-- Aucune écriture utilisateur et clé scellée illisible : seule la session système (service Rust) écrit cette table,
 -- par les fonctions fn::secrets_tenant_key_*. Une clé est tirée par le service (rand_core::OsRng),
 -- scellée par la clé maîtresse (contexte with_tenant(<organisation>, "lyxal_secrets",
 -- "secrets_tenant_key", <key_id>, "key")) et rangée ici. États : active (scelle les nouvelles
@@ -14,8 +14,14 @@
 DEFINE TABLE OVERWRITE secrets_tenant_key
     TYPE NORMAL
     SCHEMAFULL
-    PERMISSIONS NONE
-    COMMENT "Clé de chiffrement d'une organisation, scellée par la clé maîtresse ; aucun accès utilisateur";
+    PERMISSIONS
+        -- Identifiant et état visibles de qui écrit ou lit dans la portée (contrôle de la clé active) ;
+        -- la clé scellée reste illisible (champ wrapped) ; aucune écriture utilisateur
+        FOR select WHERE fn::secrets_can({ action: "write", tenant: tenant })
+            OR fn::secrets_can({ action: "list", tenant: tenant })
+            OR fn::secrets_can({ action: "worker", tenant: tenant })
+        FOR create, update, delete NONE
+    COMMENT "Clé de chiffrement d'une organisation, scellée par la clé maîtresse ; aucune écriture utilisateur, clé scellée illisible";
 
 DEFINE FIELD OVERWRITE tenant ON TABLE secrets_tenant_key
     TYPE option<record<auth_organization>>
@@ -37,7 +43,8 @@ DEFINE FIELD OVERWRITE key_id ON TABLE secrets_tenant_key
 DEFINE FIELD OVERWRITE wrapped ON TABLE secrets_tenant_key
     TYPE option<string>
     ASSERT $value IS NONE OR (string::starts_with($value, "enc:v2:") AND string::len($value) <= 4096)
-    COMMENT "Clé scellée par la clé maîtresse (enc:v2) ; NONE après destruction";
+    PERMISSIONS FOR select NONE
+    COMMENT "Clé scellée par la clé maîtresse (enc:v2) ; illisible pour tout utilisateur ; NONE après destruction";
 
 DEFINE FIELD OVERWRITE master_key_id ON TABLE secrets_tenant_key
     TYPE option<string>
