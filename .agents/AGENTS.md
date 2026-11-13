@@ -813,7 +813,7 @@ lyxal_auth (identités, organisations, rôles, permissions, invitations, contrô
 lyxal_i18n (langues : référentiel CLDR et choix de la langue ; clés et traductions avec surcharges par organisation ; rendu des messages, nombres, dates et montants par ICU4X ; import et export JSON et XLIFF)
 lyxal_base (référentiels transversaux : unités de mesure et types d'unités, libellés traduits par les clés de lyxal_i18n, SurrealQL seul)
 lyxal_storage (fichiers et documents stockés : buckets, fiches de fichiers, états, droits et quotas ; octets écrits et lus en flux sur disque ou sur un service S3 avec empreinte, type réel contrôlé et antivirus optionnel, nettoyage par worker, envoi (simple ou reprenable, protocole tus) et téléchargement par les routes de l'hôte)
-lyxal_secrets (secrets applicatifs stockés chiffrés par lyxal_crypto — à créer)
+lyxal_secrets (coffre-fort des secrets applicatifs : fiches, versions scellées par lyxal_crypto et étiquettes, droits par opération, ticket de lecture tracé, journal chaîné ; scellement Rust : lot 2 de son programme)
 lyxal_scheduler (tâches planifiées — à créer)
 lyxal_notification (notifications sortantes : e-mail — parcours, gabarits dont les phrases sont des clés lyxal_i18n, file d'envoi, suppression ; autres canaux : feuille de route du module)
 (ordre de création des crates « à créer » : docs/14-roadmap/ROADMAP_NOYAU.md)
