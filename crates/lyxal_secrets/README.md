@@ -53,13 +53,15 @@ Aucune table n'a de `CHANGEFEED` ni d'historique natif : une version détruite d
   (`fn::secrets_read_envelope`). Un humain ne lit qu'un secret `revealable`, avec le niveau
   d'assurance le plus haut et une authentification récente (`fn::auth_assurance_check`) ; un
   programme lit avec `secrets.value.read`, et seulement s'il figure parmi les consommateurs prévus
-  quand la fiche en liste.
+  quand la fiche en liste : identifiant de son application (`auth_application:…`, d'après
+  `fn::auth_context`), ou nom du module annoncé par la session système.
 * **Journal** : une entrée par opération (réglages, création, modification, états, versions,
   étiquettes, rescellement, lecture), avec l'auteur, le type de session et l'adresse ; chaque
   entrée porte l'empreinte de la précédente (`fn::security_audit_entry`), le rang est unique par
   organisation, et les champs sont figés. Une entrée modifiée, retirée ou recréée par une session
   système est détectée par `fn::secrets_audit_verify`. Jamais de valeur.
-* Les gardes (`DEFINE EVENT`) appliquent les mêmes règles à une écriture directe dans les tables.
+* Les gardes (`DEFINE EVENT`) appliquent les mêmes règles à une écriture directe dans les tables :
+  date de purge tirée des réglages, version jamais supprimée tant que son secret existe.
 
 Contexte de scellement d'une version (lot 2) : `SecretContext::with_tenant(<organisation> ou
 "lyxal_installation", "lyxal_secrets", "secrets_version", "<clé du secret>:<numéro>", "value")`.
@@ -117,4 +119,4 @@ jamais de valeur.
 
 Banc SurrealQL (`tests/*.test.surql`, exécuté par `scripts/ci/test_lyxal_modules.py`) : fiches,
 versions, lecture (dont double facteur), journal (dont falsification), droits, réglages et
-fonctions internes ; 104 assertions.
+fonctions internes ; 108 assertions.

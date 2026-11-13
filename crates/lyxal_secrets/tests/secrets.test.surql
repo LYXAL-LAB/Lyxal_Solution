@@ -186,3 +186,8 @@ CREATE secrets_secret CONTENT { tenant: auth_organization:alpha, path: "direct",
 -- en tant que: admin
 -- attendu-erreur: SECRETS_PERMISSION_DENIED
 UPDATE (SELECT VALUE id_secret FROM ONLY passe:smtp) SET owner = auth_identity:lecteur;
+
+-- test: écriture directe : suppression douce avec une date de purge raccourcie refusée
+-- en tant que: admin
+-- attendu-erreur: SECRETS_SECRET_STATE_INVALID
+UPDATE (SELECT VALUE id_secret FROM ONLY passe:smtp) SET state = "deleted", state_before_delete = "active", deleted_at = time::now(), purge_at = time::now() - 1d;

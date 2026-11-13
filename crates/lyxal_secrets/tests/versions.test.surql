@@ -238,3 +238,28 @@ UPDATE secrets_version SET state = "enabled" WHERE secret = (SELECT VALUE id_sec
     LET $p = fn::secrets_secret_purge({ secret: <string> $id });
     RETURN $p.data.purged AND array::len(SELECT * FROM secrets_version WHERE secret = $id) = 0;
 };
+
+-- préparation: secret et identité auteure d'une version détruite
+{
+    LET $s = fn::secrets_secret_create({ tenant: "auth_organization:alpha", path: "api/auteur", kind: "token" }).data.id;
+    CREATE auth_identity:auteur CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "auteur@lyxal.test" } };
+    CREATE secrets_version CONTENT { secret: $s, tenant: auth_organization:alpha, number: 1, envelope: "enc:v2:k1:U1", key_id: "k1", created_by: auth_identity:auteur };
+    UPDATE $s SET latest_version = 1;
+    CREATE secrets_version CONTENT { secret: $s, tenant: auth_organization:alpha, number: 2, envelope: "enc:v2:k1:U2", key_id: "k1", created_by: auth_identity:auteur };
+    UPDATE $s SET latest_version = 2, labels = { current: 2 };
+    fn::secrets_version_destroy({ secret: <string> $s, number: 1 });
+    CREATE passe:auteur SET id_secret = $s;
+};
+
+-- test: l'identité auteure d'une version détruite se supprime ; l'auteur est effacé, rien d'autre ne change
+{
+    DELETE auth_identity:auteur;
+    LET $s = (SELECT VALUE id_secret FROM ONLY passe:auteur);
+    LET $v = (SELECT state, created_by FROM secrets_version WHERE secret = $s ORDER BY number);
+    RETURN $v.state = ["destroyed", "enabled"] AND $v.all(|$x| $x.created_by IS NONE);
+};
+
+-- test: écriture directe : suppression d'une version tant que son secret existe refusée
+-- en tant que: admin
+-- attendu-erreur: SECRETS_VERSION_STATE_INVALID
+DELETE secrets_version WHERE secret = (SELECT VALUE id_secret FROM ONLY passe:auteur) AND number = 2;

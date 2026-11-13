@@ -190,3 +190,13 @@ WHEN $event = "UPDATE"
 THEN {
     IF $before.used_at IS NOT NONE OR $after.used_at IS NONE { THROW "SECRETS_READ_TICKET_INVALID"; };
 };
+
+-- ----------------------------------------------------------------------------
+-- Versions : jamais supprimées tant que leur secret existe (seule la purge les emporte)
+-- ----------------------------------------------------------------------------
+
+DEFINE EVENT OVERWRITE secrets_version_delete_guard ON TABLE secrets_version
+WHEN $event = "DELETE"
+THEN {
+    IF record::exists($before.secret) { THROW "SECRETS_VERSION_STATE_INVALID"; };
+};

@@ -39,14 +39,14 @@ DEFINE FUNCTION OVERWRITE fn::secrets_read_refusal($ticket: object) -> option<ob
         LET $assurance = fn::auth_assurance_check({ min_aal: "highest_available", fresh: true });
         RETURN IF $assurance.ok { NONE } ELSE { { code: $assurance.error.code, details: $assurance.error.details ?? {} } };
     };
-    -- Programme (compte de service, clé d'API) : client_id de son application, seul consommateur qu'il peut annoncer
-    IF $ticket.consumer IS NOT NONE AND $ticket.consumer != $caller.client_id {
+    -- Programme (compte de service, clé d'API) : identifiant de son application, seul consommateur qu'il peut annoncer
+    IF $ticket.consumer IS NOT NONE AND $ticket.consumer != $caller.consumer {
         RETURN { code: "SECRETS_CONSUMER_NOT_ALLOWED", details: { consumer: $ticket.consumer } };
     };
-    RETURN IF $listed AND ($caller.client_id IS NONE OR $caller.client_id NOTINSIDE $secret.consumers) {
-        { code: "SECRETS_CONSUMER_NOT_ALLOWED", details: { consumer: $caller.client_id } }
+    RETURN IF $listed AND ($caller.consumer IS NONE OR $caller.consumer NOTINSIDE $secret.consumers) {
+        { code: "SECRETS_CONSUMER_NOT_ALLOWED", details: { consumer: $caller.consumer } }
     } ELSE { NONE };
-} COMMENT "Interne : refus d'une lecture de valeur ($ticket : { secret, version, number, consumer }) : droit de lecture de valeur ; secret actif, non expiré ; version active ; session système : consommateur annoncé dans la liste s'il y en a une ; humain : secret revealable et assurance la plus haute et récente (fn::auth_assurance_check) ; programme : client_id de son application dans la liste s'il y en a une. NONE ou { code, details }";
+} COMMENT "Interne : refus d'une lecture de valeur ($ticket : { secret, version, number, consumer }) : droit de lecture de valeur ; secret actif, non expiré ; version active ; session système : consommateur annoncé dans la liste s'il y en a une ; humain : secret revealable et assurance la plus haute et récente (fn::auth_assurance_check) ; programme : identifiant de son application (auth_application:…) dans la liste s'il y en a une. NONE ou { code, details }";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_read_begin
@@ -82,7 +82,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_read_begin($params: object) {
         number: $number,
         actor: $caller.identity,
         application: $caller.application,
-        consumer: IF $caller.system { $p.consumer } ELSE { $p.consumer ?? $caller.client_id }
+        consumer: IF $caller.system { $p.consumer } ELSE { $p.consumer ?? $caller.consumer }
     };
     LET $refusal = fn::secrets_read_refusal($ticket);
     IF $refusal IS NOT NONE { RETURN fn::error_result($refusal.code, $p.language, $refusal.details); };

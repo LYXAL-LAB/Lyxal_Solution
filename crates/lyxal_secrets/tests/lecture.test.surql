@@ -38,7 +38,7 @@
 
 -- préparation: secrets d'alpha, un restreint (réservé au robot et au module de notification) et un révélable
 {
-    LET $r = fn::secrets_secret_create({ tenant: "auth_organization:alpha", path: "smtp", kind: "password", consumers: ["lyxal-test-robot-alpha", "lyxal_notification"] }).data.id;
+    LET $r = fn::secrets_secret_create({ tenant: "auth_organization:alpha", path: "smtp", kind: "password", consumers: ["auth_application:robot", "lyxal_notification"] }).data.id;
     fn::secrets_version_add({ secret: <string> $r, number: 1, envelope: "enc:v2:k1:R1", key_id: "k1" });
     fn::secrets_version_add({ secret: <string> $r, number: 2, envelope: "enc:v2:k1:R2", key_id: "k1" });
     LET $v = fn::secrets_secret_create({ tenant: "auth_organization:alpha", path: "console", kind: "password", visibility: "revealable" }).data.id;
@@ -58,13 +58,13 @@
         AND $r.data.expires_at > time::now() + 50s;
 };
 
--- test: le ticket du robot porte son client_id et une entrée « secret.read » est au journal
+-- test: le ticket du robot porte l'identifiant de son application et une entrée « secret.read » est au journal
 {
     LET $t = (SELECT * FROM ONLY (SELECT VALUE robot FROM ONLY passe:ticket));
     LET $j = (SELECT VALUE event FROM secrets_audit WHERE event.action = "secret.read");
-    RETURN $t.consumer = "lyxal-test-robot-alpha" AND $t.application = auth_application:robot AND $t.actor IS NONE
+    RETURN $t.consumer = "auth_application:robot" AND $t.application = auth_application:robot AND $t.actor IS NONE
         AND array::len($j) = 1 AND $j[0].application = "auth_application:robot" AND $j[0].session_kind = "service"
-        AND $j[0].version = 2 AND $j[0].details.consumer = "lyxal-test-robot-alpha";
+        AND $j[0].version = 2 AND $j[0].details.consumer = "auth_application:robot";
 };
 
 -- test: la session système échange le ticket contre l'enveloppe, une seule fois
@@ -212,7 +212,7 @@
 -- test: écriture directe : ticket au nom d'un autre refusé
 -- en tant que: robot
 -- attendu-erreur: SECRETS_READ_TICKET_INVALID
-CREATE secrets_read_ticket CONTENT { secret: (SELECT VALUE restreint FROM ONLY passe:ids), version: (SELECT VALUE id FROM ONLY secrets_version WHERE secret = (SELECT VALUE restreint FROM ONLY passe:ids) AND number = 2 LIMIT 1), tenant: auth_organization:alpha, number: 2, actor: auth_identity:admin, consumer: "lyxal-test-robot-alpha" };
+CREATE secrets_read_ticket CONTENT { secret: (SELECT VALUE restreint FROM ONLY passe:ids), version: (SELECT VALUE id FROM ONLY secrets_version WHERE secret = (SELECT VALUE restreint FROM ONLY passe:ids) AND number = 2 LIMIT 1), tenant: auth_organization:alpha, number: 2, actor: auth_identity:admin, consumer: "auth_application:robot" };
 
 -- test: écriture directe : ticket plus long que 60 secondes refusé
 -- en tant que: robot

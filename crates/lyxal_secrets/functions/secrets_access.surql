@@ -36,7 +36,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_can($params: object) -> bool {
 DEFINE FUNCTION OVERWRITE fn::secrets_caller() -> object {
     LET $context = fn::auth_context({});
     IF !$context.ok {
-        RETURN { valid: false, system: false, identity: NONE, application: NONE, kind: NONE, session: NONE, client_id: NONE };
+        RETURN { valid: false, system: false, identity: NONE, application: NONE, kind: NONE, session: NONE, consumer: NONE };
     };
     LET $c = $context.data;
     RETURN {
@@ -46,9 +46,9 @@ DEFINE FUNCTION OVERWRITE fn::secrets_caller() -> object {
         application: $c.application,
         kind: $c.kind,
         session: $c.session,
-        client_id: IF $c.application IS NONE { NONE } ELSE { (SELECT VALUE client_id FROM ONLY $c.application) }
+        consumer: IF $c.application IS NONE { NONE } ELSE { <string> $c.application }
     };
-} COMMENT "Interne : appelant { valid, system, identity, application, kind (interactive, service, api_key), session, client_id }";
+} COMMENT "Interne : appelant { valid, system, identity, application, kind (interactive, service, api_key), session, consumer } d'après le contrat public fn::auth_context ; consumer = identifiant de l'application (auth_application:…) d'une session de programme";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_settings_effective (interne)

@@ -68,7 +68,7 @@ DEFINE FIELD OVERWRITE consumers ON TABLE secrets_secret
     TYPE array<string>
     DEFAULT []
     ASSERT array::len($value) <= 20 AND array::all($value, |$c| string::len($c) >= 1 AND string::len($c) <= 128)
-    COMMENT "Consommateurs prévus (modules ou client_id d'applications) ; vide : tout programme autorisé";
+    COMMENT "Consommateurs prévus (modules de l'hôte, ou applications : auth_application:…) ; vide : tout programme autorisé";
 
 DEFINE FIELD OVERWRITE tags ON TABLE secrets_secret
     TYPE array<string>

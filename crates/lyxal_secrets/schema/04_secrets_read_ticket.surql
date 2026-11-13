@@ -56,7 +56,7 @@ DEFINE FIELD OVERWRITE consumer ON TABLE secrets_read_ticket
     TYPE option<string>
     READONLY
     ASSERT $value IS NONE OR (string::len($value) >= 1 AND string::len($value) <= 128)
-    COMMENT "Consommateur annoncé (module, pour la session système ; client_id d'une application)";
+    COMMENT "Consommateur annoncé (module, pour la session système ; identifiant de l'application d'une session de programme)";
 
 DEFINE FIELD OVERWRITE created_at ON TABLE secrets_read_ticket
     TYPE datetime

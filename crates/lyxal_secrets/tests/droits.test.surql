@@ -68,9 +68,9 @@ RETURN ["list", "read_value", "write", "delete", "restore", "purge", "audit", "s
 RETURN fn::secrets_can({ action: "list", tenant: auth_organization:alpha })
     AND !["read_value", "write", "delete", "restore", "purge", "audit", "settings"].any(|$a| fn::secrets_can({ action: $a, tenant: auth_organization:alpha }));
 
--- test: compte de service : son application et son client_id
+-- test: compte de service : son application, identifiant de consommateur
 -- en tant que: robot
-RETURN fn::secrets_caller().application = auth_application:robot AND fn::secrets_caller().client_id = "lyxal-test-robot-alpha"
+RETURN fn::secrets_caller().application = auth_application:robot AND fn::secrets_caller().consumer = "auth_application:robot"
     AND fn::secrets_caller().kind = "service" AND fn::secrets_can({ action: "read_value", tenant: auth_organization:alpha })
     AND !fn::secrets_can({ action: "list", tenant: auth_organization:alpha });
 

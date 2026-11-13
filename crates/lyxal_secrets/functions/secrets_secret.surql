@@ -62,7 +62,12 @@ DEFINE FUNCTION OVERWRITE fn::secrets_secret_update_refusal($before: object, $af
     IF $after.state NOTINSIDE $allowed { RETURN "SECRETS_SECRET_STATE_INVALID"; };
     IF $after.state = "deleted" {
         IF !fn::secrets_can({ action: "delete", tenant: $tenant }) { RETURN "SECRETS_PERMISSION_DENIED"; };
-        RETURN IF $after.deleted_at IS NONE OR $after.purge_at IS NONE OR $after.state_before_delete != $before.state { "SECRETS_SECRET_STATE_INVALID" } ELSE { NONE };
+        IF $after.deleted_at IS NONE OR $after.purge_at IS NONE OR $after.state_before_delete != $before.state { RETURN "SECRETS_SECRET_STATE_INVALID"; };
+        -- Date de purge : celle des réglages, jamais une date fournie par l'appelant (la session système peut l'ajuster)
+        LET $days = fn::secrets_settings_effective({ tenant: $tenant }).deleted_retention_days;
+        LET $now = time::now();
+        RETURN IF !$system AND ($after.deleted_at > $now OR $after.deleted_at < $now - 1m
+            OR $after.purge_at < $after.deleted_at + duration::from_days($days)) { "SECRETS_SECRET_STATE_INVALID" } ELSE { NONE };
     };
     IF $before.state = "deleted" {
         IF !fn::secrets_can({ action: "restore", tenant: $tenant }) { RETURN "SECRETS_PERMISSION_DENIED"; };

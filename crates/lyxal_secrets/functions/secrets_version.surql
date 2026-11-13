@@ -39,6 +39,9 @@ DEFINE FUNCTION OVERWRITE fn::secrets_version_update_refusal($before: object, $a
     LET $author_moved = ($before.created_by != $after.created_by AND !($after.created_by IS NONE AND $before.created_by IS NOT NONE AND !record::exists($before.created_by)))
         OR ($before.created_by_application != $after.created_by_application AND !($after.created_by_application IS NONE AND $before.created_by_application IS NOT NONE AND !record::exists($before.created_by_application)));
     IF $author_moved OR $before.keys != $after.keys { RETURN "SECRETS_PERMISSION_DENIED"; };
+    -- Effacement de l'auteur par la suppression de son identité ou de son application : permis quel que soit l'état
+    LET $sealed = ["state", "envelope", "key_id", "destroyed_at", "resealed_at"];
+    IF array::all($sealed, |$f| $before[$f] = $after[$f]) { RETURN NONE; };
     IF $before.state = "destroyed" { RETURN "SECRETS_VERSION_STATE_INVALID"; };
     IF $secret.state = "deleted" { RETURN "SECRETS_SECRET_DELETED"; };
     LET $sealed_changed = $before.envelope != $after.envelope OR $before.key_id != $after.key_id;
