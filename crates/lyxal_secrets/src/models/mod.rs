@@ -26,19 +26,19 @@ pub use keys::{
     RewrapListParams, RotateAllowed, TenantKeyCreated, TenantKeyDestroyParams, TenantKeyDestroyed,
     TenantKeyRewrapped, TenantKeyState, TenantRef,
 };
-pub(crate) use read::{ReadEnvelope, SealContext};
+pub(crate) use read::ReadEnvelope;
 pub use read::{ReadBeginParams, ReadTicket, ReadTicketRef};
 pub use secret::{
-    SecretCreateParams, SecretGetParams, SecretList, SecretListParams, SecretPurged,
-    SecretRecord, SecretRefParams, SecretState, SecretUpdateParams,
+    SecretCreateParams, SecretGetParams, SecretList, SecretListParams, SecretPurged, SecretRecord,
+    SecretRefParams, SecretState, SecretUpdateParams,
 };
 pub use settings::{
     EffectiveSettings, SettingsGetParams, SettingsSetParams, SettingsView, StoredSettings,
 };
 pub use types::{SecretsDatetime, SecretsDuration, SecretsRecordId, SecretsValue};
-pub(crate) use version::{VersionAddParams, VersionResealParams};
 pub use version::{
     LabelsResult, Resealed, SecretVersion, Stage, VersionAdded, VersionLabelParams, VersionList,
     VersionListParams, VersionRefParams, VersionState, VersionSummary,
 };
+pub(crate) use version::{VersionAddParams, VersionResealParams};
 pub use worker::{PurgeDueParams, PurgeReport};

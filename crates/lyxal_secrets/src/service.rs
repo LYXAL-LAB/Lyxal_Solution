@@ -114,7 +114,8 @@ impl SecretsService {
             attempt += 1;
             let latest = request.expected_version.unwrap_or(secret.latest_version);
             let number = latest + 1;
-            let envelope = ring.seal(&request.value, &scope.version_context(&secret.id, number)?)?;
+            let envelope =
+                ring.seal(&request.value, &scope.version_context(&secret.id, number)?)?;
             let added = self
                 .caller
                 .version_add(VersionAddParams {
@@ -129,7 +130,7 @@ impl SecretsService {
             match added {
                 Err(error) if attempt < attempts => {
                     let error = SecretsError::from(error);
-                    if !error.is_code("SECRETS_VERSION_CONFLICT") {
+                    if !error.is_conflict("SECRETS_VERSION_CONFLICT") {
                         return Err(error);
                     }
                     secret = self.reload(&secret).await?;
@@ -230,7 +231,10 @@ impl SecretsService {
 
     /// Nouvelle clé active pour une organisation (`None` : l'installation), à la demande d'une
     /// personne qui détient le droit de réglage ; le worker rescelle ensuite les versions (R3).
-    pub async fn rotate_tenant_key(&self, tenant: Option<String>) -> SecretsResult<TenantKeyCreated> {
+    pub async fn rotate_tenant_key(
+        &self,
+        tenant: Option<String>,
+    ) -> SecretsResult<TenantKeyCreated> {
         self.keys.master()?;
         let allowed = self
             .caller

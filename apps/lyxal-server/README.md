@@ -51,7 +51,7 @@ déclaré manque.
 | `lyxal_auth` | toujours | `AuthModule`, `AuthHealthCheck` |
 | `lyxal_notification` | toujours | `NotificationModule`, `NotificationConsumer` (événements `auth.*`), `NotificationEmailWorker`, `NotificationPurgeWorker`, `NotificationHealthCheck` |
 | `lyxal_storage` | toujours | `StorageModule`, `StorageCleanupWorker` (si un support est configuré), `StorageHealthCheck` ; supports disque et S3 ; envoi reprenable |
-| `lyxal_secrets` | toujours | `ManifestModule` (socle SurrealQL ; service Rust au lot 2 de son programme) |
+| `lyxal_secrets` | toujours | `SecretsModule`, `SecretsMaintenanceWorker` (purge, rescellement), `SecretsHealthCheck` ; trousseau maître du coffre-fort ; `SecretsClient` pour les modules hébergés |
 | `lyxal_base` | toujours | `ManifestModule` |
 | `lyxal_catalogue` | toujours | `ManifestModule` (SurrealQL seul) |
 | `lyxal_pipeline_ingestion` | fonctionnalité `module-ingestion` (par défaut) | `PipelineIngestionModule`, `IngestionWorker` (lit les fichiers sources des lots dans `lyxal_storage`), `IngestionHealthCheck` ; bucket `ingestion-sources` créé au démarrage |
@@ -76,6 +76,7 @@ du code Rust, déclarer son implémentation et ses services dans `src/modules/` 
 | `observability` | `log_filter`, `json_logs`, `include_target`, `include_thread_ids` |
 | `cors` | `enabled`, `allow_credentials`, `allowed_origins`, `allowed_methods`, `allowed_headers` |
 | `crypto` | `application_key` (facultative, variable d'environnement seulement), `application_key_id` |
+| `secrets` | `master_key` (facultative, variable d'environnement seulement), `master_key_id`, `previous_master_key` (pendant une rotation, variable d'environnement seulement), `previous_master_key_id` |
 | `auth` | `public_url` (facultative : adresse publique de l'interface, pour les liens des messages et l'origine des passkeys), `passkey_rp_id` (facultatif : domaine des passkeys, défaut : hôte de `public_url`) |
 | `notification.smtp` | `host`, `port`, `security` (`tls`, `starttls`, `local_plain`), `username`, `password`, `from_address`, `from_name`, `timeout_seconds` (section facultative) |
 | `storage` | `disk.root` (facultatif : dossier du support de fichiers `default`), `s3.<nom>` (facultatif : `endpoint`, `region`, `bucket`, `access_key_id`, `secret_access_key` par variable d'environnement seulement, `path_style`, `allow_http`), `antivirus` (facultatif : `address` ou `socket`, `timeout_seconds`), `idle_timeout_seconds` (délai d'inactivité d'un envoi ou d'un téléchargement, 5 à 600, 60 par défaut) |
@@ -201,6 +202,30 @@ fichier, par exemple `plans/2026/a.pdf`) :
   `cors.allowed_methods` et doivent y rester si cette liste est remplacée.
 * **Réponses** : contrat `LyxalResult`, sauf le contenu d'un fichier ; erreurs `STORAGE_*` dans
   la langue de la requête.
+
+Le coffre-fort des secrets (`lyxal_secrets`) a **sa propre clé maîtresse**, distincte de la
+clé applicative partagée par `lyxal_auth` et `lyxal_notification` : une clé AES-256 (32 octets
+en Base64 canonique, 44 caractères), `LYXAL__SECRETS__MASTER_KEY`, lue par
+`lyxal_crypto::EnvironmentKeyProvider`, avec son identifiant `LYXAL__SECRETS__MASTER_KEY_ID`
+(ex. `vault-2026`). Elle scelle la clé de chaque organisation, qui scelle elle-même les valeurs.
+Une clé écrite dans un fichier de configuration arrête le démarrage. Sans clé, le serveur
+démarre : les fiches restent consultables, aucune valeur n'est écrite ni lue
+(`SECRETS_CRYPTO_UNAVAILABLE`) et la sonde du module est dégradée.
+
+```text
+LYXAL__SECRETS__MASTER_KEY                nouvelle clé (Base64, 44 caractères)
+LYXAL__SECRETS__MASTER_KEY_ID             vault-2027
+LYXAL__SECRETS__PREVIOUS_MASTER_KEY       ancienne clé, en lecture seule pendant la rotation
+LYXAL__SECRETS__PREVIOUS_MASTER_KEY_ID    vault-2026
+```
+
+Changer la clé maîtresse : fournir la nouvelle comme clé active et l'ancienne à côté, redémarrer ;
+le worker de maintenance (toutes les 10 minutes) rescelle les clés des organisations, la sonde
+annonce la fin du rescellement (« l'ancienne clé maîtresse … peut être retirée »), puis retirer
+l'ancienne et redémarrer. Le même worker purge les secrets supprimés à échéance, rescelle les
+versions après la rotation de la clé d'une organisation et détruit les clés devenues inutiles.
+Le test `tests/secrets.rs` (exécutable séparé : il fournit la clé maîtresse par variable
+d'environnement) vérifie l'écriture et la relecture d'une valeur par un module hébergé.
 
 La connexion (`lyxal_auth`) demande la clé applicative et `auth.public_url`
 (`LYXAL__AUTH__PUBLIC_URL`, ex. `https://console.example.com`). Au démarrage, l'hôte crée les

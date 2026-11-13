@@ -8,8 +8,7 @@
 
 | Lot | Contenu |
 | :- | :--- |
-| 2 | Rust : clés par organisation scellées par la clé maîtresse de l'hôte, scellement et ouverture, lecture tracée avant remise, `SecretsClient` pour les autres modules, workers de rescellement et de purge, module et sonde de santé |
-| 3 | Cycle de vie : alertes avant échéance, rotation en quatre étapes, essai de rotation, rotation d'urgence |
+| 3 | Cycle de vie : alertes avant échéance, rotation en quatre étapes, essai de rotation, rotation d'urgence, rotation planifiée des clés d'organisation |
 | 4 | Accès avancés : accès temporaires par chemin, demandes d'accès et approbation des changements, accès d'urgence tracé |
 | 5 | Hôte : routes HTTP, révélation avec double facteur, partage à usage unique |
 | 6 | Clôture : audit, procédures (sauvegarde, clé maîtresse, urgence, compromission) |

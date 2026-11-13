@@ -26,6 +26,8 @@ pub struct AppConfig {
     pub auth: AuthConfig,
     #[serde(default)]
     pub storage: StorageConfig,
+    #[serde(default)]
+    pub secrets: SecretsConfig,
 }
 
 /// Stockage des fichiers (`lyxal_storage`) : support `default` sur un dossier du serveur. Sans
@@ -134,6 +136,26 @@ pub struct CryptoConfig {
     pub application_key: Option<SecretPassword>,
     #[serde(default)]
     pub application_key_id: Option<String>,
+}
+
+/// Clé maîtresse du coffre-fort (`lyxal_secrets`), distincte de la clé applicative partagée :
+/// clé AES-256 de 32 octets en Base64 canonique (44 caractères), jamais dans les fichiers de
+/// configuration, uniquement par `LYXAL__SECRETS__MASTER_KEY` (lue par
+/// `lyxal_crypto::EnvironmentKeyProvider`), avec son identifiant `master_key_id`. Pendant une
+/// rotation, l'ancienne clé est fournie à côté, en lecture seule
+/// (`LYXAL__SECRETS__PREVIOUS_MASTER_KEY`, `previous_master_key_id`). Sans clé, le coffre-fort
+/// n'écrit ni ne lit aucune valeur (sonde « dégradé »).
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SecretsConfig {
+    #[serde(default)]
+    pub master_key: Option<SecretPassword>,
+    #[serde(default)]
+    pub master_key_id: Option<String>,
+    #[serde(default)]
+    pub previous_master_key: Option<SecretPassword>,
+    #[serde(default)]
+    pub previous_master_key_id: Option<String>,
 }
 
 /// Notifications sortantes : relais SMTP unique de l'installation (avant `lyxal_secrets`). Sans
@@ -303,6 +325,30 @@ fn refuse_storage_secret_in_files(
     Ok(())
 }
 
+/// Les clés maîtresses du coffre-fort ne se lisent que dans l'environnement : présentes dans un
+/// fichier de configuration, elles arrêtent le démarrage.
+fn refuse_secrets_keys_in_files(
+    files: config::ConfigBuilder<config::builder::DefaultState>,
+) -> Result<(), ServerError> {
+    let files = files.build().map_err(|error| ServerError::Configuration {
+        message: error.to_string(),
+    })?;
+    let Ok(secrets) = files.get_table("secrets") else {
+        return Ok(());
+    };
+    for key in ["master_key", "previous_master_key"] {
+        if secrets.contains_key(key) {
+            return Err(ServerError::Configuration {
+                message: format!(
+                    "secrets.{key} ne doit pas figurer dans un fichier : LYXAL__SECRETS__{} seulement",
+                    key.to_uppercase()
+                ),
+            });
+        }
+    }
+    Ok(())
+}
+
 impl AppConfig {
     pub fn load() -> Result<Self, ServerError> {
         Self::load_from("config")
@@ -327,6 +373,7 @@ impl AppConfig {
                 config::File::from(directory.join(format!("{environment}.toml"))).required(false),
             );
         refuse_storage_secret_in_files(files.clone())?;
+        refuse_secrets_keys_in_files(files.clone())?;
 
         let builder = files.add_source(
             config::Environment::with_prefix("LYXAL")

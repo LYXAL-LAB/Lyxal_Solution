@@ -46,7 +46,11 @@ pub struct SecretsClient {
 impl SecretsClient {
     /// Client du module `consumer` (son identifiant, ex. `lyxal_notification`), sur la session
     /// système de l'hôte.
-    pub fn new(system: SecretsStore, master: Option<MasterKeys>, consumer: impl Into<String>) -> Self {
+    pub fn new(
+        system: SecretsStore,
+        master: Option<MasterKeys>,
+        consumer: impl Into<String>,
+    ) -> Self {
         Self {
             service: SecretsService::new(system.clone(), system, master),
             consumer: consumer.into(),

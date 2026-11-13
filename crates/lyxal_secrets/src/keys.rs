@@ -14,8 +14,7 @@
 
 use lyxal_crypto::{
     CryptoEngine, CryptoError, EncryptedEnvelope, EncryptionKey, KeyId, KeyRing, KeyRingBuilder,
-    KeyState, KeyUse, ReencryptResult, ResolvedKey, SecretBytes, SecretContext,
-    StaticKeyResolver,
+    KeyState, KeyUse, ReencryptResult, ResolvedKey, SecretBytes, SecretContext, StaticKeyResolver,
 };
 use lyxal_surreal::{RecordId, ToSql};
 use rand_core::{OsRng, RngCore};
@@ -145,7 +144,10 @@ impl Scope {
         if context == INSTALLATION_CONTEXT {
             return Ok(Self::installation());
         }
-        Self::from_record(Some(&RecordId::new(ORGANIZATION_TABLE, context.to_string())))
+        Self::from_record(Some(&RecordId::new(
+            ORGANIZATION_TABLE,
+            context.to_string(),
+        )))
     }
 
     fn installation() -> Self {
@@ -230,7 +232,11 @@ impl TenantRing {
 
     /// Valeur ouverte ; une enveloppe qui ne s'ouvre pas (altérée, recopiée d'un autre secret,
     /// d'une autre version ou d'une autre organisation) est `ValueCorrupted`.
-    pub(crate) fn open(&self, envelope: &str, context: &SecretContext) -> SecretsResult<SecretBytes> {
+    pub(crate) fn open(
+        &self,
+        envelope: &str,
+        context: &SecretContext,
+    ) -> SecretsResult<SecretBytes> {
         let envelope =
             EncryptedEnvelope::parse(envelope).map_err(|_| SecretsError::ValueCorrupted)?;
         self.engine
@@ -317,9 +323,8 @@ impl TenantKeys {
             };
             builder.insert(id, key, use_)?;
         }
-        let active = active.ok_or_else(|| {
-            SecretsError::TenantKeyUnavailable("aucune clé active".to_string())
-        })?;
+        let active = active
+            .ok_or_else(|| SecretsError::TenantKeyUnavailable("aucune clé active".to_string()))?;
         Ok(Some(TenantRing {
             engine: CryptoEngine::new(StaticKeyResolver::new(Arc::new(builder.build()?))),
             active,
@@ -334,7 +339,7 @@ impl TenantKeys {
         }
         match self.create_key(scope, None, None).await {
             Ok(_) => {}
-            Err(error) if error.is_code("SECRETS_TENANT_KEY_CONFLICT") => {}
+            Err(error) if error.is_conflict("SECRETS_TENANT_KEY_CONFLICT") => {}
             Err(error) => return Err(error),
         }
         self.ring(scope).await?.ok_or_else(|| {

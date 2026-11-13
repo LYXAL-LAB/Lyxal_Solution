@@ -84,7 +84,11 @@ impl ModuleHealthCheck for SecretsHealthCheck {
         let unknown = work
             .keys
             .iter()
-            .filter(|key| !key.master_key_id.as_deref().is_some_and(|id| master.knows(id)))
+            .filter(|key| {
+                !key.master_key_id
+                    .as_deref()
+                    .is_some_and(|id| master.knows(id))
+            })
             .count();
         if unknown > 0 {
             return Ok(HealthCheckResult::degraded(

@@ -46,6 +46,7 @@ lyxal_auth.workspace = true
 lyxal_notification.workspace = true
 lyxal_i18n.workspace = true
 lyxal_storage.workspace = true
+lyxal_secrets.workspace = true
 bytes = "1"
 futures = { version = "0.3", default-features = false, features = ["std"] }
 percent-encoding = "2"

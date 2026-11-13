@@ -92,12 +92,22 @@ pub struct Bench {
     pub client: Surreal<Any>,
     pub store: SecretsStore,
     pub master: MasterKeys,
+    /// Matière de la clé maîtresse `vault-1` du banc (pour la fournir comme ancienne clé).
+    material: Arc<EncryptionKey>,
     pub service: SecretsService,
 }
 
 pub async fn bench() -> Bench {
     let client = installed_client().await;
-    let master = MasterKeys::from_keys(master_key("vault-1"), None).expect("trousseau maître");
+    let material = Arc::new(EncryptionKey::generate().expect("clé"));
+    let master = MasterKeys::from_keys(
+        ResolvedKey::new(
+            KeyId::parse("vault-1").expect("identifiant"),
+            material.clone(),
+        ),
+        None,
+    )
+    .expect("trousseau maître");
     client
         .query(
             "CREATE auth_organization:alpha CONTENT { slug: 'alpha', name: 'Alpha BTP' };
@@ -112,10 +122,19 @@ pub async fn bench() -> Bench {
         client,
         store,
         master,
+        material,
     }
 }
 
 impl Bench {
+    /// Clé maîtresse `vault-1` du banc.
+    pub fn master_key(&self) -> ResolvedKey {
+        ResolvedKey::new(
+            KeyId::parse("vault-1").expect("identifiant"),
+            self.material.clone(),
+        )
+    }
+
     /// Service de la session système avec un autre trousseau maître.
     pub fn service_with(&self, master: Option<MasterKeys>) -> SecretsService {
         SecretsService::new(self.store.clone(), self.store.clone(), master)
@@ -173,13 +192,15 @@ impl Bench {
 
     /// Valeur d'une requête sous la session système.
     pub async fn value<T: lyxal_surreal::SurrealValue>(&self, query: &str) -> T {
-        let mut response = self
-            .client
-            .query(query.to_string())
-            .await
-            .expect("requête");
+        let mut response = self.client.query(query.to_string()).await.expect("requête");
         let value: Option<T> = response.take(0).expect("résultat");
         value.expect("valeur")
+    }
+
+    /// Valeurs d'une requête (liste) sous la session système.
+    pub async fn values<T: lyxal_surreal::SurrealValue>(&self, query: &str) -> Vec<T> {
+        let mut response = self.client.query(query.to_string()).await.expect("requête");
+        response.take(0).expect("résultats")
     }
 
     /// Entrées du journal d'une portée, les plus récentes d'abord.
@@ -277,8 +298,7 @@ fn token(session: &str, permissions: &[&str]) -> String {
 
 /// Base64 URL sans remplissage (RFC 4648 §5).
 fn base64url(bytes: &[u8]) -> String {
-    const ALPHABET: &[u8; 64] =
-        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
     let mut out = String::new();
     for chunk in bytes.chunks(3) {
         let b = [

@@ -183,7 +183,8 @@ impl SecretsStore {
 
     /// `fn::secrets_tenant_key_rotate_allowed` : droit de demander une rotation.
     pub async fn tenant_key_rotate_allowed(&self, params: TenantRef) -> Call<RotateAllowed> {
-        self.call_fn("secrets_tenant_key_rotate_allowed", params).await
+        self.call_fn("secrets_tenant_key_rotate_allowed", params)
+            .await
     }
 
     /// `fn::secrets_tenant_key_rewrap` : clé rescellée par la nouvelle clé maîtresse.

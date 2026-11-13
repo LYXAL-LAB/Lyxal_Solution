@@ -6,6 +6,7 @@ mod i18n;
 #[cfg(feature = "module-ingestion")]
 mod ingestion;
 mod notification;
+pub mod secrets;
 mod storage;
 
 use crate::config::AppConfig;
@@ -134,6 +135,9 @@ fn implementation(
     if id == storage::MODULE_ID {
         return Ok(storage::module());
     }
+    if id == secrets::MODULE_ID {
+        return Ok(secrets::module());
+    }
     #[cfg(feature = "module-ingestion")]
     if id == ingestion::MODULE_ID {
         return Ok(ingestion::module());
@@ -144,12 +148,13 @@ fn implementation(
 }
 
 /// Services des modules hébergés à compléter après leur installation.
-#[derive(Default)]
 pub struct HostedServices {
     /// Service de connexion (routes `/auth/*`), si la configuration le permet.
     pub auth: Option<Arc<auth::AuthHost>>,
     /// Supports et antivirus des fichiers (routes `/storage/*`).
     pub storage: crate::context::StorageHost,
+    /// Coffre-fort des secrets : client des modules hébergés qui liront leurs secrets.
+    pub secrets: secrets::SecretsHost,
     #[cfg(feature = "module-ingestion")]
     publication: bool,
     /// Envoi des notifications configuré (clé applicative et relais SMTP).
@@ -167,6 +172,7 @@ pub async fn register_services(
     let auth = auth::register_services(runtime, client, config, crypto.clone())?;
     i18n::register_services(runtime, client)?;
     let storage = storage::register_services(runtime, client, config)?;
+    let secrets = secrets::register_services(runtime, client, config)?;
     let notification_delivery =
         notification::register_services(runtime, client, config, crypto).await?;
     #[cfg(feature = "module-ingestion")]
@@ -176,6 +182,7 @@ pub async fn register_services(
         Ok(HostedServices {
             auth,
             storage,
+            secrets,
             publication,
             notification_delivery,
         })
@@ -184,6 +191,7 @@ pub async fn register_services(
     Ok(HostedServices {
         auth,
         storage,
+        secrets,
         notification_delivery,
     })
 }

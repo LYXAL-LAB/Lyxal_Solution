@@ -72,6 +72,12 @@ impl SecretsError {
         matches!(self, Self::Surreal(error) if matches!(error.as_ref(), LyxalSurrealError::Call(call) if call.is_business_code(code)))
     }
 
+    /// Vrai si une écriture concurrente a pris la place : refus `code` de la base, ou conflit
+    /// transitoire de transaction de SurrealDB (transaction annulée, rien n'a été écrit).
+    pub fn is_conflict(&self, code: &str) -> bool {
+        self.is_code(code) || matches!(self, Self::Surreal(error) if error.is_transient_conflict())
+    }
+
     /// Vrai si l'opération peut réussir plus tard sans changement (base indisponible).
     pub fn is_retryable(&self) -> bool {
         match self {
