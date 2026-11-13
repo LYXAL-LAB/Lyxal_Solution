@@ -8,9 +8,11 @@ scellée : le scellement par `lyxal_crypto` arrive au lot 2 ; ici, les tests pos
 enveloppes factices au format `enc:v2:`. Aucune ligne de code avant la validation du CTO
 (`.agents/AGENTS.md` §3).
 
-## 1. Décisions demandées au CTO
+## 1. Décisions du CTO (13 novembre 2026)
 
-| N° | Question | Recommandation |
+L1 à L6 validées selon les recommandations.
+
+| N° | Question | Décision |
 | :- | :--- | :--- |
 | **L1** | Forme du nom d'un secret | Un **chemin** (`notification/smtp/password`) contrôlé par la règle `lyxal_storage_path` de `lyxal_core` (segments `[A-Za-z0-9._-]` séparés par `/`, 256 caractères au plus), **unique par organisation** tant que le secret n'est pas purgé |
 | **L2** | Écritures concurrentes | Chaque nouvelle version est scellée pour **un numéro précis** (le contexte de scellement contient le numéro) : si une autre écriture est passée entre-temps, la seconde est refusée (`SECRETS_VERSION_CONFLICT`) et le service Rust la rejoue (lot 2). Aucune écriture n'en écrase une autre sans le savoir (modèle Vault `cas`) |
