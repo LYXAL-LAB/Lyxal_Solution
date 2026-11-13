@@ -8,21 +8,24 @@ code avant la validation du CTO (`.agents/AGENTS.md` §3).
 
 ## 1. Décisions du CTO (13 novembre 2026)
 
-R1 à R6 validées selon les recommandations.
+R2 à R6 validées selon les recommandations. **R1 révisée après relecture, à valider de nouveau** :
+la clé applicative de l'hôte est partagée avec `lyxal_auth` (clés de signature, secrets du double
+facteur) et `lyxal_notification` ; la retirer après avoir rescellé les seules clés du coffre-fort
+rendrait leurs données illisibles. Le coffre-fort a donc sa propre clé maîtresse.
 
 | N° | Question | Décision |
 | :- | :--- | :--- |
-| **R1** | Rotation de la clé maîtresse (K2) : comment l'hôte connaît-il l'ancienne clé ? | **Une ancienne clé au plus**, fournie comme la clé actuelle par une variable d'environnement (`LYXAL__CRYPTO__PREVIOUS_APPLICATION_KEY`, et son identifiant). Elle ne sert qu'à relire ; le worker rescelle les clés d'organisation, puis on retire la variable. Aucune clé dans un fichier ni dans la base |
+| **R1** (révisée) | Clé maîtresse du coffre-fort et sa rotation | **Une clé maîtresse propre au coffre-fort**, distincte de la clé applicative partagée : `LYXAL__SECRETS__MASTER_KEY` et son identifiant, par variable d'environnement seulement. Pour la changer, l'ancienne est fournie à côté (`LYXAL__SECRETS__PREVIOUS_MASTER_KEY`), en lecture seule ; le worker rescelle les clés des organisations, la sonde annonce la fin, puis on retire l'ancienne. La clé applicative de l'hôte n'est pas touchée |
 | **R2** | Quand créer la clé d'une organisation ? | **À la première valeur écrite** pour cette organisation (aucune clé inutile) |
 | **R3** | Rotation d'une clé d'organisation | **Sur demande** dans ce lot (permission `secrets.settings.manage`) : nouvelle clé active, l'ancienne ne sert plus qu'à relire, le worker rescelle toutes les versions, puis l'ancienne est détruite. La rotation **planifiée** (tous les N jours) arrive au lot 3 avec le cycle de vie |
 | **R4** | Valeur JSON | Si la valeur est un objet JSON, **les noms de ses clés** sont enregistrés (jamais les valeurs) pour qu'un écran montre la structure ; sinon rien |
-| **R5** | Serveur démarré sans clé maîtresse | Le serveur **démarre**, le module est **dégradé** (sonde de santé) et toute écriture ou lecture de valeur est refusée (`SECRETS_CRYPTO_UNAVAILABLE`) ; les fiches restent consultables. Même comportement que le stockage sans support configuré |
+| **R5** | Serveur démarré sans clé maîtresse du coffre-fort | Le serveur **démarre**, le module est **dégradé** (sonde de santé) et toute écriture ou lecture de valeur est refusée (`SECRETS_CRYPTO_UNAVAILABLE`) ; les fiches restent consultables. Même comportement que le stockage sans support configuré |
 | **R6** | Lecture refusée | **Journalisée** (OWASP 8.3) : qui, quel secret, quel code de refus, par la session système au nom de l'appelant |
 
 ## 2. Clés
 
 ```text
-clé maîtresse (LYXAL__CRYPTO__APPLICATION_KEY, trousseau de l'hôte)
+clé maîtresse du coffre-fort (LYXAL__SECRETS__MASTER_KEY ; ancienne clé en lecture seule pendant une rotation)
    └── clé de chaque organisation : 32 octets tirés par rand_core::OsRng dans un SecretBytes,
        scellés par la clé maîtresse et rangés dans secrets_tenant_key
           └── chaque version : scellée par la clé de son organisation
@@ -94,14 +97,59 @@ libération. Un refus est journalisé (R6). Une enveloppe qui ne s'ouvre pas don
 protège d'une course) ; quand plus rien n'utilise l'ancienne clé, elle est détruite. Clés
 d'organisation scellées par l'ancienne clé maîtresse → rescellées par la nouvelle.
 
+## 4 bis. Contrats
+
+### SurrealQL (`DEFINE FUNCTION OVERWRITE fn::<nom>($params: object)`, résultat `fn::result_ok` ou `fn::error_result`)
+
+| Fonction | `$params` (**obligatoires**) | `data` | Appelant |
+| :--- | :--- | :--- | :--- |
+| `secrets_tenant_key_ring` | `tenant` | `{ items: [{ key_id, wrapped, state }] }` (états `active`, `decrypt_only`) | système, worker |
+| `secrets_tenant_key_create` | **key_id**, **wrapped**, `tenant`, `replaces` (clé active attendue ; absente : première clé), `requested_by` (`auth_identity:…`) | `{ key_id, state, retired }` ; conflit : `SECRETS_TENANT_KEY_CONFLICT` | système, worker |
+| `secrets_tenant_key_rotate_allowed` | `tenant` | `{ allowed, requested_by }` | personne avec `secrets.settings.manage` |
+| `secrets_tenant_key_rewrap` | **key_id**, **expected_master_key_id**, **wrapped** | `{ key_id, master_key_id }` | système, worker |
+| `secrets_tenant_key_destroy` | **key_id** | `{ key_id, destroyed }` ; encore utilisée : `SECRETS_TENANT_KEY_CONFLICT` | système, worker |
+| `secrets_rewrap_list` | **master_key_id** (clé maîtresse active), `limit` (≤ 1000) | `{ versions: [{ secret, tenant, number, key_id, envelope }], keys: [{ key_id, tenant, wrapped, master_key_id }], unused: [key_id] }` | système |
+| `secrets_audit_denied` | **secret**, **code**, **session_kind**, `actor`, `application`, `session`, `consumer`, `version` | `{ seq }` | système |
+
+`fn::secrets_audit_write` (interne) accepte `on_behalf: { actor, application, session, session_kind }`,
+pris en compte pour la session système seulement.
+
+### Rust (`models/`, `#[derive(SurrealValue)]`, identifiants en texte `table:clé`)
+
+| Type | Champs |
+| :--- | :--- |
+| `TenantRef` | `tenant: Option<String>` |
+| `TenantKeyRing` / `TenantKeyEntry` (`pub(crate)`, `Debug` masqué) | `items: Vec<TenantKeyEntry>` ; `key_id: String`, `wrapped: String`, `state: TenantKeyState` (`Active`, `DecryptOnly`) |
+| `TenantKeyCreateParams` (`pub(crate)`) | `tenant: Option<String>`, `key_id: String`, `wrapped: String`, `replaces: Option<String>`, `requested_by: Option<String>` |
+| `TenantKeyCreated` | `key_id: String`, `state: String`, `retired: Option<String>` |
+| `RotateAllowed` | `allowed: bool`, `requested_by: Option<String>` |
+| `TenantKeyRewrapParams` (`pub(crate)`) | `key_id`, `expected_master_key_id`, `wrapped` |
+| `TenantKeyDestroyParams` / `TenantKeyDestroyed` | `key_id` / `key_id`, `destroyed: bool` |
+| `RewrapListParams` / `RewrapList` (`pub(crate)`) | `master_key_id`, `limit: Option<i64>` / `versions: Vec<RewrapVersion>`, `keys: Vec<RewrapKey>`, `unused: Vec<String>` |
+| `AuditDeniedParams` | `secret`, `code`, `session_kind`, `actor`, `application`, `session`, `consumer`, `version: Option<i64>` |
+| Lot 1, déjà en SurrealQL | `SettingsGetParams`, `SettingsSetParams`, `SecretCreateParams`, `SecretUpdateParams`, `SecretRefParams`, `SecretListParams`, `VersionAddParams` (`secret`, `number`, `envelope`, `key_id`, `keys`, `stage`), `VersionRefParams`, `VersionLabelParams`, `VersionResealParams`, `ReadBeginParams` (`secret`, `label`, `number`, `consumer`), `ReadTicketRef` (`ticket`), `AuditListParams`, `AuditVerifyParams`, `PurgeDueParams` ; résultats `SecretRecord`, `SecretVersion`, `VersionAdded`, `LabelsResult`, `ReadTicket` (`ticket`, `secret`, `number`, `key_id`, `expires_at`), `ReadEnvelope` (`pub(crate)` : `envelope`, `key_id`, `number`, `context`), `AuditList`, `AuditReport`, `PurgeReport` — mêmes champs que les fonctions du lot 1 (README) |
+
+### Service
+
+| Méthode | Entrée | Sortie |
+| :--- | :--- | :--- |
+| `SecretsService::put` | `PutValue { secret, value: SecretBytes, expected_version: Option<i64>, stage: Stage }` | `VersionAdded` |
+| `SecretsService::reveal` | `RevealRequest { secret, label: Option<String>, number: Option<i64> }` | `RevealedValue { number, value: SecretBytes }` (`Debug` masqué) |
+| `SecretsService::rotate_tenant_key` | `tenant: Option<String>` | `TenantKeyCreated` |
+| `SecretsClient::read` | `ClientRead { tenant, path, label: Option<String> }` (le module s'annonce comme consommateur) | `RevealedValue` |
+| `SecretsClient::write` | `ClientWrite { tenant, path, value: SecretBytes, stage: Stage }` | `VersionAdded` |
+| `SecretsMaintenanceWorker` | intervalle, taille de lot | `MaintenanceReport { purged, resealed, rewrapped, destroyed_keys }` |
+
 ## 5. Hôte
 
-* `apps/lyxal-server/src/crypto.rs` : trousseau maître = clé active + ancienne clé (R1), en lecture
-  seule pour l'ancienne.
-* `apps/lyxal-server/src/modules/secrets.rs` : `SecretsModule`, worker, sonde ; `SecretsClient`
-  rendu aux modules qui en auront besoin (aucun ne l'utilise dans ce programme, décision B1).
-* Configuration : `crypto.previous_application_key_id` ; la clé elle-même par variable
-  d'environnement seulement.
+* `apps/lyxal-server/src/modules/secrets.rs` : trousseau maître du coffre-fort (clé active et, pendant
+  une rotation, ancienne clé en lecture seule) lu par `EnvironmentKeyProvider` dans
+  `LYXAL__SECRETS__MASTER_KEY` et `LYXAL__SECRETS__PREVIOUS_MASTER_KEY` ; `SecretsModule`, worker,
+  sonde ; `SecretsClient` rendu aux modules qui en auront besoin (aucun ne l'utilise dans ce
+  programme, décision B1).
+* Configuration : `secrets.master_key_id` et `secrets.previous_master_key_id` ; les clés elles-mêmes
+  par variables d'environnement seulement (une clé dans un fichier de configuration arrête le
+  démarrage). La clé applicative partagée (`crypto.application_key`) est inchangée.
 * Pas de route HTTP dans ce lot (lot 5).
 
 ## 6. Tests
@@ -115,7 +163,8 @@ d'organisation scellées par l'ancienne clé maîtresse → rescellées par la n
   * écritures concurrentes : aucune perdue, numéros consécutifs ;
   * rotation de la clé d'organisation puis rescellement complet, ancienne clé détruite, valeurs
     toujours lisibles ;
-  * rotation de la clé maîtresse (ancienne clé fournie) puis rescellement des clés d'organisation ;
+  * rotation de la clé maîtresse du coffre-fort (ancienne clé fournie) puis rescellement des clés
+    d'organisation ; la clé applicative de l'hôte et les données de `lyxal_auth` restent lisibles ;
   * organisation supprimée : ses secrets ne s'ouvrent plus ;
   * sans clé maîtresse : `SECRETS_CRYPTO_UNAVAILABLE`, module dégradé, fiches consultables ;
   * aucune valeur ni clé dans les journaux, les erreurs et les `Debug` ;
