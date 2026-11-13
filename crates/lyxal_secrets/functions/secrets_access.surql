@@ -65,9 +65,10 @@ DEFINE FUNCTION OVERWRITE fn::secrets_settings_effective($params: object) -> obj
         purge_protection: ($own.purge_protection ?? false) OR ($base.purge_protection ?? false),
         max_value_bytes: $own.max_value_bytes ?? $base.max_value_bytes ?? 65536,
         default_visibility: $own.default_visibility ?? $base.default_visibility ?? "restricted",
-        expiry_warning_days: $own.expiry_warning_days ?? $base.expiry_warning_days ?? 30
+        expiry_warning_days: $own.expiry_warning_days ?? $base.expiry_warning_days ?? 30,
+        tenant_key_rotation_days: $own.tenant_key_rotation_days ?? $base.tenant_key_rotation_days ?? 365
     };
-} COMMENT "Réglages effectifs ({ tenant }) : organisation, sinon installation, sinon valeurs par défaut (10 versions, 30 jours avant purge, 64 Kio, visibilité restricted, alerte 30 jours avant l'échéance). La protection contre la purge s'applique si l'organisation ou l'installation l'a activée";
+} COMMENT "Réglages effectifs ({ tenant }) : organisation, sinon installation, sinon valeurs par défaut (10 versions, 30 jours avant purge, 64 Kio, visibilité restricted, alerte 30 jours avant l'échéance, rotation de la clé d'organisation tous les 365 jours, 0 : désactivée). La protection contre la purge s'applique si l'organisation ou l'installation l'a activée";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_tenant_string (interne)

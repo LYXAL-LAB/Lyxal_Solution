@@ -2,7 +2,7 @@ manifest_version = 1
 id = "lyxal_secrets"
 name = "Lyxal Secrets"
 version = "0.1.0"
-description = "Coffre-fort des secrets applicatifs de Lyxal OS : fiches, versions scellées, étiquettes, droits par opération, ticket de lecture et journal chaîné"
+description = "Coffre-fort des secrets applicatifs de Lyxal OS : fiches, versions scellées, étiquettes, droits par opération, ticket de lecture, journal chaîné, échéances et rotation"
 capabilities = ["database", "events", "secrets"]
 
 [runtime]
@@ -31,7 +31,8 @@ schemas = [
     "schema/03_secrets_version.surql",
     "schema/04_secrets_read_ticket.surql",
     "schema/05_secrets_audit.surql",
-    "schema/06_secrets_tenant_key.surql"
+    "schema/06_secrets_tenant_key.surql",
+    "schema/07_secrets_rotation.surql"
 ]
 functions = [
     "functions/secrets_access.surql",
@@ -41,7 +42,8 @@ functions = [
     "functions/secrets_version.surql",
     "functions/secrets_read.surql",
     "functions/secrets_worker.surql",
-    "functions/secrets_keys.surql"
+    "functions/secrets_keys.surql",
+    "functions/secrets_rotation.surql"
 ]
 error_definitions = [
     "error/parametres/error_parametres.surql",
@@ -49,7 +51,8 @@ error_definitions = [
     "error/secrets/error_secrets.surql",
     "error/versions/error_versions.surql",
     "error/lecture/error_lecture.surql",
-    "error/cles/error_cles.surql"
+    "error/cles/error_cles.surql",
+    "error/rotation/error_rotation.surql"
 ]
 events = ["events/secrets_events.surql"]
 seeds = ["seeds/secrets_auth.surql"]

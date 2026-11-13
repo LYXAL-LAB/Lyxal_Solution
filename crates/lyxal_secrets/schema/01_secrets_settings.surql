@@ -12,6 +12,7 @@ DEFINE TABLE OVERWRITE secrets_settings
     SCHEMAFULL
     PERMISSIONS
         FOR select WHERE tenant IS NONE OR fn::secrets_can({ action: "list", tenant: tenant })
+            OR fn::secrets_can({ action: "worker", tenant: tenant })
         FOR create, update WHERE fn::secrets_can({ action: "settings", tenant: tenant })
         FOR delete NONE
     COMMENT "Réglages du coffre-fort (installation, surcharge par organisation)";
@@ -55,6 +56,11 @@ DEFINE FIELD OVERWRITE expiry_warning_days ON TABLE secrets_settings
     TYPE option<int>
     ASSERT $value IS NONE OR ($value >= 1 AND $value <= 365)
     COMMENT "Délai d'alerte avant l'échéance d'un secret, en jours";
+
+DEFINE FIELD OVERWRITE tenant_key_rotation_days ON TABLE secrets_settings
+    TYPE option<int>
+    ASSERT $value IS NONE OR $value = 0 OR ($value >= 30 AND $value <= 3650)
+    COMMENT "Rotation automatique de la clé d'organisation, en jours (30 à 3650 ; 0 : désactivée ; défaut 365)";
 
 DEFINE FIELD OVERWRITE updated_at ON TABLE secrets_settings
     TYPE datetime
