@@ -8,14 +8,13 @@ code avant la validation du CTO (`.agents/AGENTS.md` §3).
 
 ## 1. Décisions du CTO (13 novembre 2026)
 
-R2 à R6 validées selon les recommandations. **R1 révisée après relecture, à valider de nouveau** :
-la clé applicative de l'hôte est partagée avec `lyxal_auth` (clés de signature, secrets du double
-facteur) et `lyxal_notification` ; la retirer après avoir rescellé les seules clés du coffre-fort
-rendrait leurs données illisibles. Le coffre-fort a donc sa propre clé maîtresse.
+R1 à R6 validées selon les recommandations. R1 a été révisée après relecture et validée de
+nouveau : la clé applicative de l'hôte est partagée avec `lyxal_auth` et `lyxal_notification` ; le
+coffre-fort a donc sa propre clé maîtresse.
 
 | N° | Question | Décision |
 | :- | :--- | :--- |
-| **R1** (révisée) | Clé maîtresse du coffre-fort et sa rotation | **Une clé maîtresse propre au coffre-fort**, distincte de la clé applicative partagée : `LYXAL__SECRETS__MASTER_KEY` et son identifiant, par variable d'environnement seulement. Pour la changer, l'ancienne est fournie à côté (`LYXAL__SECRETS__PREVIOUS_MASTER_KEY`), en lecture seule ; le worker rescelle les clés des organisations, la sonde annonce la fin, puis on retire l'ancienne. La clé applicative de l'hôte n'est pas touchée |
+| **R1** | Clé maîtresse du coffre-fort et sa rotation | **Une clé maîtresse propre au coffre-fort**, distincte de la clé applicative partagée : `LYXAL__SECRETS__MASTER_KEY` et son identifiant, par variable d'environnement seulement. Pour la changer, l'ancienne est fournie à côté (`LYXAL__SECRETS__PREVIOUS_MASTER_KEY`), en lecture seule ; le worker rescelle les clés des organisations, la sonde annonce la fin, puis on retire l'ancienne. La clé applicative de l'hôte n'est pas touchée |
 | **R2** | Quand créer la clé d'une organisation ? | **À la première valeur écrite** pour cette organisation (aucune clé inutile) |
 | **R3** | Rotation d'une clé d'organisation | **Sur demande** dans ce lot (permission `secrets.settings.manage`) : nouvelle clé active, l'ancienne ne sert plus qu'à relire, le worker rescelle toutes les versions, puis l'ancienne est détruite. La rotation **planifiée** (tous les N jours) arrive au lot 3 avec le cycle de vie |
 | **R4** | Valeur JSON | Si la valeur est un objet JSON, **les noms de ses clés** sont enregistrés (jamais les valeurs) pour qu'un écran montre la structure ; sinon rien |
