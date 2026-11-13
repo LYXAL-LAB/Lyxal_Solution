@@ -141,6 +141,7 @@ async fn server_installs_and_starts_hosted_modules() {
     if cfg!(feature = "module-ingestion") {
         expected.push("lyxal_pipeline_ingestion");
     }
+    expected.push("lyxal_secrets");
     expected.push("lyxal_storage");
     assert_eq!(ids, expected);
     assert!(
