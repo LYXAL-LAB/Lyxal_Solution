@@ -169,7 +169,7 @@ WHEN $event = "CREATE"
 THEN {
     LET $caller = fn::secrets_caller();
     IF $after.actor != $caller.identity OR $after.application != $caller.application
-        OR $after.used_at IS NOT NONE OR $after.expires_at > $after.created_at + 60s OR $after.created_at > time::now() {
+        OR $after.used_at IS NOT NONE OR $after.expires_at > time::now() + 60s OR $after.created_at > time::now() {
         THROW "SECRETS_READ_TICKET_INVALID";
     };
     LET $refusal = fn::secrets_read_refusal($after);
