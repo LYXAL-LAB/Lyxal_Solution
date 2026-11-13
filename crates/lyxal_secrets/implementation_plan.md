@@ -6,9 +6,11 @@ Il ajoute le crate Rust : clés par organisation, scellement et ouverture des va
 rotation de clé, purge à échéance, module et sonde de santé, hébergement par l'hôte. Aucune ligne de
 code avant la validation du CTO (`.agents/AGENTS.md` §3).
 
-## 1. Décisions demandées au CTO
+## 1. Décisions du CTO (13 novembre 2026)
 
-| N° | Question | Recommandation |
+R1 à R6 validées selon les recommandations.
+
+| N° | Question | Décision |
 | :- | :--- | :--- |
 | **R1** | Rotation de la clé maîtresse (K2) : comment l'hôte connaît-il l'ancienne clé ? | **Une ancienne clé au plus**, fournie comme la clé actuelle par une variable d'environnement (`LYXAL__CRYPTO__PREVIOUS_APPLICATION_KEY`, et son identifiant). Elle ne sert qu'à relire ; le worker rescelle les clés d'organisation, puis on retire la variable. Aucune clé dans un fichier ni dans la base |
 | **R2** | Quand créer la clé d'une organisation ? | **À la première valeur écrite** pour cette organisation (aucune clé inutile) |
