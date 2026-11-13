@@ -32,7 +32,7 @@ Rust dans ce lot : l'hôte porte le module par un `ManifestModule` (`build.rs`).
 | :--- | :--- | :--- |
 | `secrets_settings` | `tenant` (option, `REFERENCE ON DELETE CASCADE`), `scope_key`, `max_versions`, `deleted_retention_days`, `purge_protection`, `max_value_bytes`, `default_visibility`, `expiry_warning_days`, `updated_at` | une ligne par portée ; valeurs effectives : organisation, sinon installation, sinon défauts (10 versions, 30 jours, sans protection, 64 Kio, `restricted`, 30 jours). `purge_protection` ne repasse jamais à `false` (verrou par événement) |
 | `secrets_secret` | `tenant`, `scope_key`, `path`, `kind`, `description`, `owner` (identité, `REFERENCE ON DELETE UNSET`), `contact`, `consumers`, `tags`, `metadata`, `visibility`, `expires_at`, `rotation_period`, `next_rotation_at`, `state`, `state_before_delete`, `deleted_at`, `purge_at`, `labels`, `latest_version`, `created_by`, `created_at`, `updated_at` | (`scope_key`, `path`) unique ; `owner`, `created_by`, `created_at` figés (`READONLY`) ; `labels` = `{ current: 3, previous: 2, … }`, une étiquette sur une seule version, 20 au plus ; `kind` parmi `api_key`, `password`, `token`, `oauth_client`, `certificate`, `private_key`, `signing_key`, `connection_string`, `generic` |
-| `secrets_version` | `secret` (`REFERENCE ON DELETE CASCADE`), `tenant`, `number`, `envelope`, `key_id`, `keys`, `state`, `created_by`, `created_at`, `destroyed_at` | (`secret`, `number`) unique ; `number` figé ; `envelope` : `select NONE` pour tout utilisateur, format `enc:v2:<key_id>:…` vérifié, jamais modifiée, seulement effacée à la destruction (verrou par événement) ; `keys` = noms des clés d'une valeur JSON, sans valeurs (modèle Vault `subkeys`) |
+| `secrets_version` | `secret` (`REFERENCE ON DELETE CASCADE`), `tenant`, `number`, `envelope`, `key_id`, `keys`, `state`, `created_by`, `created_at`, `destroyed_at` | (`secret`, `number`) unique ; `number` figé ; `envelope` : `select NONE` pour tout utilisateur, format `enc:v2:<key_id>:…` vérifié ; remplacée **seulement** par le rescellement (`secrets_version_reseal`, session système ou `secrets.worker`, enveloppe et `key_id` changés ensemble, même valeur et même contexte) ou effacée à la destruction ; toute autre modification refusée (verrou par événement) ; `keys` = noms des clés d'une valeur JSON, sans valeurs (modèle Vault `subkeys`) |
 | `secrets_read_ticket` | `secret`, `version`, `tenant`, `actor`, `consumer`, `expires_at`, `used_at` | créé par `secrets_read_begin` sous les droits du demandeur ; consommé une seule fois par la session système |
 | `secrets_audit` | `tenant`, `scope_key`, `seq`, `action`, `outcome`, `actor` (identité ou application), `session_kind`, `ip`, `secret`, `path`, `version`, `details`, `previous_hash`, `entry_hash`, `created_at` | ajout seul : `create`, `update`, `delete` interdits à tout utilisateur ; écrit par des `DEFINE EVENT` ; empreinte par `fn::security_audit_entry` ; jamais de valeur |
 | `secrets_audit_head` | `scope_key`, `seq`, `last_hash` | tête de chaîne par organisation |
@@ -102,6 +102,7 @@ Toutes renvoient `fn::result_ok` ou `fn::error_result`. Entrées par
 | `secrets_read_envelope` | **ticket** | `{ envelope, context }` | session système seulement |
 | `secrets_audit_list` | `tenant`, `secret`, `action`, `since`, `limit`, `start` | `{ items, total }` | journal |
 | `secrets_audit_verify` | `tenant`, `from_seq`, `limit` | `{ valid, checked, broken_at }` (par `fn::security_audit_verify`) | journal |
+| `secrets_version_reseal` | **secret**, **number**, **expected_key_id**, **envelope**, **key_id** | `{ resealed }` ; refusé si la version a changé de clé entre-temps ou est détruite | session système ou worker |
 | `secrets_purge_due` | `limit` | `{ purged }` : secrets supprimés dont la date de purge est passée | worker |
 
 Règles de `secrets_read_begin` : refus si le secret est désactivé, supprimé ou expiré, si la
@@ -133,7 +134,7 @@ crate Rust.
 version, étiquettes, auteur.
 
 **Journal** (`DEFINE EVENT` vers `secrets_audit`) : chaque création, modification, changement
-d'état, version, étiquette, ticket de lecture, réglage ; auteur (`$auth`), type de session et
+d'état, version, étiquette, rescellement, ticket de lecture, réglage ; auteur (`$auth`), type de session et
 adresse (`$session.ip`).
 
 ## 8. Core
@@ -164,6 +165,7 @@ une règle générique.
   sur une version étiquetée, enveloppe effacée à la destruction ;
 * enveloppe jamais lisible par un utilisateur (`SELECT`, `WHERE`, `LIVE`, fonctions), même avec
   toutes les permissions ;
+* rescellement : enveloppe et identifiant de clé remplacés ensemble par la session système, refusé à un utilisateur, refusé si la clé attendue ne correspond plus, journalisé ;
 * lecture : ticket créé et tracé ; refus (désactivé, supprimé, expiré, version détruite,
   consommateur non listé, secret `restricted` pour un humain, double facteur manquant) ; ticket
   à usage unique, expiré, refusé à une session non système ;
