@@ -24,8 +24,10 @@ DEFINE FUNCTION OVERWRITE fn::secrets_version_create_refusal($after: object) -> 
     IF !$caller.system AND ($after.created_by != $caller.identity OR $after.created_by_application != $caller.application) {
         RETURN "SECRETS_PERMISSION_DENIED";
     };
+    -- Scellée par la clé active de l'organisation : une clé retirée ou détruite entre-temps est refusée
+    IF !fn::secrets_key_is_active($after.scope_key, $after.key_id) { RETURN "SECRETS_TENANT_KEY_CONFLICT"; };
     RETURN NONE;
-} COMMENT "Interne : refus de création d'une version ($after) : secret existant et non supprimé, même organisation, version active avec enveloppe, numéro = dernière version + 1, auteur = appelant. NONE ou code d'erreur";
+} COMMENT "Interne : refus de création d'une version ($after) : secret existant et non supprimé, même organisation, version active avec enveloppe, numéro = dernière version + 1, auteur = appelant, scellée par la clé active de l'organisation. NONE ou code d'erreur";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_version_update_refusal (interne, garde de modification)
@@ -43,8 +45,14 @@ DEFINE FUNCTION OVERWRITE fn::secrets_version_update_refusal($before: object, $a
     LET $sealed = ["state", "envelope", "key_id", "destroyed_at", "resealed_at"];
     IF array::all($sealed, |$f| $before[$f] = $after[$f]) { RETURN NONE; };
     IF $before.state = "destroyed" { RETURN "SECRETS_VERSION_STATE_INVALID"; };
-    IF $secret.state = "deleted" { RETURN "SECRETS_SECRET_DELETED"; };
     LET $sealed_changed = $before.envelope != $after.envelope OR $before.key_id != $after.key_id;
+    -- Rescellement (même valeur) : permis aussi pour un secret supprimé, vers la clé active seulement
+    IF ($sealed_changed OR $before.resealed_at != $after.resealed_at) AND $after.state = $before.state AND $after.envelope IS NOT NONE {
+        IF !$system AND !fn::secrets_can({ action: "worker", tenant: $tenant }) { RETURN "SECRETS_PERMISSION_DENIED"; };
+        IF $after.resealed_at IS NONE { RETURN "SECRETS_VERSION_STATE_INVALID"; };
+        RETURN IF fn::secrets_key_is_active($before.scope_key, $after.key_id) { NONE } ELSE { "SECRETS_TENANT_KEY_CONFLICT" };
+    };
+    IF $secret.state = "deleted" { RETURN "SECRETS_SECRET_DELETED"; };
     IF $after.state = "destroyed" {
         IF $after.envelope IS NOT NONE OR $after.destroyed_at IS NONE { RETURN "SECRETS_VERSION_STATE_INVALID"; };
         IF $before.number INSIDE object::values($secret.labels) { RETURN "SECRETS_VERSION_LABELED"; };
@@ -102,6 +110,9 @@ DEFINE FUNCTION OVERWRITE fn::secrets_version_add($params: object) {
     IF $p.number != $secret.latest_version + 1 {
         RETURN fn::error_result("SECRETS_VERSION_CONFLICT", $p.language, { expected: $secret.latest_version + 1, number: $p.number });
     };
+    IF !fn::secrets_key_is_active($secret.scope_key, $p.key_id) {
+        RETURN fn::error_result("SECRETS_TENANT_KEY_CONFLICT", $p.language, { key_id: $p.key_id });
+    };
     LET $caller = fn::secrets_caller();
     LET $inserted = (INSERT IGNORE INTO secrets_version {
         secret: $secret.id,
@@ -144,7 +155,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_version_add($params: object) {
         labels: $labels,
         destroyed: $doomed
     });
-} COMMENT "Ajoute une version scellée ({ secret, number (suivant attendu), envelope (enc:v2:<key_id>:…), key_id, keys (noms des clés d'une valeur JSON), stage : current (défaut, l'ancienne current devient previous) ou pending }). Numéro différent du suivant : SECRETS_VERSION_CONFLICT (à relire et rescellé par le service). Au-delà du nombre de versions conservées, les plus anciennes sans étiquette sont détruites. Appelée par le service Rust, qui seul scelle. Droit : écriture";
+} COMMENT "Ajoute une version scellée ({ secret, number (suivant attendu), envelope (enc:v2:<key_id>:…), key_id, keys (noms des clés d'une valeur JSON), stage : current (défaut, l'ancienne current devient previous) ou pending }). Numéro différent du suivant : SECRETS_VERSION_CONFLICT ; clé qui n'est plus la clé active de l'organisation : SECRETS_TENANT_KEY_CONFLICT (le service relit et rescelle). Au-delà du nombre de versions conservées, les plus anciennes sans étiquette sont détruites. Appelée par le service Rust, qui seul scelle. Droit : écriture";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_version_list
@@ -295,7 +306,6 @@ DEFINE FUNCTION OVERWRITE fn::secrets_version_reseal($params: object) {
     IF !fn::auth_session_valid({}).system AND !fn::secrets_can({ action: "worker", tenant: $secret.tenant }) {
         RETURN fn::error_result("SECRETS_PERMISSION_DENIED", $p.language, {});
     };
-    IF $secret.state = "deleted" { RETURN fn::error_result("SECRETS_SECRET_DELETED", $p.language, { secret: <string> $secret.id }); };
     LET $version = fn::secrets_version_view($secret.id, $p.number);
     IF $version == NONE { RETURN fn::error_result("SECRETS_VERSION_NOT_FOUND", $p.language, { number: $p.number }); };
     IF $version.state = "destroyed" { RETURN fn::error_result("SECRETS_VERSION_STATE_INVALID", $p.language, { state: $version.state }); };
@@ -303,7 +313,10 @@ DEFINE FUNCTION OVERWRITE fn::secrets_version_reseal($params: object) {
     IF $version.key_id != $p.expected_key_id {
         RETURN fn::error_result("SECRETS_VERSION_CONFLICT", $p.language, { key_id: $version.key_id, expected_key_id: $p.expected_key_id });
     };
+    IF !fn::secrets_key_is_active((SELECT VALUE scope_key FROM ONLY $secret.id), $p.key_id) {
+        RETURN fn::error_result("SECRETS_TENANT_KEY_CONFLICT", $p.language, { key_id: $p.key_id });
+    };
     LET $updated = (UPDATE ONLY $version.id SET envelope = $p.envelope, key_id = $p.key_id, resealed_at = time::now() WHERE key_id = $p.expected_key_id);
     IF $updated == NONE { RETURN fn::error_result("SECRETS_VERSION_CONFLICT", $p.language, { expected_key_id: $p.expected_key_id }); };
     RETURN fn::result_ok({ resealed: true, number: $p.number, key_id: $p.key_id });
-} COMMENT "Rescelle une version après une rotation de clé ({ secret, number, expected_key_id, envelope, key_id }) : enveloppe et identifiant de clé remplacés ensemble, même valeur et même contexte ; refusé si la clé n'est plus celle attendue (SECRETS_VERSION_CONFLICT) ou si la version est détruite. Session système ou worker seulement";
+} COMMENT "Rescelle une version après une rotation de clé ({ secret, number, expected_key_id, envelope, key_id }) : enveloppe et identifiant de clé remplacés ensemble, même valeur et même contexte ; refusé si la clé n'est plus celle attendue (SECRETS_VERSION_CONFLICT), si la nouvelle clé n'est pas la clé active de l'organisation (SECRETS_TENANT_KEY_CONFLICT) ou si la version est détruite ; permis pour un secret supprimé (la valeur ne change pas). Session système ou worker seulement";

@@ -16,6 +16,8 @@ pub struct Started {
     pub auth: Option<Arc<modules::auth::AuthHost>>,
     /// Supports et antivirus des fichiers (routes `/storage/*`).
     pub storage: crate::context::StorageHost,
+    /// Coffre-fort des secrets : client des modules hébergés qui liront leurs secrets.
+    pub secrets: modules::secrets::SecretsHost,
 }
 
 /// Construit le runtime, installe le noyau et les modules hébergés, puis les démarre.
@@ -77,5 +79,6 @@ pub async fn start(config: &AppConfig, client: &Surreal<Any>) -> Result<Started,
         runtime: Arc::new(runtime),
         auth: services.auth,
         storage: services.storage,
+        secrets: services.secrets,
     })
 }

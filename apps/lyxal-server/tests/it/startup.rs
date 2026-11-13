@@ -419,6 +419,55 @@ async fn storage_probe_follows_the_configured_folder() {
     assert!(left.is_empty(), "fichier témoin retiré : {left:?}");
 }
 
+/// Sans clé maîtresse du coffre-fort, le serveur démarre : le module est dégradé et aucune
+/// valeur n'est écrite ni lue (R5) ; la clé applicative partagée n'y change rien.
+#[tokio::test]
+async fn the_vault_without_master_key_is_degraded() {
+    let config = config("coffre_sans_cle");
+    let client = database("coffre_sans_cle").await;
+    let started = runtime::start(&config, &client).await.expect("démarrage");
+    assert!(!started.secrets.has_master_key());
+    let result = started
+        .runtime
+        .health_registry()
+        .get_check(&lyxal_runtime::ModuleId::new("lyxal_secrets"))
+        .expect("sonde de lyxal_secrets")
+        .check(&lyxal_runtime::ModuleContext::new("lyxal_secrets"))
+        .await
+        .expect("sonde");
+    assert_eq!(
+        result.status,
+        lyxal_runtime::health::HealthStatus::Degraded,
+        "{result:?}"
+    );
+    assert!(
+        result
+            .message
+            .as_deref()
+            .is_some_and(|m| m.contains("SECRETS_CRYPTO_UNAVAILABLE")),
+        "{result:?}"
+    );
+    // Fiches consultables, valeurs refusées
+    lyxal_secrets::SecretsStore::new(client.clone())
+        .secret_create(lyxal_secrets::models::SecretCreateParams::new(
+            None, "test/cle", "api_key",
+        ))
+        .await
+        .expect("fiche");
+    let error = started
+        .secrets
+        .client("lyxal_test")
+        .read(lyxal_secrets::ClientRead {
+            tenant: None,
+            path: "test/cle".into(),
+            label: None,
+        })
+        .await
+        .expect_err("aucune lecture");
+    assert_eq!(error.code(), "SECRETS_CRYPTO_UNAVAILABLE");
+    started.runtime.stop_all().await.expect("arrêt");
+}
+
 /// Fichiers présents sous un dossier.
 fn walk(directory: &std::path::Path) -> Vec<std::path::PathBuf> {
     let mut files = Vec::new();

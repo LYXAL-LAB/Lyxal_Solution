@@ -408,3 +408,60 @@ async fn remote_database_without_credentials_is_refused() {
         "{error}"
     );
 }
+
+/// Clés maîtresses du coffre-fort : jamais dans un fichier, identifiant obligatoire, ancienne
+/// clé seulement à côté d'une clé active ; la clé elle-même est lue dans l'environnement du
+/// processus par `EnvironmentKeyProvider`.
+#[test]
+fn the_vault_master_key_comes_from_the_environment_only() {
+    use lyxal_server::modules::secrets::master_keys;
+
+    let directory = tempfile::tempdir().expect("tempdir");
+    for key in ["master_key", "previous_master_key"] {
+        write_config(
+            directory.path(),
+            &format!("\n[secrets]\nmaster_key_id = \"vault-1\"\n{key} = \"cle-dans-un-fichier\"\n"),
+        );
+        let error = AppConfig::load_with_environment(directory.path(), variables(&[]))
+            .expect_err("clé dans un fichier refusée");
+        let message = error.to_string();
+        assert!(
+            message.contains(&format!("LYXAL__SECRETS__{}", key.to_uppercase())),
+            "{message}"
+        );
+        assert!(!message.contains("cle-dans-un-fichier"), "{message}");
+    }
+
+    write_config(directory.path(), "");
+    let without = AppConfig::load_with_environment(directory.path(), variables(&[]))
+        .expect("configuration valide");
+    assert!(master_keys(&without.secrets).expect("sans clé").is_none());
+
+    // Clé fournie sans identifiant
+    let config = AppConfig::load_with_environment(
+        directory.path(),
+        variables(&[("LYXAL__SECRETS__MASTER_KEY", "AAAA")]),
+    )
+    .expect("configuration chargée");
+    let error = master_keys(&config.secrets).expect_err("identifiant obligatoire");
+    assert!(
+        error.to_string().contains("secrets.master_key_id"),
+        "{error}"
+    );
+    assert!(!error.to_string().contains("AAAA"), "{error}");
+
+    // Ancienne clé sans clé active
+    let config = AppConfig::load_with_environment(
+        directory.path(),
+        variables(&[
+            ("LYXAL__SECRETS__PREVIOUS_MASTER_KEY", "AAAA"),
+            ("LYXAL__SECRETS__PREVIOUS_MASTER_KEY_ID", "vault-0"),
+        ]),
+    )
+    .expect("configuration chargée");
+    let error = master_keys(&config.secrets).expect_err("clé active obligatoire");
+    assert!(
+        error.to_string().contains("secrets.previous_master_key"),
+        "{error}"
+    );
+}

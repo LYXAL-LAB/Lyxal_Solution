@@ -38,6 +38,7 @@
 
 -- préparation: secret d'alpha
 {
+    fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", key_id: "k1", wrapped: "enc:v2:m1:K1" });
     LET $s = fn::secrets_secret_create({ tenant: "auth_organization:alpha", path: "api/brevo", kind: "api_key", rotation_period: 90d }).data.id;
     CREATE passe:s SET id_secret = $s;
 };
@@ -169,6 +170,20 @@ RETURN (SELECT VALUE envelope FROM ONLY secrets_version WHERE secret = (SELECT V
         AND (SELECT VALUE state FROM secrets_version WHERE secret = $id ORDER BY number) = ["destroyed", "destroyed", "enabled", "enabled"];
 };
 
+-- préparation: rotation de la clé d'alpha (k1 relit seulement, k2 scelle)
+{
+    fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", key_id: "k2", wrapped: "enc:v2:m1:K2", replaces: "k1" });
+};
+
+-- test: version scellée par une clé qui n'est plus active : refusée
+-- en tant que: redacteur
+{
+    LET $id = fn::secrets_secret_create({ tenant: "auth_organization:alpha", path: "api/apres-rotation", kind: "token" }).data.id;
+    LET $old = fn::secrets_version_add({ secret: <string> $id, number: 1, envelope: "enc:v2:k1:X1", key_id: "k1" });
+    LET $new = fn::secrets_version_add({ secret: <string> $id, number: 1, envelope: "enc:v2:k2:X1", key_id: "k2" });
+    RETURN $old.error.code = "SECRETS_TENANT_KEY_CONFLICT" AND $new.ok;
+};
+
 -- test: rescellement par la session système : enveloppe et clé changées ensemble
 {
     LET $s = <string> (SELECT VALUE id_secret FROM ONLY passe:s);
@@ -243,9 +258,9 @@ UPDATE secrets_version SET state = "enabled" WHERE secret = (SELECT VALUE id_sec
 {
     LET $s = fn::secrets_secret_create({ tenant: "auth_organization:alpha", path: "api/auteur", kind: "token" }).data.id;
     CREATE auth_identity:auteur CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "auteur@lyxal.test" } };
-    CREATE secrets_version CONTENT { secret: $s, tenant: auth_organization:alpha, number: 1, envelope: "enc:v2:k1:U1", key_id: "k1", created_by: auth_identity:auteur };
+    CREATE secrets_version CONTENT { secret: $s, tenant: auth_organization:alpha, number: 1, envelope: "enc:v2:k2:U1", key_id: "k2", created_by: auth_identity:auteur };
     UPDATE $s SET latest_version = 1;
-    CREATE secrets_version CONTENT { secret: $s, tenant: auth_organization:alpha, number: 2, envelope: "enc:v2:k1:U2", key_id: "k1", created_by: auth_identity:auteur };
+    CREATE secrets_version CONTENT { secret: $s, tenant: auth_organization:alpha, number: 2, envelope: "enc:v2:k2:U2", key_id: "k2", created_by: auth_identity:auteur };
     UPDATE $s SET latest_version = 2, labels = { current: 2 };
     fn::secrets_version_destroy({ secret: <string> $s, number: 1 });
     CREATE passe:auteur SET id_secret = $s;
