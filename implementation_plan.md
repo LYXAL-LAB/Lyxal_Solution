@@ -37,8 +37,13 @@ clé maîtresse (environnement de l'hôte, LYXAL__CRYPTO__APPLICATION_KEY, jamai
 
 * Une valeur copiée vers un autre secret, une autre version ou une autre organisation ne
   s'ouvre pas : le contexte de scellement l'en empêche (modèle AWS `SecretARN` + `SecretVersionId`).
-* Supprimer la clé d'une organisation rend illisibles tous ses secrets, sauvegardes comprises
-  (effacement cryptographique, utile à la fermeture d'un compte).
+* Supprimer la clé d'une organisation rend illisibles tous ses secrets **dans la base en
+  service** (effacement cryptographique, utile à la fermeture d'un compte). Une sauvegarde
+  antérieure contient encore cette clé, scellée par la clé maîtresse : elle reste lisible tant
+  que la sauvegarde est conservée **et** que la clé maîtresse qui l'a scellée existe. L'effacement
+  n'est donc complet qu'à l'expiration des sauvegardes, ou après rotation de la clé maîtresse
+  suivie de la destruction de l'ancienne (ce qui rend illisibles toutes les sauvegardes
+  antérieures). La procédure de sauvegarde du lot 6 fixe cette règle.
 * Après rotation de la clé maîtresse ou d'une clé d'organisation, un worker rescelle **toutes**
   les versions conservées (`reencrypt_if_needed`), sans exposer de valeur ; l'ancienne clé est
   ensuite révoquée.
@@ -137,7 +142,7 @@ envoi du journal vers un outil de sécurité (SIEM) et durée de conservation r�
   modification détectée.
 * **Rust** : valeur écrite puis relue à l'identique ; enveloppe déplacée vers un autre secret ou
   une autre organisation refusée ; lecture refusée si le journal est indisponible ; rotation de
-  clé puis rescellement complet ; clé d'organisation supprimée → secrets illisibles ; aucune
+  clé puis rescellement complet ; clé d'organisation supprimée → secrets illisibles dans la base en service ; aucune
   valeur dans les journaux, erreurs et `Debug`.
 * **Hôte** : parcours de bout en bout, révélation refusée sans double facteur, partage à usage
   unique ouvert une seule fois.
@@ -158,7 +163,7 @@ envoi du journal vers un outil de sécurité (SIEM) et durée de conservation r�
 
 | # | Question | Recommandation |
 | :- | :--- | :--- |
-| K1 | Hiérarchie de clés | **Une clé par organisation**, scellée par la clé maîtresse de l'hôte (modèle Infisical) : isolation entre organisations et effacement d'une organisation entier par sa clé |
+| K1 | Hiérarchie de clés | **Une clé par organisation**, scellée par la clé maîtresse de l'hôte (modèle Infisical) : isolation entre organisations et effacement d'une organisation entière par sa clé (base en service ; sauvegardes antérieures effacées à leur expiration, §1.2) |
 | K2 | Après rotation d'une clé | **Rescellement automatique de toutes les versions conservées**, puis révocation de l'ancienne clé (AWS ne rescelle que les versions étiquetées) |
 | V1 | Qui peut relire une valeur | **Visibilité restreinte par défaut** : un humain écrit mais ne relit pas ; seuls les modules et applications autorisés lisent (modèle Doppler). Un secret peut être déclaré « révélable », lu alors avec la permission dédiée et le **double facteur** |
 | V2 | Versions conservées | **10 par défaut** (Vault), réglable par organisation jusqu'à 100 ; au-delà, la plus ancienne non étiquetée est détruite |
