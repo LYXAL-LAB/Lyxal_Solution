@@ -215,9 +215,9 @@ async fn restart_on_installed_database_is_idempotent() {
     let migrations: Option<i64> = res.take(0).expect("migrations");
     let releases: Option<i64> = res.take(1).expect("releases");
     let hosted = if cfg!(feature = "module-ingestion") {
-        10
+        11
     } else {
-        9
+        10
     };
     assert_eq!(migrations, Some(0));
     assert_eq!(releases, Some(hosted));
