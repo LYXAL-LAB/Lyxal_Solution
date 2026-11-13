@@ -200,3 +200,39 @@ WHEN $event = "DELETE"
 THEN {
     IF record::exists($before.secret) { THROW "SECRETS_VERSION_STATE_INVALID"; };
 };
+
+-- ----------------------------------------------------------------------------
+-- Clés des organisations : transitions gardées, journal (jamais de matière de clé)
+-- ----------------------------------------------------------------------------
+-- active → decrypt_only → destroyed ; la clé scellée ne change qu'au rescellement par une nouvelle
+-- clé maîtresse (même état) ou à la destruction (effacée). Une clé emportée par la suppression
+-- de son organisation n'est pas journalisée (le journal part avec elle).
+
+DEFINE EVENT OVERWRITE secrets_tenant_key_guard ON TABLE secrets_tenant_key
+WHEN $event = "UPDATE"
+THEN {
+    LET $allowed = { active: ["active", "decrypt_only"], decrypt_only: ["decrypt_only", "destroyed"], destroyed: [] }[$before.state];
+    IF $after.state NOTINSIDE $allowed { THROW "SECRETS_TENANT_KEY_UNAVAILABLE"; };
+    IF $after.state = "destroyed" AND $after.wrapped IS NOT NONE { THROW "SECRETS_TENANT_KEY_UNAVAILABLE"; };
+    IF $after.state != "destroyed" AND $after.wrapped IS NONE { THROW "SECRETS_TENANT_KEY_UNAVAILABLE"; };
+    IF $before.wrapped != $after.wrapped AND $after.state != "destroyed" AND $before.state != $after.state { THROW "SECRETS_TENANT_KEY_UNAVAILABLE"; };
+};
+
+DEFINE EVENT OVERWRITE secrets_tenant_key_journal ON TABLE secrets_tenant_key
+WHEN $event = "CREATE" OR ($event = "UPDATE" AND ($before.state != $after.state OR $before.wrapped != $after.wrapped))
+THEN {
+    LET $action = IF $event = "CREATE" { "key.create" }
+        ELSE IF $after.state = "destroyed" { "key.destroy" }
+        ELSE IF $before.state != $after.state { "key.retire" }
+        ELSE { "key.rewrap" };
+    fn::secrets_audit_write({
+        tenant: $after.tenant,
+        action: $action,
+        details: {
+            key_id: $after.key_id,
+            master_key_id: $after.master_key_id,
+            master_key_id_before: IF $action = "key.rewrap" { $before.master_key_id } ELSE { NONE },
+            requested_by: $after.requested_by
+        }
+    });
+};

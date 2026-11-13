@@ -4081,6 +4081,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "lyxal_secrets"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "lyxal_crypto",
+ "lyxal_runtime",
+ "lyxal_surreal",
+ "rand_core 0.6.4",
+ "serde",
+ "serde_json",
+ "surrealdb",
+ "thiserror 1.0.69",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "lyxal_storage"
 version = "0.1.0"
 dependencies = [

@@ -30,7 +30,8 @@ schemas = [
     "schema/02_secrets_secret.surql",
     "schema/03_secrets_version.surql",
     "schema/04_secrets_read_ticket.surql",
-    "schema/05_secrets_audit.surql"
+    "schema/05_secrets_audit.surql",
+    "schema/06_secrets_tenant_key.surql"
 ]
 functions = [
     "functions/secrets_access.surql",
@@ -39,14 +40,16 @@ functions = [
     "functions/secrets_secret.surql",
     "functions/secrets_version.surql",
     "functions/secrets_read.surql",
-    "functions/secrets_worker.surql"
+    "functions/secrets_worker.surql",
+    "functions/secrets_keys.surql"
 ]
 error_definitions = [
     "error/parametres/error_parametres.surql",
     "error/permissions/error_permissions.surql",
     "error/secrets/error_secrets.surql",
     "error/versions/error_versions.surql",
-    "error/lecture/error_lecture.surql"
+    "error/lecture/error_lecture.surql",
+    "error/cles/error_cles.surql"
 ]
 events = ["events/secrets_events.surql"]
 seeds = ["seeds/secrets_auth.surql"]

@@ -31,10 +31,11 @@ DEFINE FUNCTION OVERWRITE fn::secrets_audit_write($entry: object) -> object {
         seq: $seq,
         action: $entry.action,
         outcome: $entry.outcome ?? "success",
-        actor: IF $caller.identity IS NONE { NONE } ELSE { <string> $caller.identity },
-        application: IF $caller.application IS NONE { NONE } ELSE { <string> $caller.application },
-        session: IF $caller.session IS NONE { NONE } ELSE { <string> $caller.session },
-        session_kind: IF $caller.system { "system" } ELSE { $caller.kind },
+        -- Au nom d'un appelant (refus constaté par le service) : seule la session système l'indique
+        actor: IF $caller.system AND $entry.on_behalf IS NOT NONE { $entry.on_behalf.actor } ELSE IF $caller.identity IS NONE { NONE } ELSE { <string> $caller.identity },
+        application: IF $caller.system AND $entry.on_behalf IS NOT NONE { $entry.on_behalf.application } ELSE IF $caller.application IS NONE { NONE } ELSE { <string> $caller.application },
+        session: IF $caller.system AND $entry.on_behalf IS NOT NONE { $entry.on_behalf.session } ELSE IF $caller.session IS NONE { NONE } ELSE { <string> $caller.session },
+        session_kind: IF $caller.system AND $entry.on_behalf IS NOT NONE { $entry.on_behalf.session_kind } ELSE IF $caller.system { "system" } ELSE { $caller.kind },
         ip: $session.ip,
         secret: IF $entry.secret IS NONE { NONE } ELSE { <string> $entry.secret },
         path: $entry.path,
@@ -55,7 +56,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_audit_write($entry: object) -> object {
         created_at: $chained.created_at
     };
     RETURN $event;
-} COMMENT "Interne (événements du module) : ajoute une entrée chaînée au journal de la portée ({ tenant, action, outcome, secret, path, version, details }) ; auteur, type de session et adresse lus dans la session ; jamais de valeur";
+} COMMENT "Interne (événements du module, refus constatés par le service) : ajoute une entrée chaînée au journal de la portée ({ tenant, action, outcome, secret, path, version, details, on_behalf }) ; auteur, type de session et adresse lus dans la session, ou, pour la session système seulement, dans on_behalf ({ actor, application, session, session_kind }) ; jamais de valeur";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_audit_list
@@ -136,3 +137,47 @@ DEFINE FUNCTION OVERWRITE fn::secrets_audit_verify($params: object) {
         complete: $complete
     });
 } COMMENT "Vérifie la chaîne du journal d'une portée ({ tenant, from_seq, limit (10000 au plus) }) par fn::security_audit_verify : empreintes, liens, rangs contigus et, si la plage va jusqu'au bout, accord avec la tête de chaîne. { valid, checked, broken_at, head_matches, complete }. Droit : journal";
+
+-- ----------------------------------------------------------------------------
+-- fn::secrets_audit_denied
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::secrets_audit_denied($params: object) {
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            secret: { pipeline: [{ rule: "record", options: { expected_table: "secrets_secret" } }], required: true },
+            code: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 128 } }], required: true },
+            actor: { pipeline: [{ rule: "record", options: { expected_table: "auth_identity" } }] },
+            application: { pipeline: [{ rule: "record", options: { expected_table: "auth_application" } }] },
+            session: { pipeline: [{ rule: "record", options: { expected_table: "auth_session" } }] },
+            session_kind: { pipeline: [{ rule: "enum", options: { allowed: ["interactive", "service", "api_key", "system"], case_sensitive: true } }], required: true },
+            consumer: { pipeline: [{ rule: "optional_string", options: { min_length: 1, max_length: 128 } }] },
+            version: { pipeline: [{ rule: "integer", options: { min_value: 1 } }] },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 40);
+    IF !$report.valid {
+        RETURN fn::error_result("SECRETS_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
+    };
+    LET $p = $report.value;
+    IF !fn::auth_session_valid({}).system { RETURN fn::error_result("SECRETS_PERMISSION_DENIED", $p.language, {}); };
+    LET $secret = (SELECT id, tenant, path FROM ONLY $p.secret);
+    IF $secret == NONE { RETURN fn::error_result("SECRETS_SECRET_NOT_FOUND", $p.language, { secret: <string> $p.secret }); };
+    LET $entry = fn::secrets_audit_write({
+        tenant: $secret.tenant,
+        action: "secret.read",
+        outcome: "denied",
+        secret: $secret.id,
+        path: $secret.path,
+        version: $p.version,
+        details: { code: $p.code, consumer: $p.consumer },
+        on_behalf: {
+            actor: IF $p.actor IS NONE { NONE } ELSE { <string> $p.actor },
+            application: IF $p.application IS NONE { NONE } ELSE { <string> $p.application },
+            session: IF $p.session IS NONE { NONE } ELSE { <string> $p.session },
+            session_kind: $p.session_kind
+        }
+    });
+    RETURN fn::result_ok({ seq: $entry.seq });
+} COMMENT "Journalise une lecture refusée au nom de l'appelant ({ secret, code, actor, application, session, session_kind, consumer, version }) : entrée secret.read au résultat denied, avec le code du refus ; jamais de valeur. Session système seulement (service Rust)";
