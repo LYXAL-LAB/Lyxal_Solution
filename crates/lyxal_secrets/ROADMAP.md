@@ -8,13 +8,14 @@
 
 | Lot | Contenu |
 | :- | :--- |
-| 3 | Cycle de vie : alertes avant échéance, rotation en quatre étapes, essai de rotation, rotation d'urgence, rotation planifiée des clés d'organisation |
 | 4 | Accès avancés : accès temporaires par chemin, demandes d'accès et approbation des changements, accès d'urgence tracé |
 | 5 | Hôte : routes HTTP, révélation avec double facteur, partage à usage unique |
 | 6 | Clôture : audit, procédures (sauvegarde, clé maîtresse, urgence, compromission) |
 
 ## Après la V1
 
+* Rotateurs des services extérieurs, livrés par les modules qui leur parlent (`lyxal_notification`,
+  `lyxal_connect`).
 * Secrets dynamiques (identifiants créés à la demande, avec bail).
 * Synchronisation vers AWS, Azure, Google ou GitHub.
 * Références entre secrets.
