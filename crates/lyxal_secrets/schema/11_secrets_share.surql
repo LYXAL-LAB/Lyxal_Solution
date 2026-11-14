@@ -36,20 +36,17 @@ DEFINE FIELD OVERWRITE tenant ON TABLE secrets_share
 DEFINE FIELD OVERWRITE created_identity ON TABLE secrets_share
     TYPE option<record<auth_identity>>
     REFERENCE ON DELETE UNSET
-    READONLY
-    COMMENT "Auteur (identité)";
+    COMMENT "Auteur (identité) ; effacé si l'identité est supprimée (garde : jamais changé autrement)";
 
 DEFINE FIELD OVERWRITE created_application ON TABLE secrets_share
     TYPE option<record<auth_application>>
     REFERENCE ON DELETE UNSET
-    READONLY
-    COMMENT "Auteur (application)";
+    COMMENT "Auteur (application) ; effacé si l'application est supprimée (garde : jamais changé autrement)";
 
 DEFINE FIELD OVERWRITE secret ON TABLE secrets_share
     TYPE option<record<secrets_secret>>
     REFERENCE ON DELETE UNSET
-    READONLY
-    COMMENT "Secret copié (NONE : texte saisi) ; la copie ne suit pas les changements du secret";
+    COMMENT "Secret copié (NONE : texte saisi) ; la copie ne suit pas les changements du secret ; effacé à la purge du secret (garde : jamais changé autrement)";
 
 DEFINE FIELD OVERWRITE number ON TABLE secrets_share
     TYPE option<int>

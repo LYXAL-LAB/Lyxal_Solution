@@ -250,7 +250,7 @@ version ou étiquettes, échéance, rotation et code d'erreur, auteur ; jamais d
 
 Banc SurrealQL (`tests/*.test.surql`, exécuté par `scripts/ci/test_lyxal_modules.py`) : fiches,
 versions, lecture (dont double facteur), journal (dont falsification), droits, réglages,
-fonctions internes, clés des organisations et refus journalisés, échéances et rotations, accès, demandes, protections et urgence, partages ; 223 assertions.
+fonctions internes, clés des organisations et refus journalisés, échéances et rotations, accès, demandes, protections et urgence, partages ; 226 assertions.
 
 Tests Rust (`tests/it/`, base embarquée, sessions de personnes et de programmes par jetons de
 test) : valeur écrite puis relue, 64 Kio acceptés et au-delà refusés, enveloppe recopiée ou

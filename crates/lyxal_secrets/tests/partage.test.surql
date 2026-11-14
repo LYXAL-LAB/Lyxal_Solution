@@ -165,6 +165,27 @@ CREATE secrets_share CONTENT { tenant: auth_organization:alpha, created_identity
 -- en tant que: partageur
 RETURN fn::secrets_share_due({}).error.code = "SECRETS_PERMISSION_DENIED";
 
+-- test: un secret partagé se purge ; le partage garde sa fiche sans source
+{
+    LET $ids = (SELECT * FROM ONLY passe:ids);
+    LET $d = fn::secrets_secret_delete({ secret: <string> $ids.secret });
+    LET $p = fn::secrets_secret_purge({ secret: <string> $ids.secret });
+    RETURN $d.ok AND $p.ok AND (SELECT VALUE secret FROM ONLY $ids.copie) IS NONE
+        AND (SELECT VALUE state FROM ONLY $ids.copie) = "destroyed";
+};
+
+-- test: l'auteur d'un partage peut être supprimé ; le partage reste, sans auteur
+{
+    LET $o = (SELECT VALUE autre_partage FROM ONLY passe:ids);
+    DELETE auth_session:partageur;
+    DELETE auth_identity:partageur;
+    RETURN (SELECT VALUE created_identity FROM ONLY $o) IS NONE AND (SELECT VALUE state FROM ONLY $o) = "active";
+};
+
+-- test: écriture directe : la source d'un partage ne se change pas
+-- attendu-erreur: SECRETS_SHARE_INVALID
+UPDATE (SELECT VALUE autre_partage FROM ONLY passe:ids) SET secret = NONE, created_identity = auth_identity:admin;
+
 -- test: fonctions internes des partages
 {
     LET $ids = (SELECT * FROM ONLY passe:ids);

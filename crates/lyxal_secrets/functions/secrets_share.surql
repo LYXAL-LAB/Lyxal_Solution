@@ -43,6 +43,16 @@ DEFINE FUNCTION OVERWRITE fn::secrets_share_refusal($event: string, $before: opt
         };
         RETURN NONE;
     };
+    -- Références (secret, auteur) : figées, sauf leur effacement par la suppression de l'enregistrement visé,
+    -- permis quel que soit l'état et sans autre changement
+    LET $refs = ["secret", "created_identity", "created_application"];
+    IF !array::all($refs, |$f| $before[$f] = $after[$f] OR ($after[$f] IS NONE AND $before[$f] IS NOT NONE AND !record::exists($before[$f]))) {
+        RETURN "SECRETS_SHARE_INVALID";
+    };
+    IF array::any($refs, |$f| $before[$f] != $after[$f]) {
+        LET $rest = ["state", "views", "failed_attempts", "envelope", "key_fingerprint", "passphrase_hash", "finished_at", "last_opened_at"];
+        RETURN IF array::all($rest, |$f| $before[$f] = $after[$f]) { NONE } ELSE { "SECRETS_SHARE_INVALID" };
+    };
     IF $before.state != "active" { RETURN "SECRETS_SHARE_UNAVAILABLE"; };
     LET $trusted = $system OR fn::secrets_can({ action: "worker", tenant: $after.tenant });
     -- Ouvertures et essais faux : comptés par la session système seulement, un à un
@@ -65,7 +75,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_share_refusal($event: string, $before: opt
             OR ($after.created_identity IS NOT NONE AND $after.created_identity = $caller.identity)
             OR ($after.created_application IS NOT NONE AND $after.created_application = $caller.application) { NONE }
         ELSE { "SECRETS_PERMISSION_DENIED" };
-} COMMENT "Interne : refus d'une écriture de partage ($event, $before, $after) : création active, scellée, bornée par les réglages, au nom de l'appelant (copie d'un secret : droit de lire sa valeur) ; ouvertures et essais faux comptés un à un par la session système ; éléments scellés figés, effacés ensemble à la fin ; fin par épuisement, 5 essais faux ou échéance (session système ou worker), ou par retrait (auteur, droit de partage) ; partage fini intouchable. NONE ou code d'erreur";
+} COMMENT "Interne : refus d'une écriture de partage ($event, $before, $after) : création active, scellée, bornée par les réglages, au nom de l'appelant (copie d'un secret : droit de lire sa valeur) ; ouvertures et essais faux comptés un à un par la session système ; éléments scellés figés, effacés ensemble à la fin ; fin par épuisement, 5 essais faux ou échéance (session système ou worker), ou par retrait (auteur, droit de partage) ; partage fini intouchable ; secret et auteur figés, sauf leur effacement par la suppression de l'enregistrement visé. NONE ou code d'erreur";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_share_create
