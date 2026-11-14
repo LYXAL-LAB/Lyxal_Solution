@@ -104,7 +104,9 @@ DEFINE FUNCTION OVERWRITE fn::secrets_request_change($params: object) {
     IF $p.operation IN ["value", "rollback", "destroy"] {
         LET $version = IF $p.number IS NONE { NONE } ELSE { fn::secrets_version_view($secret.id, $p.number) };
         IF $version == NONE OR $version.state = "destroyed" { RETURN fn::error_result("SECRETS_VERSION_NOT_FOUND", $p.language, { number: $p.number }); };
-        IF $p.operation = "value" AND ($secret.labels.proposed != $p.number OR $version.created_by != fn::secrets_caller().identity) {
+        LET $caller = fn::secrets_caller();
+        IF $p.operation = "value" AND ($secret.labels.proposed != $p.number OR $version.created_by != $caller.identity
+            OR $version.created_by_application != $caller.application) {
             RETURN fn::error_result("SECRETS_REQUEST_STATE_INVALID", $p.language, { reason: "proposed", number: $p.number });
         };
     };

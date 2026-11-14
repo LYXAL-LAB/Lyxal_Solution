@@ -66,9 +66,10 @@ clé maîtresse du coffre-fort (LYXAL__SECRETS__MASTER_KEY ; ancienne clé en le
 | `SecretsService::rotate_tenant_key` | droit contrôlé par `fn::secrets_tenant_key_rotate_allowed` (session de l'appelant), nouvelle clé rangée par la session système |
 | `SecretRotator`, `RotatorRegistry` | rotateur d'un module de l'hôte qui sait changer un identifiant chez un service extérieur : `create` (nouvelle valeur), `install`, `test`, `retire` (avant-dernière valeur, au mieux) ; erreurs `RotatorError` (code seul, nouvel essai ou non) ; registre vide par défaut, un rotateur au plus par fiche |
 | `RotationRunner` | fait avancer une rotation réservée depuis l'étape atteinte : nouvelle valeur écrite en `pending` par `put`, installation, test, bascule ; valeurs lues par le chemin tracé, le rotateur annoncé comme consommateur ; un échec passe par `fn::secrets_rotation_fail` |
+| `SecretsService::propose` | nouvelle valeur d'un secret protégé : scellée et écrite en version `proposed` (jamais servie avant l'application), puis demande de changement ouverte au nom de l'appelant |
 | `SecretsService::rotate_now`, `check_rotation` | rotation immédiate (dont l'urgence ; sans rotateur, l'urgence coupe la version courante et la rotation échoue aussitôt, `SECRETS_ROTATOR_UNAVAILABLE`) ; essai sans bascule de la valeur en service |
 | `SecretsClient` | lecture et écriture des modules de l'hôte par organisation et chemin, session système, module annoncé comme consommateur |
-| `SecretsMaintenanceWorker` | `LyxalWorker` : purge à échéance, alertes d'échéance et rappels de rotation, démarrage des rotations dues qu'un rotateur sait faire, rotation des clés d'organisation échues, avancement des rotations réservées, rescellement des versions puis des clés d'organisation, destruction des clés inutilisées ; bilan `MaintenanceReport` |
+| `SecretsMaintenanceWorker` | `LyxalWorker` : purge à échéance, alertes d'échéance et rappels de rotation, démarrage des rotations dues qu'un rotateur sait faire, rotation des clés d'organisation échues, avancement des rotations réservées, expiration des demandes et retrait des accès finis, rescellement des versions puis des clés d'organisation, destruction des clés inutilisées ; bilan `MaintenanceReport` |
 | `SecretsModule`, `SecretsHealthCheck` | descripteur du module ; sonde : base joignable, clé maîtresse présente, clés scellées par une clé maîtresse absente du trousseau (dégradé), rescellements en attente |
 | `SecretsError` | code `SECRETS_*` de la base, ou cause constatée par le service (`SECRETS_CRYPTO_UNAVAILABLE`, `SECRETS_VALUE_TOO_LARGE`, `SECRETS_VALUE_CORRUPTED`, `SECRETS_TENANT_KEY_UNAVAILABLE`) ; jamais de valeur |
 
@@ -242,4 +243,6 @@ double facteur, consommateurs, sonde, worker arrêté par l'annulation, aucune v
 `Debug` et les erreurs, rotation complète sans coupure, nouvel essai et échec définitif, reprise
 après interruption, urgence avec et sans rotateur, rappel seul sans rotateur, essai sans bascule,
 rotation planifiée des clés d'organisation, réservation périmée reprise par un autre worker, arrêt du
-worker pendant une rotation ; 31 tests. Hôte : `apps/lyxal-server/tests/secrets.rs`.
+worker pendant une rotation, accès temporaires d'une personne et d'un programme, valeur proposée
+servie seulement après approbations et application, changement d'urgence, worker des demandes ;
+36 tests. Hôte : `apps/lyxal-server/tests/secrets.rs`.

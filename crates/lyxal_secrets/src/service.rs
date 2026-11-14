@@ -13,10 +13,10 @@ use std::collections::BTreeMap;
 use crate::error::{SecretsError, SecretsResult};
 use crate::keys::{MasterKeys, Scope, TenantKeys};
 use crate::models::{
-    AuditDeniedParams, ReadBeginParams, ReadTicketRef, RotationBeginParams, RotationCheckParams,
-    RotationCheckResult, RotationClaimParams, RotationGetParams, RotationRecord, SecretGetParams,
-    SecretRecord, SettingsGetParams, Stage, TenantKeyCreated, TenantRef, VersionAddParams,
-    VersionAdded,
+    AccessRequest, AuditDeniedParams, ChangeOperation, ReadBeginParams, ReadTicketRef,
+    RequestChangeParams, RotationBeginParams, RotationCheckParams, RotationCheckResult,
+    RotationClaimParams, RotationGetParams, RotationRecord, SecretGetParams, SecretRecord,
+    SettingsGetParams, Stage, TenantKeyCreated, TenantRef, VersionAddParams, VersionAdded,
 };
 use crate::rotation::{RotationOutcome, RotationRunner, RotatorRegistry};
 use crate::store::SecretsStore;
@@ -37,6 +37,26 @@ pub struct PutValue {
     pub expected_version: Option<i64>,
     /// Étiquette posée sur la nouvelle version.
     pub stage: Stage,
+}
+
+/// Nouvelle valeur proposée pour un secret protégé : demande de changement à faire approuver.
+#[derive(Debug)]
+pub struct ProposeRequest {
+    /// Secret (`secrets_secret:<clé>`).
+    pub secret: String,
+    /// Valeur (effacée de la mémoire à la libération).
+    pub value: SecretBytes,
+    /// Motif de la demande (512 caractères au plus).
+    pub reason: String,
+}
+
+/// Valeur proposée : version écrite (étiquette `proposed`) et demande de changement ouverte.
+#[derive(Debug, Clone)]
+pub struct ProposedChange {
+    /// Version proposée, pas encore en service.
+    pub version: VersionAdded,
+    /// Demande de changement (`value`) en attente des approbations.
+    pub request: AccessRequest,
 }
 
 /// Valeur demandée : version par numéro, sinon par étiquette (`current` par défaut).
@@ -167,6 +187,39 @@ impl SecretsService {
                 other => return Ok(other?),
             }
         }
+    }
+
+    /// Propose une nouvelle valeur pour un secret protégé : la valeur est scellée et écrite comme
+    /// par [`SecretsService::put`] (même chemin, mêmes nouveaux essais en cas de conflit), en
+    /// version étiquetée `proposed`, sans mise en service ; puis une demande de changement
+    /// (`value`, pour ce numéro) est ouverte avec les droits de l'appelant. Une fois la demande
+    /// approuvée, son auteur l'applique (`SecretsStore::request_apply`) et la version passe en
+    /// service.
+    ///
+    /// Si la demande est refusée par la base (`SECRETS_CHANGE_IN_PROGRESS` : une demande est
+    /// déjà ouverte sur le secret ; `SECRETS_POLICY_NOT_FOUND` : la valeur du secret n'est pas
+    /// protégée…), l'erreur est rendue, mais **la version proposée reste écrite**, sans
+    /// étiquette `current` : elle n'est jamais servie par défaut (seulement par son numéro ou
+    /// l'étiquette `proposed`, avec le droit de lecture).
+    pub async fn propose(&self, request: ProposeRequest) -> SecretsResult<ProposedChange> {
+        let version = self
+            .put(PutValue {
+                secret: request.secret,
+                value: request.value,
+                expected_version: None,
+                stage: Stage::Proposed,
+            })
+            .await?;
+        let request = self
+            .caller
+            .request_change(RequestChangeParams {
+                secret: version.version.secret.to_sql(),
+                operation: ChangeOperation::Value,
+                number: Some(version.version.number),
+                reason: request.reason,
+            })
+            .await?;
+        Ok(ProposedChange { version, request })
     }
 
     /// Lit une valeur : ticket tracé (session de l'appelant), enveloppe (session système),

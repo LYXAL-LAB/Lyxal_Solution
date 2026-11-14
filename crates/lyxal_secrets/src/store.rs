@@ -10,14 +10,18 @@ use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
 use crate::models::{
-    AuditDenied, AuditDeniedParams, AuditList, AuditListParams, AuditReport, AuditVerifyParams,
-    CallerContext, CallerContextParams, DueList, DueListParams, DueMarkParams, DueMarkResult,
-    LabelsResult, PurgeDueParams, PurgeReport, ReadBeginParams, ReadEnvelope, ReadTicket,
-    ReadTicketRef, Resealed, RewrapList, RewrapListParams, RotateAllowed, RotationBeginParams,
-    RotationCheckParams, RotationCheckResult, RotationClaimParams, RotationClaimed,
-    RotationFailParams, RotationGetParams, RotationLeaseParams, RotationList, RotationRecord,
-    RotationRefParams, RotationStepParams, SecretCreateParams, SecretGetParams, SecretList,
-    SecretListParams, SecretPurged, SecretRecord, SecretRefParams, SecretUpdateParams,
+    AccessDueParams, AccessDueReport, AccessRequest, AuditDenied, AuditDeniedParams, AuditList,
+    AuditListParams, AuditReport, AuditVerifyParams, CallerContext, CallerContextParams, DueList,
+    DueListParams, DueMarkParams, DueMarkResult, EmergencyAccessParams, Grant, GrantCreateParams,
+    GrantList, GrantListParams, GrantRevokeParams, LabelsResult, Policy, PolicyDeleteParams,
+    PolicyDeleted, PolicyList, PolicyListParams, PolicySetParams, PurgeDueParams, PurgeReport,
+    ReadBeginParams, ReadEnvelope, ReadTicket, ReadTicketRef, RequestAccessParams,
+    RequestApplyParams, RequestChangeParams, RequestDecisionParams, RequestList, RequestListParams,
+    RequestRefParams, RequestRejectParams, Resealed, RewrapList, RewrapListParams, RotateAllowed,
+    RotationBeginParams, RotationCheckParams, RotationCheckResult, RotationClaimParams,
+    RotationClaimed, RotationFailParams, RotationGetParams, RotationLeaseParams, RotationList,
+    RotationRecord, RotationRefParams, RotationStepParams, SecretCreateParams, SecretGetParams,
+    SecretList, SecretListParams, SecretPurged, SecretRecord, SecretRefParams, SecretUpdateParams,
     SecretVersion, SettingsGetParams, SettingsSetParams, SettingsView, StoredSettings,
     TenantKeyCreateParams, TenantKeyCreated, TenantKeyDestroyParams, TenantKeyDestroyed,
     TenantKeyRewrapParams, TenantKeyRewrapped, TenantKeyRing, TenantRef, VersionAddParams,
@@ -264,5 +268,88 @@ impl SecretsStore {
         params: RotationCheckParams,
     ) -> Call<RotationCheckResult> {
         self.call_fn("secrets_rotation_check_record", params).await
+    }
+
+    /// `fn::secrets_grant_create` : accès temporaire accordé (`secrets.access.manage`).
+    pub async fn grant_create(&self, params: GrantCreateParams) -> Call<Grant> {
+        self.call_fn("secrets_grant_create", params).await
+    }
+
+    /// `fn::secrets_grant_revoke` : accès retiré tout de suite (`secrets.access.manage`).
+    pub async fn grant_revoke(&self, params: GrantRevokeParams) -> Call<Grant> {
+        self.call_fn("secrets_grant_revoke", params).await
+    }
+
+    /// `fn::secrets_grant_list` : accès d'une organisation (tous pour le gestionnaire des accès,
+    /// les siens pour les autres).
+    pub async fn grant_list(&self, params: GrantListParams) -> Call<GrantList> {
+        self.call_fn("secrets_grant_list", params).await
+    }
+
+    /// `fn::secrets_access_emergency` : accès d'urgence que l'appelant s'accorde lui-même
+    /// (journalisé et publié).
+    pub async fn access_emergency(&self, params: EmergencyAccessParams) -> Call<Grant> {
+        self.call_fn("secrets_access_emergency", params).await
+    }
+
+    /// `fn::secrets_policy_set` : protection posée ou remplacée (`secrets.access.manage`).
+    pub async fn policy_set(&self, params: PolicySetParams) -> Call<Policy> {
+        self.call_fn("secrets_policy_set", params).await
+    }
+
+    /// `fn::secrets_policy_delete` : protection retirée (`secrets.access.manage`).
+    pub async fn policy_delete(&self, params: PolicyDeleteParams) -> Call<PolicyDeleted> {
+        self.call_fn("secrets_policy_delete", params).await
+    }
+
+    /// `fn::secrets_policy_list` : protections d'une organisation et protection effective d'un
+    /// chemin.
+    pub async fn policy_list(&self, params: PolicyListParams) -> Call<PolicyList> {
+        self.call_fn("secrets_policy_list", params).await
+    }
+
+    /// `fn::secrets_request_access` : accès demandé pour soi.
+    pub async fn request_access(&self, params: RequestAccessParams) -> Call<AccessRequest> {
+        self.call_fn("secrets_request_access", params).await
+    }
+
+    /// `fn::secrets_request_change` : changement d'un secret protégé demandé.
+    pub async fn request_change(&self, params: RequestChangeParams) -> Call<AccessRequest> {
+        self.call_fn("secrets_request_change", params).await
+    }
+
+    /// `fn::secrets_request_approve` : approbation (jamais de sa propre demande).
+    pub async fn request_approve(&self, params: RequestDecisionParams) -> Call<AccessRequest> {
+        self.call_fn("secrets_request_approve", params).await
+    }
+
+    /// `fn::secrets_request_reject` : refus, qui clôt la demande.
+    pub async fn request_reject(&self, params: RequestRejectParams) -> Call<AccessRequest> {
+        self.call_fn("secrets_request_reject", params).await
+    }
+
+    /// `fn::secrets_request_cancel` : demande annulée par son auteur.
+    pub async fn request_cancel(&self, params: RequestRefParams) -> Call<AccessRequest> {
+        self.call_fn("secrets_request_cancel", params).await
+    }
+
+    /// `fn::secrets_request_apply` : changement approuvé (ou d'urgence) appliqué par son auteur.
+    pub async fn request_apply(&self, params: RequestApplyParams) -> Call<AccessRequest> {
+        self.call_fn("secrets_request_apply", params).await
+    }
+
+    /// `fn::secrets_request_get` : une demande.
+    pub async fn request_get(&self, params: RequestRefParams) -> Call<AccessRequest> {
+        self.call_fn("secrets_request_get", params).await
+    }
+
+    /// `fn::secrets_request_list` : demandes d'une organisation.
+    pub async fn request_list(&self, params: RequestListParams) -> Call<RequestList> {
+        self.call_fn("secrets_request_list", params).await
+    }
+
+    /// `fn::secrets_access_due` : demandes échues expirées, anciens accès retirés (worker).
+    pub async fn access_due(&self, params: AccessDueParams) -> Call<AccessDueReport> {
+        self.call_fn("secrets_access_due", params).await
     }
 }

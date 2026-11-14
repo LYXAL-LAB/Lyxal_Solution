@@ -3,6 +3,7 @@
 //! Enveloppes et clés scellées restent dans des types internes au crate (`pub(crate)`), sans
 //! `Serialize` et au `Debug` masqué.
 
+mod access;
 mod audit;
 mod caller;
 mod keys;
@@ -14,6 +15,14 @@ mod types;
 mod version;
 mod worker;
 
+pub use access::{
+    AccessAction, AccessDueParams, AccessDueReport, AccessRequest, Approval, ChangeOperation,
+    EffectivePolicy, EmergencyAccessParams, Grant, GrantCreateParams, GrantList, GrantListParams,
+    GrantRevokeParams, Policy, PolicyDeleteParams, PolicyDeleted, PolicyList, PolicyListParams,
+    PolicySetParams, RequestAccessParams, RequestApplyParams, RequestChangeParams,
+    RequestDecisionParams, RequestKind, RequestList, RequestListParams, RequestRefParams,
+    RequestRejectParams, RequestState,
+};
 pub use audit::{
     AuditDenied, AuditDeniedParams, AuditItem, AuditList, AuditListParams, AuditReport,
     AuditVerifyParams,

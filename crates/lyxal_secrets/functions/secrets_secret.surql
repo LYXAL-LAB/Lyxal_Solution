@@ -60,6 +60,8 @@ DEFINE FUNCTION OVERWRITE fn::secrets_secret_update_refusal($before: object, $af
             LET $targets = array::distinct(object::values($after.labels));
             LET $live = (SELECT VALUE number FROM secrets_version WHERE secret = $before.id AND number IN $targets AND state != "destroyed");
             IF array::len($live) != array::len($targets) { RETURN "SECRETS_LABEL_INVALID"; };
+            -- Version proposée figée tant qu'une demande de changement l'attend
+            IF $after.labels.proposed != $before.labels.proposed AND fn::secrets_change_open($before.id) { RETURN "SECRETS_CHANGE_IN_PROGRESS"; };
             -- Protection : remplacer la valeur en service (version proposée ou nouvelle) ou revenir en arrière
             IF $before.labels.current IS NOT NONE AND $after.labels.current != $before.labels.current {
                 LET $operation = IF $after.labels.current = $before.labels.proposed OR $after.latest_version != $before.latest_version { "value" } ELSE { "rollback" };

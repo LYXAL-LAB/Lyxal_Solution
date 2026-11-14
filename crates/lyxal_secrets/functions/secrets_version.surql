@@ -130,6 +130,10 @@ DEFINE FUNCTION OVERWRITE fn::secrets_version_add($params: object) {
     IF !fn::secrets_key_is_active($secret.scope_key, $p.key_id) {
         RETURN fn::error_result("SECRETS_TENANT_KEY_CONFLICT", $p.language, { key_id: $p.key_id });
     };
+    -- Version proposée figée tant qu'une demande de changement l'attend
+    IF $p.stage = "proposed" AND fn::secrets_change_open($secret.id) {
+        RETURN fn::error_result("SECRETS_CHANGE_IN_PROGRESS", $p.language, { secret: <string> $secret.id });
+    };
     -- Secret protégé : remplacer la valeur en service passe par une demande (étape proposed)
     IF $p.stage = "current" AND $secret.labels.current IS NOT NONE {
         LET $operation = "value";
@@ -247,6 +251,10 @@ DEFINE FUNCTION OVERWRITE fn::secrets_version_label($params: object) {
         RETURN fn::error_result($code, $p.language, { label: $p.label, number: $p.number });
     };
     IF array::len(object::keys($labels)) > 20 { RETURN fn::error_result("SECRETS_LABEL_INVALID", $p.language, { label: $p.label, max_labels: 20 }); };
+    -- Version proposée figée tant qu'une demande de changement l'attend
+    IF $labels.proposed != $secret.labels.proposed AND fn::secrets_change_open($secret.id) {
+        RETURN fn::error_result("SECRETS_CHANGE_IN_PROGRESS", $p.language, { secret: <string> $secret.id });
+    };
     -- Secret protégé : déplacer current (valeur proposée ou retour arrière) passe par une demande
     IF $secret.labels.current IS NOT NONE AND $labels.current != $secret.labels.current {
         LET $operation = IF $labels.current = $secret.labels.proposed { "value" } ELSE { "rollback" };

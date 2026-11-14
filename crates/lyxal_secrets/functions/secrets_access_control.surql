@@ -53,6 +53,14 @@ DEFINE FUNCTION OVERWRITE fn::secrets_change_refusal($params: object) -> option<
 } COMMENT "Interne : refus d'une opération protégée ({ tenant, path, secret, operation : value, rollback, disable, delete, destroy }) hors de l'application d'une demande approuvée ; la session système et le worker ne sont pas soumis. NONE ou SECRETS_APPROVAL_REQUIRED";
 
 -- ----------------------------------------------------------------------------
+-- fn::secrets_change_open (interne)
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::secrets_change_open($secret: record<secrets_secret>) -> bool {
+    RETURN array::len(SELECT VALUE id FROM secrets_request WHERE secret = $secret AND kind = "change" AND state IN ["pending", "approved"] LIMIT 1) > 0;
+} COMMENT "Interne : vrai si une demande de changement attend une décision ou son application sur le secret (sa version proposée est alors figée)";
+
+-- ----------------------------------------------------------------------------
 -- fn::secrets_grant_view (interne)
 -- ----------------------------------------------------------------------------
 

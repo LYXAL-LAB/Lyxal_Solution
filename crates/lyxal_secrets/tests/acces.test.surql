@@ -224,6 +224,8 @@ UPDATE (SELECT VALUE db FROM ONLY passe:ids) SET state = "disabled";
     UPDATE passe:ids SET req_change = $r.data.id;
     RETURN $v.data.labels = { current: 1, proposed: 2 } AND $r.data.state = "pending" AND $r.data.required_approvals = 2
         AND fn::secrets_request_change({ secret: $db, operation: "disable", reason: "x" }).error.code = "SECRETS_CHANGE_IN_PROGRESS"
+        AND fn::secrets_version_add({ secret: $db, number: 3, envelope: "enc:v2:k1:CCCC", key_id: "k1", stage: "proposed" }).error.code = "SECRETS_CHANGE_IN_PROGRESS"
+        AND fn::secrets_version_label({ secret: $db, label: "proposed", remove: true }).error.code = "SECRETS_CHANGE_IN_PROGRESS"
         AND fn::secrets_request_apply({ request: <string> $r.data.id }).error.code = "SECRETS_REQUEST_STATE_INVALID"
         AND fn::secrets_request_change({ secret: <string> (SELECT VALUE brevo FROM ONLY passe:ids), operation: "disable", reason: "x" }).error.code = "SECRETS_POLICY_NOT_FOUND";
 };
@@ -338,6 +340,7 @@ RETURN fn::secrets_access_due({}).error.code = "SECRETS_PERMISSION_DENIED";
     LET $ids = (SELECT * FROM ONLY passe:ids);
     LET $l = fn::secrets_request_load({ request: <string> $ids.req_delete }, {});
     RETURN fn::secrets_actor() IS NONE
+        AND fn::secrets_change_open($ids.db) = true
         AND fn::secrets_policy_for({ tenant: auth_organization:alpha, path: "infra/db" }).protected = false
         AND fn::secrets_change_refusal({ tenant: auth_organization:alpha, path: "infra/db", secret: $ids.db, operation: "delete" }) IS NONE
         AND fn::secrets_grant_covers({ tenant: auth_organization:alpha, path: "api/brevo", action: "list" }) = false

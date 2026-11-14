@@ -12,9 +12,11 @@
 //!    essai), puis avancée des rotations en cours dont l'essai est échu, réservées une à une
 //!    juste avant d'être traitées (reprise à l'étape atteinte) ;
 //! 7. rotation des clés d'organisation plus anciennes que la période de leur portée (avant le
-//!    rescellement, qui suit au même passage).
+//!    rescellement, qui suit au même passage) ;
+//! 8. accès avancés : demandes sans réponse expirées, accès finis ou retirés depuis plus de 30
+//!    jours retirés de la table (leur trace reste au journal).
 //!
-//! Sans clé maîtresse, seules la purge et les alertes ont lieu. Un élément en échec est journalisé
+//! Sans clé maîtresse, seules la purge, les accès avancés et les alertes ont lieu. Un élément en échec est journalisé
 //! et laissé pour le passage suivant : il n'interrompt pas les autres.
 //!
 //! Arrêt : l'annulation est vérifiée avant chaque élément, et l'avancée d'une rotation (qui attend
@@ -34,8 +36,8 @@ use std::time::Duration;
 use crate::error::{SecretsError, SecretsResult};
 use crate::keys::{MasterKeys, Scope, TenantKeys, TenantRing};
 use crate::models::{
-    DueKind, DueListParams, DueMarkParams, PurgeDueParams, RewrapListParams, RewrapVersion,
-    RotationBeginParams, RotationClaimParams, RotationState, SecretGetParams,
+    AccessDueParams, DueKind, DueListParams, DueMarkParams, PurgeDueParams, RewrapListParams,
+    RewrapVersion, RotationBeginParams, RotationClaimParams, RotationState, SecretGetParams,
     TenantKeyDestroyParams, VersionResealParams,
 };
 use crate::module::MODULE_ID;
@@ -63,6 +65,10 @@ pub struct MaintenanceReport {
     pub rotations_failed: u64,
     /// Clés d'organisation remplacées à échéance.
     pub tenant_keys_rotated: u64,
+    /// Demandes d'accès ou de changement expirées sans réponse.
+    pub requests_expired: u64,
+    /// Accès finis ou retirés depuis plus de 30 jours, retirés de la table.
+    pub grants_removed: u64,
 }
 
 /// Worker de maintenance du coffre-fort.
@@ -92,7 +98,7 @@ impl SecretsMaintenanceWorker {
             "Lyxal Secrets Maintenance",
         );
         descriptor.description = Some(
-            "Purge des secrets supprimés à échéance ; alertes d'échéance ; rotation des secrets et des clés d'organisation ; rescellement après rotation d'une clé d'organisation ou de la clé maîtresse ; destruction des anciennes clés"
+            "Purge des secrets supprimés à échéance ; alertes d'échéance ; rotation des secrets et des clés d'organisation ; rescellement après rotation d'une clé d'organisation ou de la clé maîtresse ; destruction des anciennes clés ; expiration des demandes d'accès et retrait des anciens accès"
                 .to_string(),
         );
         descriptor.criticality = WorkerCriticality::Optional;
@@ -125,6 +131,12 @@ impl SecretsMaintenanceWorker {
             if purged < limit {
                 break;
             }
+        }
+
+        // Demandes et accès échus en échec : journalisés, le reste du passage a lieu quand même
+        if let Err(error) = self.access_due(cancellation, &mut report).await {
+            report.failed += 1;
+            tracing::warn!(code = %error.code(), error = %error, "demandes et accès échus non traités");
         }
 
         // Échéances et rotations en échec : journalisées, le rescellement a lieu quand même
@@ -215,6 +227,29 @@ impl SecretsMaintenanceWorker {
             }
         }
         Ok(report)
+    }
+
+    /// Demandes sans réponse expirées et anciens accès retirés, par paquets tant qu'un paquet
+    /// plein de demandes a été traité.
+    async fn access_due(
+        &self,
+        cancellation: &CancellationToken,
+        report: &mut MaintenanceReport,
+    ) -> SecretsResult<()> {
+        let limit = i64::from(self.batch);
+        while !cancellation.is_cancelled() {
+            let done = self
+                .keys
+                .system()
+                .access_due(AccessDueParams { limit: Some(limit) })
+                .await?;
+            report.requests_expired += u64::try_from(done.requests_expired).unwrap_or(0);
+            report.grants_removed += u64::try_from(done.grants_removed).unwrap_or(0);
+            if done.requests_expired < limit {
+                break;
+            }
+        }
+        Ok(())
     }
 
     /// Échéances, rotations des secrets et des clés d'organisation. Sans clé maîtresse : alertes
@@ -460,6 +495,8 @@ impl LyxalWorker for SecretsMaintenanceWorker {
                         rotations_succeeded = report.rotations_succeeded,
                         rotations_failed = report.rotations_failed,
                         tenant_keys_rotated = report.tenant_keys_rotated,
+                        requests_expired = report.requests_expired,
+                        grants_removed = report.grants_removed,
                         "maintenance du coffre-fort"
                     );
                 }

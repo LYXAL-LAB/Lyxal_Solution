@@ -29,6 +29,9 @@ pub use health::SecretsHealthCheck;
 pub use keys::MasterKeys;
 pub use module::{SecretsModule, MODULE_ID};
 pub use rotation::{RotationOutcome, RotationRunner, RotatorError, RotatorRegistry, SecretRotator};
-pub use service::{PutValue, RevealRequest, RevealedValue, RotateRequest, SecretsService};
+pub use service::{
+    ProposeRequest, ProposedChange, PutValue, RevealRequest, RevealedValue, RotateRequest,
+    SecretsService,
+};
 pub use store::SecretsStore;
 pub use worker::{MaintenanceReport, SecretsMaintenanceWorker};
