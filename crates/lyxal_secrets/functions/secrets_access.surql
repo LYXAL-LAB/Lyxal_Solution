@@ -25,14 +25,15 @@ DEFINE FUNCTION OVERWRITE fn::secrets_can($params: object) -> bool {
         audit: "secrets.audit.read",
         settings: "secrets.settings.manage",
         access: "secrets.access.manage",
-        emergency: "secrets.access.emergency"
+        emergency: "secrets.access.emergency",
+        share: "secrets.share.create"
     }[$params.action];
     IF $permission IS NONE { RETURN false; };
     IF fn::auth_has_permission({ permission: $permission, tenant: $params.tenant }) { RETURN true; };
     -- Accès temporaire (secrets_grant) : en plus du droit, pour un chemin et une opération sur un secret
     RETURN $params.path IS NOT NONE AND $params.action INSIDE ["list", "read_value", "write", "delete"]
         AND fn::secrets_grant_covers({ tenant: $params.tenant, path: $params.path, action: $params.action });
-} COMMENT "Vrai si l'appelant peut effectuer l'action ({ action : list, read_value, write, delete, restore, purge, audit, settings, access, emergency, worker ; tenant : organisation ou NONE pour l'installation ; path : chemin du secret visé }). Permission lyxal_auth de l'organisation, ou, pour list, read_value, write et delete sur un chemin, accès temporaire en cours qui le couvre. Installation : secrets.installation.manage pour toute action sauf worker. Jamais d'erreur";
+} COMMENT "Vrai si l'appelant peut effectuer l'action ({ action : list, read_value, write, delete, restore, purge, audit, settings, access, emergency, share, worker ; tenant : organisation ou NONE pour l'installation ; path : chemin du secret visé }). Permission lyxal_auth de l'organisation, ou, pour list, read_value, write et delete sur un chemin, accès temporaire en cours qui le couvre. Installation : secrets.installation.manage pour toute action sauf worker. Jamais d'erreur";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_grant_covers (interne)
@@ -96,9 +97,12 @@ DEFINE FUNCTION OVERWRITE fn::secrets_settings_effective($params: object) -> obj
         grant_default_duration: $own.grant_default_duration ?? $base.grant_default_duration ?? 8h,
         grant_max_duration: $own.grant_max_duration ?? $base.grant_max_duration ?? 90d,
         request_ttl: $own.request_ttl ?? $base.request_ttl ?? 7d,
-        access_request_approvals: $own.access_request_approvals ?? $base.access_request_approvals ?? 1
+        access_request_approvals: $own.access_request_approvals ?? $base.access_request_approvals ?? 1,
+        share_default_ttl: $own.share_default_ttl ?? $base.share_default_ttl ?? 24h,
+        share_max_ttl: $own.share_max_ttl ?? $base.share_max_ttl ?? 7d,
+        share_max_views: $own.share_max_views ?? $base.share_max_views ?? 10
     };
-} COMMENT "Réglages effectifs ({ tenant }) : organisation, sinon installation, sinon valeurs par défaut (10 versions, 30 jours avant purge, 64 Kio, visibilité restricted, alerte 30 jours avant l'échéance, rotation de la clé d'organisation tous les 365 jours, 0 : désactivée ; accès temporaire de 8 h par défaut, 90 jours au plus ; demande sans réponse expirée après 7 jours ; 1 approbation pour une demande d'accès). La protection contre la purge s'applique si l'organisation ou l'installation l'a activée";
+} COMMENT "Réglages effectifs ({ tenant }) : organisation, sinon installation, sinon valeurs par défaut (10 versions, 30 jours avant purge, 64 Kio, visibilité restricted, alerte 30 jours avant l'échéance, rotation de la clé d'organisation tous les 365 jours, 0 : désactivée ; accès temporaire de 8 h par défaut, 90 jours au plus ; demande sans réponse expirée après 7 jours ; 1 approbation pour une demande d'accès ; partage de 24 h par défaut, 7 jours et 10 ouvertures au plus). La protection contre la purge s'applique si l'organisation ou l'installation l'a activée";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_tenant_string (interne)

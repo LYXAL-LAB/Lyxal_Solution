@@ -22,7 +22,6 @@ use axum::routing::get;
 use axum::Router;
 use bytes::Bytes;
 use futures::{Stream, StreamExt};
-use lyxal_auth::AuthError;
 use lyxal_storage::models::{ObjectGetParams, ObjectListParams, ObjectState, StoredObject};
 use lyxal_storage::{ByteRange, PutRequest, StorageError, StorageService, StorageStore};
 use lyxal_surreal::ToSql;
@@ -54,22 +53,7 @@ pub(super) async fn service(
     context: &AppContext,
     headers: &HeaderMap,
 ) -> Result<StorageService, ApiError> {
-    let host = auth::host(context)?;
-    // Signature du jeton et session contrôlées (révocation, expiration, version des droits)
-    auth::caller(&host, headers).await?;
-    let token = headers
-        .get("authorization")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.strip_prefix("Bearer "))
-        .ok_or(ApiError::Auth(AuthError::Rejected("AUTH_SESSION_REQUIRED")))?;
-    let session = context.database.as_ref().clone();
-    session
-        .authenticate(token.to_string())
-        .await
-        .map_err(|error| {
-            tracing::warn!(error = %error, "session SurrealDB de l'appelant refusée");
-            ApiError::Auth(AuthError::Rejected("AUTH_SESSION_REQUIRED"))
-        })?;
+    let (_, session) = auth::caller_session(context, headers).await?;
     let service = StorageService::new(StorageStore::new(session), context.storage.backends.clone());
     Ok(match &context.storage.scanner {
         Some(scanner) => service.with_scanner(scanner.clone()),

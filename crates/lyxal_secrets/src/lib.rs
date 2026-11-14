@@ -9,7 +9,8 @@
 //! organisation, elle-même scellée par la clé maîtresse du coffre-fort (`MasterKeys`), le
 //! service des valeurs (`SecretsService`), la rotation par les rotateurs inscrits
 //! (`SecretRotator`, `RotationRunner`), l'interface des autres modules de l'hôte
-//! (`SecretsClient`), le worker de maintenance supervisé, le module `LyxalModule` et sa sonde de
+//! (`SecretsClient`), les partages à usage unique (`SecretsService::share_create`,
+//! `SecretsService::share_open`), le worker de maintenance supervisé, le module `LyxalModule` et sa sonde de
 //! santé.
 
 pub mod client;
@@ -20,6 +21,7 @@ pub mod models;
 pub mod module;
 pub mod rotation;
 pub mod service;
+pub mod share;
 pub mod store;
 pub mod worker;
 
@@ -33,5 +35,6 @@ pub use service::{
     ProposeRequest, ProposedChange, PutValue, RevealRequest, RevealedValue, RotateRequest,
     SecretsService,
 };
+pub use share::{OpenerContext, ShareCreated, ShareOpen, ShareRequest, ShareSource};
 pub use store::SecretsStore;
 pub use worker::{MaintenanceReport, SecretsMaintenanceWorker};

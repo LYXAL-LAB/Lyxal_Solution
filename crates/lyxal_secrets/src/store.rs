@@ -22,11 +22,12 @@ use crate::models::{
     RotationClaimed, RotationFailParams, RotationGetParams, RotationLeaseParams, RotationList,
     RotationRecord, RotationRefParams, RotationStepParams, SecretCreateParams, SecretGetParams,
     SecretList, SecretListParams, SecretPurged, SecretRecord, SecretRefParams, SecretUpdateParams,
-    SecretVersion, SettingsGetParams, SettingsSetParams, SettingsView, StoredSettings,
-    TenantKeyCreateParams, TenantKeyCreated, TenantKeyDestroyParams, TenantKeyDestroyed,
-    TenantKeyRewrapParams, TenantKeyRewrapped, TenantKeyRing, TenantRef, VersionAddParams,
-    VersionAdded, VersionLabelParams, VersionList, VersionListParams, VersionRefParams,
-    VersionResealParams,
+    SecretVersion, SettingsGetParams, SettingsSetParams, SettingsView, Share, ShareConsumeParams,
+    ShareConsumed, ShareCreateParams, ShareDueParams, ShareDueReport, ShareFailed, ShareList,
+    ShareListParams, ShareLoaded, ShareRefParams, StoredSettings, TenantKeyCreateParams,
+    TenantKeyCreated, TenantKeyDestroyParams, TenantKeyDestroyed, TenantKeyRewrapParams,
+    TenantKeyRewrapped, TenantKeyRing, TenantRef, VersionAddParams, VersionAdded,
+    VersionLabelParams, VersionList, VersionListParams, VersionRefParams, VersionResealParams,
 };
 
 /// Store de `lyxal_secrets` sur un client SurrealDB (`Surreal<Any>`).
@@ -351,5 +352,44 @@ impl SecretsStore {
     /// `fn::secrets_access_due` : demandes échues expirées, anciens accès retirés (worker).
     pub async fn access_due(&self, params: AccessDueParams) -> Call<AccessDueReport> {
         self.call_fn("secrets_access_due", params).await
+    }
+
+    /// `fn::secrets_share_create` : partage créé avec sa copie scellée (par le service seulement,
+    /// qui seul tire la clé du lien et scelle).
+    pub(crate) async fn share_create(&self, params: ShareCreateParams) -> Call<Share> {
+        self.call_fn("secrets_share_create", params).await
+    }
+
+    /// `fn::secrets_share_list` : partages d'une portée, sans élément scellé.
+    pub async fn share_list(&self, params: ShareListParams) -> Call<ShareList> {
+        self.call_fn("secrets_share_list", params).await
+    }
+
+    /// `fn::secrets_share_revoke` : partage retiré, copie effacée.
+    pub async fn share_revoke(&self, params: ShareRefParams) -> Call<Share> {
+        self.call_fn("secrets_share_revoke", params).await
+    }
+
+    /// `fn::secrets_share_load` : partage actif avec sa copie scellée, l'empreinte de sa clé et le
+    /// hachage de son mot de passe (session système seulement).
+    pub(crate) async fn share_load(&self, params: ShareRefParams) -> Call<ShareLoaded> {
+        self.call_fn("secrets_share_load", params).await
+    }
+
+    /// `fn::secrets_share_fail` : un essai faux compté ; au cinquième, partage détruit (session
+    /// système seulement).
+    pub async fn share_fail(&self, params: ShareRefParams) -> Call<ShareFailed> {
+        self.call_fn("secrets_share_fail", params).await
+    }
+
+    /// `fn::secrets_share_consume` : une ouverture consommée, atomiquement (session système
+    /// seulement).
+    pub async fn share_consume(&self, params: ShareConsumeParams) -> Call<ShareConsumed> {
+        self.call_fn("secrets_share_consume", params).await
+    }
+
+    /// `fn::secrets_share_due` : partages échus expirés, fiches finies retirées (worker).
+    pub async fn share_due(&self, params: ShareDueParams) -> Call<ShareDueReport> {
+        self.call_fn("secrets_share_due", params).await
     }
 }

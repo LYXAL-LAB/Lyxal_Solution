@@ -11,6 +11,7 @@ mod read;
 mod rotation;
 mod secret;
 mod settings;
+mod share;
 mod types;
 mod version;
 mod worker;
@@ -52,6 +53,11 @@ pub use secret::{
 pub use settings::{
     EffectiveSettings, SettingsGetParams, SettingsSetParams, SettingsView, StoredSettings,
 };
+pub use share::{
+    Share, ShareConsumeParams, ShareConsumed, ShareDueParams, ShareDueReport, ShareFailed,
+    ShareList, ShareListParams, ShareRefParams, ShareState,
+};
+pub(crate) use share::{ShareCreateParams, ShareLoaded};
 pub use types::{SecretsDatetime, SecretsDuration, SecretsRecordId, SecretsValue};
 pub use version::{
     LabelsResult, Resealed, SecretVersion, Stage, VersionAdded, VersionLabelParams, VersionList,

@@ -35,6 +35,8 @@ const INSTALLATION_CONTEXT: &str = "lyxal_installation";
 const ORGANIZATION_TABLE: &str = "auth_organization";
 /// Ressource du contexte de scellement d'une clé d'organisation.
 const TENANT_KEY_RESOURCE: &str = "secrets_tenant_key";
+/// Ressource du contexte de scellement d'une copie partagée.
+const SHARE_RESOURCE: &str = "secrets_share";
 /// Ressource du contexte de scellement d'une version.
 const VERSION_RESOURCE: &str = "secrets_version";
 /// Longueur d'une clé d'organisation (AES-256).
@@ -180,6 +182,18 @@ impl Scope {
             MODULE_ID,
             VERSION_RESOURCE,
             &record,
+            "value",
+        )?)
+    }
+
+    /// Contexte de scellement de la copie d'un partage par la clé de son lien : l'enregistrement
+    /// est désigné par l'empreinte de cette clé (voir `SecretsService::share_create`).
+    pub(crate) fn share_context(&self, fingerprint: &str) -> SecretsResult<SecretContext> {
+        Ok(SecretContext::with_tenant(
+            &self.context,
+            MODULE_ID,
+            SHARE_RESOURCE,
+            fingerprint,
             "value",
         )?)
     }

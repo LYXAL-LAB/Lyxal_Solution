@@ -4,6 +4,7 @@ mod handlers;
 mod middleware;
 pub mod request_id;
 mod router;
+mod secrets;
 mod storage;
 mod uploads;
 

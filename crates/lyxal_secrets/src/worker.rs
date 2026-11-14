@@ -14,9 +14,11 @@
 //! 7. rotation des clés d'organisation plus anciennes que la période de leur portée (avant le
 //!    rescellement, qui suit au même passage) ;
 //! 8. accès avancés : demandes sans réponse expirées, accès finis ou retirés depuis plus de 30
-//!    jours retirés de la table (leur trace reste au journal).
+//!    jours retirés de la table (leur trace reste au journal) ;
+//! 9. partages à usage unique : partages échus expirés (copie effacée), partages finis depuis
+//!    plus de 30 jours retirés de la table.
 //!
-//! Sans clé maîtresse, seules la purge, les accès avancés et les alertes ont lieu. Un élément en échec est journalisé
+//! Sans clé maîtresse, seules la purge, les accès avancés, les partages et les alertes ont lieu. Un élément en échec est journalisé
 //! et laissé pour le passage suivant : il n'interrompt pas les autres.
 //!
 //! Arrêt : l'annulation est vérifiée avant chaque élément, et l'avancée d'une rotation (qui attend
@@ -38,7 +40,7 @@ use crate::keys::{MasterKeys, Scope, TenantKeys, TenantRing};
 use crate::models::{
     AccessDueParams, DueKind, DueListParams, DueMarkParams, PurgeDueParams, RewrapListParams,
     RewrapVersion, RotationBeginParams, RotationClaimParams, RotationState, SecretGetParams,
-    TenantKeyDestroyParams, VersionResealParams,
+    ShareDueParams, TenantKeyDestroyParams, VersionResealParams,
 };
 use crate::module::MODULE_ID;
 use crate::rotation::{RotationOutcome, RotationRunner, RotatorRegistry};
@@ -69,6 +71,10 @@ pub struct MaintenanceReport {
     pub requests_expired: u64,
     /// Accès finis ou retirés depuis plus de 30 jours, retirés de la table.
     pub grants_removed: u64,
+    /// Partages échus expirés (copie effacée).
+    pub shares_expired: u64,
+    /// Partages finis depuis plus de 30 jours, retirés de la table.
+    pub shares_removed: u64,
 }
 
 /// Worker de maintenance du coffre-fort.
@@ -137,6 +143,12 @@ impl SecretsMaintenanceWorker {
         if let Err(error) = self.access_due(cancellation, &mut report).await {
             report.failed += 1;
             tracing::warn!(code = %error.code(), error = %error, "demandes et accès échus non traités");
+        }
+
+        // Partages échus en échec : journalisés, le reste du passage a lieu quand même
+        if let Err(error) = self.shares_due(cancellation, &mut report).await {
+            report.failed += 1;
+            tracing::warn!(code = %error.code(), error = %error, "partages échus non traités");
         }
 
         // Échéances et rotations en échec : journalisées, le rescellement a lieu quand même
@@ -246,6 +258,28 @@ impl SecretsMaintenanceWorker {
             report.requests_expired += u64::try_from(done.requests_expired).unwrap_or(0);
             report.grants_removed += u64::try_from(done.grants_removed).unwrap_or(0);
             if done.requests_expired < limit {
+                break;
+            }
+        }
+        Ok(())
+    }
+
+    /// Partages échus expirés et partages finis retirés, par paquets.
+    async fn shares_due(
+        &self,
+        cancellation: &CancellationToken,
+        report: &mut MaintenanceReport,
+    ) -> SecretsResult<()> {
+        let limit = i64::from(self.batch);
+        while !cancellation.is_cancelled() {
+            let done = self
+                .keys
+                .system()
+                .share_due(ShareDueParams { limit: Some(limit) })
+                .await?;
+            report.shares_expired += u64::try_from(done.shares_expired).unwrap_or(0);
+            report.shares_removed += u64::try_from(done.shares_removed).unwrap_or(0);
+            if done.shares_expired < limit {
                 break;
             }
         }

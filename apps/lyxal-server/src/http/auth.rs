@@ -20,12 +20,15 @@ use lyxal_auth::{AuthError, CodeProof, IssuedTokens, LoginActions, LoginOutcome,
 use lyxal_crypto::SecretString;
 use lyxal_error::{LyxalError, LyxalResult};
 use lyxal_i18n::{accept_language, I18nStore, LocaleResolveParams};
+use lyxal_secrets::SecretsError;
 use lyxal_storage::StorageError;
 use lyxal_surreal::{LyxalCallError, LyxalSurrealError, SurrealValue, ToSql};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::net::SocketAddr;
 use std::sync::Arc;
+use surrealdb::engine::any::Any;
+use surrealdb::Surreal;
 
 /// Routes `/auth/*`.
 pub fn routes() -> Router<AppContext> {
@@ -77,6 +80,8 @@ pub enum ApiError {
     Auth(AuthError),
     /// Erreur métier ou du service de stockage.
     Storage(StorageError),
+    /// Erreur métier ou du service du coffre-fort.
+    Secrets(SecretsError),
     /// Erreur de l'hôte.
     Server(ServerError),
 }
@@ -84,6 +89,12 @@ pub enum ApiError {
 impl From<StorageError> for ApiError {
     fn from(error: StorageError) -> Self {
         Self::Storage(error)
+    }
+}
+
+impl From<SecretsError> for ApiError {
+    fn from(error: SecretsError) -> Self {
+        Self::Secrets(error)
     }
 }
 
@@ -130,7 +141,7 @@ async fn business(
 }
 
 /// Erreur rendue au client : définition de master data résolue par la base pour un code
-/// `AUTH_*` ou `STORAGE_*` ; erreur de l'hôte sinon. Aucun détail interne.
+/// `AUTH_*`, `STORAGE_*` ou `SECRETS_*` ; erreur de l'hôte sinon. Aucun détail interne.
 pub(super) async fn render_error(
     context: &AppContext,
     error: ApiError,
@@ -153,6 +164,14 @@ pub(super) async fn render_error(
         ApiError::Storage(error) => {
             let resolved = match error {
                 StorageError::Surreal(inner) => business(context, inner, language).await,
+                // Erreurs du service Rust : leur définition est dans la master data du module
+                _ => resolve(context, &error.code(), language).await,
+            };
+            (resolved, error.code(), error.to_string())
+        }
+        ApiError::Secrets(error) => {
+            let resolved = match error {
+                SecretsError::Surreal(inner) => business(context, inner, language).await,
                 // Erreurs du service Rust : leur définition est dans la master data du module
                 _ => resolve(context, &error.code(), language).await,
             };
@@ -368,6 +387,32 @@ pub(super) async fn caller(
         .await?)
 }
 
+/// Appelant du jeton d'accès et session SurrealDB à son nom : jeton contrôlé (signature,
+/// révocation, expiration, version des droits), puis client de l'hôte cloné et authentifié par
+/// ce jeton. Les fonctions SurrealQL et les permissions des tables décident ensuite des droits ;
+/// la session système de l'hôte n'est jamais utilisée.
+pub(super) async fn caller_session(
+    context: &AppContext,
+    headers: &HeaderMap,
+) -> Result<(SessionCaller, Surreal<Any>), ApiError> {
+    let host = host(context)?;
+    let caller = caller(&host, headers).await?;
+    let token = headers
+        .get("authorization")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.strip_prefix("Bearer "))
+        .ok_or(ApiError::Auth(AuthError::Rejected("AUTH_SESSION_REQUIRED")))?;
+    let session = context.database.as_ref().clone();
+    session
+        .authenticate(token.to_string())
+        .await
+        .map_err(|error| {
+            tracing::warn!(error = %error, "session SurrealDB de l'appelant refusée");
+            ApiError::Auth(AuthError::Rejected("AUTH_SESSION_REQUIRED"))
+        })?;
+    Ok((caller, session))
+}
+
 /// Appelant d'une route de gestion de son compte (sessions, mot de passe, adresses,
 /// organisation active) : session **interactive** d'une identité. Une session de clé d'API ou
 /// de compte de service n'y a pas accès, quelles que soient ses permissions : une clé limitée
@@ -408,6 +453,7 @@ pub(super) async fn respond(
                 let original = match &error {
                     ApiError::Auth(error) => error.to_string(),
                     ApiError::Storage(error) => error.to_string(),
+                    ApiError::Secrets(error) => error.to_string(),
                     ApiError::Server(error) => error.to_string(),
                 };
                 tracing::warn!(error = %original, "erreur d'origine remplacée par une panne de lecture de la langue");

@@ -1,4 +1,5 @@
 use crate::modules::auth::AuthHost;
+use crate::modules::secrets::SecretsHost;
 use crate::{config::AppConfig, database::Database, health::HealthRegistry, metrics::Metrics};
 use lyxal_runtime::LyxalRuntime;
 use lyxal_storage::{Backends, ContentScanner};
@@ -15,6 +16,8 @@ pub struct AppContext {
     pub auth: Option<Arc<AuthHost>>,
     /// Supports et antivirus des fichiers (routes `/storage/*`).
     pub storage: StorageHost,
+    /// Coffre-fort des secrets (routes `/secrets/*`), absent si le module n'est pas hébergé.
+    pub secrets: Option<SecretsHost>,
 }
 
 /// Ce que les routes des fichiers reçoivent de l'hôte : les supports configurés et, s'il y en a
@@ -43,6 +46,13 @@ impl AppContext {
             runtime,
             auth,
             storage,
+            secrets: None,
         }
+    }
+
+    /// Contexte avec le coffre-fort des secrets (routes `/secrets/*`).
+    pub fn with_secrets(mut self, secrets: SecretsHost) -> Self {
+        self.secrets = Some(secrets);
+        self
     }
 }
