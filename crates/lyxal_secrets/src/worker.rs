@@ -5,9 +5,14 @@
 //!    retirée (rotation de clé d'organisation) ;
 //! 3. rescellement, par la clé maîtresse active, des clés d'organisation scellées par l'ancienne
 //!    (rotation de la clé maîtresse du coffre-fort) ;
-//! 4. destruction des clés d'organisation retirées que plus aucune version n'utilise.
+//! 4. destruction des clés d'organisation retirées que plus aucune version n'utilise ;
+//! 5. échéances signalées une seule fois (échéance proche, passée, rotation due) ;
+//! 6. rotations : démarrage des rotations dues des secrets qu'un rotateur gère, puis avancée des
+//!    rotations en cours dont l'essai est échu (reprise à l'étape atteinte) ;
+//! 7. rotation des clés d'organisation plus anciennes que la période de leur portée (avant le
+//!    rescellement, qui suit au même passage).
 //!
-//! Sans clé maîtresse, seule la purge a lieu. Un élément en échec est journalisé et laissé pour
+//! Sans clé maîtresse, seules la purge et les alertes ont lieu. Un élément en échec est journalisé et laissé pour
 //! le passage suivant : il n'interrompt pas les autres.
 
 use async_trait::async_trait;
@@ -23,9 +28,12 @@ use std::time::Duration;
 use crate::error::{SecretsError, SecretsResult};
 use crate::keys::{MasterKeys, Scope, TenantKeys, TenantRing};
 use crate::models::{
-    PurgeDueParams, RewrapListParams, RewrapVersion, TenantKeyDestroyParams, VersionResealParams,
+    DueKind, DueListParams, DueMarkParams, PurgeDueParams, RewrapListParams, RewrapVersion,
+    RotationBeginParams, RotationClaimParams, RotationState, SecretGetParams,
+    TenantKeyDestroyParams, VersionResealParams,
 };
 use crate::module::MODULE_ID;
+use crate::rotation::{RotationRunner, RotatorRegistry};
 use crate::store::SecretsStore;
 
 /// Bilan d'un passage du worker.
@@ -41,23 +49,36 @@ pub struct MaintenanceReport {
     pub destroyed_keys: u64,
     /// Éléments en échec, laissés pour le passage suivant.
     pub failed: u64,
+    /// Alertes signalées (échéance proche, échéance passée, rotation due).
+    pub alerts: u64,
+    /// Rotations réussies.
+    pub rotations_succeeded: u64,
+    /// Rotations en échec définitif.
+    pub rotations_failed: u64,
+    /// Clés d'organisation remplacées à échéance.
+    pub tenant_keys_rotated: u64,
 }
+
+/// Rotations réservées par paquet (100 au plus côté SurrealQL).
+const CLAIM_LIMIT: u32 = 100;
 
 /// Worker de maintenance du coffre-fort.
 pub struct SecretsMaintenanceWorker {
     descriptor: WorkerDescriptor,
     keys: TenantKeys,
+    runner: RotationRunner,
     interval: Duration,
     batch: u32,
 }
 
 impl SecretsMaintenanceWorker {
     /// Maintenance toutes les `interval`, par paquets de `batch` éléments (1 à 1000), sur la
-    /// session système de l'hôte, avec le trousseau maître du coffre-fort (absent : purge
-    /// seulement).
+    /// session système de l'hôte, avec le trousseau maître du coffre-fort (absent : purge et
+    /// alertes seulement) et les rotateurs inscrits par l'hôte.
     pub fn new(
         system: SecretsStore,
         master: Option<MasterKeys>,
+        rotators: RotatorRegistry,
         interval: Duration,
         batch: u32,
     ) -> Result<Self, RuntimeError> {
@@ -68,7 +89,7 @@ impl SecretsMaintenanceWorker {
             "Lyxal Secrets Maintenance",
         );
         descriptor.description = Some(
-            "Purge des secrets supprimés à échéance ; rescellement après rotation d'une clé d'organisation ou de la clé maîtresse ; destruction des anciennes clés"
+            "Purge des secrets supprimés à échéance ; alertes d'échéance ; rotation des secrets et des clés d'organisation ; rescellement après rotation d'une clé d'organisation ou de la clé maîtresse ; destruction des anciennes clés"
                 .to_string(),
         );
         descriptor.criticality = WorkerCriticality::Optional;
@@ -76,6 +97,7 @@ impl SecretsMaintenanceWorker {
         descriptor.shutdown_timeout = Duration::from_secs(30);
         Ok(Self {
             descriptor,
+            runner: RotationRunner::new(system.clone(), master.clone(), rotators),
             keys: TenantKeys::new(system, master),
             interval,
             batch: batch.clamp(1, 1000),
@@ -100,6 +122,12 @@ impl SecretsMaintenanceWorker {
             if purged < limit {
                 break;
             }
+        }
+
+        // Échéances et rotations en échec : journalisées, le rescellement a lieu quand même
+        if let Err(error) = self.lifecycle(cancellation, &mut report).await {
+            report.failed += 1;
+            tracing::warn!(code = %error.code(), error = %error, "échéances et rotations non traitées");
         }
 
         let Ok(master) = self.keys.master() else {
@@ -186,6 +214,181 @@ impl SecretsMaintenanceWorker {
         Ok(report)
     }
 
+    /// Échéances, rotations des secrets et des clés d'organisation. Sans clé maîtresse : alertes
+    /// seulement.
+    async fn lifecycle(
+        &self,
+        cancellation: &CancellationToken,
+        report: &mut MaintenanceReport,
+    ) -> SecretsResult<()> {
+        let limit = i64::from(self.batch);
+        let system = self.keys.system();
+        let crypto = self.keys.master().is_ok();
+        while !cancellation.is_cancelled() {
+            let due = system
+                .due_list(DueListParams { limit: Some(limit) })
+                .await?;
+            let before = *report;
+            let alerts = due
+                .expiring
+                .iter()
+                .map(|item| (&item.id, DueKind::Expiring))
+                .chain(due.expired.iter().map(|item| (&item.id, DueKind::Expired)));
+            for (secret, kind) in alerts {
+                if cancellation.is_cancelled() {
+                    return Ok(());
+                }
+                self.mark(&secret.to_sql(), kind, report).await;
+            }
+            for item in &due.rotation_due {
+                if cancellation.is_cancelled() {
+                    return Ok(());
+                }
+                let secret = item.id.to_sql();
+                if self.mark(&secret, DueKind::RotationDue, report).await && crypto {
+                    self.begin(&secret, report).await;
+                }
+            }
+            if crypto {
+                for key in &due.tenant_keys_due {
+                    if cancellation.is_cancelled() {
+                        return Ok(());
+                    }
+                    let rotated = match Scope::from_record(key.tenant.as_ref()) {
+                        Ok(scope) => self.keys.rotate(&scope, None).await,
+                        Err(error) => Err(error),
+                    };
+                    match rotated {
+                        Ok(_) => report.tenant_keys_rotated += 1,
+                        Err(error) => {
+                            report.failed += 1;
+                            tracing::warn!(key_id = %key.key_id, scope = %key.scope_key, code = %error.code(), error = %error, "clé d'organisation non remplacée à échéance");
+                        }
+                    }
+                }
+            }
+            // Un paquet plein qui a avancé est suivi d'un autre ; sans avancée, les éléments en
+            // échec attendent le passage suivant
+            let progressed = report.alerts > before.alerts
+                || report.tenant_keys_rotated > before.tenant_keys_rotated;
+            let full = [
+                due.expiring.len(),
+                due.expired.len(),
+                due.rotation_due.len(),
+                due.tenant_keys_due.len(),
+            ]
+            .iter()
+            .any(|len| *len as i64 >= limit);
+            if !progressed || !full {
+                break;
+            }
+        }
+        if crypto {
+            self.advance_rotations(cancellation, report).await?;
+        }
+        Ok(())
+    }
+
+    /// Échéance signalée ; vrai si l'alerte vient d'être posée.
+    async fn mark(&self, secret: &str, kind: DueKind, report: &mut MaintenanceReport) -> bool {
+        match self
+            .keys
+            .system()
+            .due_mark(DueMarkParams {
+                secret: secret.to_string(),
+                kind,
+            })
+            .await
+        {
+            Ok(result) => {
+                if result.marked {
+                    report.alerts += 1;
+                }
+                result.marked
+            }
+            Err(error) => {
+                let error = SecretsError::from(error);
+                report.failed += 1;
+                tracing::warn!(secret = %secret, kind = ?kind, code = %error.code(), error = %error, "échéance non signalée");
+                false
+            }
+        }
+    }
+
+    /// Rotation due démarrée si un rotateur gère le secret ; sinon le rappel suffit (une
+    /// personne écrira la nouvelle valeur). Une rotation déjà en cours est laissée.
+    async fn begin(&self, secret: &str, report: &mut MaintenanceReport) {
+        if self.runner.rotators().is_empty() {
+            return;
+        }
+        let system = self.keys.system();
+        let started = async {
+            let record = system
+                .secret_get(SecretGetParams::by_id(secret.to_string()))
+                .await?;
+            if self.runner.rotators().find(&record).is_none() {
+                return Ok(());
+            }
+            system
+                .rotation_begin(RotationBeginParams {
+                    secret: secret.to_string(),
+                    emergency: None,
+                    reason: None,
+                })
+                .await?;
+            Ok::<(), SecretsError>(())
+        }
+        .await;
+        match started {
+            Ok(()) => {}
+            Err(error) if error.is_code("SECRETS_ROTATION_IN_PROGRESS") => {}
+            Err(error) => {
+                report.failed += 1;
+                tracing::warn!(secret = %secret, code = %error.code(), error = %error, "rotation due non démarrée");
+            }
+        }
+    }
+
+    /// Rotations en cours dont l'essai est échu, réservées par paquets et avancées.
+    async fn advance_rotations(
+        &self,
+        cancellation: &CancellationToken,
+        report: &mut MaintenanceReport,
+    ) -> SecretsResult<()> {
+        let limit = i64::from(self.batch.min(CLAIM_LIMIT));
+        while !cancellation.is_cancelled() {
+            // Une rotation réservée ne l'est plus avant la fin du bail : la boucle se termine
+            let claimed = self
+                .keys
+                .system()
+                .rotation_claim(RotationClaimParams {
+                    limit: Some(limit),
+                    ..RotationClaimParams::default()
+                })
+                .await?
+                .items;
+            let full = claimed.len() as i64 >= limit;
+            for rotation in claimed {
+                let id = rotation.id.to_sql();
+                match self.runner.advance(rotation).await {
+                    Ok(done) => match done.state {
+                        RotationState::Succeeded => report.rotations_succeeded += 1,
+                        RotationState::Failed => report.rotations_failed += 1,
+                        _ => {}
+                    },
+                    Err(error) => {
+                        report.failed += 1;
+                        tracing::warn!(rotation = %id, code = %error.code(), error = %error, "rotation non avancée");
+                    }
+                }
+            }
+            if !full {
+                break;
+            }
+        }
+        Ok(())
+    }
+
     /// Version rescellée par la clé active de son organisation ; faux si elle l'était déjà.
     async fn reseal(
         &self,
@@ -236,6 +439,10 @@ impl LyxalWorker for SecretsMaintenanceWorker {
                         rewrapped = report.rewrapped,
                         destroyed_keys = report.destroyed_keys,
                         failed = report.failed,
+                        alerts = report.alerts,
+                        rotations_succeeded = report.rotations_succeeded,
+                        rotations_failed = report.rotations_failed,
+                        tenant_keys_rotated = report.tenant_keys_rotated,
                         "maintenance du coffre-fort"
                     );
                 }

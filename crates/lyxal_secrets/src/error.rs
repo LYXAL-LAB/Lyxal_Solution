@@ -7,6 +7,9 @@ use lyxal_crypto::CryptoError;
 use lyxal_surreal::{LyxalCallError, LyxalSurrealError};
 use thiserror::Error;
 
+/// Code d'erreur : aucun rotateur inscrit ne gère le secret.
+pub(crate) const ROTATOR_UNAVAILABLE: &str = "SECRETS_ROTATOR_UNAVAILABLE";
+
 /// Erreur d'un service de `lyxal_secrets`.
 #[derive(Debug, Error)]
 pub enum SecretsError {
@@ -37,6 +40,9 @@ pub enum SecretsError {
     /// Identifiant reçu inutilisable (organisation ou secret).
     #[error("identifiant invalide : {0}")]
     InvalidRecord(String),
+    /// Aucun rotateur inscrit ne gère ce secret.
+    #[error("aucun rotateur pour ce secret")]
+    RotatorUnavailable,
 }
 
 impl SecretsError {
@@ -57,6 +63,7 @@ impl SecretsError {
             Self::ValueCorrupted => "SECRETS_VALUE_CORRUPTED".to_string(),
             Self::TenantKeyUnavailable(_) => "SECRETS_TENANT_KEY_UNAVAILABLE".to_string(),
             Self::InvalidRecord(_) => "SECRETS_INVALID_PARAMETERS".to_string(),
+            Self::RotatorUnavailable => ROTATOR_UNAVAILABLE.to_string(),
         }
     }
 
@@ -91,7 +98,8 @@ impl SecretsError {
             | Self::ValueCorrupted
             | Self::TenantKeyUnavailable(_)
             | Self::Crypto(_)
-            | Self::InvalidRecord(_) => false,
+            | Self::InvalidRecord(_)
+            | Self::RotatorUnavailable => false,
         }
     }
 }

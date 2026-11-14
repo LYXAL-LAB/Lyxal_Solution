@@ -53,6 +53,20 @@ pub struct SecretRecord {
     pub rotation_period: Option<SecretsDuration>,
     /// Prochaine rotation prévue.
     pub next_rotation_at: Option<SecretsDatetime>,
+    /// Dernière rotation réussie.
+    pub last_rotated_at: Option<SecretsDatetime>,
+    /// Alerte « échéance proche » envoyée.
+    pub expiry_warned_at: Option<SecretsDatetime>,
+    /// Alerte « échéance atteinte » envoyée.
+    pub expired_notified_at: Option<SecretsDatetime>,
+    /// Rappel « rotation due » envoyé.
+    pub rotation_notified_at: Option<SecretsDatetime>,
+    /// Dernier essai sans bascule.
+    pub last_check_at: Option<SecretsDatetime>,
+    /// Résultat du dernier essai sans bascule.
+    pub last_check_ok: Option<bool>,
+    /// Code d'erreur du dernier essai en échec.
+    pub last_check_code: Option<String>,
     /// État.
     pub state: SecretState,
     /// État d'avant la suppression.

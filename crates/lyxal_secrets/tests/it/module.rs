@@ -6,7 +6,8 @@ use lyxal_runtime::worker::{CancellationToken, LyxalWorker, WorkerContext};
 use lyxal_runtime::ModuleContext;
 use lyxal_secrets::models::{SecretGetParams, SecretListParams};
 use lyxal_secrets::{
-    MaintenanceReport, MasterKeys, SecretsHealthCheck, SecretsMaintenanceWorker, MODULE_ID,
+    MaintenanceReport, MasterKeys, RotatorRegistry, SecretsHealthCheck, SecretsMaintenanceWorker,
+    MODULE_ID,
 };
 use std::time::Duration;
 
@@ -58,12 +59,17 @@ async fn without_a_master_key_values_are_refused_and_records_stay_readable() {
         .message
         .as_deref()
         .is_some_and(|m| m.contains("SECRETS_CRYPTO_UNAVAILABLE")));
-    let report =
-        SecretsMaintenanceWorker::new(bench.store.clone(), None, Duration::from_secs(3600), 10)
-            .expect("worker")
-            .run_once(&CancellationToken::new())
-            .await
-            .expect("passage");
+    let report = SecretsMaintenanceWorker::new(
+        bench.store.clone(),
+        None,
+        RotatorRegistry::new(),
+        Duration::from_secs(3600),
+        10,
+    )
+    .expect("worker")
+    .run_once(&CancellationToken::new())
+    .await
+    .expect("passage");
     assert_eq!(report, MaintenanceReport::default());
 }
 
@@ -109,6 +115,7 @@ async fn the_probe_follows_the_master_key_and_pending_reseals() {
     SecretsMaintenanceWorker::new(
         bench.store.clone(),
         Some(rotated.clone()),
+        RotatorRegistry::new(),
         Duration::from_secs(3600),
         10,
     )
@@ -135,6 +142,7 @@ async fn the_worker_stops_on_cancellation() {
     let worker = SecretsMaintenanceWorker::new(
         bench.store.clone(),
         Some(bench.master.clone()),
+        RotatorRegistry::new(),
         Duration::from_secs(3600),
         10,
     )

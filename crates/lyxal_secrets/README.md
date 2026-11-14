@@ -20,7 +20,7 @@ base que scellée (`enc:v2`, AES-256-GCM), la clé reste hors de la base, et la 
 valeur passe par un ticket tracé au journal avant toute remise.
 
 Manifeste : `lyxal_secrets` 0.1.0, dépendances `lyxal_core`, `lyxal_error`, `lyxal_event`,
-`lyxal_auth`. Hébergé par `lyxal-server` (`SecretsModule`, worker de maintenance, sonde).
+`lyxal_auth`. Hébergé par `lyxal-server` (`SecretsModule`, worker de maintenance avec un registre de rotateurs vide, sonde).
 
 ## Clés
 
@@ -62,8 +62,11 @@ clé maîtresse du coffre-fort (LYXAL__SECRETS__MASTER_KEY ; ancienne clé en le
 | `SecretsService::put` | fiche lue avec les droits de l'appelant, taille contrôlée (`max_value_bytes`), noms des clés d'une valeur JSON objet (jamais les valeurs), valeur scellée pour le numéro suivant, `fn::secrets_version_add` ; une écriture concurrente (`SECRETS_VERSION_CONFLICT` ou conflit de transaction) est relue et rescellée, trois essais au plus ; avec `expected_version` (dernier numéro connu), aucun nouvel essai |
 | `SecretsService::reveal` | `fn::secrets_read_begin` (session de l'appelant, ticket tracé) → `fn::secrets_read_envelope` (session système) → ouverture → `SecretBytes` ; un refus de la base ou une enveloppe illisible est journalisé au nom de l'appelant (`fn::secrets_audit_denied`) |
 | `SecretsService::rotate_tenant_key` | droit contrôlé par `fn::secrets_tenant_key_rotate_allowed` (session de l'appelant), nouvelle clé rangée par la session système |
+| `SecretRotator`, `RotatorRegistry` | rotateur d'un module de l'hôte qui sait changer un identifiant chez un service extérieur : `create` (nouvelle valeur), `install`, `test`, `retire` (avant-dernière valeur, au mieux) ; erreurs `RotatorError` (code seul, nouvel essai ou non) ; registre vide par défaut, un rotateur au plus par fiche |
+| `RotationRunner` | fait avancer une rotation réservée depuis l'étape atteinte : nouvelle valeur écrite en `pending` par `put`, installation, test, bascule ; valeurs lues par le chemin tracé, le rotateur annoncé comme consommateur ; un échec passe par `fn::secrets_rotation_fail` |
+| `SecretsService::rotate_now`, `check_rotation` | rotation immédiate (dont l'urgence ; sans rotateur, l'urgence coupe la version courante et la rotation échoue aussitôt, `SECRETS_ROTATOR_UNAVAILABLE`) ; essai sans bascule de la valeur en service |
 | `SecretsClient` | lecture et écriture des modules de l'hôte par organisation et chemin, session système, module annoncé comme consommateur |
-| `SecretsMaintenanceWorker` | `LyxalWorker` : purge à échéance, rescellement des versions puis des clés d'organisation, destruction des clés inutilisées ; bilan `MaintenanceReport` |
+| `SecretsMaintenanceWorker` | `LyxalWorker` : purge à échéance, alertes d'échéance et rappels de rotation, démarrage des rotations dues qu'un rotateur sait faire, rotation des clés d'organisation échues, avancement des rotations réservées, rescellement des versions puis des clés d'organisation, destruction des clés inutilisées ; bilan `MaintenanceReport` |
 | `SecretsModule`, `SecretsHealthCheck` | descripteur du module ; sonde : base joignable, clé maîtresse présente, clés scellées par une clé maîtresse absente du trousseau (dégradé), rescellements en attente |
 | `SecretsError` | code `SECRETS_*` de la base, ou cause constatée par le service (`SECRETS_CRYPTO_UNAVAILABLE`, `SECRETS_VALUE_TOO_LARGE`, `SECRETS_VALUE_CORRUPTED`, `SECRETS_TENANT_KEY_UNAVAILABLE`) ; jamais de valeur |
 
@@ -203,4 +206,6 @@ test) : valeur écrite puis relue, 64 Kio acceptés et au-delà refusés, envelo
 altérée, écritures concurrentes, rotation des clés d'organisation et de la clé maîtresse,
 organisation supprimée, fonctionnement sans clé maîtresse, lectures refusées journalisées,
 double facteur, consommateurs, sonde, worker arrêté par l'annulation, aucune valeur dans les
-`Debug` et les erreurs ; 17 tests. Hôte : `apps/lyxal-server/tests/secrets.rs`.
+`Debug` et les erreurs, rotation complète sans coupure, nouvel essai et échec définitif, reprise
+après interruption, urgence avec et sans rotateur, rappel seul sans rotateur, essai sans bascule,
+rotation planifiée des clés d'organisation ; 28 tests. Hôte : `apps/lyxal-server/tests/secrets.rs`.
