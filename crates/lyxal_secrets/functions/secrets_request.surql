@@ -272,8 +272,8 @@ DEFINE FUNCTION OVERWRITE fn::secrets_request_apply($params: object) {
             LET $assurance = fn::auth_assurance_check({ min_aal: "highest_available", fresh: true });
             IF !$assurance.ok { RETURN fn::error_result($assurance.error.code, $p.language, $assurance.error.details ?? {}); };
         };
-    } ELSE IF $r.state != "approved" {
-        RETURN fn::error_result("SECRETS_REQUEST_STATE_INVALID", $p.language, { state: IF $l.expired { "expired" } ELSE { $r.state } });
+    } ELSE IF $r.state != "approved" OR $r.expires_at <= time::now() {
+        RETURN fn::error_result("SECRETS_REQUEST_STATE_INVALID", $p.language, { state: IF $r.state = "approved" OR $l.expired { "expired" } ELSE { $r.state } });
     };
     LET $from = $r.state;
     -- applying : les gardes laissent passer cette opération sur ce secret pendant l'application
@@ -288,7 +288,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_request_apply($params: object) {
     LET $applied = (UPDATE ONLY $r.id SET state = "applied", applied_at = time::now(), decided_at = decided_at ?? time::now() WHERE state = "applying");
     IF $applied == NONE { RETURN fn::error_result("SECRETS_WRITE_FORBIDDEN", $p.language, { table: "secrets_request" }); };
     RETURN fn::result_ok(fn::secrets_request_view($r.id));
-} COMMENT "Applique son changement approuvé ({ request }), ou, en urgence, avant les approbations ({ request, emergency: true, reason } : droit secrets.access.emergency, assurance la plus haute et récente ; journalisé et publié). Le changement est exécuté avec les droits de l'auteur ; en cas d'échec, la demande revient à son état. Droit : auteur de la demande";
+} COMMENT "Applique son changement approuvé ({ request }), ou, en urgence, avant les approbations ({ request, emergency: true, reason } : droit secrets.access.emergency, assurance la plus haute et récente ; journalisé et publié). Le changement est exécuté avec les droits de l'auteur, une seule fois, sur la version approuvée ; une demande échue ne s'applique plus ; en cas d'échec, la demande revient à son état. Droit : auteur de la demande";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_request_get
@@ -397,6 +397,12 @@ DEFINE FUNCTION OVERWRITE fn::secrets_request_refusal($event: string, $before: o
         IF array::len($after.approvals) != array::len($before.approvals) + 1 OR array::slice($after.approvals, 0, array::len($before.approvals)) != $before.approvals
             OR array::last($after.approvals).by != $actor OR $actor INSIDE $before.approvals.by { RETURN "SECRETS_REQUEST_STATE_INVALID"; };
     };
+    -- Pendant l'application, seule la consommation de l'autorisation (garde d'écriture) change la demande
+    IF $after.state = "applying" AND $before.state = "applying" {
+        RETURN IF $by_requester AND $before.consumed_at IS NONE AND $after.consumed_at IS NOT NONE
+            AND $after.number = $before.number AND $after.emergency = $before.emergency { NONE } ELSE { "SECRETS_REQUEST_STATE_INVALID" };
+    };
+    IF $after.consumed_at != $before.consumed_at { RETURN "SECRETS_REQUEST_STATE_INVALID"; };
     IF $after.state = $before.state { RETURN IF $after.state = "pending" AND $approved { "SECRETS_REQUEST_STATE_INVALID" } ELSE { NONE }; };
     LET $transition = $before.state + ">" + $after.state;
     RETURN IF $transition = "pending>approved" {
@@ -408,10 +414,18 @@ DEFINE FUNCTION OVERWRITE fn::secrets_request_refusal($event: string, $before: o
     } ELSE IF $transition IN ["pending>expired", "approved>expired"] {
         IF fn::secrets_can({ action: "worker", tenant: $after.tenant }) AND $after.expires_at <= time::now() { NONE } ELSE { "SECRETS_PERMISSION_DENIED" }
     } ELSE IF $transition = "approved>applying" {
-        IF $by_requester AND $after.kind = "change" { NONE } ELSE { "SECRETS_PERMISSION_DENIED" }
+        IF !$by_requester OR $after.kind != "change" { "SECRETS_PERMISSION_DENIED" }
+        ELSE IF $after.expires_at <= time::now() OR $after.consumed_at IS NOT NONE { "SECRETS_REQUEST_STATE_INVALID" } ELSE { NONE }
     } ELSE IF $transition = "pending>applying" {
-        IF $by_requester AND $after.kind = "change" AND $after.emergency AND fn::secrets_can({ action: "emergency", tenant: $after.tenant }) { NONE } ELSE { "SECRETS_PERMISSION_DENIED" }
-    } ELSE IF $transition IN ["applying>applied", "applying>approved", "applying>pending"] {
+        -- Urgence : droit d'urgence et, pour une personne, assurance la plus haute et récente
+        IF !$by_requester OR $after.kind != "change" OR !$after.emergency OR !fn::secrets_can({ action: "emergency", tenant: $after.tenant }) { "SECRETS_PERMISSION_DENIED" }
+        ELSE IF $after.expires_at <= time::now() OR $after.consumed_at IS NOT NONE OR $after.decision_reason IS NONE { "SECRETS_REQUEST_STATE_INVALID" }
+        ELSE IF $caller.kind = "interactive" AND !fn::auth_assurance_check({ min_aal: "highest_available", fresh: true }).ok { "SECRETS_PERMISSION_DENIED" }
+        ELSE { NONE }
+    } ELSE IF $transition = "applying>applied" {
         IF $by_requester { NONE } ELSE { "SECRETS_PERMISSION_DENIED" }
+    } ELSE IF $transition IN ["applying>approved", "applying>pending"] {
+        -- Retour après un échec : seulement si aucun changement n'a été exécuté
+        IF !$by_requester { "SECRETS_PERMISSION_DENIED" } ELSE IF $before.consumed_at IS NOT NONE { "SECRETS_REQUEST_STATE_INVALID" } ELSE { NONE }
     } ELSE { "SECRETS_REQUEST_STATE_INVALID" };
-} COMMENT "Interne : refus d'une écriture de demande ($event, $before, $after) : création en attente par le demandeur, approbations requises jamais sous la protection du chemin ; approbations ajoutées une à une par un gestionnaire des accès autre que le demandeur ; transitions : approbation finale et refus (gestionnaire), annulation (demandeur), expiration (worker, échéance passée), application d'un changement (demandeur ; avant approbation seulement en urgence avec le droit d'urgence) ; demande close intouchable. NONE ou code d'erreur";
+} COMMENT "Interne : refus d'une écriture de demande ($event, $before, $after) : création en attente par le demandeur, approbations requises jamais sous la protection du chemin ; approbations ajoutées une à une par un gestionnaire des accès autre que le demandeur ; transitions : approbation finale et refus (gestionnaire), annulation (demandeur), expiration (worker, échéance passée), application d'un changement non échu (demandeur ; avant approbation seulement en urgence avec le droit d'urgence, un motif et, pour une personne, l'assurance la plus haute et récente) ; pendant l'application, seule la consommation de l'autorisation change la demande, et le retour en arrière n'est permis que si rien n'a été exécuté ; demande close intouchable. NONE ou code d'erreur";

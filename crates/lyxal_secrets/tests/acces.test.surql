@@ -326,6 +326,77 @@ UPDATE (SELECT VALUE req_access FROM ONLY passe:ids) SET state = "pending", appr
 -- en tant que: redacteur
 RETURN fn::secrets_access_due({}).error.code = "SECRETS_PERMISSION_DENIED";
 
+-- préparation: secrets protégés de infra avec trois versions, et une demande approuvée mais échue
+{
+    LET $cache = fn::secrets_secret_create({ tenant: "auth_organization:alpha", path: "infra/cache", kind: "password" }).data.id;
+    FOR $n IN [1, 2, 3] {
+        fn::secrets_version_add({ secret: <string> $cache, number: $n, envelope: "enc:v2:k1:AAAA", key_id: "k1" });
+    };
+    LET $queue = fn::secrets_secret_create({ tenant: "auth_organization:alpha", path: "infra/queue", kind: "password" }).data.id;
+    fn::secrets_version_add({ secret: <string> $queue, number: 1, envelope: "enc:v2:k1:AAAA", key_id: "k1" });
+    CREATE secrets_request:echu_approuve CONTENT { tenant: auth_organization:alpha, kind: "change", requested_identity: auth_identity:redacteur, path: "infra/queue",
+        secret: $queue, operation: "disable", reason: "x", required_approvals: 2, expires_at: time::now() - 1m };
+    UPDATE secrets_request:echu_approuve SET state = "approved", approvals = [{ by: "auth_identity:gestion", at: time::now() }, { by: "auth_identity:gestion2", at: time::now() }];
+    UPDATE passe:ids SET cache = $cache;
+};
+
+-- test: demande de retour à la version 1, approuvée par deux gestionnaires
+-- en tant que: redacteur
+{
+    LET $r = fn::secrets_request_change({ secret: <string> (SELECT VALUE cache FROM ONLY passe:ids), operation: "rollback", number: 1, reason: "retour arrière" }).data.id;
+    UPDATE passe:ids SET req_rb = $r;
+    RETURN $r IS NOT NONE;
+};
+
+-- test: première approbation du retour arrière
+-- en tant que: gestion
+RETURN fn::secrets_request_approve({ request: <string> (SELECT VALUE req_rb FROM ONLY passe:ids) }).data.state = "pending";
+
+-- test: seconde approbation du retour arrière
+-- en tant que: gestion2
+RETURN fn::secrets_request_approve({ request: <string> (SELECT VALUE req_rb FROM ONLY passe:ids) }).data.state = "approved";
+
+-- test: une demande approuvée n'autorise que la version approuvée, une seule fois, même en écriture directe
+-- en tant que: redacteur
+{
+    LET $ids = (SELECT * FROM ONLY passe:ids);
+    UPDATE $ids.req_rb SET state = "applying";
+    LET $other = fn::secrets_version_label({ secret: <string> $ids.cache, label: "current", number: 2 });
+    LET $approved = fn::secrets_version_label({ secret: <string> $ids.cache, label: "current", number: 1 });
+    LET $again = fn::secrets_version_label({ secret: <string> $ids.cache, label: "current", number: 3 });
+    RETURN $other.error.code = "SECRETS_APPROVAL_REQUIRED" AND $approved.ok AND $approved.data.labels.current = 1
+        AND $again.error.code = "SECRETS_APPROVAL_REQUIRED"
+        AND (SELECT VALUE consumed_at FROM ONLY $ids.req_rb) IS NOT NONE;
+};
+
+-- test: une autorisation consommée ne se remet pas en jeu
+-- en tant que: redacteur
+-- attendu-erreur: SECRETS_REQUEST_STATE_INVALID
+UPDATE (SELECT VALUE req_rb FROM ONLY passe:ids) SET state = "approved";
+
+-- test: une demande approuvée mais échue ne s'applique plus
+-- en tant que: redacteur
+RETURN fn::secrets_request_apply({ request: "secrets_request:echu_approuve" }).error.details.state = "expired";
+
+-- test: écriture directe : une demande échue ne passe pas en application
+-- en tant que: redacteur
+-- attendu-erreur: SECRETS_REQUEST_STATE_INVALID
+UPDATE secrets_request:echu_approuve SET state = "applying";
+
+-- préparation: l'urgentiste active un second facteur qu'il n'a pas utilisé dans sa session
+{
+    UPDATE auth_identity:urgentiste SET available_aal = 2;
+};
+
+-- test: écriture directe : un accès d'urgence exige l'assurance la plus haute et récente
+-- en tant que: urgentiste
+-- attendu-erreur: SECRETS_PERMISSION_DENIED
+CREATE secrets_grant CONTENT { tenant: auth_organization:alpha, subject_identity: auth_identity:urgentiste, path: "api", folder: true, actions: ["read_value"], expires_at: time::now() + 30m, reason: "x", emergency: true };
+
+-- test: la fonction d'accès d'urgence refuse de même
+-- en tant que: urgentiste
+RETURN fn::secrets_access_emergency({ tenant: "auth_organization:alpha", path: "api", folder: true, actions: ["read_value"], duration: 30m, reason: "x" }).error.code = "AUTH_AAL_INSUFFICIENT";
+
 -- test: retrait d'une protection : le changement redevient direct
 -- en tant que: gestion
 {

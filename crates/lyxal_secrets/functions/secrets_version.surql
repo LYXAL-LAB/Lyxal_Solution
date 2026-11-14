@@ -65,7 +65,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_version_update_refusal($before: object, $a
         LET $live = (SELECT VALUE number FROM secrets_version WHERE secret = $before.secret AND state != "destroyed");
         LET $retention = array::len($live) >= $max;
         IF fn::secrets_can({ action: "delete", tenant: $tenant, path: $secret.path }) OR fn::secrets_can({ action: "worker", tenant: $tenant }) {
-            RETURN IF $retention { NONE } ELSE { fn::secrets_change_refusal({ tenant: $tenant, path: $secret.path, secret: $secret.id, operation: "destroy" }) };
+            RETURN IF $retention { NONE } ELSE { fn::secrets_change_refusal({ tenant: $tenant, path: $secret.path, secret: $secret.id, operation: "destroy", number: $before.number, consume: true }) };
         };
         -- Un rédacteur détruit la plus ancienne version sans étiquette au-delà du nombre conservé
         RETURN IF fn::secrets_can({ action: "write", tenant: $tenant, path: $secret.path }) AND $retention { NONE } ELSE { "SECRETS_PERMISSION_DENIED" };
@@ -80,7 +80,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_version_update_refusal($before: object, $a
     -- Protection : couper la version en service, sauf par la rotation d'urgence qui vient de démarrer
     IF $after.state = "disabled" AND $before.number = $secret.labels.current
         AND array::len(SELECT VALUE id FROM secrets_rotation WHERE secret = $secret.id AND emergency AND state = "started" LIMIT 1) = 0 {
-        RETURN fn::secrets_change_refusal({ tenant: $tenant, path: $secret.path, secret: $secret.id, operation: "disable" });
+        RETURN fn::secrets_change_refusal({ tenant: $tenant, path: $secret.path, secret: $secret.id, operation: "disable", consume: true });
     };
     RETURN NONE;
 } COMMENT "Interne : refus d'une modification de version ($before, $after) : auteur et noms de clés figés ; version détruite intouchable ; destruction (enveloppe effacée) refusée sur une version étiquetée, permise à la suppression, au worker, ou au rédacteur au-delà du nombre de versions conservées ; protections : destruction hors conservation et désactivation de la version en service (sauf rotation d'urgence) soumises à fn::secrets_change_refusal ; enveloppe remplacée seulement par le rescellement de la session système ou du worker ; enabled ↔ disabled par l'écriture. NONE ou code d'erreur";
@@ -137,7 +137,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_version_add($params: object) {
     -- Secret protégé : remplacer la valeur en service passe par une demande (étape proposed)
     IF $p.stage = "current" AND $secret.labels.current IS NOT NONE {
         LET $operation = "value";
-        LET $protected = fn::secrets_change_refusal({ tenant: $secret.tenant, path: $secret.path, secret: $secret.id, operation: $operation });
+        LET $protected = fn::secrets_change_refusal({ tenant: $secret.tenant, path: $secret.path, secret: $secret.id, operation: $operation, number: $p.number });
         IF $protected IS NOT NONE { RETURN fn::error_result($protected, $p.language, { path: $secret.path, operation: $operation }); };
     };
     LET $caller = fn::secrets_caller();
@@ -258,7 +258,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_version_label($params: object) {
     -- Secret protégé : déplacer current (valeur proposée ou retour arrière) passe par une demande
     IF $secret.labels.current IS NOT NONE AND $labels.current != $secret.labels.current {
         LET $operation = IF $labels.current = $secret.labels.proposed { "value" } ELSE { "rollback" };
-        LET $protected = fn::secrets_change_refusal({ tenant: $secret.tenant, path: $secret.path, secret: $secret.id, operation: $operation });
+        LET $protected = fn::secrets_change_refusal({ tenant: $secret.tenant, path: $secret.path, secret: $secret.id, operation: $operation, number: $labels.current });
         IF $protected IS NOT NONE { RETURN fn::error_result($protected, $p.language, { path: $secret.path, operation: $operation }); };
     };
     LET $updated = (UPDATE ONLY $secret.id SET labels = $labels,
@@ -299,7 +299,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_version_state($params: object, $to: string
     -- Secret protégé : détruire une version ou couper la version en service passe par une demande
     IF $to = "destroyed" OR ($to = "disabled" AND $p.number = $secret.labels.current) {
         LET $operation = IF $to = "destroyed" { "destroy" } ELSE { "disable" };
-        LET $protected = fn::secrets_change_refusal({ tenant: $secret.tenant, path: $secret.path, secret: $secret.id, operation: $operation });
+        LET $protected = fn::secrets_change_refusal({ tenant: $secret.tenant, path: $secret.path, secret: $secret.id, operation: $operation, number: $p.number });
         IF $protected IS NOT NONE { RETURN fn::error_result($protected, $p.language, { path: $secret.path, operation: $operation }); };
     };
     LET $updated = IF $to = "destroyed" {

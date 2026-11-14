@@ -142,6 +142,10 @@ DEFINE FIELD OVERWRITE emergency ON TABLE secrets_request
     DEFAULT false
     COMMENT "Changement appliqué en urgence, avant les approbations";
 
+DEFINE FIELD OVERWRITE consumed_at ON TABLE secrets_request
+    TYPE option<datetime>
+    COMMENT "Changement autorisé exécuté (posé par la garde d'écriture) : une demande n'autorise qu'un seul changement";
+
 DEFINE FIELD OVERWRITE created_at ON TABLE secrets_request
     TYPE datetime
     DEFAULT time::now()

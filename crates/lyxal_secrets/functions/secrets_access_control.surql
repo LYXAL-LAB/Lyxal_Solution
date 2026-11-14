@@ -46,11 +46,19 @@ DEFINE FUNCTION OVERWRITE fn::secrets_change_refusal($params: object) -> option<
     IF fn::secrets_can({ action: "worker", tenant: $params.tenant }) { RETURN NONE; };
     LET $policy = fn::secrets_policy_for({ tenant: $params.tenant, path: $params.path });
     IF $params.operation NOTINSIDE $policy.operations { RETURN NONE; };
-    -- Application d'une demande approuvée (ou d'urgence) de cette opération sur ce secret
+    -- Application d'une demande approuvée (ou d'urgence) : même secret, même opération, même version
+    -- cible, une seule fois (consumed_at)
     LET $applying = (SELECT VALUE id FROM secrets_request
-        WHERE secret = $params.secret AND state = "applying" AND operation = $params.operation LIMIT 1);
-    RETURN IF array::len($applying) > 0 { NONE } ELSE { "SECRETS_APPROVAL_REQUIRED" };
-} COMMENT "Interne : refus d'une opération protégée ({ tenant, path, secret, operation : value, rollback, disable, delete, destroy }) hors de l'application d'une demande approuvée ; la session système et le worker ne sont pas soumis. NONE ou SECRETS_APPROVAL_REQUIRED";
+        WHERE secret = $params.secret AND state = "applying" AND operation = $params.operation AND consumed_at IS NONE
+            AND (number IS NONE OR number = $params.number) LIMIT 1);
+    IF array::len($applying) = 0 { RETURN "SECRETS_APPROVAL_REQUIRED"; };
+    -- Garde d'écriture : l'autorisation est consommée par ce changement
+    IF $params.consume = true {
+        LET $consumed = (UPDATE ONLY $applying[0] SET consumed_at = time::now() WHERE consumed_at IS NONE);
+        IF $consumed == NONE { RETURN "SECRETS_APPROVAL_REQUIRED"; };
+    };
+    RETURN NONE;
+} COMMENT "Interne : refus d'une opération protégée ({ tenant, path, secret, operation : value, rollback, disable, delete, destroy ; number : version cible ; consume : vrai pour une garde d'écriture }) hors de l'application d'une demande approuvée portant sur la même version cible ; une demande n'autorise qu'un seul changement (consommée par la garde). La session système et le worker ne sont pas soumis. NONE ou SECRETS_APPROVAL_REQUIRED";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_change_open (interne)
@@ -352,7 +360,9 @@ DEFINE FUNCTION OVERWRITE fn::secrets_grant_refusal($event: string, $before: opt
                 OR ($after.subject_application IS NOT NONE AND ($caller.identity IS NOT NONE OR $after.subject_application != $caller.application)) {
                 RETURN "SECRETS_PERMISSION_DENIED";
             };
-            RETURN IF $after.expires_at - $after.starts_at > 1h { "SECRETS_GRANT_INVALID" } ELSE { NONE };
+            IF $after.expires_at - $after.starts_at > 1h { RETURN "SECRETS_GRANT_INVALID"; };
+            -- Une personne : assurance la plus haute et récente, même par une écriture directe
+            RETURN IF $caller.kind = "interactive" AND !fn::auth_assurance_check({ min_aal: "highest_available", fresh: true }).ok { "SECRETS_PERMISSION_DENIED" } ELSE { NONE };
         };
         -- Durée bornée par les réglages et la protection du chemin
         LET $d = fn::secrets_grant_duration({ tenant: $after.tenant, path: $after.path, folder: $after.folder, duration: $after.expires_at - $after.starts_at });
@@ -361,4 +371,4 @@ DEFINE FUNCTION OVERWRITE fn::secrets_grant_refusal($event: string, $before: opt
     -- Seul le retrait change un accès, une seule fois
     IF $before.revoked_at IS NOT NONE OR $after.revoked_at IS NONE { RETURN "SECRETS_GRANT_INVALID"; };
     RETURN NONE;
-} COMMENT "Interne : refus d'une écriture d'accès ($event, $before, $after) : un seul bénéficiaire, fin après le début, durée bornée (urgence : pour soi, 1 h au plus) ; seul le retrait modifie un accès, une fois. NONE ou code d'erreur";
+} COMMENT "Interne : refus d'une écriture d'accès ($event, $before, $after) : un seul bénéficiaire, fin après le début, durée bornée (urgence : pour soi, 1 h au plus, assurance la plus haute et récente pour une personne) ; seul le retrait modifie un accès, une fois. NONE ou code d'erreur";

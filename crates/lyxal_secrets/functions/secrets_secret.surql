@@ -65,7 +65,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_secret_update_refusal($before: object, $af
             -- Protection : remplacer la valeur en service (version proposée ou nouvelle) ou revenir en arrière
             IF $before.labels.current IS NOT NONE AND $after.labels.current != $before.labels.current {
                 LET $operation = IF $after.labels.current = $before.labels.proposed OR $after.latest_version != $before.latest_version { "value" } ELSE { "rollback" };
-                RETURN fn::secrets_change_refusal({ tenant: $tenant, path: $before.path, secret: $before.id, operation: $operation });
+                RETURN fn::secrets_change_refusal({ tenant: $tenant, path: $before.path, secret: $before.id, operation: $operation, number: $after.labels.current, consume: true });
             };
         };
         RETURN NONE;
@@ -75,7 +75,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_secret_update_refusal($before: object, $af
     IF $after.state NOTINSIDE $allowed { RETURN "SECRETS_SECRET_STATE_INVALID"; };
     -- Protection : désactiver ou supprimer un secret protégé passe par une demande approuvée
     IF $after.state IN ["disabled", "deleted"] {
-        LET $protected = fn::secrets_change_refusal({ tenant: $tenant, path: $before.path, secret: $before.id, operation: IF $after.state = "deleted" { "delete" } ELSE { "disable" } });
+        LET $protected = fn::secrets_change_refusal({ tenant: $tenant, path: $before.path, secret: $before.id, operation: IF $after.state = "deleted" { "delete" } ELSE { "disable" }, consume: true });
         IF $protected IS NOT NONE { RETURN $protected; };
     };
     IF $after.state = "deleted" {
