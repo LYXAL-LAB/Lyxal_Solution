@@ -118,9 +118,10 @@ DEFINE FUNCTION OVERWRITE fn::secrets_version_add($params: object) {
     IF string::split($p.envelope, ":")[2] != $p.key_id { RETURN fn::error_result("SECRETS_ENVELOPE_INVALID", $p.language, { key_id: $p.key_id }); };
     LET $secret = (SELECT * FROM ONLY $p.secret);
     IF $secret == NONE { RETURN fn::error_result("SECRETS_SECRET_NOT_FOUND", $p.language, { secret: <string> $p.secret }); };
-    -- Le worker écrit seulement la nouvelle valeur (pending) d'une rotation en cours
-    IF !fn::secrets_can({ action: "write", tenant: $secret.tenant, path: $secret.path })
-        AND !($p.stage = "pending" AND fn::secrets_can({ action: "worker", tenant: $secret.tenant }) AND fn::secrets_rotation_started($secret.id)) {
+    -- La nouvelle valeur d'une rotation (pending) est écrite par le worker ou la session système
+    -- seulement, pendant une rotation à l'étape started (A2) ; le reste par l'écriture
+    IF ($p.stage = "pending" AND !(fn::secrets_can({ action: "worker", tenant: $secret.tenant }) AND fn::secrets_rotation_started($secret.id)))
+        OR ($p.stage != "pending" AND !fn::secrets_can({ action: "write", tenant: $secret.tenant, path: $secret.path })) {
         RETURN fn::error_result("SECRETS_PERMISSION_DENIED", $p.language, {});
     };
     IF $secret.state = "deleted" { RETURN fn::error_result("SECRETS_SECRET_DELETED", $p.language, { secret: <string> $secret.id }); };
@@ -185,7 +186,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_version_add($params: object) {
         labels: $labels,
         destroyed: $doomed
     });
-} COMMENT "Ajoute une version scellée ({ secret, number (suivant attendu), envelope (enc:v2:<key_id>:…), key_id, keys (noms des clés d'une valeur JSON), stage : current (défaut, l'ancienne current devient previous), pending (rotation) ou proposed (valeur d'une demande de changement, mise en service à son application) }). Numéro différent du suivant : SECRETS_VERSION_CONFLICT ; clé qui n'est plus la clé active de l'organisation : SECRETS_TENANT_KEY_CONFLICT (le service relit et rescelle). Au-delà du nombre de versions conservées, les plus anciennes sans étiquette sont détruites. Appelée par le service Rust, qui seul scelle. Droit : écriture ; le worker écrit seulement la version pending d'une rotation à l'étape started";
+} COMMENT "Ajoute une version scellée ({ secret, number (suivant attendu), envelope (enc:v2:<key_id>:…), key_id, keys (noms des clés d'une valeur JSON), stage : current (défaut, l'ancienne current devient previous), pending (rotation) ou proposed (valeur d'une demande de changement, mise en service à son application) }). Numéro différent du suivant : SECRETS_VERSION_CONFLICT ; clé qui n'est plus la clé active de l'organisation : SECRETS_TENANT_KEY_CONFLICT (le service relit et rescelle). Au-delà du nombre de versions conservées, les plus anciennes sans étiquette sont détruites. Appelée par le service Rust, qui seul scelle. Droit : écriture ; la version pending (rotation) est réservée au worker et à la session système, pendant une rotation à l'étape started";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_version_list
@@ -251,6 +252,10 @@ DEFINE FUNCTION OVERWRITE fn::secrets_version_label($params: object) {
         RETURN fn::error_result($code, $p.language, { label: $p.label, number: $p.number });
     };
     IF array::len(object::keys($labels)) > 20 { RETURN fn::error_result("SECRETS_LABEL_INVALID", $p.language, { label: $p.label, max_labels: 20 }); };
+    -- Étiquette pending (rotation) : posée par le worker ou la session système seulement
+    IF $labels.pending != $secret.labels.pending AND $labels.pending IS NOT NONE AND !fn::secrets_can({ action: "worker", tenant: $secret.tenant }) {
+        RETURN fn::error_result("SECRETS_PERMISSION_DENIED", $p.language, { label: "pending" });
+    };
     -- Version proposée figée tant qu'une demande de changement l'attend
     IF $labels.proposed != $secret.labels.proposed AND fn::secrets_change_open($secret.id) {
         RETURN fn::error_result("SECRETS_CHANGE_IN_PROGRESS", $p.language, { secret: <string> $secret.id });

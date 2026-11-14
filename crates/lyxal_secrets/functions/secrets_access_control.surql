@@ -129,6 +129,11 @@ DEFINE FUNCTION OVERWRITE fn::secrets_grant_create($params: object) {
     IF ($p.identity IS NONE) = ($p.application IS NONE) {
         RETURN fn::error_result("SECRETS_GRANT_INVALID", $p.language, { reason: "subject" });
     };
+    -- Séparation des tâches (F1) : on ne s'accorde rien à soi-même ; demande approuvée par un autre, ou urgence
+    LET $caller = fn::secrets_caller();
+    IF !$caller.system AND (($p.identity IS NOT NONE AND $p.identity = $caller.identity) OR ($p.application IS NOT NONE AND $p.application = $caller.application)) {
+        RETURN fn::error_result("SECRETS_GRANT_INVALID", $p.language, { reason: "self" });
+    };
     LET $d = fn::secrets_grant_duration({ tenant: $p.tenant, path: $p.path, folder: $p.folder, duration: $p.duration });
     IF !$d.valid { RETURN fn::error_result("SECRETS_GRANT_INVALID", $p.language, { reason: "duration", max_duration: $d.max }); };
     LET $now = time::now();
@@ -146,7 +151,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_grant_create($params: object) {
     });
     IF $id IS NONE { RETURN fn::error_result("SECRETS_WRITE_FORBIDDEN", $p.language, { table: "secrets_grant" }); };
     RETURN fn::result_ok(fn::secrets_grant_view($id));
-} COMMENT "Accorde un accès temporaire ({ tenant, identity ou application, path, folder (dossier : couvre <path>/…), actions (list, read_value, write, delete), duration (défaut et maximum : réglages et protection du chemin), reason }). L'accès ne vaut que dans une session de l'organisation. Droit : secrets.access.manage";
+} COMMENT "Accorde un accès temporaire à un autre que soi (SECRETS_GRANT_INVALID, raison self) ({ tenant, identity ou application, path, folder (dossier : couvre <path>/…), actions (list, read_value, write, delete), duration (défaut et maximum : réglages et protection du chemin), reason }). L'accès ne vaut que dans une session de l'organisation. Droit : secrets.access.manage";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_grant_revoke
@@ -353,9 +358,13 @@ DEFINE FUNCTION OVERWRITE fn::secrets_grant_refusal($event: string, $before: opt
             RETURN "SECRETS_GRANT_INVALID";
         };
         IF fn::auth_session_valid({}).system { RETURN NONE; };
+        LET $caller = fn::secrets_caller();
+        -- Auteur : l'appelant lui-même (A6)
+        IF $after.granted_by != fn::secrets_actor() { RETURN "SECRETS_PERMISSION_DENIED"; };
+        LET $for_caller = ($after.subject_identity IS NOT NONE AND $after.subject_identity = $caller.identity)
+            OR ($after.subject_application IS NOT NONE AND $after.subject_application = $caller.application);
         -- Urgence : pour soi, une heure au plus
         IF $after.emergency {
-            LET $caller = fn::secrets_caller();
             IF ($after.subject_identity IS NOT NONE AND $after.subject_identity != $caller.identity)
                 OR ($after.subject_application IS NOT NONE AND ($caller.identity IS NOT NONE OR $after.subject_application != $caller.application)) {
                 RETURN "SECRETS_PERMISSION_DENIED";
@@ -364,11 +373,22 @@ DEFINE FUNCTION OVERWRITE fn::secrets_grant_refusal($event: string, $before: opt
             -- Une personne : assurance la plus haute et récente, même par une écriture directe
             RETURN IF $caller.kind = "interactive" AND !fn::auth_assurance_check({ min_aal: "highest_available", fresh: true }).ok { "SECRETS_PERMISSION_DENIED" } ELSE { NONE };
         };
+        -- Hors urgence, jamais pour soi (F1), sauf l'accès créé par l'approbation d'une demande par un autre
+        IF $for_caller AND $after.request IS NONE { RETURN "SECRETS_GRANT_INVALID"; };
         -- Durée bornée par les réglages et la protection du chemin
         LET $d = fn::secrets_grant_duration({ tenant: $after.tenant, path: $after.path, folder: $after.folder, duration: $after.expires_at - $after.starts_at });
         RETURN IF $d.valid { NONE } ELSE { "SECRETS_GRANT_INVALID" };
     };
-    -- Seul le retrait change un accès, une seule fois
+    -- Seul le retrait change un accès, une seule fois, au nom de l'appelant (A6)
     IF $before.revoked_at IS NOT NONE OR $after.revoked_at IS NONE { RETURN "SECRETS_GRANT_INVALID"; };
-    RETURN NONE;
-} COMMENT "Interne : refus d'une écriture d'accès ($event, $before, $after) : un seul bénéficiaire, fin après le début, durée bornée (urgence : pour soi, 1 h au plus, assurance la plus haute et récente pour une personne) ; seul le retrait modifie un accès, une fois. NONE ou code d'erreur";
+    RETURN IF fn::auth_session_valid({}).system OR $after.revoked_by = fn::secrets_actor() { NONE } ELSE { "SECRETS_PERMISSION_DENIED" };
+} COMMENT "Interne : refus d'une écriture d'accès ($event, $before, $after) : un seul bénéficiaire, fin après le début, durée bornée, auteur = appelant, jamais pour soi hors urgence ou demande approuvée (urgence : pour soi, 1 h au plus, assurance la plus haute et récente pour une personne) ; seul le retrait modifie un accès, une fois, au nom de l'appelant. NONE ou code d'erreur";
+
+-- ----------------------------------------------------------------------------
+-- fn::secrets_policy_refusal (interne, garde)
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::secrets_policy_refusal($after: object) -> option<string> {
+    IF fn::auth_session_valid({}).system { RETURN NONE; };
+    RETURN IF $after.updated_by = fn::secrets_actor() { NONE } ELSE { "SECRETS_PERMISSION_DENIED" };
+} COMMENT "Interne : refus d'une écriture de protection ($after) : auteur = appelant (la session système peut tout). NONE ou code d'erreur";

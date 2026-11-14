@@ -22,8 +22,8 @@ DEFINE FUNCTION OVERWRITE fn::secrets_rotation_started($secret: record<secrets_s
 
 DEFINE FUNCTION OVERWRITE fn::secrets_rotation_view($id: record<secrets_rotation>) -> option<object> {
     RETURN (SELECT id, secret, tenant, state, emergency, reason, pending_number, previous_number, attempts, next_attempt_at,
-        locked_until, lease, last_error, started_by, started_at, updated_at, finished_at FROM ONLY $id);
-} COMMENT "Interne : une rotation (sans champ technique)";
+        locked_until, last_error, started_by, started_at, updated_at, finished_at FROM ONLY $id);
+} COMMENT "Interne : une rotation, sans jeton de réservation (rendu par fn::secrets_rotation_claim seulement)";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_rotation_refusal (interne, garde)
@@ -41,7 +41,17 @@ DEFINE FUNCTION OVERWRITE fn::secrets_rotation_refusal($event: string, $before: 
             OR $after.finished_at IS NOT NONE OR $after.last_error IS NOT NONE {
             RETURN "SECRETS_ROTATION_STATE_INVALID";
         };
-        RETURN IF $writer OR $worker { NONE } ELSE { "SECRETS_PERMISSION_DENIED" };
+        IF !$writer AND !$worker { RETURN "SECRETS_PERMISSION_DENIED"; };
+        LET $caller = fn::secrets_caller();
+        -- Auteur : l'appelant lui-même (A6)
+        IF !$caller.system AND $after.started_by != fn::secrets_actor() { RETURN "SECRETS_PERMISSION_DENIED"; };
+        -- Urgence : décision d'un rédacteur, avec l'assurance la plus haute et récente pour une personne,
+        -- même par une écriture directe (A1)
+        IF $after.emergency AND !$caller.system {
+            IF !$writer { RETURN "SECRETS_PERMISSION_DENIED"; };
+            IF $caller.kind = "interactive" AND !fn::auth_assurance_check({ min_aal: "highest_available", fresh: true }).ok { RETURN "SECRETS_PERMISSION_DENIED"; };
+        };
+        RETURN NONE;
     };
     LET $terminal = ["succeeded", "failed", "cancelled"];
     IF $before.state INSIDE $terminal { RETURN "SECRETS_ROTATION_STATE_INVALID"; };
@@ -60,7 +70,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_rotation_refusal($event: string, $before: 
     IF $after.state = "created" { RETURN IF $after.pending_number IS NONE { "SECRETS_ROTATION_STATE_INVALID" } ELSE { NONE }; };
     IF $after.pending_number != $before.pending_number { RETURN "SECRETS_ROTATION_STATE_INVALID"; };
     RETURN IF $after.state = "succeeded" AND $after.finished_at IS NONE { "SECRETS_ROTATION_STATE_INVALID" } ELSE { NONE };
-} COMMENT "Interne : refus d'une écriture de rotation ($event, $before, $after) : création à l'étape started par l'écriture ou le worker sur un secret non supprimé ; étapes dans l'ordre started → created (nouvelle version posée) → installed → tested → succeeded, échec et nouveaux essais par le worker ou la session système ; annulation par l'écriture ; rotation terminée intouchable. NONE ou code d'erreur";
+} COMMENT "Interne : refus d'une écriture de rotation ($event, $before, $after) : création à l'étape started par l'écriture ou le worker sur un secret non supprimé, au nom de l'appelant ; urgence : écriture et, pour une personne, assurance la plus haute et récente ; étapes dans l'ordre started → created (nouvelle version posée) → installed → tested → succeeded, échec et nouveaux essais par le worker ou la session système ; annulation par l'écriture ; rotation terminée intouchable. NONE ou code d'erreur";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_rotation_load (interne)
@@ -320,7 +330,8 @@ DEFINE FUNCTION OVERWRITE fn::secrets_rotation_claim($params: object) {
     LET $claimed = array::filter(array::map($candidates, |$id| (UPDATE ONLY $id SET locked_until = $now + $ttl, lease_ttl = $ttl, lease = <string> rand::uuid::v7()
         WHERE active_slot = "active" AND (next_attempt_at IS NONE OR next_attempt_at <= $now) AND (locked_until IS NONE OR locked_until <= $now))),
         |$r| $r IS NOT NONE);
-    RETURN fn::result_ok({ items: array::map($claimed, |$r| fn::secrets_rotation_view($r.id)) });
+    -- Le jeton n'est rendu qu'au worker qui vient de réserver
+    RETURN fn::result_ok({ items: array::map($claimed, |$r| object::extend(fn::secrets_rotation_view($r.id), { lease: $r.lease })) });
 } COMMENT "Réserve des rotations à faire avancer ({ rotation (une rotation précise), limit (100 au plus), lease_seconds (10 à 3600, défaut 300) }) : rotations en cours dont l'essai est échu et qu'aucun worker ne tient ; une rotation reprend à l'étape atteinte. Chaque rotation réservée porte un jeton (lease) à présenter aux étapes ; la réservation est renouvelée à chaque étape franchie. { items }. Droit : worker ou session système";
 
 -- ----------------------------------------------------------------------------
