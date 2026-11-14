@@ -7,7 +7,8 @@
 -- created (nouvelle valeur écrite en version pending) → installed (activée chez le service) →
 -- tested (vérifiée) → succeeded (current passe sur la nouvelle version) ; failed ou cancelled à
 -- toute étape (la version courante reste en service). Le worker réserve une rotation
--- (locked_until) avant d'y travailler. Transitions gardées par secrets_rotation_guard
+-- (jeton lease, échéance locked_until) avant d'y travailler ; seul le détenteur d'une réservation
+-- valide la fait avancer, et chaque étape la renouvelle. Transitions gardées par secrets_rotation_guard
 -- (fn::secrets_rotation_refusal), qui vaut aussi pour une écriture directe. Jamais de valeur.
 
 DEFINE TABLE OVERWRITE secrets_rotation
@@ -81,6 +82,15 @@ DEFINE FIELD OVERWRITE next_attempt_at ON TABLE secrets_rotation
 DEFINE FIELD OVERWRITE locked_until ON TABLE secrets_rotation
     TYPE option<datetime>
     COMMENT "Réservée par un worker jusqu'à cette date";
+
+DEFINE FIELD OVERWRITE lease ON TABLE secrets_rotation
+    TYPE option<string>
+    ASSERT $value IS NONE OR (string::len($value) >= 1 AND string::len($value) <= 64)
+    COMMENT "Jeton de la réservation en cours : seul son détenteur fait avancer la rotation";
+
+DEFINE FIELD OVERWRITE lease_ttl ON TABLE secrets_rotation
+    TYPE option<duration>
+    COMMENT "Durée de la réservation, renouvelée à chaque étape franchie";
 
 DEFINE FIELD OVERWRITE last_error ON TABLE secrets_rotation
     TYPE option<string>

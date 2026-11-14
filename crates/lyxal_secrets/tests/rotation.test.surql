@@ -139,32 +139,37 @@
     RETURN fn::secrets_rotation_begin({ secret: $e, emergency: true }).error.code = "SECRETS_PERMISSION_DENIED";
 };
 
--- test: étapes dans l'ordre seulement ; created exige la nouvelle version
--- en tant que: worker
-{
-    LET $r = <string> (SELECT VALUE r1 FROM ONLY passe:ids);
-    RETURN fn::secrets_rotation_step({ rotation: $r, step: "installed" }).error.code = "SECRETS_ROTATION_STATE_INVALID"
-        AND fn::secrets_rotation_step({ rotation: $r, step: "created" }).error.code = "SECRETS_ROTATION_STATE_INVALID"
-        AND fn::secrets_rotation_step({ rotation: $r, step: "created", pending_number: 2 }).error.code = "SECRETS_ROTATION_STATE_INVALID"
-        AND fn::secrets_rotation_finish({ rotation: $r }).error.code = "SECRETS_ROTATION_STATE_INVALID";
-};
-
--- test: réservation par le worker : une seule fois tant que le bail court
+-- test: réservation par le worker : une seule fois tant que le bail court ; jeton remis
 -- en tant que: worker
 {
     LET $r = (SELECT VALUE r1 FROM ONLY passe:ids);
     LET $first = fn::secrets_rotation_claim({}).data.items;
     LET $second = fn::secrets_rotation_claim({}).data.items;
-    RETURN $first.id = [$r] AND $first[0].locked_until > time::now() AND $second = [];
+    UPDATE passe:ids SET lease = $first[0].lease;
+    RETURN $first.id = [$r] AND $first[0].locked_until > time::now() + 4m AND string::len($first[0].lease) > 0 AND $second = [];
+};
+
+-- test: étapes dans l'ordre seulement, par le détenteur de la réservation ; created exige la nouvelle version
+-- en tant que: worker
+{
+    LET $r = <string> (SELECT VALUE r1 FROM ONLY passe:ids);
+    LET $lease = (SELECT VALUE lease FROM ONLY passe:ids);
+    RETURN fn::secrets_rotation_step({ rotation: $r, lease: $lease, step: "installed" }).error.code = "SECRETS_ROTATION_STATE_INVALID"
+        AND fn::secrets_rotation_step({ rotation: $r, lease: $lease, step: "created" }).error.code = "SECRETS_ROTATION_STATE_INVALID"
+        AND fn::secrets_rotation_step({ rotation: $r, lease: $lease, step: "created", pending_number: 2 }).error.code = "SECRETS_ROTATION_STATE_INVALID"
+        AND fn::secrets_rotation_finish({ rotation: $r, lease: $lease }).error.code = "SECRETS_ROTATION_STATE_INVALID"
+        AND fn::secrets_rotation_step({ rotation: $r, step: "created", pending_number: 2 }).error.code = "SECRETS_INVALID_PARAMETERS"
+        AND fn::secrets_rotation_step({ rotation: $r, lease: "autre-jeton", step: "created", pending_number: 2 }).error.details.lease = "lost";
 };
 
 -- test: un rédacteur ne réserve pas et ne fait pas avancer une rotation
 -- en tant que: redacteur
 {
     LET $r = <string> (SELECT VALUE r1 FROM ONLY passe:ids);
+    LET $lease = (SELECT VALUE lease FROM ONLY passe:ids);
     RETURN fn::secrets_rotation_claim({}).error.code = "SECRETS_PERMISSION_DENIED"
-        AND fn::secrets_rotation_step({ rotation: $r, step: "created", pending_number: 2 }).error.code = "SECRETS_PERMISSION_DENIED"
-        AND fn::secrets_rotation_fail({ rotation: $r, code: "X" }).error.code = "SECRETS_PERMISSION_DENIED";
+        AND fn::secrets_rotation_step({ rotation: $r, lease: $lease, step: "created", pending_number: 2 }).error.code = "SECRETS_PERMISSION_DENIED"
+        AND fn::secrets_rotation_fail({ rotation: $r, lease: $lease, code: "X" }).error.code = "SECRETS_PERMISSION_DENIED";
 };
 
 -- test: le worker écrit la nouvelle valeur en pending, jamais en current
@@ -176,38 +181,47 @@
     RETURN $current.error.code = "SECRETS_PERMISSION_DENIED" AND $pending.ok AND $pending.data.labels = { current: 1, pending: 2 };
 };
 
--- test: étape created ; ensuite le worker n'écrit plus de version
+-- test: étape created, réservation renouvelée ; ensuite le worker n'écrit plus de version
 -- en tant que: worker
 {
     LET $s = <string> (SELECT VALUE s FROM ONLY passe:ids);
     LET $r = <string> (SELECT VALUE r1 FROM ONLY passe:ids);
-    LET $step = fn::secrets_rotation_step({ rotation: $r, step: "created", pending_number: 2 });
-    RETURN $step.data.state = "created" AND $step.data.pending_number = 2
+    LET $lease = (SELECT VALUE lease FROM ONLY passe:ids);
+    LET $step = fn::secrets_rotation_step({ rotation: $r, lease: $lease, step: "created", pending_number: 2 });
+    RETURN $step.data.state = "created" AND $step.data.pending_number = 2 AND $step.data.locked_until > time::now() + 4m
         AND fn::secrets_version_add({ secret: $s, number: 3, envelope: "enc:v2:k1:CCCC", key_id: "k1", stage: "pending" }).error.code = "SECRETS_PERMISSION_DENIED";
 };
 
--- test: échec d'installation : nouvel essai dans une minute, étape conservée, plus réservable d'ici là
+-- test: échec d'installation : nouvel essai dans une minute, étape conservée, réservation rendue, plus réservable d'ici là
 -- en tant que: worker
 {
     LET $r = <string> (SELECT VALUE r1 FROM ONLY passe:ids);
-    LET $f = fn::secrets_rotation_fail({ rotation: $r, code: "SECRETS_ROTATION_TEST_FAILED" }).data;
+    LET $lease = (SELECT VALUE lease FROM ONLY passe:ids);
+    LET $f = fn::secrets_rotation_fail({ rotation: $r, lease: $lease, code: "SECRETS_ROTATION_TEST_FAILED" }).data;
     RETURN $f.state = "created" AND $f.attempts = 1 AND $f.last_error = "SECRETS_ROTATION_TEST_FAILED"
-        AND $f.next_attempt_at > time::now() + 50s AND $f.next_attempt_at < time::now() + 70s AND $f.locked_until IS NONE
-        AND fn::secrets_rotation_claim({}).data.items = [];
+        AND $f.next_attempt_at > time::now() + 50s AND $f.next_attempt_at < time::now() + 70s AND $f.locked_until IS NONE AND $f.lease IS NONE
+        AND fn::secrets_rotation_claim({}).data.items = []
+        AND fn::secrets_rotation_step({ rotation: $r, lease: $lease, step: "installed" }).error.details.lease = "lost";
 };
 
--- test: installation, test, bascule : current sur la nouvelle version, previous sur l'ancienne
+-- préparation: l'essai suivant est échu
+{
+    UPDATE (SELECT VALUE r1 FROM ONLY passe:ids) SET next_attempt_at = time::now() - 1s;
+};
+
+-- test: nouvelle réservation, installation, test, bascule : current sur la nouvelle version, previous sur l'ancienne
 -- en tant que: worker
 {
     LET $s = (SELECT VALUE s FROM ONLY passe:ids);
     LET $r = <string> (SELECT VALUE r1 FROM ONLY passe:ids);
-    LET $a = fn::secrets_rotation_step({ rotation: $r, step: "installed" }).data.state;
-    LET $b = fn::secrets_rotation_step({ rotation: $r, step: "tested" }).data.state;
-    LET $done = fn::secrets_rotation_finish({ rotation: $r }).data;
+    LET $lease = fn::secrets_rotation_claim({ rotation: $r }).data.items[0].lease;
+    LET $a = fn::secrets_rotation_step({ rotation: $r, lease: $lease, step: "installed" }).data.state;
+    LET $b = fn::secrets_rotation_step({ rotation: $r, lease: $lease, step: "tested" }).data.state;
+    LET $done = fn::secrets_rotation_finish({ rotation: $r, lease: $lease }).data;
     LET $f = (SELECT * FROM ONLY $s);
-    RETURN $a = "installed" AND $b = "tested" AND $done.state = "succeeded" AND $done.finished_at IS NOT NONE
+    RETURN $a = "installed" AND $b = "tested" AND $done.state = "succeeded" AND $done.finished_at IS NOT NONE AND $done.lease IS NONE
         AND $f.labels = { current: 2, previous: 1 } AND $f.last_rotated_at IS NOT NONE AND $f.rotation_notified_at IS NONE
-        AND $f.next_rotation_at > time::now() + 89d AND fn::secrets_rotation_finish({ rotation: $r }).error.code = "SECRETS_ROTATION_STATE_INVALID";
+        AND $f.next_rotation_at > time::now() + 89d AND fn::secrets_rotation_finish({ rotation: $r, lease: $lease }).error.code = "SECRETS_ROTATION_STATE_INVALID";
 };
 
 -- test: historique des rotations : aucune en cours
@@ -222,15 +236,24 @@
 -- en tant que: worker
 {
     LET $s = (SELECT VALUE s FROM ONLY passe:ids);
-    LET $r = fn::secrets_rotation_begin({ secret: <string> $s }).data.id;
+    LET $r = <string> fn::secrets_rotation_begin({ secret: <string> $s }).data.id;
+    LET $l0 = fn::secrets_rotation_claim({ rotation: $r }).data.items[0].lease;
     fn::secrets_version_add({ secret: <string> $s, number: 3, envelope: "enc:v2:k1:CCCC", key_id: "k1", stage: "pending" });
-    fn::secrets_rotation_step({ rotation: <string> $r, step: "created", pending_number: 3 });
-    LET $tries = array::map([1, 2, 3], |$i| fn::secrets_rotation_fail({ rotation: <string> $r, code: "SECRETS_ROTATION_TEST_FAILED" }).data);
-    LET $last = fn::secrets_rotation_fail({ rotation: <string> $r, code: "SECRETS_ROTATION_TEST_FAILED" }).data;
+    fn::secrets_rotation_step({ rotation: $r, lease: $l0, step: "created", pending_number: 3 });
+    LET $t1 = fn::secrets_rotation_fail({ rotation: $r, lease: $l0, code: "SECRETS_ROTATION_TEST_FAILED" }).data;
+    UPDATE type::record($r) SET next_attempt_at = time::now() - 1s;
+    LET $l1 = fn::secrets_rotation_claim({ rotation: $r }).data.items[0].lease;
+    LET $t2 = fn::secrets_rotation_fail({ rotation: $r, lease: $l1, code: "SECRETS_ROTATION_TEST_FAILED" }).data;
+    UPDATE type::record($r) SET next_attempt_at = time::now() - 1s;
+    LET $l2 = fn::secrets_rotation_claim({ rotation: $r }).data.items[0].lease;
+    LET $t3 = fn::secrets_rotation_fail({ rotation: $r, lease: $l2, code: "SECRETS_ROTATION_TEST_FAILED" }).data;
+    UPDATE type::record($r) SET next_attempt_at = time::now() - 1s;
+    LET $l3 = fn::secrets_rotation_claim({ rotation: $r }).data.items[0].lease;
+    LET $last = fn::secrets_rotation_fail({ rotation: $r, lease: $l3, code: "SECRETS_ROTATION_TEST_FAILED" }).data;
     LET $f = (SELECT labels FROM ONLY $s);
-    RETURN $tries.attempts = [1, 2, 3] AND $tries.state = ["created", "created", "created"]
-        AND $tries[2].next_attempt_at > time::now() + 59m
-        AND $last.state = "failed" AND $last.attempts = 4 AND $last.finished_at IS NOT NONE
+    RETURN [$t1.attempts, $t2.attempts, $t3.attempts] = [1, 2, 3] AND [$t1.state, $t2.state, $t3.state] = ["created", "created", "created"]
+        AND $t3.next_attempt_at > time::now() + 59m
+        AND $last.state = "failed" AND $last.attempts = 4 AND $last.finished_at IS NOT NONE AND $last.lease IS NONE
         AND $f.labels = { current: 2, previous: 1 };
 };
 
@@ -238,8 +261,9 @@
 -- en tant que: worker
 {
     LET $s = <string> (SELECT VALUE s FROM ONLY passe:ids);
-    LET $r = fn::secrets_rotation_begin({ secret: $s }).data.id;
-    LET $f = fn::secrets_rotation_fail({ rotation: <string> $r, code: "SECRETS_ROTATOR_UNAVAILABLE", retry: false }).data;
+    LET $r = <string> fn::secrets_rotation_begin({ secret: $s }).data.id;
+    LET $lease = fn::secrets_rotation_claim({ rotation: $r }).data.items[0].lease;
+    LET $f = fn::secrets_rotation_fail({ rotation: $r, lease: $lease, code: "SECRETS_ROTATOR_UNAVAILABLE", retry: false }).data;
     RETURN $f.state = "failed" AND $f.attempts = 1 AND $f.last_error = "SECRETS_ROTATOR_UNAVAILABLE";
 };
 

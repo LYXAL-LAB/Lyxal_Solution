@@ -22,7 +22,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_rotation_started($secret: record<secrets_s
 
 DEFINE FUNCTION OVERWRITE fn::secrets_rotation_view($id: record<secrets_rotation>) -> option<object> {
     RETURN (SELECT id, secret, tenant, state, emergency, reason, pending_number, previous_number, attempts, next_attempt_at,
-        locked_until, last_error, started_by, started_at, updated_at, finished_at FROM ONLY $id);
+        locked_until, lease, last_error, started_by, started_at, updated_at, finished_at FROM ONLY $id);
 } COMMENT "Interne : une rotation (sans champ technique)";
 
 -- ----------------------------------------------------------------------------
@@ -81,8 +81,12 @@ DEFINE FUNCTION OVERWRITE fn::secrets_rotation_load($params: object, $fields: ob
     LET $rotation = (SELECT * FROM ONLY $p.rotation);
     IF $rotation == NONE { RETURN { error: fn::error_result("SECRETS_ROTATION_NOT_FOUND", $p.language, { rotation: <string> $p.rotation }) }; };
     LET $secret = (SELECT id, tenant, path, state, labels, rotation_period FROM ONLY $rotation.secret);
+    -- Réservation : exigée quand $fields déclare lease ; périmée ou reprise par un autre worker, refusée
+    IF $fields.lease IS NOT NONE AND ($rotation.lease != $p.lease OR $rotation.locked_until IS NONE OR $rotation.locked_until <= time::now()) {
+        RETURN { error: fn::error_result("SECRETS_ROTATION_STATE_INVALID", $p.language, { lease: "lost" }) };
+    };
     RETURN { p: $p, rotation: $rotation, secret: $secret };
-} COMMENT "Interne : valide { rotation, language } et les champs $fields, charge la rotation et son secret : { p, rotation, secret } ou { error }";
+} COMMENT "Interne : valide { rotation, language } et les champs $fields, charge la rotation et son secret ; si $fields déclare lease, la réservation doit être celle de l'appelant et encore valide : { p, rotation, secret } ou { error }";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_rotation_begin
@@ -151,7 +155,8 @@ DEFINE FUNCTION OVERWRITE fn::secrets_rotation_begin($params: object) {
 DEFINE FUNCTION OVERWRITE fn::secrets_rotation_step($params: object) {
     LET $l = fn::secrets_rotation_load($params, {
         step: { pipeline: [{ rule: "enum", options: { allowed: ["created", "installed", "tested"], case_sensitive: true } }], required: true },
-        pending_number: { pipeline: [{ rule: "integer", options: { min_value: 1 } }] }
+        pending_number: { pipeline: [{ rule: "integer", options: { min_value: 1 } }] },
+        lease: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 64 } }], required: true }
     });
     IF $l.error IS NOT NONE { RETURN $l.error; };
     LET $p = $l.p;
@@ -162,18 +167,20 @@ DEFINE FUNCTION OVERWRITE fn::secrets_rotation_step($params: object) {
     IF $p.step = "created" AND ($p.pending_number IS NONE OR $l.secret.labels.pending != $p.pending_number) {
         RETURN fn::error_result("SECRETS_ROTATION_STATE_INVALID", $p.language, { pending_number: $p.pending_number, labels: $l.secret.labels });
     };
-    LET $updated = (UPDATE ONLY $l.rotation.id SET state = $p.step, pending_number = IF $p.step = "created" { $p.pending_number } ELSE { pending_number }
-        WHERE state = $from);
+    -- Étape franchie : la réservation est renouvelée
+    LET $updated = (UPDATE ONLY $l.rotation.id SET state = $p.step, pending_number = IF $p.step = "created" { $p.pending_number } ELSE { pending_number },
+        locked_until = time::now() + (lease_ttl ?? 5m)
+        WHERE state = $from AND lease = $p.lease AND locked_until > time::now());
     IF $updated == NONE { RETURN fn::error_result("SECRETS_ROTATION_STATE_INVALID", $p.language, { step: $p.step }); };
     RETURN fn::result_ok(fn::secrets_rotation_view($l.rotation.id));
-} COMMENT "Enregistre l'étape franchie par une rotation ({ rotation, step : created (avec pending_number, la version pending écrite), installed, tested }), dans l'ordre (SECRETS_ROTATION_STATE_INVALID sinon). Droit : worker ou session système";
+} COMMENT "Enregistre l'étape franchie par une rotation ({ rotation, lease (jeton de la réservation), step : created (avec pending_number, la version pending écrite), installed, tested }), dans l'ordre et par le détenteur d'une réservation valide, qu'elle renouvelle (SECRETS_ROTATION_STATE_INVALID sinon). Droit : worker ou session système";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_rotation_finish
 -- ----------------------------------------------------------------------------
 
 DEFINE FUNCTION OVERWRITE fn::secrets_rotation_finish($params: object) {
-    LET $l = fn::secrets_rotation_load($params, {});
+    LET $l = fn::secrets_rotation_load($params, { lease: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 64 } }], required: true } });
     IF $l.error IS NOT NONE { RETURN $l.error; };
     LET $p = $l.p;
     IF !fn::secrets_can({ action: "worker", tenant: $l.rotation.tenant }) { RETURN fn::error_result("SECRETS_PERMISSION_DENIED", $p.language, {}); };
@@ -190,19 +197,20 @@ DEFINE FUNCTION OVERWRITE fn::secrets_rotation_finish($params: object) {
         next_rotation_at = IF rotation_period IS NONE { NONE } ELSE { time::now() + rotation_period },
         rotation_notified_at = NONE);
     IF $switched == NONE { RETURN fn::error_result("SECRETS_WRITE_FORBIDDEN", $p.language, { table: "secrets_secret" }); };
-    LET $updated = (UPDATE ONLY $l.rotation.id SET state = "succeeded", finished_at = time::now(), locked_until = NONE, next_attempt_at = NONE WHERE state = "tested");
+    LET $updated = (UPDATE ONLY $l.rotation.id SET state = "succeeded", finished_at = time::now(), locked_until = NONE, lease = NONE, next_attempt_at = NONE
+        WHERE state = "tested" AND lease = $p.lease);
     IF $updated == NONE { RETURN fn::error_result("SECRETS_ROTATION_STATE_INVALID", $p.language, {}); };
     RETURN fn::result_ok(object::extend(fn::secrets_rotation_view($l.rotation.id), { labels: $labels }));
-} COMMENT "Termine une rotation testée ({ rotation }) : current passe sur la nouvelle version, l'ancienne devient previous, pending est retirée ; dernière rotation et prochaine date posées, rappel remis à zéro. Droit : worker ou session système";
+} COMMENT "Termine une rotation testée ({ rotation, lease (jeton de la réservation valide) }) : current passe sur la nouvelle version, l'ancienne devient previous, pending est retirée ; dernière rotation et prochaine date posées, rappel remis à zéro. Droit : worker ou session système";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_rotation_close (interne)
 -- ----------------------------------------------------------------------------
 
 DEFINE FUNCTION OVERWRITE fn::secrets_rotation_close($l: object, $state: string, $code: option<string>) {
-    LET $updated = (UPDATE ONLY $l.rotation.id SET state = $state, finished_at = time::now(), locked_until = NONE, next_attempt_at = NONE,
+    LET $updated = (UPDATE ONLY $l.rotation.id SET state = $state, finished_at = time::now(), locked_until = NONE, lease = NONE, next_attempt_at = NONE,
         last_error = $code ?? last_error, attempts = IF $state = "failed" { math::min([attempts + 1, 4]) } ELSE { attempts }
-        WHERE active_slot = "active");
+        WHERE active_slot = "active" AND ($l.p.lease IS NONE OR lease = $l.p.lease));
     IF $updated == NONE { RETURN fn::error_result("SECRETS_ROTATION_STATE_INVALID", $l.p.language, { state: $l.rotation.state }); };
     -- La nouvelle valeur n'est pas mise en service : son étiquette est retirée, la version courante reste
     IF $l.rotation.pending_number IS NOT NONE AND $l.secret.labels.pending = $l.rotation.pending_number AND $l.secret.state != "deleted" {
@@ -219,7 +227,8 @@ DEFINE FUNCTION OVERWRITE fn::secrets_rotation_close($l: object, $state: string,
 DEFINE FUNCTION OVERWRITE fn::secrets_rotation_fail($params: object) {
     LET $l = fn::secrets_rotation_load($params, {
         code: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 128 } }], required: true },
-        retry: { pipeline: [{ rule: "boolean" }], default: true }
+        retry: { pipeline: [{ rule: "boolean" }], default: true },
+        lease: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 64 } }], required: true }
     });
     IF $l.error IS NOT NONE { RETURN $l.error; };
     LET $p = $l.p;
@@ -228,13 +237,13 @@ DEFINE FUNCTION OVERWRITE fn::secrets_rotation_fail($params: object) {
     LET $attempts = $l.rotation.attempts + 1;
     -- Trois nouveaux essais au plus, espacés de 1 min, 10 min, 1 h ; l'étape atteinte est reprise
     IF $p.retry AND $attempts <= 3 {
-        LET $updated = (UPDATE ONLY $l.rotation.id SET attempts = $attempts, last_error = $p.code, locked_until = NONE,
-            next_attempt_at = time::now() + [1m, 10m, 1h][$attempts - 1] WHERE active_slot = "active");
+        LET $updated = (UPDATE ONLY $l.rotation.id SET attempts = $attempts, last_error = $p.code, locked_until = NONE, lease = NONE,
+            next_attempt_at = time::now() + [1m, 10m, 1h][$attempts - 1] WHERE active_slot = "active" AND lease = $p.lease);
         IF $updated == NONE { RETURN fn::error_result("SECRETS_ROTATION_STATE_INVALID", $p.language, {}); };
         RETURN fn::result_ok(fn::secrets_rotation_view($l.rotation.id));
     };
     RETURN fn::secrets_rotation_close($l, "failed", $p.code);
-} COMMENT "Enregistre l'échec d'une étape ({ rotation, code (code d'erreur, jamais de valeur), retry (défaut vrai) }) : nouvel essai planifié (1 min, 10 min, 1 h ; 3 au plus), sinon rotation en échec, étiquette pending retirée, version courante inchangée. Droit : worker ou session système";
+} COMMENT "Enregistre l'échec d'une étape ({ rotation, lease (jeton de la réservation valide), code (code d'erreur, jamais de valeur), retry (défaut vrai) }) : nouvel essai planifié (1 min, 10 min, 1 h ; 3 au plus), sinon rotation en échec, étiquette pending retirée, version courante inchangée. Droit : worker ou session système";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_rotation_cancel
@@ -306,11 +315,12 @@ DEFINE FUNCTION OVERWRITE fn::secrets_rotation_claim($params: object) {
         (SELECT VALUE id FROM secrets_rotation WHERE active_slot = "active" AND (next_attempt_at IS NONE OR next_attempt_at <= $now)
             AND (locked_until IS NONE OR locked_until <= $now) ORDER BY started_at ASC LIMIT $p.limit)
     };
-    LET $claimed = array::filter(array::map($candidates, |$id| (UPDATE ONLY $id SET locked_until = $now + duration::from_secs($p.lease_seconds)
+    LET $ttl = duration::from_secs($p.lease_seconds);
+    LET $claimed = array::filter(array::map($candidates, |$id| (UPDATE ONLY $id SET locked_until = $now + $ttl, lease_ttl = $ttl, lease = <string> rand::uuid::v7()
         WHERE active_slot = "active" AND (next_attempt_at IS NONE OR next_attempt_at <= $now) AND (locked_until IS NONE OR locked_until <= $now))),
         |$r| $r IS NOT NONE);
     RETURN fn::result_ok({ items: array::map($claimed, |$r| fn::secrets_rotation_view($r.id)) });
-} COMMENT "Réserve des rotations à faire avancer ({ rotation (une rotation précise), limit (100 au plus), lease_seconds (10 à 3600, défaut 300) }) : rotations en cours dont l'essai est échu et qu'aucun worker ne tient ; une rotation reprend à l'étape atteinte. { items }. Droit : worker ou session système";
+} COMMENT "Réserve des rotations à faire avancer ({ rotation (une rotation précise), limit (100 au plus), lease_seconds (10 à 3600, défaut 300) }) : rotations en cours dont l'essai est échu et qu'aucun worker ne tient ; une rotation reprend à l'étape atteinte. Chaque rotation réservée porte un jeton (lease) à présenter aux étapes ; la réservation est renouvelée à chaque étape franchie. { items }. Droit : worker ou session système";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_rotation_check_record
