@@ -8,7 +8,6 @@
 
 | Lot | Contenu |
 | :- | :--- |
-| 5 | Hôte : routes HTTP, révélation avec double facteur, partage à usage unique |
 | 6 | Clôture : audit, procédures (sauvegarde, clé maîtresse, urgence, compromission) |
 
 ## Après la V1
