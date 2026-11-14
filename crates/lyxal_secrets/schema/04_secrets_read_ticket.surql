@@ -12,9 +12,9 @@ DEFINE TABLE OVERWRITE secrets_read_ticket
     TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
-        FOR select WHERE fn::secrets_can({ action: "read_value", tenant: tenant })
-            OR fn::secrets_can({ action: "list", tenant: tenant })
-        FOR create WHERE fn::secrets_can({ action: "read_value", tenant: tenant })
+        FOR select WHERE fn::secrets_can({ action: "read_value", tenant: tenant, path: secret.path })
+            OR fn::secrets_can({ action: "list", tenant: tenant, path: secret.path })
+        FOR create WHERE fn::secrets_can({ action: "read_value", tenant: tenant, path: secret.path })
         FOR update WHERE fn::secrets_can({ action: "worker", tenant: tenant })
         FOR delete WHERE fn::secrets_can({ action: "worker", tenant: tenant })
             OR fn::secrets_can({ action: "purge", tenant: tenant })

@@ -15,9 +15,9 @@ DEFINE TABLE OVERWRITE secrets_rotation
     TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
-        FOR select WHERE fn::secrets_can({ action: "list", tenant: tenant })
+        FOR select WHERE fn::secrets_can({ action: "list", tenant: tenant, path: secret.path })
             OR fn::secrets_can({ action: "worker", tenant: tenant })
-        FOR create, update WHERE fn::secrets_can({ action: "write", tenant: tenant })
+        FOR create, update WHERE fn::secrets_can({ action: "write", tenant: tenant, path: secret.path })
             OR fn::secrets_can({ action: "worker", tenant: tenant })
         FOR delete WHERE fn::secrets_can({ action: "purge", tenant: tenant })
             OR fn::secrets_can({ action: "worker", tenant: tenant })

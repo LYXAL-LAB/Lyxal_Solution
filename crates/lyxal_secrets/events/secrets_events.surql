@@ -30,7 +30,11 @@ THEN {
             max_value_bytes: $after.max_value_bytes,
             default_visibility: $after.default_visibility,
             expiry_warning_days: $after.expiry_warning_days,
-            tenant_key_rotation_days: $after.tenant_key_rotation_days
+            tenant_key_rotation_days: $after.tenant_key_rotation_days,
+            grant_default_duration: $after.grant_default_duration,
+            grant_max_duration: $after.grant_max_duration,
+            request_ttl: $after.request_ttl,
+            access_request_approvals: $after.access_request_approvals
         }
     });
 };
@@ -311,4 +315,112 @@ THEN {
             code: $after.last_error
         });
     };
+};
+
+-- ----------------------------------------------------------------------------
+-- Accès, demandes, protections : gardes, journal et bus
+-- ----------------------------------------------------------------------------
+
+DEFINE EVENT OVERWRITE secrets_grant_guard ON TABLE secrets_grant
+WHEN $event IN ["CREATE", "UPDATE"]
+THEN {
+    LET $refusal = fn::secrets_grant_refusal($event, $before, $after);
+    IF $refusal IS NOT NONE { THROW $refusal; };
+};
+
+DEFINE EVENT OVERWRITE secrets_grant_journal ON TABLE secrets_grant
+WHEN $event = "CREATE" OR ($event = "UPDATE" AND $before.revoked_at IS NONE AND $after.revoked_at IS NOT NONE)
+THEN {
+    LET $action = IF $event = "UPDATE" { "access.revoke" } ELSE IF $after.emergency { "access.emergency" } ELSE { "access.grant" };
+    LET $subject = IF $after.subject_identity IS NOT NONE { <string> $after.subject_identity } ELSE { <string> $after.subject_application };
+    fn::secrets_audit_write({
+        tenant: $after.tenant,
+        action: $action,
+        path: $after.path,
+        details: { grant: <string> $after.id, subject: $subject, folder: $after.folder, actions: $after.actions,
+            expires_at: $after.expires_at, reason: $after.reason, request: IF $after.request IS NONE { NONE } ELSE { <string> $after.request } }
+    });
+    LET $published = fn::event_publish({
+        event_id: rand::uuid::v7(),
+        event_type: { "access.grant": "secrets.access.granted", "access.revoke": "secrets.access.revoked", "access.emergency": "secrets.access.emergency" }[$action],
+        producer: "lyxal_secrets",
+        source: $after.id,
+        payload: { grant_id: <string> $after.id, tenant: <string> $after.tenant, subject: $subject, path: $after.path, folder: $after.folder,
+            actions: $after.actions, expires_at: <string> $after.expires_at, reason: $after.reason, actor: fn::secrets_actor() },
+        metadata: {}
+    });
+    IF !$published.ok { THROW $published.error.code; };
+};
+
+DEFINE EVENT OVERWRITE secrets_request_guard ON TABLE secrets_request
+WHEN $event IN ["CREATE", "UPDATE"]
+THEN {
+    LET $refusal = fn::secrets_request_refusal($event, $before, $after);
+    IF $refusal IS NOT NONE { THROW $refusal; };
+};
+
+DEFINE EVENT OVERWRITE secrets_request_journal ON TABLE secrets_request
+WHEN $event = "CREATE" OR ($event = "UPDATE" AND ($before.state != $after.state OR $before.approvals != $after.approvals))
+THEN {
+    -- Les passages par applying et ses retours en arrière ne se journalisent pas : seul le résultat compte
+    LET $action = IF $event = "CREATE" { "request.create" }
+        ELSE IF $after.state = $before.state { "request.approve" }
+        ELSE { {
+            approved: "request.approve", rejected: "request.reject", cancelled: "request.cancel",
+            expired: "request.expire", applied: "request.apply"
+        }[$after.state] };
+    IF $action IS NOT NONE {
+        fn::secrets_audit_write({
+            tenant: $after.tenant,
+            action: $action,
+            outcome: IF $action IN ["request.reject", "request.expire"] { "failure" } ELSE { "success" },
+            secret: $after.secret,
+            path: $after.path,
+            version: $after.number,
+            details: { request: <string> $after.id, kind: $after.kind, operation: $after.operation, actions: $after.actions,
+                state: $after.state, approvals: array::len($after.approvals), required_approvals: $after.required_approvals,
+                emergency: $after.emergency, reason: IF $action = "request.create" { $after.reason } ELSE { $after.decision_reason } }
+        });
+        LET $event_type = {
+            "request.create": "secrets.request.created", "request.reject": "secrets.request.rejected",
+            "request.cancel": "secrets.request.cancelled", "request.expire": "secrets.request.expired", "request.apply": "secrets.request.applied"
+        }[$action] ?? (IF $after.state = "approved" { "secrets.request.approved" } ELSE { NONE });
+        IF $event_type IS NOT NONE {
+            LET $published = fn::event_publish({
+                event_id: rand::uuid::v7(),
+                event_type: $event_type,
+                producer: "lyxal_secrets",
+                source: $after.id,
+                payload: { request_id: <string> $after.id, tenant: <string> $after.tenant, kind: $after.kind, path: $after.path,
+                    secret_id: IF $after.secret IS NONE { NONE } ELSE { <string> $after.secret }, operation: $after.operation,
+                    actions: $after.actions, state: $after.state, emergency: $after.emergency,
+                    requester: IF $after.requested_identity IS NOT NONE { <string> $after.requested_identity } ELSE { <string> $after.requested_application },
+                    approvals: $after.approvals.by, required_approvals: $after.required_approvals, actor: fn::secrets_actor() },
+                metadata: {}
+            });
+            IF !$published.ok { THROW $published.error.code; };
+        };
+    };
+};
+
+DEFINE EVENT OVERWRITE secrets_policy_journal ON TABLE secrets_policy
+WHEN $event IN ["CREATE", "UPDATE", "DELETE"] AND ($event != "DELETE" OR record::exists($before.tenant))
+THEN {
+    LET $doc = IF $event = "DELETE" { $before } ELSE { $after };
+    fn::secrets_audit_write({
+        tenant: $doc.tenant,
+        action: IF $event = "DELETE" { "policy.delete" } ELSE { "policy.set" },
+        path: $doc.path,
+        details: { folder: $doc.folder, required_approvals: $doc.required_approvals, operations: $doc.operations, max_grant_duration: $doc.max_grant_duration }
+    });
+    LET $published = fn::event_publish({
+        event_id: rand::uuid::v7(),
+        event_type: "secrets.policy.updated",
+        producer: "lyxal_secrets",
+        source: $doc.id,
+        payload: { tenant: <string> $doc.tenant, path: $doc.path, folder: $doc.folder, removed: $event = "DELETE",
+            required_approvals: $doc.required_approvals, operations: $doc.operations, actor: fn::secrets_actor() },
+        metadata: {}
+    });
+    IF !$published.ok { THROW $published.error.code; };
 };

@@ -17,7 +17,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_read_refusal($ticket: object) -> option<ob
     IF !$caller.valid { RETURN { code: "SECRETS_PERMISSION_DENIED", details: {} }; };
     LET $secret = (SELECT * FROM ONLY $ticket.secret);
     IF $secret == NONE { RETURN { code: "SECRETS_SECRET_NOT_FOUND", details: {} }; };
-    IF !fn::secrets_can({ action: "read_value", tenant: $secret.tenant }) { RETURN { code: "SECRETS_PERMISSION_DENIED", details: {} }; };
+    IF !fn::secrets_can({ action: "read_value", tenant: $secret.tenant, path: $secret.path }) { RETURN { code: "SECRETS_PERMISSION_DENIED", details: {} }; };
     IF $secret.state = "deleted" { RETURN { code: "SECRETS_SECRET_DELETED", details: {} }; };
     IF $secret.state = "disabled" { RETURN { code: "SECRETS_SECRET_DISABLED", details: {} }; };
     IF $secret.expires_at IS NOT NONE AND $secret.expires_at <= time::now() {
@@ -67,9 +67,9 @@ DEFINE FUNCTION OVERWRITE fn::secrets_read_begin($params: object) {
         RETURN fn::error_result("SECRETS_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
     LET $p = $report.value;
-    LET $secret = (SELECT id, tenant, labels FROM ONLY $p.secret);
+    LET $secret = (SELECT id, tenant, path, labels FROM ONLY $p.secret);
     IF $secret == NONE { RETURN fn::error_result("SECRETS_SECRET_NOT_FOUND", $p.language, { secret: <string> $p.secret }); };
-    IF !fn::secrets_can({ action: "read_value", tenant: $secret.tenant }) { RETURN fn::error_result("SECRETS_PERMISSION_DENIED", $p.language, {}); };
+    IF !fn::secrets_can({ action: "read_value", tenant: $secret.tenant, path: $secret.path }) { RETURN fn::error_result("SECRETS_PERMISSION_DENIED", $p.language, {}); };
     -- Version : numéro donné, sinon étiquette (current par défaut)
     LET $number = $p.number ?? $secret.labels[$p.label ?? "current"];
     LET $version = IF $number IS NONE { NONE } ELSE { (SELECT id, key_id FROM ONLY secrets_version WHERE secret = $secret.id AND number = $number LIMIT 1) };

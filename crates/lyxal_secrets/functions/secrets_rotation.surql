@@ -32,7 +32,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_rotation_view($id: record<secrets_rotation
 DEFINE FUNCTION OVERWRITE fn::secrets_rotation_refusal($event: string, $before: option<object>, $after: object) -> option<string> {
     LET $tenant = $after.tenant;
     LET $worker = fn::secrets_can({ action: "worker", tenant: $tenant });
-    LET $writer = fn::secrets_can({ action: "write", tenant: $tenant });
+    LET $writer = fn::secrets_can({ action: "write", tenant: $tenant, path: (SELECT VALUE path FROM ONLY $after.secret) });
     IF $event = "CREATE" {
         LET $secret = (SELECT tenant, state FROM ONLY $after.secret);
         IF $secret == NONE { RETURN "SECRETS_SECRET_NOT_FOUND"; };
@@ -106,9 +106,9 @@ DEFINE FUNCTION OVERWRITE fn::secrets_rotation_begin($params: object) {
         RETURN fn::error_result("SECRETS_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
     LET $p = $report.value;
-    LET $secret = (SELECT id, tenant, state, labels FROM ONLY $p.secret);
+    LET $secret = (SELECT id, tenant, path, state, labels FROM ONLY $p.secret);
     IF $secret == NONE { RETURN fn::error_result("SECRETS_SECRET_NOT_FOUND", $p.language, { secret: <string> $p.secret }); };
-    LET $writer = fn::secrets_can({ action: "write", tenant: $secret.tenant });
+    LET $writer = fn::secrets_can({ action: "write", tenant: $secret.tenant, path: $secret.path });
     -- Urgence : décision humaine (écriture) ; rotation planifiée : écriture ou worker
     IF !$writer AND ($p.emergency OR !fn::secrets_can({ action: "worker", tenant: $secret.tenant })) {
         RETURN fn::error_result("SECRETS_PERMISSION_DENIED", $p.language, {});
@@ -123,13 +123,6 @@ DEFINE FUNCTION OVERWRITE fn::secrets_rotation_begin($params: object) {
     };
     LET $running = (SELECT VALUE id FROM ONLY secrets_rotation WHERE secret = $secret.id AND active_slot = "active" LIMIT 1);
     IF $running IS NOT NONE { RETURN fn::error_result("SECRETS_ROTATION_IN_PROGRESS", $p.language, { rotation: <string> $running }); };
-    -- Urgence : la version courante est coupée tout de suite, avant toute autre étape
-    IF $p.emergency AND $secret.labels.current IS NOT NONE {
-        UPDATE secrets_version SET state = "disabled" WHERE secret = $secret.id AND number = $secret.labels.current AND state = "enabled";
-        IF (SELECT VALUE state FROM ONLY secrets_version WHERE secret = $secret.id AND number = $secret.labels.current LIMIT 1) = "enabled" {
-            RETURN fn::error_result("SECRETS_WRITE_FORBIDDEN", $p.language, { table: "secrets_version" });
-        };
-    };
     LET $inserted = (INSERT IGNORE INTO secrets_rotation {
         secret: $secret.id,
         tenant: $secret.tenant,
@@ -140,6 +133,14 @@ DEFINE FUNCTION OVERWRITE fn::secrets_rotation_begin($params: object) {
     });
     -- Index (secret, active_slot) : une rotation concurrente a démarré
     IF array::len($inserted) = 0 { RETURN fn::error_result("SECRETS_ROTATION_IN_PROGRESS", $p.language, { secret: <string> $secret.id }); };
+    -- Urgence : la version courante est coupée tout de suite (permis même sur un secret protégé)
+    IF $p.emergency AND $secret.labels.current IS NOT NONE {
+        UPDATE secrets_version SET state = "disabled" WHERE secret = $secret.id AND number = $secret.labels.current AND state = "enabled";
+        IF (SELECT VALUE state FROM ONLY secrets_version WHERE secret = $secret.id AND number = $secret.labels.current LIMIT 1) = "enabled" {
+            UPDATE $inserted[0].id SET state = "cancelled", finished_at = time::now();
+            RETURN fn::error_result("SECRETS_WRITE_FORBIDDEN", $p.language, { table: "secrets_version" });
+        };
+    };
     -- Une étiquette pending d'une écriture antérieure n'appartient pas à cette rotation
     IF $secret.labels.pending IS NOT NONE {
         LET $cleared = (UPDATE ONLY $secret.id SET labels = object::remove(labels, "pending"));
@@ -253,7 +254,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_rotation_cancel($params: object) {
     LET $l = fn::secrets_rotation_load($params, {});
     IF $l.error IS NOT NONE { RETURN $l.error; };
     LET $p = $l.p;
-    IF !fn::secrets_can({ action: "write", tenant: $l.rotation.tenant }) AND !fn::secrets_can({ action: "worker", tenant: $l.rotation.tenant }) {
+    IF !fn::secrets_can({ action: "write", tenant: $l.rotation.tenant, path: $l.secret.path }) AND !fn::secrets_can({ action: "worker", tenant: $l.rotation.tenant }) {
         RETURN fn::error_result("SECRETS_PERMISSION_DENIED", $p.language, {});
     };
     IF $l.rotation.active_slot != "active" { RETURN fn::error_result("SECRETS_ROTATION_STATE_INVALID", $p.language, { state: $l.rotation.state }); };
@@ -277,9 +278,9 @@ DEFINE FUNCTION OVERWRITE fn::secrets_rotation_get($params: object) {
         RETURN fn::error_result("SECRETS_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
     LET $p = $report.value;
-    LET $secret = (SELECT id, tenant FROM ONLY $p.secret);
+    LET $secret = (SELECT id, tenant, path FROM ONLY $p.secret);
     IF $secret == NONE { RETURN fn::error_result("SECRETS_SECRET_NOT_FOUND", $p.language, { secret: <string> $p.secret }); };
-    IF !fn::secrets_can({ action: "list", tenant: $secret.tenant }) AND !fn::secrets_can({ action: "worker", tenant: $secret.tenant }) {
+    IF !fn::secrets_can({ action: "list", tenant: $secret.tenant, path: $secret.path }) AND !fn::secrets_can({ action: "worker", tenant: $secret.tenant }) {
         RETURN fn::error_result("SECRETS_PERMISSION_DENIED", $p.language, {});
     };
     LET $ids = (SELECT VALUE id FROM secrets_rotation WHERE secret = $secret.id ORDER BY started_at DESC LIMIT $p.limit);

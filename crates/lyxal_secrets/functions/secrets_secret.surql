@@ -41,7 +41,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_secret_update_refusal($before: object, $af
     LET $schedule = ["next_rotation_at", "last_rotated_at", "expiry_warned_at", "expired_notified_at", "rotation_notified_at", "last_check_at", "last_check_ok", "last_check_code"];
     LET $schedule_changed = array::any($schedule, |$f| $before[$f] != $after[$f]);
     LET $versions_changed = $before.labels != $after.labels OR $before.latest_version != $after.latest_version;
-    LET $writer = fn::secrets_can({ action: "write", tenant: $tenant });
+    LET $writer = fn::secrets_can({ action: "write", tenant: $tenant, path: $before.path });
     LET $worker = fn::secrets_can({ action: "worker", tenant: $tenant });
     LET $deletion_changed = $before.deleted_at != $after.deleted_at OR $before.purge_at != $after.purge_at OR $before.state_before_delete != $after.state_before_delete;
     IF $before.state = $after.state {
@@ -60,14 +60,24 @@ DEFINE FUNCTION OVERWRITE fn::secrets_secret_update_refusal($before: object, $af
             LET $targets = array::distinct(object::values($after.labels));
             LET $live = (SELECT VALUE number FROM secrets_version WHERE secret = $before.id AND number IN $targets AND state != "destroyed");
             IF array::len($live) != array::len($targets) { RETURN "SECRETS_LABEL_INVALID"; };
+            -- Protection : remplacer la valeur en service (version proposée ou nouvelle) ou revenir en arrière
+            IF $before.labels.current IS NOT NONE AND $after.labels.current != $before.labels.current {
+                LET $operation = IF $after.labels.current = $before.labels.proposed OR $after.latest_version != $before.latest_version { "value" } ELSE { "rollback" };
+                RETURN fn::secrets_change_refusal({ tenant: $tenant, path: $before.path, secret: $before.id, operation: $operation });
+            };
         };
         RETURN NONE;
     };
     IF $meta_changed OR $versions_changed OR $schedule_changed { RETURN "SECRETS_SECRET_STATE_INVALID"; };
     LET $allowed = { active: ["disabled", "deleted"], disabled: ["active", "deleted"], deleted: ["active", "disabled"] }[$before.state];
     IF $after.state NOTINSIDE $allowed { RETURN "SECRETS_SECRET_STATE_INVALID"; };
+    -- Protection : désactiver ou supprimer un secret protégé passe par une demande approuvée
+    IF $after.state IN ["disabled", "deleted"] {
+        LET $protected = fn::secrets_change_refusal({ tenant: $tenant, path: $before.path, secret: $before.id, operation: IF $after.state = "deleted" { "delete" } ELSE { "disable" } });
+        IF $protected IS NOT NONE { RETURN $protected; };
+    };
     IF $after.state = "deleted" {
-        IF !fn::secrets_can({ action: "delete", tenant: $tenant }) { RETURN "SECRETS_PERMISSION_DENIED"; };
+        IF !fn::secrets_can({ action: "delete", tenant: $tenant, path: $before.path }) { RETURN "SECRETS_PERMISSION_DENIED"; };
         IF $after.deleted_at IS NONE OR $after.purge_at IS NONE OR $after.state_before_delete != $before.state { RETURN "SECRETS_SECRET_STATE_INVALID"; };
         -- Date de purge : celle des réglages, jamais une date fournie par l'appelant (la session système peut l'ajuster)
         LET $days = fn::secrets_settings_effective({ tenant: $tenant }).deleted_retention_days;
@@ -80,8 +90,8 @@ DEFINE FUNCTION OVERWRITE fn::secrets_secret_update_refusal($before: object, $af
         RETURN IF $after.state != $before.state_before_delete OR $after.deleted_at IS NOT NONE OR $after.purge_at IS NOT NONE OR $after.state_before_delete IS NOT NONE { "SECRETS_SECRET_STATE_INVALID" } ELSE { NONE };
     };
     IF $deletion_changed { RETURN "SECRETS_SECRET_STATE_INVALID"; };
-    RETURN IF fn::secrets_can({ action: "write", tenant: $tenant }) { NONE } ELSE { "SECRETS_PERMISSION_DENIED" };
-} COMMENT "Interne : refus d'une modification de fiche ($before, $after) : propriétaire figé ; fiche supprimée intouchable (la session système peut seulement avancer ou reculer sa date de purge) ; métadonnées par l'écriture ; versions, étiquettes, calendrier de rotation et alertes par l'écriture ou le worker ; transitions active ↔ disabled (écriture), → deleted (suppression, date de purge posée), deleted → état d'avant (restauration) ; dernière version : la suivante, existante ; étiquettes sur des versions non détruites. NONE ou code d'erreur";
+    RETURN IF fn::secrets_can({ action: "write", tenant: $tenant, path: $before.path }) { NONE } ELSE { "SECRETS_PERMISSION_DENIED" };
+} COMMENT "Interne : refus d'une modification de fiche ($before, $after) : propriétaire figé ; fiche supprimée intouchable (la session système peut seulement avancer ou reculer sa date de purge) ; métadonnées par l'écriture ; versions, étiquettes, calendrier de rotation et alertes par l'écriture ou le worker ; protections (fn::secrets_change_refusal : remplacement de la valeur en service, retour arrière, désactivation, suppression) ; transitions active ↔ disabled (écriture), → deleted (suppression, date de purge posée), deleted → état d'avant (restauration) ; dernière version : la suivante, existante ; étiquettes sur des versions non détruites. NONE ou code d'erreur";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_secret_delete_refusal (interne, garde de purge)
@@ -140,7 +150,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_secret_create($params: object) {
     IF !fn::validation_array_length(object::keys($p.metadata), NONE, 32).valid {
         RETURN fn::error_result("SECRETS_INVALID_PARAMETERS", $p.language, { fields: { metadata: { code: "CORE_VALIDATION_TOO_LONG", details: { max_length: 32 } } } });
     };
-    IF !fn::secrets_can({ action: "write", tenant: $p.tenant }) { RETURN fn::error_result("SECRETS_PERMISSION_DENIED", $p.language, {}); };
+    IF !fn::secrets_can({ action: "write", tenant: $p.tenant, path: $p.path }) { RETURN fn::error_result("SECRETS_PERMISSION_DENIED", $p.language, {}); };
     LET $caller = fn::secrets_caller();
     LET $inserted = (INSERT IGNORE INTO secrets_secret {
         tenant: $p.tenant,
@@ -192,7 +202,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_secret_update($params: object) {
     };
     LET $secret = (SELECT * FROM ONLY $p.secret);
     IF $secret == NONE { RETURN fn::error_result("SECRETS_SECRET_NOT_FOUND", $p.language, { secret: <string> $p.secret }); };
-    IF !fn::secrets_can({ action: "write", tenant: $secret.tenant }) { RETURN fn::error_result("SECRETS_PERMISSION_DENIED", $p.language, {}); };
+    IF !fn::secrets_can({ action: "write", tenant: $secret.tenant, path: $secret.path }) { RETURN fn::error_result("SECRETS_PERMISSION_DENIED", $p.language, {}); };
     IF $secret.state = "deleted" { RETURN fn::error_result("SECRETS_SECRET_DELETED", $p.language, { secret: <string> $secret.id }); };
     LET $period = IF "rotation_period" IN $p.clear { NONE } ELSE { $p.rotation_period ?? $secret.rotation_period };
     -- Prochaine rotation : date de la version courante (sinon maintenant) plus la période
@@ -266,7 +276,10 @@ DEFINE FUNCTION OVERWRITE fn::secrets_secret_list($params: object) {
         RETURN fn::error_result("SECRETS_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
     LET $p = $report.value;
-    IF !fn::secrets_can({ action: "list", tenant: $p.tenant }) { RETURN fn::error_result("SECRETS_PERMISSION_DENIED", $p.language, {}); };
+    -- Liste : droit de liste, ou accès temporaire de liste (les droits de la table ne montrent que les secrets couverts)
+    IF !fn::secrets_can({ action: "list", tenant: $p.tenant }) AND ($p.tenant IS NONE OR !fn::secrets_grant_covers({ tenant: $p.tenant, action: "list" })) {
+        RETURN fn::error_result("SECRETS_PERMISSION_DENIED", $p.language, {});
+    };
     LET $scope = IF $p.tenant IS NONE { "installation" } ELSE { <string> record::id($p.tenant) };
     -- Par défaut, les secrets supprimés sont exclus ; un préfixe désigne un chemin et tout ce qu'il contient
     LET $all = (SELECT * FROM secrets_secret
@@ -276,7 +289,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_secret_list($params: object) {
             AND ($p.tag IS NONE OR $p.tag IN tags)
         ORDER BY path ASC);
     RETURN fn::result_ok({ items: array::slice($all, $p.start, $p.start + $p.limit), total: array::len($all) });
-} COMMENT "Fiches d'une portée ({ tenant, prefix, state, tag, limit (100 au plus), start }), triées par chemin, sans valeur : { items, total }. Sans state, les secrets supprimés sont exclus. Droit : liste";
+} COMMENT "Fiches d'une portée ({ tenant, prefix, state, tag, limit (100 au plus), start }), triées par chemin, sans valeur : { items, total }. Sans state, les secrets supprimés sont exclus. Droit : liste, ou accès temporaire (seuls les secrets couverts sont listés)";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_secret_transition (interne)
@@ -297,10 +310,16 @@ DEFINE FUNCTION OVERWRITE fn::secrets_secret_transition($params: object, $to: st
     LET $secret = (SELECT * FROM ONLY $p.secret);
     IF $secret == NONE { RETURN fn::error_result("SECRETS_SECRET_NOT_FOUND", $p.language, { secret: <string> $p.secret }); };
     LET $action = { disable: "write", enable: "write", delete: "delete", restore: "restore" }[$to];
-    IF !fn::secrets_can({ action: $action, tenant: $secret.tenant }) { RETURN fn::error_result("SECRETS_PERMISSION_DENIED", $p.language, {}); };
+    IF !fn::secrets_can({ action: $action, tenant: $secret.tenant, path: $secret.path }) { RETURN fn::error_result("SECRETS_PERMISSION_DENIED", $p.language, {}); };
     LET $from = { disable: ["active"], enable: ["disabled"], delete: ["active", "disabled"], restore: ["deleted"] }[$to];
     IF $secret.state NOTINSIDE $from {
         RETURN fn::error_result(IF $secret.state = "deleted" { "SECRETS_SECRET_DELETED" } ELSE { "SECRETS_SECRET_STATE_INVALID" }, $p.language, { state: $secret.state });
+    };
+    -- Secret protégé : désactiver ou supprimer passe par une demande
+    IF $to IN ["disable", "delete"] {
+        LET $operation = $to;
+        LET $protected = fn::secrets_change_refusal({ tenant: $secret.tenant, path: $secret.path, secret: $secret.id, operation: $operation });
+        IF $protected IS NOT NONE { RETURN fn::error_result($protected, $p.language, { path: $secret.path, operation: $operation }); };
     };
     LET $updated = IF $to = "disable" {
         (UPDATE ONLY $secret.id SET state = "disabled")

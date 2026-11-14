@@ -42,7 +42,11 @@ DEFINE FUNCTION OVERWRITE fn::secrets_settings_set($params: object) {
             default_visibility: { pipeline: [{ rule: "enum", options: { allowed: ["restricted", "revealable"], case_sensitive: true } }] },
             expiry_warning_days: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 365 } }] },
             tenant_key_rotation_days: { pipeline: [{ rule: "integer", options: { min_value: 0, max_value: 3650 } }] },
-            clear: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: true } }, { rule: "each", options: { pipeline: [{ rule: "enum", options: { allowed: ["max_versions", "deleted_retention_days", "max_value_bytes", "default_visibility", "expiry_warning_days", "tenant_key_rotation_days"], case_sensitive: true } }] } }], default: [] },
+            grant_default_duration: { pipeline: [{ rule: "duration", options: { min_value: 5m, max_value: 90d } }] },
+            grant_max_duration: { pipeline: [{ rule: "duration", options: { min_value: 5m, max_value: 90d } }] },
+            request_ttl: { pipeline: [{ rule: "duration", options: { min_value: 1h, max_value: 30d } }] },
+            access_request_approvals: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 5 } }] },
+            clear: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: true } }, { rule: "each", options: { pipeline: [{ rule: "enum", options: { allowed: ["max_versions", "deleted_retention_days", "max_value_bytes", "default_visibility", "expiry_warning_days", "tenant_key_rotation_days", "grant_default_duration", "grant_max_duration", "request_ttl", "access_request_approvals"], case_sensitive: true } }] } }], default: [] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -62,7 +66,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_settings_set($params: object) {
     IF $existing.purge_protection = true AND $p.purge_protection = false {
         RETURN fn::error_result("SECRETS_PURGE_PROTECTED", $p.language, { reason: "irreversible" });
     };
-    LET $fields = ["max_versions", "deleted_retention_days", "purge_protection", "max_value_bytes", "default_visibility", "expiry_warning_days", "tenant_key_rotation_days"];
+    LET $fields = ["max_versions", "deleted_retention_days", "purge_protection", "max_value_bytes", "default_visibility", "expiry_warning_days", "tenant_key_rotation_days", "grant_default_duration", "grant_max_duration", "request_ttl", "access_request_approvals"];
     -- Champ fourni : remplacé ; champ dans clear : effacé ; sinon conservé
     LET $changes = object::from_entries(array::filter(
         array::map($fields, |$f| [$f, IF $f IN $p.clear { NONE } ELSE { $p[$f] }]),
@@ -75,4 +79,4 @@ DEFINE FUNCTION OVERWRITE fn::secrets_settings_set($params: object) {
     };
     IF $saved == NONE { RETURN fn::error_result("SECRETS_WRITE_FORBIDDEN", $p.language, { table: "secrets_settings" }); };
     RETURN fn::result_ok($saved);
-} COMMENT "Enregistre les réglages d'une portée ({ tenant, max_versions, deleted_retention_days, purge_protection, max_value_bytes, default_visibility, expiry_warning_days, tenant_key_rotation_days (30 à 3650, 0 : désactivée), clear }) : un champ fourni est remplacé, un champ nommé dans clear est effacé, les autres sont conservés. La protection contre la purge ne se retire pas (SECRETS_PURGE_PROTECTED). Droit : réglages";
+} COMMENT "Enregistre les réglages d'une portée ({ tenant, max_versions, deleted_retention_days, purge_protection, max_value_bytes, default_visibility, expiry_warning_days, tenant_key_rotation_days (30 à 3650, 0 : désactivée), grant_default_duration et grant_max_duration (5 min à 90 jours), request_ttl (1 h à 30 jours), access_request_approvals (1 à 5), clear }) : un champ fourni est remplacé, un champ nommé dans clear est effacé, les autres sont conservés. La protection contre la purge ne se retire pas (SECRETS_PURGE_PROTECTED). Droit : réglages";
