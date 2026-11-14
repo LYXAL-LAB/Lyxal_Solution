@@ -261,7 +261,11 @@ async fn a_failed_test_schedules_a_new_attempt_and_keeps_the_value_in_service() 
         .expect("rotation");
     assert_eq!(waiting.state, RotationState::Installed, "{waiting:?}");
     assert_eq!(waiting.attempts, 1);
-    assert_eq!(waiting.last_error.as_deref(), Some("TEST_SERVICE_REFUSED"));
+    // Code du moteur enregistré (celui du rotateur est seulement journalisé), essai permis
+    assert_eq!(
+        waiting.last_error.as_deref(),
+        Some("SECRETS_ROTATION_TEST_FAILED")
+    );
     assert!(waiting.next_attempt_at.is_some());
     assert_eq!(bench.read(&secret).await, b"ancienne");
     // Essai pas encore échu : le worker n'y touche pas

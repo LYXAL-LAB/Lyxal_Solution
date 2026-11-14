@@ -3,10 +3,11 @@
 //!
 //! ```text
 //! création : clé du lien (32 octets, OsRng) ──► copie scellée (CryptoEngine::seal)
-//!            la base reçoit : enveloppe, empreinte SHA-256 de la clé, hachage Argon2id du
-//!            mot de passe ; la clé n'est rendue qu'à l'auteur, en base64url, dans le lien
-//! ouverture : chargement (session système) ► empreinte (temps constant) ► mot de passe
-//!            ► organisation (lien réservé) ► ouverture consommée ► copie ouverte
+//!            la base reçoit : enveloppe, empreinte (HMAC-SHA256 d'un texte fixe sous la clé),
+//!            hachage Argon2id du mot de passe ; la clé n'est rendue qu'à l'auteur, en
+//!            base64url, dans le lien
+//! ouverture : chargement (session système) ► empreinte (verify_hmac_sha256, temps constant)
+//!            ► mot de passe ► organisation (lien réservé) ► ouverture consommée ► copie ouverte
 //! ```
 //!
 //! Une clé ou un mot de passe faux compte un essai (`fn::secrets_share_fail`, cinq et le partage
@@ -17,8 +18,9 @@ use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use lyxal_crypto::password::{hash_password, verify_password, PasswordHash, PasswordVerification};
 use lyxal_crypto::{
-    sha256_hex, CryptoEngine, CryptoError, EncryptedEnvelope, EncryptionKey, KeyId, KeyRingBuilder,
-    KeyUse, SecretBytes, SecretString, StaticKeyResolver,
+    sign_hmac_sha256_hex, verify_hmac_sha256_hex, CryptoEngine, CryptoError, EncryptedEnvelope,
+    EncryptionKey, HmacKey, KeyId, KeyRingBuilder, KeyUse, SecretBytes, SecretString,
+    StaticKeyResolver,
 };
 use lyxal_surreal::ToSql;
 use rand_core::{OsRng, RngCore};
@@ -36,6 +38,8 @@ use crate::service::{RevealRequest, SecretsService};
 const SHARE_KEY_BYTES: usize = 32;
 /// Identifiant de la clé d'un lien dans son trousseau d'une seule clé (et dans l'enveloppe).
 const SHARE_KEY_ID: &str = "share";
+/// Texte fixe dont le HMAC-SHA256 sous la clé du lien forme l'empreinte gardée en base.
+const SHARE_FINGERPRINT_MESSAGE: &[u8] = b"lyxal_secrets.share.v1";
 
 /// Ce qui est partagé : une copie, qui ne suit pas les changements ultérieurs du secret.
 #[derive(Debug)]
@@ -91,6 +95,10 @@ pub struct OpenerContext {
     pub identity: Option<String>,
     /// Organisation active de la session (`auth_organization:<clé>`).
     pub organization: Option<String>,
+    /// Vrai si l'appelant détient `secrets.installation.manage` (lu par l'hôte dans les
+    /// permissions de son jeton) : seul un tel appelant ouvre un lien de l'installation réservé
+    /// aux membres.
+    pub installation_manager: bool,
 }
 
 /// Ouverture d'un lien ; `Debug` masque la clé et le mot de passe.
@@ -118,11 +126,13 @@ impl SecretsService {
     /// <empreinte>, "value")`.
     ///
     /// L'identifiant du partage n'existe qu'après sa création par `fn::secrets_share_create` :
-    /// le contexte désigne donc le partage par l'**empreinte** de sa clé (SHA-256 en
-    /// hexadécimal) au lieu de son identifiant. L'empreinte est propre à chaque clé tirée, la
-    /// base la garde et le service la recalcule à l'ouverture : l'AAD n'est jamais vide, lie la
-    /// copie à son organisation et à ce partage, et une enveloppe recopiée vers un autre partage
-    /// ne s'ouvre pas.
+    /// le contexte désigne donc le partage par l'**empreinte** de sa clé au lieu de son
+    /// identifiant. L'empreinte est le HMAC-SHA256 du texte fixe `lyxal_secrets.share.v1` sous
+    /// la clé du lien (`lyxal_crypto::hmac`, 64 caractères hexadécimaux) : propre à chaque clé
+    /// tirée, elle ne permet pas de retrouver la clé. La base la garde ; à l'ouverture, la clé
+    /// présentée est vérifiée contre elle par `verify_hmac_sha256` (temps constant). L'AAD n'est
+    /// jamais vide, lie la copie à son organisation et à ce partage, et une enveloppe recopiée
+    /// vers un autre partage ne s'ouvre pas.
     ///
     /// La base ne reçoit que l'enveloppe, l'empreinte et le hachage Argon2id du mot de passe ;
     /// la clé n'est rendue qu'ici ([`ShareCreated::key`]).
@@ -175,7 +185,8 @@ impl SecretsService {
             .try_fill_bytes(&mut material)
             .map_err(|_| CryptoError::RandomUnavailable)?;
         let material = SecretBytes::new(material)?;
-        let fingerprint = sha256_hex(material.expose_secret());
+        let fingerprint =
+            sign_hmac_sha256_hex(&link_hmac_key(&material)?, SHARE_FINGERPRINT_MESSAGE)?;
         let key = SecretString::new(URL_SAFE_NO_PAD.encode(material.expose_secret()))?;
         let envelope = share_engine(material)?.seal(&value, &scope.share_context(&fingerprint)?)?;
         drop(value);
@@ -209,9 +220,11 @@ impl SecretsService {
     }
 
     /// Ouvre un lien et rend la copie. Contrôles, dans l'ordre : partage actif et non échu
-    /// (chargé par la session système), empreinte de la clé (comparée en temps constant), mot de
-    /// passe (Argon2id), appartenance à l'organisation pour un lien réservé (l'`opener` vient du
-    /// jeton contrôlé par l'hôte). Ensuite seulement, une ouverture est consommée, atomiquement,
+    /// (chargé par la session système), empreinte de la clé (`verify_hmac_sha256`, temps
+    /// constant), mot de passe (Argon2id), pour un lien réservé aux membres : appelant connecté
+    /// de la même organisation, ou, pour un lien de l'installation, appelant qui détient
+    /// `secrets.installation.manage` (l'`opener` vient du jeton contrôlé par l'hôte). Ensuite
+    /// seulement, une ouverture est consommée, atomiquement,
     /// puis la copie est ouverte.
     ///
     /// Une clé ou un mot de passe faux compte un essai (cinq et le partage est détruit) ; tout
@@ -235,14 +248,19 @@ impl SecretsService {
         )?;
         let share = loaded.id.to_sql();
 
-        // Clé du lien : décodée, puis son empreinte comparée à celle de la base
+        // Clé du lien : décodée, puis vérifiée contre l'empreinte de la base (temps constant)
         let material = match URL_SAFE_NO_PAD.decode(key.expose_secret()) {
             Ok(bytes) if bytes.len() == SHARE_KEY_BYTES => SecretBytes::new(bytes)?,
             _ => return self.share_refused(&share).await,
         };
         drop(key);
-        let fingerprint = sha256_hex(material.expose_secret());
-        if !same_fingerprint(fingerprint.as_bytes(), loaded.key_fingerprint.as_bytes()) {
+        let matches = verify_hmac_sha256_hex(
+            &link_hmac_key(&material)?,
+            SHARE_FINGERPRINT_MESSAGE,
+            &loaded.key_fingerprint,
+        )
+        .map_err(|_| SecretsError::ValueCorrupted)?;
+        if !matches {
             return self.share_refused(&share).await;
         }
 
@@ -259,12 +277,14 @@ impl SecretsService {
             }
         }
 
-        // Lien réservé : un appelant connecté de la même organisation (pas un essai faux)
+        // Lien réservé (pas un essai faux) : un appelant connecté de la même organisation ;
+        // pour l'installation, un appelant qui détient `secrets.installation.manage`
         let tenant = loaded.tenant.as_ref().map(ToSql::to_sql);
         if loaded.members_only
-            && !opener
-                .as_ref()
-                .is_some_and(|opener| opener.organization == tenant)
+            && !opener.as_ref().is_some_and(|opener| match &tenant {
+                Some(_) => opener.organization == tenant,
+                None => opener.installation_manager,
+            })
         {
             return Err(SecretsError::ShareUnavailable);
         }
@@ -311,6 +331,13 @@ impl SecretsService {
     }
 }
 
+/// Clé HMAC tirée de la clé du lien (mêmes 32 octets), pour son empreinte.
+fn link_hmac_key(material: &SecretBytes) -> SecretsResult<HmacKey> {
+    Ok(HmacKey::import(SecretBytes::new(
+        material.expose_secret().to_vec(),
+    )?)?)
+}
+
 /// Moteur d'une seule clé : celle du lien.
 fn share_engine(material: SecretBytes) -> SecretsResult<CryptoEngine<StaticKeyResolver>> {
     let mut builder = KeyRingBuilder::new();
@@ -337,34 +364,4 @@ fn unavailable_if_refused<T>(
             error
         }
     })
-}
-
-/// Comparaison en temps constant de deux empreintes hexadécimales (64 octets chacune).
-///
-/// Écrite ici plutôt qu'avec la crate `subtle` (absente des dépendances directes du crate et
-/// réservée à `lyxal_crypto`) : chaque octet est comparé par `XOR`, les différences sont
-/// accumulées par `OR` sans sortie anticipée, et `black_box` empêche le compilateur de
-/// raccourcir la boucle. La longueur, elle, n'est pas secrète (toujours 64).
-fn same_fingerprint(left: &[u8], right: &[u8]) -> bool {
-    if left.len() != right.len() {
-        return false;
-    }
-    let mut difference = 0u8;
-    for (a, b) in left.iter().zip(right) {
-        difference |= std::hint::black_box(a ^ b);
-    }
-    std::hint::black_box(difference) == 0
-}
-
-#[cfg(test)]
-mod tests {
-    use super::same_fingerprint;
-
-    #[test]
-    fn fingerprints_are_compared_byte_by_byte() {
-        assert!(same_fingerprint(b"abcd", b"abcd"));
-        assert!(!same_fingerprint(b"abcd", b"abce"));
-        assert!(!same_fingerprint(b"abcd", b"abc"));
-        assert!(same_fingerprint(b"", b""));
-    }
 }
