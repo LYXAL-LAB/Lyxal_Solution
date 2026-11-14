@@ -30,7 +30,8 @@ sans limite de temps. Ce lot ajoute des droits plus fins, en plus de ceux-là, j
 ### 2.1. Accès temporaire (`secrets_grant`)
 
 * **Bénéficiaire** : une identité membre de l'organisation, ou une application de l'organisation.
-* **Portée** : le chemin d'un secret, ou un dossier (chemin finissant par `/`).
+* **Portée** : le chemin d'un secret, ou un dossier : chemin sans `/` final et `folder: true`
+  (`notification` en dossier couvre `notification/smtp/password`, jamais `notification-old/…`).
 * **Opérations** : `list`, `read_value`, `write`, `delete` (sous-ensemble).
 * **Durée et motif** : dates de début et de fin, motif ; auteur, ou demande d'origine.
 * **Contrôle unique des droits** : `fn::secrets_can({ action, tenant, path })` accepte le droit
@@ -125,7 +126,8 @@ sans limite de temps. Ce lot ajoute des droits plus fins, en plus de ceux-là, j
 * Les gardes de version et de fiche vérifient les protections.
 
 **Entrées** : validées par `fn::validation_object_execute`. Les chemins utilisent la règle
-existante `lyxal_storage_path` ; un dossier se termine par `/`.
+existante `lyxal_storage_path` (sans `/` final) ; un dossier est indiqué par le booléen `folder` et
+couvre les chemins égaux à `<dossier>/…` (comparaison sur le préfixe `<dossier>/`).
 
 **Fonctions Core réutilisées** : moteur de validation, `fn::security_audit_entry` (journal).
 
