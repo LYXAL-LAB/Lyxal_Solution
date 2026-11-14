@@ -13,7 +13,9 @@ chaîné, événements, clés des organisations), le **service Rust** (scellemen
 valeurs par `lyxal_crypto`, clés par organisation, lecture tracée avant remise, interface des
 autres modules, worker de maintenance, module et sonde de santé) et le **cycle de vie** (alertes
 d'échéance, rappel et rotation en quatre étapes sans coupure, rotation d'urgence, essai sans
-bascule, rotation planifiée des clés d'organisation) sont en place.
+bascule, rotation planifiée des clés d'organisation) et les **accès avancés** (accès temporaires
+par secret ou par dossier, demandes d'accès et de changement approuvées, protections, accès
+d'urgence tracé) sont en place.
 
 SurrealDB 3.3.4 ne chiffre rien et ne déclenche rien sur une lecture : une valeur n'entre dans la
 base que scellée (`enc:v2`, AES-256-GCM), la clé reste hors de la base, et la lecture d'une
@@ -64,9 +66,10 @@ clé maîtresse du coffre-fort (LYXAL__SECRETS__MASTER_KEY ; ancienne clé en le
 | `SecretsService::rotate_tenant_key` | droit contrôlé par `fn::secrets_tenant_key_rotate_allowed` (session de l'appelant), nouvelle clé rangée par la session système |
 | `SecretRotator`, `RotatorRegistry` | rotateur d'un module de l'hôte qui sait changer un identifiant chez un service extérieur : `create` (nouvelle valeur), `install`, `test`, `retire` (avant-dernière valeur, au mieux) ; erreurs `RotatorError` (code seul, nouvel essai ou non) ; registre vide par défaut, un rotateur au plus par fiche |
 | `RotationRunner` | fait avancer une rotation réservée depuis l'étape atteinte : nouvelle valeur écrite en `pending` par `put`, installation, test, bascule ; valeurs lues par le chemin tracé, le rotateur annoncé comme consommateur ; un échec passe par `fn::secrets_rotation_fail` |
+| `SecretsService::propose` | nouvelle valeur d'un secret protégé : scellée et écrite en version `proposed` (jamais servie avant l'application), puis demande de changement ouverte au nom de l'appelant |
 | `SecretsService::rotate_now`, `check_rotation` | rotation immédiate (dont l'urgence ; sans rotateur, l'urgence coupe la version courante et la rotation échoue aussitôt, `SECRETS_ROTATOR_UNAVAILABLE`) ; essai sans bascule de la valeur en service |
 | `SecretsClient` | lecture et écriture des modules de l'hôte par organisation et chemin, session système, module annoncé comme consommateur |
-| `SecretsMaintenanceWorker` | `LyxalWorker` : purge à échéance, alertes d'échéance et rappels de rotation, démarrage des rotations dues qu'un rotateur sait faire, rotation des clés d'organisation échues, avancement des rotations réservées, rescellement des versions puis des clés d'organisation, destruction des clés inutilisées ; bilan `MaintenanceReport` |
+| `SecretsMaintenanceWorker` | `LyxalWorker` : purge à échéance, alertes d'échéance et rappels de rotation, démarrage des rotations dues qu'un rotateur sait faire, rotation des clés d'organisation échues, avancement des rotations réservées, expiration des demandes et retrait des accès finis, rescellement des versions puis des clés d'organisation, destruction des clés inutilisées ; bilan `MaintenanceReport` |
 | `SecretsModule`, `SecretsHealthCheck` | descripteur du module ; sonde : base joignable, clé maîtresse présente, clés scellées par une clé maîtresse absente du trousseau (dégradé), rescellements en attente |
 | `SecretsError` | code `SECRETS_*` de la base, ou cause constatée par le service (`SECRETS_CRYPTO_UNAVAILABLE`, `SECRETS_VALUE_TOO_LARGE`, `SECRETS_VALUE_CORRUPTED`, `SECRETS_TENANT_KEY_UNAVAILABLE`) ; jamais de valeur |
 
@@ -78,12 +81,15 @@ masqué.
 
 | Table | Rôle |
 | :--- | :--- |
-| `secrets_settings` | réglages de l'installation, surchargés par organisation : versions conservées (10), délai avant purge (30 jours, de 7 à 90), protection contre la purge (irréversible), taille maximale d'une valeur (64 Kio, 1 Mio au plus), visibilité par défaut (`restricted`), alerte avant échéance (30 jours), rotation de la clé d'organisation (365 jours, de 30 à 3650, 0 : désactivée) |
+| `secrets_settings` | réglages de l'installation, surchargés par organisation : versions conservées (10), délai avant purge (30 jours, de 7 à 90), protection contre la purge (irréversible), taille maximale d'une valeur (64 Kio, 1 Mio au plus), visibilité par défaut (`restricted`), alerte avant échéance (30 jours), rotation de la clé d'organisation (365 jours, de 30 à 3650, 0 : désactivée), durée d'un accès temporaire (8 h par défaut, 90 jours au plus), expiration d'une demande sans réponse (7 jours), approbations d'une demande d'accès (1) |
 | `secrets_secret` | fiche d'un secret, sans valeur : chemin unique par organisation (`notification/smtp/password`), type, description, propriétaire, contact, consommateurs prévus, étiquettes libres, métadonnées, visibilité, échéance, période et prochaine date de rotation, dernière rotation, alertes déjà envoyées, dernier essai sans bascule, état, étiquettes de version |
 | `secrets_version` | version : numéro, enveloppe scellée (illisible pour tout utilisateur), identifiant de clé, noms des clés d'une valeur JSON, état |
 | `secrets_read_ticket` | ticket de lecture : usage unique, 60 secondes |
 | `secrets_audit`, `secrets_audit_head` | journal chaîné par organisation, en ajout seul ; tête de chaîne |
 | `secrets_rotation` | rotation d'un secret : état (`started`, `created`, `installed`, `tested`, puis `succeeded`, `failed` ou `cancelled`), urgence, motif, nouvelle et ancienne version, échecs et prochain essai, réservation par un worker, auteur ; une seule en cours par secret |
+| `secrets_grant` | accès temporaire en plus des droits `lyxal_auth` : organisation, bénéficiaire (identité ou application), chemin d'un secret ou d'un dossier, opérations (`list`, `read_value`, `write`, `delete`), début et fin, motif, auteur, demande d'origine, urgence, retrait |
+| `secrets_request` | demande d'accès (`access`) ou de changement d'un secret protégé (`change` : `value`, `rollback`, `disable`, `delete`, `destroy`) : demandeur, objet, motif, approbations requises et reçues, état (`pending`, `approved`, `rejected`, `cancelled`, `expired`, `applying`, `applied`), échéance ; une demande de changement ouverte par secret |
+| `secrets_policy` | protection d'un secret ou d'un dossier : approbations requises (1 à 5), opérations protégées, durée maximale d'un accès demandé |
 | `secrets_tenant_key` | clé d'une organisation ou de l'installation, scellée par la clé maîtresse : identifiant, clé maîtresse qui la scelle, état (`active`, une seule par portée ; `decrypt_only` ; `destroyed`, matière effacée) ; aucun accès utilisateur |
 
 Aucune table n'a de `CHANGEFEED` ni d'historique natif : une version détruite disparaît vraiment.
@@ -128,10 +134,30 @@ Aucune table n'a de `CHANGEFEED` ni d'historique natif : une version détruite d
   courante est désactivée tout de suite, avant toute autre étape.
 * **Essai sans bascule** : le résultat d'un test de la valeur en service (`ok`, code d'erreur) est
   posé sur la fiche, journalisé et publié.
+* **Accès temporaires** : un droit en plus de ceux de `lyxal_auth`, jamais à leur place, pour un
+  secret ou un dossier (chemin et `folder` : couvre `<dossier>/…`, jamais `<dossier>-autre/…`),
+  des opérations et une durée toujours limitée ; il ne vaut que dans une session de son
+  organisation. `fn::secrets_can` et les droits des tables le prennent en compte ; la liste des
+  secrets ne montre que ceux qu'il couvre. Réglages, journal, purge, restauration et gestion des
+  accès restent réservés aux droits `lyxal_auth`. Accordé et retiré par
+  `secrets.access.manage`.
+* **Demandes** : une demande d'accès est accordée (accès créé) dès que le nombre d'approbations
+  requis est atteint ; un refus la clôt ; sans réponse, elle expire. On n'approuve jamais sa propre
+  demande.
+* **Protections** : sur un chemin protégé, remplacer la valeur en service, revenir en arrière,
+  désactiver, supprimer ou détruire une version (hors conservation) passe par une demande de
+  changement : la nouvelle valeur est écrite en version `proposed` (jamais en service avant),
+  approuvée par N gestionnaires des accès, puis appliquée par son auteur avec ses droits.
+  L'écriture directe est refusée (`SECRETS_APPROVAL_REQUIRED`), y compris dans les tables. La
+  session système, le worker (rotation automatique) et la rotation d'urgence ne sont pas soumis ;
+  la première valeur d'un secret non plus.
+* **Urgence** : `secrets.access.emergency` (aucun rôle d'office) permet de s'accorder un accès
+  d'une heure au plus, ou d'appliquer un changement protégé avant les approbations, avec un
+  motif et l'assurance la plus haute et récente ; journalisé et publié.
 * **Journal** : une entrée par opération (réglages, création, modification, états, versions,
   étiquettes, rescellement, lecture, lecture refusée, création, retrait, rescellement et
   destruction des clés d'organisation, alertes d'échéance, rotations et leurs étapes, essais sans
-  bascule), avec l'auteur, le type de session et l'adresse ; chaque
+  bascule, accès accordés, retirés et d'urgence, demandes et décisions, protections), avec l'auteur, le type de session et l'adresse ; chaque
   entrée porte l'empreinte de la précédente (`fn::security_audit_entry`), le rang est unique par
   organisation, et les champs sont figés. Une entrée modifiée, retirée ou recréée par une session
   système est détectée par `fn::secrets_audit_verify`. Jamais de valeur.
@@ -151,10 +177,12 @@ Aucune table n'a de `CHANGEFEED` ni d'historique natif : une version détruite d
 | `secrets.audit.read` | organisation | lire et vérifier le journal |
 | `secrets.settings.manage` | organisation | réglages de l'organisation |
 | `secrets.installation.manage` | installation | secrets, journal et réglages de l'installation |
+| `secrets.access.manage` | organisation | accorder et retirer des accès temporaires, approuver ou refuser les demandes, protéger des secrets |
+| `secrets.access.emergency` | organisation | s'accorder un accès d'urgence (1 h au plus) ou appliquer un changement protégé avant les approbations |
 | `secrets.worker` | installation | compte de service : purge à échéance, rescellement, échéances, rotations planifiées et leurs étapes, rotation des clés d'organisation |
 
-`organization_admin` reçoit les permissions d'organisation sauf `secrets.value.read` et
-`secrets.secret.purge`, attribuées explicitement ; `platform_admin` reçoit
+`organization_admin` reçoit les permissions d'organisation sauf `secrets.value.read`,
+`secrets.secret.purge` et `secrets.access.emergency`, attribuées explicitement ; `platform_admin` reçoit
 `secrets.installation.manage` ; `secrets.worker` n'est attribuée à aucun rôle.
 
 ## Fonctions publiques (`fn::secrets_*($params: object)`)
@@ -168,7 +196,10 @@ Aucune table n'a de `CHANGEFEED` ni d'historique natif : une version détruite d
 | Journal | `secrets_audit_list`, `secrets_audit_verify`, `secrets_audit_denied` (session système) |
 | Clés | `secrets_tenant_key_ring`, `_create`, `_rewrap`, `_destroy`, `secrets_rewrap_list` (session système ou worker) ; `secrets_tenant_key_rotate_allowed` (droit de réglage) |
 | Rotation | `secrets_rotation_begin`, `_cancel`, `_get` ; `_claim`, `_step`, `_finish`, `_fail`, `_check_record` (worker ou session système) |
-| Worker | `secrets_purge_due`, `secrets_due_list`, `secrets_due_mark` |
+| Accès | `secrets_grant_create`, `_revoke`, `_list`, `secrets_access_emergency` |
+| Demandes | `secrets_request_access`, `_change`, `_approve`, `_reject`, `_cancel`, `_apply`, `_get`, `_list` |
+| Protections | `secrets_policy_set`, `_delete`, `_list` |
+| Worker | `secrets_purge_due`, `secrets_due_list`, `secrets_due_mark`, `secrets_access_due` |
 
 Toutes renvoient `fn::result_ok` ou `fn::error_result` ; entrées validées par
 `fn::validation_object_execute` de `lyxal_core` ; écritures vérifiées (`SECRETS_WRITE_FORBIDDEN`).
@@ -184,22 +215,25 @@ Toutes renvoient `fn::result_ok` ou `fn::error_result` ; entrées validées par
 `SECRETS_CRYPTO_UNAVAILABLE`, `SECRETS_VALUE_TOO_LARGE`, `SECRETS_VALUE_CORRUPTED`,
 `SECRETS_TENANT_KEY_UNAVAILABLE`, `SECRETS_TENANT_KEY_CONFLICT`. `rotation` :
 `SECRETS_ROTATION_IN_PROGRESS`, `_NOT_FOUND`, `_STATE_INVALID`, `_TEST_FAILED`,
-`SECRETS_ROTATOR_UNAVAILABLE`.
+`SECRETS_ROTATOR_UNAVAILABLE`. `acces` : `SECRETS_GRANT_NOT_FOUND`, `_INVALID`,
+`SECRETS_REQUEST_NOT_FOUND`, `_STATE_INVALID`, `_SELF_APPROVAL`, `_ALREADY_DECIDED`,
+`SECRETS_CHANGE_IN_PROGRESS`, `SECRETS_APPROVAL_REQUIRED`, `SECRETS_POLICY_NOT_FOUND`.
 
 ## Événements (`lyxal_event`)
 
 `secrets.secret.created`, `.updated`, `.disabled`, `.enabled`, `.deleted`, `.restored`,
 `.purged`, `.expiring`, `.expired`, `.rotation_due` ; `secrets.version.created`, `.disabled`,
 `.enabled`, `.destroyed`, `.labeled` ; `secrets.rotation.started`, `.succeeded`, `.failed`,
-`.cancelled`, `.checked`. Charge : organisation, identifiant et chemin du secret, numéro de
+`.cancelled`, `.checked` ; `secrets.access.granted`, `.revoked`, `.emergency` ;
+`secrets.request.created`, `.approved`, `.rejected`, `.cancelled`, `.expired`, `.applied` ;
+`secrets.policy.updated`. Charge : organisation, identifiant et chemin du secret, numéro de
 version ou étiquettes, échéance, rotation et code d'erreur, auteur ; jamais de valeur.
 
 ## Tests
 
 Banc SurrealQL (`tests/*.test.surql`, exécuté par `scripts/ci/test_lyxal_modules.py`) : fiches,
 versions, lecture (dont double facteur), journal (dont falsification), droits, réglages,
-fonctions internes, clés des organisations et refus journalisés, échéances et rotations ; 162
-assertions.
+fonctions internes, clés des organisations et refus journalisés, échéances et rotations, accès, demandes, protections et urgence ; 207 assertions.
 
 Tests Rust (`tests/it/`, base embarquée, sessions de personnes et de programmes par jetons de
 test) : valeur écrite puis relue, 64 Kio acceptés et au-delà refusés, enveloppe recopiée ou
@@ -209,4 +243,6 @@ double facteur, consommateurs, sonde, worker arrêté par l'annulation, aucune v
 `Debug` et les erreurs, rotation complète sans coupure, nouvel essai et échec définitif, reprise
 après interruption, urgence avec et sans rotateur, rappel seul sans rotateur, essai sans bascule,
 rotation planifiée des clés d'organisation, réservation périmée reprise par un autre worker, arrêt du
-worker pendant une rotation ; 31 tests. Hôte : `apps/lyxal-server/tests/secrets.rs`.
+worker pendant une rotation, accès temporaires d'une personne et d'un programme, valeur proposée
+servie seulement après approbations et application, changement d'urgence, worker des demandes ;
+36 tests. Hôte : `apps/lyxal-server/tests/secrets.rs`.

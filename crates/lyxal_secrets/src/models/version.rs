@@ -28,6 +28,9 @@ pub enum Stage {
     Current,
     /// Version en attente (rotation), lue seulement par son étiquette ou son numéro.
     Pending,
+    /// Valeur proposée par une demande de changement d'un secret protégé (étiquette
+    /// `proposed`) : mise en service seulement à l'application de la demande approuvée.
+    Proposed,
 }
 
 /// Version d'un secret, sans enveloppe (liste et fiche).

@@ -23,11 +23,37 @@ DEFINE FUNCTION OVERWRITE fn::secrets_can($params: object) -> bool {
         restore: "secrets.secret.restore",
         purge: "secrets.secret.purge",
         audit: "secrets.audit.read",
-        settings: "secrets.settings.manage"
+        settings: "secrets.settings.manage",
+        access: "secrets.access.manage",
+        emergency: "secrets.access.emergency"
     }[$params.action];
     IF $permission IS NONE { RETURN false; };
-    RETURN fn::auth_has_permission({ permission: $permission, tenant: $params.tenant });
-} COMMENT "Vrai si l'appelant peut effectuer l'action ({ action : list, read_value, write, delete, restore, purge, audit, settings, worker ; tenant : organisation ou NONE pour l'installation }). Installation : secrets.installation.manage pour toute action sauf worker. Jamais d'erreur";
+    IF fn::auth_has_permission({ permission: $permission, tenant: $params.tenant }) { RETURN true; };
+    -- Accès temporaire (secrets_grant) : en plus du droit, pour un chemin et une opération sur un secret
+    RETURN $params.path IS NOT NONE AND $params.action INSIDE ["list", "read_value", "write", "delete"]
+        AND fn::secrets_grant_covers({ tenant: $params.tenant, path: $params.path, action: $params.action });
+} COMMENT "Vrai si l'appelant peut effectuer l'action ({ action : list, read_value, write, delete, restore, purge, audit, settings, access, emergency, worker ; tenant : organisation ou NONE pour l'installation ; path : chemin du secret visé }). Permission lyxal_auth de l'organisation, ou, pour list, read_value, write et delete sur un chemin, accès temporaire en cours qui le couvre. Installation : secrets.installation.manage pour toute action sauf worker. Jamais d'erreur";
+
+-- ----------------------------------------------------------------------------
+-- fn::secrets_grant_covers (interne)
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::secrets_grant_covers($params: object) -> bool {
+    IF $auth == NONE OR !type::is_record($auth, "auth_session") OR ($params.path IS NOT NONE AND !type::is_string($params.path)) { RETURN false; };
+    IF !fn::auth_session_valid({}).valid { RETURN false; };
+    LET $s = (SELECT identity, application, organization FROM ONLY $auth);
+    -- Un accès vaut dans l'organisation active de la session seulement
+    IF $s == NONE OR $s.organization IS NONE OR $s.organization != $params.tenant { RETURN false; };
+    LET $now = time::now();
+    LET $found = (SELECT VALUE id FROM secrets_grant
+        WHERE tenant = $params.tenant
+            AND ((subject_identity IS NOT NONE AND subject_identity = $s.identity) OR (subject_application IS NOT NONE AND subject_application = $s.application))
+            AND revoked_at IS NONE AND starts_at <= $now AND expires_at > $now
+            AND $params.action INSIDE actions
+            AND ($params.path IS NONE OR path = $params.path OR (folder AND string::starts_with($params.path, path + "/")))
+        LIMIT 1);
+    RETURN array::len($found) > 0;
+} COMMENT "Interne : vrai si un accès temporaire en cours de l'appelant (identité ou application de la session, organisation active = tenant) couvre le chemin et l'action ({ tenant, path, action }) : chemin exact, ou dossier dont le chemin est un préfixe suivi de / ; sans path, n'importe quel accès en cours pour l'action. Jamais d'erreur";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_caller (interne)
@@ -66,9 +92,13 @@ DEFINE FUNCTION OVERWRITE fn::secrets_settings_effective($params: object) -> obj
         max_value_bytes: $own.max_value_bytes ?? $base.max_value_bytes ?? 65536,
         default_visibility: $own.default_visibility ?? $base.default_visibility ?? "restricted",
         expiry_warning_days: $own.expiry_warning_days ?? $base.expiry_warning_days ?? 30,
-        tenant_key_rotation_days: $own.tenant_key_rotation_days ?? $base.tenant_key_rotation_days ?? 365
+        tenant_key_rotation_days: $own.tenant_key_rotation_days ?? $base.tenant_key_rotation_days ?? 365,
+        grant_default_duration: $own.grant_default_duration ?? $base.grant_default_duration ?? 8h,
+        grant_max_duration: $own.grant_max_duration ?? $base.grant_max_duration ?? 90d,
+        request_ttl: $own.request_ttl ?? $base.request_ttl ?? 7d,
+        access_request_approvals: $own.access_request_approvals ?? $base.access_request_approvals ?? 1
     };
-} COMMENT "Réglages effectifs ({ tenant }) : organisation, sinon installation, sinon valeurs par défaut (10 versions, 30 jours avant purge, 64 Kio, visibilité restricted, alerte 30 jours avant l'échéance, rotation de la clé d'organisation tous les 365 jours, 0 : désactivée). La protection contre la purge s'applique si l'organisation ou l'installation l'a activée";
+} COMMENT "Réglages effectifs ({ tenant }) : organisation, sinon installation, sinon valeurs par défaut (10 versions, 30 jours avant purge, 64 Kio, visibilité restricted, alerte 30 jours avant l'échéance, rotation de la clé d'organisation tous les 365 jours, 0 : désactivée ; accès temporaire de 8 h par défaut, 90 jours au plus ; demande sans réponse expirée après 7 jours ; 1 approbation pour une demande d'accès). La protection contre la purge s'applique si l'organisation ou l'installation l'a activée";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_tenant_string (interne)

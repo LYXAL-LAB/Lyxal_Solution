@@ -62,6 +62,26 @@ DEFINE FIELD OVERWRITE tenant_key_rotation_days ON TABLE secrets_settings
     ASSERT $value IS NONE OR $value = 0 OR ($value >= 30 AND $value <= 3650)
     COMMENT "Rotation automatique de la clé d'organisation, en jours (30 à 3650 ; 0 : désactivée ; défaut 365)";
 
+DEFINE FIELD OVERWRITE grant_default_duration ON TABLE secrets_settings
+    TYPE option<duration>
+    ASSERT $value IS NONE OR ($value >= 5m AND $value <= 90d)
+    COMMENT "Durée d'un accès temporaire quand elle n'est pas donnée (défaut 8 h)";
+
+DEFINE FIELD OVERWRITE grant_max_duration ON TABLE secrets_settings
+    TYPE option<duration>
+    ASSERT $value IS NONE OR ($value >= 5m AND $value <= 90d)
+    COMMENT "Durée maximale d'un accès temporaire (défaut 90 jours)";
+
+DEFINE FIELD OVERWRITE request_ttl ON TABLE secrets_settings
+    TYPE option<duration>
+    ASSERT $value IS NONE OR ($value >= 1h AND $value <= 30d)
+    COMMENT "Délai avant expiration d'une demande sans réponse (défaut 7 jours)";
+
+DEFINE FIELD OVERWRITE access_request_approvals ON TABLE secrets_settings
+    TYPE option<int>
+    ASSERT $value IS NONE OR ($value >= 1 AND $value <= 5)
+    COMMENT "Approbations requises pour une demande d'accès hors protection (défaut 1)";
+
 DEFINE FIELD OVERWRITE updated_at ON TABLE secrets_settings
     TYPE datetime
     VALUE time::now()

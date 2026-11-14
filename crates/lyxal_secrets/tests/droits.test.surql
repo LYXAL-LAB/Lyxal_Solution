@@ -36,18 +36,19 @@
     DEFINE TABLE OVERWRITE passe SCHEMALESS PERMISSIONS FULL;
 };
 
--- test: permissions et rôles créés par le seed ; organization_admin sans lecture de valeur ni purge
-RETURN (SELECT VALUE code FROM auth_permission WHERE module = "lyxal_secrets" ORDER BY code) == ["secrets.audit.read", "secrets.installation.manage", "secrets.secret.delete", "secrets.secret.list", "secrets.secret.purge", "secrets.secret.restore", "secrets.secret.write", "secrets.settings.manage", "secrets.value.read", "secrets.worker"]
-    AND array::sort((SELECT VALUE ->auth_role_grants->auth_permission.code FROM ONLY auth_role:organization_admin).filter(|$c| string::starts_with($c, "secrets."))) == ["secrets.audit.read", "secrets.secret.delete", "secrets.secret.list", "secrets.secret.restore", "secrets.secret.write", "secrets.settings.manage"]
+-- test: permissions et rôles créés par le seed ; organization_admin sans lecture de valeur, purge ni urgence
+RETURN (SELECT VALUE code FROM auth_permission WHERE module = "lyxal_secrets" ORDER BY code) == ["secrets.access.emergency", "secrets.access.manage", "secrets.audit.read", "secrets.installation.manage", "secrets.secret.delete", "secrets.secret.list", "secrets.secret.purge", "secrets.secret.restore", "secrets.secret.write", "secrets.settings.manage", "secrets.value.read", "secrets.worker"]
+    AND array::sort((SELECT VALUE ->auth_role_grants->auth_permission.code FROM ONLY auth_role:organization_admin).filter(|$c| string::starts_with($c, "secrets."))) == ["secrets.access.manage", "secrets.audit.read", "secrets.secret.delete", "secrets.secret.list", "secrets.secret.restore", "secrets.secret.write", "secrets.settings.manage"]
     AND (SELECT VALUE ->auth_role_grants->auth_permission.code FROM ONLY auth_role:platform_admin).filter(|$c| string::starts_with($c, "secrets.")) == ["secrets.installation.manage"]
-    AND array::len(SELECT * FROM auth_role_grants WHERE out = auth_permission:⟨secrets.worker⟩) == 0;
+    AND array::len(SELECT * FROM auth_role_grants WHERE out = auth_permission:⟨secrets.worker⟩) == 0
+    AND array::len(SELECT * FROM auth_role_grants WHERE out = auth_permission:⟨secrets.access.emergency⟩) == 0;
 
 -- test: rejeu des seeds sans doublon ni erreur
 {
     IF !record::exists(auth_permission:⟨secrets.worker⟩) THEN (
         CREATE auth_permission:⟨secrets.worker⟩ CONTENT { code: "secrets.worker", module: "lyxal_secrets", scope: "installation", description: { fr: "x", en: "x" } }
     ) END;
-    RETURN array::len(SELECT * FROM auth_permission WHERE module = "lyxal_secrets") = 10;
+    RETURN array::len(SELECT * FROM auth_permission WHERE module = "lyxal_secrets") = 12;
 };
 
 -- test: la session système peut tout ; le secret n'a d'existence qu'avec sa portée
@@ -145,7 +146,7 @@ RETURN fn::secrets_settings_set({ tenant: "auth_organization:alpha", max_version
 -- en tant que: admin
 {
     LET $def = fn::secrets_settings_get({ tenant: "auth_organization:alpha" }).data;
-    RETURN $def.own IS NONE AND $def.effective = { max_versions: 10, deleted_retention_days: 30, purge_protection: false, max_value_bytes: 65536, default_visibility: "restricted", expiry_warning_days: 30, tenant_key_rotation_days: 365 };
+    RETURN $def.own IS NONE AND $def.effective = { max_versions: 10, deleted_retention_days: 30, purge_protection: false, max_value_bytes: 65536, default_visibility: "restricted", expiry_warning_days: 30, tenant_key_rotation_days: 365, grant_default_duration: 8h, grant_max_duration: 90d, request_ttl: 7d, access_request_approvals: 1 };
 };
 
 -- test: l'installation règle ses valeurs, héritées par les organisations

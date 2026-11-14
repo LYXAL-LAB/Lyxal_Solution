@@ -2,7 +2,7 @@
 
 use lyxal_surreal::SurrealValue;
 
-use super::types::{SecretsDatetime, SecretsRecordId};
+use super::types::{SecretsDatetime, SecretsDuration, SecretsRecordId};
 
 /// Paramètres de `fn::secrets_settings_get`.
 #[derive(Debug, Clone, Default, SurrealValue)]
@@ -34,6 +34,14 @@ pub struct StoredSettings {
     pub expiry_warning_days: Option<i64>,
     /// Rotation automatique des clés d'organisation, en jours (0 : désactivée).
     pub tenant_key_rotation_days: Option<i64>,
+    /// Durée par défaut d'un accès temporaire.
+    pub grant_default_duration: Option<SecretsDuration>,
+    /// Durée maximale d'un accès temporaire.
+    pub grant_max_duration: Option<SecretsDuration>,
+    /// Échéance d'une demande sans réponse.
+    pub request_ttl: Option<SecretsDuration>,
+    /// Approbations requises pour une demande d'accès.
+    pub access_request_approvals: Option<i64>,
     /// Dernière modification.
     pub updated_at: SecretsDatetime,
 }
@@ -55,6 +63,14 @@ pub struct EffectiveSettings {
     pub expiry_warning_days: i64,
     /// Rotation automatique des clés d'organisation, en jours (0 : désactivée ; défaut 365).
     pub tenant_key_rotation_days: i64,
+    /// Durée par défaut d'un accès temporaire (défaut 8 heures).
+    pub grant_default_duration: SecretsDuration,
+    /// Durée maximale d'un accès temporaire (défaut 90 jours).
+    pub grant_max_duration: SecretsDuration,
+    /// Échéance d'une demande sans réponse (défaut 7 jours).
+    pub request_ttl: SecretsDuration,
+    /// Approbations requises pour une demande d'accès (défaut 1).
+    pub access_request_approvals: i64,
 }
 
 /// Résultat de `fn::secrets_settings_get`.
@@ -86,6 +102,14 @@ pub struct SettingsSetParams {
     pub expiry_warning_days: Option<i64>,
     /// Rotation automatique des clés d'organisation, en jours (30 à 3650 ; 0 : désactivée).
     pub tenant_key_rotation_days: Option<i64>,
+    /// Durée par défaut d'un accès temporaire (5 minutes à 90 jours).
+    pub grant_default_duration: Option<SecretsDuration>,
+    /// Durée maximale d'un accès temporaire (5 minutes à 90 jours).
+    pub grant_max_duration: Option<SecretsDuration>,
+    /// Échéance d'une demande sans réponse (1 heure à 30 jours).
+    pub request_ttl: Option<SecretsDuration>,
+    /// Approbations requises pour une demande d'accès (1 à 5).
+    pub access_request_approvals: Option<i64>,
     /// Champs à effacer (dont `tenant_key_rotation_days` : retour au défaut de 365 jours).
     pub clear: Vec<String>,
 }

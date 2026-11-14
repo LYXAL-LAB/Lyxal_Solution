@@ -4,7 +4,7 @@
 -- ============================================================================
 -- Rejouable et non destructif : permissions et attributions créées seulement si elles n'existent
 -- pas. Moindre privilège : organization_admin ne reçoit ni secrets.value.read ni
--- secrets.secret.purge, attribuées explicitement ; secrets.worker n'est attribuée à aucun rôle
+-- secrets.secret.purge, attribuées explicitement, ni secrets.access.emergency (aucun rôle) ; secrets.worker n'est attribuée à aucun rôle
 -- (compte de service du worker).
 
 IF !record::exists(auth_permission:⟨secrets.secret.list⟩) THEN (
@@ -41,6 +41,18 @@ IF !record::exists(auth_permission:⟨secrets.settings.manage⟩) THEN (
 
 IF !record::exists(auth_permission:⟨secrets.installation.manage⟩) THEN (
     CREATE auth_permission:⟨secrets.installation.manage⟩ CONTENT { code: "secrets.installation.manage", module: "lyxal_secrets", scope: "installation", description: { fr: "Gérer les secrets, le journal et les réglages du coffre-fort de l'installation", en: "Manage the installation vault secrets, journal and settings" } }
+) END;
+
+IF !record::exists(auth_permission:⟨secrets.access.manage⟩) THEN (
+    CREATE auth_permission:⟨secrets.access.manage⟩ CONTENT { code: "secrets.access.manage", module: "lyxal_secrets", scope: "organization", description: { fr: "Accorder et retirer des accès temporaires, approuver ou refuser les demandes, protéger des secrets", en: "Grant and revoke temporary access, approve or reject requests, protect secrets" } }
+) END;
+
+IF !record::exists(auth_permission:⟨secrets.access.emergency⟩) THEN (
+    CREATE auth_permission:⟨secrets.access.emergency⟩ CONTENT { code: "secrets.access.emergency", module: "lyxal_secrets", scope: "organization", description: { fr: "S'accorder un accès d'urgence d'une heure au plus ou appliquer un changement protégé avant les approbations (tracé et signalé)", en: "Grant oneself emergency access for one hour at most or apply a protected change before approvals (logged and reported)" } }
+) END;
+
+IF array::len(SELECT VALUE id FROM auth_role_grants WHERE in = auth_role:organization_admin AND out = auth_permission:⟨secrets.access.manage⟩) = 0 THEN (
+    RELATE auth_role:organization_admin->auth_role_grants->auth_permission:⟨secrets.access.manage⟩
 ) END;
 
 IF !record::exists(auth_permission:⟨secrets.worker⟩) THEN (

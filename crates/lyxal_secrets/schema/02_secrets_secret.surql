@@ -11,12 +11,12 @@ DEFINE TABLE OVERWRITE secrets_secret
     TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
-        FOR select WHERE fn::secrets_can({ action: "list", tenant: tenant })
-            OR fn::secrets_can({ action: "read_value", tenant: tenant })
+        FOR select WHERE fn::secrets_can({ action: "list", tenant: tenant, path: path })
+            OR fn::secrets_can({ action: "read_value", tenant: tenant, path: path })
             OR fn::secrets_can({ action: "worker", tenant: tenant })
-        FOR create WHERE fn::secrets_can({ action: "write", tenant: tenant })
-        FOR update WHERE fn::secrets_can({ action: "write", tenant: tenant })
-            OR fn::secrets_can({ action: "delete", tenant: tenant })
+        FOR create WHERE fn::secrets_can({ action: "write", tenant: tenant, path: path })
+        FOR update WHERE fn::secrets_can({ action: "write", tenant: tenant, path: path })
+            OR fn::secrets_can({ action: "delete", tenant: tenant, path: path })
             OR fn::secrets_can({ action: "restore", tenant: tenant })
             OR fn::secrets_can({ action: "worker", tenant: tenant })
         FOR delete WHERE fn::secrets_can({ action: "purge", tenant: tenant })

@@ -8,7 +8,6 @@
 
 | Lot | Contenu |
 | :- | :--- |
-| 4 | Accès avancés : accès temporaires par chemin, demandes d'accès et approbation des changements, accès d'urgence tracé |
 | 5 | Hôte : routes HTTP, révélation avec double facteur, partage à usage unique |
 | 6 | Clôture : audit, procédures (sauvegarde, clé maîtresse, urgence, compromission) |
 
@@ -16,6 +15,8 @@
 
 * Rotateurs des services extérieurs, livrés par les modules qui leur parlent (`lyxal_notification`,
   `lyxal_connect`).
+* Portées d'accès par motifs (`*/smtp/**`) : comparaison de motifs à ajouter à `lyxal_core`
+  (extension à valider).
 * Secrets dynamiques (identifiants créés à la demande, avec bail).
 * Synchronisation vers AWS, Azure, Google ou GitHub.
 * Références entre secrets.

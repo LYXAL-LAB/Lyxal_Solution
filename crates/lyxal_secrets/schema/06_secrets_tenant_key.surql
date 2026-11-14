@@ -19,6 +19,7 @@ DEFINE TABLE OVERWRITE secrets_tenant_key
         -- la clé scellée reste illisible (champ wrapped) ; aucune écriture utilisateur
         FOR select WHERE fn::secrets_can({ action: "write", tenant: tenant })
             OR fn::secrets_can({ action: "list", tenant: tenant })
+            OR (tenant IS NOT NONE AND fn::secrets_grant_covers({ tenant: tenant, action: "write" }))
             OR fn::secrets_can({ action: "worker", tenant: tenant })
         FOR create, update, delete NONE
     COMMENT "Clé de chiffrement d'une organisation, scellée par la clé maîtresse ; aucune écriture utilisateur, clé scellée illisible";
