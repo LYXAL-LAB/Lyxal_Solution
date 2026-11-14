@@ -34,7 +34,10 @@ THEN {
             grant_default_duration: $after.grant_default_duration,
             grant_max_duration: $after.grant_max_duration,
             request_ttl: $after.request_ttl,
-            access_request_approvals: $after.access_request_approvals
+            access_request_approvals: $after.access_request_approvals,
+            share_default_ttl: $after.share_default_ttl,
+            share_max_ttl: $after.share_max_ttl,
+            share_max_views: $after.share_max_views
         }
     });
 };
@@ -423,4 +426,57 @@ THEN {
         metadata: {}
     });
     IF !$published.ok { THROW $published.error.code; };
+};
+
+-- ----------------------------------------------------------------------------
+-- Partages : garde, journal et bus
+-- ----------------------------------------------------------------------------
+
+DEFINE EVENT OVERWRITE secrets_share_guard ON TABLE secrets_share
+WHEN $event IN ["CREATE", "UPDATE"]
+THEN {
+    LET $refusal = fn::secrets_share_refusal($event, $before, $after);
+    IF $refusal IS NOT NONE { THROW $refusal; };
+};
+
+DEFINE EVENT OVERWRITE secrets_share_journal ON TABLE secrets_share
+WHEN $event = "CREATE" OR ($event = "UPDATE" AND ($before.state != $after.state OR $before.views != $after.views OR $before.failed_attempts != $after.failed_attempts))
+THEN {
+    -- Une ouverture est journalisée et publiée ; une dernière ouverture aussi comme épuisement
+    LET $actions = IF $event = "CREATE" { ["share.create"] }
+        ELSE {
+            array::concat(
+                IF $after.views != $before.views { ["share.open"] } ELSE IF $after.failed_attempts != $before.failed_attempts AND $after.state = "active" { ["share.fail"] } ELSE { [] },
+                IF $after.state != $before.state { [{ consumed: "share.consume", expired: "share.expire", revoked: "share.revoke", destroyed: "share.destroy" }[$after.state]] } ELSE { [] }
+            )
+        };
+    LET $path = IF $after.secret IS NONE { NONE } ELSE { (SELECT VALUE path FROM ONLY $after.secret) };
+    FOR $action IN $actions {
+        fn::secrets_audit_write({
+            tenant: $after.tenant,
+            action: $action,
+            outcome: IF $action IN ["share.fail", "share.destroy"] { "failure" } ELSE { "success" },
+            secret: $after.secret,
+            path: $path,
+            version: $after.number,
+            details: { share: <string> $after.id, views: $after.views, max_views: $after.max_views, failed_attempts: $after.failed_attempts,
+                members_only: $after.members_only, protected: $after.protected, expires_at: $after.expires_at }
+        });
+        LET $event_type = { "share.create": "secrets.share.created", "share.open": "secrets.share.opened", "share.consume": "secrets.share.consumed",
+            "share.expire": "secrets.share.expired", "share.revoke": "secrets.share.revoked", "share.destroy": "secrets.share.destroyed" }[$action];
+        IF $event_type IS NOT NONE {
+            LET $published = fn::event_publish({
+                event_id: rand::uuid::v7(),
+                event_type: $event_type,
+                producer: "lyxal_secrets",
+                source: $after.id,
+                payload: { share_id: <string> $after.id, tenant: fn::secrets_tenant_string($after.tenant),
+                    secret_id: IF $after.secret IS NONE { NONE } ELSE { <string> $after.secret }, path: $path,
+                    author: IF $after.created_identity IS NOT NONE { <string> $after.created_identity } ELSE IF $after.created_application IS NOT NONE { <string> $after.created_application } ELSE { NONE },
+                    views: $after.views, max_views: $after.max_views, note: $after.note },
+                metadata: {}
+            });
+            IF !$published.ok { THROW $published.error.code; };
+        };
+    };
 };

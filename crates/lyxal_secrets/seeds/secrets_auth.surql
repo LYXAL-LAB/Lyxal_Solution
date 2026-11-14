@@ -55,6 +55,14 @@ IF array::len(SELECT VALUE id FROM auth_role_grants WHERE in = auth_role:organiz
     RELATE auth_role:organization_admin->auth_role_grants->auth_permission:⟨secrets.access.manage⟩
 ) END;
 
+IF !record::exists(auth_permission:⟨secrets.share.create⟩) THEN (
+    CREATE auth_permission:⟨secrets.share.create⟩ CONTENT { code: "secrets.share.create", module: "lyxal_secrets", scope: "organization", description: { fr: "Créer, lister et retirer des partages à usage unique (copie d'un secret qu'on peut lire, ou texte saisi)", en: "Create, list and revoke one-time shares (copy of a readable secret, or typed text)" } }
+) END;
+
+IF array::len(SELECT VALUE id FROM auth_role_grants WHERE in = auth_role:organization_admin AND out = auth_permission:⟨secrets.share.create⟩) = 0 THEN (
+    RELATE auth_role:organization_admin->auth_role_grants->auth_permission:⟨secrets.share.create⟩
+) END;
+
 IF !record::exists(auth_permission:⟨secrets.worker⟩) THEN (
     CREATE auth_permission:⟨secrets.worker⟩ CONTENT { code: "secrets.worker", module: "lyxal_secrets", scope: "installation", description: { fr: "Compte de service du coffre-fort : purge à échéance, rescellement", en: "Vault service account: due purge, resealing" } }
 ) END;

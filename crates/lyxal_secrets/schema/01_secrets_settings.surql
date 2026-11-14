@@ -82,6 +82,21 @@ DEFINE FIELD OVERWRITE access_request_approvals ON TABLE secrets_settings
     ASSERT $value IS NONE OR ($value >= 1 AND $value <= 5)
     COMMENT "Approbations requises pour une demande d'accès hors protection (défaut 1)";
 
+DEFINE FIELD OVERWRITE share_default_ttl ON TABLE secrets_settings
+    TYPE option<duration>
+    ASSERT $value IS NONE OR ($value >= 5m AND $value <= 30d)
+    COMMENT "Durée d'un partage quand elle n'est pas donnée (défaut 24 h)";
+
+DEFINE FIELD OVERWRITE share_max_ttl ON TABLE secrets_settings
+    TYPE option<duration>
+    ASSERT $value IS NONE OR ($value >= 5m AND $value <= 30d)
+    COMMENT "Durée maximale d'un partage (défaut 7 jours)";
+
+DEFINE FIELD OVERWRITE share_max_views ON TABLE secrets_settings
+    TYPE option<int>
+    ASSERT $value IS NONE OR ($value >= 1 AND $value <= 10)
+    COMMENT "Ouvertures maximales d'un partage (défaut 10)";
+
 DEFINE FIELD OVERWRITE updated_at ON TABLE secrets_settings
     TYPE datetime
     VALUE time::now()
