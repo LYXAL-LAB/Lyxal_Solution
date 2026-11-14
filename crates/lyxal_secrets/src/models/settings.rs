@@ -32,6 +32,8 @@ pub struct StoredSettings {
     pub default_visibility: Option<String>,
     /// Alerte avant échéance, en jours.
     pub expiry_warning_days: Option<i64>,
+    /// Rotation automatique des clés d'organisation, en jours (0 : désactivée).
+    pub tenant_key_rotation_days: Option<i64>,
     /// Dernière modification.
     pub updated_at: SecretsDatetime,
 }
@@ -51,6 +53,8 @@ pub struct EffectiveSettings {
     pub default_visibility: String,
     /// Alerte avant échéance, en jours.
     pub expiry_warning_days: i64,
+    /// Rotation automatique des clés d'organisation, en jours (0 : désactivée ; défaut 365).
+    pub tenant_key_rotation_days: i64,
 }
 
 /// Résultat de `fn::secrets_settings_get`.
@@ -80,6 +84,8 @@ pub struct SettingsSetParams {
     pub default_visibility: Option<String>,
     /// Alerte avant échéance, en jours.
     pub expiry_warning_days: Option<i64>,
-    /// Champs à effacer.
+    /// Rotation automatique des clés d'organisation, en jours (30 à 3650 ; 0 : désactivée).
+    pub tenant_key_rotation_days: Option<i64>,
+    /// Champs à effacer (dont `tenant_key_rotation_days` : retour au défaut de 365 jours).
     pub clear: Vec<String>,
 }

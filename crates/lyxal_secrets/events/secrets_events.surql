@@ -29,7 +29,8 @@ THEN {
             purge_protection: $after.purge_protection,
             max_value_bytes: $after.max_value_bytes,
             default_visibility: $after.default_visibility,
-            expiry_warning_days: $after.expiry_warning_days
+            expiry_warning_days: $after.expiry_warning_days,
+            tenant_key_rotation_days: $after.tenant_key_rotation_days
         }
     });
 };
@@ -81,6 +82,11 @@ THEN {
             ELSE { "secret.enable" }
         }
         ELSE IF $before.labels != $after.labels { "version.label" }
+        -- Alertes posées par le worker (fn::secrets_due_mark)
+        ELSE IF $before.expired_notified_at IS NONE AND $after.expired_notified_at IS NOT NONE { "secret.expired" }
+        ELSE IF $before.expiry_warned_at IS NONE AND $after.expiry_warned_at IS NOT NONE { "secret.expiring" }
+        ELSE IF $before.rotation_notified_at IS NONE AND $after.rotation_notified_at IS NOT NONE { "secret.rotation_due" }
+        ELSE IF $before.last_check_at != $after.last_check_at AND $after.last_check_at IS NOT NONE { "rotation.check" }
         ELSE { "secret.update" };
     -- Mise à jour sans changement visible (updated_at seul) : rien à journaliser
     LET $fields = IF $event = "UPDATE" AND $action = "secret.update" {
@@ -97,7 +103,11 @@ THEN {
                 ELSE IF $action = "secret.update" { { fields: $fields } }
                 ELSE IF $action = "secret.delete" { { purge_at: $after.purge_at } }
                 ELSE IF $action = "secret.create" { { kind: $after.kind, visibility: $after.visibility } }
-                ELSE { {} }
+                ELSE IF $action IN ["secret.expiring", "secret.expired"] { { expires_at: $after.expires_at } }
+                ELSE IF $action = "secret.rotation_due" { { next_rotation_at: $after.next_rotation_at } }
+                ELSE IF $action = "rotation.check" { { ok: $after.last_check_ok, code: $after.last_check_code } }
+                ELSE { {} },
+            outcome: IF $action = "rotation.check" AND !$after.last_check_ok { "failure" } ELSE { "success" }
         });
         LET $event_type = {
             "secret.create": "secrets.secret.created",
@@ -107,9 +117,18 @@ THEN {
             "secret.delete": "secrets.secret.deleted",
             "secret.restore": "secrets.secret.restored",
             "secret.purge": "secrets.secret.purged",
-            "version.label": "secrets.version.labeled"
+            "version.label": "secrets.version.labeled",
+            "secret.expiring": "secrets.secret.expiring",
+            "secret.expired": "secrets.secret.expired",
+            "secret.rotation_due": "secrets.secret.rotation_due",
+            "rotation.check": "secrets.rotation.checked"
         }[$action];
-        fn::secrets_publish($event_type, $doc, IF $action = "version.label" { { labels: $after.labels } } ELSE IF $action = "secret.update" { { fields: $fields } } ELSE { {} });
+        fn::secrets_publish($event_type, $doc, IF $action = "version.label" { { labels: $after.labels } }
+            ELSE IF $action = "secret.update" { { fields: $fields } }
+            ELSE IF $action IN ["secret.expiring", "secret.expired"] { { expires_at: <string> $after.expires_at } }
+            ELSE IF $action = "secret.rotation_due" { { next_rotation_at: <string> $after.next_rotation_at } }
+            ELSE IF $action = "rotation.check" { { ok: $after.last_check_ok, code: $after.last_check_code } }
+            ELSE { {} });
     };
 };
 
@@ -235,4 +254,61 @@ THEN {
             requested_by: $after.requested_by
         }
     });
+};
+
+-- ----------------------------------------------------------------------------
+-- Rotations : garde, journal et bus
+-- ----------------------------------------------------------------------------
+-- Démarrage, bascule, échec et annulation sont publiés ; les étapes intermédiaires, les nouveaux
+-- essais et les réservations du worker sont journalisés seulement (réservation : rien).
+
+DEFINE EVENT OVERWRITE secrets_rotation_guard ON TABLE secrets_rotation
+WHEN $event IN ["CREATE", "UPDATE"]
+THEN {
+    LET $refusal = fn::secrets_rotation_refusal($event, $before, $after);
+    IF $refusal IS NOT NONE { THROW $refusal; };
+};
+
+DEFINE EVENT OVERWRITE secrets_rotation_journal ON TABLE secrets_rotation
+WHEN $event = "CREATE" OR ($event = "UPDATE" AND ($before.state != $after.state OR $before.attempts != $after.attempts))
+THEN {
+    LET $secret = (SELECT id, tenant, path FROM ONLY $after.secret);
+    LET $action = IF $event = "CREATE" { "rotation.start" }
+        ELSE IF $before.state = $after.state { "rotation.retry" }
+        ELSE IF $after.state = "succeeded" { "rotation.succeed" }
+        ELSE IF $after.state = "failed" { "rotation.fail" }
+        ELSE IF $after.state = "cancelled" { "rotation.cancel" }
+        ELSE { "rotation.step" };
+    fn::secrets_audit_write({
+        tenant: $secret.tenant,
+        action: $action,
+        outcome: IF $action IN ["rotation.fail", "rotation.retry"] { "failure" } ELSE { "success" },
+        secret: $secret.id,
+        path: $secret.path,
+        version: $after.pending_number,
+        details: {
+            rotation: <string> $after.id,
+            state: $after.state,
+            emergency: $after.emergency,
+            attempts: $after.attempts,
+            code: $after.last_error,
+            next_attempt_at: $after.next_attempt_at,
+            reason: IF $action = "rotation.start" { $after.reason } ELSE { NONE }
+        }
+    });
+    LET $event_type = {
+        "rotation.start": "secrets.rotation.started",
+        "rotation.succeed": "secrets.rotation.succeeded",
+        "rotation.fail": "secrets.rotation.failed",
+        "rotation.cancel": "secrets.rotation.cancelled"
+    }[$action];
+    IF $event_type IS NOT NONE {
+        fn::secrets_publish($event_type, $secret, {
+            rotation: <string> $after.id,
+            emergency: $after.emergency,
+            number: $after.pending_number,
+            previous_number: $after.previous_number,
+            code: $after.last_error
+        });
+    };
 };

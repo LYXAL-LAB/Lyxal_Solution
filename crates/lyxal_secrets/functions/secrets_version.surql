@@ -24,10 +24,14 @@ DEFINE FUNCTION OVERWRITE fn::secrets_version_create_refusal($after: object) -> 
     IF !$caller.system AND ($after.created_by != $caller.identity OR $after.created_by_application != $caller.application) {
         RETURN "SECRETS_PERMISSION_DENIED";
     };
+    -- Sans droit d'écriture, le worker n'ajoute une version que pendant une rotation à l'étape started
+    IF !fn::secrets_can({ action: "write", tenant: $after.tenant }) AND !fn::secrets_rotation_started($after.secret) {
+        RETURN "SECRETS_PERMISSION_DENIED";
+    };
     -- Scellée par la clé active de l'organisation : une clé retirée ou détruite entre-temps est refusée
     IF !fn::secrets_key_is_active($after.scope_key, $after.key_id) { RETURN "SECRETS_TENANT_KEY_CONFLICT"; };
     RETURN NONE;
-} COMMENT "Interne : refus de création d'une version ($after) : secret existant et non supprimé, même organisation, version active avec enveloppe, numéro = dernière version + 1, auteur = appelant, scellée par la clé active de l'organisation. NONE ou code d'erreur";
+} COMMENT "Interne : refus de création d'une version ($after) : secret existant et non supprimé, même organisation, version active avec enveloppe, numéro = dernière version + 1, auteur = appelant, écriture ou worker pendant une rotation à l'étape started, scellée par la clé active de l'organisation. NONE ou code d'erreur";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_version_update_refusal (interne, garde de modification)
@@ -105,7 +109,11 @@ DEFINE FUNCTION OVERWRITE fn::secrets_version_add($params: object) {
     IF string::split($p.envelope, ":")[2] != $p.key_id { RETURN fn::error_result("SECRETS_ENVELOPE_INVALID", $p.language, { key_id: $p.key_id }); };
     LET $secret = (SELECT * FROM ONLY $p.secret);
     IF $secret == NONE { RETURN fn::error_result("SECRETS_SECRET_NOT_FOUND", $p.language, { secret: <string> $p.secret }); };
-    IF !fn::secrets_can({ action: "write", tenant: $secret.tenant }) { RETURN fn::error_result("SECRETS_PERMISSION_DENIED", $p.language, {}); };
+    -- Le worker écrit seulement la nouvelle valeur (pending) d'une rotation en cours
+    IF !fn::secrets_can({ action: "write", tenant: $secret.tenant })
+        AND !($p.stage = "pending" AND fn::secrets_can({ action: "worker", tenant: $secret.tenant }) AND fn::secrets_rotation_started($secret.id)) {
+        RETURN fn::error_result("SECRETS_PERMISSION_DENIED", $p.language, {});
+    };
     IF $secret.state = "deleted" { RETURN fn::error_result("SECRETS_SECRET_DELETED", $p.language, { secret: <string> $secret.id }); };
     IF $p.number != $secret.latest_version + 1 {
         RETURN fn::error_result("SECRETS_VERSION_CONFLICT", $p.language, { expected: $secret.latest_version + 1, number: $p.number });
@@ -138,7 +146,8 @@ DEFINE FUNCTION OVERWRITE fn::secrets_version_add($params: object) {
     LET $updated = (UPDATE ONLY $secret.id SET
         latest_version = $p.number,
         labels = $labels,
-        next_rotation_at = IF $p.stage = "current" AND rotation_period IS NOT NONE { time::now() + rotation_period } ELSE { next_rotation_at });
+        next_rotation_at = IF $p.stage = "current" AND rotation_period IS NOT NONE { time::now() + rotation_period } ELSE { next_rotation_at },
+        rotation_notified_at = IF $p.stage = "current" { NONE } ELSE { rotation_notified_at });
     IF $updated == NONE { RETURN fn::error_result("SECRETS_WRITE_FORBIDDEN", $p.language, { table: "secrets_secret" }); };
     -- Conservation : au-delà du nombre de versions, les plus anciennes sans étiquette sont détruites
     LET $max = fn::secrets_settings_effective({ tenant: $secret.tenant }).max_versions;
@@ -155,7 +164,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_version_add($params: object) {
         labels: $labels,
         destroyed: $doomed
     });
-} COMMENT "Ajoute une version scellée ({ secret, number (suivant attendu), envelope (enc:v2:<key_id>:…), key_id, keys (noms des clés d'une valeur JSON), stage : current (défaut, l'ancienne current devient previous) ou pending }). Numéro différent du suivant : SECRETS_VERSION_CONFLICT ; clé qui n'est plus la clé active de l'organisation : SECRETS_TENANT_KEY_CONFLICT (le service relit et rescelle). Au-delà du nombre de versions conservées, les plus anciennes sans étiquette sont détruites. Appelée par le service Rust, qui seul scelle. Droit : écriture";
+} COMMENT "Ajoute une version scellée ({ secret, number (suivant attendu), envelope (enc:v2:<key_id>:…), key_id, keys (noms des clés d'une valeur JSON), stage : current (défaut, l'ancienne current devient previous) ou pending }). Numéro différent du suivant : SECRETS_VERSION_CONFLICT ; clé qui n'est plus la clé active de l'organisation : SECRETS_TENANT_KEY_CONFLICT (le service relit et rescelle). Au-delà du nombre de versions conservées, les plus anciennes sans étiquette sont détruites. Appelée par le service Rust, qui seul scelle. Droit : écriture ; le worker écrit seulement la version pending d'une rotation à l'étape started";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_version_list
@@ -221,7 +230,8 @@ DEFINE FUNCTION OVERWRITE fn::secrets_version_label($params: object) {
         RETURN fn::error_result($code, $p.language, { label: $p.label, number: $p.number });
     };
     IF array::len(object::keys($labels)) > 20 { RETURN fn::error_result("SECRETS_LABEL_INVALID", $p.language, { label: $p.label, max_labels: 20 }); };
-    LET $updated = (UPDATE ONLY $secret.id SET labels = $labels);
+    LET $updated = (UPDATE ONLY $secret.id SET labels = $labels,
+        rotation_notified_at = IF $labels.current != $secret.labels.current { NONE } ELSE { rotation_notified_at });
     IF $updated == NONE { RETURN fn::error_result("SECRETS_WRITE_FORBIDDEN", $p.language, { table: "secrets_secret" }); };
     RETURN fn::result_ok({ labels: $updated.labels });
 } COMMENT "Pose une étiquette sur une version non détruite, ou la retire ({ secret, label, number, remove }). Déplacer current pose previous sur l'ancienne current (retour arrière : current sur une version antérieure). current ne se retire pas ; 20 étiquettes au plus. Droit : écriture";

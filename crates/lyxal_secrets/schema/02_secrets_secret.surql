@@ -18,6 +18,7 @@ DEFINE TABLE OVERWRITE secrets_secret
         FOR update WHERE fn::secrets_can({ action: "write", tenant: tenant })
             OR fn::secrets_can({ action: "delete", tenant: tenant })
             OR fn::secrets_can({ action: "restore", tenant: tenant })
+            OR fn::secrets_can({ action: "worker", tenant: tenant })
         FOR delete WHERE fn::secrets_can({ action: "purge", tenant: tenant })
             OR fn::secrets_can({ action: "worker", tenant: tenant })
     COMMENT "Fiche d'un secret : chemin, type, propriétaire, consommateurs, étiquettes, état ; jamais de valeur";
@@ -101,6 +102,35 @@ DEFINE FIELD OVERWRITE next_rotation_at ON TABLE secrets_secret
     TYPE option<datetime>
     COMMENT "Prochaine rotation : date de la version courante plus la période";
 
+DEFINE FIELD OVERWRITE last_rotated_at ON TABLE secrets_secret
+    TYPE option<datetime>
+    COMMENT "Dernière rotation réussie";
+
+DEFINE FIELD OVERWRITE expiry_warned_at ON TABLE secrets_secret
+    TYPE option<datetime>
+    COMMENT "Alerte « échéance proche » envoyée (remise à zéro quand l'échéance change)";
+
+DEFINE FIELD OVERWRITE expired_notified_at ON TABLE secrets_secret
+    TYPE option<datetime>
+    COMMENT "Alerte « échéance atteinte » envoyée (remise à zéro quand l'échéance change)";
+
+DEFINE FIELD OVERWRITE rotation_notified_at ON TABLE secrets_secret
+    TYPE option<datetime>
+    COMMENT "Rappel « rotation due » envoyé (remis à zéro quand une nouvelle version devient courante)";
+
+DEFINE FIELD OVERWRITE last_check_at ON TABLE secrets_secret
+    TYPE option<datetime>
+    COMMENT "Dernier essai sans bascule (le rotateur a testé la valeur en service)";
+
+DEFINE FIELD OVERWRITE last_check_ok ON TABLE secrets_secret
+    TYPE option<bool>
+    COMMENT "Résultat du dernier essai sans bascule";
+
+DEFINE FIELD OVERWRITE last_check_code ON TABLE secrets_secret
+    TYPE option<string>
+    ASSERT $value IS NONE OR (string::len($value) >= 1 AND string::len($value) <= 128)
+    COMMENT "Code d'erreur du dernier essai en échec, jamais de valeur";
+
 DEFINE FIELD OVERWRITE state ON TABLE secrets_secret
     TYPE string
     DEFAULT "active"
@@ -147,3 +177,5 @@ DEFINE FIELD OVERWRITE updated_at ON TABLE secrets_secret
 
 DEFINE INDEX OVERWRITE secrets_secret_path ON TABLE secrets_secret FIELDS scope_key, path UNIQUE;
 DEFINE INDEX OVERWRITE secrets_secret_state ON TABLE secrets_secret FIELDS state, purge_at;
+DEFINE INDEX OVERWRITE secrets_secret_expiry ON TABLE secrets_secret FIELDS expires_at;
+DEFINE INDEX OVERWRITE secrets_secret_rotation ON TABLE secrets_secret FIELDS next_rotation_at;

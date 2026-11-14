@@ -11,14 +11,18 @@ use surrealdb::Surreal;
 
 use crate::models::{
     AuditDenied, AuditDeniedParams, AuditList, AuditListParams, AuditReport, AuditVerifyParams,
-    CallerContext, CallerContextParams, LabelsResult, PurgeDueParams, PurgeReport, ReadBeginParams,
-    ReadEnvelope, ReadTicket, ReadTicketRef, Resealed, RewrapList, RewrapListParams, RotateAllowed,
-    SecretCreateParams, SecretGetParams, SecretList, SecretListParams, SecretPurged, SecretRecord,
-    SecretRefParams, SecretUpdateParams, SecretVersion, SettingsGetParams, SettingsSetParams,
-    SettingsView, StoredSettings, TenantKeyCreateParams, TenantKeyCreated, TenantKeyDestroyParams,
-    TenantKeyDestroyed, TenantKeyRewrapParams, TenantKeyRewrapped, TenantKeyRing, TenantRef,
-    VersionAddParams, VersionAdded, VersionLabelParams, VersionList, VersionListParams,
-    VersionRefParams, VersionResealParams,
+    CallerContext, CallerContextParams, DueList, DueListParams, DueMarkParams, DueMarkResult,
+    LabelsResult, PurgeDueParams, PurgeReport, ReadBeginParams, ReadEnvelope, ReadTicket,
+    ReadTicketRef, Resealed, RewrapList, RewrapListParams, RotateAllowed, RotationBeginParams,
+    RotationCheckParams, RotationCheckResult, RotationClaimParams, RotationClaimed,
+    RotationFailParams, RotationGetParams, RotationLeaseParams, RotationList, RotationRecord,
+    RotationRefParams, RotationStepParams, SecretCreateParams, SecretGetParams, SecretList,
+    SecretListParams, SecretPurged, SecretRecord, SecretRefParams, SecretUpdateParams,
+    SecretVersion, SettingsGetParams, SettingsSetParams, SettingsView, StoredSettings,
+    TenantKeyCreateParams, TenantKeyCreated, TenantKeyDestroyParams, TenantKeyDestroyed,
+    TenantKeyRewrapParams, TenantKeyRewrapped, TenantKeyRing, TenantRef, VersionAddParams,
+    VersionAdded, VersionLabelParams, VersionList, VersionListParams, VersionRefParams,
+    VersionResealParams,
 };
 
 /// Store de `lyxal_secrets` sur un client SurrealDB (`Surreal<Any>`).
@@ -206,5 +210,59 @@ impl SecretsStore {
     /// `fn::secrets_rewrap_list` : travail de rescellement (session système).
     pub(crate) async fn rewrap_list(&self, params: RewrapListParams) -> Call<RewrapList> {
         self.call_fn("secrets_rewrap_list", params).await
+    }
+    /// `fn::secrets_due_list` : échéances à signaler et clés d'organisation à faire tourner
+    /// (worker).
+    pub async fn due_list(&self, params: DueListParams) -> Call<DueList> {
+        self.call_fn("secrets_due_list", params).await
+    }
+
+    /// `fn::secrets_due_mark` : échéance signalée une seule fois (worker).
+    pub async fn due_mark(&self, params: DueMarkParams) -> Call<DueMarkResult> {
+        self.call_fn("secrets_due_mark", params).await
+    }
+
+    /// `fn::secrets_rotation_begin` : rotation démarrée (écriture, ou worker sans urgence).
+    pub async fn rotation_begin(&self, params: RotationBeginParams) -> Call<RotationRecord> {
+        self.call_fn("secrets_rotation_begin", params).await
+    }
+
+    /// `fn::secrets_rotation_claim` : rotations réservées pour les faire avancer (worker).
+    pub async fn rotation_claim(&self, params: RotationClaimParams) -> Call<RotationClaimed> {
+        self.call_fn("secrets_rotation_claim", params).await
+    }
+
+    /// `fn::secrets_rotation_step` : étape franchie par le détenteur de la réservation, qu'elle
+    /// renouvelle (worker).
+    pub async fn rotation_step(&self, params: RotationStepParams) -> Call<RotationRecord> {
+        self.call_fn("secrets_rotation_step", params).await
+    }
+
+    /// `fn::secrets_rotation_finish` : bascule sur la nouvelle version (worker).
+    pub async fn rotation_finish(&self, params: RotationLeaseParams) -> Call<RotationRecord> {
+        self.call_fn("secrets_rotation_finish", params).await
+    }
+
+    /// `fn::secrets_rotation_fail` : nouvel essai planifié ou échec définitif (worker).
+    pub async fn rotation_fail(&self, params: RotationFailParams) -> Call<RotationRecord> {
+        self.call_fn("secrets_rotation_fail", params).await
+    }
+
+    /// `fn::secrets_rotation_cancel` : rotation annulée (écriture).
+    pub async fn rotation_cancel(&self, params: RotationRefParams) -> Call<RotationRecord> {
+        self.call_fn("secrets_rotation_cancel", params).await
+    }
+
+    /// `fn::secrets_rotation_get` : rotation en cours et historique d'un secret (liste).
+    pub async fn rotation_get(&self, params: RotationGetParams) -> Call<RotationList> {
+        self.call_fn("secrets_rotation_get", params).await
+    }
+
+    /// `fn::secrets_rotation_check_record` : résultat d'un essai sans bascule (worker).
+    pub async fn rotation_check_record(
+        &self,
+        params: RotationCheckParams,
+    ) -> Call<RotationCheckResult> {
+        self.call_fn("secrets_rotation_check_record", params).await
     }
 }

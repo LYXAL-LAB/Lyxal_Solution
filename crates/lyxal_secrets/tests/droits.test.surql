@@ -145,7 +145,7 @@ RETURN fn::secrets_settings_set({ tenant: "auth_organization:alpha", max_version
 -- en tant que: admin
 {
     LET $def = fn::secrets_settings_get({ tenant: "auth_organization:alpha" }).data;
-    RETURN $def.own IS NONE AND $def.effective = { max_versions: 10, deleted_retention_days: 30, purge_protection: false, max_value_bytes: 65536, default_visibility: "restricted", expiry_warning_days: 30 };
+    RETURN $def.own IS NONE AND $def.effective = { max_versions: 10, deleted_retention_days: 30, purge_protection: false, max_value_bytes: 65536, default_visibility: "restricted", expiry_warning_days: 30, tenant_key_rotation_days: 365 };
 };
 
 -- test: l'installation règle ses valeurs, héritées par les organisations

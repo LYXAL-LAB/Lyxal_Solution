@@ -7,6 +7,7 @@ mod audit;
 mod caller;
 mod keys;
 mod read;
+mod rotation;
 mod secret;
 mod settings;
 mod types;
@@ -28,6 +29,13 @@ pub use keys::{
 };
 pub(crate) use read::ReadEnvelope;
 pub use read::{ReadBeginParams, ReadTicket, ReadTicketRef};
+pub use rotation::{
+    DueKind, DueList, DueListParams, DueMarkParams, DueMarkResult, DueRotation, DueSecret,
+    DueTenantKey, RotationBeginParams, RotationCheckParams, RotationCheckResult,
+    RotationClaimParams, RotationClaimed, RotationFailParams, RotationGetParams,
+    RotationLeaseParams, RotationList, RotationRecord, RotationRefParams, RotationState,
+    RotationStep, RotationStepParams,
+};
 pub use secret::{
     SecretCreateParams, SecretGetParams, SecretList, SecretListParams, SecretPurged, SecretRecord,
     SecretRefParams, SecretState, SecretUpdateParams,

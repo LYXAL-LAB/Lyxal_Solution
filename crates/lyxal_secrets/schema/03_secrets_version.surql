@@ -18,6 +18,7 @@ DEFINE TABLE OVERWRITE secrets_version
             OR fn::secrets_can({ action: "read_value", tenant: tenant })
             OR fn::secrets_can({ action: "worker", tenant: tenant })
         FOR create WHERE fn::secrets_can({ action: "write", tenant: tenant })
+            OR fn::secrets_can({ action: "worker", tenant: tenant })
         FOR update WHERE fn::secrets_can({ action: "write", tenant: tenant })
             OR fn::secrets_can({ action: "delete", tenant: tenant })
             OR fn::secrets_can({ action: "worker", tenant: tenant })

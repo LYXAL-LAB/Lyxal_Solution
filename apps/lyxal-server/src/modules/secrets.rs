@@ -13,8 +13,8 @@ use crate::error::ServerError;
 use lyxal_crypto::{EnvironmentKeyProvider, KeyId, ResolvedKey};
 use lyxal_runtime::{LyxalModule, LyxalRuntime};
 use lyxal_secrets::{
-    MasterKeys, SecretsClient, SecretsHealthCheck, SecretsMaintenanceWorker, SecretsModule,
-    SecretsStore,
+    MasterKeys, RotatorRegistry, SecretsClient, SecretsHealthCheck, SecretsMaintenanceWorker,
+    SecretsModule, SecretsStore,
 };
 use std::sync::Arc;
 use std::time::Duration;
@@ -129,6 +129,9 @@ pub fn register_services(
     runtime.register_worker(Arc::new(SecretsMaintenanceWorker::new(
         store.clone(),
         master.clone(),
+        // Aucun rotateur pour l'instant : les modules qui parlent aux services extérieurs
+        // inscriront le leur ; sans rotateur, une rotation due ne donne que le rappel
+        RotatorRegistry::new(),
         MAINTENANCE_INTERVAL,
         MAINTENANCE_BATCH,
     )?))?;

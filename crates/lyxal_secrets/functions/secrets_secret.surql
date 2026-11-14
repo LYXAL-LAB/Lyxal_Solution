@@ -35,14 +35,20 @@ DEFINE FUNCTION OVERWRITE fn::secrets_secret_update_refusal($before: object, $af
     LET $owner_moved = ($before.owner != $after.owner AND !($after.owner IS NONE AND $before.owner IS NOT NONE AND !record::exists($before.owner)))
         OR ($before.owner_application != $after.owner_application AND !($after.owner_application IS NONE AND $before.owner_application IS NOT NONE AND !record::exists($before.owner_application)));
     IF $owner_moved AND !$system { RETURN "SECRETS_PERMISSION_DENIED"; };
-    LET $meta = ["kind", "description", "contact", "consumers", "tags", "metadata", "visibility", "expires_at", "rotation_period", "next_rotation_at"];
+    LET $meta = ["kind", "description", "contact", "consumers", "tags", "metadata", "visibility", "expires_at", "rotation_period"];
     LET $meta_changed = array::any($meta, |$f| $before[$f] != $after[$f]);
+    -- Calendrier et alertes : posés par l'écriture ou le worker (rotation, échéances)
+    LET $schedule = ["next_rotation_at", "last_rotated_at", "expiry_warned_at", "expired_notified_at", "rotation_notified_at", "last_check_at", "last_check_ok", "last_check_code"];
+    LET $schedule_changed = array::any($schedule, |$f| $before[$f] != $after[$f]);
     LET $versions_changed = $before.labels != $after.labels OR $before.latest_version != $after.latest_version;
+    LET $writer = fn::secrets_can({ action: "write", tenant: $tenant });
+    LET $worker = fn::secrets_can({ action: "worker", tenant: $tenant });
     LET $deletion_changed = $before.deleted_at != $after.deleted_at OR $before.purge_at != $after.purge_at OR $before.state_before_delete != $after.state_before_delete;
     IF $before.state = $after.state {
-        IF $before.state = "deleted" AND ($meta_changed OR $versions_changed OR ($deletion_changed AND !$system)) { RETURN "SECRETS_SECRET_DELETED"; };
+        IF $before.state = "deleted" AND ($meta_changed OR $versions_changed OR $schedule_changed OR ($deletion_changed AND !$system)) { RETURN "SECRETS_SECRET_DELETED"; };
         IF $deletion_changed AND !$system { RETURN "SECRETS_SECRET_STATE_INVALID"; };
-        IF ($meta_changed OR $versions_changed) AND !fn::secrets_can({ action: "write", tenant: $tenant }) { RETURN "SECRETS_PERMISSION_DENIED"; };
+        IF $meta_changed AND !$writer { RETURN "SECRETS_PERMISSION_DENIED"; };
+        IF ($versions_changed OR $schedule_changed) AND !$writer AND !$worker { RETURN "SECRETS_PERMISSION_DENIED"; };
         IF $versions_changed {
             -- Dernière version : la suivante seulement, et elle doit exister
             IF $after.latest_version != $before.latest_version AND ($after.latest_version != $before.latest_version + 1
@@ -57,7 +63,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_secret_update_refusal($before: object, $af
         };
         RETURN NONE;
     };
-    IF $meta_changed OR $versions_changed { RETURN "SECRETS_SECRET_STATE_INVALID"; };
+    IF $meta_changed OR $versions_changed OR $schedule_changed { RETURN "SECRETS_SECRET_STATE_INVALID"; };
     LET $allowed = { active: ["disabled", "deleted"], disabled: ["active", "deleted"], deleted: ["active", "disabled"] }[$before.state];
     IF $after.state NOTINSIDE $allowed { RETURN "SECRETS_SECRET_STATE_INVALID"; };
     IF $after.state = "deleted" {
@@ -75,7 +81,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_secret_update_refusal($before: object, $af
     };
     IF $deletion_changed { RETURN "SECRETS_SECRET_STATE_INVALID"; };
     RETURN IF fn::secrets_can({ action: "write", tenant: $tenant }) { NONE } ELSE { "SECRETS_PERMISSION_DENIED" };
-} COMMENT "Interne : refus d'une modification de fiche ($before, $after) : propriétaire figé ; fiche supprimée intouchable (la session système peut seulement avancer ou reculer sa date de purge) ; transitions active ↔ disabled (écriture), → deleted (suppression, date de purge posée), deleted → état d'avant (restauration) ; dernière version : la suivante, existante ; étiquettes sur des versions non détruites. NONE ou code d'erreur";
+} COMMENT "Interne : refus d'une modification de fiche ($before, $after) : propriétaire figé ; fiche supprimée intouchable (la session système peut seulement avancer ou reculer sa date de purge) ; métadonnées par l'écriture ; versions, étiquettes, calendrier de rotation et alertes par l'écriture ou le worker ; transitions active ↔ disabled (écriture), → deleted (suppression, date de purge posée), deleted → état d'avant (restauration) ; dernière version : la suivante, existante ; étiquettes sur des versions non détruites. NONE ou code d'erreur";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_secret_delete_refusal (interne, garde de purge)
@@ -193,6 +199,8 @@ DEFINE FUNCTION OVERWRITE fn::secrets_secret_update($params: object) {
     LET $current_at = IF $secret.labels.current IS NONE { NONE } ELSE {
         (SELECT VALUE created_at FROM ONLY secrets_version WHERE secret = $secret.id AND number = $secret.labels.current LIMIT 1)
     };
+    LET $expires = IF "expires_at" IN $p.clear { NONE } ELSE { $p.expires_at ?? $secret.expires_at };
+    LET $next = IF $period IS NONE OR $secret.labels.current IS NONE { NONE } ELSE { ($current_at ?? time::now()) + $period };
     LET $updated = (UPDATE ONLY $secret.id SET
         kind = $p.kind ?? kind,
         description = IF "description" IN $p.clear { NONE } ELSE { $p.description ?? description },
@@ -201,12 +209,16 @@ DEFINE FUNCTION OVERWRITE fn::secrets_secret_update($params: object) {
         tags = IF $p.tags IS NONE { tags } ELSE { array::distinct($p.tags) },
         metadata = $p.metadata ?? metadata,
         visibility = $p.visibility ?? visibility,
-        expires_at = IF "expires_at" IN $p.clear { NONE } ELSE { $p.expires_at ?? expires_at },
+        expires_at = $expires,
         rotation_period = $period,
-        next_rotation_at = IF $period IS NONE OR $secret.labels.current IS NONE { NONE } ELSE { ($current_at ?? time::now()) + $period });
+        next_rotation_at = $next,
+        -- Nouvelle échéance ou nouvelle date de rotation : les alertes repartent
+        expiry_warned_at = IF $expires != $secret.expires_at { NONE } ELSE { expiry_warned_at },
+        expired_notified_at = IF $expires != $secret.expires_at { NONE } ELSE { expired_notified_at },
+        rotation_notified_at = IF $next != $secret.next_rotation_at { NONE } ELSE { rotation_notified_at });
     IF $updated == NONE { RETURN fn::error_result("SECRETS_WRITE_FORBIDDEN", $p.language, { table: "secrets_secret" }); };
     RETURN fn::result_ok(fn::secrets_secret_view($secret.id));
-} COMMENT "Modifie la fiche d'un secret ({ secret, kind, description, contact, consumers, tags, metadata, visibility, expires_at, rotation_period, clear }) : un champ absent est conservé, clear (description, contact, expires_at, rotation_period) efface ; le chemin ne change pas ; prochaine rotation recalculée. Fiche supprimée : SECRETS_SECRET_DELETED. Droit : écriture";
+} COMMENT "Modifie la fiche d'un secret ({ secret, kind, description, contact, consumers, tags, metadata, visibility, expires_at, rotation_period, clear }) : un champ absent est conservé, clear (description, contact, expires_at, rotation_period) efface ; le chemin ne change pas ; prochaine rotation recalculée ; une nouvelle échéance ou date de rotation remet ses alertes à zéro. Fiche supprimée : SECRETS_SECRET_DELETED. Droit : écriture";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_secret_get

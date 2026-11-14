@@ -72,7 +72,8 @@ class SurrealServer:
     """Serveur SurrealDB en mémoire, démarré pour la durée d'un bloc `with`."""
 
     def __init__(self) -> None:
-        self.user, self.password = "core_ci", secrets.token_urlsafe(24)
+        # Préfixe fixe : un mot de passe commençant par « - » serait lu comme une option par la CLI surreal
+        self.user, self.password = "core_ci", "ci" + secrets.token_urlsafe(24)
         self.port = free_port()
         self.auth = base64.b64encode(f"{self.user}:{self.password}".encode()).decode()
         self.process = None

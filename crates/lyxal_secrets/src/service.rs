@@ -13,9 +13,12 @@ use std::collections::BTreeMap;
 use crate::error::{SecretsError, SecretsResult};
 use crate::keys::{MasterKeys, Scope, TenantKeys};
 use crate::models::{
-    AuditDeniedParams, ReadBeginParams, ReadTicketRef, SecretGetParams, SecretRecord,
-    SettingsGetParams, Stage, TenantKeyCreated, TenantRef, VersionAddParams, VersionAdded,
+    AuditDeniedParams, ReadBeginParams, ReadTicketRef, RotationBeginParams, RotationCheckParams,
+    RotationCheckResult, RotationClaimParams, RotationGetParams, RotationRecord, SecretGetParams,
+    SecretRecord, SettingsGetParams, Stage, TenantKeyCreated, TenantRef, VersionAddParams,
+    VersionAdded,
 };
+use crate::rotation::{RotationOutcome, RotationRunner, RotatorRegistry};
 use crate::store::SecretsStore;
 
 /// Essais d'une écriture sans numéro attendu, quand une autre écriture a pris le numéro.
@@ -56,11 +59,23 @@ pub struct RevealedValue {
     pub value: SecretBytes,
 }
 
+/// Rotation demandée maintenant.
+#[derive(Debug, Clone)]
+pub struct RotateRequest {
+    /// Secret (`secrets_secret:<clé>`).
+    pub secret: String,
+    /// Urgence (fuite soupçonnée) : la version en service est désactivée aussitôt.
+    pub emergency: bool,
+    /// Motif (512 caractères au plus).
+    pub reason: Option<String>,
+}
+
 /// Service des valeurs : session de l'appelant et session système de l'hôte.
 #[derive(Clone)]
 pub struct SecretsService {
     caller: SecretsStore,
     keys: TenantKeys,
+    rotators: RotatorRegistry,
 }
 
 impl SecretsService {
@@ -71,7 +86,19 @@ impl SecretsService {
         Self {
             caller,
             keys: TenantKeys::new(system, master),
+            rotators: RotatorRegistry::default(),
         }
+    }
+
+    /// Service qui fait tourner les secrets par ces rotateurs (aucun par défaut).
+    pub fn with_rotators(mut self, rotators: RotatorRegistry) -> Self {
+        self.rotators = rotators;
+        self
+    }
+
+    /// Rotateurs inscrits.
+    pub fn rotators(&self) -> &RotatorRegistry {
+        &self.rotators
     }
 
     /// Store de la session de l'appelant (fiches, versions, journal).
@@ -248,6 +275,102 @@ impl SecretsService {
         self.keys
             .rotate(&scope, allowed.requested_by.as_ref().map(ToSql::to_sql))
             .await
+    }
+
+    /// Rotation demandée maintenant, avec les droits de l'appelant (écriture ; urgence : double
+    /// facteur récent pour une personne). Avec un rotateur pour le secret, la rotation est
+    /// réservée (son jeton sert à chaque étape) et déroulée aussitôt (rendue réussie, en échec,
+    /// ou en attente d'un nouvel essai que le worker reprendra). Sans rotateur : `SECRETS_ROTATOR_UNAVAILABLE` et rien ne
+    /// démarre, sauf en urgence où la version en service est coupée et la rotation échoue
+    /// aussitôt (`SECRETS_ROTATOR_UNAVAILABLE`) : une personne écrira la nouvelle valeur.
+    pub async fn rotate_now(&self, request: RotateRequest) -> SecretsResult<RotationRecord> {
+        let secret = self
+            .caller
+            .secret_get(SecretGetParams::by_id(request.secret.clone()))
+            .await?;
+        let rotator = self.rotators.find(&secret);
+        if rotator.is_none() && !request.emergency {
+            return Err(SecretsError::RotatorUnavailable);
+        }
+        let rotation = self
+            .caller
+            .rotation_begin(RotationBeginParams {
+                secret: secret.id.to_sql(),
+                emergency: Some(request.emergency),
+                reason: request.reason,
+            })
+            .await?;
+        // Réservée pour cet appel ; sans rotateur, l'avancée l'enregistre en échec définitif
+        let system = self.keys.system();
+        let claimed = system
+            .rotation_claim(RotationClaimParams {
+                rotation: Some(rotation.id.to_sql()),
+                ..RotationClaimParams::default()
+            })
+            .await?;
+        let Some(claimed) = claimed.items.into_iter().next() else {
+            // Déjà réservée par un worker : il la déroule
+            return Ok(rotation);
+        };
+        match self.runner().advance(claimed).await? {
+            RotationOutcome::Advanced(done) => Ok(*done),
+            // Reprise par un worker entre-temps : son état actuel
+            RotationOutcome::LeaseLost => Ok(system
+                .rotation_get(RotationGetParams {
+                    secret: secret.id.to_sql(),
+                    limit: None,
+                })
+                .await?
+                .items
+                .into_iter()
+                .find(|item| item.id == rotation.id)
+                .unwrap_or(rotation)),
+        }
+    }
+
+    /// Essai sans bascule : le rotateur teste la valeur en service auprès du service extérieur,
+    /// sans rien changer ; le résultat est enregistré sur la fiche, journalisé et publié. La
+    /// valeur est lue avec les droits de l'appelant (le rotateur annoncé comme consommateur) ;
+    /// l'enregistrement est réservé au worker et à la session système. Sans rotateur :
+    /// `SECRETS_ROTATOR_UNAVAILABLE`.
+    pub async fn check_rotation(&self, secret: &str) -> SecretsResult<RotationCheckResult> {
+        let record = self
+            .caller
+            .secret_get(SecretGetParams::by_id(secret.to_string()))
+            .await?;
+        let rotator = self
+            .rotators
+            .find(&record)
+            .ok_or(SecretsError::RotatorUnavailable)?;
+        let current = self
+            .reveal_as(
+                RevealRequest {
+                    secret: record.id.to_sql(),
+                    label: None,
+                    number: None,
+                },
+                Some(rotator.name().to_string()),
+            )
+            .await?;
+        let tested = rotator.test(&record, &current.value).await;
+        drop(current);
+        Ok(self
+            .caller
+            .rotation_check_record(RotationCheckParams {
+                secret: record.id.to_sql(),
+                ok: tested.is_ok(),
+                code: tested.err().map(|error| error.code),
+            })
+            .await?)
+    }
+
+    /// Exécutant des rotations sur la session système, avec les mêmes clés et rotateurs.
+    pub(crate) fn runner(&self) -> RotationRunner {
+        RotationRunner::from_system(Self {
+            caller: self.keys.system().clone(),
+            keys: self.keys.clone(),
+            rotators: self.rotators.clone(),
+        })
     }
 
     /// Fiche relue après une écriture concurrente.
