@@ -283,6 +283,7 @@ async fn a_members_only_share_needs_a_member_of_the_organization() {
                 .share_open(with(Some(OpenerContext {
                     identity: Some("auth_identity:autre".into()),
                     organization: Some(BETA.into()),
+                    installation_manager: true,
                 })))
                 .await
         ),
@@ -301,6 +302,7 @@ async fn a_members_only_share_needs_a_member_of_the_organization() {
         .share_open(with(Some(OpenerContext {
             identity: Some("auth_identity:partageur".into()),
             organization: Some(ALPHA.into()),
+            installation_manager: false,
         })))
         .await
         .expect("ouverture par un membre");
@@ -312,6 +314,65 @@ async fn a_members_only_share_needs_a_member_of_the_organization() {
             .any(|entry| entry.event["action"] == "share.opener"),
         "{journal:?}"
     );
+}
+
+#[tokio::test]
+async fn an_installation_members_only_share_needs_an_installation_manager() {
+    let bench = bench().await;
+    let created = bench
+        .service
+        .share_create(ShareRequest {
+            tenant: None,
+            members_only: true,
+            ..text(ALPHA, b"installation")
+        })
+        .await
+        .expect("partage de l'installation");
+    // Empreinte : HMAC-SHA256 en hexadécimal (64 caractères)
+    let fingerprint: String = bench
+        .value(&format!(
+            "SELECT VALUE key_fingerprint FROM ONLY {}",
+            created.share.id.to_sql()
+        ))
+        .await;
+    assert_eq!(fingerprint.len(), 64);
+    assert!(fingerprint.bytes().all(|b| b.is_ascii_hexdigit()));
+    let with = |opener: Option<OpenerContext>| ShareOpen {
+        opener,
+        ..open(&created, None, None)
+    };
+    let anyone = &bench.service;
+    // Session sans organisation ni `secrets.installation.manage` : refusé, sans essai compté
+    for opener in [
+        None,
+        Some(OpenerContext {
+            identity: Some("auth_identity:autre".into()),
+            organization: None,
+            installation_manager: false,
+        }),
+    ] {
+        assert_eq!(
+            code(anyone.share_open(with(opener)).await),
+            "SECRETS_SHARE_UNAVAILABLE"
+        );
+    }
+    let failed: i64 = bench
+        .value(&format!(
+            "SELECT VALUE failed_attempts FROM ONLY {}",
+            created.share.id.to_sql()
+        ))
+        .await;
+    assert_eq!(failed, 0);
+
+    let value = anyone
+        .share_open(with(Some(OpenerContext {
+            identity: Some("auth_identity:admin".into()),
+            organization: None,
+            installation_manager: true,
+        })))
+        .await
+        .expect("ouverture par un gestionnaire de l'installation");
+    assert_eq!(value.expose_secret(), b"installation");
 }
 
 #[tokio::test]
