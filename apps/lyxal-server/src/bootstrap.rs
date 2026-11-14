@@ -62,7 +62,8 @@ async fn run_inner() -> Result<(), ServerError> {
         runtime.clone(),
         started.auth,
         started.storage,
-    );
+    )
+    .with_secrets(started.secrets);
     let router = http::build_router(context)?;
 
     let address = config.bind_address();

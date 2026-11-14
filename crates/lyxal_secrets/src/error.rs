@@ -13,6 +13,9 @@ pub(crate) const ROTATOR_UNAVAILABLE: &str = "SECRETS_ROTATOR_UNAVAILABLE";
 /// perdue, étape hors d'ordre).
 pub(crate) const ROTATION_STATE_INVALID: &str = "SECRETS_ROTATION_STATE_INVALID";
 
+/// Code d'erreur : partage indisponible (inconnu, fini, clé ou mot de passe faux), sans détail.
+pub(crate) const SHARE_UNAVAILABLE: &str = "SECRETS_SHARE_UNAVAILABLE";
+
 /// Erreur d'un service de `lyxal_secrets`.
 #[derive(Debug, Error)]
 pub enum SecretsError {
@@ -46,6 +49,10 @@ pub enum SecretsError {
     /// Aucun rotateur inscrit ne gère ce secret.
     #[error("aucun rotateur pour ce secret")]
     RotatorUnavailable,
+    /// Partage inconnu, fini, échu, réservé à une autre organisation, ou ouvert avec une clé ou
+    /// un mot de passe faux : une seule erreur, sans détail.
+    #[error("partage indisponible")]
+    ShareUnavailable,
     /// Rotation sans jeton de réservation : elle doit être réservée
     /// (`fn::secrets_rotation_claim`) avant d'avancer.
     #[error("rotation non réservée")]
@@ -72,6 +79,7 @@ impl SecretsError {
             Self::InvalidRecord(_) => "SECRETS_INVALID_PARAMETERS".to_string(),
             Self::RotatorUnavailable => ROTATOR_UNAVAILABLE.to_string(),
             Self::RotationNotClaimed => ROTATION_STATE_INVALID.to_string(),
+            Self::ShareUnavailable => SHARE_UNAVAILABLE.to_string(),
         }
     }
 
@@ -108,7 +116,8 @@ impl SecretsError {
             | Self::Crypto(_)
             | Self::InvalidRecord(_)
             | Self::RotatorUnavailable
-            | Self::RotationNotClaimed => false,
+            | Self::RotationNotClaimed
+            | Self::ShareUnavailable => false,
         }
     }
 }

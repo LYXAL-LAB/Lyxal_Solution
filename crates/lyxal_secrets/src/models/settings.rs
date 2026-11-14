@@ -42,6 +42,12 @@ pub struct StoredSettings {
     pub request_ttl: Option<SecretsDuration>,
     /// Approbations requises pour une demande d'accès.
     pub access_request_approvals: Option<i64>,
+    /// Durée par défaut d'un partage à usage unique.
+    pub share_default_ttl: Option<SecretsDuration>,
+    /// Durée maximale d'un partage à usage unique.
+    pub share_max_ttl: Option<SecretsDuration>,
+    /// Ouvertures permises au plus pour un partage.
+    pub share_max_views: Option<i64>,
     /// Dernière modification.
     pub updated_at: SecretsDatetime,
 }
@@ -71,6 +77,12 @@ pub struct EffectiveSettings {
     pub request_ttl: SecretsDuration,
     /// Approbations requises pour une demande d'accès (défaut 1).
     pub access_request_approvals: i64,
+    /// Durée par défaut d'un partage à usage unique (défaut 24 heures).
+    pub share_default_ttl: SecretsDuration,
+    /// Durée maximale d'un partage à usage unique (défaut 7 jours).
+    pub share_max_ttl: SecretsDuration,
+    /// Ouvertures permises au plus pour un partage (défaut 10).
+    pub share_max_views: i64,
 }
 
 /// Résultat de `fn::secrets_settings_get`.
@@ -110,6 +122,12 @@ pub struct SettingsSetParams {
     pub request_ttl: Option<SecretsDuration>,
     /// Approbations requises pour une demande d'accès (1 à 5).
     pub access_request_approvals: Option<i64>,
+    /// Durée par défaut d'un partage à usage unique (5 minutes à 30 jours).
+    pub share_default_ttl: Option<SecretsDuration>,
+    /// Durée maximale d'un partage à usage unique (5 minutes à 30 jours).
+    pub share_max_ttl: Option<SecretsDuration>,
+    /// Ouvertures permises au plus pour un partage (1 à 10).
+    pub share_max_views: Option<i64>,
     /// Champs à effacer (dont `tenant_key_rotation_days` : retour au défaut de 365 jours).
     pub clear: Vec<String>,
 }

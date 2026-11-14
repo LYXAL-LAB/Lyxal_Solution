@@ -19,4 +19,6 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 # Tirage des clés d'organisation (même version que lyxal_crypto)
 rand_core = { version = "0.6", features = ["getrandom"] }
+# Clé d'un partage à usage unique rendue dans le lien (base64url sans remplissage)
+base64 = "0.22"
 

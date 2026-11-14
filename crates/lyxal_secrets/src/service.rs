@@ -93,8 +93,8 @@ pub struct RotateRequest {
 /// Service des valeurs : session de l'appelant et session système de l'hôte.
 #[derive(Clone)]
 pub struct SecretsService {
-    caller: SecretsStore,
-    keys: TenantKeys,
+    pub(crate) caller: SecretsStore,
+    pub(crate) keys: TenantKeys,
     rotators: RotatorRegistry,
 }
 

@@ -1,5 +1,5 @@
 //! Module `lyxal_secrets` : implémentation `LyxalModule`, trousseau maître du coffre-fort,
-//! worker de maintenance et sonde de santé.
+//! worker de maintenance, sonde de santé, et service des routes `/secrets/*`.
 //!
 //! La clé maîtresse du coffre-fort est propre au coffre-fort (R1), distincte de la clé
 //! applicative partagée par `lyxal_auth` et `lyxal_notification` : `LYXAL__SECRETS__MASTER_KEY`
@@ -14,7 +14,7 @@ use lyxal_crypto::{EnvironmentKeyProvider, KeyId, ResolvedKey};
 use lyxal_runtime::{LyxalModule, LyxalRuntime};
 use lyxal_secrets::{
     MasterKeys, RotatorRegistry, SecretsClient, SecretsHealthCheck, SecretsMaintenanceWorker,
-    SecretsModule, SecretsStore,
+    SecretsModule, SecretsService, SecretsStore,
 };
 use std::sync::Arc;
 use std::time::Duration;
@@ -36,15 +36,29 @@ pub fn module() -> Arc<dyn LyxalModule> {
     Arc::new(SecretsModule::new())
 }
 
-/// Ce que l'hôte rend aux modules qui liront leurs secrets : la session système et le trousseau
-/// maître du coffre-fort.
+/// Ce que l'hôte rend aux modules qui liront leurs secrets et aux routes `/secrets/*` : la
+/// session système, le trousseau maître du coffre-fort et les rotateurs inscrits.
 #[derive(Clone)]
 pub struct SecretsHost {
     store: SecretsStore,
     master: Option<MasterKeys>,
+    rotators: RotatorRegistry,
 }
 
 impl SecretsHost {
+    /// Service du coffre-fort au nom d'un appelant (`caller` : sa session SurrealDB, authentifiée
+    /// par son jeton), avec la session système, le trousseau maître et les rotateurs de l'hôte.
+    pub fn service(&self, caller: SecretsStore) -> SecretsService {
+        SecretsService::new(caller, self.store.clone(), self.master.clone())
+            .with_rotators(self.rotators.clone())
+    }
+
+    /// Service de l'ouverture d'un lien de partage, qui n'a pas d'appelant : tout passe par la
+    /// session système (`SecretsService::share_open` ne sert qu'elle).
+    pub fn share_opener(&self) -> SecretsService {
+        self.service(self.store.clone())
+    }
+
     /// Client du coffre-fort pour un module hébergé, annoncé comme consommateur (`module`).
     pub fn client(&self, module: &str) -> SecretsClient {
         SecretsClient::new(self.store.clone(), self.master.clone(), module)
@@ -126,12 +140,13 @@ pub fn register_services(
         ),
     }
     let store = SecretsStore::new(client.clone());
+    // Aucun rotateur pour l'instant : les modules qui parlent aux services extérieurs inscriront
+    // le leur ; sans rotateur, une rotation due ne donne que le rappel
+    let rotators = RotatorRegistry::new();
     runtime.register_worker(Arc::new(SecretsMaintenanceWorker::new(
         store.clone(),
         master.clone(),
-        // Aucun rotateur pour l'instant : les modules qui parlent aux services extérieurs
-        // inscriront le leur ; sans rotateur, une rotation due ne donne que le rappel
-        RotatorRegistry::new(),
+        rotators.clone(),
         MAINTENANCE_INTERVAL,
         MAINTENANCE_BATCH,
     )?))?;
@@ -141,5 +156,9 @@ pub fn register_services(
             store.clone(),
             master.clone(),
         )))?;
-    Ok(SecretsHost { store, master })
+    Ok(SecretsHost {
+        store,
+        master,
+        rotators,
+    })
 }
