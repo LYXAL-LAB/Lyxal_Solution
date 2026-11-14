@@ -32,8 +32,9 @@ pub use read::{ReadBeginParams, ReadTicket, ReadTicketRef};
 pub use rotation::{
     DueKind, DueList, DueListParams, DueMarkParams, DueMarkResult, DueRotation, DueSecret,
     DueTenantKey, RotationBeginParams, RotationCheckParams, RotationCheckResult,
-    RotationClaimParams, RotationClaimed, RotationFailParams, RotationGetParams, RotationList,
-    RotationRecord, RotationRefParams, RotationState, RotationStep, RotationStepParams,
+    RotationClaimParams, RotationClaimed, RotationFailParams, RotationGetParams,
+    RotationLeaseParams, RotationList, RotationRecord, RotationRefParams, RotationState,
+    RotationStep, RotationStepParams,
 };
 pub use secret::{
     SecretCreateParams, SecretGetParams, SecretList, SecretListParams, SecretPurged, SecretRecord,

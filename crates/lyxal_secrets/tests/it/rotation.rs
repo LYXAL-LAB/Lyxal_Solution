@@ -1,18 +1,20 @@
 //! Cycle de vie : rotation en quatre étapes sans coupure, nouveaux essais et échec définitif,
 //! reprise d'une rotation interrompue, urgence avec et sans rotateur, alertes et rotations dues
 //! traitées par le worker, essai sans bascule, rotation planifiée des clés d'organisation,
+//! réservation périmée reprise par un autre worker, arrêt du worker pendant une rotation,
 //! aucune valeur dans les erreurs ni les `Debug`.
 
 use async_trait::async_trait;
 use lyxal_crypto::SecretBytes;
-use lyxal_runtime::worker::CancellationToken;
+use lyxal_runtime::worker::{CancellationToken, LyxalWorker, WorkerContext};
+use lyxal_runtime::ModuleContext;
 use lyxal_secrets::models::{
     RotationBeginParams, RotationClaimParams, RotationGetParams, RotationRecord, RotationState,
     RotationStep, RotationStepParams, SecretCreateParams, SecretGetParams, SecretRecord, Stage,
 };
 use lyxal_secrets::{
-    MaintenanceReport, PutValue, RevealRequest, RotateRequest, RotatorError, RotatorRegistry,
-    SecretRotator, SecretsMaintenanceWorker, SecretsService,
+    MaintenanceReport, PutValue, RevealRequest, RotateRequest, RotationOutcome, RotationRunner,
+    RotatorError, RotatorRegistry, SecretRotator, SecretsMaintenanceWorker, SecretsService,
 };
 use lyxal_surreal::ToSql;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -348,6 +350,7 @@ async fn an_interrupted_rotation_resumes_at_the_step_reached() {
         .store
         .rotation_step(RotationStepParams {
             rotation: started.id.to_sql(),
+            lease: claimed.items[0].lease.clone().expect("jeton"),
             step: RotationStep::Created,
             pending_number: Some(pending),
         })
@@ -591,4 +594,189 @@ async fn no_value_appears_in_errors_or_debug() {
         assert!(!text.contains("nouvelle-1"), "{text}");
     }
     assert!(debug[3].contains("lyxal_test_rotator"));
+}
+
+/// Rotation démarrée par la session système, en attente d'un worker.
+async fn started(bench: &Bench, secret: &str) -> RotationRecord {
+    bench
+        .store
+        .rotation_begin(RotationBeginParams {
+            secret: secret.to_string(),
+            emergency: None,
+            reason: None,
+        })
+        .await
+        .expect("démarrage")
+}
+
+async fn claim(bench: &Bench, rotation: &RotationRecord) -> RotationRecord {
+    bench
+        .store
+        .rotation_claim(RotationClaimParams {
+            rotation: Some(rotation.id.to_sql()),
+            ..RotationClaimParams::default()
+        })
+        .await
+        .expect("réservation")
+        .items
+        .pop()
+        .expect("rotation réservée")
+}
+
+#[tokio::test]
+async fn a_stale_reservation_taken_over_no_longer_advances_the_rotation() {
+    let bench = bench().await;
+    let secret = bench.secret(Some(ALPHA), "rot/bail").await;
+    bench.put(&secret, b"ancienne").await;
+    let rotation = started(&bench, &secret).await;
+    let stale = claim(&bench, &rotation).await;
+    // La réservation du premier worker expire ; un second la reprend
+    bench
+        .run(&format!(
+            "UPDATE {} SET locked_until = time::now() - 1s",
+            rotation.id.to_sql()
+        ))
+        .await;
+    let current = claim(&bench, &rotation).await;
+    assert_ne!(stale.lease, current.lease);
+
+    // Le premier worker se réveille avec son ancien jeton : il crée sa valeur, mais l'étape est
+    // refusée ; il s'arrête sans enregistrer d'échec
+    let rotator = Arc::new(TestRotator::default());
+    let runner = RotationRunner::new(
+        bench.store.clone(),
+        Some(bench.master.clone()),
+        registry(&rotator),
+    );
+    let outcome = runner.advance(stale).await.expect("avancée");
+    assert!(matches!(outcome, RotationOutcome::LeaseLost), "{outcome:?}");
+    let after = rotations(&bench, &secret).await.remove(0);
+    assert_eq!(after.state, RotationState::Started, "{after:?}");
+    assert_eq!(after.attempts, 0, "fail non appelé : {after:?}");
+    assert_eq!(after.last_error, None);
+    assert_eq!(after.lease, current.lease);
+    assert_eq!(bench.read(&secret).await, b"ancienne");
+
+    // Le détenteur actuel termine, en reprenant la valeur déjà écrite
+    match runner.advance(current).await.expect("avancée") {
+        RotationOutcome::Advanced(done) => {
+            assert_eq!(done.state, RotationState::Succeeded, "{done:?}")
+        }
+        other => panic!("rotation non terminée : {other:?}"),
+    }
+    assert_eq!(TestRotator::count(&rotator.creates), 1);
+    assert_eq!(bench.read(&secret).await, b"nouvelle-1");
+}
+
+/// Rotateur dont la création n'aboutit jamais (service extérieur muet).
+struct BlockingRotator {
+    entered: tokio::sync::Notify,
+}
+
+#[async_trait]
+impl SecretRotator for BlockingRotator {
+    fn name(&self) -> &str {
+        "lyxal_test_blocking"
+    }
+
+    fn handles(&self, _secret: &SecretRecord) -> bool {
+        true
+    }
+
+    async fn create(
+        &self,
+        _secret: &SecretRecord,
+        _current: Option<&SecretBytes>,
+    ) -> Result<SecretBytes, RotatorError> {
+        self.entered.notify_one();
+        std::future::pending().await
+    }
+
+    async fn install(
+        &self,
+        _secret: &SecretRecord,
+        _new: &SecretBytes,
+    ) -> Result<(), RotatorError> {
+        Ok(())
+    }
+
+    async fn test(&self, _secret: &SecretRecord, _value: &SecretBytes) -> Result<(), RotatorError> {
+        Ok(())
+    }
+}
+
+#[tokio::test]
+async fn the_worker_stops_while_a_rotator_hangs_and_leaves_the_rotation_as_recorded() {
+    let bench = bench().await;
+    let secret = bench.secret(Some(ALPHA), "rot/muet").await;
+    bench.put(&secret, b"ancienne").await;
+    started(&bench, &secret).await;
+    let rotator = Arc::new(BlockingRotator {
+        entered: tokio::sync::Notify::new(),
+    });
+    let mut rotators = RotatorRegistry::new();
+    rotators.register(rotator.clone());
+    let worker = worker(&bench, rotators);
+    let descriptor = worker.descriptor().clone();
+    let cancellation = CancellationToken::new();
+    let context = WorkerContext::new(
+        descriptor.module_id.clone(),
+        descriptor.id.clone(),
+        ModuleContext::new(descriptor.module_id.clone()),
+        cancellation.clone(),
+    );
+    let stopper = async {
+        tokio::time::timeout(Duration::from_secs(30), rotator.entered.notified())
+            .await
+            .expect("rotateur atteint");
+        let asked = tokio::time::Instant::now();
+        cancellation.cancel();
+        asked
+    };
+    let (ran, asked) = tokio::join!(
+        async {
+            let ran = worker.run(context).await;
+            (ran, tokio::time::Instant::now())
+        },
+        stopper
+    );
+    let (ran, stopped) = ran;
+    ran.expect("arrêt propre");
+    assert!(
+        stopped.duration_since(asked) < Duration::from_secs(2),
+        "arrêt en {:?}",
+        stopped.duration_since(asked)
+    );
+    let rotation = rotations(&bench, &secret).await.remove(0);
+    assert_eq!(rotation.state, RotationState::Started, "{rotation:?}");
+    assert_eq!(rotation.attempts, 0);
+    assert_eq!(bench.read(&secret).await, b"ancienne");
+}
+
+#[tokio::test]
+async fn a_passing_begin_failure_leaves_the_reminder_for_the_next_pass() {
+    let bench = bench().await;
+    let mut params = SecretCreateParams::new(Some(ALPHA.to_string()), "rot/plus-tard", "api_key");
+    params.rotation_period = Some(Duration::from_secs(3600).into());
+    let secret = bench.secret_with(params).await;
+    bench.put(&secret, b"valeur").await;
+    bench
+        .run(&format!(
+            "UPDATE {secret} SET next_rotation_at = time::now() - 1m"
+        ))
+        .await;
+    // Démarrage indisponible pour ce test : erreur passagère (master data retentable)
+    bench
+        .run(
+            "DEFINE FUNCTION OVERWRITE fn::secrets_rotation_begin($params: object) {
+                RETURN fn::error_result('SECRETS_ROTATION_TEST_FAILED', 'fr', {});
+            };",
+        )
+        .await;
+    let rotator = Arc::new(TestRotator::default());
+    let report = pass(&bench, registry(&rotator)).await;
+    assert_eq!(report.alerts, 0, "{report:?}");
+    assert_eq!(report.failed, 1, "{report:?}");
+    assert!(fiche(&bench, &secret).await.rotation_notified_at.is_none());
+    assert!(rotations(&bench, &secret).await.is_empty());
 }

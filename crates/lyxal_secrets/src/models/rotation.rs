@@ -71,6 +71,9 @@ pub struct RotationRecord {
     pub next_attempt_at: Option<SecretsDatetime>,
     /// Réservée par un worker jusqu'à cette date.
     pub locked_until: Option<SecretsDatetime>,
+    /// Jeton de la réservation en cours, à présenter à chaque étape (rendu par
+    /// `fn::secrets_rotation_claim`).
+    pub lease: Option<String>,
     /// Code de la dernière erreur.
     pub last_error: Option<String>,
     /// Identité ou application qui l'a démarrée.
@@ -101,6 +104,8 @@ pub struct RotationBeginParams {
 pub struct RotationStepParams {
     /// Rotation (`secrets_rotation:<clé>`).
     pub rotation: String,
+    /// Jeton de la réservation (valide).
+    pub lease: String,
     /// Étape franchie.
     pub step: RotationStep,
     /// Numéro de la version `pending` écrite (obligatoire pour `created`).
@@ -112,6 +117,8 @@ pub struct RotationStepParams {
 pub struct RotationFailParams {
     /// Rotation (`secrets_rotation:<clé>`).
     pub rotation: String,
+    /// Jeton de la réservation (valide).
+    pub lease: String,
     /// Code de l'erreur (jamais de valeur).
     pub code: String,
     /// Nouvel essai permis (défaut vrai) ; faux : échec définitif.
@@ -136,7 +143,16 @@ pub struct RotationClaimed {
     pub items: Vec<RotationRecord>,
 }
 
-/// Paramètres de `fn::secrets_rotation_finish` et `fn::secrets_rotation_cancel`.
+/// Paramètres de `fn::secrets_rotation_finish`.
+#[derive(Debug, Clone, SurrealValue)]
+pub struct RotationLeaseParams {
+    /// Rotation (`secrets_rotation:<clé>`).
+    pub rotation: String,
+    /// Jeton de la réservation (valide).
+    pub lease: String,
+}
+
+/// Paramètres de `fn::secrets_rotation_cancel` (sans réservation).
 #[derive(Debug, Clone, SurrealValue)]
 pub struct RotationRefParams {
     /// Rotation (`secrets_rotation:<clé>`).

@@ -15,13 +15,14 @@ use crate::models::{
     LabelsResult, PurgeDueParams, PurgeReport, ReadBeginParams, ReadEnvelope, ReadTicket,
     ReadTicketRef, Resealed, RewrapList, RewrapListParams, RotateAllowed, RotationBeginParams,
     RotationCheckParams, RotationCheckResult, RotationClaimParams, RotationClaimed,
-    RotationFailParams, RotationGetParams, RotationList, RotationRecord, RotationRefParams,
-    RotationStepParams, SecretCreateParams, SecretGetParams, SecretList, SecretListParams,
-    SecretPurged, SecretRecord, SecretRefParams, SecretUpdateParams, SecretVersion,
-    SettingsGetParams, SettingsSetParams, SettingsView, StoredSettings, TenantKeyCreateParams,
-    TenantKeyCreated, TenantKeyDestroyParams, TenantKeyDestroyed, TenantKeyRewrapParams,
-    TenantKeyRewrapped, TenantKeyRing, TenantRef, VersionAddParams, VersionAdded,
-    VersionLabelParams, VersionList, VersionListParams, VersionRefParams, VersionResealParams,
+    RotationFailParams, RotationGetParams, RotationLeaseParams, RotationList, RotationRecord,
+    RotationRefParams, RotationStepParams, SecretCreateParams, SecretGetParams, SecretList,
+    SecretListParams, SecretPurged, SecretRecord, SecretRefParams, SecretUpdateParams,
+    SecretVersion, SettingsGetParams, SettingsSetParams, SettingsView, StoredSettings,
+    TenantKeyCreateParams, TenantKeyCreated, TenantKeyDestroyParams, TenantKeyDestroyed,
+    TenantKeyRewrapParams, TenantKeyRewrapped, TenantKeyRing, TenantRef, VersionAddParams,
+    VersionAdded, VersionLabelParams, VersionList, VersionListParams, VersionRefParams,
+    VersionResealParams,
 };
 
 /// Store de `lyxal_secrets` sur un client SurrealDB (`Surreal<Any>`).
@@ -231,13 +232,14 @@ impl SecretsStore {
         self.call_fn("secrets_rotation_claim", params).await
     }
 
-    /// `fn::secrets_rotation_step` : étape franchie (worker).
+    /// `fn::secrets_rotation_step` : étape franchie par le détenteur de la réservation, qu'elle
+    /// renouvelle (worker).
     pub async fn rotation_step(&self, params: RotationStepParams) -> Call<RotationRecord> {
         self.call_fn("secrets_rotation_step", params).await
     }
 
     /// `fn::secrets_rotation_finish` : bascule sur la nouvelle version (worker).
-    pub async fn rotation_finish(&self, params: RotationRefParams) -> Call<RotationRecord> {
+    pub async fn rotation_finish(&self, params: RotationLeaseParams) -> Call<RotationRecord> {
         self.call_fn("secrets_rotation_finish", params).await
     }
 

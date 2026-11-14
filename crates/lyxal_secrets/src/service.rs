@@ -10,14 +10,15 @@ use lyxal_surreal::ToSql;
 use serde::de::IgnoredAny;
 use std::collections::BTreeMap;
 
-use crate::error::{SecretsError, SecretsResult, ROTATOR_UNAVAILABLE};
+use crate::error::{SecretsError, SecretsResult};
 use crate::keys::{MasterKeys, Scope, TenantKeys};
 use crate::models::{
     AuditDeniedParams, ReadBeginParams, ReadTicketRef, RotationBeginParams, RotationCheckParams,
-    RotationCheckResult, RotationClaimParams, RotationRecord, SecretGetParams, SecretRecord,
-    SettingsGetParams, Stage, TenantKeyCreated, TenantRef, VersionAddParams, VersionAdded,
+    RotationCheckResult, RotationClaimParams, RotationGetParams, RotationRecord, SecretGetParams,
+    SecretRecord, SettingsGetParams, Stage, TenantKeyCreated, TenantRef, VersionAddParams,
+    VersionAdded,
 };
-use crate::rotation::{RotationRunner, RotatorRegistry};
+use crate::rotation::{RotationOutcome, RotationRunner, RotatorRegistry};
 use crate::store::SecretsStore;
 
 /// Essais d'une écriture sans numéro attendu, quand une autre écriture a pris le numéro.
@@ -278,8 +279,8 @@ impl SecretsService {
 
     /// Rotation demandée maintenant, avec les droits de l'appelant (écriture ; urgence : double
     /// facteur récent pour une personne). Avec un rotateur pour le secret, la rotation est
-    /// réservée et déroulée aussitôt (rendue réussie, en échec, ou en attente d'un nouvel essai
-    /// que le worker reprendra). Sans rotateur : `SECRETS_ROTATOR_UNAVAILABLE` et rien ne
+    /// réservée (son jeton sert à chaque étape) et déroulée aussitôt (rendue réussie, en échec,
+    /// ou en attente d'un nouvel essai que le worker reprendra). Sans rotateur : `SECRETS_ROTATOR_UNAVAILABLE` et rien ne
     /// démarre, sauf en urgence où la version en service est coupée et la rotation échoue
     /// aussitôt (`SECRETS_ROTATOR_UNAVAILABLE`) : une personne écrira la nouvelle valeur.
     pub async fn rotate_now(&self, request: RotateRequest) -> SecretsResult<RotationRecord> {
@@ -299,24 +300,31 @@ impl SecretsService {
                 reason: request.reason,
             })
             .await?;
-        let runner = self.runner();
-        if rotator.is_none() {
-            return runner
-                .fail(&rotation.id.to_sql(), ROTATOR_UNAVAILABLE, false)
-                .await;
-        }
-        let claimed = self
-            .keys
-            .system()
+        // Réservée pour cet appel ; sans rotateur, l'avancée l'enregistre en échec définitif
+        let system = self.keys.system();
+        let claimed = system
             .rotation_claim(RotationClaimParams {
                 rotation: Some(rotation.id.to_sql()),
                 ..RotationClaimParams::default()
             })
             .await?;
-        match claimed.items.into_iter().next() {
-            Some(claimed) => runner.advance(claimed).await,
+        let Some(claimed) = claimed.items.into_iter().next() else {
             // Déjà réservée par un worker : il la déroule
-            None => Ok(rotation),
+            return Ok(rotation);
+        };
+        match self.runner().advance(claimed).await? {
+            RotationOutcome::Advanced(done) => Ok(*done),
+            // Reprise par un worker entre-temps : son état actuel
+            RotationOutcome::LeaseLost => Ok(system
+                .rotation_get(RotationGetParams {
+                    secret: secret.id.to_sql(),
+                    limit: None,
+                })
+                .await?
+                .items
+                .into_iter()
+                .find(|item| item.id == rotation.id)
+                .unwrap_or(rotation)),
         }
     }
 

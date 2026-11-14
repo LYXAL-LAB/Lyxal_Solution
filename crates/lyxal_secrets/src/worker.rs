@@ -7,13 +7,19 @@
 //!    (rotation de la clé maîtresse du coffre-fort) ;
 //! 4. destruction des clés d'organisation retirées que plus aucune version n'utilise ;
 //! 5. échéances signalées une seule fois (échéance proche, passée, rotation due) ;
-//! 6. rotations : démarrage des rotations dues des secrets qu'un rotateur gère, puis avancée des
-//!    rotations en cours dont l'essai est échu (reprise à l'étape atteinte) ;
+//! 6. rotations : démarrage des rotations dues des secrets qu'un rotateur gère (le rappel n'est
+//!    posé qu'une fois la rotation démarrée, ou si le démarrage échoue sans espoir de nouvel
+//!    essai), puis avancée des rotations en cours dont l'essai est échu, réservées une à une
+//!    juste avant d'être traitées (reprise à l'étape atteinte) ;
 //! 7. rotation des clés d'organisation plus anciennes que la période de leur portée (avant le
 //!    rescellement, qui suit au même passage).
 //!
-//! Sans clé maîtresse, seules la purge et les alertes ont lieu. Un élément en échec est journalisé et laissé pour
-//! le passage suivant : il n'interrompt pas les autres.
+//! Sans clé maîtresse, seules la purge et les alertes ont lieu. Un élément en échec est journalisé
+//! et laissé pour le passage suivant : il n'interrompt pas les autres.
+//!
+//! Arrêt : l'annulation est vérifiée avant chaque élément, et l'avancée d'une rotation (qui attend
+//! un service extérieur) est mise en course avec elle. Une rotation interrompue est abandonnée en
+//! l'état : sa réservation expire et un passage ultérieur la reprend à l'étape enregistrée.
 
 use async_trait::async_trait;
 use lyxal_runtime::types::ModuleId;
@@ -33,7 +39,7 @@ use crate::models::{
     TenantKeyDestroyParams, VersionResealParams,
 };
 use crate::module::MODULE_ID;
-use crate::rotation::{RotationRunner, RotatorRegistry};
+use crate::rotation::{RotationOutcome, RotationRunner, RotatorRegistry};
 use crate::store::SecretsStore;
 
 /// Bilan d'un passage du worker.
@@ -58,9 +64,6 @@ pub struct MaintenanceReport {
     /// Clés d'organisation remplacées à échéance.
     pub tenant_keys_rotated: u64,
 }
-
-/// Rotations réservées par paquet (100 au plus côté SurrealQL).
-const CLAIM_LIMIT: u32 = 100;
 
 /// Worker de maintenance du coffre-fort.
 pub struct SecretsMaintenanceWorker {
@@ -245,8 +248,8 @@ impl SecretsMaintenanceWorker {
                     return Ok(());
                 }
                 let secret = item.id.to_sql();
-                if self.mark(&secret, DueKind::RotationDue, report).await && crypto {
-                    self.begin(&secret, report).await;
+                if !crypto || self.begin(&secret, report).await {
+                    self.mark(&secret, DueKind::RotationDue, report).await;
                 }
             }
             if crypto {
@@ -316,10 +319,12 @@ impl SecretsMaintenanceWorker {
     }
 
     /// Rotation due démarrée si un rotateur gère le secret ; sinon le rappel suffit (une
-    /// personne écrira la nouvelle valeur). Une rotation déjà en cours est laissée.
-    async fn begin(&self, secret: &str, report: &mut MaintenanceReport) {
+    /// personne écrira la nouvelle valeur). Vrai si le rappel peut être posé : rotation
+    /// démarrée ou déjà en cours, aucun rotateur, ou échec sans nouvel essai possible ; faux
+    /// pour un échec passager, que le passage suivant réessaiera.
+    async fn begin(&self, secret: &str, report: &mut MaintenanceReport) -> bool {
         if self.runner.rotators().is_empty() {
-            return;
+            return true;
         }
         let system = self.keys.system();
         let started = async {
@@ -340,50 +345,62 @@ impl SecretsMaintenanceWorker {
         }
         .await;
         match started {
-            Ok(()) => {}
-            Err(error) if error.is_code("SECRETS_ROTATION_IN_PROGRESS") => {}
+            Ok(()) => true,
+            Err(error) if error.is_code("SECRETS_ROTATION_IN_PROGRESS") => true,
             Err(error) => {
                 report.failed += 1;
-                tracing::warn!(secret = %secret, code = %error.code(), error = %error, "rotation due non démarrée");
+                let retry = error.is_retryable();
+                tracing::warn!(secret = %secret, code = %error.code(), retry, error = %error, "rotation due non démarrée");
+                !retry
             }
         }
     }
 
-    /// Rotations en cours dont l'essai est échu, réservées par paquets et avancées.
+    /// Rotations en cours dont l'essai est échu : réservées une à une juste avant d'être
+    /// avancées, jusqu'à `batch` rotations par passage. L'avancée est en course avec l'arrêt :
+    /// une rotation interrompue garde son étape enregistrée et sa réservation expire.
     async fn advance_rotations(
         &self,
         cancellation: &CancellationToken,
         report: &mut MaintenanceReport,
     ) -> SecretsResult<()> {
-        let limit = i64::from(self.batch.min(CLAIM_LIMIT));
-        while !cancellation.is_cancelled() {
-            // Une rotation réservée ne l'est plus avant la fin du bail : la boucle se termine
-            let claimed = self
+        for _ in 0..self.batch {
+            if cancellation.is_cancelled() {
+                return Ok(());
+            }
+            let Some(rotation) = self
                 .keys
                 .system()
                 .rotation_claim(RotationClaimParams {
-                    limit: Some(limit),
+                    limit: Some(1),
                     ..RotationClaimParams::default()
                 })
                 .await?
-                .items;
-            let full = claimed.len() as i64 >= limit;
-            for rotation in claimed {
-                let id = rotation.id.to_sql();
-                match self.runner.advance(rotation).await {
-                    Ok(done) => match done.state {
-                        RotationState::Succeeded => report.rotations_succeeded += 1,
-                        RotationState::Failed => report.rotations_failed += 1,
-                        _ => {}
-                    },
-                    Err(error) => {
-                        report.failed += 1;
-                        tracing::warn!(rotation = %id, code = %error.code(), error = %error, "rotation non avancée");
-                    }
+                .items
+                .into_iter()
+                .next()
+            else {
+                return Ok(());
+            };
+            let id = rotation.id.to_sql();
+            let advanced = tokio::select! {
+                _ = cancellation.cancelled() => {
+                    tracing::info!(rotation = %id, "arrêt demandé : rotation laissée à l'étape enregistrée, reprise après expiration de sa réservation");
+                    return Ok(());
                 }
-            }
-            if !full {
-                break;
+                advanced = self.runner.advance(rotation) => advanced,
+            };
+            match advanced {
+                Ok(RotationOutcome::Advanced(done)) => match done.state {
+                    RotationState::Succeeded => report.rotations_succeeded += 1,
+                    RotationState::Failed => report.rotations_failed += 1,
+                    _ => {}
+                },
+                Ok(RotationOutcome::LeaseLost) => {}
+                Err(error) => {
+                    report.failed += 1;
+                    tracing::warn!(rotation = %id, code = %error.code(), error = %error, "rotation non avancée");
+                }
             }
         }
         Ok(())

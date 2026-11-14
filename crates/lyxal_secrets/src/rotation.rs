@@ -25,14 +25,13 @@ use thiserror::Error;
 use crate::error::{SecretsError, SecretsResult, ROTATOR_UNAVAILABLE};
 use crate::keys::MasterKeys;
 use crate::models::{
-    RotationFailParams, RotationRecord, RotationRefParams, RotationState, RotationStep,
+    RotationFailParams, RotationLeaseParams, RotationRecord, RotationState, RotationStep,
     RotationStepParams, SecretGetParams, SecretRecord, Stage,
 };
 use crate::service::{PutValue, RevealRequest, SecretsService};
 use crate::store::SecretsStore;
 
-/// Code : rotation dans un état qui ne permet pas l'étape (numéro `pending` absent).
-const ROTATION_STATE_INVALID: &str = "SECRETS_ROTATION_STATE_INVALID";
+use crate::error::ROTATION_STATE_INVALID;
 
 /// Échec d'un rotateur : un code stable (`SECRETS_*` ou code propre au rotateur), jamais une
 /// valeur ni un message du service extérieur qui pourrait en contenir.
@@ -133,39 +132,66 @@ impl fmt::Debug for RotatorRegistry {
     }
 }
 
-/// Échec d'une étape : code et nouvel essai permis.
-struct StepFailure {
-    code: String,
-    retryable: bool,
+/// Interruption d'une avancée : échec d'une étape (à enregistrer), ou réservation perdue.
+enum Interrupt {
+    /// Échec : code et nouvel essai permis.
+    Failure { code: String, retryable: bool },
+    /// Réservation périmée ou reprise par un autre worker : la rotation n'est plus la nôtre.
+    LeaseLost(SecretsError),
 }
 
-impl From<RotatorError> for StepFailure {
+impl Interrupt {
+    fn failure(code: &str, retryable: bool) -> Self {
+        Self::Failure {
+            code: code.to_string(),
+            retryable,
+        }
+    }
+}
+
+impl From<RotatorError> for Interrupt {
     fn from(error: RotatorError) -> Self {
-        Self {
+        Self::Failure {
             code: error.code,
             retryable: error.retryable,
         }
     }
 }
 
-impl From<SecretsError> for StepFailure {
+impl From<SecretsError> for Interrupt {
     fn from(error: SecretsError) -> Self {
-        Self {
+        // Une étape refusée pour son état, alors que la réservation était la nôtre : un autre
+        // worker l'a reprise (ou elle a été annulée) ; elle n'est pas à faire échouer
+        if error.is_code(ROTATION_STATE_INVALID) {
+            return Self::LeaseLost(error);
+        }
+        Self::Failure {
             code: error.code(),
             retryable: error.is_retryable(),
         }
     }
 }
 
-impl From<lyxal_surreal::LyxalSurrealError> for StepFailure {
+impl From<lyxal_surreal::LyxalSurrealError> for Interrupt {
     fn from(error: lyxal_surreal::LyxalSurrealError) -> Self {
         SecretsError::from(error).into()
     }
 }
 
+/// Issue de l'avancée d'une rotation réservée.
+#[derive(Debug, Clone)]
+pub enum RotationOutcome {
+    /// Rotation dans son dernier état : réussie, en échec, ou en attente d'un nouvel essai.
+    Advanced(Box<RotationRecord>),
+    /// Réservation perdue (périmée ou reprise par un autre worker) : la rotation est laissée à
+    /// son détenteur actuel ; ce n'est pas un échec de rotation.
+    LeaseLost,
+}
+
 /// Fait avancer une rotation réservée (`fn::secrets_rotation_claim`) sur la session système :
-/// reprise à l'étape atteinte, chaque étape enregistrée, tout échec enregistré par
-/// `fn::secrets_rotation_fail` (nouvel essai ou échec définitif).
+/// reprise à l'étape atteinte, chaque étape enregistrée avec le jeton de la réservation (qui la
+/// renouvelle), tout échec enregistré par `fn::secrets_rotation_fail` (nouvel essai ou échec
+/// définitif). Une réservation perdue arrête l'avancée sans rien enregistrer.
 #[derive(Clone)]
 pub struct RotationRunner {
     service: SecretsService,
@@ -194,32 +220,51 @@ impl RotationRunner {
     }
 
     /// Fait avancer une rotation réservée jusqu'à la bascule, à un échec ou à un nouvel essai
-    /// planifié ; rend la rotation dans son dernier état. Sans rotateur pour le secret : échec
-    /// définitif `SECRETS_ROTATOR_UNAVAILABLE`. `Err` seulement si l'échec n'a pas pu être
-    /// enregistré (la réservation expire et la rotation sera reprise).
-    pub async fn advance(&self, rotation: RotationRecord) -> SecretsResult<RotationRecord> {
+    /// planifié. Sans rotateur pour le secret : échec définitif `SECRETS_ROTATOR_UNAVAILABLE`.
+    /// Rotation sans jeton de réservation : `SECRETS_ROTATION_STATE_INVALID`. `Err` aussi si
+    /// l'échec n'a pas pu être enregistré (la réservation expire et la rotation sera reprise).
+    pub async fn advance(&self, rotation: RotationRecord) -> SecretsResult<RotationOutcome> {
         if rotation.state.is_terminal() {
-            return Ok(rotation);
+            return Ok(RotationOutcome::Advanced(Box::new(rotation)));
         }
         let id = rotation.id.to_sql();
+        let Some(lease) = rotation.lease.clone() else {
+            return Err(SecretsError::RotationNotClaimed);
+        };
         let secret = self
             .service
             .store()
             .secret_get(SecretGetParams::by_id(rotation.secret.to_sql()))
             .await?;
-        let Some(rotator) = self.service.rotators().find(&secret) else {
-            return self.fail(&id, ROTATOR_UNAVAILABLE, false).await;
+        let interrupt = match self.service.rotators().find(&secret) {
+            None => Interrupt::failure(ROTATOR_UNAVAILABLE, false),
+            Some(rotator) => match self
+                .steps(rotator.as_ref(), &secret, rotation, &lease)
+                .await
+            {
+                Ok(done) => return Ok(RotationOutcome::Advanced(Box::new(done))),
+                Err(interrupt) => interrupt,
+            },
         };
-        match self.steps(rotator.as_ref(), &secret, rotation).await {
-            Ok(done) => Ok(done),
-            Err(failure) => self.fail(&id, &failure.code, failure.retryable).await,
-        }
+        let lost = match interrupt {
+            Interrupt::LeaseLost(error) => error,
+            Interrupt::Failure { code, retryable } => {
+                match self.fail(&id, &lease, &code, retryable).await {
+                    Ok(record) => return Ok(RotationOutcome::Advanced(Box::new(record))),
+                    Err(error) if error.is_code(ROTATION_STATE_INVALID) => error,
+                    Err(error) => return Err(error),
+                }
+            }
+        };
+        tracing::info!(rotation = %id, code = %lost.code(), "réservation de la rotation perdue : avancée arrêtée");
+        Ok(RotationOutcome::LeaseLost)
     }
 
     /// Échec enregistré : nouvel essai planifié ou échec définitif.
-    pub(crate) async fn fail(
+    async fn fail(
         &self,
         rotation: &str,
+        lease: &str,
         code: &str,
         retry: bool,
     ) -> SecretsResult<RotationRecord> {
@@ -229,25 +274,28 @@ impl RotationRunner {
             .store()
             .rotation_fail(RotationFailParams {
                 rotation: rotation.to_string(),
+                lease: lease.to_string(),
                 code: code.to_string(),
                 retry: Some(retry),
             })
             .await?)
     }
 
-    /// Étapes restantes, depuis l'étape atteinte.
+    /// Étapes restantes, depuis l'étape atteinte, avec le jeton de la réservation.
     async fn steps(
         &self,
         rotator: &dyn SecretRotator,
         secret: &SecretRecord,
         mut rotation: RotationRecord,
-    ) -> Result<RotationRecord, StepFailure> {
+        lease: &str,
+    ) -> Result<RotationRecord, Interrupt> {
         let store = self.service.store();
         let id = rotation.id.to_sql();
         // Avant-dernière valeur après la bascule : celle qui est « previous » avant
         let retired = secret.labels.get("previous").copied();
         let step = |step: RotationStep, pending_number: Option<i64>| RotationStepParams {
             rotation: id.clone(),
+            lease: lease.to_string(),
             step,
             pending_number,
         };
@@ -275,8 +323,9 @@ impl RotationRunner {
                 }
                 RotationState::Tested => {
                     let done = store
-                        .rotation_finish(RotationRefParams {
+                        .rotation_finish(RotationLeaseParams {
                             rotation: id.clone(),
+                            lease: lease.to_string(),
                         })
                         .await?;
                     if let Some(number) = retired {
@@ -298,7 +347,7 @@ impl RotationRunner {
         rotator: &dyn SecretRotator,
         secret: &SecretRecord,
         rotation: &RotationRecord,
-    ) -> Result<i64, StepFailure> {
+    ) -> Result<i64, Interrupt> {
         if let Some(number) = secret.labels.get("pending") {
             return Ok(*number);
         }
@@ -368,9 +417,8 @@ impl RotationRunner {
 }
 
 /// Numéro de la version `pending` d'une rotation créée.
-fn pending(rotation: &RotationRecord) -> Result<i64, StepFailure> {
-    rotation.pending_number.ok_or_else(|| StepFailure {
-        code: ROTATION_STATE_INVALID.to_string(),
-        retryable: false,
-    })
+fn pending(rotation: &RotationRecord) -> Result<i64, Interrupt> {
+    rotation
+        .pending_number
+        .ok_or_else(|| Interrupt::failure(ROTATION_STATE_INVALID, false))
 }

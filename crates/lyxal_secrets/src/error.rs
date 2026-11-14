@@ -9,6 +9,9 @@ use thiserror::Error;
 
 /// Code d'erreur : aucun rotateur inscrit ne gère le secret.
 pub(crate) const ROTATOR_UNAVAILABLE: &str = "SECRETS_ROTATOR_UNAVAILABLE";
+/// Code d'erreur : rotation dans un état qui ne permet pas l'opération (réservation absente ou
+/// perdue, étape hors d'ordre).
+pub(crate) const ROTATION_STATE_INVALID: &str = "SECRETS_ROTATION_STATE_INVALID";
 
 /// Erreur d'un service de `lyxal_secrets`.
 #[derive(Debug, Error)]
@@ -43,6 +46,10 @@ pub enum SecretsError {
     /// Aucun rotateur inscrit ne gère ce secret.
     #[error("aucun rotateur pour ce secret")]
     RotatorUnavailable,
+    /// Rotation sans jeton de réservation : elle doit être réservée
+    /// (`fn::secrets_rotation_claim`) avant d'avancer.
+    #[error("rotation non réservée")]
+    RotationNotClaimed,
 }
 
 impl SecretsError {
@@ -64,6 +71,7 @@ impl SecretsError {
             Self::TenantKeyUnavailable(_) => "SECRETS_TENANT_KEY_UNAVAILABLE".to_string(),
             Self::InvalidRecord(_) => "SECRETS_INVALID_PARAMETERS".to_string(),
             Self::RotatorUnavailable => ROTATOR_UNAVAILABLE.to_string(),
+            Self::RotationNotClaimed => ROTATION_STATE_INVALID.to_string(),
         }
     }
 
@@ -99,7 +107,8 @@ impl SecretsError {
             | Self::TenantKeyUnavailable(_)
             | Self::Crypto(_)
             | Self::InvalidRecord(_)
-            | Self::RotatorUnavailable => false,
+            | Self::RotatorUnavailable
+            | Self::RotationNotClaimed => false,
         }
     }
 }

@@ -122,7 +122,7 @@ Aucune table n'a de `CHANGEFEED` ni d'historique natif : une version détruite d
   l'ancienne devient `previous`, la prochaine date est recalculée. Jusqu'à la bascule, la valeur en
   service ne change pas. Un échec est réessayé 3 fois (1 min, 10 min, 1 h) à l'étape atteinte,
   puis la rotation échoue et l'étiquette `pending` est retirée. Une seule rotation en cours par
-  secret ; le worker la réserve (bail) avant d'y travailler, elle reprend après un arrêt.
+  secret ; le worker la réserve juste avant d'y travailler (jeton renouvelé à chaque étape ; seul son détenteur la fait avancer), elle reprend après un arrêt ou une réservation expirée.
   Annulation par l'écriture. Rotation d'urgence : décision d'une personne (droit d'écriture,
   assurance la plus haute et récente) ou d'un programme qui a le droit d'écriture ; la version
   courante est désactivée tout de suite, avant toute autre étape.
@@ -208,4 +208,5 @@ organisation supprimée, fonctionnement sans clé maîtresse, lectures refusées
 double facteur, consommateurs, sonde, worker arrêté par l'annulation, aucune valeur dans les
 `Debug` et les erreurs, rotation complète sans coupure, nouvel essai et échec définitif, reprise
 après interruption, urgence avec et sans rotateur, rappel seul sans rotateur, essai sans bascule,
-rotation planifiée des clés d'organisation ; 28 tests. Hôte : `apps/lyxal-server/tests/secrets.rs`.
+rotation planifiée des clés d'organisation, réservation périmée reprise par un autre worker, arrêt du
+worker pendant une rotation ; 31 tests. Hôte : `apps/lyxal-server/tests/secrets.rs`.
