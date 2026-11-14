@@ -6,9 +6,9 @@ use lyxal_crypto::SecretBytes;
 use lyxal_runtime::worker::CancellationToken;
 use lyxal_secrets::models::{
     AccessAction, EmergencyAccessParams, GrantCreateParams, GrantListParams, GrantRevokeParams,
-    PolicyListParams, PolicySetParams, RequestApplyParams, RequestChangeParams,
-    RequestDecisionParams, RequestKind, RequestRefParams, RequestState, SecretCreateParams,
-    SecretsDuration,
+    PolicyListParams, PolicySetParams, RequestApplyParams, RequestDecisionParams, RequestKind,
+    RequestRefParams, RequestState, SecretCreateParams, SecretGetParams, SecretsDuration,
+    VersionListParams,
 };
 use lyxal_secrets::{
     ProposeRequest, RotatorRegistry, SecretsMaintenanceWorker, SecretsService, SecretsStore,
