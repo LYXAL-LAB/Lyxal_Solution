@@ -1,14 +1,8 @@
 # Feuille de route — `lyxal_secrets`
 
-Évolutions à venir. L'état actuel est décrit par le [`README.md`](README.md) ; les sources par
-[`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md). Aucune évolution ne démarre sans
+Évolutions à venir. L'état actuel est décrit par le [`README.md`](README.md) ; les modèles et décisions par
+[`MODELE_SOURCES.md`](MODELE_SOURCES.md). Aucune évolution ne démarre sans
 `implementation_plan.md` validé par le CTO (`.agents/AGENTS.md` §3).
-
-## Programme V1 en cours (`implementation_plan.md` à la racine)
-
-| Lot | Contenu |
-| :- | :--- |
-| 6 | Clôture : audit, procédures (sauvegarde, clé maîtresse, urgence, compromission) |
 
 ## Après la V1
 
