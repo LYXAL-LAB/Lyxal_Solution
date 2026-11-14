@@ -442,5 +442,64 @@ async fn the_vault_is_used_through_http_on_behalf_of_the_caller() {
     assert!(!forged.status.is_success(), "{}", forged.body);
     assert!(forged.code().starts_with("AUTH_"), "{}", forged.body);
 
+    // --- Partage réservé aux membres : ouvert avec le jeton d'un membre seulement ----------
+    let reserved = send(
+        &router,
+        "POST",
+        "/api/v1/secrets/shares",
+        Some(&admin),
+        Some(json!({
+            "tenant": "auth_organization:alpha",
+            "value": SHARED,
+            "members_only": true,
+        })),
+    )
+    .await;
+    assert_eq!(reserved.status, StatusCode::CREATED, "{}", reserved.body);
+    let reserved_id = reserved.json()["data"]["share"]["id"]
+        .as_str()
+        .expect("partage")
+        .to_string();
+    let reserved_key = reserved.json()["data"]["key"]
+        .as_str()
+        .expect("clé du lien")
+        .to_string();
+    let anonymous = send(
+        &router,
+        "POST",
+        &format!("/api/v1/secrets/shares/{reserved_id}/open"),
+        None,
+        Some(open(reserved_key.clone())),
+    )
+    .await;
+    assert_eq!(
+        anonymous.code(),
+        "SECRETS_SHARE_UNAVAILABLE",
+        "{}",
+        anonymous.body
+    );
+    let member = send(
+        &router,
+        "POST",
+        &format!("/api/v1/secrets/shares/{reserved_id}/open"),
+        Some(&admin),
+        Some(open(reserved_key)),
+    )
+    .await;
+    assert_eq!(member.status, StatusCode::OK, "{}", member.body);
+    assert_eq!(member.json()["data"]["value"], SHARED);
+
+    // --- L'essai sans bascule n'est plus une route (outil du worker) ----------------------
+    let check = send(
+        &router,
+        "POST",
+        &format!("/api/v1/secrets/secrets/{secret}/check"),
+        Some(&admin),
+        None,
+    )
+    .await;
+    assert!(!check.status.is_success(), "{}", check.body);
+    assert_eq!(check.code(), "SECRETS_INVALID_PARAMETERS", "{}", check.body);
+
     started.runtime.stop_all().await.expect("arrêt");
 }

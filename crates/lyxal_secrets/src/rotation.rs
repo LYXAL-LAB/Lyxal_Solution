@@ -22,11 +22,11 @@ use std::fmt;
 use std::sync::Arc;
 use thiserror::Error;
 
-use crate::error::{SecretsError, SecretsResult, ROTATOR_UNAVAILABLE};
+use crate::error::{SecretsError, SecretsResult, ROTATION_TEST_FAILED, ROTATOR_UNAVAILABLE};
 use crate::keys::MasterKeys;
 use crate::models::{
     RotationFailParams, RotationLeaseParams, RotationRecord, RotationState, RotationStep,
-    RotationStepParams, SecretGetParams, SecretRecord, Stage,
+    RotationStepParams, SecretGetParams, SecretRecord, Stage, VersionListParams, VersionSummary,
 };
 use crate::service::{PutValue, RevealRequest, SecretsService};
 use crate::store::SecretsStore;
@@ -316,7 +316,11 @@ impl RotationRunner {
                 }
                 RotationState::Installed => {
                     let new = self.read(rotator, secret, pending(&rotation)?).await?;
-                    rotator.test(secret, &new).await?;
+                    // Échec du test : code du moteur enregistré, celui du rotateur journalisé
+                    rotator.test(secret, &new).await.map_err(|error| {
+                        tracing::warn!(rotation = %id, rotator = %rotator.name(), code = %error.code, retry = error.retryable, "test de la nouvelle valeur en échec");
+                        Interrupt::failure(ROTATION_TEST_FAILED, error.retryable)
+                    })?;
                     store
                         .rotation_step(step(RotationStep::Tested, None))
                         .await?
@@ -340,16 +344,22 @@ impl RotationRunner {
         }
     }
 
-    /// Nouvelle valeur écrite en version `pending` ; une version `pending` déjà écrite par un
-    /// essai interrompu de cette rotation est reprise (le démarrage retire toute autre).
+    /// Nouvelle valeur écrite en version `pending`. Une version `pending` déjà écrite par un
+    /// essai interrompu de cette rotation est reprise, seulement si elle a été écrite par cette
+    /// session (worker ou session système : même identité et même application autrices) depuis
+    /// le démarrage de la rotation. Toute autre version étiquetée `pending` n'est jamais mise en
+    /// service : une nouvelle valeur est créée et l'étiquette déplacée sur elle.
     async fn create(
         &self,
         rotator: &dyn SecretRotator,
         secret: &SecretRecord,
         rotation: &RotationRecord,
     ) -> Result<i64, Interrupt> {
-        if let Some(number) = secret.labels.get("pending") {
-            return Ok(*number);
+        if let Some(&number) = secret.labels.get("pending") {
+            if self.own_pending(secret, rotation, number).await? {
+                return Ok(number);
+            }
+            tracing::warn!(secret = %secret.id.to_sql(), number, rotation = %rotation.id.to_sql(), "version « pending » non écrite par le worker pour cette rotation : ignorée");
         }
         // Urgence : la valeur en service est coupée (et compromise), elle n'est pas relue
         let current = match (rotation.emergency, secret.labels.get("current")) {
@@ -375,6 +385,25 @@ impl RotationRunner {
             })
             .await?;
         Ok(added.version.number)
+    }
+
+    /// Vrai si la version `number` a été écrite par la session de l'exécutant (identité et
+    /// application autrices égales à celles de la session, absentes pour la session système)
+    /// depuis le démarrage de la rotation.
+    async fn own_pending(
+        &self,
+        secret: &SecretRecord,
+        rotation: &RotationRecord,
+        number: i64,
+    ) -> SecretsResult<bool> {
+        let store = self.service.store();
+        let Some(version) = find_version(store, secret, number).await? else {
+            return Ok(false);
+        };
+        let me = store.caller_context().await?;
+        Ok(version.created_by == me.identity
+            && version.created_by_application == me.application
+            && version.created_at >= rotation.started_at)
     }
 
     /// Valeur d'une version, lue par le chemin tracé du service, le rotateur annoncé comme
@@ -412,6 +441,37 @@ impl RotationRunner {
             Err(error) => {
                 tracing::warn!(secret = %secret_id, number, code = %error.code(), "ancienne valeur illisible : non retirée chez le service");
             }
+        }
+    }
+}
+
+/// Versions lues par page de cette taille pour retrouver une version par son numéro.
+const VERSION_PAGE: i64 = 100;
+
+/// Version d'un secret par son numéro (sans enveloppe), parcourue page par page, les plus
+/// récentes d'abord ; `None` si elle n'existe pas.
+async fn find_version(
+    store: &SecretsStore,
+    secret: &SecretRecord,
+    number: i64,
+) -> SecretsResult<Option<VersionSummary>> {
+    let mut start = 0;
+    loop {
+        let page = store
+            .version_list(VersionListParams {
+                secret: secret.id.to_sql(),
+                state: None,
+                limit: Some(VERSION_PAGE),
+                start: Some(start),
+            })
+            .await?;
+        let count = i64::try_from(page.items.len()).unwrap_or(i64::MAX);
+        if let Some(found) = page.items.into_iter().find(|item| item.number == number) {
+            return Ok(Some(found));
+        }
+        start += count;
+        if count < VERSION_PAGE || start >= page.total {
+            return Ok(None);
         }
     }
 }

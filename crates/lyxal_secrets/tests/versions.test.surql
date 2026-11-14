@@ -78,10 +78,17 @@
     RETURN fn::secrets_version_add({ secret: $s, number: 2, envelope: "enc:v2:k1:BBBB", key_id: "k1" }).data.labels = { current: 2, previous: 1 };
 };
 
--- test: version en attente (rotation) : current inchangée
+-- test: un rédacteur n'écrit pas la nouvelle valeur d'une rotation (réservée au worker)
 -- en tant que: redacteur
 {
     LET $s = <string> (SELECT VALUE id_secret FROM ONLY passe:s);
+    RETURN fn::secrets_version_add({ secret: $s, number: 3, envelope: "enc:v2:k1:CCCC", key_id: "k1", stage: "pending" }).error.code = "SECRETS_PERMISSION_DENIED";
+};
+
+-- test: version en attente écrite par la session système pendant une rotation : current inchangée
+{
+    LET $s = <string> (SELECT VALUE id_secret FROM ONLY passe:s);
+    fn::secrets_rotation_begin({ secret: $s });
     RETURN fn::secrets_version_add({ secret: $s, number: 3, envelope: "enc:v2:k1:CCCC", key_id: "k1", stage: "pending" }).data.labels = { current: 2, pending: 3, previous: 1 };
 };
 

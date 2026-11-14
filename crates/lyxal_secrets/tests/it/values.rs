@@ -2,7 +2,9 @@
 //! concurrentes, aucune valeur dans les `Debug`, les erreurs ni le journal.
 
 use lyxal_crypto::SecretBytes;
-use lyxal_secrets::models::{SecretGetParams, SettingsSetParams, Stage, VersionState};
+use lyxal_secrets::models::{
+    RotationBeginParams, SecretGetParams, SettingsSetParams, Stage, VersionState,
+};
 use lyxal_secrets::{PutValue, RevealRequest};
 use lyxal_surreal::SurrealValue;
 
@@ -90,7 +92,17 @@ async fn a_value_is_written_sealed_then_read_back_identical() {
     assert_eq!(first.number, 1);
     assert_eq!(first.value.expose_secret(), json);
 
-    // Valeur en attente : lue par son étiquette seulement
+    // Valeur en attente (réservée au worker et à la session système, pendant une rotation
+    // démarrée) : lue par son étiquette seulement
+    bench
+        .store
+        .rotation_begin(RotationBeginParams {
+            secret: alpha.clone(),
+            emergency: None,
+            reason: None,
+        })
+        .await
+        .expect("rotation démarrée");
     let pending = bench
         .service
         .put(PutValue {
@@ -346,4 +358,59 @@ async fn no_value_or_key_appears_in_debug_or_errors() {
     // Ni du journal
     let journal = format!("{:?}", bench.journal(Some(ALPHA)).await);
     assert!(!journal.contains("enc:v2") && !journal.contains("confidentielle"));
+}
+
+#[tokio::test]
+async fn a_live_query_never_carries_the_sealed_envelope() {
+    use futures::StreamExt;
+    use std::time::Duration;
+    use surrealdb::types::Value;
+    use surrealdb::Notification;
+
+    let bench = bench().await;
+    let secret = bench.secret(Some(ALPHA), "live/api").await;
+    let reader = bench
+        .person("lecteur", ALPHA, &["secrets.secret.list"])
+        .await;
+    let mut response = reader
+        .query("LIVE SELECT * FROM secrets_version")
+        .await
+        .expect("requête en direct");
+    let mut stream = response
+        .stream::<Notification<Value>>(0)
+        .expect("flux des notifications");
+    // Témoin : la même requête sous la session système, qui voit l'enveloppe
+    let mut system = bench
+        .client
+        .query("LIVE SELECT * FROM secrets_version")
+        .await
+        .expect("requête en direct système");
+    let mut witness = system
+        .stream::<Notification<Value>>(0)
+        .expect("flux témoin");
+
+    // Version ajoutée par la session système
+    bench.put(&secret, b"valeur-en-direct").await;
+    let notification = tokio::time::timeout(Duration::from_secs(10), stream.next())
+        .await
+        .expect("notification reçue")
+        .expect("flux ouvert")
+        .expect("notification lisible");
+    let Value::Object(fields) = &notification.data else {
+        panic!("notification sans objet : {:?}", notification.data);
+    };
+    assert!(fields.get("number").is_some(), "{fields:?}");
+    assert!(fields.get("envelope").is_none(), "{fields:?}");
+    let witnessed = tokio::time::timeout(Duration::from_secs(10), witness.next())
+        .await
+        .expect("notification témoin reçue")
+        .expect("flux témoin ouvert")
+        .expect("notification témoin lisible");
+    let Value::Object(witnessed) = &witnessed.data else {
+        panic!("notification témoin sans objet");
+    };
+    assert!(witnessed.get("envelope").is_some());
+    let text = format!("{:?}", notification.data);
+    assert!(!text.contains("enc:v2"), "{text}");
+    assert!(!text.contains("valeur-en-direct"), "{text}");
 }

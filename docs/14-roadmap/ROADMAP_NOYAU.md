@@ -14,8 +14,11 @@ en flux sur disque ou sur un service S3, routes d'envoi et de téléchargement, 
 contenu, envoi reprenable, fichiers sources de l'ingestion, clôture avec audit) ; ses évolutions
 sont dans `crates/lyxal_storage/ROADMAP.md`.
 
-`lyxal_secrets` (rang 4) est créé : son socle SurrealQL est en place, son programme (lots 2 à 6)
-est dans `implementation_plan.md` à la racine et sa `ROADMAP.md`.
+La V1 de `lyxal_secrets` (rang 4) est livrée (lots 1 à 6 : socle SurrealQL, chiffrement par
+organisation sous une clé maîtresse propre, cycle de vie et rotation, accès temporaires et
+approbations, routes HTTP et partage à usage unique, clôture avec audit et procédures) ; ses
+évolutions sont dans `crates/lyxal_secrets/ROADMAP.md`. Prochain crate du noyau à créer :
+`lyxal_scheduler` (rang 5).
 
 `lyxal_notification` a été créé avant son rang (décision D8 du programme `lyxal_auth`) avec sa
 partie e-mail et des solutions d'attente pour `lyxal_secrets` et

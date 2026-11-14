@@ -261,7 +261,11 @@ async fn a_failed_test_schedules_a_new_attempt_and_keeps_the_value_in_service() 
         .expect("rotation");
     assert_eq!(waiting.state, RotationState::Installed, "{waiting:?}");
     assert_eq!(waiting.attempts, 1);
-    assert_eq!(waiting.last_error.as_deref(), Some("TEST_SERVICE_REFUSED"));
+    // Code du moteur enregistré (celui du rotateur est seulement journalisé), essai permis
+    assert_eq!(
+        waiting.last_error.as_deref(),
+        Some("SECRETS_ROTATION_TEST_FAILED")
+    );
     assert!(waiting.next_attempt_at.is_some());
     assert_eq!(bench.read(&secret).await, b"ancienne");
     // Essai pas encore échu : le worker n'y touche pas
@@ -369,6 +373,52 @@ async fn an_interrupted_rotation_resumes_at_the_step_reached() {
     assert_eq!(TestRotator::count(&rotator.creates), 0);
     assert_eq!(TestRotator::count(&rotator.installs), 1);
     assert_eq!(bench.read(&secret).await, b"ecrite-avant-arret");
+}
+
+#[tokio::test]
+async fn a_pending_version_not_written_by_the_worker_is_never_put_in_service() {
+    let bench = bench().await;
+    let secret = bench.secret(Some(ALPHA), "rot/intrus").await;
+    bench.put(&secret, b"ancienne").await;
+    bench.person("redacteur", ALPHA, &[]).await;
+    let rotation = started(&bench, &secret).await;
+    // Version « pending » posée pendant la rotation, puis attribuée à une personne. La base
+    // refuse ce cas à un rédacteur (et la garde, cette réattribution) : la garde est retirée
+    // pour ce seul test, afin de vérifier la seconde ligne de défense, celle de l'exécutant
+    let planted = bench
+        .service
+        .put(PutValue {
+            stage: Stage::Pending,
+            ..put(&secret, b"valeur-du-redacteur")
+        })
+        .await
+        .expect("version pending")
+        .version;
+    bench
+        .run(&format!(
+            "REMOVE EVENT secrets_version_update_guard ON TABLE secrets_version;
+             UPDATE {} SET created_by = auth_identity:redacteur",
+            planted.id.to_sql()
+        ))
+        .await;
+
+    let rotator = Arc::new(TestRotator::default());
+    let claimed = claim(&bench, &rotation).await;
+    let runner = RotationRunner::new(
+        bench.store.clone(),
+        Some(bench.master.clone()),
+        registry(&rotator),
+    );
+    match runner.advance(claimed).await.expect("avancée") {
+        RotationOutcome::Advanced(done) => {
+            assert_eq!(done.state, RotationState::Succeeded, "{done:?}");
+            assert_ne!(done.pending_number, Some(planted.number), "{done:?}");
+        }
+        other => panic!("rotation non terminée : {other:?}"),
+    }
+    // Nouvelle valeur créée par le rotateur, la version plantée jamais en service
+    assert_eq!(TestRotator::count(&rotator.creates), 1);
+    assert_eq!(bench.read(&secret).await, b"nouvelle-1");
 }
 
 #[tokio::test]
@@ -654,7 +704,9 @@ async fn a_stale_reservation_taken_over_no_longer_advances_the_rotation() {
     assert_eq!(after.state, RotationState::Started, "{after:?}");
     assert_eq!(after.attempts, 0, "fail non appelé : {after:?}");
     assert_eq!(after.last_error, None);
-    assert_eq!(after.lease, current.lease);
+    // La vue d'une rotation ne rend jamais le jeton de réservation (seule la réservation le rend)
+    assert_eq!(after.lease, None);
+    assert_eq!(after.locked_until, current.locked_until);
     assert_eq!(bench.read(&secret).await, b"ancienne");
 
     // Le détenteur actuel termine, en reprenant la valeur déjà écrite

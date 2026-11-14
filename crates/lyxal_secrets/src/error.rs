@@ -13,6 +13,10 @@ pub(crate) const ROTATOR_UNAVAILABLE: &str = "SECRETS_ROTATOR_UNAVAILABLE";
 /// perdue, étape hors d'ordre).
 pub(crate) const ROTATION_STATE_INVALID: &str = "SECRETS_ROTATION_STATE_INVALID";
 
+/// Code d'erreur : le test de la nouvelle valeur par son rotateur a échoué (le code propre du
+/// rotateur est journalisé, pas enregistré).
+pub(crate) const ROTATION_TEST_FAILED: &str = "SECRETS_ROTATION_TEST_FAILED";
+
 /// Code d'erreur : partage indisponible (inconnu, fini, clé ou mot de passe faux), sans détail.
 pub(crate) const SHARE_UNAVAILABLE: &str = "SECRETS_SHARE_UNAVAILABLE";
 

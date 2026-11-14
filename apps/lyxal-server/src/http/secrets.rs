@@ -26,6 +26,7 @@ use axum::routing::{delete, get, post};
 use axum::Router;
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
+use lyxal_auth::AuthStore;
 use lyxal_crypto::{SecretBytes, SecretString};
 use lyxal_secrets::models::{
     AuditListParams, AuditVerifyParams, EmergencyAccessParams, GrantCreateParams, GrantListParams,
@@ -45,6 +46,8 @@ use serde_json::{json, Map, Value};
 use std::collections::HashMap;
 use surrealdb::types::{Datetime, Duration, Value as SurrealDbValue};
 
+/// Permission d'installation qui permet d'ouvrir un lien de l'installation réservé aux membres.
+const INSTALLATION_MANAGE: &str = "secrets.installation.manage";
 /// Champs de durée (`"1h"`, `"7d"`) convertis en durées SurrealDB.
 const DURATION_FIELDS: [&str; 9] = [
     "ttl",
@@ -83,7 +86,6 @@ pub fn routes() -> Router<AppContext> {
             "/secrets/:id/rotations",
             get(rotation_list).post(rotation_start),
         )
-        .route("/secrets/:id/check", post(rotation_check))
         .route("/rotations/:id/cancel", post(rotation_cancel))
         .route("/tenant-key/rotate", post(tenant_key_rotate))
         .route("/audit", get(audit_list))
@@ -636,23 +638,6 @@ async fn rotation_cancel(
     auth::respond(&context, &headers, result).await
 }
 
-/// Essai sans bascule de la valeur en service par son rotateur.
-async fn rotation_check(
-    State(context): State<AppContext>,
-    Path(id): Path<String>,
-    headers: HeaderMap,
-) -> Response {
-    let result = async {
-        let service = service(&context, &headers).await?;
-        let checked = service
-            .check_rotation(&record("secrets_secret", &id))
-            .await?;
-        ok(StatusCode::OK, data(checked))
-    }
-    .await;
-    auth::respond(&context, &headers, result).await
-}
-
 /// Nouvelle clé active d'une organisation : `{ tenant }` (absent : l'installation).
 async fn tenant_key_rotate(
     State(context): State<AppContext>,
@@ -988,7 +973,8 @@ async fn share_revoke(
 }
 
 /// Ouverture d'un lien : `{ key, passphrase }`. Sans jeton ; un jeton présent est contrôlé et
-/// désigne l'ouvreur (organisation et identité), exigé pour un lien réservé à l'organisation.
+/// désigne l'ouvreur (organisation, identité, et détention de `secrets.installation.manage`
+/// lue dans les permissions du jeton), exigé pour un lien réservé aux membres.
 async fn share_open(
     State(context): State<AppContext>,
     Path(id): Path<String>,
@@ -998,11 +984,18 @@ async fn share_open(
     let result = async {
         let host = secrets_host(&context)?;
         let opener = if headers.contains_key("authorization") {
-            let auth_host = auth::host(&context)?;
-            let caller = auth::caller(&auth_host, &headers).await?;
+            let (caller, session) = auth::caller_session(&context, &headers).await?;
+            let permissions = AuthStore::new(session)
+                .context()
+                .await
+                .map_err(SecretsError::from)?
+                .permissions;
             Some(OpenerContext {
                 identity: caller.identity.as_ref().map(ToSql::to_sql),
                 organization: caller.organization.as_ref().map(ToSql::to_sql),
+                installation_manager: permissions
+                    .iter()
+                    .any(|permission| permission == INSTALLATION_MANAGE),
             })
         } else {
             None

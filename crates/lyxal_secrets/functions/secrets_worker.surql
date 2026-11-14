@@ -20,7 +20,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_purge_due($params: object) {
     };
     LET $p = $report.value;
     IF !fn::secrets_can({ action: "worker" }) { RETURN fn::error_result("SECRETS_PERMISSION_DENIED", $p.language, {}); };
-    LET $due = (SELECT VALUE id FROM secrets_secret WHERE state = "deleted" AND purge_at <= time::now() ORDER BY purge_at ASC LIMIT $p.limit);
+    LET $due = (SELECT VALUE id FROM secrets_secret WHERE state = "deleted" AND purge_at IS NOT NONE AND purge_at <= time::now() ORDER BY purge_at ASC LIMIT $p.limit);
     LET $purged = array::filter(array::map($due, |$id| (DELETE ONLY $id RETURN BEFORE)), |$s| $s IS NOT NONE);
     -- Tickets de lecture échus depuis plus d'un jour
     LET $tickets = (DELETE secrets_read_ticket WHERE expires_at < time::now() - 1d RETURN BEFORE);

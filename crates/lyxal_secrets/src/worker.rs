@@ -104,7 +104,7 @@ impl SecretsMaintenanceWorker {
             "Lyxal Secrets Maintenance",
         );
         descriptor.description = Some(
-            "Purge des secrets supprimés à échéance ; alertes d'échéance ; rotation des secrets et des clés d'organisation ; rescellement après rotation d'une clé d'organisation ou de la clé maîtresse ; destruction des anciennes clés ; expiration des demandes d'accès et retrait des anciens accès"
+            "Purge des secrets supprimés à échéance ; alertes d'échéance ; rotation des secrets et des clés d'organisation ; rescellement après rotation d'une clé d'organisation ou de la clé maîtresse ; destruction des anciennes clés ; expiration des demandes d'accès et retrait des anciens accès ; expiration et retrait des partages"
                 .to_string(),
         );
         descriptor.criticality = WorkerCriticality::Optional;
@@ -531,6 +531,8 @@ impl LyxalWorker for SecretsMaintenanceWorker {
                         tenant_keys_rotated = report.tenant_keys_rotated,
                         requests_expired = report.requests_expired,
                         grants_removed = report.grants_removed,
+                        shares_expired = report.shares_expired,
+                        shares_removed = report.shares_removed,
                         "maintenance du coffre-fort"
                     );
                 }

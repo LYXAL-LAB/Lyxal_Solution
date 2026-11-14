@@ -406,6 +406,13 @@ THEN {
     };
 };
 
+DEFINE EVENT OVERWRITE secrets_policy_guard ON TABLE secrets_policy
+WHEN $event IN ["CREATE", "UPDATE"]
+THEN {
+    LET $refusal = fn::secrets_policy_refusal($after);
+    IF $refusal IS NOT NONE { THROW $refusal; };
+};
+
 DEFINE EVENT OVERWRITE secrets_policy_journal ON TABLE secrets_policy
 WHEN $event IN ["CREATE", "UPDATE", "DELETE"] AND ($event != "DELETE" OR record::exists($before.tenant))
 THEN {

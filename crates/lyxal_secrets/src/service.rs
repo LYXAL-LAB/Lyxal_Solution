@@ -382,20 +382,24 @@ impl SecretsService {
     }
 
     /// Essai sans bascule : le rotateur teste la valeur en service auprès du service extérieur,
-    /// sans rien changer ; le résultat est enregistré sur la fiche, journalisé et publié. La
-    /// valeur est lue avec les droits de l'appelant (le rotateur annoncé comme consommateur) ;
-    /// l'enregistrement est réservé au worker et à la session système. Sans rotateur :
-    /// `SECRETS_ROTATOR_UNAVAILABLE`.
+    /// sans rien changer ; le résultat est enregistré sur la fiche, journalisé et publié.
+    ///
+    /// Outil du worker : tout le chemin passe par la **session système** du service (fiche,
+    /// lecture tracée de la valeur, le rotateur annoncé comme consommateur, puis
+    /// `fn::secrets_rotation_check_record`), quelle que soit la session de l'appelant. Il n'est
+    /// exposé par aucune route : l'hôte ne l'appelle que pour la maintenance. Sans rotateur :
+    /// `SECRETS_ROTATOR_UNAVAILABLE`, sans lecture.
     pub async fn check_rotation(&self, secret: &str) -> SecretsResult<RotationCheckResult> {
-        let record = self
+        let system = self.as_system();
+        let record = system
             .caller
             .secret_get(SecretGetParams::by_id(secret.to_string()))
             .await?;
-        let rotator = self
+        let rotator = system
             .rotators
             .find(&record)
             .ok_or(SecretsError::RotatorUnavailable)?;
-        let current = self
+        let current = system
             .reveal_as(
                 RevealRequest {
                     secret: record.id.to_sql(),
@@ -407,7 +411,7 @@ impl SecretsService {
             .await?;
         let tested = rotator.test(&record, &current.value).await;
         drop(current);
-        Ok(self
+        Ok(system
             .caller
             .rotation_check_record(RotationCheckParams {
                 secret: record.id.to_sql(),
@@ -419,11 +423,16 @@ impl SecretsService {
 
     /// Exécutant des rotations sur la session système, avec les mêmes clés et rotateurs.
     pub(crate) fn runner(&self) -> RotationRunner {
-        RotationRunner::from_system(Self {
+        RotationRunner::from_system(self.as_system())
+    }
+
+    /// Même service, sur la session système de l'hôte.
+    fn as_system(&self) -> Self {
+        Self {
             caller: self.keys.system().clone(),
             keys: self.keys.clone(),
             rotators: self.rotators.clone(),
-        })
+        }
     }
 
     /// Fiche relue après une écriture concurrente.
@@ -457,10 +466,51 @@ impl SecretsService {
     }
 }
 
+/// Noms des clés gardés au plus (`fn::secrets_version_add` refuse au-delà).
+const MAX_JSON_KEYS: usize = 200;
+/// Longueur d'un nom de clé gardé, en caractères (1 à 128).
+const MAX_JSON_KEY_CHARS: usize = 128;
+
 /// Noms des clés d'une valeur JSON objet (R4) ; les valeurs ne sont jamais copiées. `None` si
-/// la valeur n'est pas un objet JSON.
+/// la valeur n'est pas un objet JSON, ou si les noms sortent des bornes de la base (200 clés
+/// au plus, chacune de 1 à 128 caractères) : la valeur est alors écrite sans noms de clés,
+/// jamais refusée pour eux.
 fn json_keys(value: &SecretBytes) -> Option<Vec<String>> {
-    serde_json::from_slice::<BTreeMap<String, IgnoredAny>>(value.expose_secret())
-        .ok()
-        .map(|object| object.into_keys().collect())
+    let object =
+        serde_json::from_slice::<BTreeMap<String, IgnoredAny>>(value.expose_secret()).ok()?;
+    let in_bounds = object.len() <= MAX_JSON_KEYS
+        && object.keys().all(|key| {
+            let chars = key.chars().count();
+            (1..=MAX_JSON_KEY_CHARS).contains(&chars)
+        });
+    in_bounds.then(|| object.into_keys().collect())
+}
+
+#[cfg(test)]
+#[allow(clippy::expect_used)]
+mod tests {
+    use super::json_keys;
+    use lyxal_crypto::SecretBytes;
+
+    fn keys(json: &str) -> Option<Vec<String>> {
+        json_keys(&SecretBytes::new(json.as_bytes().to_vec()).expect("valeur"))
+    }
+
+    #[test]
+    fn json_key_names_are_kept_within_bounds_only() {
+        assert_eq!(
+            keys(r#"{"user":"u","password":"p"}"#),
+            Some(vec!["password".to_string(), "user".to_string()])
+        );
+        assert_eq!(keys("pas du JSON"), None);
+        assert_eq!(keys(r#"{"":"vide"}"#), None);
+        assert_eq!(keys(&format!(r#"{{"{}":1}}"#, "k".repeat(129))), None);
+        assert!(keys(&format!(r#"{{"{}":1}}"#, "é".repeat(128))).is_some());
+        let many = |n: usize| {
+            let fields: Vec<String> = (0..n).map(|i| format!(r#""k{i}":{i}"#)).collect();
+            format!("{{{}}}", fields.join(","))
+        };
+        assert_eq!(keys(&many(200)).map(|names| names.len()), Some(200));
+        assert_eq!(keys(&many(201)), None);
+    }
 }

@@ -47,7 +47,11 @@ DEFINE FUNCTION OVERWRITE fn::secrets_secret_update_refusal($before: object, $af
     IF $before.state = $after.state {
         IF $before.state = "deleted" AND ($meta_changed OR $versions_changed OR $schedule_changed OR ($deletion_changed AND !$system)) { RETURN "SECRETS_SECRET_DELETED"; };
         IF $deletion_changed AND !$system { RETURN "SECRETS_SECRET_STATE_INVALID"; };
+        -- Un secret supprimé garde toujours ses dates de suppression et de purge (A8)
+        IF $after.state = "deleted" AND ($after.purge_at IS NONE OR $after.deleted_at IS NONE) { RETURN "SECRETS_SECRET_STATE_INVALID"; };
         IF $meta_changed AND !$writer { RETURN "SECRETS_PERMISSION_DENIED"; };
+        -- Une nouvelle version ne s'écrit pas avec un changement de fiche : il serait absent du journal (A3)
+        IF $meta_changed AND $after.latest_version != $before.latest_version { RETURN "SECRETS_SECRET_STATE_INVALID"; };
         IF ($versions_changed OR $schedule_changed) AND !$writer AND !$worker { RETURN "SECRETS_PERMISSION_DENIED"; };
         IF $versions_changed {
             -- Dernière version : la suivante seulement, et elle doit exister
@@ -60,6 +64,8 @@ DEFINE FUNCTION OVERWRITE fn::secrets_secret_update_refusal($before: object, $af
             LET $targets = array::distinct(object::values($after.labels));
             LET $live = (SELECT VALUE number FROM secrets_version WHERE secret = $before.id AND number IN $targets AND state != "destroyed");
             IF array::len($live) != array::len($targets) { RETURN "SECRETS_LABEL_INVALID"; };
+            -- Étiquette pending (nouvelle valeur d'une rotation) : posée par le worker ou la session système seulement (A2)
+            IF $after.labels.pending != $before.labels.pending AND $after.labels.pending IS NOT NONE AND !$worker { RETURN "SECRETS_PERMISSION_DENIED"; };
             -- Version proposée figée tant qu'une demande de changement l'attend
             IF $after.labels.proposed != $before.labels.proposed AND fn::secrets_change_open($before.id) { RETURN "SECRETS_CHANGE_IN_PROGRESS"; };
             -- Protection : remplacer la valeur en service (version proposée ou nouvelle) ou revenir en arrière
@@ -103,7 +109,8 @@ DEFINE FUNCTION OVERWRITE fn::secrets_secret_delete_refusal($before: object) -> 
     -- Suppression de l'organisation : ses secrets partent avec elle
     IF $before.tenant IS NOT NONE AND !record::exists($before.tenant) { RETURN NONE; };
     IF $before.state != "deleted" { RETURN "SECRETS_SECRET_STATE_INVALID"; };
-    IF $before.purge_at > time::now() {
+    -- Date de purge absente : traitée comme non échue (NONE se compare comme inférieur à toute date)
+    IF $before.purge_at IS NONE OR $before.purge_at > time::now() {
         IF !fn::secrets_can({ action: "purge", tenant: $before.tenant }) { RETURN "SECRETS_PERMISSION_DENIED"; };
         IF fn::secrets_settings_effective({ tenant: $before.tenant }).purge_protection { RETURN "SECRETS_PURGE_PROTECTED"; };
     };
@@ -378,7 +385,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_secret_purge($params: object) {
     IF !fn::secrets_can({ action: "purge", tenant: $secret.tenant }) { RETURN fn::error_result("SECRETS_PERMISSION_DENIED", $p.language, {}); };
     -- Mêmes règles que la garde secrets_secret_delete_guard (qui, elle, voit aussi la suppression d'une organisation)
     IF $secret.state != "deleted" { RETURN fn::error_result("SECRETS_SECRET_STATE_INVALID", $p.language, { state: $secret.state }); };
-    IF $secret.purge_at > time::now() AND fn::secrets_settings_effective({ tenant: $secret.tenant }).purge_protection {
+    IF ($secret.purge_at IS NONE OR $secret.purge_at > time::now()) AND fn::secrets_settings_effective({ tenant: $secret.tenant }).purge_protection {
         RETURN fn::error_result("SECRETS_PURGE_PROTECTED", $p.language, { purge_at: $secret.purge_at });
     };
     LET $deleted = (DELETE ONLY $secret.id RETURN BEFORE);

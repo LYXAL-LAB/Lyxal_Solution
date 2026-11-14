@@ -1,10 +1,10 @@
 # `lyxal_secrets` — coffre-fort des secrets applicatifs
 
 Module du Noyau Technique de Lyxal OS : conserve les secrets applicatifs (clés de fournisseurs,
-identifiants de canaux, jetons, secrets de signature) et contrôle qui les lit. Les sources et
-l'étude des produits du marché sont dans [`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md), le
-programme en cours dans [`implementation_plan.md`](../../implementation_plan.md) à la racine, les
-évolutions dans [`ROADMAP.md`](ROADMAP.md).
+identifiants de canaux, jetons, secrets de signature) et contrôle qui les lit. Les modèles et les
+décisions du CTO sont dans [`MODELE_SOURCES.md`](MODELE_SOURCES.md), l'exploitation (sauvegarde,
+clé maîtresse, urgence, compromission) dans [`PROCEDURES.md`](PROCEDURES.md), les évolutions dans
+[`ROADMAP.md`](ROADMAP.md).
 
 ## État actuel
 
@@ -69,9 +69,9 @@ clé maîtresse du coffre-fort (LYXAL__SECRETS__MASTER_KEY ; ancienne clé en le
 | `SecretsService::rotate_tenant_key` | droit contrôlé par `fn::secrets_tenant_key_rotate_allowed` (session de l'appelant), nouvelle clé rangée par la session système |
 | `SecretRotator`, `RotatorRegistry` | rotateur d'un module de l'hôte qui sait changer un identifiant chez un service extérieur : `create` (nouvelle valeur), `install`, `test`, `retire` (avant-dernière valeur, au mieux) ; erreurs `RotatorError` (code seul, nouvel essai ou non) ; registre vide par défaut, un rotateur au plus par fiche |
 | `RotationRunner` | fait avancer une rotation réservée depuis l'étape atteinte : nouvelle valeur écrite en `pending` par `put`, installation, test, bascule ; valeurs lues par le chemin tracé, le rotateur annoncé comme consommateur ; un échec passe par `fn::secrets_rotation_fail` |
-| `SecretsService::share_create`, `share_open` | partage : clé de 32 octets tirée par `OsRng`, copie scellée (contexte lié à l'organisation et à l'empreinte de la clé), empreinte SHA-256, mot de passe haché par Argon2id ; la clé n'est rendue qu'une fois, dans le lien. Ouverture : empreinte comparée en temps constant, mot de passe, organisation si le lien y est réservé, puis ouverture consommée et copie ouverte ; tout refus est `SECRETS_SHARE_UNAVAILABLE` |
+| `SecretsService::share_create`, `share_open` | partage : clé de 32 octets tirée par `OsRng`, copie scellée (contexte lié à l'organisation et à l'empreinte de la clé), empreinte HMAC-SHA256 de la clé (`lyxal_crypto::hmac`), mot de passe haché par Argon2id ; la clé n'est rendue qu'une fois, dans le lien. Ouverture : empreinte vérifiée par `verify_hmac_sha256` (temps constant), mot de passe, organisation si le lien y est réservé (droit `secrets.installation.manage` pour un partage de l'installation), puis ouverture consommée et copie ouverte ; tout refus est `SECRETS_SHARE_UNAVAILABLE` |
 | `SecretsService::propose` | nouvelle valeur d'un secret protégé : scellée et écrite en version `proposed` (jamais servie avant l'application), puis demande de changement ouverte au nom de l'appelant |
-| `SecretsService::rotate_now`, `check_rotation` | rotation immédiate (dont l'urgence ; sans rotateur, l'urgence coupe la version courante et la rotation échoue aussitôt, `SECRETS_ROTATOR_UNAVAILABLE`) ; essai sans bascule de la valeur en service |
+| `SecretsService::rotate_now`, `check_rotation` | rotation immédiate (dont l'urgence ; sans rotateur, l'urgence coupe la version courante et la rotation échoue aussitôt, `SECRETS_ROTATOR_UNAVAILABLE`) ; essai sans bascule de la valeur en service, outil du worker et de la session système (pas de route HTTP) |
 | `SecretsClient` | lecture et écriture des modules de l'hôte par organisation et chemin, session système, module annoncé comme consommateur |
 | `SecretsMaintenanceWorker` | `LyxalWorker` : purge à échéance, alertes d'échéance et rappels de rotation, démarrage des rotations dues qu'un rotateur sait faire, rotation des clés d'organisation échues, avancement des rotations réservées, expiration des demandes et retrait des accès finis, expiration des partages, rescellement des versions puis des clés d'organisation, destruction des clés inutilisées ; bilan `MaintenanceReport` |
 | `SecretsModule`, `SecretsHealthCheck` | descripteur du module ; sonde : base joignable, clé maîtresse présente, clés scellées par une clé maîtresse absente du trousseau (dégradé), rescellements en attente |
@@ -95,7 +95,7 @@ masqué.
 | `secrets_request` | demande d'accès (`access`) ou de changement d'un secret protégé (`change` : `value`, `rollback`, `disable`, `delete`, `destroy`) : demandeur, objet, motif, approbations requises et reçues, état (`pending`, `approved`, `rejected`, `cancelled`, `expired`, `applying`, `applied`), échéance ; une demande de changement ouverte par secret |
 | `secrets_policy` | protection d'un secret ou d'un dossier : approbations requises (1 à 5), opérations protégées, durée maximale d'un accès demandé |
 | `secrets_share` | partage à usage unique : copie scellée (illisible), empreinte de la clé du lien (illisible), hachage du mot de passe facultatif (illisible), source (secret et version, ou texte), ouvertures permises et faites, essais faux, réservé à l'organisation ou non, échéance, état (`active`, `consumed`, `expired`, `revoked`, `destroyed`) |
-| `secrets_tenant_key` | clé d'une organisation ou de l'installation, scellée par la clé maîtresse : identifiant, clé maîtresse qui la scelle, état (`active`, une seule par portée ; `decrypt_only` ; `destroyed`, matière effacée) ; aucun accès utilisateur |
+| `secrets_tenant_key` | clé d'une organisation ou de l'installation, scellée par la clé maîtresse : identifiant, clé maîtresse qui la scelle, état (`active`, une seule par portée ; `decrypt_only` ; `destroyed`, matière effacée) ; identifiant et état lisibles par l'écriture, la liste et les accès temporaires d'écriture de l'organisation, clé scellée illisible, aucune écriture utilisateur |
 
 Aucune table n'a de `CHANGEFEED` ni d'historique natif : une version détruite disparaît vraiment.
 
@@ -145,7 +145,8 @@ Aucune table n'a de `CHANGEFEED` ni d'historique natif : une version détruite d
   organisation. `fn::secrets_can` et les droits des tables le prennent en compte ; la liste des
   secrets ne montre que ceux qu'il couvre. Réglages, journal, purge, restauration et gestion des
   accès restent réservés aux droits `lyxal_auth`. Accordé et retiré par
-  `secrets.access.manage`.
+  `secrets.access.manage`, jamais à soi-même : on passe par une demande approuvée par un autre, ou
+  par l'accès d'urgence.
 * **Demandes** : une demande d'accès est accordée (accès créé) dès que le nombre d'approbations
   requis est atteint ; un refus la clôt ; sans réponse, elle expire. On n'approuve jamais sa propre
   demande.
@@ -163,7 +164,8 @@ Aucune table n'a de `CHANGEFEED` ni d'historique natif : une version détruite d
   une clé aléatoire que seul le lien porte ; la base ne garde que l'enveloppe, l'empreinte de la
   clé et le hachage du mot de passe, effacés dès que le partage n'est plus actif. Ouvertures
   limitées (1 par défaut, 10 au plus), échéance (24 h, 7 jours au plus), mot de passe facultatif,
-  ouverture réservée à l'organisation en option ; 5 essais faux détruisent le partage ; une
+  ouverture réservée à l'organisation en option (aux gestionnaires de l'installation pour un
+  partage de l'installation) ; 5 essais faux détruisent le partage ; une
   erreur d'ouverture ne dit jamais ce qui est faux (`SECRETS_SHARE_UNAVAILABLE`). Seule la
   session système charge, compte et consomme.
 * **Journal** : une entrée par opération (réglages, création, modification, états, versions,
@@ -174,8 +176,12 @@ Aucune table n'a de `CHANGEFEED` ni d'historique natif : une version détruite d
   entrée porte l'empreinte de la précédente (`fn::security_audit_entry`), le rang est unique par
   organisation, et les champs sont figés. Une entrée modifiée, retirée ou recréée par une session
   système est détectée par `fn::secrets_audit_verify`. Jamais de valeur.
-* Les gardes (`DEFINE EVENT`) appliquent les mêmes règles à une écriture directe dans les tables :
-  date de purge tirée des réglages, version jamais supprimée tant que son secret existe.
+* Les gardes (`DEFINE EVENT`) appliquent les mêmes règles à une écriture directe dans les tables
+  (fiches, versions, tickets, rotations, accès, demandes, protections, partages) : date de purge
+  tirée des réglages et toujours présente sur un secret supprimé, version jamais supprimée tant
+  que son secret existe, auteur et champs de décision égaux à l'appelant, urgence avec
+  l'assurance requise, étiquette `pending` réservée au worker, nouvelle version jamais mêlée à un
+  changement de fiche, aucun accès accordé à soi-même hors demande approuvée ou urgence.
 
 ## Droits (`lyxal_auth`)
 
@@ -250,7 +256,7 @@ version ou étiquettes, échéance, rotation et code d'erreur, auteur ; jamais d
 
 Banc SurrealQL (`tests/*.test.surql`, exécuté par `scripts/ci/test_lyxal_modules.py`) : fiches,
 versions, lecture (dont double facteur), journal (dont falsification), droits, réglages,
-fonctions internes, clés des organisations et refus journalisés, échéances et rotations, accès, demandes, protections et urgence, partages ; 226 assertions.
+fonctions internes, clés des organisations et refus journalisés, échéances et rotations, accès, demandes, protections et urgence, partages, sondes de l'audit de clôture ; 245 assertions.
 
 Tests Rust (`tests/it/`, base embarquée, sessions de personnes et de programmes par jetons de
 test) : valeur écrite puis relue, 64 Kio acceptés et au-delà refusés, enveloppe recopiée ou
@@ -262,5 +268,6 @@ après interruption, urgence avec et sans rotateur, rappel seul sans rotateur, e
 rotation planifiée des clés d'organisation, réservation périmée reprise par un autre worker, arrêt du
 worker pendant une rotation, accès temporaires d'une personne et d'un programme, valeur proposée
 servie seulement après approbations et application, changement d'urgence, worker des demandes, partages (ouverture épuisée, clé et mot de passe faux,
-destruction au cinquième essai, lien réservé à l'organisation, retrait, échéance) ; 42 tests. Hôte :
-`apps/lyxal-server/tests/secrets_http.rs` (routes HTTP de bout en bout). Hôte : `apps/lyxal-server/tests/secrets.rs`.
+destruction au cinquième essai, lien réservé à l'organisation ou à l'installation, retrait, échéance), version `pending` d'un
+autre auteur jamais mise en service, `LIVE SELECT` sans enveloppe ; 45 tests et 1 test unitaire. Hôte :
+`apps/lyxal-server/tests/secrets_http.rs` (routes HTTP de bout en bout) et `apps/lyxal-server/tests/secrets.rs`.

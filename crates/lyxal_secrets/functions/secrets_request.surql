@@ -378,7 +378,8 @@ DEFINE FUNCTION OVERWRITE fn::secrets_request_refusal($event: string, $before: o
     LET $manager = fn::secrets_can({ action: "access", tenant: $after.tenant });
     IF $event = "CREATE" {
         IF $after.state != "pending" OR array::len($after.approvals) > 0 OR $after.grant IS NOT NONE OR $after.emergency
-            OR $after.decided_at IS NOT NONE OR $after.applied_at IS NOT NONE { RETURN "SECRETS_REQUEST_STATE_INVALID"; };
+            OR $after.decided_at IS NOT NONE OR $after.applied_at IS NOT NONE OR $after.consumed_at IS NOT NONE
+            OR $after.decided_by IS NOT NONE OR $after.decision_reason IS NOT NONE { RETURN "SECRETS_REQUEST_STATE_INVALID"; };
         IF ($after.kind = "access") != ($after.secret IS NONE) OR ($after.kind = "access" AND (array::len($after.actions) = 0 OR $after.duration IS NONE))
             OR ($after.kind = "change" AND $after.operation IS NONE) { RETURN "SECRETS_REQUEST_STATE_INVALID"; };
         IF $system { RETURN NONE; };
@@ -386,7 +387,20 @@ DEFINE FUNCTION OVERWRITE fn::secrets_request_refusal($event: string, $before: o
         -- Approbations requises : jamais moins que la protection du chemin (ni, pour un accès, que le réglage)
         LET $policy = fn::secrets_policy_for({ tenant: $after.tenant, path: $after.path, folder: $after.folder });
         LET $minimum = IF $after.kind = "access" { math::max([fn::secrets_settings_effective({ tenant: $after.tenant }).access_request_approvals, $policy.required_approvals]) } ELSE { $policy.required_approvals };
-        RETURN IF $after.required_approvals < $minimum { "SECRETS_REQUEST_STATE_INVALID" } ELSE { NONE };
+        IF $after.required_approvals < $minimum { RETURN "SECRETS_REQUEST_STATE_INVALID"; };
+        -- Changement : droit sur le secret et, pour une valeur, version proposée par l'appelant (A7)
+        IF $after.kind = "change" {
+            LET $secret = (SELECT tenant, path, labels FROM ONLY $after.secret);
+            IF $secret == NONE OR $secret.tenant != $after.tenant OR $secret.path != $after.path { RETURN "SECRETS_REQUEST_STATE_INVALID"; };
+            LET $action = IF $after.operation IN ["delete", "destroy"] { "delete" } ELSE { "write" };
+            IF !fn::secrets_can({ action: $action, tenant: $secret.tenant, path: $secret.path }) { RETURN "SECRETS_PERMISSION_DENIED"; };
+            IF $after.operation = "value" {
+                LET $version = fn::secrets_version_view($after.secret, $after.number);
+                IF $version == NONE OR $secret.labels.proposed != $after.number OR $version.created_by != $caller.identity
+                    OR $version.created_by_application != $caller.application { RETURN "SECRETS_REQUEST_STATE_INVALID"; };
+            };
+        };
+        RETURN NONE;
     };
     IF $before.state IN ["rejected", "cancelled", "expired", "applied"] { RETURN "SECRETS_REQUEST_STATE_INVALID"; };
     IF $system { RETURN NONE; };
@@ -403,6 +417,14 @@ DEFINE FUNCTION OVERWRITE fn::secrets_request_refusal($event: string, $before: o
             AND $after.number = $before.number AND $after.emergency = $before.emergency { NONE } ELSE { "SECRETS_REQUEST_STATE_INVALID" };
     };
     IF $after.consumed_at != $before.consumed_at { RETURN "SECRETS_REQUEST_STATE_INVALID"; };
+    -- Champs de décision posés seulement par la transition qui les justifie (A6)
+    LET $to = $before.state + ">" + $after.state;
+    IF $after.decided_by != $before.decided_by AND ($to != "pending>rejected" OR $after.decided_by != $actor) { RETURN "SECRETS_REQUEST_STATE_INVALID"; };
+    IF $after.decision_reason != $before.decision_reason AND $to NOTINSIDE ["pending>rejected", "pending>applying"] { RETURN "SECRETS_REQUEST_STATE_INVALID"; };
+    IF $after.emergency != $before.emergency AND !(($to = "pending>applying" AND $after.emergency) OR ($to IN ["applying>pending", "applying>approved"] AND !$after.emergency)) {
+        RETURN "SECRETS_REQUEST_STATE_INVALID";
+    };
+    IF $after.grant != $before.grant AND ($to != "pending>approved" OR $after.kind != "access") { RETURN "SECRETS_REQUEST_STATE_INVALID"; };
     IF $after.state = $before.state { RETURN IF $after.state = "pending" AND $approved { "SECRETS_REQUEST_STATE_INVALID" } ELSE { NONE }; };
     LET $transition = $before.state + ">" + $after.state;
     RETURN IF $transition = "pending>approved" {
@@ -428,4 +450,4 @@ DEFINE FUNCTION OVERWRITE fn::secrets_request_refusal($event: string, $before: o
         -- Retour après un échec : seulement si aucun changement n'a été exécuté
         IF !$by_requester { "SECRETS_PERMISSION_DENIED" } ELSE IF $before.consumed_at IS NOT NONE { "SECRETS_REQUEST_STATE_INVALID" } ELSE { NONE }
     } ELSE { "SECRETS_REQUEST_STATE_INVALID" };
-} COMMENT "Interne : refus d'une écriture de demande ($event, $before, $after) : création en attente par le demandeur, approbations requises jamais sous la protection du chemin ; approbations ajoutées une à une par un gestionnaire des accès autre que le demandeur ; transitions : approbation finale et refus (gestionnaire), annulation (demandeur), expiration (worker, échéance passée), application d'un changement non échu (demandeur ; avant approbation seulement en urgence avec le droit d'urgence, un motif et, pour une personne, l'assurance la plus haute et récente) ; pendant l'application, seule la consommation de l'autorisation change la demande, et le retour en arrière n'est permis que si rien n'a été exécuté ; demande close intouchable. NONE ou code d'erreur";
+} COMMENT "Interne : refus d'une écriture de demande ($event, $before, $after) : création en attente par le demandeur, approbations requises jamais sous la protection du chemin, changement : droit sur le secret et version proposée par le demandeur ; champs de décision posés seulement par la transition correspondante ; approbations ajoutées une à une par un gestionnaire des accès autre que le demandeur ; transitions : approbation finale et refus (gestionnaire), annulation (demandeur), expiration (worker, échéance passée), application d'un changement non échu (demandeur ; avant approbation seulement en urgence avec le droit d'urgence, un motif et, pour une personne, l'assurance la plus haute et récente) ; pendant l'application, seule la consommation de l'autorisation change la demande, et le retour en arrière n'est permis que si rien n'a été exécuté ; demande close intouchable. NONE ou code d'erreur";
