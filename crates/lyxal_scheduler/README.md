@@ -285,7 +285,7 @@ planification et rend ses prochaines échéances.
 
 ### Tests Rust
 
-`cargo test -p lyxal_scheduler` : 46 tests — expressions cron (jeux de cas de `croner`, Quartz
+`cargo test -p lyxal_scheduler` : 47 tests — expressions cron (jeux de cas de `croner`, Quartz
 et Croniq), changement d'heure à Paris et New York, calendriers, intervalles, bornes,
 exclusions, décalage, dates manquées, prévision ; et en base embarquée (`mem://`) chacune des
 38 fonctions appelée par son wrapper, avec décodage sans perte de chaque résultat. Ils ne
