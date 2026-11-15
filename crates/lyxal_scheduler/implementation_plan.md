@@ -152,7 +152,7 @@ Tous les `XxxParams` portent aussi `language: Option<String>`.
 | `DueList` | `schedules: Vec<Schedule>`, `backfills: Vec<Backfill>` | `due_list` |
 | `FireResult` | `runs: Vec<Run>`, `ignored: i64`, `schedule: Schedule` | `schedule_fire` |
 | `BackfillFireResult` | `runs: Vec<Run>`, `backfill: Backfill` | `backfill_fire` |
-| `ClaimedRun` | `id`, `lease` (jeton, `SecretString` : jamais dans un `Debug`), `lease_node`, `locked_until`, `timeout`, `tenant`, `schedule`, `task`, `args`, `origin`, `scheduled_for`, `attempt`, `max_attempts` | dans `ClaimResult { items: Vec<ClaimedRun>, paused: bool }` : `run_claim` |
+| `ClaimedRun` | `id`, `lease: LeaseToken` (jeton opaque, `Debug` masqué `[REDACTED]`, aucune dépendance de chiffrement), `lease_node`, `locked_until`, `timeout`, `tenant`, `schedule`, `task`, `args`, `origin`, `scheduled_for`, `attempt`, `max_attempts` | dans `ClaimResult { items: Vec<ClaimedRun>, paused: bool }` : `run_claim` |
 | `Heartbeat` | `run`, `locked_until`, `cancel_requested` | `run_heartbeat` |
 | `RescueResult` | `rescued: Vec<{ id, state }>`, `reconciled: i64` | `run_rescue` |
 | `PruneResult` | `deleted: i64` | `run_prune` |
