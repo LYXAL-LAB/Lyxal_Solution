@@ -9,11 +9,14 @@ Surrealist (S1). Le calcul des dates (cron, fuseaux, calendriers) arrive au lot 
 moteur au lot 3 : ici, les tests fournissent eux-mêmes les dates. Aucune ligne de code avant la
 validation du CTO (`.agents/AGENTS.md` §3).
 
-## 1. Questions soumises au CTO
+## 1. Décisions du CTO (15 novembre 2026)
 
-| N° | Question | Proposition |
+T1 à T5 validées selon les propositions.
+
+| N° | Question | Décision |
 | :- | :--- | :--- |
 | **T1** | Déclaration d'une tâche | Par le **seed du module propriétaire**, comme les permissions dans `lyxal_auth` : `IF !record::exists(scheduler_task:⟨notification.digest⟩) THEN (CREATE …) END;`. Nom `<module>.<action>` en minuscules ; une personne ne crée, ne modifie ni ne supprime jamais une tâche ; la session système peut seulement l'activer ou la désactiver. |
+| | *Précision demandée par le CTO : un futur module d'automatisation (type n8n)* | Le scheduler ne limite pas ce module. **Les personnes créent librement leurs planifications** (quand, avec quels arguments) ; la *tâche* est seulement le **type d'action** qu'un module sait exécuter. Le module d'automatisation déclarera une tâche, par exemple `automation.workflow_run` avec l'identifiant du flux en argument : chaque personne construit ses flux dans ce module et les planifie par le scheduler, sans nouvelle tâche à déclarer (n8n fonctionne ainsi : son déclencheur « Schedule » lance un flux construit ailleurs). Tout module peut ajouter ses propres types de tâches sans toucher au scheduler. L'exécution de logique saisie par une personne (étapes, code, appels) relève du module d'automatisation, avec ses propres droits et son bac à sable, jamais du scheduler. |
 | **T2** | Droits à l'exécution | La permission propre de la tâche est contrôlée **à la création et à chaque modification** d'une planification ou d'une exécution différée. L'exécution se fait ensuite au nom du système, pour l'organisation de la planification (modèle Temporal, Oban) ; la fonction ou le handler du module reste responsable de ne toucher que cette organisation. Une planification dont l'auteur a perdu le droit continue ; un gestionnaire peut la mettre en pause ou la supprimer. |
 | **T3** | Équité entre organisations | Deux limites tenues par **compteurs** (une écriture conditionnelle, donc pas de dépassement entre deux nœuds) : places de la file (`scheduler_queue.running < concurrency`), et places par organisation dans la file (`scheduler_slot`, 10 par défaut). Une organisation pleine laisse passer les autres. |
 | **T4** | Journal | Journal **simple en ajout seul** (`scheduler_audit`), sans chaînage : il trace les actions des personnes (création, pause, rejeu, annulation, réglages), pas chaque exécution, déjà suivie par `scheduler_run`. |
