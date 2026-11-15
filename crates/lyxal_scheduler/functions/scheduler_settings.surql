@@ -10,7 +10,7 @@
 DEFINE FUNCTION OVERWRITE fn::scheduler_settings_get($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
-            tenant: { pipeline: [{ rule: "record", options: { expected_table: "auth_organization" } }] },
+            tenant: { pipeline: fn::scheduler_ref("auth_organization") },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -32,7 +32,7 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_settings_set($params: object) {
     LET $names = ["catchup_window", "run_retention", "keep_last_runs", "tenant_concurrency", "max_schedules", "max_pending_runs", "max_args_bytes"];
     LET $report = fn::validation_object_execute($params, {
         fields: {
-            tenant: { pipeline: [{ rule: "record", options: { expected_table: "auth_organization" } }] },
+            tenant: { pipeline: fn::scheduler_ref("auth_organization") },
             catchup_window: { pipeline: [{ rule: "duration", options: { min_value: 1m, max_value: 30d } }] },
             run_retention: { pipeline: [{ rule: "duration", options: { min_value: 1d, max_value: 3650d } }] },
             keep_last_runs: { pipeline: [{ rule: "integer", options: { min_value: 0, max_value: 1000 } }] },

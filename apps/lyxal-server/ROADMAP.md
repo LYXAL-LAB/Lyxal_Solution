@@ -10,7 +10,7 @@ Aucune étape ne démarre sans ordre du CTO et `implementation_plan.md` validé
 | :--- | :--- | :--- |
 | 1 | Authentification des clients | `lyxal_auth` |
 | 2 | API des modules | étape 1 |
-| 3 | Hébergement des crates du noyau à venir | `lyxal_secrets`, `lyxal_scheduler` |
+| 3 | Hébergement du moteur de `lyxal_scheduler` | `lyxal_scheduler` (lot 3) |
 
 ---
 
@@ -37,13 +37,15 @@ Critères d'acceptation :
 - [ ] réponse au contrat `{ ok, data, error }`, sans détail interne ;
 - [ ] tests : appel autorisé, refusé par les permissions, fonction inconnue.
 
-## 3. Hébergement des crates du noyau à venir
+## 3. Hébergement du moteur de `lyxal_scheduler`
 
-Chaque crate du noyau technique créé est embarqué par `build.rs` et, s'il a du code Rust, déclaré
-dans `src/modules/` (workers, sondes, consommateurs d'événements).
+`lyxal_secrets` est hébergé (`SecretsModule`) ; `lyxal_scheduler` est embarqué par `build.rs` et
+porté par un `ManifestModule` (socle SurrealQL). Son moteur Rust (lot 3 de son programme) sera
+déclaré dans `src/modules/` : planificateur sous bail, exécuteurs par file, sonde de santé.
 
 Critères d'acceptation :
 
-- [ ] module inscrit dans `MODULES` dans l'ordre des dépendances ;
-- [ ] installation et rejeu vérifiés par les tests de l'hôte ;
+- [x] module inscrit dans `MODULES` dans l'ordre des dépendances ;
+- [x] installation et rejeu vérifiés par les tests de l'hôte ;
+- [ ] `SchedulerModule`, workers et sonde déclarés dans `src/modules/` ;
 - [ ] `README.md` §2 à jour.

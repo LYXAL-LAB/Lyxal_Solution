@@ -142,3 +142,45 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_audit_write($entry: object) -> object {
     });
     RETURN $created;
 } COMMENT "Interne (événements du module) : ajoute une entrée au journal ({ tenant, action, schedule, run, details }) ; auteur, type de session et adresse lus dans la session ; jamais d'arguments";
+
+-- ----------------------------------------------------------------------------
+-- fn::scheduler_ref (interne)
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::scheduler_ref($table: string) -> array {
+    RETURN [{ rule: "one_of", options: { pipelines: [
+        [{ rule: "record_id", options: { allowed_tables: [$table] } }],
+        [{ rule: "record", options: { expected_table: $table } }]
+    ] } }];
+} COMMENT "Interne : pipeline du moteur de validation pour un identifiant d'enregistrement de la table $table, donné en identifiant natif (exécutions à identifiant composé [planification, date]) ou en chaîne « table:clé »";
+
+-- ----------------------------------------------------------------------------
+-- fn::scheduler_schedule_payload (interne, appelée par les événements)
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::scheduler_schedule_payload($schedule: object, $extra: object) -> object {
+    RETURN object::extend({
+        schedule_id: <string> $schedule.id,
+        name: $schedule.name,
+        tenant: fn::scheduler_tenant_string($schedule.tenant),
+        task: record::id($schedule.task)
+    }, $extra);
+} COMMENT "Interne : charge d'un événement scheduler.schedule.* (planification, nom, organisation, tâche, champs $extra) ; jamais d'arguments";
+
+-- ----------------------------------------------------------------------------
+-- fn::scheduler_run_payload (interne, appelée par les événements)
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::scheduler_run_payload($run: object) -> object {
+    RETURN {
+        run_id: <string> $run.id,
+        tenant: fn::scheduler_tenant_string($run.tenant),
+        schedule_id: IF $run.schedule IS NONE { NONE } ELSE { <string> $run.schedule },
+        task: record::id($run.task),
+        origin: $run.origin,
+        scheduled_for: <string> $run.scheduled_for,
+        attempt: $run.attempt,
+        max_attempts: $run.max_attempts,
+        error_code: $run.error.code
+    };
+} COMMENT "Interne : charge d'un événement scheduler.run.* (exécution, organisation, planification, tâche, origine, date prévue, tentative, code d'erreur) ; jamais d'arguments ni de résultat";

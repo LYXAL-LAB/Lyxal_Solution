@@ -82,7 +82,7 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_calendar_delete_refusal($before: object)
 DEFINE FUNCTION OVERWRITE fn::scheduler_calendar_create($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
-            tenant: { pipeline: [{ rule: "record", options: { expected_table: "auth_organization" } }] },
+            tenant: { pipeline: fn::scheduler_ref("auth_organization") },
             name: { pipeline: [{ rule: "slug", options: { max_length: 64 } }], required: true },
             description: { pipeline: [{ rule: "optional_string", options: { max_length: 1024 } }] },
             rules: { pipeline: [{ rule: "array" }], required: true },
@@ -102,7 +102,12 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_calendar_create($params: object) {
         rules: $rules.value,
         created_by: fn::scheduler_caller().identity
     });
-    IF array::len($inserted) = 0 { RETURN fn::error_result("SCHEDULER_CALENDAR_EXISTS", $p.language, { name: $p.name }); };
+    IF array::len($inserted) = 0 {
+        -- Doublon de nom, ou écriture filtrée par les permissions de la table
+        LET $existing = (SELECT VALUE id FROM scheduler_calendar WHERE scope_key = fn::scheduler_scope_key($p.tenant) AND name = $p.name LIMIT 1);
+        RETURN IF array::len($existing) > 0 { fn::error_result("SCHEDULER_CALENDAR_EXISTS", $p.language, { name: $p.name }) }
+            ELSE { fn::error_result("SCHEDULER_WRITE_FORBIDDEN", $p.language, { table: "scheduler_calendar" }) };
+    };
     RETURN fn::result_ok($inserted[0]);
 } COMMENT "Crée un calendrier d'exceptions ({ name, rules, tenant, description }) ; nom unique dans sa portée (SCHEDULER_CALENDAR_EXISTS) ; règles contrôlées par fn::scheduler_calendar_rules_check. Droit : calendriers";
 
@@ -113,7 +118,7 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_calendar_create($params: object) {
 DEFINE FUNCTION OVERWRITE fn::scheduler_calendar_update($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
-            calendar: { pipeline: [{ rule: "record", options: { expected_table: "scheduler_calendar" } }], required: true },
+            calendar: { pipeline: fn::scheduler_ref("scheduler_calendar"), required: true },
             description: { pipeline: [{ rule: "optional_string", options: { max_length: 1024 } }] },
             rules: { pipeline: [{ rule: "array" }] },
             clear: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: true } }, { rule: "each", options: { pipeline: [{ rule: "enum", options: { allowed: ["description"], case_sensitive: true } }] } }], default: [] },
@@ -146,7 +151,7 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_calendar_update($params: object) {
 DEFINE FUNCTION OVERWRITE fn::scheduler_calendar_get($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
-            calendar: { pipeline: [{ rule: "record", options: { expected_table: "scheduler_calendar" } }], required: true },
+            calendar: { pipeline: fn::scheduler_ref("scheduler_calendar"), required: true },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -167,7 +172,7 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_calendar_get($params: object) {
 DEFINE FUNCTION OVERWRITE fn::scheduler_calendar_list($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
-            tenant: { pipeline: [{ rule: "record", options: { expected_table: "auth_organization" } }] },
+            tenant: { pipeline: fn::scheduler_ref("auth_organization") },
             limit: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 500 } }], default: 100 },
             start: { pipeline: [{ rule: "integer", options: { min_value: 0 } }], default: 0 },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
@@ -188,7 +193,7 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_calendar_list($params: object) {
 DEFINE FUNCTION OVERWRITE fn::scheduler_calendar_delete($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
-            calendar: { pipeline: [{ rule: "record", options: { expected_table: "scheduler_calendar" } }], required: true },
+            calendar: { pipeline: fn::scheduler_ref("scheduler_calendar"), required: true },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -198,8 +203,8 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_calendar_delete($params: object) {
     LET $calendar = (SELECT * FROM ONLY $p.calendar);
     IF $calendar == NONE { RETURN fn::error_result("SCHEDULER_CALENDAR_NOT_FOUND", $p.language, { calendar: <string> $p.calendar }); };
     IF !fn::scheduler_can({ action: "calendar", tenant: $calendar.tenant }) { RETURN fn::error_result("SCHEDULER_PERMISSION_DENIED", $p.language, {}); };
-    LET $refusal = fn::scheduler_calendar_delete_refusal($calendar);
-    IF $refusal IS NOT NONE { RETURN fn::error_result($refusal, $p.language, { calendar: <string> $calendar.id }); };
+    LET $used = (SELECT VALUE id FROM scheduler_schedule WHERE calendars CONTAINS $calendar.id LIMIT 1);
+    IF array::len($used) > 0 { RETURN fn::error_result("SCHEDULER_CALENDAR_IN_USE", $p.language, { calendar: <string> $calendar.id }); };
     LET $deleted = (DELETE ONLY $calendar.id RETURN BEFORE);
     IF $deleted == NONE { RETURN fn::error_result("SCHEDULER_WRITE_FORBIDDEN", $p.language, { table: "scheduler_calendar" }); };
     RETURN fn::result_ok({ deleted: <string> $calendar.id });
