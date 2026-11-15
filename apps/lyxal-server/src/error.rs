@@ -42,6 +42,9 @@ pub enum ServerError {
 
     #[error("commande en échec : {message}")]
     CommandFailed { message: String },
+
+    #[error("requête illisible : {message}")]
+    InvalidRequest { message: String },
 }
 
 /// Description d'une erreur de l'hôte, identique à sa définition dans `error/server.surql`.
@@ -129,6 +132,15 @@ const COMMAND_FAILED: ServerErrorInfo = ServerErrorInfo {
     label: "Commande d'administration en échec",
 };
 
+const INVALID_REQUEST: ServerErrorInfo = ServerErrorInfo {
+    code: "SERVER_INVALID_REQUEST",
+    category: "validation",
+    http_status: 400,
+    retryable: false,
+    message: "The request could not be read",
+    label: "Requête illisible",
+};
+
 /// Toutes les erreurs de l'hôte.
 pub const SERVER_ERROR_CATALOG: &[ServerErrorInfo] = &[
     CONFIGURATION_INVALID,
@@ -139,6 +151,7 @@ pub const SERVER_ERROR_CATALOG: &[ServerErrorInfo] = &[
     TELEMETRY_INIT_FAILED,
     AUTH_DISABLED,
     COMMAND_FAILED,
+    INVALID_REQUEST,
 ];
 
 impl ServerError {
@@ -165,6 +178,7 @@ impl ServerError {
             Self::Telemetry { .. } => TELEMETRY_INIT_FAILED,
             Self::AuthDisabled => AUTH_DISABLED,
             Self::CommandFailed { .. } => COMMAND_FAILED,
+            Self::InvalidRequest { .. } => INVALID_REQUEST,
         }
     }
 

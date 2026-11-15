@@ -214,3 +214,20 @@ DELETE scheduler_run WHERE state = "queued";
 -- test: exécutions différées, annulations et relances journalisées, jamais d'arguments
 RETURN (SELECT VALUE action FROM scheduler_audit WHERE string::starts_with(action, "run.") ORDER BY created_at) = ["run.enqueue", "run.enqueue", "run.enqueue", "run.enqueue", "run.enqueue", "run.cancel", "run.enqueue", "run.cancel", "run.retry"]
     AND !string::contains(<string> (SELECT details FROM scheduler_audit), "csv");
+
+-- test: forme texte d'un identifiant d'exécution : clé simple et identifiant composé convertis, sans lecture
+-- en tant que: membre
+{
+    LET $simple = fn::scheduler_run_ref({ run: "scheduler_run:abc" });
+    LET $composite = fn::scheduler_run_ref({ run: "scheduler_run:[scheduler_schedule:x, d'2026-01-01T00:00:00Z']" });
+    RETURN $simple.ok AND $simple.data = scheduler_run:abc AND type::is_record($simple.data, "scheduler_run")
+        AND $composite.ok AND $composite.data = scheduler_run:[scheduler_schedule:x, d"2026-01-01T00:00:00Z"];
+};
+
+-- test: forme texte refusée : autre table, chaîne illisible, absente, champ inconnu
+RETURN fn::scheduler_run_ref({ run: "scheduler_schedule:abc" }).error.code = "SCHEDULER_INVALID_PARAMETERS"
+    AND fn::scheduler_run_ref({ run: "scheduler_schedule:abc" }).error.details.fields.run = ["CORE_VALIDATION_NOT_ALLOWED"]
+    AND fn::scheduler_run_ref({ run: "pas un identifiant" }).error.code = "SCHEDULER_INVALID_PARAMETERS"
+    AND fn::scheduler_run_ref({}).error.code = "SCHEDULER_INVALID_PARAMETERS"
+    AND fn::scheduler_run_ref({ run: scheduler_run:abc }).error.code = "SCHEDULER_INVALID_PARAMETERS"
+    AND fn::scheduler_run_ref({ run: "scheduler_run:abc", autre: 1 }).error.code = "SCHEDULER_INVALID_PARAMETERS";

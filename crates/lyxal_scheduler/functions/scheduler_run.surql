@@ -297,3 +297,23 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_retry($params: object) {
     IF $created == NONE { RETURN fn::error_result("SCHEDULER_WRITE_FORBIDDEN", $p.language, { table: "scheduler_run" }); };
     RETURN fn::result_ok(object::extend($created, { retry_of: <string> $run.id }));
 } COMMENT "Relance une exécution dead ou cancelled ({ run }) : nouvelle exécution immédiate (origin: retry) avec les mêmes arguments, tentatives remises à zéro ; l'exécution d'origine reste dans l'historique. Tâche désactivée : SCHEDULER_TASK_DISABLED. Droit : exécutions";
+
+-- ----------------------------------------------------------------------------
+-- fn::scheduler_run_ref
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::scheduler_run_ref($params: object) {
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            run: { pipeline: [{ rule: "surql_record_string", options: { expected_table: "scheduler_run" } }], required: true },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 20);
+    IF !$report.valid { RETURN fn::scheduler_invalid($params, $report.by_field); };
+    LET $p = $report.value;
+    -- Identifiant natif (les identifiants composés [planification, date] compris), contrôlé à son tour
+    LET $native = fn::validation_record_id(type::record($p.run), ["scheduler_run"]);
+    IF !$native.valid { RETURN fn::scheduler_invalid($params, { run: [$native.code] }); };
+    RETURN fn::result_ok($native.value);
+} COMMENT "Identifiant natif d'une exécution d'après sa forme texte SurrealQL complète ({ run : « scheduler_run:clé » ou « scheduler_run:[planification, date] » }), utilisé par les routes de l'hôte après le décodage base64url (RunRef) : chaîne contrôlée par la règle surql_record_string limitée à scheduler_run, convertie, puis contrôlée par la règle record_id limitée à scheduler_run ; ni lecture ni écriture. Aucune autre table acceptée (SCHEDULER_INVALID_PARAMETERS). Droit : aucun";

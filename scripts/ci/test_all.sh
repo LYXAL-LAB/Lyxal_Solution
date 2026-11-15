@@ -25,15 +25,31 @@ cleanup() { for pid in "${pids[@]}"; do kill "${pid}" 2>/dev/null || true; done;
 trap cleanup EXIT
 
 start_server() { # port utilisateur mot_de_passe
-    "${SURREAL}" start --log error --user "$2" --pass "$3" --bind "127.0.0.1:$1" memory >/dev/null 2>&1 &
-    pids+=("$!")
-    # Échéance en secondes, pas en tentatives : chaque appel à `surreal` passe par le lanceur de l'installateur.
-    local deadline=$((SECONDS + 30))
-    while (( SECONDS < deadline )); do
-        if "${SURREAL}" is-ready --endpoint "http://127.0.0.1:$1" >/dev/null 2>&1; then return 0; fi
-        sleep 0.2
+    # Jusqu'à trois essais, comme le banc SurrealQL (scripts/ci/test_lyxal_core.py) : un serveur
+    # qui ne répond pas dans le délai est arrêté et relancé. Sa sortie d'erreur est gardée et
+    # affichée en cas d'échec, au lieu d'être perdue.
+    local log
+    log="$(mktemp)"
+    for attempt in 1 2 3; do
+        "${SURREAL}" start --log error --user "$2" --pass "$3" --bind "127.0.0.1:$1" memory >/dev/null 2>"${log}" &
+        local pid=$!
+        # Échéance en secondes, pas en tentatives : chaque appel à `surreal` passe par le lanceur de l'installateur.
+        local deadline=$((SECONDS + 30))
+        while (( SECONDS < deadline )) && kill -0 "${pid}" 2>/dev/null; do
+            if "${SURREAL}" is-ready --endpoint "http://127.0.0.1:$1" >/dev/null 2>&1; then
+                pids+=("${pid}")
+                rm -f "${log}"
+                return 0
+            fi
+            sleep 0.2
+        done
+        kill "${pid}" 2>/dev/null || true
+        wait "${pid}" 2>/dev/null || true
+        echo "Le serveur SurrealDB du port $1 n'a pas démarré (essai ${attempt}/3) :" >&2
+        cat "${log}" >&2
     done
-    echo "Le serveur SurrealDB du port $1 n'a pas démarré en 30 s." >&2
+    rm -f "${log}"
+    echo "Le serveur SurrealDB du port $1 n'a pas démarré en trois essais." >&2
     return 1
 }
 

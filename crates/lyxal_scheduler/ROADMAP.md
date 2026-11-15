@@ -9,7 +9,6 @@ détaillé, validé par le CTO avant toute ligne de code (`.agents/AGENTS.md` §
 
 | Lot | Contenu | Touche |
 | :- | :--- | :--- |
-| **4** | Hôte : routes HTTP `/api/v1/scheduler/*` au nom de l'appelant (planifications, calendriers, exécutions, files, prévision, rejeu, déclenchement immédiat) | `apps/lyxal-server` |
 | **5** | Clôture : audit `lyxal-audit`, procédures d'exploitation, documents, `RECHERCHE_SOURCES.md` réduit en `MODELE_SOURCES.md` | docs |
 
 ## Après la V1

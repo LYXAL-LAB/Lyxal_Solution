@@ -52,6 +52,16 @@ pub struct RunRefParams {
     pub language: Option<String>,
 }
 
+/// Paramètres de `fn::scheduler_run_ref` : forme texte SurrealQL complète d'un identifiant
+/// d'exécution (`scheduler_run:clé` ou `scheduler_run:[planification, date]`).
+#[derive(Debug, Clone, SurrealValue)]
+pub struct RunRefTextParams {
+    /// Identifiant SurrealQL complet, en texte.
+    pub run: String,
+    /// Langue des messages d'erreur.
+    pub language: Option<String>,
+}
+
 /// Paramètres de `fn::scheduler_run_list`.
 #[derive(Debug, Clone, Default, SurrealValue)]
 pub struct RunListParams {

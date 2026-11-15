@@ -219,3 +219,30 @@ IF !record::exists(error_definition:SERVER_COMMAND_FAILED) THEN (
         }
     }
 ) END;
+
+IF !record::exists(error_definition:SERVER_INVALID_REQUEST) THEN (
+    CREATE error_definition:SERVER_INVALID_REQUEST CONTENT {
+        code: "SERVER_INVALID_REQUEST",
+        module: "server",
+        domain: "requetes",
+        category: "validation",
+        severity: "error",
+        message: "The request could not be read",
+        default_language: "fr",
+        http_status: 400,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Requête illisible",
+                description: "Le corps ou les paramètres de la requête ne sont pas lisibles : JSON invalide, champ du mauvais type, date, durée ou identifiant mal formé.",
+                resolution: "Corriger la requête (objet JSON, dates RFC 3339, durées SurrealQL comme 30m, identifiants table:clé), puis la renvoyer."
+            },
+            en: {
+                label: "Unreadable request",
+                description: "The request body or parameters cannot be read: invalid JSON, wrong field type, malformed date, duration or identifier.",
+                resolution: "Fix the request (JSON object, RFC 3339 dates, SurrealQL durations such as 30m, table:key identifiers), then send it again."
+            }
+        }
+    }
+) END;

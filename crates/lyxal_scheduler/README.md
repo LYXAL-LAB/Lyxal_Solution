@@ -16,8 +16,9 @@ décalage aléatoire, prévision), le contrôle des planifications avant écritu
 typés de chaque fonction publique (voir « Partie Rust »). Le **moteur** tourne dans l'hôte
 `lyxal-server` : un planificateur élu par le bail `leader` du runtime transforme les échéances en
 exécutions, un exécuteur par file et par nœud les exécute (handler Rust inscrit par un module,
-fonction SurrealQL du module, publication différée d'un événement). Aucun module n'inscrit
-encore de tâche (S8).
+fonction SurrealQL du module, publication différée d'un événement). Les interfaces y accèdent par
+les routes HTTP `/api/v1/scheduler/*` de l'hôte, au nom de l'appelant (voir « Accès par
+l'hôte »). Aucun module n'inscrit encore de tâche (S8).
 
 Manifeste : `lyxal_scheduler` 0.1.0, dépendances `lyxal_core`, `lyxal_error`, `lyxal_event`,
 `lyxal_auth`. Le crate fournit `SchedulerModule` (`LyxalModule`), ses workers et sa sonde,
@@ -204,8 +205,8 @@ planifications, exécutions et journal (`REFERENCE ON DELETE CASCADE`).
 | Réglages, files | `settings_get`, `settings_set` ; `queue_list`, `queue_pause`, `queue_resume` |
 | Tâches | `task_list`, `task_get`, `task_set_state` (session système) |
 | Calendriers | `calendar_create`, `calendar_update`, `calendar_get`, `calendar_list`, `calendar_delete` |
-| Planifications | `schedule_create`, `schedule_update`, `schedule_get`, `schedule_list`, `schedule_pause`, `schedule_resume`, `schedule_trigger`, `schedule_backfill`, `schedule_delete` |
-| Exécutions | `run_enqueue`, `run_get`, `run_list`, `run_cancel`, `run_retry` |
+| Planifications | `schedule_create`, `schedule_update`, `schedule_get`, `schedule_list`, `schedule_pause`, `schedule_resume`, `schedule_trigger`, `schedule_backfill`, `schedule_delete`, `spec_validate` (forme des règles de dates contrôlée sans écriture, droit de lecture) |
+| Exécutions | `run_enqueue`, `run_get`, `run_list`, `run_cancel`, `run_retry` ; `run_ref` (forme texte d'un identifiant convertie, sans lecture) |
 | Journal | `audit_list` |
 | Moteur | `due_list`, `schedule_fire`, `schedule_next_set`, `backfill_fire`, `run_claim`, `run_heartbeat`, `run_complete`, `run_fail`, `run_publish`, `run_rescue`, `run_prune`, `health` |
 
@@ -283,10 +284,13 @@ Règles :
 ### Contrats (`models/`, `store.rs`)
 
 `SchedulerStore` (`Surreal<Any>`, `LyxalSurrealCall`) : un wrapper d'une ligne
-`store.call_fn("scheduler_…", params)` pour chacune des 40 fonctions publiques. Chaque
+`store.call_fn("scheduler_…", params)` pour chacune des 41 fonctions publiques. Chaque
 `XxxParams` porte exactement les champs lus par sa fonction (un champ `None` est omis et prend la
 valeur par défaut de SurrealQL) ; chaque résultat est une structure nommée (`SurrealValue`).
-Le jeton de bail (`LeaseToken`) est opaque et masqué dans `Debug`.
+Le jeton de bail (`LeaseToken`) est opaque et masqué dans `Debug`. Les appels du moteur, l'annulation
+d'une exécution et les écritures d'une personne sur une planification (modification, pause,
+reprise, suppression, déclenchement, rejeu) sont rejoués après un conflit d'écriture passager
+de SurrealDB (transaction non validée) : le planificateur réécrit les mêmes enregistrements.
 
 ### Service (`service.rs`)
 
@@ -334,6 +338,34 @@ handler pour la même tâche, ou un nom mal formé, est refusé (`SCHEDULER_INVA
 `SchedulerClient` (au nom de l'appelant) : `enqueue` (différée ou immédiate), `schedule`
 (règles contrôlées avant l'écriture), `cancel`.
 
+### Forme texte d'un identifiant d'exécution (`run_ref.rs`)
+
+Une exécution d'échéance a un identifiant composé `scheduler_run:[planification, date]`, qui ne
+passe pas tel quel dans une adresse. `RunRef` en est la forme texte unique (X1) : l'identifiant
+SurrealQL complet encodé en base64url sans remplissage. `RunRef::encode(&id)` la produit
+(`RunRef::from_sql` pour un identifiant déjà écrit en texte, comme `retry_of`) ;
+`RunRef::new(texte).decode(&store, langue)` rend l'identifiant natif : base64url et UTF-8
+contrôlés en Rust, puis `fn::scheduler_run_ref` contrôle la chaîne par la règle
+`surql_record_string` du Core limitée à `scheduler_run`, la convertit et contrôle le résultat
+par la règle `record_id` limitée à `scheduler_run`. Toute autre forme (identifiant en clair,
+autre table, texte illisible) : `SCHEDULER_INVALID_PARAMETERS`. Le décodage ne lit pas
+l'exécution : existence et droits restent contrôlés par la fonction appelée ensuite.
+
+### Accès par l'hôte (routes HTTP)
+
+L'hôte `lyxal-server` expose les fonctions des personnes sous `/api/v1/scheduler/*`
+(`apps/lyxal-server/src/http/scheduler.rs`, liste dans son `README.md`). Chaque requête ouvre
+une session SurrealDB au nom du jeton de l'appelant : les droits, la permission propre d'une
+tâche et l'isolation des organisations sont ceux des fonctions SurrealQL ; la session système
+n'est jamais utilisée. `POST /schedules` et `PATCH /schedules/{id}` passent par
+`SchedulerService` (règles de dates contrôlées avant l'écriture) ; `GET
+/schedules/{id}/forecast?count=` (100 au plus) et `POST /specs/validate` sont en lecture seule
+(X3). Les exécutions sont désignées par leur `RunRef`, dans les adresses comme dans les
+réponses (`id`, `retry_of`, `last_run`, `recent_runs`, exécution d'une entrée du journal).
+Aucune route n'appelle une fonction du moteur (X2). Toutes les réponses portent
+`Cache-Control: no-store` (X4). Une règle de dates refusée rend `SCHEDULER_SPEC_INVALID` avec
+`error.details.fields.rule` (règle fautive) et `reason`.
+
 ### Module et santé
 
 `SchedulerModule` (`LyxalModule`, descripteur du manifeste). `SchedulerHealthCheck` : malade si
@@ -350,10 +382,11 @@ d'organisation.
 
 ### Tests Rust
 
-`cargo test -p lyxal_scheduler` : 69 tests — expressions cron (jeux de cas de `croner`,
+`cargo test -p lyxal_scheduler` : 71 tests — expressions cron (jeux de cas de `croner`,
 Quartz et Croniq), changement d'heure à Paris et New York, calendriers, intervalles, bornes,
-exclusions, décalage, dates manquées, prévision ; en base embarquée (`mem://`) chacune des 40
-fonctions appelée par son wrapper, avec décodage sans perte de chaque résultat ; et le moteur :
+exclusions, décalage, dates manquées, prévision ; forme texte des identifiants d'exécution (aller-retour d'un
+identifiant simple et composé, forme illisible, autre table) ; en base embarquée (`mem://`)
+chacune des 40 fonctions des lots 1 et 3 appelée par son wrapper, avec décodage sans perte de chaque résultat ; et le moteur :
 planification à intervalle exécutée de bout en bout (handler, fonction SurrealQL d'un module
 d'essai, publication différée lue dans `event_outbox`), deux planificateurs simultanés (un seul
 bail, aucun doublon), perte du bail, nœud arrêté pendant une exécution puis reprise par un
@@ -371,6 +404,6 @@ les journaux. Ils ne remplacent pas le banc SurrealQL.
 | `events/` | gardes, journal, bus |
 | `error/` | 22 définitions d'erreurs |
 | `seeds/` | permissions et attributions de rôles ; files `default` (10) et `maintenance` (2) |
-| `src/` | crate Rust : `spec/` (calcul des dates), `models/` (contrats), `store.rs` (wrappers), `service.rs`, `client.rs` (`SchedulerClient`), `handler.rs` (`TaskHandler`, registre), `engine/` (planificateur, exécuteurs, tentative), `module.rs`, `health.rs`, `error.rs` |
+| `src/` | crate Rust : `spec/` (calcul des dates), `models/` (contrats), `store.rs` (wrappers), `service.rs`, `client.rs` (`SchedulerClient`), `handler.rs` (`TaskHandler`, registre), `run_ref.rs` (`RunRef`), `engine/` (planificateur, exécuteurs, tentative), `module.rs`, `health.rs`, `error.rs` |
 | `tests/it/` | tests Rust (calcul des dates, contrats et moteur en base embarquée) |
 | `tests/` | banc SurrealQL (`scripts/ci/test_lyxal_modules.py`) : droits, tâches et files, calendriers, planifications, échéances, chevauchement, exécutions, réservation et fin, places et élagage, moteur (disponibilité décalée, handlers du nœud, publication différée, santé), journal, fonctions internes |

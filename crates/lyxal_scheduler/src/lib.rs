@@ -10,7 +10,7 @@
 //! bornes, décalage aléatoire, prévision), le contrôle des planifications avant écriture
 //! (`SchedulerService`) et le moteur (`engine`) : planificateur élu sous bail, exécuteurs par
 //! file, handlers Rust inscrits par les modules (`TaskHandler`), façade `SchedulerClient`, module
-//! `LyxalModule` et sonde de santé.
+//! `LyxalModule`, sonde de santé et forme texte des identifiants d'exécution (`RunRef`).
 
 pub mod client;
 pub mod engine;
@@ -19,6 +19,7 @@ pub mod handler;
 pub mod health;
 pub mod models;
 pub mod module;
+pub mod run_ref;
 pub mod service;
 pub mod spec;
 pub mod store;
@@ -32,6 +33,7 @@ pub use error::{SchedulerError, SchedulerResult, SpecError, SpecReason};
 pub use handler::{HandlerRegistry, RunContext, TaskFailure, TaskHandler, TaskOutput};
 pub use health::SchedulerHealthCheck;
 pub use module::{SchedulerModule, MODULE_ID};
+pub use run_ref::RunRef;
 pub use service::{ForecastEntry, SchedulerService};
 pub use spec::{CalendarSet, FireTimes, Spec};
 pub use store::SchedulerStore;

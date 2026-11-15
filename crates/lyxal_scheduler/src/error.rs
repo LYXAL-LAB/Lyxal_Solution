@@ -111,6 +111,10 @@ pub enum SchedulerError {
         /// Raison du refus.
         reason: &'static str,
     },
+    /// Forme texte d'un identifiant d'exécution illisible (`SCHEDULER_INVALID_PARAMETERS`) :
+    /// pas du base64url sans remplissage, ou pas de l'UTF-8.
+    #[error("identifiant d'exécution illisible : base64url sans remplissage attendu")]
+    InvalidRunRef,
 }
 
 impl SchedulerError {
@@ -127,7 +131,7 @@ impl SchedulerError {
                     .unwrap_or_else(|| "ERROR_INVALID_FUNCTION_RESPONSE".to_string()),
             },
             Self::Spec(_) => SPEC_INVALID.to_string(),
-            Self::Handler { .. } => INVALID_PARAMETERS.to_string(),
+            Self::Handler { .. } | Self::InvalidRunRef => INVALID_PARAMETERS.to_string(),
         }
     }
 
@@ -138,7 +142,7 @@ impl SchedulerError {
                 matches!(error.as_ref(), LyxalSurrealError::Call(call) if call.is_business_code(code))
             }
             Self::Spec(_) => code == SPEC_INVALID,
-            Self::Handler { .. } => code == INVALID_PARAMETERS,
+            Self::Handler { .. } | Self::InvalidRunRef => code == INVALID_PARAMETERS,
         }
     }
 
@@ -150,7 +154,7 @@ impl SchedulerError {
                 LyxalSurrealError::Call(_) => false,
                 other => other.transport_info().is_some_and(|info| info.retryable),
             },
-            Self::Spec(_) | Self::Handler { .. } => false,
+            Self::Spec(_) | Self::Handler { .. } | Self::InvalidRunRef => false,
         }
     }
 }

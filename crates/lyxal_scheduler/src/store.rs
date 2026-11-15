@@ -15,10 +15,11 @@ use crate::models::{
     Heartbeat, Page, PruneResult, Queue, QueueListParams, QueuePauseParams, QueueResumeParams,
     RescueResult, Run, RunCancelParams, RunClaimParams, RunCompleteParams, RunEnqueueParams,
     RunFailParams, RunHeartbeatParams, RunListParams, RunPruneParams, RunPublishParams,
-    RunRefParams, RunRescueParams, Schedule, ScheduleBackfillParams, ScheduleCreateParams,
-    ScheduleFireParams, ScheduleListParams, ScheduleNextSetParams, SchedulePauseParams,
-    ScheduleRefParams, ScheduleTriggerParams, ScheduleUpdateParams, SchedulerValue,
-    SettingsGetParams, SettingsResult, SettingsSetParams, Task, TaskGetParams, TaskListParams,
+    RunRefParams, RunRefTextParams, RunRescueParams, Schedule, ScheduleBackfillParams,
+    ScheduleCreateParams, ScheduleFireParams, ScheduleListParams, ScheduleNextSetParams,
+    SchedulePauseParams, ScheduleRefParams, ScheduleTriggerParams, ScheduleUpdateParams,
+    SchedulerRecordId, SchedulerValue, SettingsGetParams, SettingsResult, SettingsSetParams,
+    SpecValidateParams, SpecValidateResult, Task, TaskGetParams, TaskListParams,
     TaskSetStateParams,
 };
 
@@ -49,7 +50,8 @@ impl SchedulerStore {
     /// Appel d'une fonction du moteur, rejoué après un conflit d'écriture transitoire de
     /// SurrealDB (contrôle de concurrence optimiste : la transaction n'a pas été validée, le
     /// rejeu est sûr). Les nœuds et les tentatives d'un nœud se disputent les mêmes compteurs de
-    /// places ; toute autre erreur est rendue telle quelle.
+    /// places, et le planificateur réécrit les planifications que modifient les personnes ;
+    /// toute autre erreur est rendue telle quelle.
     async fn engine_call<T, P>(&self, function: &'static str, params: P) -> Call<T>
     where
         T: SurrealValue + Send,
@@ -136,6 +138,10 @@ impl SchedulerStore {
         self.call_fn("scheduler_calendar_delete", params).await
     }
 
+    // Écritures d'une personne sur une planification : le planificateur réécrit la même
+    // planification à chaque tour (prochaine échéance, échéances traitées) ; un conflit
+    // d'écriture passager est rejoué comme pour les appels du moteur.
+
     /// `fn::scheduler_schedule_create` : planification créée, sans contrôle des dates (passer par `SchedulerService::schedule_create`).
     pub async fn schedule_create(&self, params: ScheduleCreateParams) -> Call<Schedule> {
         self.call_fn("scheduler_schedule_create", params).await
@@ -143,7 +149,12 @@ impl SchedulerStore {
 
     /// `fn::scheduler_schedule_update` : planification modifiée, sans contrôle des dates (passer par `SchedulerService::schedule_update`).
     pub async fn schedule_update(&self, params: ScheduleUpdateParams) -> Call<Schedule> {
-        self.call_fn("scheduler_schedule_update", params).await
+        self.engine_call("scheduler_schedule_update", params).await
+    }
+
+    /// `fn::scheduler_spec_validate` : forme des règles de dates contrôlée sans écriture.
+    pub async fn spec_validate(&self, params: SpecValidateParams) -> Call<SpecValidateResult> {
+        self.call_fn("scheduler_spec_validate", params).await
     }
 
     /// `fn::scheduler_schedule_get` : planification et ses 10 dernières exécutions.
@@ -158,27 +169,28 @@ impl SchedulerStore {
 
     /// `fn::scheduler_schedule_pause` : planification mise en pause.
     pub async fn schedule_pause(&self, params: SchedulePauseParams) -> Call<Schedule> {
-        self.call_fn("scheduler_schedule_pause", params).await
+        self.engine_call("scheduler_schedule_pause", params).await
     }
 
     /// `fn::scheduler_schedule_resume` : planification reprise.
     pub async fn schedule_resume(&self, params: ScheduleRefParams) -> Call<Schedule> {
-        self.call_fn("scheduler_schedule_resume", params).await
+        self.engine_call("scheduler_schedule_resume", params).await
     }
 
     /// `fn::scheduler_schedule_delete` : planification supprimée.
     pub async fn schedule_delete(&self, params: ScheduleRefParams) -> Call<Deleted> {
-        self.call_fn("scheduler_schedule_delete", params).await
+        self.engine_call("scheduler_schedule_delete", params).await
     }
 
     /// `fn::scheduler_schedule_trigger` : exécution immédiate d'une planification.
     pub async fn schedule_trigger(&self, params: ScheduleTriggerParams) -> Call<Run> {
-        self.call_fn("scheduler_schedule_trigger", params).await
+        self.engine_call("scheduler_schedule_trigger", params).await
     }
 
     /// `fn::scheduler_schedule_backfill` : rejeu d'une période passée demandé.
     pub async fn schedule_backfill(&self, params: ScheduleBackfillParams) -> Call<Backfill> {
-        self.call_fn("scheduler_schedule_backfill", params).await
+        self.engine_call("scheduler_schedule_backfill", params)
+            .await
     }
 
     /// `fn::scheduler_run_enqueue` : exécution différée ou immédiate d'une tâche.
@@ -189,6 +201,12 @@ impl SchedulerStore {
     /// `fn::scheduler_run_get` : exécution.
     pub async fn run_get(&self, params: RunRefParams) -> Call<Run> {
         self.call_fn("scheduler_run_get", params).await
+    }
+
+    /// `fn::scheduler_run_ref` : identifiant natif d'une exécution d'après sa forme texte
+    /// SurrealQL complète (passer par `RunRef::decode`).
+    pub async fn run_ref(&self, params: RunRefTextParams) -> Call<SchedulerRecordId> {
+        self.call_fn("scheduler_run_ref", params).await
     }
 
     /// `fn::scheduler_run_list` : exécutions d'une portée.

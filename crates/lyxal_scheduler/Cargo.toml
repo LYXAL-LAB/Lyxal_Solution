@@ -20,6 +20,8 @@ croner = { version = "4", default-features = false, features = ["jiff"] }
 jiff = { version = "0.2", features = ["tzdb-bundle-always"] }
 # Décalage aléatoire des échéances (U5), tiré par le générateur du système
 rand_core = { version = "0.6", features = ["getrandom"] }
+# Forme texte des identifiants d'exécution dans les adresses (base64url sans remplissage, X1)
+base64 = "0.22"
 
 [dev-dependencies]
 # Journaux capturés dans les tests (aucun jeton de bail)

@@ -288,3 +288,13 @@ RETURN fn::scheduler_schedule_get({ schedule: <string> (SELECT VALUE id_purge FR
 -- en tant que: lecteur
 RETURN fn::scheduler_schedule_delete({ schedule: <string> (SELECT VALUE id_purge FROM ONLY passe:s) }).error.code = "SCHEDULER_PERMISSION_DENIED"
     AND array::len(DELETE (SELECT VALUE id_purge FROM ONLY passe:s) RETURN BEFORE) = 0;
+
+-- test: contrôle des règles de dates sans écriture : mêmes règles de forme que l'écriture
+-- en tant que: redacteur
+RETURN fn::scheduler_spec_validate({ tenant: auth_organization:alpha, spec: { cron: ["0 9 * * *"] } }).data.spec.timezone = "UTC"
+    AND fn::scheduler_spec_validate({ tenant: auth_organization:alpha, spec: { cron: ["0 9 * * *", "0 9 * * *", "0 9 * * *", "0 9 * * *", "0 9 * * *", "0 9 * * *", "0 9 * * *", "0 9 * * *", "0 9 * * *", "0 9 * * *", "0 9 * * *"] } }).error.code = "SCHEDULER_SPEC_INVALID"
+    AND fn::scheduler_spec_validate({ tenant: auth_organization:alpha, spec: {} }).error.code = "SCHEDULER_SPEC_INVALID";
+
+-- test: contrôle des règles de dates refusé sans droit de lecture
+-- en tant que: membre
+RETURN fn::scheduler_spec_validate({ tenant: auth_organization:alpha, spec: { cron: ["0 9 * * *"] } }).error.code = "SCHEDULER_PERMISSION_DENIED";

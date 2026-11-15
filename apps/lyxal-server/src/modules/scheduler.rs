@@ -13,7 +13,7 @@ use lyxal_runtime::{LyxalModule, LyxalRuntime};
 use lyxal_scheduler::models::HealthParams;
 use lyxal_scheduler::{
     HandlerRegistry, SchedulerClient, SchedulerEngine, SchedulerExecutorWorker,
-    SchedulerHealthCheck, SchedulerLeaderWorker, SchedulerModule, SchedulerStore,
+    SchedulerHealthCheck, SchedulerLeaderWorker, SchedulerModule, SchedulerService, SchedulerStore,
 };
 use std::sync::Arc;
 use surrealdb::engine::any::Any;
@@ -43,6 +43,12 @@ impl SchedulerHost {
     /// Client du planificateur au nom d'un appelant (sa session SurrealDB).
     pub fn client(&self, caller: SchedulerStore) -> SchedulerClient {
         SchedulerClient::new(caller)
+    }
+
+    /// Service du planificateur au nom d'un appelant (sa session SurrealDB) : routes
+    /// `/scheduler/*`, planifications contrôlées avant écriture, prévision.
+    pub fn service(&self, caller: SchedulerStore) -> SchedulerService {
+        SchedulerService::new(caller)
     }
 
     /// Files servies par un exécuteur sur ce nœud.
