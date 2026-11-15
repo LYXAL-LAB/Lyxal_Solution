@@ -28,6 +28,8 @@ pub struct AppConfig {
     pub storage: StorageConfig,
     #[serde(default)]
     pub secrets: SecretsConfig,
+    #[serde(default)]
+    pub scheduler: SchedulerConfig,
 }
 
 /// Stockage des fichiers (`lyxal_storage`) : support `default` sur un dossier du serveur. Sans
@@ -156,6 +158,28 @@ pub struct SecretsConfig {
     pub previous_master_key: Option<SecretPassword>,
     #[serde(default)]
     pub previous_master_key_id: Option<String>,
+}
+
+/// Planificateur (`lyxal_scheduler`) : places de chaque exécuteur de file sur ce nœud (W3),
+/// `LYXAL__SCHEDULER__WORKERS`, 4 par défaut, de 1 à 64. La concurrence globale de la file et
+/// celle de chaque organisation restent tenues par la base.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SchedulerConfig {
+    #[serde(default = "default_scheduler_workers")]
+    pub workers: u32,
+}
+
+fn default_scheduler_workers() -> u32 {
+    lyxal_scheduler::DEFAULT_WORKERS
+}
+
+impl Default for SchedulerConfig {
+    fn default() -> Self {
+        Self {
+            workers: default_scheduler_workers(),
+        }
+    }
 }
 
 /// Notifications sortantes : relais SMTP unique de l'installation (avant `lyxal_secrets`). Sans
@@ -447,6 +471,14 @@ impl AppConfig {
         if !(5..=600).contains(&self.storage.idle_timeout_seconds) {
             return Err(ServerError::Configuration {
                 message: "storage.idle_timeout_seconds doit être compris entre 5 et 600".into(),
+            });
+        }
+        if !(1..=lyxal_scheduler::MAX_WORKERS).contains(&self.scheduler.workers) {
+            return Err(ServerError::Configuration {
+                message: format!(
+                    "scheduler.workers doit être compris entre 1 et {}",
+                    lyxal_scheduler::MAX_WORKERS
+                ),
             });
         }
         if self.server.max_concurrency == 0 {

@@ -49,9 +49,9 @@ impl AcquireLeaderLeaseResult {
     /// Bail détenu par ce nœud après la prise, s'il l'est.
     pub fn lease(&self) -> Option<&LeaderLease> {
         match self {
-            Self::Acquired(lease) | Self::AlreadyOwned(lease) | Self::RecoveredExpiredLease(lease) => {
-                Some(lease)
-            }
+            Self::Acquired(lease)
+            | Self::AlreadyOwned(lease)
+            | Self::RecoveredExpiredLease(lease) => Some(lease),
             Self::HeldByOther { .. } => None,
         }
     }
@@ -138,7 +138,12 @@ impl SurrealLeaderLeaseManager {
     /// Libère le bail ; `false` s'il n'était plus détenu par ce nœud dans cette génération.
     pub async fn release(&self, lease: &LeaderLease) -> Result<bool, RuntimeError> {
         self.store
-            .release(LeaseKind::Leader, &lease.key, &lease.owner, lease.generation)
+            .release(
+                LeaseKind::Leader,
+                &lease.key,
+                &lease.owner,
+                lease.generation,
+            )
             .await
     }
 

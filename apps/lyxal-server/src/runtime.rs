@@ -18,6 +18,8 @@ pub struct Started {
     pub storage: crate::context::StorageHost,
     /// Coffre-fort des secrets : client des modules hébergés qui liront leurs secrets.
     pub secrets: modules::secrets::SecretsHost,
+    /// Planificateur : registre des handlers des modules hébergés, files servies.
+    pub scheduler: modules::scheduler::SchedulerHost,
 }
 
 /// Construit le runtime, installe le noyau et les modules hébergés, puis les démarre.
@@ -80,5 +82,6 @@ pub async fn start(config: &AppConfig, client: &Surreal<Any>) -> Result<Started,
         auth: services.auth,
         storage: services.storage,
         secrets: services.secrets,
+        scheduler: services.scheduler,
     })
 }

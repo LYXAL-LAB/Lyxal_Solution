@@ -70,7 +70,7 @@ réécrite en place (`AGENTS.md` §0.3.2). Le format de nom est `NNNN_descriptio
 | `runtime_module` | Modules connus. |
 | `runtime_release` | Releases installées (`[module_id, version]`), statut et phase d'installation. |
 | `runtime_migration` | Migrations appliquées (`[module_id, migration_id]`), empreinte, statut. |
-| `runtime_lease` | Baux distribués (`[kind, key]`, nature `migration` ou `installation`) : détenteur, génération, échéances. |
+| `runtime_lease` | Baux distribués (`[kind, key]`, nature `migration`, `installation` ou `leader`) : détenteur, génération, échéances. |
 | `runtime_health` | Dernier état de santé par nœud et module. |
 | `runtime_worker` | État des workers par nœud. |
 | `runtime_event_journal` | Journal des événements techniques du runtime. |
@@ -128,7 +128,10 @@ réessayable), `RUNTIME_INVALID_MANIFEST` (`validation`, 422).
 * **Migrations** : `MigrationDiscovery`, `MigrationPlan`, `MigrationRunner` (`MigrationLockConfig` :
   durée du bail, intervalle de renouvellement, attente).
 * **Baux** : `MigrationLeaseManager`, `InstallationLeaseManager` ; implémentations SurrealDB
-  (`fn::runtime_lease_*`) et mémoire (tests, processus unique).
+  (`fn::runtime_lease_*`) et mémoire (tests, processus unique). `SurrealLeaderLeaseManager`
+  (nature `leader`) élit un seul nœud pour un rôle (`acquire`, `renew` qui rend `None` quand le
+  bail est perdu, `release`, `inspect`) : le planificateur de `lyxal_scheduler` (clé `scheduler`)
+  s'en sert.
 * **Persistance** : `RuntimeStore` ; `SurrealRuntimeStore` (`Surreal<Any>`, `LyxalSurrealCall`),
   `MemoryRuntimeStore`.
 * **Réconciliation** : `DesiredRuntimeState`, `RuntimeObserver`, `RuntimeDiffer`,
@@ -143,8 +146,8 @@ réessayable), `RUNTIME_INVALID_MANIFEST` (`validation`, 422).
 
 ## 7. Limites
 
-* La santé, le démarrage et l'arrêt des modules sont locaux au nœud ; seuls les installations et
-  les migrations sont coordonnés entre nœuds (baux).
+* La santé, le démarrage et l'arrêt des modules sont locaux au nœud ; seuls les installations,
+  les migrations et les rôles élus (bail `leader`) sont coordonnés entre nœuds.
 * La cible `Absent` arrête un module sans supprimer ses données ; les rétrogradations sont
   bloquées.
 * Une migration interrompue au milieu d'un script non transactionnel peut laisser un état
@@ -161,6 +164,6 @@ cargo test -p lyxal_runtime
 Les tests d'intégration installent `lyxal_core`, `lyxal_error` et le schéma du runtime dans une
 base embarquée : manifeste et installation par phases, migrations (dérive, reprise, migration
 plus longue que le bail exécutée une seule fois), baux (concurrence, heure de la base, écriture
-refusée après reprise), workers, santé, réconciliation, intégration de `lyxal_event`.
+refusée après reprise, élection d'un seul nœud par le bail `leader`), workers, santé, réconciliation, intégration de `lyxal_event`.
 `scripts/ci/ci_local.sh` rejoue la CI complète, dont la validation du SurrealQL par un binaire
 SurrealDB 3.3.4.

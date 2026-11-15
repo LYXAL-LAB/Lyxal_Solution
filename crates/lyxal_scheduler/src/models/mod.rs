@@ -21,7 +21,7 @@ pub use calendar::{
 };
 pub use engine::{
     Backfill, BackfillFireParams, BackfillFireResult, DueBackfill, DueList, DueListParams,
-    DueSchedule, FireResult, FiredRun, ScheduleFireParams, ScheduleNextSetParams,
+    DueSchedule, FireResult, FireTime, FiredRun, ScheduleFireParams, ScheduleNextSetParams,
 };
 pub use enums::{
     BackfillState, Catchup, Executor, Overlap, RetryStrategy, RuleKind, RuleMode, RunOrigin,
@@ -40,7 +40,8 @@ pub use shared::{CalendarRule, CalendarRules, Deleted, Page, RetryPolicy, RunErr
 pub use task::{Task, TaskGetParams, TaskListParams, TaskSetStateParams};
 pub use types::{SchedulerDatetime, SchedulerDuration, SchedulerRecordId, SchedulerValue};
 pub use worker::{
-    ClaimResult, ClaimedRun, Heartbeat, LeaseToken, PruneResult, RescueResult, RescuedRun,
-    RunClaimParams, RunCompleteParams, RunFailParams, RunFailure, RunHeartbeatParams,
-    RunPruneParams, RunRescueParams,
+    ClaimResult, ClaimedRun, EngineHealth, FunctionCallParams, HealthParams, Heartbeat, LeaseToken,
+    PruneResult, QueueStatus, RescueResult, RescuedRun, RunClaimParams, RunCompleteParams,
+    RunFailParams, RunFailure, RunHeartbeatParams, RunPruneParams, RunPublishParams,
+    RunRescueParams,
 };

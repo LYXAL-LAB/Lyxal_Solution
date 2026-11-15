@@ -287,7 +287,11 @@ async fn test_leader_lease_elects_a_single_node() {
         .take(0)
         .unwrap();
     assert_eq!(kind.as_deref(), Some("leader"));
-    assert!(manager.renew(&lease, Duration::from_secs(30)).await.unwrap().is_some());
+    assert!(manager
+        .renew(&lease, Duration::from_secs(30))
+        .await
+        .unwrap()
+        .is_some());
 
     // Bail expiré : repris par l'autre nœud avec une nouvelle génération ; l'ancien détenteur ne
     // le renouvelle ni ne le libère plus
@@ -306,7 +310,11 @@ async fn test_leader_lease_elects_a_single_node() {
         other => panic!("reprise attendue, obtenu {other:?}"),
     };
     assert_eq!(lease_b.generation, lease.generation + 1);
-    assert!(manager.renew(&lease, Duration::from_secs(30)).await.unwrap().is_none());
+    assert!(manager
+        .renew(&lease, Duration::from_secs(30))
+        .await
+        .unwrap()
+        .is_none());
     assert!(!manager.release(&lease).await.unwrap());
     assert_eq!(
         manager.inspect("scheduler").await.unwrap().map(|l| l.owner),

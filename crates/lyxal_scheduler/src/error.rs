@@ -8,6 +8,16 @@ use thiserror::Error;
 
 /// Code d'erreur des règles de dates refusées (master data du lot 1).
 pub const SPEC_INVALID: &str = "SCHEDULER_SPEC_INVALID";
+/// Paramètres refusés (master data du lot 1) : handler inscrit deux fois ou mal nommé.
+pub const INVALID_PARAMETERS: &str = "SCHEDULER_INVALID_PARAMETERS";
+/// Bail d'une exécution perdu (un autre nœud l'a reprise ou elle est terminée).
+pub const LEASE_LOST: &str = "SCHEDULER_LEASE_LOST";
+/// Délai maximal d'une tentative dépassé (W4).
+pub const RUN_TIMEOUT: &str = "SCHEDULER_RUN_TIMEOUT";
+/// Aucun handler inscrit pour la tâche.
+pub const HANDLER_NOT_FOUND: &str = "SCHEDULER_HANDLER_NOT_FOUND";
+/// Erreur technique de l'exécuteur (base indisponible, résultat illisible).
+pub const EXECUTOR_FAILED: &str = "SCHEDULER_EXECUTOR_FAILED";
 
 /// Raison du refus de règles de dates.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -92,6 +102,15 @@ pub enum SchedulerError {
     /// Règles de dates refusées par le calcul (`SCHEDULER_SPEC_INVALID`).
     #[error("{0}")]
     Spec(SpecError),
+    /// Handler refusé à l'inscription (`SCHEDULER_INVALID_PARAMETERS`) : nom de tâche mal formé,
+    /// ou tâche qui a déjà son handler.
+    #[error("handler refusé pour la tâche {task} : {reason}")]
+    Handler {
+        /// Nom de la tâche.
+        task: String,
+        /// Raison du refus.
+        reason: &'static str,
+    },
 }
 
 impl SchedulerError {
@@ -108,6 +127,7 @@ impl SchedulerError {
                     .unwrap_or_else(|| "ERROR_INVALID_FUNCTION_RESPONSE".to_string()),
             },
             Self::Spec(_) => SPEC_INVALID.to_string(),
+            Self::Handler { .. } => INVALID_PARAMETERS.to_string(),
         }
     }
 
@@ -118,6 +138,7 @@ impl SchedulerError {
                 matches!(error.as_ref(), LyxalSurrealError::Call(call) if call.is_business_code(code))
             }
             Self::Spec(_) => code == SPEC_INVALID,
+            Self::Handler { .. } => code == INVALID_PARAMETERS,
         }
     }
 
@@ -129,7 +150,7 @@ impl SchedulerError {
                 LyxalSurrealError::Call(_) => false,
                 other => other.transport_info().is_some_and(|info| info.retryable),
             },
-            Self::Spec(_) => false,
+            Self::Spec(_) | Self::Handler { .. } => false,
         }
     }
 }

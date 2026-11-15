@@ -61,6 +61,8 @@ pub struct DueBackfill {
     pub spec: ScheduleSpec,
     /// Règles des calendriers de la planification.
     pub calendars: Vec<CalendarRules>,
+    /// Création de la planification (ancre des intervalles sans `start_at`, U3).
+    pub created_at: SchedulerDatetime,
 }
 
 /// Résultat de `fn::scheduler_due_list`.
@@ -74,13 +76,33 @@ pub struct DueList {
     pub backfills: Vec<DueBackfill>,
 }
 
+/// Échéance remise au moteur SurrealQL : date prévue (identité de l'exécution) et date de
+/// disponibilité, décalée par le décalage aléatoire (U5), jamais avant la date prévue.
+#[derive(Debug, Clone, PartialEq, SurrealValue)]
+pub struct FireTime {
+    /// Date prévue.
+    pub at: SchedulerDatetime,
+    /// Date à partir de laquelle l'exécution peut être réservée (`at` + décalage).
+    pub available_at: SchedulerDatetime,
+}
+
+impl FireTime {
+    /// Échéance sans décalage.
+    pub fn at(at: SchedulerDatetime) -> Self {
+        Self {
+            available_at: at,
+            at,
+        }
+    }
+}
+
 /// Paramètres de `fn::scheduler_schedule_fire`.
 #[derive(Debug, Clone, SurrealValue)]
 pub struct ScheduleFireParams {
     /// Planification.
     pub schedule: SchedulerRecordId,
     /// Échéances passées calculées par `crate::spec` (1000 au plus).
-    pub fire_times: Vec<SchedulerDatetime>,
+    pub fire_times: Vec<FireTime>,
     /// Prochaine échéance (absente : plus aucune, la planification est terminée).
     pub next_fire_at: Option<SchedulerDatetime>,
     /// Langue des messages d'erreur.
@@ -129,7 +151,7 @@ pub struct BackfillFireParams {
     /// Rejeu.
     pub backfill: SchedulerRecordId,
     /// Échéances de la période calculées par `crate::spec` (1000 au plus).
-    pub fire_times: Vec<SchedulerDatetime>,
+    pub fire_times: Vec<FireTime>,
     /// Dernier lot du rejeu.
     pub done: Option<bool>,
     /// Langue des messages d'erreur.
