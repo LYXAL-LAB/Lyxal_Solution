@@ -1,6 +1,7 @@
 //! Prochaine date, dates entre deux instants, prévision, contrôle des écarts et décalage
 //! aléatoire.
 
+use jiff::tz::AmbiguousOffset;
 use jiff::{SignedDuration, Span, Timestamp, Zoned};
 use rand_core::{OsRng, RngCore};
 
@@ -92,11 +93,16 @@ impl Spec {
             Verdict::Allowed => Ok(None),
             Verdict::BlockedUntil(resume) => {
                 // Reprise juste avant l'heure locale de reprise (recherche strictement après) ;
-                // jamais en arrière, même dans une heure répétée.
-                let resume = self
-                    .tz
-                    .to_ambiguous_zoned(resume)
-                    .compatible()
+                // jamais en arrière, même dans une heure répétée. Une heure de reprise qui tombe
+                // dans le saut de printemps est lue avec le décalage d'après le saut, ce qui donne
+                // un instant **avant** le saut : la recherche reprend au plus tard à la bascule et
+                // ne saute aucune date permise juste après elle.
+                let ambiguous = self.tz.to_ambiguous_zoned(resume);
+                let zoned = match ambiguous.offset() {
+                    AmbiguousOffset::Gap { .. } => ambiguous.earlier(),
+                    _ => ambiguous.compatible(),
+                };
+                let resume = zoned
                     .ok()
                     .and_then(|z| {
                         z.timestamp()

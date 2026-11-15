@@ -228,3 +228,21 @@ fn calendar_that_excludes_everything_stops_u4() {
         SpecReason::NoFutureFire
     );
 }
+
+#[test]
+fn time_range_starting_inside_the_spring_gap_skips_nothing() {
+    // Paris, 29 mars 2026 : 02:00 → 03:00. Plage 02:30-04:00, échéance chaque minute : la
+    // première date permise est 03:00+02:00 (la bascule), pas 03:30 (début de plage déplacé
+    // du temps du saut).
+    let every_minute = cron_spec("Europe/Paris", &["* * * * *"]);
+    let night = [rule(Include, TimeRange, vec![text("02:30-04:00")])];
+    let spec = parse_with(&every_minute, &[&night[..]]);
+    assert_eq!(
+        next_n(&spec, ts("2026-03-29T00:58:00Z"), 3),
+        [
+            "2026-03-29T03:00:00+02:00",
+            "2026-03-29T03:01:00+02:00",
+            "2026-03-29T03:02:00+02:00"
+        ]
+    );
+}
