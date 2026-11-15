@@ -22,7 +22,7 @@ décalage aléatoire, élagage, compteurs de places ; banc 214 assertions et 71 
 | **A5** | P1 | Les fonctions du moteur ne vérifient pas le bail `leader` : un nœud qui l'a perdu au milieu d'un tour peut encore écrire (les doublons restent impossibles) | Garde de génération : les fonctions du moteur reçoivent `{ node, generation }` et refusent (`SCHEDULER_LEADER_FENCED`) si le bail courant n'est plus le leur, comme `lyxal_event` ; bail relu entre deux lots d'un rejeu (Y2) |
 | **A6** | P1 | Le contrôle « cible du même module » repose sur un préfixe de nom : `lyxal_pipeline` pourrait viser `pipeline_ingestion_*`, un module inexistant `lyxal_utils` les fonctions `utils_*` du Core | La déclaration exige que le module soit installé (release du runtime) et que la cible commence par le nom complet du module suivi d'un séparateur, en refusant tout nom qui est aussi le préfixe d'un autre module installé (Y3) |
 | **A7** | P1 | Annulation possible par écriture directe avec le seul droit d'écriture des planifications, alors que la fonction exige `scheduler.run.manage` | La garde réserve `cancelled` et `cancel_requested` à `scheduler.run.manage` |
-| A8 | P2 | `type::record` ignore ce qui suit un espace : la forme texte d'une exécution n'est pas strictement unique (aucune injection) | `fn::scheduler_run_ref` refuse si l'identifiant relu ne redonne pas exactement la chaîne reçue ; limite de la règle `surql_record_string` signalée au Core (Y4) |
+| A8 | P2 | La règle `surql_record_string` du Core (avec `string::is_record`) accepte une chaîne suivie d'un espace et d'un texte, que `type::record` ignore : la forme texte d'une exécution n'est pas strictement unique (aucune injection) | Correction **dans le Core** (Y4) : la règle refuse toute chaîne dont l'identifiant relu ne redonne pas exactement le texte reçu ; `fn::scheduler_run_ref` l'utilise telle quelle, sans contrôle local (§5.7.8) |
 | A9 | P2 | `POST /runs` rend 201 pour une exécution déjà existante | 200 quand `duplicate` est vrai |
 | A10 | P2 | `no-store` absent des 404 sur une adresse inconnue du planificateur | Couche posée aussi sur la réponse de repli |
 | A11 | P2 | La sonde signale « handler manquant » sur un nœud quand un autre nœud l'a | Signalé seulement si aucun nœud actif ne l'a inscrit (registre des handlers par nœud tenu par l'exécuteur) ; sinon simple information |
@@ -37,7 +37,7 @@ décalage aléatoire, élagage, compteurs de places ; banc 214 assertions et 71 
 | **Y1** | Permission propre d'une tâche | Exigée pour **tout ce qui fait exécuter** la tâche : création, modification, reprise, déclenchement, rejeu, exécution différée et relance. Pas pour ce qui l'arrête : pause, annulation, suppression. |
 | **Y2** | Garde du bail du planificateur | Ajoutée (A5), sur le modèle de `lyxal_event` : nouveau code `SCHEDULER_LEADER_FENCED`. |
 | **Y3** | Cible d'une tâche | Le module déclarant doit être installé ; un nom de module qui est le début d'un autre nom de module installé ne peut pas viser les fonctions de cet autre module. |
-| **Y4** | Règle `surql_record_string` du Core | Signaler au CTO qu'elle accepte une chaîne suivie d'un espace et de texte ; correction dans le Core **hors de ce programme**, sur décision du CTO. Le module se protège lui-même (A8). |
+| **Y4** | Correction de la règle `surql_record_string` du Core (§5.7.7) | **Extension du Core soumise au CTO** : la règle refuse une chaîne qui n'est pas entièrement un identifiant (texte après l'identifiant), avec un nouveau test au banc du Core ; contrat inchangé pour les chaînes valides ; tous ses appelants du dépôt vérifiés. Pas de contrôle local dans le module (§5.7.8). |
 | **Y5** | `call_fn` à nom dynamique | Élargir `LyxalSurrealCall::call_fn` de `&'static str` à `&str` dans `lyxal_surreal` (rupture coordonnée sans effet sur les appelants, qui passent tous des noms fixes) et supprimer le contournement du moteur. Sinon, garder le contournement borné. |
 
 ## 3. Documentation
@@ -57,7 +57,7 @@ décalage aléatoire, élagage, compteurs de places ; banc 214 assertions et 71 
 
 ## 4. Tests
 
-* Banc SurrealQL : un essai par écart (A1, A2, A3, A4, A6, A7, A8, A13), écrit d'abord en échec,
+* Banc SurrealQL : un essai par écart (A1, A2, A3, A4, A6, A7, A8, A13) et, au banc du Core, la règle `surql_record_string` corrigée (Y4), écrit d'abord en échec,
   repris des sondes de l'audit.
 * Rust : garde du bail (deux planificateurs, bail perdu entre deux lots d'un rejeu), U1 refusé par
   le moteur, limite d'attente, sonde (A11), et selon Y5 l'exécuteur `function` sans contournement.
