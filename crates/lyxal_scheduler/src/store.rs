@@ -196,9 +196,11 @@ impl SchedulerStore {
         self.call_fn("scheduler_run_list", params).await
     }
 
-    /// `fn::scheduler_run_cancel` : exécution annulée, ou annulation demandée.
+    /// `fn::scheduler_run_cancel` : exécution annulée, ou annulation demandée. L'exécution en
+    /// cours est réécrite par chaque battement de son bail : un conflit d'écriture passager est
+    /// rejoué comme pour les appels du moteur.
     pub async fn run_cancel(&self, params: RunCancelParams) -> Call<Run> {
-        self.call_fn("scheduler_run_cancel", params).await
+        self.engine_call("scheduler_run_cancel", params).await
     }
 
     /// `fn::scheduler_run_retry` : nouvelle exécution d'une exécution terminée en échec ou annulée.

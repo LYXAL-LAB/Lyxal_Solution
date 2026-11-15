@@ -117,7 +117,7 @@ impl Bench {
 fn exec_timing() -> ExecutorTiming {
     ExecutorTiming {
         poll: Duration::from_millis(50),
-        max_heartbeat: Duration::from_millis(100),
+        max_heartbeat: Duration::from_millis(300),
         shutdown_grace: Duration::from_millis(500),
         cancel_grace: Duration::from_millis(200),
     }
@@ -389,6 +389,52 @@ impl TaskHandler for Stubborn {
 // ---------------------------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------------------------
+
+#[tokio::test]
+async fn first_deadline_elapsed_before_the_first_leader_turn_is_caught_up() {
+    let mut bench = bench().await;
+    let seen = Arc::new(Mutex::new(Vec::new()));
+    bench
+        .handlers
+        .register(Arc::new(Recorder {
+            task: "essai.rapport",
+            seen: seen.clone(),
+        }))
+        .expect("handler");
+    // Exécution unique dans 200 ms ; le planificateur ne démarre qu'après cette date : la
+    // planification n'a jamais été traitée, sa date échue suit la politique de rattrapage
+    let at = now_plus_ms(200);
+    let mut spec = ScheduleSpec::new("UTC");
+    spec.at = Some(at);
+    let mut params = ScheduleCreateParams::new("unique", "essai.rapport", spec);
+    params.tenant = Some(RecordId::new("auth_organization", "alpha"));
+    params.args = Some(object(&[("format", "pdf")]));
+    let schedule = bench
+        .store
+        .schedule_create(params)
+        .await
+        .expect("planification");
+    tokio::time::sleep(Duration::from_millis(400)).await;
+    let leader = start(bench.leader("noeud-a"));
+    let executor = start(bench.executor("noeud-a", "default", 4));
+    eventually(
+        "exécution de la date échue avant le premier tour",
+        Duration::from_secs(10),
+        || async {
+            runs_of(&bench, &schedule.id)
+                .await
+                .iter()
+                .any(|(_, state)| state == "completed")
+        },
+    )
+    .await;
+    leader.stop(Duration::from_secs(5)).await;
+    executor.stop(Duration::from_secs(5)).await;
+    assert_eq!(
+        runs_of(&bench, &schedule.id).await,
+        vec![(at, "completed".to_string())]
+    );
+}
 
 #[tokio::test]
 async fn interval_schedule_fires_and_runs_its_handler() {
@@ -987,8 +1033,9 @@ fn a_second_handler_for_a_task_is_refused() {
     assert_eq!(registry.tasks(), vec!["essai.rapport".to_string()]);
 }
 
-/// Journaux capturés dans un tampon (abonné du fil du test : les tâches du worker tournent sur
-/// le même fil).
+/// Journaux de tout le binaire de test capturés dans un tampon. Un abonné propre au fil du test
+/// (`set_default`) perd des lignes quand d'autres tests tournent en parallèle (intérêt des points
+/// de journal mis en cache par les autres fils) : l'abonné est donc global, installé une fois.
 #[derive(Clone, Default)]
 struct Captured(Arc<Mutex<Vec<u8>>>);
 
@@ -1011,15 +1058,23 @@ impl<'a> tracing_subscriber::fmt::MakeWriter<'a> for Captured {
     }
 }
 
+fn captured_logs() -> &'static Captured {
+    static CAPTURED: std::sync::OnceLock<Captured> = std::sync::OnceLock::new();
+    CAPTURED.get_or_init(|| {
+        let captured = Captured::default();
+        let subscriber = tracing_subscriber::fmt()
+            .with_writer(captured.clone())
+            .with_max_level(tracing::Level::TRACE)
+            .with_ansi(false)
+            .finish();
+        tracing::subscriber::set_global_default(subscriber).expect("abonné global des tests");
+        captured
+    })
+}
+
 #[tokio::test]
 async fn no_lease_token_is_ever_logged() {
-    let captured = Captured::default();
-    let subscriber = tracing_subscriber::fmt()
-        .with_writer(captured.clone())
-        .with_max_level(tracing::Level::TRACE)
-        .with_ansi(false)
-        .finish();
-    let _guard = tracing::subscriber::set_default(subscriber);
+    let captured = captured_logs();
 
     let mut bench = bench().await;
     let (handler, started, _release, _cancelled) = waiter("essai.long");

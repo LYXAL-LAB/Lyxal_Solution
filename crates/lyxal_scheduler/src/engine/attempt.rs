@@ -6,6 +6,8 @@
 use lyxal_runtime::worker::CancellationToken;
 use lyxal_surreal::{validate_function_name, LyxalCallError, LyxalSurrealError, ToSql};
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::{Mutex, OnceLock, PoisonError};
 use std::time::Duration;
 use surrealdb::types::Object;
@@ -17,8 +19,8 @@ use crate::error::{
 };
 use crate::handler::{RunContext, TaskFailure, TaskOutput};
 use crate::models::{
-    ClaimedRun, Executor, FunctionCallParams, RunCompleteParams, RunFailParams, RunFailure,
-    RunHeartbeatParams, RunPublishParams, SchedulerValue,
+    ClaimedRun, Executor, FunctionCallParams, Heartbeat, RunCompleteParams, RunFailParams,
+    RunFailure, RunHeartbeatParams, RunPublishParams, SchedulerValue,
 };
 
 /// Marge ajoutée au délai maximal pour l'échéance du bail (`fn::scheduler_lease_margin`).
@@ -182,6 +184,10 @@ async fn execute(
     }
 }
 
+/// Battement du bail en cours d'envoi.
+type PendingBeat<'a> =
+    Pin<Box<dyn Future<Output = Result<Heartbeat, LyxalSurrealError>> + Send + 'a>>;
+
 /// Mène une tentative à son terme. `stop` est le jeton du worker (arrêt du nœud) : la tentative
 /// reçoit un jeton enfant, annulé aussi par le délai maximal et l'annulation demandée.
 pub(crate) async fn run_attempt(
@@ -212,6 +218,10 @@ pub(crate) async fn run_attempt(
         let mut beats =
             tokio::time::interval_at(tokio::time::Instant::now() + heartbeat, heartbeat);
         beats.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        // Battement en cours : jamais attendu dans une branche du `select!`, mais mis en course
+        // avec la tâche et le délai maximal, pour qu'une base qui répond lentement ne retarde ni
+        // l'annulation ni le délai maximal
+        let mut beat: Option<PendingBeat<'_>> = None;
         loop {
             tokio::select! {
                 done = &mut executed => break Stopped::Done(done),
@@ -225,18 +235,18 @@ pub(crate) async fn run_attempt(
                     }
                     break Stopped::Timeout;
                 }
-                _ = beats.tick(), if beating => {
-                    match engine
-                        .store()
-                        .run_heartbeat(RunHeartbeatParams {
-                            run: run.id.clone(),
-                            lease: run.lease.clone(),
-                            language: None,
-                        })
-                        .await
-                    {
-                        Ok(beat) => {
-                            if beat.cancel_requested && !token.is_cancelled() {
+                _ = beats.tick(), if beating && beat.is_none() => {
+                    beat = Some(Box::pin(engine.store().run_heartbeat(RunHeartbeatParams {
+                        run: run.id.clone(),
+                        lease: run.lease.clone(),
+                        language: None,
+                    })));
+                }
+                result = async { match beat.as_mut() { Some(call) => call.await, None => std::future::pending().await } }, if beat.is_some() => {
+                    beat = None;
+                    match result {
+                        Ok(answer) => {
+                            if answer.cancel_requested && !token.is_cancelled() {
                                 tracing::info!(run = %id, "annulation demandée : transmise à la tentative");
                                 token.cancel();
                             }

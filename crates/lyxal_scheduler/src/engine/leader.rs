@@ -80,6 +80,10 @@ pub struct LeaderReport {
     pub failed: u64,
 }
 
+/// Marge avant la création d'une planification jamais traitée dans laquelle une date échue est
+/// encore rattrapée (latence entre le calcul d'une date unique et son écriture).
+const CREATION_GRACE: SignedDuration = SignedDuration::from_secs(5);
+
 /// État du planificateur entre deux tours.
 #[derive(Default)]
 struct LeaderState {
@@ -113,19 +117,29 @@ fn plan(
         CalendarSet::from_calendars(&due.calendars)?,
     )?;
     let next = spec.next_after(now)?.map(to_datetime).transpose()?;
-    let Some(next_fire_at) = &due.next_fire_at else {
-        return Ok((next, Vec::new(), SignedDuration::ZERO));
-    };
     let window = to_signed_duration("catchup_window", &due.catchup_window)?;
     let out_of_range =
         |rule: &str, e: jiff::Error| SpecError::new(rule, SpecReason::OutOfRange, e.to_string());
     let earliest = now
         .checked_sub(window)
         .map_err(|e| out_of_range("catchup_window", e))?;
-    let from = to_timestamp("next_fire_at", next_fire_at)?
-        .max(earliest)
-        .checked_sub(SignedDuration::from_nanos(1))
-        .map_err(|e| out_of_range("next_fire_at", e))?;
+    // Borne basse des dates manquées : la prochaine échéance connue (incluse) ; pour une
+    // planification jamais traitée (ni prochaine échéance ni échéance passée), sa création moins
+    // une marge (`CREATION_GRACE` : une date unique demandée juste avant une écriture lente peut
+    // précéder l'heure de création enregistrée par la base), afin que les dates échues avant le premier tour du planificateur suivent la
+    // politique de rattrapage. Une planification déjà exécutée dont la prochaine échéance est à
+    // recalculer (modification, reprise après pause) ne rattrape rien.
+    let from = match (&due.next_fire_at, &due.last_fire_at) {
+        (Some(next_fire_at), _) => to_timestamp("next_fire_at", next_fire_at)?
+            .max(earliest)
+            .checked_sub(SignedDuration::from_nanos(1))
+            .map_err(|e| out_of_range("next_fire_at", e))?,
+        (None, None) => created
+            .checked_sub(CREATION_GRACE)
+            .map_err(|e| out_of_range("created_at", e))?
+            .max(earliest),
+        (None, Some(_)) => return Ok((next, Vec::new(), SignedDuration::ZERO)),
+    };
     let mut times: VecDeque<Timestamp> = VecDeque::new();
     let mut cursor = from;
     loop {
@@ -327,9 +341,10 @@ impl SchedulerLeaderWorker {
             Err(error) => return self.invalidate(due, error, report).await,
         };
 
-        if due.next_fire_at.is_none() {
+        if due.next_fire_at.is_none() && missed.is_empty() {
             // Prochaine date à calculer (création, règles modifiées, reprise) ; aucune : la
-            // planification est terminée par un appel sans échéance
+            // planification est terminée par un appel sans échéance. Une planification jamais
+            // traitée dont des dates sont déjà échues passe par le tir ci-dessous (rattrapage)
             match next {
                 Some(next) => {
                     store

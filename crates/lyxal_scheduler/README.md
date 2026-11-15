@@ -55,7 +55,7 @@ IF !record::exists(scheduler_task:⟨notification.digest⟩) THEN (
 ```
 
 * Identifiant `⟨module.action⟩` en minuscules ; `module` = `lyxal_<module>`.
-* Exécuteur : `handler` (code Rust inscrit, cible `<module>.<action>`), `function` (fonction
+* Exécuteur : `handler` (code Rust inscrit sous le nom de la tâche : la cible est ce nom même), `function` (fonction
   SurrealQL `<module>_<action>` du même module) ou `event` (publication différée d'un type
   d'événement préfixé par le module).
 * `permission` : permission `lyxal_auth` existante exigée pour planifier la tâche (contrôlée à la
@@ -305,8 +305,8 @@ handlers, l'identifiant du nœud et les files servies.
 
 | Worker | Rôle |
 | :--- | :--- |
-| `SchedulerLeaderWorker` | Un seul nœud à la fois : bail d'élection `leader` du runtime (clé `scheduler`, 30 s, renouvelé toutes les 10 s ; libéré à l'arrêt). Un tour par seconde : `due_list` ; pour chaque planification, prochaine date (`next_fire_at` absent : calculée et écrite) ou dates manquées dans la fenêtre de rattrapage (1000 dernières au plus) avec leur décalage aléatoire tiré par `OsRng` (U5), puis `schedule_fire` ; règles illisibles ou sans date (U4) : planification `invalid` ; rejeux par lots de 1000 dates (une date déjà exécutée est ignorée). Toutes les 30 s : `run_rescue` ; toutes les heures : `run_prune`. Sans bail : attend ; un nœud qui perd le bail cesse de planifier au tour suivant. |
-| `SchedulerExecutorWorker` | Un par file et par nœud, au plus `workers` tentatives à la fois (W3 : 4 par défaut, de 1 à 64). File vide : interrogée chaque seconde ; sinon aussitôt après chaque fin. Chaque tentative est une tâche tenue par le worker (`JoinSet`, aucune tâche libre) : battement au plus tard à mi-bail (et toutes les 30 s), délai maximal (W4 : le handler reçoit l'annulation, le moteur cesse d'attendre et enregistre `SCHEDULER_RUN_TIMEOUT`, retentable), annulation demandée apprise au battement et transmise. Exécuteurs : handler inscrit ; fonction SurrealQL `fn::<cible>({ args, run, tenant, scheduled_for, attempt })` (résultat : objet gardé, autre valeur dans `{ value }`, erreur métier : son code et sa retentabilité, erreur technique : `SCHEDULER_EXECUTOR_FAILED`) ; publication différée par `run_publish`. Fin par `run_complete` / `run_fail` sous le jeton du bail ; une fin refusée pour bail perdu est journalisée, jamais réécrite. Arrêt : plus de réservation, annulation transmise, attente de 30 s, puis abandon (le bail expire et la reprise s'en charge). |
+| `SchedulerLeaderWorker` | Un seul nœud à la fois : bail d'élection `leader` du runtime (clé `scheduler`, 30 s, renouvelé toutes les 10 s ; libéré à l'arrêt). Un tour par seconde : `due_list` ; pour chaque planification, prochaine date (`next_fire_at` absent : calculée et écrite ; pour une planification jamais traitée, les dates déjà échues depuis sa création, moins 5 s de marge, suivent la politique de rattrapage) ou dates manquées dans la fenêtre de rattrapage (1000 dernières au plus) avec leur décalage aléatoire tiré par `OsRng` (U5), puis `schedule_fire` ; règles illisibles ou sans date (U4) : planification `invalid` ; rejeux par lots de 1000 dates (une date déjà exécutée est ignorée). Toutes les 30 s : `run_rescue` ; toutes les heures : `run_prune`. Sans bail : attend ; un nœud qui perd le bail cesse de planifier au tour suivant. |
+| `SchedulerExecutorWorker` | Un par file et par nœud, au plus `workers` tentatives à la fois (W3 : 4 par défaut, de 1 à 64). File vide : interrogée chaque seconde ; sinon aussitôt après chaque fin. Chaque tentative est une tâche tenue par le worker (`JoinSet`, aucune tâche libre) : battement au plus tard à mi-bail (et toutes les 30 s), mis en course avec la tâche et le délai maximal (une base lente ne retarde ni l'annulation ni le délai), délai maximal (W4 : le handler reçoit l'annulation, le moteur cesse d'attendre et enregistre `SCHEDULER_RUN_TIMEOUT`, retentable), annulation demandée apprise au battement et transmise. Exécuteurs : handler inscrit ; fonction SurrealQL `fn::<cible>({ args, run, tenant, scheduled_for, attempt })` (résultat : objet gardé, autre valeur dans `{ value }`, erreur métier : son code et sa retentabilité, erreur technique : `SCHEDULER_EXECUTOR_FAILED`) ; publication différée par `run_publish`. Fin par `run_complete` / `run_fail` sous le jeton du bail ; une fin refusée pour bail perdu est journalisée, jamais réécrite. Arrêt : plus de réservation, annulation transmise, attente de 30 s, puis abandon (le bail expire et la reprise s'en charge). |
 
 Le jeton de bail n'apparaît dans aucun journal. Les rythmes se règlent par `LeaderTiming` et
 `ExecutorTiming` (valeurs de W1 et W2 par défaut, réduites dans les tests).
@@ -350,7 +350,7 @@ d'organisation.
 
 ### Tests Rust
 
-`cargo test -p lyxal_scheduler` : 68 tests — expressions cron (jeux de cas de `croner`,
+`cargo test -p lyxal_scheduler` : 69 tests — expressions cron (jeux de cas de `croner`,
 Quartz et Croniq), changement d'heure à Paris et New York, calendriers, intervalles, bornes,
 exclusions, décalage, dates manquées, prévision ; en base embarquée (`mem://`) chacune des 40
 fonctions appelée par son wrapper, avec décodage sans perte de chaque résultat ; et le moteur :
