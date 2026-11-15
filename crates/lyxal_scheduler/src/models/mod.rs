@@ -28,7 +28,9 @@ pub use enums::{
     RunState, ScheduleState, TaskScope, TaskState,
 };
 pub use queue::{Queue, QueueListParams, QueuePauseParams, QueueResumeParams, Slot};
-pub use run::{Run, RunCancelParams, RunEnqueueParams, RunListParams, RunRefParams};
+pub use run::{
+    Run, RunCancelParams, RunEnqueueParams, RunListParams, RunRefParams, RunRefTextParams,
+};
 pub use schedule::{
     RunSummary, Schedule, ScheduleBackfillParams, ScheduleCreateParams, ScheduleListParams,
     SchedulePauseParams, ScheduleRefParams, ScheduleTriggerParams, ScheduleUpdateParams,

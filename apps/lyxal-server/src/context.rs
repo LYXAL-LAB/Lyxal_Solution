@@ -1,4 +1,5 @@
 use crate::modules::auth::AuthHost;
+use crate::modules::scheduler::SchedulerHost;
 use crate::modules::secrets::SecretsHost;
 use crate::{config::AppConfig, database::Database, health::HealthRegistry, metrics::Metrics};
 use lyxal_runtime::LyxalRuntime;
@@ -18,6 +19,8 @@ pub struct AppContext {
     pub storage: StorageHost,
     /// Coffre-fort des secrets (routes `/secrets/*`), absent si le module n'est pas hébergé.
     pub secrets: Option<SecretsHost>,
+    /// Planificateur (routes `/scheduler/*`), absent si le module n'est pas hébergé.
+    pub scheduler: Option<SchedulerHost>,
 }
 
 /// Ce que les routes des fichiers reçoivent de l'hôte : les supports configurés et, s'il y en a
@@ -47,12 +50,19 @@ impl AppContext {
             auth,
             storage,
             secrets: None,
+            scheduler: None,
         }
     }
 
     /// Contexte avec le coffre-fort des secrets (routes `/secrets/*`).
     pub fn with_secrets(mut self, secrets: SecretsHost) -> Self {
         self.secrets = Some(secrets);
+        self
+    }
+
+    /// Contexte avec le planificateur (routes `/scheduler/*`).
+    pub fn with_scheduler(mut self, scheduler: SchedulerHost) -> Self {
+        self.scheduler = Some(scheduler);
         self
     }
 }

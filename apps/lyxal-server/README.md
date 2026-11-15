@@ -240,6 +240,44 @@ ont 30 s pour finir ; au-delà, leur bail expire et une autre tentative les repr
 LYXAL__SCHEDULER__WORKERS    places par file et par nœud (4 par défaut, 1 à 64)
 ```
 
+Routes du planificateur, sous `/api/v1/scheduler` (JSON, réponses `LyxalResult`, erreurs
+`SCHEDULER_*` dans la langue de la requête) :
+
+| Méthode et chemin | Fonction | Droit |
+| :--- | :--- | :--- |
+| `GET /settings?tenant=`, `PUT /settings` | `settings_get`, `settings_set` | lecture / réglages |
+| `GET /tasks?module=&state=&limit=&start=`, `GET /tasks/{nom}` | `task_list`, `task_get` | lecture |
+| `GET /queues` ; `POST /queues/{nom}/pause` (`reason`), `POST /queues/{nom}/resume` | `queue_list`, `queue_pause`, `queue_resume` | lecture / installation |
+| `GET /calendars?tenant=`, `POST /calendars` ; `GET`, `PATCH`, `DELETE /calendars/{id}` | `calendar_list`, `_create`, `_get`, `_update`, `_delete` | lecture / calendriers |
+| `GET /schedules?tenant=&task=&state=&paused=`, `POST /schedules` ; `GET`, `PATCH`, `DELETE /schedules/{id}` | `schedule_list`, `_create` et `_update` contrôlées par `SchedulerService`, `_get`, `_delete` | lecture / écriture et permission de la tâche |
+| `POST /schedules/{id}/pause` (`reason`), `/resume`, `/trigger` (`overlap`), `/backfill` (`from`, `to`, `overlap`) | `schedule_pause`, `_resume`, `_trigger`, `_backfill` | écriture |
+| `GET /schedules/{id}/forecast?count=` | prochaines échéances (10 par défaut, 100 au plus), heure locale comprise | lecture |
+| `POST /specs/validate` (`spec`, `calendars`, `created_at`) | contrôle d'une règle de dates sans écriture : `{ valid: true }` ou `SCHEDULER_SPEC_INVALID` | session valide (calendriers lus avec les droits de l'appelant) |
+| `GET /runs?tenant=&schedule=&task=&state=&since=`, `POST /runs` (`task`, `tenant`, `args`, `run_at` ou `delay`, `priority`, `unique_key`) ; `GET /runs/{id}` | `run_list`, `run_enqueue`, `run_get` | lecture / écriture et permission de la tâche |
+| `POST /runs/{id}/cancel` (`reason`), `POST /runs/{id}/retry` | `run_cancel`, `run_retry` | exécutions |
+| `GET /audit?tenant=&schedule=&action=&since=` | `audit_list` | lecture |
+
+* **Droits** : jeton d'accès de l'appelant ; chaque requête s'exécute sous une session
+  SurrealDB à son nom, et les fonctions `fn::scheduler_*` décident (permission propre d'une
+  tâche, isolation des organisations). L'hôte ne recopie aucune règle et n'utilise jamais sa
+  session système pour ces routes. Aucune route n'appelle une fonction du moteur (échéances,
+  réservation, bail, fin, reprise, élagage, activation d'une tâche) : elles restent réservées
+  aux workers de l'hôte.
+* **Paramètres** : ceux des `XxxParams` de `lyxal_scheduler`, dans le corps JSON (écritures) ou
+  dans l'adresse (listes : `limit`, `start`) ; identifiants `table:clé` (ou la seule clé dans le
+  chemin), dates RFC 3339, durées SurrealQL (`30m`, `1h`). Un corps ou un paramètre illisible
+  rend `SERVER_INVALID_REQUEST` (400).
+* **Exécutions** : désignées par la forme texte de leur identifiant (`RunRef`), l'identifiant
+  SurrealQL complet en base64url sans remplissage, y compris les échéances
+  `scheduler_run:[planification, date]` ; dans les adresses comme dans les réponses (`id`,
+  `retry_of`, `last_run`, `recent_runs`, `run` du journal). Aucune autre forme n'est acceptée
+  (`SCHEDULER_INVALID_PARAMETERS`).
+* **Règles de dates** : une règle refusée rend `SCHEDULER_SPEC_INVALID` avec
+  `error.details.fields.rule` (`cron[0]`, `timezone`, `calendars[1].rules[2]`…) et `reason`
+  (`cron_syntax`, `timezone`, `min_interval`…).
+* **Cache** : toutes les réponses portent `Cache-Control: no-store` et `Pragma: no-cache`
+  (arguments et résultats de tâches).
+
 La connexion (`lyxal_auth`) demande la clé applicative et `auth.public_url`
 (`LYXAL__AUTH__PUBLIC_URL`, ex. `https://console.example.com`). Au démarrage, l'hôte crée les
 clés de signature absentes (scellées par la clé applicative) et définit les accès SurrealDB
@@ -374,6 +412,7 @@ garde son code `RUNTIME_*`.
 | `SERVER_TELEMETRY_INIT_FAILED` | `internal` | 500 |
 | `SERVER_AUTH_DISABLED` | `dependency` | 503 |
 | `SERVER_COMMAND_FAILED` | `business` | 422 |
+| `SERVER_INVALID_REQUEST` | `validation` | 400 |
 
 Les définitions sont générées depuis le catalogue `SERVER_ERROR_CATALOG` (`src/error.rs`) et
 installées au démarrage ; un test vérifie leur correspondance. `manifest.toml` de l'hôte ne
@@ -404,5 +443,8 @@ tous les modules, routes système, `fn::error_result` de `lyxal_error` intact, r
 base installée (une release par module), rejeu des
 ressources de chaque module, définitions `SERVER_*`, corps des réponses d'erreur, routes
 `/api/v1/auth/*` de bout en bout (premier administrateur, connexion, sessions, déconnexion,
-service absent).
+service absent). `tests/scheduler_http.rs` parcourt les routes `/api/v1/scheduler/*` avec le
+moteur réel (handler d'essai inscrit par le test) : planification contrôlée, prévision,
+déclenchement, rejeu, exécution différée exécutée puis annulée et relancée, droits, `no-store`,
+absence des routes du moteur.
 `scripts/ci/ci_local.sh` rejoue la CI complète.

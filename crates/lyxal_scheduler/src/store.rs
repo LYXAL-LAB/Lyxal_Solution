@@ -15,11 +15,11 @@ use crate::models::{
     Heartbeat, Page, PruneResult, Queue, QueueListParams, QueuePauseParams, QueueResumeParams,
     RescueResult, Run, RunCancelParams, RunClaimParams, RunCompleteParams, RunEnqueueParams,
     RunFailParams, RunHeartbeatParams, RunListParams, RunPruneParams, RunPublishParams,
-    RunRefParams, RunRescueParams, Schedule, ScheduleBackfillParams, ScheduleCreateParams,
-    ScheduleFireParams, ScheduleListParams, ScheduleNextSetParams, SchedulePauseParams,
-    ScheduleRefParams, ScheduleTriggerParams, ScheduleUpdateParams, SchedulerValue,
-    SettingsGetParams, SettingsResult, SettingsSetParams, Task, TaskGetParams, TaskListParams,
-    TaskSetStateParams,
+    RunRefParams, RunRefTextParams, RunRescueParams, Schedule, ScheduleBackfillParams,
+    ScheduleCreateParams, ScheduleFireParams, ScheduleListParams, ScheduleNextSetParams,
+    SchedulePauseParams, ScheduleRefParams, ScheduleTriggerParams, ScheduleUpdateParams,
+    SchedulerRecordId, SchedulerValue, SettingsGetParams, SettingsResult, SettingsSetParams, Task,
+    TaskGetParams, TaskListParams, TaskSetStateParams,
 };
 
 /// Store de `lyxal_scheduler` sur un client SurrealDB (`Surreal<Any>`).
@@ -189,6 +189,12 @@ impl SchedulerStore {
     /// `fn::scheduler_run_get` : exécution.
     pub async fn run_get(&self, params: RunRefParams) -> Call<Run> {
         self.call_fn("scheduler_run_get", params).await
+    }
+
+    /// `fn::scheduler_run_ref` : identifiant natif d'une exécution d'après sa forme texte
+    /// SurrealQL complète (passer par `RunRef::decode`).
+    pub async fn run_ref(&self, params: RunRefTextParams) -> Call<SchedulerRecordId> {
+        self.call_fn("scheduler_run_ref", params).await
     }
 
     /// `fn::scheduler_run_list` : exécutions d'une portée.

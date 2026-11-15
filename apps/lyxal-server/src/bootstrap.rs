@@ -63,7 +63,8 @@ async fn run_inner() -> Result<(), ServerError> {
         started.auth,
         started.storage,
     )
-    .with_secrets(started.secrets);
+    .with_secrets(started.secrets)
+    .with_scheduler(started.scheduler);
     let router = http::build_router(context)?;
 
     let address = config.bind_address();

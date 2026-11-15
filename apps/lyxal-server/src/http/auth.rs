@@ -20,6 +20,7 @@ use lyxal_auth::{AuthError, CodeProof, IssuedTokens, LoginActions, LoginOutcome,
 use lyxal_crypto::SecretString;
 use lyxal_error::{LyxalError, LyxalResult};
 use lyxal_i18n::{accept_language, I18nStore, LocaleResolveParams};
+use lyxal_scheduler::SchedulerError;
 use lyxal_secrets::SecretsError;
 use lyxal_storage::StorageError;
 use lyxal_surreal::{LyxalCallError, LyxalSurrealError, SurrealValue, ToSql};
@@ -56,8 +57,9 @@ pub fn routes() -> Router<AppContext> {
         .layer(axum::middleware::map_response(no_store))
 }
 
-/// Réponses des routes d'authentification (jetons, parcours, sessions) : jamais mises en cache.
-async fn no_store(mut response: Response) -> Response {
+/// Réponses des routes d'authentification (jetons, parcours, sessions) et du planificateur
+/// (arguments et résultats de tâches) : jamais mises en cache.
+pub(super) async fn no_store(mut response: Response) -> Response {
     let headers = response.headers_mut();
     headers.insert(
         axum::http::header::CACHE_CONTROL,
@@ -82,6 +84,8 @@ pub enum ApiError {
     Storage(StorageError),
     /// Erreur métier ou du service du coffre-fort.
     Secrets(SecretsError),
+    /// Erreur métier ou du service du planificateur.
+    Scheduler(SchedulerError),
     /// Erreur de l'hôte.
     Server(ServerError),
 }
@@ -95,6 +99,12 @@ impl From<StorageError> for ApiError {
 impl From<SecretsError> for ApiError {
     fn from(error: SecretsError) -> Self {
         Self::Secrets(error)
+    }
+}
+
+impl From<SchedulerError> for ApiError {
+    fn from(error: SchedulerError) -> Self {
+        Self::Scheduler(error)
     }
 }
 
@@ -141,7 +151,7 @@ async fn business(
 }
 
 /// Erreur rendue au client : définition de master data résolue par la base pour un code
-/// `AUTH_*`, `STORAGE_*` ou `SECRETS_*` ; erreur de l'hôte sinon. Aucun détail interne.
+/// `AUTH_*`, `STORAGE_*`, `SECRETS_*` ou `SCHEDULER_*` ; erreur de l'hôte sinon. Aucun détail interne.
 pub(super) async fn render_error(
     context: &AppContext,
     error: ApiError,
@@ -175,6 +185,25 @@ pub(super) async fn render_error(
                 // Erreurs du service Rust : leur définition est dans la master data du module
                 _ => resolve(context, &error.code(), language).await,
             };
+            (resolved, error.code(), error.to_string())
+        }
+        ApiError::Scheduler(error) => {
+            let resolved =
+                match error {
+                    SchedulerError::Surreal(inner) => business(context, inner, language).await,
+                    // Règles de dates refusées par le calcul : la règle fautive et la raison
+                    SchedulerError::Spec(spec) => resolve(context, &error.code(), language)
+                        .await
+                        .map(|mut localized| {
+                            localized.details = json!({ "fields": {
+                                "rule": spec.rule,
+                                "reason": spec.reason.as_str(),
+                            } });
+                            localized
+                        }),
+                    // Autres erreurs du service Rust : définition dans la master data du module
+                    _ => resolve(context, &error.code(), language).await,
+                };
             (resolved, error.code(), error.to_string())
         }
     };
@@ -454,6 +483,7 @@ pub(super) async fn respond(
                     ApiError::Auth(error) => error.to_string(),
                     ApiError::Storage(error) => error.to_string(),
                     ApiError::Secrets(error) => error.to_string(),
+                    ApiError::Scheduler(error) => error.to_string(),
                     ApiError::Server(error) => error.to_string(),
                 };
                 tracing::warn!(error = %original, "erreur d'origine remplacée par une panne de lecture de la langue");
