@@ -31,7 +31,7 @@ use lyxal_scheduler::models::{
     Schedule, ScheduleBackfillParams, ScheduleCreateParams, ScheduleListParams,
     SchedulePauseParams, ScheduleRefParams, ScheduleSpec, ScheduleTriggerParams,
     ScheduleUpdateParams, SchedulerDatetime, SchedulerRecordId, SettingsGetParams,
-    SettingsSetParams, TaskGetParams, TaskListParams,
+    SettingsSetParams, SpecValidateParams, TaskGetParams, TaskListParams,
 };
 use lyxal_scheduler::{RunRef, SchedulerError, SchedulerService, SchedulerStore};
 use lyxal_surreal::{LyxalSurrealError, RecordId, SurrealValue};
@@ -243,6 +243,16 @@ fn params<T: SurrealValue>(input: Map<String, Value>) -> Result<T, ApiError> {
     let input: Map<String, Value> = input
         .into_iter()
         .filter(|(_, value)| !value.is_null())
+        .map(|(key, value)| match (key.as_str(), value) {
+            // Les champs facultatifs des règles de dates suivent la même règle (un `null` vaut un
+            // champ absent) : une règle relue telle quelle peut être renvoyée. Les arguments
+            // d'une tâche gardent leurs `null`.
+            ("spec", Value::Object(spec)) => (
+                key,
+                Value::Object(spec.into_iter().filter(|(_, v)| !v.is_null()).collect()),
+            ),
+            (_, value) => (key, value),
+        })
         .collect();
     let mut value = Value::Object(input).into_value();
     if let SurrealDbValue::Object(object) = &mut value {
@@ -756,12 +766,14 @@ async fn schedule_forecast(
 /// Règles de dates à contrôler sans écriture.
 #[derive(SurrealValue)]
 struct SpecCheck {
+    tenant: Option<SchedulerRecordId>,
     spec: ScheduleSpec,
     calendars: Option<Vec<SchedulerRecordId>>,
     created_at: Option<SchedulerDatetime>,
 }
 
-/// Contrôle d'une règle de dates sans l'enregistrer : `{ spec, calendars, created_at }`.
+/// Contrôle d'une règle de dates sans l'enregistrer : `{ tenant, spec, calendars, created_at }`
+/// (droit de lecture de l'organisation ou de l'installation).
 /// Refus : `SCHEDULER_SPEC_INVALID` avec la règle fautive et la raison.
 async fn spec_validate(
     State(context): State<AppContext>,
@@ -770,6 +782,17 @@ async fn spec_validate(
 ) -> Response {
     handle(context, headers, |service| async move {
         let check: SpecCheck = params(body(&bytes)?)?;
+        // Forme et droit de lecture par la même fonction SurrealQL que l'écriture, puis
+        // syntaxe, fuseau et écart minimal par le calcul des dates
+        service
+            .store()
+            .spec_validate(SpecValidateParams {
+                tenant: check.tenant.clone(),
+                spec: check.spec.clone(),
+                language: None,
+            })
+            .await
+            .map_err(surreal)?;
         service
             .validate_spec(
                 &check.spec,

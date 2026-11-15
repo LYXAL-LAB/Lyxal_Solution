@@ -18,8 +18,9 @@ use crate::models::{
     RunRefParams, RunRefTextParams, RunRescueParams, Schedule, ScheduleBackfillParams,
     ScheduleCreateParams, ScheduleFireParams, ScheduleListParams, ScheduleNextSetParams,
     SchedulePauseParams, ScheduleRefParams, ScheduleTriggerParams, ScheduleUpdateParams,
-    SchedulerRecordId, SchedulerValue, SettingsGetParams, SettingsResult, SettingsSetParams, Task,
-    TaskGetParams, TaskListParams, TaskSetStateParams,
+    SchedulerRecordId, SchedulerValue, SettingsGetParams, SettingsResult, SettingsSetParams,
+    SpecValidateParams, SpecValidateResult, Task, TaskGetParams, TaskListParams,
+    TaskSetStateParams,
 };
 
 /// Store de `lyxal_scheduler` sur un client SurrealDB (`Surreal<Any>`).
@@ -149,6 +150,11 @@ impl SchedulerStore {
     /// `fn::scheduler_schedule_update` : planification modifiée, sans contrôle des dates (passer par `SchedulerService::schedule_update`).
     pub async fn schedule_update(&self, params: ScheduleUpdateParams) -> Call<Schedule> {
         self.engine_call("scheduler_schedule_update", params).await
+    }
+
+    /// `fn::scheduler_spec_validate` : forme des règles de dates contrôlée sans écriture.
+    pub async fn spec_validate(&self, params: SpecValidateParams) -> Call<SpecValidateResult> {
+        self.call_fn("scheduler_spec_validate", params).await
     }
 
     /// `fn::scheduler_schedule_get` : planification et ses 10 dernières exécutions.

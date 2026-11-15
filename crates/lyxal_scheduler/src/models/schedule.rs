@@ -109,6 +109,24 @@ impl ScheduleUpdateParams {
     }
 }
 
+/// Paramètres de `fn::scheduler_spec_validate`.
+#[derive(Debug, Clone, SurrealValue)]
+pub struct SpecValidateParams {
+    /// Organisation dont la lecture est exigée (`None` : installation).
+    pub tenant: Option<SchedulerRecordId>,
+    /// Règles de dates à contrôler.
+    pub spec: ScheduleSpec,
+    /// Langue des messages d'erreur.
+    pub language: Option<String>,
+}
+
+/// Résultat de `fn::scheduler_spec_validate` : règles normalisées.
+#[derive(Debug, Clone, SurrealValue)]
+pub struct SpecValidateResult {
+    /// Règles de dates normalisées (valeurs par défaut appliquées).
+    pub spec: ScheduleSpec,
+}
+
 /// Paramètres de `fn::scheduler_schedule_get`, `_resume` et `_delete`.
 #[derive(Debug, Clone, SurrealValue)]
 pub struct ScheduleRefParams {

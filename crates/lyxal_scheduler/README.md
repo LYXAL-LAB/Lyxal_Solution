@@ -205,7 +205,7 @@ planifications, exécutions et journal (`REFERENCE ON DELETE CASCADE`).
 | Réglages, files | `settings_get`, `settings_set` ; `queue_list`, `queue_pause`, `queue_resume` |
 | Tâches | `task_list`, `task_get`, `task_set_state` (session système) |
 | Calendriers | `calendar_create`, `calendar_update`, `calendar_get`, `calendar_list`, `calendar_delete` |
-| Planifications | `schedule_create`, `schedule_update`, `schedule_get`, `schedule_list`, `schedule_pause`, `schedule_resume`, `schedule_trigger`, `schedule_backfill`, `schedule_delete` |
+| Planifications | `schedule_create`, `schedule_update`, `schedule_get`, `schedule_list`, `schedule_pause`, `schedule_resume`, `schedule_trigger`, `schedule_backfill`, `schedule_delete`, `spec_validate` (forme des règles de dates contrôlée sans écriture, droit de lecture) |
 | Exécutions | `run_enqueue`, `run_get`, `run_list`, `run_cancel`, `run_retry` ; `run_ref` (forme texte d'un identifiant convertie, sans lecture) |
 | Journal | `audit_list` |
 | Moteur | `due_list`, `schedule_fire`, `schedule_next_set`, `backfill_fire`, `run_claim`, `run_heartbeat`, `run_complete`, `run_fail`, `run_publish`, `run_rescue`, `run_prune`, `health` |

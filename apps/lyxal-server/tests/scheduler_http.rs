@@ -417,7 +417,7 @@ async fn the_scheduler_is_used_through_http_on_behalf_of_the_caller() {
         "POST",
         "/specs/validate",
         admin,
-        Some(json!({ "spec": wrong_spec })),
+        Some(json!({ "tenant": ALPHA, "spec": wrong_spec })),
     )
     .await;
     assert_eq!(checked.status, StatusCode::BAD_REQUEST, "{}", checked.body);
@@ -436,13 +436,25 @@ async fn the_scheduler_is_used_through_http_on_behalf_of_the_caller() {
         "/specs/validate",
         admin,
         Some(json!({
-            "spec": { "cron": ["0 9 * * *"], "timezone": "Europe/Paris" },
+            "tenant": ALPHA,
+            "spec": { "cron": ["0 9 * * *"], "timezone": "Europe/Paris", "at": null, "jitter": null },
             "calendars": [calendar_id],
         })),
     )
     .await;
     assert_eq!(checked.status, StatusCode::OK, "{}", checked.body);
     assert_eq!(checked.data()["valid"], true);
+    // Mêmes règles de forme que l'écriture : 11 expressions (10 au plus) refusées
+    let checked = send(
+        &router,
+        "POST",
+        "/specs/validate",
+        admin,
+        Some(json!({ "tenant": ALPHA, "spec": { "cron": vec!["0 9 * * *"; 11], "timezone": "UTC" } })),
+    )
+    .await;
+    assert_eq!(checked.status, StatusCode::BAD_REQUEST, "{}", checked.body);
+    assert_eq!(checked.code(), "SCHEDULER_SPEC_INVALID");
 
     // --- Planification contrôlée : règle fausse refusée avec la règle en cause --------------
     let schedule_body = |spec: Value| {

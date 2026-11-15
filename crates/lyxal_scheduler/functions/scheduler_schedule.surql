@@ -44,6 +44,27 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_spec_check($spec: any) -> object {
 } COMMENT "Interne : contrôle la forme des règles de dates d'une planification ({ cron, every, at, exclude_cron, timezone, start_at, end_at, jitter }) par le moteur du Core : listes de 10 au plus, expressions de 1 à 128 caractères, intervalles de 1 s à 366 jours, fuseau non vide (UTC par défaut), décalage aléatoire d'une heure au plus ; au moins une règle cron, un intervalle ou une date unique ; début avant la fin. La syntaxe cron et le nom du fuseau sont contrôlés par le calcul des dates en Rust. { valid, value, by_field }";
 
 -- ----------------------------------------------------------------------------
+-- fn::scheduler_spec_validate
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::scheduler_spec_validate($params: object) {
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            tenant: { pipeline: fn::scheduler_ref("auth_organization") },
+            spec: { pipeline: [{ rule: "is_object" }], required: true },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 20);
+    IF !$report.valid { RETURN fn::scheduler_invalid($params, $report.by_field); };
+    LET $p = $report.value;
+    IF !fn::scheduler_can({ action: "read", tenant: $p.tenant }) { RETURN fn::error_result("SCHEDULER_PERMISSION_DENIED", $p.language, {}); };
+    LET $spec = fn::scheduler_spec_check($p.spec);
+    IF !$spec.valid { RETURN fn::error_result("SCHEDULER_SPEC_INVALID", $p.language, { fields: $spec.by_field }); };
+    RETURN fn::result_ok({ spec: $spec.value });
+} COMMENT "Contrôle de forme des règles de dates d'une planification sans écriture ({ tenant, spec }) : mêmes règles que la création et la modification (fn::scheduler_spec_check) ; la syntaxe cron, le fuseau et l'écart minimal sont ensuite contrôlés par le calcul des dates en Rust. { spec } normalisée ou SCHEDULER_SPEC_INVALID. Droit : lecture";
+
+-- ----------------------------------------------------------------------------
 -- fn::scheduler_calendars_valid (interne)
 -- ----------------------------------------------------------------------------
 

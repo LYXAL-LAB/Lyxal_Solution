@@ -252,7 +252,7 @@ Routes du planificateur, sous `/api/v1/scheduler` (JSON, réponses `LyxalResult`
 | `GET /schedules?tenant=&task=&state=&paused=`, `POST /schedules` ; `GET`, `PATCH`, `DELETE /schedules/{id}` | `schedule_list`, `_create` et `_update` contrôlées par `SchedulerService`, `_get`, `_delete` | lecture / écriture et permission de la tâche |
 | `POST /schedules/{id}/pause` (`reason`), `/resume`, `/trigger` (`overlap`), `/backfill` (`from`, `to`, `overlap`) | `schedule_pause`, `_resume`, `_trigger`, `_backfill` | écriture |
 | `GET /schedules/{id}/forecast?count=` | prochaines échéances (10 par défaut, 100 au plus), heure locale comprise | lecture |
-| `POST /specs/validate` (`spec`, `calendars`, `created_at`) | contrôle d'une règle de dates sans écriture : `{ valid: true }` ou `SCHEDULER_SPEC_INVALID` | session valide (calendriers lus avec les droits de l'appelant) |
+| `POST /specs/validate` (`tenant`, `spec`, `calendars`, `created_at`) | contrôle d'une règle de dates sans écriture, avec les mêmes règles de forme que l'écriture (`fn::scheduler_spec_validate`) puis le calcul des dates : `{ valid: true }` ou `SCHEDULER_SPEC_INVALID` | lecture |
 | `GET /runs?tenant=&schedule=&task=&state=&since=`, `POST /runs` (`task`, `tenant`, `args`, `run_at` ou `delay`, `priority`, `unique_key`) ; `GET /runs/{id}` | `run_list`, `run_enqueue`, `run_get` | lecture / écriture et permission de la tâche |
 | `POST /runs/{id}/cancel` (`reason`), `POST /runs/{id}/retry` | `run_cancel`, `run_retry` | exécutions |
 | `GET /audit?tenant=&schedule=&action=&since=` | `audit_list` | lecture |

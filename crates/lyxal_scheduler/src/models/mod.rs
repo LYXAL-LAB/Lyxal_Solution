@@ -34,6 +34,7 @@ pub use run::{
 pub use schedule::{
     RunSummary, Schedule, ScheduleBackfillParams, ScheduleCreateParams, ScheduleListParams,
     SchedulePauseParams, ScheduleRefParams, ScheduleTriggerParams, ScheduleUpdateParams,
+    SpecValidateParams, SpecValidateResult,
 };
 pub use settings::{
     Settings, SettingsGetParams, SettingsResult, SettingsSetParams, StoredSettings,
