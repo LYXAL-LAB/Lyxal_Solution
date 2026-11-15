@@ -62,11 +62,112 @@ src/
 
 ## 4. Contrats Rust
 
-* `SchedulerStore` : `Surreal<Any>`, `LyxalSurrealCall` ; chaque fonction publique du lot 1 a son
-  wrapper `store.call_fn("scheduler_…", params)` et ses types `XxxParams` / `XxxResult`
-  (structures nommées, `SurrealValue`, aucun tuple).
-* `SchedulerService` : `schedule_create`, `schedule_update` (contrôle puis appel), `forecast`
-  (lecture de la planification puis calcul), `validate_spec` (sans écriture).
+### 4.1. Conventions
+
+* Chaque fonction publique du lot 1 a **une structure `XxxParams`** dont les champs portent
+  exactement les noms lus dans `$params` (`#[surreal(rename_all = "snake_case")]` inutile : noms
+  identiques), et **un type de résultat** décodé depuis `data` du contrat `{ ok, data, error }`.
+  Dérivation `SurrealValue` (SDK 3.3), aucun `serde_json::to_value`, aucun tuple.
+* Un champ facultatif est un `Option<T>` **omis** quand il vaut `None`
+  (`#[surreal(default)]` à la lecture) : il prend alors la valeur par défaut de SurrealQL
+  (`language` = `"fr"`, `limit`, `start`…). Aucune valeur par défaut recopiée en Rust (§5.1).
+* Correspondance des types :
+
+| SurrealQL (règle du lot 1) | Rust |
+| :--- | :--- |
+| référence (`auth_organization`, `scheduler_schedule`, `scheduler_calendar`, `scheduler_run`, `scheduler_backfill`) | `RecordId` (alias `SchedulerRecordId`, `models/types.rs`) |
+| `datetime`, `future_datetime`, `past_datetime` | `Datetime` (alias `SchedulerDatetime`) |
+| `duration` | `surrealdb::types::Duration` (alias `SchedulerDuration`) |
+| `integer` | `i64` (`limit`, `start`, `priority`, `remaining`, compteurs) |
+| `boolean` | `bool` |
+| `slug`, `optional_string`, `required_string`, `language_code` | `String` |
+| `lyxal_event_name` (nom de tâche `module.action`) | `String` |
+| `enum` | `enum` Rust en minuscules (`Overlap`, `Catchup`, `RunState`, `ScheduleState`, `TaskState`, `Executor`, `RunOrigin`) |
+| `is_object` (`args`, `result`), `rules` de calendrier | `Value` (objet) pour `args` et `result`, dont le schéma dépend de la tâche ; `CalendarRule` typée pour les règles |
+| `spec` | `ScheduleSpec` typée (§4.2) |
+
+### 4.2. Types partagés
+
+| Type | Champs |
+| :--- | :--- |
+| `ScheduleSpec` | `cron: Vec<String>`, `every: Vec<Duration>`, `at: Option<Datetime>`, `exclude_cron: Vec<String>`, `timezone: String`, `start_at`, `end_at: Option<Datetime>`, `jitter: Option<Duration>` |
+| `CalendarRule` | `mode: RuleMode` (`include`, `exclude`), `kind: RuleKind` (`dates`, `annual`, `weekdays`, `monthdays`, `time_range`), `values: Vec<Value>` |
+| `RetryPolicy` | `max_attempts: i64`, `strategy: RetryStrategy` (`fixed`, `linear`, `exponential`), `initial_delay`, `max_delay: Duration` |
+| `RunError` | `code: String`, `message: Option<String>`, `retryable: bool` |
+| `Page<T>` | `items: Vec<T>`, `total: i64` |
+| `Deleted` | `deleted: String` |
+
+### 4.3. Paramètres (`XxxParams`) — champs obligatoires en **gras**, tous les autres `Option`
+
+| Fonction | Champs |
+| :--- | :--- |
+| `settings_get` | `tenant` |
+| `settings_set` | `tenant`, `catchup_window`, `run_retention`, `keep_last_runs`, `tenant_concurrency`, `max_schedules`, `max_pending_runs`, `max_args_bytes`, `clear: Vec<String>` |
+| `task_list` | `module`, `state: TaskState`, `limit`, `start` |
+| `task_get` | **`task`** |
+| `task_set_state` | **`task`**, **`state: TaskState`** |
+| `queue_list` | — |
+| `queue_pause` / `queue_resume` | **`queue`**, `reason` (pause) |
+| `calendar_create` | **`name`**, **`rules: Vec<CalendarRule>`**, `tenant`, `description` |
+| `calendar_update` | **`calendar`**, `rules`, `description`, `clear` |
+| `calendar_get` / `calendar_delete` | **`calendar`** |
+| `calendar_list` | `tenant`, `limit`, `start` |
+| `schedule_create` | **`name`**, **`task`**, **`spec: ScheduleSpec`**, `tenant`, `args`, `calendars: Vec<RecordId>`, `overlap: Overlap`, `catchup: Catchup`, `catchup_window`, `remaining`, `pause_on_failure`, `paused`, `paused_reason` |
+| `schedule_update` | **`schedule`**, `args`, `spec`, `calendars`, `overlap`, `catchup`, `catchup_window`, `remaining`, `pause_on_failure`, `clear` |
+| `schedule_get` / `schedule_resume` / `schedule_delete` | **`schedule`** |
+| `schedule_pause` | **`schedule`**, `reason` |
+| `schedule_list` | `tenant`, `task`, `state: ScheduleState`, `paused`, `limit`, `start` |
+| `schedule_trigger` | **`schedule`**, `overlap` |
+| `schedule_backfill` | **`schedule`**, **`from`**, **`to`**, `overlap` |
+| `run_enqueue` | **`task`**, `tenant`, `args`, `run_at`, `delay`, `priority`, `unique_key` |
+| `run_get` / `run_retry` | **`run`** |
+| `run_list` | `tenant`, `schedule`, `task`, `state: RunState`, `since`, `limit`, `start` |
+| `run_cancel` | **`run`**, `reason` |
+| `audit_list` | `tenant`, `schedule`, `action`, `since`, `limit`, `start` |
+| `due_list` | `limit` |
+| `schedule_fire` | **`schedule`**, **`fire_times: Vec<Datetime>`**, `next_fire_at` |
+| `schedule_next_set` | **`schedule`**, `next_fire_at` ou `invalid_reason` (l'un des deux) |
+| `backfill_fire` | **`backfill`**, **`fire_times`**, `done` |
+| `run_claim` | **`queue`**, **`node`**, `limit` |
+| `run_heartbeat` | **`run`**, **`lease`** |
+| `run_complete` | **`run`**, **`lease`**, `result` |
+| `run_fail` | **`run`**, **`lease`**, **`error: RunError`** |
+| `run_rescue` / `run_prune` | `limit` |
+
+Tous les `XxxParams` portent aussi `language: Option<String>`.
+
+### 4.4. Résultats
+
+| Type | Champs | Rendu par |
+| :--- | :--- | :--- |
+| `Settings` | `catchup_window`, `run_retention`, `keep_last_runs`, `tenant_concurrency`, `max_schedules`, `max_pending_runs`, `max_args_bytes` | dans `SettingsResult { own: Option<Settings>, effective: Settings }` : `settings_get`, `settings_set` |
+| `Task` | `id`, `module`, `description`, `executor: Executor`, `target`, `permission`, `args_schema: Value`, `queue`, `priority`, `retry: RetryPolicy`, `timeout`, `unique_for`, `scope`, `state`, `created_at`, `updated_at` | `task_get`, `task_set_state`, `Page<Task>` de `task_list` |
+| `Queue` | `id`, `concurrency`, `running`, `paused`, `paused_reason`, `description`, `slots: Vec<Slot { scope_key, running }>` | `queue_list` (`Vec<Queue>`), `queue_pause`, `queue_resume` |
+| `Calendar` | `id`, `tenant`, `name`, `description`, `rules: Vec<CalendarRule>`, `created_by`, `created_at`, `updated_at` | `calendar_create`, `_update`, `_get`, `Page<Calendar>` ; `Deleted` pour `_delete` |
+| `Schedule` | tous les champs de `scheduler_schedule` (`id`, `tenant`, `name`, `task`, `args`, `spec: ScheduleSpec`, `calendars`, `overlap`, `catchup`, `catchup_window`, `remaining`, `paused`, `paused_reason`, `pause_on_failure`, `state`, `invalid_reason`, `next_fire_at`, `last_fire_at`, `last_run`, `last_state`, `created_by`, `created_at`, `updated_at`) et `recent_runs: Vec<RunSummary>` | `schedule_create`, `_update`, `_get`, `_pause`, `_resume`, `_next_set`, `Page<Schedule>` ; `Deleted` pour `_delete` |
+| `RunSummary` | `id`, `state`, `origin`, `scheduled_for`, `attempt`, `finished_at`, `error: Option<RunError>` | dans `Schedule` |
+| `Run` | tous les champs de `scheduler_run` sauf le jeton de bail : `id`, `tenant`, `schedule`, `task`, `args`, `queue`, `priority`, `origin`, `scheduled_for`, `available_at`, `state`, `attempt`, `max_attempts`, `unique_key`, `lease_node`, `locked_until`, `cancel_requested`, `cancel_reason`, `started_at`, `finished_at`, `duration_ms`, `result`, `error`, `created_by`, `created_at`, `updated_at` ; plus `duplicate: Option<bool>` (`run_enqueue`) et `retry_of: Option<String>` (`run_retry`) | `run_enqueue`, `_get`, `_cancel`, `_retry`, `_complete`, `_fail`, `schedule_trigger`, `Page<Run>` |
+| `Backfill` | `id`, `schedule`, `from`, `to`, `overlap`, `state`, `runs_created`, `requested_by`, `created_at` | `schedule_backfill` |
+| `AuditEntry` | `id`, `tenant`, `action`, `actor`, `session_kind`, `ip`, `schedule`, `run`, `details: Value`, `created_at` | `Page<AuditEntry>` |
+| `DueList` | `schedules: Vec<Schedule>`, `backfills: Vec<Backfill>` | `due_list` |
+| `FireResult` | `runs: Vec<Run>`, `ignored: i64`, `schedule: Schedule` | `schedule_fire` |
+| `BackfillFireResult` | `runs: Vec<Run>`, `backfill: Backfill` | `backfill_fire` |
+| `ClaimedRun` | `id`, `lease` (jeton, `SecretString` : jamais dans un `Debug`), `lease_node`, `locked_until`, `timeout`, `tenant`, `schedule`, `task`, `args`, `origin`, `scheduled_for`, `attempt`, `max_attempts` | dans `ClaimResult { items: Vec<ClaimedRun>, paused: bool }` : `run_claim` |
+| `Heartbeat` | `run`, `locked_until`, `cancel_requested` | `run_heartbeat` |
+| `RescueResult` | `rescued: Vec<{ id, state }>`, `reconciled: i64` | `run_rescue` |
+| `PruneResult` | `deleted: i64` | `run_prune` |
+
+Un test par fonction vérifie, en base embarquée, que chaque `XxxParams` est accepté tel quel
+(aucun champ inconnu : le lot 1 refuse les clés en trop) et que chaque résultat se décode sans
+perte.
+
+### 4.5. Services
+
+* `SchedulerStore` : `Surreal<Any>`, `LyxalSurrealCall` ; un wrapper 1-ligne
+  `store.call_fn("scheduler_…", params)` par fonction.
+* `SchedulerService` : `schedule_create`, `schedule_update` (contrôle de `spec` et des calendriers
+  par le §3, puis wrapper), `forecast(schedule, n)` (lecture puis calcul), `validate_spec` (sans
+  écriture).
 * `Spec::next_after`, `Spec::fire_times_between`, `Spec::forecast` : fonctions pures, testées sans
   base.
 
