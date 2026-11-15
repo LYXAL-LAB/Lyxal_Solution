@@ -1,0 +1,59 @@
+manifest_version = 1
+id = "lyxal_scheduler"
+name = "Lyxal Scheduler"
+version = "0.1.0"
+description = "Planification et exécution des tâches différées et périodiques de Lyxal OS : tâches déclarées par les modules, files, calendriers, planifications, exécutions sous bail, nouvelles tentatives, chevauchement, rattrapage, droits par organisation, journal et événements"
+capabilities = ["database", "events", "scheduler"]
+
+[runtime]
+min_version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_core"
+version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_error"
+version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_event"
+version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_auth"
+version = ">=0.1.0"
+
+[resources]
+schemas = [
+    "schema/01_scheduler_settings.surql",
+    "schema/02_scheduler_task.surql",
+    "schema/03_scheduler_queue.surql",
+    "schema/04_scheduler_calendar.surql",
+    "schema/05_scheduler_schedule.surql",
+    "schema/06_scheduler_backfill.surql",
+    "schema/07_scheduler_run.surql",
+    "schema/08_scheduler_audit.surql"
+]
+functions = [
+    "functions/scheduler_access.surql",
+    "functions/scheduler_settings.surql",
+    "functions/scheduler_task.surql",
+    "functions/scheduler_queue.surql",
+    "functions/scheduler_calendar.surql",
+    "functions/scheduler_schedule.surql",
+    "functions/scheduler_run.surql",
+    "functions/scheduler_overlap.surql",
+    "functions/scheduler_engine.surql",
+    "functions/scheduler_worker.surql",
+    "functions/scheduler_audit.surql"
+]
+error_definitions = [
+    "error/parametres/error_parametres.surql",
+    "error/permissions/error_permissions.surql",
+    "error/taches/error_taches.surql",
+    "error/planifications/error_planifications.surql",
+    "error/executions/error_executions.surql"
+]
+events = ["events/scheduler_events.surql"]
+seeds = ["seeds/scheduler_auth.surql", "seeds/scheduler_queues.surql"]

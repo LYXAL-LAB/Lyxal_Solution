@@ -360,12 +360,6 @@ export const VIEW_PAGES: Record<ViewPage, ViewPageInfo> = {
 			return !flags.v3_migration_tooling || !target || !satisfies(target, ">=2.6.1 <3.0.0-0");
 		},
 	},
-	scheduler: {
-		id: "scheduler",
-		name: "Scheduler",
-		icon: iconCombined,
-		disabled: () => false,
-	},
 	booking: {
 		id: "booking",
 		name: "Lyxal Booking",

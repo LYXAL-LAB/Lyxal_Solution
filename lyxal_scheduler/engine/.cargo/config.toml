@@ -1,3 +1,0 @@
-[build]
-target = "x86_64-pc-windows-msvc"
-target-dir = "C:/rust_build_target"

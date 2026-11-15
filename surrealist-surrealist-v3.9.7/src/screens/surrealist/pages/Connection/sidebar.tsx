@@ -1,13 +1,9 @@
 import {
 	iconAuth as iconUser,
-	iconBroadcastOn,
-	iconBug,
 	iconClock,
 	iconCog,
-	iconConsole,
 	iconDataTable,
 	iconKey,
-	iconPlay,
 	iconServer,
 	iconTable,
 } from "@surrealdb/ui";
@@ -37,7 +33,7 @@ import {
 import { canChangeInstanceVersion } from "./settings/helpers";
 
 const VIEW_NAVIGATION: ViewPage[][] = [
-	["dashboard", "scheduler", "booking", "monitor", "migrations", "documentation"],
+	["dashboard", "booking", "monitor", "migrations", "documentation"],
 	["query", "explorer", "graphql"],
 	["designer", "authentication", "parameters", "functions"],
 ];
@@ -67,79 +63,6 @@ export function ConnectionSidebar() {
 	const navigation: SidebarEntry[][] = useMemo(() => {
 		if (!connection) {
 			return [];
-		}
-
-		// When inside Scheduler view, replace the main sidebar with Scheduler sub-navigation
-		if (activeView === "scheduler") {
-			return [
-				[
-					{
-						name: "Dashboard",
-						icon: iconDataTable,
-						match: [`/c/${connection}/scheduler?tab=dashboard`],
-						isActive: activeTab === "dashboard",
-						onClick: () => setLocation(`/c/${connection}/scheduler?tab=dashboard`),
-					},
-					{
-						name: "Jobs",
-						icon: iconTable,
-						match: [`/c/${connection}/scheduler?tab=jobs`],
-						isActive: activeTab === "jobs",
-						onClick: () => setLocation(`/c/${connection}/scheduler?tab=jobs`),
-					},
-					{
-						name: "Executions",
-						icon: iconPlay,
-						match: [`/c/${connection}/scheduler?tab=executions`],
-						isActive: activeTab === "executions",
-						onClick: () => setLocation(`/c/${connection}/scheduler?tab=executions`),
-					},
-					{
-						name: "Runners",
-						icon: iconServer,
-						match: [`/c/${connection}/scheduler?tab=runners`],
-						isActive: activeTab === "runners",
-						onClick: () => setLocation(`/c/${connection}/scheduler?tab=runners`),
-					},
-					{
-						name: "Dead Letters",
-						icon: iconBug,
-						match: [`/c/${connection}/scheduler?tab=dead-letters`],
-						isActive: activeTab === "dead-letters",
-						onClick: () => setLocation(`/c/${connection}/scheduler?tab=dead-letters`),
-					},
-					{
-						name: "Alerts",
-						icon: iconBroadcastOn,
-						match: [`/c/${connection}/scheduler?tab=alerts`],
-						isActive: activeTab === "alerts",
-						onClick: () => setLocation(`/c/${connection}/scheduler?tab=alerts`),
-					},
-					{
-						name: "Console",
-						icon: iconConsole,
-						match: [`/c/${connection}/scheduler?tab=console`],
-						isActive: activeTab === "console",
-						onClick: () => setLocation(`/c/${connection}/scheduler?tab=console`),
-					},
-				],
-				[
-					{
-						name: "Calendars",
-						icon: iconClock,
-						match: [`/c/${connection}/scheduler?tab=calendars`],
-						isActive: activeTab === "calendars",
-						onClick: () => setLocation(`/c/${connection}/scheduler?tab=calendars`),
-					},
-					{
-						name: "Settings",
-						icon: iconCog,
-						match: [`/c/${connection}/scheduler?tab=settings`],
-						isActive: activeTab === "settings",
-						onClick: () => setLocation(`/c/${connection}/scheduler?tab=settings`),
-					},
-				],
-			];
 		}
 
 		// When inside Booking view, replace main sidebar with Booking sub-navigation
@@ -280,13 +203,7 @@ export function ConnectionSidebar() {
 			}
 		: {
 				name: "Overview" as const,
-				onClick: () => {
-					if (activeView === "scheduler" && connection) {
-						setLocation(`/c/${connection}/query`);
-					} else {
-						setLocation("/");
-					}
-				},
+				onClick: () => setLocation("/"),
 			};
 
 	return (

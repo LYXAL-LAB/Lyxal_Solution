@@ -32,7 +32,6 @@ import MigrationView from "./views/migration/MigrationView";
 import MonitorView from "./views/monitor/MonitorView";
 import ParametersView from "./views/parameters/ParametersView";
 import QueryView from "./views/query/QueryView";
-import SchedulerView from "./views/scheduler";
 import BookingView from "./views/booking";
 
 const PORTAL_OPTIONS = {
@@ -69,7 +68,6 @@ const VIEW_PORTALS: Record<ViewPage, HtmlPortalNode> = {
 	parameters: createHtmlPortalNode(PORTAL_OPTIONS),
 	documentation: createHtmlPortalNode(PORTAL_OPTIONS),
 	migrations: createHtmlPortalNode(PORTAL_OPTIONS),
-	scheduler: createHtmlPortalNode(PORTAL_OPTIONS),
 	booking: createHtmlPortalNode(PORTAL_OPTIONS),
 	...SETTINGS_VIEW_PORTALS,
 };
@@ -137,7 +135,6 @@ const VIEW_COMPONENTS: Record<ViewPage, FC<ViewPageProps>> = {
 	parameters: memo(ParametersView),
 	documentation: memo(DocumentationView),
 	migrations: memo(MigrationView),
-	scheduler: memo(SchedulerView),
 	booking: memo(BookingView),
 	...SETTINGS_VIEW_COMPONENTS,
 };
