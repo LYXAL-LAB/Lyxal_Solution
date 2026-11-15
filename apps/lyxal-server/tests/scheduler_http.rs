@@ -309,7 +309,8 @@ async fn the_scheduler_is_used_through_http_on_behalf_of_the_caller() {
     let without_task = token("lyxal-test-planif-sanstache").await;
     let member = token("lyxal-test-planif-membre").await;
     let neighbour = token("lyxal-test-planif-voisin").await;
-    let admin = Some(admin.as_str());
+    let admin_token = admin;
+    let admin = Some(admin_token.as_str());
     const ALPHA: &str = "auth_organization:alpha";
 
     // --- Sans jeton : refusé --------------------------------------------------------------
@@ -603,13 +604,7 @@ async fn the_scheduler_is_used_through_http_on_behalf_of_the_caller() {
         .expect("exécution")
         .to_string();
     assert!(!triggered_run.contains(':'), "{triggered_run}");
-    let done = wait_state(
-        &router,
-        admin.unwrap_or_default(),
-        &triggered_run,
-        "completed",
-    )
-    .await;
+    let done = wait_state(&router, &admin_token, &triggered_run, "completed").await;
     assert_eq!(done["result"]["format"], "pdf");
 
     // Rejeu d'une période passée : exécutions [planification, date] créées par le moteur, lues
@@ -707,7 +702,7 @@ async fn the_scheduler_is_used_through_http_on_behalf_of_the_caller() {
         .as_str()
         .expect("exécution")
         .to_string();
-    let completed = wait_state(&router, admin.unwrap_or_default(), &deferred, "completed").await;
+    let completed = wait_state(&router, &admin_token, &deferred, "completed").await;
     assert_eq!(completed["id"], deferred.as_str());
     assert_eq!(completed["result"]["format"], "csv");
     assert!(calls.load(Ordering::SeqCst) > before);
@@ -759,7 +754,7 @@ async fn the_scheduler_is_used_through_http_on_behalf_of_the_caller() {
     assert_eq!(retried.data()["origin"], "retry");
     assert_eq!(retried.data()["retry_of"], later.as_str());
     let retry = retried.data()["id"].as_str().expect("relance").to_string();
-    let completed = wait_state(&router, admin.unwrap_or_default(), &retry, "completed").await;
+    let completed = wait_state(&router, &admin_token, &retry, "completed").await;
     assert_eq!(completed["result"]["format"], "pdf");
 
     // --- Identifiants d'exécution : aucune autre forme acceptée -----------------------------

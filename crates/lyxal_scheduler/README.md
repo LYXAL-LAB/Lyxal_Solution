@@ -287,7 +287,10 @@ Règles :
 `store.call_fn("scheduler_…", params)` pour chacune des 41 fonctions publiques. Chaque
 `XxxParams` porte exactement les champs lus par sa fonction (un champ `None` est omis et prend la
 valeur par défaut de SurrealQL) ; chaque résultat est une structure nommée (`SurrealValue`).
-Le jeton de bail (`LeaseToken`) est opaque et masqué dans `Debug`.
+Le jeton de bail (`LeaseToken`) est opaque et masqué dans `Debug`. Les appels du moteur, l'annulation
+d'une exécution et les écritures d'une personne sur une planification (modification, pause,
+reprise, suppression, déclenchement, rejeu) sont rejoués après un conflit d'écriture passager
+de SurrealDB (transaction non validée) : le planificateur réécrit les mêmes enregistrements.
 
 ### Service (`service.rs`)
 
