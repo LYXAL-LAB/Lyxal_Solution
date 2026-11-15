@@ -237,7 +237,7 @@ UPDATE (SELECT VALUE items[0].id FROM ONLY passe:m) SET locked_until = time::now
 {
     LET $s = fn::scheduler_schedule_create({ name: "tic", task: "essai.global", spec: { every: [1m] }, pause_on_failure: true }).data.id;
     fn::scheduler_schedule_next_set({ schedule: $s, next_fire_at: time::now() + 1m });
-    fn::scheduler_schedule_fire({ schedule: $s, fire_times: [time::now() - 10s], next_fire_at: time::now() + 1m });
+    fn::scheduler_schedule_fire({ schedule: $s, fire_times: [{ at: time::now() - 10s, available_at: time::now() - 10s }], next_fire_at: time::now() + 1m });
     LET $c = fn::scheduler_run_claim({ queue: "default", node: "n1", limit: 10 }).data.items.filter(|$r| $r.schedule = $s)[0];
     UPSERT passe:g SET schedule = $s, run = $c;
 };

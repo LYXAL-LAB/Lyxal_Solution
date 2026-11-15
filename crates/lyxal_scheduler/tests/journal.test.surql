@@ -68,7 +68,7 @@
 {
     LET $s = (SELECT VALUE id_schedule FROM ONLY passe:j);
     fn::scheduler_schedule_next_set({ schedule: $s, next_fire_at: time::now() + 1h });
-    fn::scheduler_schedule_fire({ schedule: $s, fire_times: [time::now() - 1m], next_fire_at: time::now() + 1h });
+    fn::scheduler_schedule_fire({ schedule: $s, fire_times: [{ at: time::now() - 1m, available_at: time::now() - 1m }], next_fire_at: time::now() + 1h });
 };
 
 -- test: une entrée par action, dans l'ordre ; auteur, session, jamais d'arguments

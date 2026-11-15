@@ -83,3 +83,84 @@ IF !record::exists(error_definition:SCHEDULER_LEASE_LOST) THEN (
         }
     }
 ) END;
+
+IF !record::exists(error_definition:SCHEDULER_RUN_TIMEOUT) THEN (
+    CREATE error_definition:SCHEDULER_RUN_TIMEOUT CONTENT {
+        code: "SCHEDULER_RUN_TIMEOUT",
+        module: "scheduler",
+        domain: "executions",
+        category: "timeout",
+        severity: "error",
+        message: "Run exceeded the task timeout",
+        default_language: "fr",
+        http_status: 504,
+        retryable: true,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Délai maximal dépassé",
+                description: "La tentative a dépassé le délai maximal de la tâche : le moteur a cessé de l'attendre.",
+                resolution: "Une nouvelle tentative est prévue s'il en reste ; la tâche doit rester idempotente."
+            },
+            en: {
+                label: "Timeout exceeded",
+                description: "The attempt exceeded the task timeout: the engine stopped waiting for it.",
+                resolution: "A new attempt is planned if any remain; the task must stay idempotent."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:SCHEDULER_HANDLER_NOT_FOUND) THEN (
+    CREATE error_definition:SCHEDULER_HANDLER_NOT_FOUND CONTENT {
+        code: "SCHEDULER_HANDLER_NOT_FOUND",
+        module: "scheduler",
+        domain: "executions",
+        category: "dependency",
+        severity: "error",
+        message: "No handler registered for the task",
+        default_language: "fr",
+        http_status: 503,
+        retryable: true,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Aucun handler inscrit",
+                description: "Aucun nœud n'a inscrit le code de cette tâche pendant son délai maximal.",
+                resolution: "Vérifiez que le module qui déclare la tâche est hébergé et inscrit son handler."
+            },
+            en: {
+                label: "No handler registered",
+                description: "No node registered the code of this task during its timeout.",
+                resolution: "Check that the module declaring the task is hosted and registers its handler."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:SCHEDULER_EXECUTOR_FAILED) THEN (
+    CREATE error_definition:SCHEDULER_EXECUTOR_FAILED CONTENT {
+        code: "SCHEDULER_EXECUTOR_FAILED",
+        module: "scheduler",
+        domain: "executions",
+        category: "internal",
+        severity: "error",
+        message: "Executor technical failure",
+        default_language: "fr",
+        http_status: 500,
+        retryable: true,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Échec technique de l'exécuteur",
+                description: "L'exécuteur n'a pas pu mener la tentative à son terme (base indisponible, résultat illisible).",
+                resolution: "Une nouvelle tentative est prévue s'il en reste ; consultez les journaux du nœud."
+            },
+            en: {
+                label: "Executor technical failure",
+                description: "The executor could not complete the attempt (database unavailable, unreadable result).",
+                resolution: "A new attempt is planned if any remain; check the node logs."
+            }
+        }
+    }
+) END;

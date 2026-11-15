@@ -1,6 +1,6 @@
 //! Accès commun aux baux du runtime (`fn::runtime_lease_*`, table `runtime_lease`). Les
-//! échéances sont calculées par la base ; les gestionnaires de baux de migration et
-//! d'installation s'appuient tous deux sur ces appels.
+//! échéances sont calculées par la base ; les gestionnaires de baux de migration,
+//! d'installation et d'élection (`leader`) s'appuient sur ces appels.
 
 use crate::error::RuntimeError;
 use crate::lock::node_id::NodeId;
@@ -14,6 +14,7 @@ use surrealdb::Surreal;
 pub(crate) enum LeaseKind {
     Migration,
     Installation,
+    Leader,
 }
 
 impl LeaseKind {
@@ -21,6 +22,7 @@ impl LeaseKind {
         match self {
             Self::Migration => "migration",
             Self::Installation => "installation",
+            Self::Leader => "leader",
         }
     }
 }

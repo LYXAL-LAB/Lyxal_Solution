@@ -34,7 +34,7 @@ DEFINE FIELD OVERWRITE created_at ON TABLE runtime_migration TYPE datetime DEFAU
 DEFINE FIELD OVERWRITE updated_at ON TABLE runtime_migration TYPE datetime DEFAULT time::now();
 
 -- Champs pour runtime_lease (instants en secondes Unix, heure de la base)
-DEFINE FIELD OVERWRITE kind ON TABLE runtime_lease TYPE string ASSERT $value IN ["migration", "installation"];
+DEFINE FIELD OVERWRITE kind ON TABLE runtime_lease TYPE string ASSERT $value IN ["migration", "installation", "leader"];
 DEFINE FIELD OVERWRITE key ON TABLE runtime_lease TYPE string;
 DEFINE FIELD OVERWRITE owner_node_id ON TABLE runtime_lease TYPE string;
 DEFINE FIELD OVERWRITE generation ON TABLE runtime_lease TYPE int;

@@ -1,5 +1,7 @@
 -- ============================================================================
 -- Baux distribués du runtime (table runtime_lease, identifiant runtime_lease:[kind, key]).
+-- Natures : migration, installation, leader (un seul nœud élu pour un rôle, ex. le planificateur
+-- de lyxal_scheduler, clé scheduler).
 -- Toutes les échéances sont calculées avec l'heure de la base (time::now()), jamais avec
 -- l'horloge d'un nœud : deux nœuds aux horloges décalées ne peuvent pas détenir le même bail.
 -- Les instants sont exposés en secondes Unix ; now est l'heure de la base au moment de l'appel.
@@ -8,7 +10,7 @@
 
 DEFINE FUNCTION OVERWRITE fn::runtime_lease_acquire($params: object) {
     LET $checks = {
-        kind: fn::validation_enum($params.kind, ["migration", "installation"], true),
+        kind: fn::validation_enum($params.kind, ["migration", "installation", "leader"], true),
         key: fn::validation_required_string($params.key, 1, 512),
         node_id: fn::validation_required_string($params.node_id, 1, 128),
         ttl_seconds: fn::validation_integer($params.ttl_seconds, 1, 86400),
@@ -77,7 +79,7 @@ PERMISSIONS FULL;
 
 DEFINE FUNCTION OVERWRITE fn::runtime_lease_renew($params: object) {
     LET $checks = {
-        kind: fn::validation_enum($params.kind, ["migration", "installation"], true),
+        kind: fn::validation_enum($params.kind, ["migration", "installation", "leader"], true),
         key: fn::validation_required_string($params.key, 1, 512),
         node_id: fn::validation_required_string($params.node_id, 1, 128),
         generation: fn::validation_integer($params.generation, 1, NONE),
@@ -110,7 +112,7 @@ PERMISSIONS FULL;
 
 DEFINE FUNCTION OVERWRITE fn::runtime_lease_release($params: object) {
     LET $checks = {
-        kind: fn::validation_enum($params.kind, ["migration", "installation"], true),
+        kind: fn::validation_enum($params.kind, ["migration", "installation", "leader"], true),
         key: fn::validation_required_string($params.key, 1, 512),
         node_id: fn::validation_required_string($params.node_id, 1, 128),
         generation: fn::validation_integer($params.generation, 1, NONE),
@@ -136,7 +138,7 @@ PERMISSIONS FULL;
 
 DEFINE FUNCTION OVERWRITE fn::runtime_lease_get($params: object) {
     LET $checks = {
-        kind: fn::validation_enum($params.kind, ["migration", "installation"], true),
+        kind: fn::validation_enum($params.kind, ["migration", "installation", "leader"], true),
         key: fn::validation_required_string($params.key, 1, 512),
         language: fn::validation_language_code($params.language ?? "fr", false, NONE)
     };

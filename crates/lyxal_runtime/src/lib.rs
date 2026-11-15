@@ -66,11 +66,11 @@ pub use health::{
 };
 pub use lifecycle::LifecycleManager;
 pub use lock::{
-    AcquireInstallationLeaseResult, AcquireLeaseResult, InstallationLease,
+    AcquireInstallationLeaseResult, AcquireLeaderLeaseResult, AcquireLeaseResult, InstallationLease,
     InstallationLeaseManager, InstallationLockKey, MemoryInstallationLeaseManager,
     MemoryMigrationLeaseManager, MigrationLease, MigrationLeaseManager, MigrationLockConfig,
-    MigrationLockKey, MigrationRecoveryPolicy, NodeId, SurrealInstallationLeaseManager,
-    SurrealMigrationLeaseManager,
+    LeaderLease, MigrationLockKey, MigrationRecoveryPolicy, NodeId,
+    SurrealInstallationLeaseManager, SurrealLeaderLeaseManager, SurrealMigrationLeaseManager,
 };
 pub use manifest::{
     ManifestParser, ManifestValidator, ModuleDependency, ModuleManifest, RuntimeRequirement,
