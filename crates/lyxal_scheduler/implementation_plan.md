@@ -11,7 +11,7 @@ validation du CTO (`.agents/AGENTS.md` §3).
 
 | N° | Question | Proposition |
 | :- | :--- | :--- |
-| **X1** | Identifiant d'une exécution dans une adresse | Une exécution d'échéance a un identifiant composé `scheduler_run:[planification, date]`, qui ne passe pas tel quel dans une adresse. Les routes l'acceptent et le rendent sous une **forme texte unique** : l'identifiant SurrealQL complet encodé en base64url (sans remplissage). L'hôte décode et lit l'identifiant par `type::record`, contrôlé par la règle `record` du Core avec la table `scheduler_run` ; aucune autre forme acceptée. |
+| **X1** | Identifiant d'une exécution dans une adresse | Une exécution d'échéance a un identifiant composé `scheduler_run:[planification, date]`, qui ne passe pas tel quel dans une adresse. Les routes l'acceptent et le rendent sous une **forme texte unique** : l'identifiant SurrealQL complet encodé en base64url (sans remplissage). L'hôte décode la chaîne ; elle est contrôlée par la règle `surql_record_string` du Core avec la table `scheduler_run` (`string::is_record`, qui accepte les identifiants composés), convertie en identifiant natif, puis contrôlée par la règle `record_id` limitée à `scheduler_run` (la règle `record`, qui découpe la chaîne à chaque « : », refuserait un identifiant composé). Aucune autre forme acceptée. |
 | **X2** | Fonctions du moteur | **Aucune route** pour les fonctions du moteur (`due_list`, `schedule_fire`, `run_claim`, `run_heartbeat`, `run_complete`, `run_fail`, `run_publish`, `run_rescue`, `run_prune`, `backfill_fire`, `schedule_next_set`, `task_set_state`) : elles restent réservées aux workers de l'hôte. |
 | **X3** | Prévision et contrôle d'une planification | Deux routes en lecture seule : prévision des N prochaines dates d'une planification (lot 2, 100 au plus) et contrôle d'une règle sans l'enregistrer (`validate_spec`), pour qu'une interface affiche l'erreur exacte avant l'enregistrement. |
 | **X4** | Cache | Toutes les réponses portent `Cache-Control: no-store` (arguments et résultats de tâches). |
@@ -66,6 +66,6 @@ plan est supprimé dans la demande de fusion de l'implémentation.
 
 * Aucune logique métier dans l'hôte : chaque route appelle un contrat existant, au nom de
   l'appelant.
-* Entrées : identifiants contrôlés par la règle `record` du Core après décodage ; le reste par les
+* Entrées : identifiants d'exécution contrôlés par les règles `surql_record_string` puis `record_id` du Core après décodage (X1) ; le reste par les
   fonctions SurrealQL du lot 1.
 * Aucun `panic!` ni `unwrap`, aucune erreur masquée, aucun détail interne dans les réponses.
