@@ -1,0 +1,23 @@
+[package]
+name = "lyxal_scheduler"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Planificateur de Lyxal OS : calcul des dates (cron, intervalles, fuseaux, calendriers) et appels typés des fonctions SurrealQL fn::scheduler_*"
+
+[dependencies]
+lyxal_surreal = { workspace = true }
+async-trait = { workspace = true }
+surrealdb = { workspace = true }
+thiserror = { workspace = true }
+# Expressions cron de 5 à 7 champs (MIT), calcul dans un fuseau par jiff
+croner = { version = "4", default-features = false, features = ["jiff"] }
+# Fuseaux horaires : base du système, copie embarquée sinon (comme lyxal_i18n)
+jiff = { version = "0.2", features = ["tzdb-bundle-always"] }
+# Décalage aléatoire des échéances (U5), tiré par le générateur du système
+rand_core = { version = "0.6", features = ["getrandom"] }
+
+[dev-dependencies]
+# Installation du module en base embarquée dans les tests (comme l'hôte)
+lyxal_runtime = { workspace = true }
+tokio = { workspace = true }
