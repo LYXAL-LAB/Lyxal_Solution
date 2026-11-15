@@ -121,8 +121,8 @@ waiting / queued / retrying ──(annulation)──► cancelled ; running ─�
 * **Réservation** (`fn::scheduler_run_claim`) : par priorité (0 la plus haute) puis date, dans
   deux limites tenues par compteurs à écriture conditionnelle : places de la file
   (`scheduler_queue.running < concurrency`) et places de l'organisation dans la file
-  (`scheduler_slot`, réglage `tenant_concurrency`). Une organisation pleine laisse passer les
-  autres. Chaque réservation pose un **bail** : jeton nouveau (lisible par le moteur seulement),
+  (`scheduler_slot`, réglage `tenant_concurrency`). Les organisations déjà pleines sont écartées
+  avant la sélection : leurs exécutions en attente ne masquent jamais celles des autres. Chaque réservation pose un **bail** : jeton nouveau (lisible par le moteur seulement),
   nœud, échéance = maintenant + délai de la tâche + 1 min.
 * **Battement** (`fn::scheduler_run_heartbeat`) : prolonge le bail et indique si l'annulation est
   demandée. **Fin** (`fn::scheduler_run_complete`, `fn::scheduler_run_fail`) : exige le jeton du bail
@@ -130,12 +130,15 @@ waiting / queued / retrying ──(annulation)──► cancelled ; running ─�
   `retrying` après un délai (fixe, linéaire ou exponentiel, plafonné par `max_delay`, gigue
   complète) ; sinon `dead`. Une exécution dont l'annulation est demandée finit `cancelled`.
 * **Reprise** (`fn::scheduler_run_rescue`) : une exécution dont le bail a expiré repasse à
-  `retrying` (ou `dead`, ou `cancelled`), places rendues, erreur `SCHEDULER_LEASE_LOST`.
+  `retrying` (ou `dead`, ou `cancelled`), places rendues, erreur `SCHEDULER_LEASE_LOST` ; puis les
+  compteurs de places sont recalés sur les exécutions réellement en cours (une organisation
+  supprimée emporte ses exécutions en cours sans passer par leur fin).
 * **Unicité** : une tâche avec `unique_for` renvoie l'exécution non terminée de même clé (fournie,
   sinon empreinte des arguments) créée depuis moins de `unique_for` (`duplicate: true`).
 * **Élagage** (`fn::scheduler_run_prune`) : exécutions terminées plus vieilles que
   `run_retention` (30 jours), en gardant toujours les `keep_last_runs` (10) dernières de chaque
-  planification.
+  planification ; l'éligibilité est évaluée avant la limite du lot, pour qu'un lot d'exécutions
+  gardées ne bloque jamais l'élagage des suivantes.
 * Des gardes `DEFINE EVENT` refusent toute transition non listée, toute modification de la
   planification, de la tâche, des arguments, de la file, de l'origine ou de la date prévue, toute
   réservation sans bail nouveau et toute fin sans bail rendu, y compris pour une écriture directe.
@@ -226,4 +229,4 @@ journalisées (suivies par `scheduler_run`).
 | `events/` | gardes, journal, bus |
 | `error/` | 19 définitions d'erreurs |
 | `seeds/` | permissions et attributions de rôles ; files `default` (10) et `maintenance` (2) |
-| `tests/` | banc SurrealQL (`scripts/ci/test_lyxal_modules.py`) : droits, tâches et files, calendriers, planifications, échéances, chevauchement, exécutions, réservation et fin, journal, fonctions internes |
+| `tests/` | banc SurrealQL (`scripts/ci/test_lyxal_modules.py`) : droits, tâches et files, calendriers, planifications, échéances, chevauchement, exécutions, réservation et fin, places et élagage, journal, fonctions internes |

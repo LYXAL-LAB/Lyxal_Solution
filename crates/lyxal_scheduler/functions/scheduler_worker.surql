@@ -84,9 +84,14 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_claim($params: object) {
     IF $queue.paused { RETURN fn::result_ok({ items: [], paused: true }); };
     LET $now = time::now();
     LET $disabled = (SELECT VALUE id FROM scheduler_task WHERE state = "disabled");
-    -- Priorité puis date ; des candidats en surnombre pour passer les organisations pleines
+    -- Organisations déjà pleines dans cette file : écartées avant la sélection, pour que leurs
+    -- exécutions en attente ne masquent jamais celles des autres organisations
+    LET $full = array::filter((SELECT tenant, scope_key, running FROM scheduler_slot WHERE queue = $queue.id AND running > 0), |$slot|
+        $slot.running >= fn::scheduler_settings_effective({ tenant: $slot.tenant }).tenant_concurrency).scope_key;
+    -- Priorité puis date ; des candidats en surnombre pour les réservations perdues entre deux nœuds
     LET $candidates = (SELECT id, queue, tenant, scope_key, task, priority, available_at FROM scheduler_run
         WHERE queue = $queue.id AND state IN ["queued", "retrying"] AND available_at <= $now AND task NOTINSIDE $disabled
+            AND scope_key NOTINSIDE $full
         ORDER BY priority ASC, available_at ASC LIMIT $p.limit * 10);
     LET $outcome = array::fold($candidates, { items: [], full: false }, |$acc, $candidate| {
         IF $acc.full OR array::len($acc.items) >= $p.limit { RETURN $acc; };
@@ -283,8 +288,44 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_rescue($params: object) {
         LET $updated = fn::scheduler_run_end($run, $run.lease, $outcome);
         RETURN IF $updated == NONE { $acc } ELSE { array::append($acc, { id: $updated.id, state: $updated.state }) };
     });
-    RETURN fn::result_ok({ rescued: $rescued });
-} COMMENT "Moteur : reprend les exécutions dont le bail a expiré ({ limit (1000 au plus) }) : retrying s'il reste des tentatives, cancelled si l'annulation était demandée, sinon dead ; erreur SCHEDULER_LEASE_LOST ; places rendues. { rescued }. Droit : session système ou scheduler.worker";
+    RETURN fn::result_ok({ rescued: $rescued, reconciled: fn::scheduler_counters_reconcile() });
+} COMMENT "Moteur : reprend les exécutions dont le bail a expiré ({ limit (1000 au plus) }) : retrying s'il reste des tentatives, cancelled si l'annulation était demandée, sinon dead ; erreur SCHEDULER_LEASE_LOST ; places rendues ; puis recale les compteurs de places sur les exécutions réellement en cours (places d'exécutions disparues avec leur organisation). { rescued, reconciled }. Droit : session système ou scheduler.worker";
+
+-- ----------------------------------------------------------------------------
+-- fn::scheduler_counters_reconcile (interne)
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::scheduler_counters_reconcile() -> int {
+    LET $queues = (SELECT id, running FROM scheduler_queue);
+    LET $fixed_queues = array::filter($queues, |$q| {
+        LET $actual = count(SELECT VALUE id FROM scheduler_run WHERE queue = $q.id AND state = "running");
+        IF $actual == $q.running { RETURN false; };
+        UPDATE ONLY $q.id SET running = $actual;
+        RETURN true;
+    });
+    LET $slots = (SELECT id, queue, scope_key, running FROM scheduler_slot WHERE running > 0);
+    LET $fixed_slots = array::filter($slots, |$slot| {
+        LET $actual = count(SELECT VALUE id FROM scheduler_run WHERE queue = $slot.queue AND scope_key = $slot.scope_key AND state = "running");
+        IF $actual == $slot.running { RETURN false; };
+        UPDATE ONLY $slot.id SET running = $actual;
+        RETURN true;
+    });
+    RETURN array::len($fixed_queues) + array::len($fixed_slots);
+} COMMENT "Interne : recale le compteur de chaque file et de chaque organisation dans une file sur le nombre d'exécutions réellement en cours (une organisation supprimée emporte ses exécutions sans passer par leur fin). Nombre de compteurs corrigés";
+
+-- ----------------------------------------------------------------------------
+-- fn::scheduler_run_prunable (interne)
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::scheduler_run_prunable($id: record<scheduler_run>, $tenant: option<record<auth_organization>>, $schedule: option<record<scheduler_schedule>>, $scheduled_for: datetime, $finished_at: datetime, $now: datetime) -> bool {
+    LET $settings = fn::scheduler_settings_effective({ tenant: $tenant });
+    IF $finished_at >= $now - $settings.run_retention { RETURN false; };
+    IF $schedule IS NONE { RETURN true; };
+    -- Toujours les N dernières exécutions terminées de chaque planification (S7)
+    LET $newer = count(SELECT VALUE id FROM scheduler_run WHERE schedule = $schedule AND state IN ["completed", "dead", "cancelled", "skipped"]
+        AND (scheduled_for > $scheduled_for OR (scheduled_for = $scheduled_for AND id > $id)) LIMIT $settings.keep_last_runs);
+    RETURN $newer >= $settings.keep_last_runs;
+} COMMENT "Interne : une exécution terminée peut-elle être élaguée ? Plus vieille que la conservation de sa portée et, pour une planification, hors de ses keep_last_runs dernières exécutions terminées (S7)";
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_run_prune
@@ -302,19 +343,13 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_prune($params: object) {
     LET $p = $report.value;
     IF !fn::scheduler_can({ action: "worker" }) { RETURN fn::error_result("SCHEDULER_PERMISSION_DENIED", $p.language, {}); };
     LET $now = time::now();
-    -- Conservation minimale d'un jour : aucune exécution plus récente n'est candidate
-    LET $candidates = (SELECT id, tenant, schedule, finished_at FROM scheduler_run
+    -- Conservation minimale d'un jour ; l'éligibilité (conservation de la portée, N dernières de
+    -- chaque planification) est évaluée avant la limite, pour qu'un lot d'exécutions gardées ne
+    -- bloque jamais l'élagage des suivantes
+    LET $doomed = (SELECT id FROM scheduler_run
         WHERE state IN ["completed", "dead", "cancelled", "skipped"] AND finished_at IS NOT NONE AND finished_at < $now - 1d
+            AND fn::scheduler_run_prunable(id, tenant, schedule, scheduled_for, finished_at, $now)
         ORDER BY finished_at ASC LIMIT $p.limit);
-    LET $doomed = array::filter($candidates, |$run| {
-        LET $settings = fn::scheduler_settings_effective({ tenant: $run.tenant });
-        IF $run.finished_at >= $now - $settings.run_retention { RETURN false; };
-        IF $run.schedule IS NONE { RETURN true; };
-        -- Toujours les N dernières exécutions terminées de chaque planification (S7)
-        LET $kept = (SELECT VALUE id FROM scheduler_run WHERE schedule = $run.schedule AND state IN ["completed", "dead", "cancelled", "skipped"]
-            ORDER BY scheduled_for DESC LIMIT $settings.keep_last_runs);
-        RETURN $run.id NOTINSIDE $kept;
-    });
     LET $ids = $doomed.id;
     DELETE scheduler_run WHERE id IN $ids;
     RETURN fn::result_ok({ deleted: array::len($ids) });
