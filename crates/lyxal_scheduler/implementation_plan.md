@@ -8,9 +8,11 @@ d'exceptions, bornes, décalage aléatoire, prévision. Il fournit aussi les con
 boucle du moteur (bail, échéances, exécution) reste au lot 3. Aucune ligne de code avant la
 validation du CTO (`.agents/AGENTS.md` §3).
 
-## 1. Questions soumises au CTO
+## 1. Décisions du CTO (15 novembre 2026)
 
-| N° | Question | Proposition |
+U1 à U5 validées selon les propositions.
+
+| N° | Question | Décision |
 | :- | :--- | :--- |
 | **U1** | Précision | Expressions cron de 5 à 7 champs (secondes et année facultatives) ; **au moins 1 minute entre deux échéances** d'une même planification (un rythme plus rapide relève d'un worker, pas d'une planification). Une expression qui tomberait plus souvent est refusée (`SCHEDULER_SPEC_INVALID`). |
 | **U2** | Jour du mois et jour de la semaine tous deux renseignés (`0 9 1 * MON`) | Règle de cron classique (Vixie, POSIX) : l'un **ou** l'autre, comme `croner` par défaut. Quartz exige `?` ; on l'accepte aussi. |
