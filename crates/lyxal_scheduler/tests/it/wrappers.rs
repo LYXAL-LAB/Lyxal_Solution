@@ -1,4 +1,4 @@
-//! Contrats Rust des 38 fonctions publiques du lot 1, en base embarquée : chaque `XxxParams`
+//! Contrats Rust des 40 fonctions publiques (lot 1 et moteur du lot 3), en base embarquée : chaque `XxxParams`
 //! est accepté tel quel (le lot 1 refuse les clés inconnues), chaque résultat se décode sans
 //! perte, et une erreur métier garde son code.
 
@@ -853,7 +853,7 @@ async fn engine_and_workers() {
     let fired = store
         .schedule_fire(ScheduleFireParams {
             schedule: first.id.clone(),
-            fire_times: vec![now_plus(-120), now_plus(-60)],
+            fire_times: vec![FireTime::at(now_plus(-120)), FireTime::at(now_plus(-60))],
             next_fire_at: Some(now_plus(3600)),
             language: None,
         })
@@ -866,7 +866,7 @@ async fn engine_and_workers() {
             "scheduler_schedule_fire",
             ScheduleFireParams {
                 schedule: second.id.clone(),
-                fire_times: vec![now_plus(-30)],
+                fire_times: vec![FireTime::at(now_plus(-30))],
                 next_fire_at: Some(now_plus(3600)),
                 language: None,
             },
@@ -911,7 +911,7 @@ async fn engine_and_workers() {
     let replayed = store
         .backfill_fire(BackfillFireParams {
             backfill: backfill.id.clone(),
-            fire_times: vec![now_plus(-5400)],
+            fire_times: vec![FireTime::at(now_plus(-5400))],
             done: Some(true),
             language: None,
         })
@@ -927,7 +927,7 @@ async fn engine_and_workers() {
             "scheduler_backfill_fire",
             BackfillFireParams {
                 backfill: backfill_raw.id.clone(),
-                fire_times: vec![now_plus(-5000)],
+                fire_times: vec![FireTime::at(now_plus(-5000))],
                 done: None,
                 language: None,
             },
@@ -942,6 +942,7 @@ async fn engine_and_workers() {
             queue: "default".to_string(),
             node: "noeud-1".to_string(),
             limit: Some(2),
+            handlers: None,
             language: None,
         })
         .await
@@ -959,6 +960,7 @@ async fn engine_and_workers() {
                 queue: "default".to_string(),
                 node: "noeud-2".to_string(),
                 limit: None,
+                handlers: None,
                 language: None,
             },
         )
@@ -1100,6 +1102,61 @@ async fn engine_and_workers() {
     assert_eq!(pruned.deleted, 0);
     let _: PruneResult = lossless(
         raw(&store, "scheduler_run_prune", RunPruneParams::default()).await,
+        &[],
+    );
+}
+
+/// `fn::scheduler_run_publish` et `fn::scheduler_health` (moteur du lot 3).
+#[tokio::test]
+async fn engine_wrappers_publish_and_report_health() {
+    let (_client, store, _service) = bench().await;
+    let mut params = RunEnqueueParams::new("essai.global");
+    params.args = None;
+    let run = store.run_enqueue(params).await.expect("différée");
+    let claimed = store
+        .run_claim(RunClaimParams {
+            queue: "default".to_string(),
+            node: "noeud-1".to_string(),
+            limit: Some(1),
+            handlers: Some(Vec::new()),
+            language: None,
+        })
+        .await
+        .expect("réservée");
+    let item = &claimed.items[0];
+    assert_eq!(item.id, run.id);
+    assert_eq!(
+        (item.executor, item.target.as_str(), item.cancel_requested),
+        (Executor::Event, "essai.global.tick", false)
+    );
+    let published: Run = lossless(
+        raw(
+            &store,
+            "scheduler_run_publish",
+            RunPublishParams {
+                run: item.id.clone(),
+                lease: item.lease.clone(),
+                language: None,
+            },
+        )
+        .await,
+        &["lease"],
+    );
+    assert_eq!(published.state, RunState::Completed);
+    expect_code(
+        store
+            .run_publish(RunPublishParams {
+                run: item.id.clone(),
+                lease: item.lease.clone(),
+                language: None,
+            })
+            .await,
+        "SCHEDULER_LEASE_LOST",
+    );
+    let health = store.health(HealthParams::default()).await.expect("santé");
+    assert_eq!(health.handler_tasks, vec!["essai.rapport".to_string()]);
+    let _: EngineHealth = lossless(
+        raw(&store, "scheduler_health", HealthParams::default()).await,
         &[],
     );
 }

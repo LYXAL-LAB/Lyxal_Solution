@@ -83,6 +83,10 @@ CREATE scheduler_task:⟨essai.relance⟩ CONTENT { module: "lyxal_essai", execu
 -- attendu-erreur: SCHEDULER_INVALID_PARAMETERS
 CREATE scheduler_task:⟨essai.h⟩ CONTENT { module: "lyxal_essai", executor: "handler", target: "auth.h" };
 
+-- test: handler dont la cible n'est pas le nom de la tâche refusé (le handler est inscrit et retrouvé par ce nom)
+-- attendu-erreur: SCHEDULER_INVALID_PARAMETERS
+CREATE scheduler_task:⟨essai.daily⟩ CONTENT { module: "lyxal_essai", executor: "handler", target: "essai.process" };
+
 -- test: permission inexistante refusée
 -- attendu-erreur: SCHEDULER_INVALID_PARAMETERS
 CREATE scheduler_task:⟨essai.p⟩ CONTENT { module: "lyxal_essai", executor: "handler", target: "essai.p", permission: "essai.inexistante" };

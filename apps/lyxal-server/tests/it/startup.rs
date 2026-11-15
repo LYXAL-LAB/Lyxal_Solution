@@ -469,6 +469,85 @@ async fn the_vault_without_master_key_is_degraded() {
     started.runtime.stop_all().await.expect("arrêt");
 }
 
+/// Le planificateur démarre avec le module : planificateur élu, un exécuteur par file, sonde
+/// sain, registre des handlers ouvert et vide (S8) ; une publication différée s'exécute.
+#[tokio::test]
+async fn the_scheduler_runs_with_its_workers_and_probe() {
+    let config = config("planificateur");
+    let client = database("planificateur").await;
+    let started = runtime::start(&config, &client).await.expect("démarrage");
+    assert!(started.scheduler.handlers().is_empty());
+    let mut served = started.scheduler.served_queues();
+    for _ in 0..100 {
+        if served.len() == 2 {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        served = started.scheduler.served_queues();
+    }
+    assert_eq!(
+        served,
+        vec!["default".to_string(), "maintenance".to_string()]
+    );
+    let result = started
+        .runtime
+        .health_registry()
+        .get_check(&lyxal_runtime::ModuleId::new("lyxal_scheduler"))
+        .expect("sonde de lyxal_scheduler")
+        .check(&lyxal_runtime::ModuleContext::new("lyxal_scheduler"))
+        .await
+        .expect("sonde");
+    assert_eq!(
+        result.status,
+        lyxal_runtime::health::HealthStatus::Healthy,
+        "{result:?}"
+    );
+
+    // Une tâche d'essai de publication différée, exécutée par le moteur hébergé
+    client
+        .query(
+            r#"CREATE scheduler_task:⟨essai.rappel⟩ CONTENT {
+                module: "lyxal_essai", executor: "event", target: "essai.rappel.envoi", scope: "installation",
+                retry: { max_attempts: 1, strategy: "fixed", initial_delay: 1s, max_delay: 1s }
+            };"#,
+        )
+        .await
+        .and_then(|r| r.check())
+        .expect("tâche d'essai");
+    let run = started
+        .scheduler
+        .client(lyxal_scheduler::SchedulerStore::new(client.clone()))
+        .enqueue(lyxal_scheduler::models::RunEnqueueParams::new(
+            "essai.rappel",
+        ))
+        .await
+        .expect("différée");
+    let mut state = String::new();
+    for _ in 0..200 {
+        state = client
+            .query("RETURN (SELECT VALUE state FROM ONLY $run);")
+            .bind(("run", run.id.clone()))
+            .await
+            .and_then(|mut r| r.take::<Option<String>>(0))
+            .expect("état")
+            .unwrap_or_default();
+        if state == "completed" {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
+    assert_eq!(state, "completed");
+    let leader = lyxal_runtime::lock::SurrealLeaderLeaseManager::new(client.clone())
+        .inspect(lyxal_scheduler::LEADER_KEY)
+        .await
+        .expect("bail");
+    assert_eq!(
+        leader.map(|l| l.owner),
+        Some(started.runtime.node_id().clone())
+    );
+    started.runtime.stop_all().await.expect("arrêt");
+}
+
 /// Fichiers présents sous un dossier.
 fn walk(directory: &std::path::Path) -> Vec<std::path::PathBuf> {
     let mut files = Vec::new();

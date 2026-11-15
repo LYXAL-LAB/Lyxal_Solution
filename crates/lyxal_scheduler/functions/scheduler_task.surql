@@ -26,6 +26,8 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_task_create_refusal($after: object) -> o
         $as_event.valid AND $as_event.value == $after.target AND string::starts_with($after.target, $short + ".")
     };
     IF !$target { RETURN "SCHEDULER_INVALID_PARAMETERS"; };
+    -- Un handler est inscrit et retrouvé par le nom de sa tâche : sa cible est ce nom
+    IF $after.executor = "handler" AND $after.target != $name { RETURN "SCHEDULER_INVALID_PARAMETERS"; };
     IF $after.permission IS NOT NONE AND !record::exists(type::record("auth_permission", $after.permission)) { RETURN "SCHEDULER_INVALID_PARAMETERS"; };
     LET $retry = fn::validation_retry_policy($after.retry, 10, 24h);
     IF !$retry.valid OR $retry.value != $after.retry { RETURN "SCHEDULER_INVALID_PARAMETERS"; };
@@ -33,7 +35,7 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_task_create_refusal($after: object) -> o
     -- Schéma des arguments : contrôlé par le moteur du Core (CORE_INVALID_ARGUMENT s'il est faux)
     IF $after.args_schema IS NOT NONE { fn::utils_engine_schema($after.args_schema, fn::validation_step_catalog(), 100); };
     RETURN NONE;
-} COMMENT "Interne : refus d'une déclaration de tâche ($after) : session système seulement ; identifiant ⟨module.action⟩ en minuscules, module = lyxal_<module> ; cible du même module (handler <module>.<action>, fonction <module>_<action>, événement <module>.…) ; permission existante ; politique de tentatives normalisée (10 tentatives, 24 h au plus) ; file existante ; schéma des arguments valide pour le moteur du Core. NONE ou code d'erreur";
+} COMMENT "Interne : refus d'une déclaration de tâche ($after) : session système seulement ; identifiant ⟨module.action⟩ en minuscules, module = lyxal_<module> ; cible du même module (handler : le nom même de la tâche, fonction <module>_<action>, événement <module>.…) ; permission existante ; politique de tentatives normalisée (10 tentatives, 24 h au plus) ; file existante ; schéma des arguments valide pour le moteur du Core. NONE ou code d'erreur";
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_task_update_refusal (interne, garde de modification)

@@ -94,6 +94,20 @@ RETURN fn::scheduler_calendar_rules_check([{ mode: "include", kind: "weekdays", 
         AND fn::scheduler_catchup_select([], "all", 1h, $now) = [];
 };
 
+-- test: échéances fournies par le moteur : pipeline, ordre de la disponibilité, disponibilité d'une date
+{
+    LET $t = d"2026-06-01T12:00:00Z";
+    LET $times = [{ at: $t, available_at: $t + 30s }, { at: $t + 1h, available_at: $t + 1h }];
+    LET $ok = fn::validation_object_execute({ f: $times }, { fields: { f: { pipeline: fn::scheduler_fire_times_pipeline([{ rule: "datetime" }]) } }, unknown_keys: "reject" }, 20);
+    LET $ko = fn::validation_object_execute({ f: [{ at: $t }] }, { fields: { f: { pipeline: fn::scheduler_fire_times_pipeline([{ rule: "datetime" }]) } }, unknown_keys: "reject" }, 20);
+    RETURN $ok.valid AND !$ko.valid
+        AND !fn::scheduler_fire_times_disordered($times)
+        AND fn::scheduler_fire_times_disordered([{ at: $t, available_at: $t - 1s }])
+        AND fn::scheduler_fire_times_invalid({ language: "en" }).error.code = "SCHEDULER_INVALID_PARAMETERS"
+        AND fn::scheduler_fire_available($times, $t) = $t + 30s
+        AND fn::scheduler_fire_available($times, $t + 2h) = $t + 2h;
+};
+
 -- test: tâche utilisable et arguments
 {
     LET $task = (SELECT * FROM ONLY scheduler_task:⟨essai.rapport⟩);
@@ -164,12 +178,12 @@ RETURN fn::scheduler_calendar_rules_check([{ mode: "include", kind: "weekdays", 
     LET $task = (SELECT * FROM ONLY $s.task);
     LET $first_state = fn::scheduler_overlap_apply($s.id, "buffer_all");
     LET $t1 = time::now() - 2m;
-    LET $a = fn::scheduler_run_spawn($s, $task, type::record("scheduler_run", [$s.id, $t1]), $t1, "schedule", "buffer_all");
-    LET $dup = fn::scheduler_run_spawn($s, $task, type::record("scheduler_run", [$s.id, $t1]), $t1, "schedule", "buffer_all");
-    LET $b = fn::scheduler_run_spawn($s, $task, NONE, time::now(), "trigger", "buffer_all");
+    LET $a = fn::scheduler_run_spawn($s, $task, type::record("scheduler_run", [$s.id, $t1]), $t1, $t1 + 1s, "schedule", "buffer_all");
+    LET $dup = fn::scheduler_run_spawn($s, $task, type::record("scheduler_run", [$s.id, $t1]), $t1, $t1, "schedule", "buffer_all");
+    LET $b = fn::scheduler_run_spawn($s, $task, NONE, time::now(), time::now(), "trigger", "buffer_all");
     LET $busy = fn::scheduler_run_release($s.id);
     UPDATE passe:i SET run_a = $a.id, run_b = $b.id;
-    RETURN $first_state = "queued" AND $a.state = "queued" AND $dup IS NONE AND $b.state = "waiting" AND $b.origin = "trigger"
+    RETURN $first_state = "queued" AND $a.state = "queued" AND $a.available_at = $t1 + 1s AND $a.scheduled_for = $t1 AND $dup IS NONE AND $b.state = "waiting" AND $b.origin = "trigger"
         AND $busy IS NONE AND fn::scheduler_run_release(NONE) IS NONE
         AND fn::scheduler_overlap_apply($s.id, "skip") = "skipped" AND fn::scheduler_overlap_apply($s.id, "buffer_one") = "skipped"
         AND fn::scheduler_overlap_apply($s.id, "allow_all") = "queued"

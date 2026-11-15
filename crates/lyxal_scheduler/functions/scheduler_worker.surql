@@ -41,7 +41,8 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_claim_one($candidate: object, $node:
         UPDATE ONLY $candidate.queue SET running = math::max([running - 1, 0]);
         RETURN { full: false, run: NONE };
     };
-    LET $timeout = (SELECT VALUE timeout FROM ONLY $candidate.task);
+    LET $task = (SELECT timeout, executor, target FROM ONLY $candidate.task);
+    LET $timeout = $task.timeout;
     LET $run = (UPDATE ONLY $candidate.id SET
         state = "running",
         attempt += 1,
@@ -57,6 +58,7 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_claim_one($candidate: object, $node:
     };
     RETURN { full: false, run: {
         id: $run.id, lease: $run.lease, lease_node: $run.lease_node, locked_until: $run.locked_until, timeout: $timeout,
+        executor: $task.executor, target: $task.target, cancel_requested: $run.cancel_requested,
         tenant: $run.tenant, schedule: $run.schedule, task: $run.task, args: $run.args, origin: $run.origin,
         scheduled_for: $run.scheduled_for, attempt: $run.attempt, max_attempts: $run.max_attempts
     } };
@@ -72,6 +74,7 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_claim($params: object) {
             queue: { pipeline: [{ rule: "slug", options: { max_length: 64 } }], required: true },
             node: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 128 } }], required: true },
             limit: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 100 } }], default: 10 },
+            handlers: { pipeline: [{ rule: "array" }, { rule: "array_length", options: { max_length: 1000 } }, { rule: "each", options: { pipeline: [{ rule: "lyxal_event_name", options: { min_segments: 2, max_segments: 2 } }] } }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -84,6 +87,12 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_claim($params: object) {
     IF $queue.paused { RETURN fn::result_ok({ items: [], paused: true }); };
     LET $now = time::now();
     LET $disabled = (SELECT VALUE id FROM scheduler_task WHERE state = "disabled");
+    -- Tâches handler dont ce nœud n'a pas le code : laissées à un nœud qui l'a, sauf celles qui
+    -- attendent depuis plus que leur délai maximal (réservées puis terminées en échec
+    -- SCHEDULER_HANDLER_NOT_FOUND par l'exécuteur)
+    LET $foreign = IF $p.handlers IS NONE { [] } ELSE {
+        (SELECT VALUE id FROM scheduler_task WHERE executor = "handler" AND target NOTINSIDE $p.handlers)
+    };
     -- Organisations déjà pleines dans cette file : écartées avant la sélection, pour que leurs
     -- exécutions en attente ne masquent jamais celles des autres organisations
     LET $full = array::filter((SELECT tenant, scope_key, running FROM scheduler_slot WHERE queue = $queue.id AND running > 0), |$slot|
@@ -92,6 +101,7 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_claim($params: object) {
     LET $candidates = (SELECT id, queue, tenant, scope_key, task, priority, available_at FROM scheduler_run
         WHERE queue = $queue.id AND state IN ["queued", "retrying"] AND available_at <= $now AND task NOTINSIDE $disabled
             AND scope_key NOTINSIDE $full
+            AND (task NOTINSIDE $foreign OR available_at + task.timeout <= $now)
         ORDER BY priority ASC, available_at ASC LIMIT $p.limit * 10);
     LET $outcome = array::fold($candidates, { items: [], full: false }, |$acc, $candidate| {
         IF $acc.full OR array::len($acc.items) >= $p.limit { RETURN $acc; };
@@ -101,7 +111,7 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_claim($params: object) {
             ELSE { { items: array::append($acc.items, $claimed.run), full: false } };
     });
     RETURN fn::result_ok({ items: $outcome.items, paused: false });
-} COMMENT "Moteur : réserve les exécutions disponibles d'une file ({ queue, node, limit (100 au plus) }) par priorité puis date, dans les places de la file et de chaque organisation (une organisation pleine laisse passer les autres) ; file en pause : aucune ; tâches désactivées ignorées. Chaque exécution réservée porte son jeton de bail (lease), à rendre à chaque battement et à la fin. { items, paused }. Droit : session système ou scheduler.worker";
+} COMMENT "Moteur : réserve les exécutions disponibles d'une file ({ queue, node, limit (100 au plus), handlers : noms des tâches handler dont le nœud a le code, absent : toutes }) par priorité puis date, dans les places de la file et de chaque organisation (une organisation pleine laisse passer les autres) ; file en pause : aucune ; tâches désactivées ignorées ; une tâche handler absente de handlers n'est réservée qu'après avoir attendu plus que son délai maximal (l'exécuteur la termine alors en échec SCHEDULER_HANDLER_NOT_FOUND). Chaque exécution réservée porte son jeton de bail (lease), à rendre à chaque battement et à la fin, son exécuteur et sa cible. { items, paused }. Droit : session système ou scheduler.worker";
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_run_leased (interne)
@@ -214,6 +224,47 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_complete($params: object) {
     IF $updated == NONE { RETURN fn::error_result("SCHEDULER_LEASE_LOST", $p.language, { run: <string> $p.run }); };
     RETURN fn::result_ok($updated);
 } COMMENT "Moteur : termine avec succès une exécution en cours ({ run, lease, result : résultat court de 4 Kio au plus }) : completed, places rendues, exécution en attente de la planification libérée. Bail perdu : SCHEDULER_LEASE_LOST. Droit : session système ou scheduler.worker";
+
+-- ----------------------------------------------------------------------------
+-- fn::scheduler_run_publish
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::scheduler_run_publish($params: object) {
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            run: { pipeline: fn::scheduler_ref("scheduler_run"), required: true },
+            lease: { pipeline: [{ rule: "required_string", options: { min_length: 36, max_length: 36 } }], required: true },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 20);
+    IF !$report.valid { RETURN fn::scheduler_invalid($params, $report.by_field); };
+    LET $p = $report.value;
+    IF !fn::scheduler_can({ action: "worker" }) { RETURN fn::error_result("SCHEDULER_PERMISSION_DENIED", $p.language, {}); };
+    LET $lease = <string> $p.lease;
+    LET $leased = fn::scheduler_run_leased($p.run, $lease);
+    IF $leased.code IS NOT NONE { RETURN fn::error_result($leased.code, $p.language, { run: <string> $p.run }); };
+    LET $run = $leased.run;
+    LET $task = (SELECT module, executor, target FROM ONLY $run.task);
+    IF $task.executor != "event" {
+        RETURN fn::scheduler_invalid($params, { run: [{ code: "CORE_VALIDATION_NOT_ALLOWED", details: { executor: $task.executor, allowed: ["event"] } }] });
+    };
+    LET $event_id = rand::uuid::v7();
+    -- Fin de l'exécution d'abord : un bail perdu n'écrit rien et ne publie rien
+    LET $updated = fn::scheduler_run_end($run, $lease, { state: "completed", result: { event_id: <string> $event_id, event_type: $task.target } });
+    IF $updated == NONE { RETURN fn::error_result("SCHEDULER_LEASE_LOST", $p.language, { run: <string> $p.run }); };
+    -- Même transaction : une publication refusée annule la fin de l'exécution (W5)
+    LET $published = fn::event_publish({
+        event_id: $event_id,
+        event_type: $task.target,
+        producer: $task.module,
+        source: $run.id,
+        payload: $run.args,
+        metadata: { scheduled_for: <string> $run.scheduled_for, attempt: $run.attempt, tenant: fn::scheduler_tenant_string($run.tenant) }
+    });
+    IF !$published.ok { THROW $published.error.code; };
+    RETURN fn::result_ok($updated);
+} COMMENT "Moteur : exécute une tâche event réservée ({ run, lease }) : publie l'événement déclaré par la tâche (fn::event_publish : type = cible de la tâche, producteur = module de la tâche, source = l'exécution, charge = arguments de l'exécution, métadonnées { scheduled_for, attempt, tenant }) et termine l'exécution (completed, résultat { event_id, event_type }) dans la même transaction (W5) : une publication refusée annule la fin (erreur du bus), un bail perdu ne publie rien (SCHEDULER_LEASE_LOST). Tâche qui n'est pas event : SCHEDULER_INVALID_PARAMETERS. Droit : session système (seule autorisée à publier sur le bus)";
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_run_fail
@@ -354,3 +405,26 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_prune($params: object) {
     DELETE scheduler_run WHERE id IN $ids;
     RETURN fn::result_ok({ deleted: array::len($ids) });
 } COMMENT "Moteur : élague les exécutions terminées plus vieilles que la conservation de leur portée ({ limit (10000 au plus) }), en gardant toujours les keep_last_runs dernières de chaque planification (S7). { deleted }. Droit : session système ou scheduler.worker";
+
+-- ----------------------------------------------------------------------------
+-- fn::scheduler_health
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::scheduler_health($params: object) {
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            late_after: { pipeline: [{ rule: "duration", options: { min_value: 1s, max_value: 1d } }], default: 5m },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 20);
+    IF !$report.valid { RETURN fn::scheduler_invalid($params, $report.by_field); };
+    LET $p = $report.value;
+    IF !fn::scheduler_can({ action: "worker" }) { RETURN fn::error_result("SCHEDULER_PERMISSION_DENIED", $p.language, {}); };
+    LET $limit = time::now() - $p.late_after;
+    RETURN fn::result_ok({
+        queues: array::map((SELECT id, paused FROM scheduler_queue ORDER BY id ASC), |$q| { name: <string> record::id($q.id), paused: $q.paused }),
+        late: count(SELECT VALUE id FROM scheduler_run WHERE state IN ["queued", "retrying"] AND available_at < $limit),
+        handler_tasks: (SELECT VALUE target FROM scheduler_task WHERE executor = "handler" AND state = "active" ORDER BY target ASC)
+    });
+} COMMENT "Moteur (sonde de santé) : files { name, paused }, nombre d'exécutions réservables qui attendent depuis plus de late_after (5 min par défaut, 1 j au plus) au-delà de leur date de disponibilité, tâches handler actives (handler_tasks). Aucune donnée d'organisation. Droit : session système ou scheduler.worker";

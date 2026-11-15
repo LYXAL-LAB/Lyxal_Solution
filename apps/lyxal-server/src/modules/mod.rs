@@ -6,6 +6,7 @@ mod i18n;
 #[cfg(feature = "module-ingestion")]
 mod ingestion;
 mod notification;
+pub mod scheduler;
 pub mod secrets;
 mod storage;
 
@@ -138,6 +139,9 @@ fn implementation(
     if id == secrets::MODULE_ID {
         return Ok(secrets::module());
     }
+    if id == scheduler::MODULE_ID {
+        return Ok(scheduler::module());
+    }
     #[cfg(feature = "module-ingestion")]
     if id == ingestion::MODULE_ID {
         return Ok(ingestion::module());
@@ -155,6 +159,8 @@ pub struct HostedServices {
     pub storage: crate::context::StorageHost,
     /// Coffre-fort des secrets : client des modules hébergés qui liront leurs secrets.
     pub secrets: secrets::SecretsHost,
+    /// Planificateur : registre des handlers ouvert aux modules hébergés, exécuteurs par file.
+    pub scheduler: scheduler::SchedulerHost,
     #[cfg(feature = "module-ingestion")]
     publication: bool,
     /// Envoi des notifications configuré (clé applicative et relais SMTP).
@@ -173,6 +179,7 @@ pub async fn register_services(
     i18n::register_services(runtime, client)?;
     let storage = storage::register_services(runtime, client, config)?;
     let secrets = secrets::register_services(runtime, client, config)?;
+    let scheduler = scheduler::register_services(runtime, client, config)?;
     let notification_delivery =
         notification::register_services(runtime, client, config, crypto).await?;
     #[cfg(feature = "module-ingestion")]
@@ -183,6 +190,7 @@ pub async fn register_services(
             auth,
             storage,
             secrets,
+            scheduler,
             publication,
             notification_delivery,
         })
@@ -192,6 +200,7 @@ pub async fn register_services(
         auth,
         storage,
         secrets,
+        scheduler,
         notification_delivery,
     })
 }
@@ -206,6 +215,7 @@ pub async fn complete_services(
     #[cfg(not(feature = "module-ingestion"))]
     let _ = client;
     auth::complete_services(services.auth.as_ref()).await?;
+    scheduler::register_executors(runtime, &services.scheduler).await?;
     #[cfg(feature = "module-ingestion")]
     {
         ingestion::ensure_source_bucket(client).await?;

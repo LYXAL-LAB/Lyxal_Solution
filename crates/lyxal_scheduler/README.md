@@ -13,13 +13,15 @@ nouvelles tentatives, chevauchement, rattrapage, rejeu de période, droits par o
 journal des actions et événements. Le **crate Rust** fournit le calcul des dates (cron,
 intervalles, date unique, fuseaux et changements d'heure, exclusions, calendriers, bornes,
 décalage aléatoire, prévision), le contrôle des planifications avant écriture et les appels
-typés de chaque fonction publique (voir « Partie Rust »). La **boucle du moteur** (planificateur
-et exécuteurs) n'est pas encore écrite : aucune exécution n'est lancée tant qu'elle n'existe
-pas.
+typés de chaque fonction publique (voir « Partie Rust »). Le **moteur** tourne dans l'hôte
+`lyxal-server` : un planificateur élu par le bail `leader` du runtime transforme les échéances en
+exécutions, un exécuteur par file et par nœud les exécute (handler Rust inscrit par un module,
+fonction SurrealQL du module, publication différée d'un événement). Aucun module n'inscrit
+encore de tâche (S8).
 
 Manifeste : `lyxal_scheduler` 0.1.0, dépendances `lyxal_core`, `lyxal_error`, `lyxal_event`,
-`lyxal_auth`. Le crate n'a pas encore de `LyxalModule` : l'hôte `lyxal-server` porte le module
-par un `ManifestModule`.
+`lyxal_auth`. Le crate fournit `SchedulerModule` (`LyxalModule`), ses workers et sa sonde,
+enregistrés par l'hôte (`apps/lyxal-server/src/modules/scheduler.rs`).
 
 ## Les trois objets
 
@@ -53,7 +55,7 @@ IF !record::exists(scheduler_task:⟨notification.digest⟩) THEN (
 ```
 
 * Identifiant `⟨module.action⟩` en minuscules ; `module` = `lyxal_<module>`.
-* Exécuteur : `handler` (code Rust inscrit, cible `<module>.<action>`), `function` (fonction
+* Exécuteur : `handler` (code Rust inscrit sous le nom de la tâche : la cible est ce nom même), `function` (fonction
   SurrealQL `<module>_<action>` du même module) ou `event` (publication différée d'un type
   d'événement préfixé par le module).
 * `permission` : permission `lyxal_auth` existante exigée pour planifier la tâche (contrôlée à la
@@ -91,7 +93,10 @@ scheduler.
 
 ### Rattrapage et chevauchement
 
-Le moteur passe à `fn::scheduler_schedule_fire` les échéances manquées calculées par Rust :
+Le moteur passe à `fn::scheduler_schedule_fire` les échéances manquées calculées par Rust, chacune
+`{ at, available_at }` : `at` est la date prévue (identité de l'exécution), `available_at` la date
+à partir de laquelle elle peut être réservée, retardée par le décalage aléatoire (U5) et jamais
+avant `at` (`SCHEDULER_INVALID_PARAMETERS` sinon) ; de même pour `fn::scheduler_backfill_fire`.
 
 | `catchup` | Exécutions créées |
 | :--- | :--- |
@@ -127,7 +132,16 @@ waiting / queued / retrying ──(annulation)──► cancelled ; running ─�
   (`scheduler_queue.running < concurrency`) et places de l'organisation dans la file
   (`scheduler_slot`, réglage `tenant_concurrency`). Les organisations déjà pleines sont écartées
   avant la sélection : leurs exécutions en attente ne masquent jamais celles des autres. Chaque réservation pose un **bail** : jeton nouveau (lisible par le moteur seulement),
-  nœud, échéance = maintenant + délai de la tâche + 1 min.
+  nœud, échéance = maintenant + délai de la tâche + 1 min. Le nœud passe la liste des tâches
+  `handler` dont il a le code (`handlers`) : une autre tâche `handler` lui est laissée tant
+  qu'elle n'attend pas depuis plus que son délai maximal ; au-delà, il la réserve et la termine en
+  échec `SCHEDULER_HANDLER_NOT_FOUND` (retentable, puis `dead`). Chaque exécution réservée porte
+  son exécuteur et sa cible.
+* **Publication différée** (`fn::scheduler_run_publish`, tâche `event`, W5) : publie l'événement
+  de la tâche (`fn::event_publish` : type = cible, producteur = module de la tâche, source =
+  l'exécution, charge = arguments, métadonnées `{ scheduled_for, attempt, tenant }`) et termine
+  l'exécution dans la même transaction : une publication refusée annule la fin, un bail perdu ne
+  publie rien. Seule la session système publie sur le bus.
 * **Battement** (`fn::scheduler_run_heartbeat`) : prolonge le bail et indique si l'annulation est
   demandée. **Fin** (`fn::scheduler_run_complete`, `fn::scheduler_run_fail`) : exige le jeton du bail
   en cours (`SCHEDULER_LEASE_LOST` sinon). Un échec retentable avec des tentatives restantes passe à
@@ -193,7 +207,7 @@ planifications, exécutions et journal (`REFERENCE ON DELETE CASCADE`).
 | Planifications | `schedule_create`, `schedule_update`, `schedule_get`, `schedule_list`, `schedule_pause`, `schedule_resume`, `schedule_trigger`, `schedule_backfill`, `schedule_delete` |
 | Exécutions | `run_enqueue`, `run_get`, `run_list`, `run_cancel`, `run_retry` |
 | Journal | `audit_list` |
-| Moteur | `due_list`, `schedule_fire`, `schedule_next_set`, `backfill_fire`, `run_claim`, `run_heartbeat`, `run_complete`, `run_fail`, `run_rescue`, `run_prune` |
+| Moteur | `due_list`, `schedule_fire`, `schedule_next_set`, `backfill_fire`, `run_claim`, `run_heartbeat`, `run_complete`, `run_fail`, `run_publish`, `run_rescue`, `run_prune`, `health` |
 
 Toutes valident leurs entrées par `fn::validation_object_execute` et renvoient
 `fn::result_ok` ou `fn::error_result`. Un identifiant d'enregistrement se passe en chaîne
@@ -208,7 +222,7 @@ date]`) ; une tâche par son nom (`"notification.digest"`), une file par son nom
 | `permissions` | `SCHEDULER_PERMISSION_DENIED`, `SCHEDULER_WRITE_FORBIDDEN` |
 | `taches` | `SCHEDULER_TASK_NOT_FOUND`, `SCHEDULER_TASK_DISABLED`, `SCHEDULER_QUEUE_NOT_FOUND` |
 | `planifications` | `SCHEDULER_SCHEDULE_NOT_FOUND`, `SCHEDULER_SCHEDULE_EXISTS`, `SCHEDULER_SCHEDULE_STATE_INVALID`, `SCHEDULER_SPEC_INVALID`, `SCHEDULER_BACKFILL_RUNNING`, `SCHEDULER_CALENDAR_NOT_FOUND`, `SCHEDULER_CALENDAR_EXISTS`, `SCHEDULER_CALENDAR_IN_USE` |
-| `executions` | `SCHEDULER_RUN_NOT_FOUND`, `SCHEDULER_RUN_STATE_INVALID`, `SCHEDULER_LEASE_LOST` |
+| `executions` | `SCHEDULER_RUN_NOT_FOUND`, `SCHEDULER_RUN_STATE_INVALID`, `SCHEDULER_LEASE_LOST`, `SCHEDULER_RUN_TIMEOUT` (délai maximal, retentable), `SCHEDULER_HANDLER_NOT_FOUND` (aucun handler inscrit), `SCHEDULER_EXECUTOR_FAILED` (erreur technique de l'exécuteur) |
 
 ## Événements
 
@@ -269,7 +283,7 @@ Règles :
 ### Contrats (`models/`, `store.rs`)
 
 `SchedulerStore` (`Surreal<Any>`, `LyxalSurrealCall`) : un wrapper d'une ligne
-`store.call_fn("scheduler_…", params)` pour chacune des 38 fonctions publiques. Chaque
+`store.call_fn("scheduler_…", params)` pour chacune des 40 fonctions publiques. Chaque
 `XxxParams` porte exactement les champs lus par sa fonction (un champ `None` est omis et prend la
 valeur par défaut de SurrealQL) ; chaque résultat est une structure nommée (`SurrealValue`).
 Le jeton de bail (`LeaseToken`) est opaque et masqué dans `Debug`.
@@ -283,13 +297,70 @@ et la raison (`cron_syntax`, `timezone`, `min_interval`, `jitter`, `calendar_rul
 `no_future_fire`, `out_of_range`). `validate_spec` contrôle sans écrire ; `forecast` lit une
 planification et rend ses prochaines échéances.
 
+### Moteur (`engine/`)
+
+Tout le moteur tourne sur la **session système** de l'hôte (T2) ; il ne lit et n'écrit que par
+les fonctions `fn::scheduler_*` du moteur. `SchedulerEngine` réunit la session, le registre des
+handlers, l'identifiant du nœud et les files servies.
+
+| Worker | Rôle |
+| :--- | :--- |
+| `SchedulerLeaderWorker` | Un seul nœud à la fois : bail d'élection `leader` du runtime (clé `scheduler`, 30 s, renouvelé toutes les 10 s ; libéré à l'arrêt). Un tour par seconde : `due_list` ; pour chaque planification, prochaine date (`next_fire_at` absent : calculée et écrite ; pour une planification jamais traitée, les dates déjà échues depuis sa création, moins 5 s de marge, suivent la politique de rattrapage) ou dates manquées dans la fenêtre de rattrapage (1000 dernières au plus) avec leur décalage aléatoire tiré par `OsRng` (U5), puis `schedule_fire` ; règles illisibles ou sans date (U4) : planification `invalid` ; rejeux par lots de 1000 dates (une date déjà exécutée est ignorée). Toutes les 30 s : `run_rescue` ; toutes les heures : `run_prune`. Sans bail : attend ; un nœud qui perd le bail cesse de planifier au tour suivant. |
+| `SchedulerExecutorWorker` | Un par file et par nœud, au plus `workers` tentatives à la fois (W3 : 4 par défaut, de 1 à 64). File vide : interrogée chaque seconde ; sinon aussitôt après chaque fin. Chaque tentative est une tâche tenue par le worker (`JoinSet`, aucune tâche libre) : battement au plus tard à mi-bail (et toutes les 30 s), mis en course avec la tâche et le délai maximal (une base lente ne retarde ni l'annulation ni le délai), délai maximal (W4 : le handler reçoit l'annulation, le moteur cesse d'attendre et enregistre `SCHEDULER_RUN_TIMEOUT`, retentable), annulation demandée apprise au battement et transmise. Exécuteurs : handler inscrit ; fonction SurrealQL `fn::<cible>({ args, run, tenant, scheduled_for, attempt })` (résultat : objet gardé, autre valeur dans `{ value }`, erreur métier : son code et sa retentabilité, erreur technique : `SCHEDULER_EXECUTOR_FAILED`) ; publication différée par `run_publish`. Fin par `run_complete` / `run_fail` sous le jeton du bail ; une fin refusée pour bail perdu est journalisée, jamais réécrite. Arrêt : plus de réservation, annulation transmise, attente de 30 s, puis abandon (le bail expire et la reprise s'en charge). |
+
+Le jeton de bail n'apparaît dans aucun journal. Les rythmes se règlent par `LeaderTiming` et
+`ExecutorTiming` (valeurs de W1 et W2 par défaut, réduites dans les tests).
+
+### Handlers (`handler.rs`) et client (`client.rs`)
+
+Un module qui déclare une tâche `handler` inscrit son code dans le registre de l'hôte au
+démarrage (`SchedulerHost::handlers`) :
+
+```rust
+#[async_trait]
+impl TaskHandler for DigestHandler {
+    fn task(&self) -> &str { "notification.digest" }
+    async fn run(&self, ctx: RunContext) -> Result<TaskOutput, TaskFailure> {
+        // idempotent (clé : ctx.run) ; s'arrête dès que ctx.cancellation est annulé
+        Ok(TaskOutput::empty())
+    }
+}
+```
+
+`RunContext` : exécution, organisation, planification, date prévue, tentative, tentatives
+permises, arguments, jeton d'annulation (annulation demandée, délai maximal, arrêt du nœud) ;
+rien de secret. `TaskFailure::retryable` / `terminal` : code, message sans secret. Un deuxième
+handler pour la même tâche, ou un nom mal formé, est refusé (`SCHEDULER_INVALID_PARAMETERS`).
+`SchedulerClient` (au nom de l'appelant) : `enqueue` (différée ou immédiate), `schedule`
+(règles contrôlées avant l'écriture), `cancel`.
+
+### Module et santé
+
+`SchedulerModule` (`LyxalModule`, descripteur du manifeste). `SchedulerHealthCheck` : malade si
+`fn::scheduler_health` échoue ; dégradé si aucune file (ou une file active) n'a d'exécuteur sur
+ce nœud, si des exécutions réservables attendent depuis plus de 5 min au-delà de leur date, ou si
+une tâche `handler` active n'a aucun handler inscrit ; le texte ne contient aucune donnée
+d'organisation.
+
+### Réglages de l'hôte
+
+| Variable | Défaut | Rôle |
+| :--- | :--- | :--- |
+| `LYXAL__SCHEDULER__WORKERS` | 4 (1 à 64) | Tentatives simultanées par file sur ce nœud (W3) ; la concurrence de la file et celle de chaque organisation restent tenues par la base |
+
 ### Tests Rust
 
-`cargo test -p lyxal_scheduler` : 47 tests — expressions cron (jeux de cas de `croner`, Quartz
-et Croniq), changement d'heure à Paris et New York, calendriers, intervalles, bornes,
-exclusions, décalage, dates manquées, prévision ; et en base embarquée (`mem://`) chacune des
-38 fonctions appelée par son wrapper, avec décodage sans perte de chaque résultat. Ils ne
-remplacent pas le banc SurrealQL.
+`cargo test -p lyxal_scheduler` : 69 tests — expressions cron (jeux de cas de `croner`,
+Quartz et Croniq), changement d'heure à Paris et New York, calendriers, intervalles, bornes,
+exclusions, décalage, dates manquées, prévision ; en base embarquée (`mem://`) chacune des 40
+fonctions appelée par son wrapper, avec décodage sans perte de chaque résultat ; et le moteur :
+planification à intervalle exécutée de bout en bout (handler, fonction SurrealQL d'un module
+d'essai, publication différée lue dans `event_outbox`), deux planificateurs simultanés (un seul
+bail, aucun doublon), perte du bail, nœud arrêté pendant une exécution puis reprise par un
+autre, délai maximal (handler coopératif ou non), annulation demandée, nouvelles tentatives puis
+`dead`, chevauchement `skip` et `buffer_one`, décalage aléatoire, équité entre organisations,
+handler absent, arrêt propre, sonde de santé, registre des handlers, aucun jeton de bail dans
+les journaux. Ils ne remplacent pas le banc SurrealQL.
 
 ## Fichiers
 
@@ -298,8 +369,8 @@ remplacent pas le banc SurrealQL.
 | `schema/` | `scheduler_settings`, `scheduler_task`, `scheduler_queue` et `scheduler_slot`, `scheduler_calendar`, `scheduler_schedule`, `scheduler_backfill`, `scheduler_run`, `scheduler_audit` |
 | `functions/` | droits et outils (`access`), réglages, tâches, files, calendriers, planifications, exécutions, chevauchement, moteur (échéances, puis réservation et fin), journal |
 | `events/` | gardes, journal, bus |
-| `error/` | 19 définitions d'erreurs |
+| `error/` | 22 définitions d'erreurs |
 | `seeds/` | permissions et attributions de rôles ; files `default` (10) et `maintenance` (2) |
-| `src/` | crate Rust : `spec/` (calcul des dates), `models/` (contrats), `store.rs` (wrappers), `service.rs`, `error.rs` |
-| `tests/it/` | tests Rust (calcul des dates, contrats en base embarquée) |
-| `tests/` | banc SurrealQL (`scripts/ci/test_lyxal_modules.py`) : droits, tâches et files, calendriers, planifications, échéances, chevauchement, exécutions, réservation et fin, places et élagage, journal, fonctions internes |
+| `src/` | crate Rust : `spec/` (calcul des dates), `models/` (contrats), `store.rs` (wrappers), `service.rs`, `client.rs` (`SchedulerClient`), `handler.rs` (`TaskHandler`, registre), `engine/` (planificateur, exécuteurs, tentative), `module.rs`, `health.rs`, `error.rs` |
+| `tests/it/` | tests Rust (calcul des dates, contrats et moteur en base embarquée) |
+| `tests/` | banc SurrealQL (`scripts/ci/test_lyxal_modules.py`) : droits, tâches et files, calendriers, planifications, échéances, chevauchement, exécutions, réservation et fin, places et élagage, moteur (disponibilité décalée, handlers du nœud, publication différée, santé), journal, fonctions internes |

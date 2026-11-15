@@ -1,6 +1,7 @@
 pub mod config;
 pub mod installation;
 pub mod key;
+pub mod leader;
 pub mod lease;
 pub mod manager;
 pub mod memory;
@@ -15,6 +16,7 @@ pub use installation::{
     InstallationLockKey, MemoryInstallationLeaseManager, SurrealInstallationLeaseManager,
 };
 pub use key::MigrationLockKey;
+pub use leader::{AcquireLeaderLeaseResult, LeaderLease, SurrealLeaderLeaseManager};
 pub use lease::{AcquireLeaseResult, MigrationLease};
 pub use manager::MigrationLeaseManager;
 pub use memory::MemoryMigrationLeaseManager;

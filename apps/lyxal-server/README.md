@@ -52,14 +52,14 @@ déclaré manque.
 | `lyxal_notification` | toujours | `NotificationModule`, `NotificationConsumer` (événements `auth.*`), `NotificationEmailWorker`, `NotificationPurgeWorker`, `NotificationHealthCheck` |
 | `lyxal_storage` | toujours | `StorageModule`, `StorageCleanupWorker` (si un support est configuré), `StorageHealthCheck` ; supports disque et S3 ; envoi reprenable |
 | `lyxal_secrets` | toujours | `SecretsModule`, `SecretsMaintenanceWorker` (purge, rescellement), `SecretsHealthCheck` ; trousseau maître du coffre-fort ; `SecretsClient` pour les modules hébergés |
-| `lyxal_scheduler` | toujours | `ManifestModule` (socle SurrealQL ; moteur Rust : lot 3 de son programme) |
+| `lyxal_scheduler` | toujours | `SchedulerModule`, `SchedulerLeaderWorker` (planificateur élu par le bail `leader` du runtime), un `SchedulerExecutorWorker` par file (enregistré après l'installation, une fois les files connues), `SchedulerHealthCheck` ; registre des handlers ouvert aux modules hébergés (`SchedulerHost::handlers`, aucun inscrit pour l'instant) |
 | `lyxal_base` | toujours | `ManifestModule` |
 | `lyxal_catalogue` | toujours | `ManifestModule` (SurrealQL seul) |
 | `lyxal_pipeline_ingestion` | fonctionnalité `module-ingestion` (par défaut) | `PipelineIngestionModule`, `IngestionWorker` (lit les fichiers sources des lots dans `lyxal_storage`), `IngestionHealthCheck` ; bucket `ingestion-sources` créé au démarrage |
 
 Ajouter un module : l'inscrire dans `MODULES` de `build.rs` (ordre des dépendances), et, s'il a
 du code Rust, déclarer son implémentation et ses services dans `src/modules/` (`auth.rs`,
-`notification.rs`, `storage.rs`, `ingestion.rs`).
+`notification.rs`, `storage.rs`, `secrets.rs`, `scheduler.rs`, `ingestion.rs`).
 
 ---
 
@@ -78,6 +78,7 @@ du code Rust, déclarer son implémentation et ses services dans `src/modules/` 
 | `cors` | `enabled`, `allow_credentials`, `allowed_origins`, `allowed_methods`, `allowed_headers` |
 | `crypto` | `application_key` (facultative, variable d'environnement seulement), `application_key_id` |
 | `secrets` | `master_key` (facultative, variable d'environnement seulement), `master_key_id`, `previous_master_key` (pendant une rotation, variable d'environnement seulement), `previous_master_key_id` |
+| `scheduler` | `workers` (places de chaque exécuteur de file sur ce nœud, 1 à 64, 4 par défaut) |
 | `auth` | `public_url` (facultative : adresse publique de l'interface, pour les liens des messages et l'origine des passkeys), `passkey_rp_id` (facultatif : domaine des passkeys, défaut : hôte de `public_url`) |
 | `notification.smtp` | `host`, `port`, `security` (`tls`, `starttls`, `local_plain`), `username`, `password`, `from_address`, `from_name`, `timeout_seconds` (section facultative) |
 | `storage` | `disk.root` (facultatif : dossier du support de fichiers `default`), `s3.<nom>` (facultatif : `endpoint`, `region`, `bucket`, `access_key_id`, `secret_access_key` par variable d'environnement seulement, `path_style`, `allow_http`), `antivirus` (facultatif : `address` ou `socket`, `timeout_seconds`), `idle_timeout_seconds` (délai d'inactivité d'un envoi ou d'un téléchargement, 5 à 600, 60 par défaut) |
@@ -227,6 +228,17 @@ l'ancienne et redémarrer. Le même worker purge les secrets supprimés à éch�
 versions après la rotation de la clé d'une organisation et détruit les clés devenues inutiles.
 Le test `tests/secrets.rs` (exécutable séparé : il fournit la clé maîtresse par variable
 d'environnement) vérifie l'écriture et la relecture d'une valeur par un module hébergé.
+
+Le planificateur (`lyxal_scheduler`) tourne sur la session système de l'hôte. Un seul nœud
+planifie (bail `leader`, clé `scheduler`, 30 s renouvelé toutes les 10 s) ; chaque nœud exécute,
+pour chaque file, au plus `LYXAL__SCHEDULER__WORKERS` tâches à la fois (4 par défaut, de 1 à 64 ;
+hors bornes, le démarrage s'arrête). La concurrence globale de chaque file et celle de chaque
+organisation restent tenues par la base. À l'arrêt, les tâches en cours reçoivent l'annulation et
+ont 30 s pour finir ; au-delà, leur bail expire et une autre tentative les reprend.
+
+```text
+LYXAL__SCHEDULER__WORKERS    places par file et par nœud (4 par défaut, 1 à 64)
+```
 
 La connexion (`lyxal_auth`) demande la clé applicative et `auth.public_url`
 (`LYXAL__AUTH__PUBLIC_URL`, ex. `https://console.example.com`). Au démarrage, l'hôte crée les

@@ -33,7 +33,7 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_overlap_apply($schedule: record<schedule
 -- fn::scheduler_run_spawn (interne)
 -- ----------------------------------------------------------------------------
 
-DEFINE FUNCTION OVERWRITE fn::scheduler_run_spawn($schedule: object, $task: object, $id: option<record<scheduler_run>>, $scheduled_for: datetime, $origin: string, $overlap: string) -> option<object> {
+DEFINE FUNCTION OVERWRITE fn::scheduler_run_spawn($schedule: object, $task: object, $id: option<record<scheduler_run>>, $scheduled_for: datetime, $available_at: datetime, $origin: string, $overlap: string) -> option<object> {
     -- Une même échéance ne crée jamais deux exécutions : un doublon est ignoré
     IF $id IS NOT NONE AND record::exists($id) { RETURN NONE; };
     LET $state = fn::scheduler_overlap_apply($schedule.id, $overlap);
@@ -47,14 +47,14 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_spawn($schedule: object, $task: obje
         priority: $task.priority,
         origin: $origin,
         scheduled_for: $scheduled_for,
-        available_at: $scheduled_for,
+        available_at: $available_at,
         state: $state,
         max_attempts: $task.retry.max_attempts,
         finished_at: IF $state = "skipped" { $now } ELSE { NONE },
         created_by: IF $origin = "trigger" { fn::scheduler_caller().identity } ELSE { NONE }
     };
     RETURN IF $id IS NONE { (CREATE ONLY scheduler_run CONTENT $content) } ELSE { (CREATE ONLY $id CONTENT $content) };
-} COMMENT "Interne : crée une exécution d'une planification ($schedule, $task lues ; $id : [planification, date prévue] ou NONE pour un identifiant aléatoire ; $scheduled_for ; $origin : schedule, backfill, trigger ; $overlap) après la politique de chevauchement. Identifiant déjà pris : NONE (doublon ignoré)";
+} COMMENT "Interne : crée une exécution d'une planification ($schedule, $task lues ; $id : [planification, date prévue] ou NONE pour un identifiant aléatoire ; $scheduled_for ; $available_at : disponibilité, décalée par le décalage aléatoire ; $origin : schedule, backfill, trigger ; $overlap) après la politique de chevauchement. Identifiant déjà pris : NONE (doublon ignoré)";
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_run_release (interne)
@@ -93,7 +93,8 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_schedule_trigger($params: object) {
     IF $usable IS NOT NONE { RETURN fn::error_result($usable, $p.language, { task: <string> $schedule.task }); };
     LET $full = fn::scheduler_pending_full($schedule.tenant);
     IF $full IS NOT NONE { RETURN fn::error_result("SCHEDULER_LIMIT_REACHED", $p.language, { limit: "max_pending_runs", max: $full }); };
-    LET $run = fn::scheduler_run_spawn($schedule, $task, NONE, time::now(), "trigger", $p.overlap ?? $schedule.overlap);
+    LET $now = time::now();
+    LET $run = fn::scheduler_run_spawn($schedule, $task, NONE, $now, $now, "trigger", $p.overlap ?? $schedule.overlap);
     IF $run == NONE { RETURN fn::error_result("SCHEDULER_WRITE_FORBIDDEN", $p.language, { table: "scheduler_run" }); };
     RETURN fn::result_ok($run);
 } COMMENT "Déclenche tout de suite une planification active, même en pause ({ schedule, overlap : celui de la planification par défaut }) : nouvelle exécution (origin: trigger) soumise au chevauchement (queued, waiting ou skipped). Droit : écriture et permission propre de la tâche";

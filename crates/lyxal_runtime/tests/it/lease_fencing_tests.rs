@@ -246,3 +246,80 @@ async fn test_migration_longer_than_lease_runs_exactly_once() {
     let rows: Vec<Row> = res.take(0).unwrap();
     assert_eq!(rows.len(), 1, "la migration ne doit s'exécuter qu'une fois");
 }
+
+#[tokio::test]
+async fn test_leader_lease_elects_a_single_node() {
+    use lyxal_runtime::lock::{AcquireLeaderLeaseResult, SurrealLeaderLeaseManager};
+
+    let client = common::setup_db("lease_leader", "lease_leader").await;
+    let manager = SurrealLeaderLeaseManager::new(client.clone());
+    let a = NodeId::new("node-a");
+    let b = NodeId::new("node-b");
+
+    let first = manager
+        .acquire("scheduler", &a, Duration::from_secs(30))
+        .await
+        .unwrap();
+    let lease = match first {
+        AcquireLeaderLeaseResult::Acquired(l) => l,
+        other => panic!("bail attendu, obtenu {other:?}"),
+    };
+    assert_eq!(lease.key, "scheduler");
+    assert_eq!(lease.expires_at - lease.acquired_at, 30);
+
+    // Un seul nœud tient le rôle ; le détenteur le retrouve
+    let held = manager
+        .acquire("scheduler", &b, Duration::from_secs(30))
+        .await
+        .unwrap();
+    assert!(matches!(held, AcquireLeaderLeaseResult::HeldByOther { ref owner, .. } if owner == &a));
+    assert!(held.lease().is_none());
+    let again = manager
+        .acquire("scheduler", &a, Duration::from_secs(30))
+        .await
+        .unwrap();
+    assert!(matches!(again, AcquireLeaderLeaseResult::AlreadyOwned(_)));
+
+    let kind: Option<String> = client
+        .query("RETURN (SELECT VALUE kind FROM ONLY runtime_lease:['leader', 'scheduler']);")
+        .await
+        .unwrap()
+        .take(0)
+        .unwrap();
+    assert_eq!(kind.as_deref(), Some("leader"));
+    assert!(manager
+        .renew(&lease, Duration::from_secs(30))
+        .await
+        .unwrap()
+        .is_some());
+
+    // Bail expiré : repris par l'autre nœud avec une nouvelle génération ; l'ancien détenteur ne
+    // le renouvelle ni ne le libère plus
+    client
+        .query("UPDATE runtime_lease SET expires_at = time::unix(time::now()) - 1;")
+        .await
+        .unwrap()
+        .check()
+        .unwrap();
+    let taken = manager
+        .acquire("scheduler", &b, Duration::from_secs(30))
+        .await
+        .unwrap();
+    let lease_b = match taken {
+        AcquireLeaderLeaseResult::RecoveredExpiredLease(l) => l,
+        other => panic!("reprise attendue, obtenu {other:?}"),
+    };
+    assert_eq!(lease_b.generation, lease.generation + 1);
+    assert!(manager
+        .renew(&lease, Duration::from_secs(30))
+        .await
+        .unwrap()
+        .is_none());
+    assert!(!manager.release(&lease).await.unwrap());
+    assert_eq!(
+        manager.inspect("scheduler").await.unwrap().map(|l| l.owner),
+        Some(b.clone())
+    );
+    assert!(manager.release(&lease_b).await.unwrap());
+    assert!(manager.inspect("scheduler").await.unwrap().is_none());
+}

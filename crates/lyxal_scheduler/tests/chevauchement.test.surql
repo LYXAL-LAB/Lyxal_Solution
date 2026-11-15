@@ -61,7 +61,7 @@
 -- en tant que: worker
 {
     LET $s = (SELECT VALUE id FROM ONLY scheduler_schedule WHERE name = "p-skip" LIMIT 1);
-    LET $f = fn::scheduler_schedule_fire({ schedule: $s, fire_times: [time::now() - 3m, time::now() - 2m, time::now() - 1m], next_fire_at: time::now() + 1m });
+    LET $f = fn::scheduler_schedule_fire({ schedule: $s, fire_times: [{ at: time::now() - 3m, available_at: time::now() - 3m }, { at: time::now() - 2m, available_at: time::now() - 2m }, { at: time::now() - 1m, available_at: time::now() - 1m }], next_fire_at: time::now() + 1m });
     RETURN $f.data.runs.state = ["queued", "skipped", "skipped"] AND $f.data.schedule.last_state = "skipped"
         AND count(SELECT * FROM scheduler_run WHERE schedule = $s AND state = "skipped" AND finished_at IS NOT NONE) = 2;
 };
@@ -73,7 +73,7 @@ RETURN count(SELECT * FROM event_outbox WHERE event_type = "scheduler.run.skippe
 -- en tant que: worker
 {
     LET $s = (SELECT VALUE id FROM ONLY scheduler_schedule WHERE name = "p-buffer-one" LIMIT 1);
-    LET $f = fn::scheduler_schedule_fire({ schedule: $s, fire_times: [time::now() - 3m, time::now() - 2m, time::now() - 1m], next_fire_at: time::now() + 1m });
+    LET $f = fn::scheduler_schedule_fire({ schedule: $s, fire_times: [{ at: time::now() - 3m, available_at: time::now() - 3m }, { at: time::now() - 2m, available_at: time::now() - 2m }, { at: time::now() - 1m, available_at: time::now() - 1m }], next_fire_at: time::now() + 1m });
     RETURN $f.data.runs.state = ["queued", "waiting", "skipped"];
 };
 
@@ -81,7 +81,7 @@ RETURN count(SELECT * FROM event_outbox WHERE event_type = "scheduler.run.skippe
 -- en tant que: worker
 {
     LET $s = (SELECT VALUE id FROM ONLY scheduler_schedule WHERE name = "p-buffer-all" LIMIT 1);
-    LET $f = fn::scheduler_schedule_fire({ schedule: $s, fire_times: [time::now() - 3m, time::now() - 2m, time::now() - 1m], next_fire_at: time::now() + 1m });
+    LET $f = fn::scheduler_schedule_fire({ schedule: $s, fire_times: [{ at: time::now() - 3m, available_at: time::now() - 3m }, { at: time::now() - 2m, available_at: time::now() - 2m }, { at: time::now() - 1m, available_at: time::now() - 1m }], next_fire_at: time::now() + 1m });
     RETURN $f.data.runs.state = ["queued", "waiting", "waiting"];
 };
 
@@ -89,7 +89,7 @@ RETURN count(SELECT * FROM event_outbox WHERE event_type = "scheduler.run.skippe
 -- en tant que: worker
 {
     LET $s = (SELECT VALUE id FROM ONLY scheduler_schedule WHERE name = "p-allow-all" LIMIT 1);
-    LET $f = fn::scheduler_schedule_fire({ schedule: $s, fire_times: [time::now() - 3m, time::now() - 2m, time::now() - 1m], next_fire_at: time::now() + 1m });
+    LET $f = fn::scheduler_schedule_fire({ schedule: $s, fire_times: [{ at: time::now() - 3m, available_at: time::now() - 3m }, { at: time::now() - 2m, available_at: time::now() - 2m }, { at: time::now() - 1m, available_at: time::now() - 1m }], next_fire_at: time::now() + 1m });
     RETURN $f.data.runs.state = ["queued", "queued", "queued"];
 };
 
@@ -108,7 +108,7 @@ RETURN count(SELECT * FROM event_outbox WHERE event_type = "scheduler.run.skippe
 -- en tant que: worker
 {
     LET $s = (SELECT VALUE id FROM ONLY scheduler_schedule WHERE name = "p-cancel-other" LIMIT 1);
-    LET $f = fn::scheduler_schedule_fire({ schedule: $s, fire_times: [time::now() - 3m, time::now() - 2m], next_fire_at: time::now() + 1m });
+    LET $f = fn::scheduler_schedule_fire({ schedule: $s, fire_times: [{ at: time::now() - 3m, available_at: time::now() - 3m }, { at: time::now() - 2m, available_at: time::now() - 2m }], next_fire_at: time::now() + 1m });
     RETURN $f.data.runs.state = ["queued", "queued"]
         AND (SELECT VALUE state FROM scheduler_run WHERE schedule = $s ORDER BY scheduled_for) = ["cancelled", "queued"]
         AND (SELECT VALUE cancel_reason FROM scheduler_run WHERE schedule = $s AND state = "cancelled") = ["overlap"];
@@ -121,7 +121,7 @@ RETURN count(SELECT * FROM event_outbox WHERE event_type = "scheduler.run.skippe
     LET $c = fn::scheduler_run_claim({ queue: "default", node: "n1", limit: 100 }).data.items;
     LET $mine = $c.filter(|$r| $r.schedule = $s)[0];
     UPSERT passe:co SET run = $mine.id, lease = $mine.lease;
-    LET $f = fn::scheduler_schedule_fire({ schedule: $s, fire_times: [time::now() - 1m], next_fire_at: time::now() + 1m });
+    LET $f = fn::scheduler_schedule_fire({ schedule: $s, fire_times: [{ at: time::now() - 1m, available_at: time::now() - 1m }], next_fire_at: time::now() + 1m });
     LET $running = (SELECT * FROM ONLY $mine.id);
     RETURN $f.data.runs.state = ["waiting"] AND $running.state = "running" AND $running.cancel_requested AND $running.cancel_reason = "overlap";
 };

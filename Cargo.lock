@@ -3946,6 +3946,7 @@ dependencies = [
  "lyxal_notification",
  "lyxal_pipeline_ingestion",
  "lyxal_runtime",
+ "lyxal_scheduler",
  "lyxal_secrets",
  "lyxal_storage",
  "lyxal_surreal",
@@ -4171,6 +4172,8 @@ dependencies = [
  "surrealdb",
  "thiserror 1.0.69",
  "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

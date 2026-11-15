@@ -465,3 +465,26 @@ fn the_vault_master_key_comes_from_the_environment_only() {
         "{error}"
     );
 }
+
+#[test]
+fn scheduler_workers_are_read_and_bounded() {
+    let directory = tempfile::tempdir().expect("tempdir");
+    write_config(directory.path(), "");
+    let config = AppConfig::load_with_environment(directory.path(), variables(&[]))
+        .expect("configuration valide");
+    assert_eq!(config.scheduler.workers, 4);
+    let config = AppConfig::load_with_environment(
+        directory.path(),
+        variables(&[("LYXAL__SCHEDULER__WORKERS", "16")]),
+    )
+    .expect("configuration valide");
+    assert_eq!(config.scheduler.workers, 16);
+    for value in ["0", "65"] {
+        let error = AppConfig::load_with_environment(
+            directory.path(),
+            variables(&[("LYXAL__SCHEDULER__WORKERS", value)]),
+        )
+        .expect_err("hors bornes");
+        assert!(error.to_string().contains("scheduler.workers"), "{error}");
+    }
+}

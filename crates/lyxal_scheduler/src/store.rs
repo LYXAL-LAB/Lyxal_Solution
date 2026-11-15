@@ -3,19 +3,21 @@
 //! restent dans SurrealQL ; la session SurrealDB du client détermine l'appelant.
 
 use async_trait::async_trait;
-use lyxal_surreal::{LyxalSurrealCall, LyxalSurrealError};
+use lyxal_surreal::{LyxalSurrealCall, LyxalSurrealError, SurrealValue};
+use rand_core::{OsRng, RngCore};
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
 use crate::models::{
     AuditEntry, AuditListParams, Backfill, BackfillFireParams, BackfillFireResult, Calendar,
     CalendarCreateParams, CalendarListParams, CalendarRefParams, CalendarUpdateParams, ClaimResult,
-    Deleted, DueList, DueListParams, FireResult, Heartbeat, Page, PruneResult, Queue,
-    QueueListParams, QueuePauseParams, QueueResumeParams, RescueResult, Run, RunCancelParams,
-    RunClaimParams, RunCompleteParams, RunEnqueueParams, RunFailParams, RunHeartbeatParams,
-    RunListParams, RunPruneParams, RunRefParams, RunRescueParams, Schedule, ScheduleBackfillParams,
-    ScheduleCreateParams, ScheduleFireParams, ScheduleListParams, ScheduleNextSetParams,
-    SchedulePauseParams, ScheduleRefParams, ScheduleTriggerParams, ScheduleUpdateParams,
+    Deleted, DueList, DueListParams, EngineHealth, FireResult, FunctionCallParams, HealthParams,
+    Heartbeat, Page, PruneResult, Queue, QueueListParams, QueuePauseParams, QueueResumeParams,
+    RescueResult, Run, RunCancelParams, RunClaimParams, RunCompleteParams, RunEnqueueParams,
+    RunFailParams, RunHeartbeatParams, RunListParams, RunPruneParams, RunPublishParams,
+    RunRefParams, RunRescueParams, Schedule, ScheduleBackfillParams, ScheduleCreateParams,
+    ScheduleFireParams, ScheduleListParams, ScheduleNextSetParams, SchedulePauseParams,
+    ScheduleRefParams, ScheduleTriggerParams, ScheduleUpdateParams, SchedulerValue,
     SettingsGetParams, SettingsResult, SettingsSetParams, Task, TaskGetParams, TaskListParams,
     TaskSetStateParams,
 };
@@ -35,10 +37,38 @@ impl LyxalSurrealCall for SchedulerStore {
 
 type Call<T> = Result<T, LyxalSurrealError>;
 
+/// Rejeux d'un appel du moteur après un conflit d'écriture transitoire.
+const CONFLICT_RETRIES: u32 = 12;
+
 impl SchedulerStore {
     /// Store sur un client déjà connecté (espace de noms et base choisis).
     pub fn new(db: Surreal<Any>) -> Self {
         Self { db }
+    }
+
+    /// Appel d'une fonction du moteur, rejoué après un conflit d'écriture transitoire de
+    /// SurrealDB (contrôle de concurrence optimiste : la transaction n'a pas été validée, le
+    /// rejeu est sûr). Les nœuds et les tentatives d'un nœud se disputent les mêmes compteurs de
+    /// places ; toute autre erreur est rendue telle quelle.
+    async fn engine_call<T, P>(&self, function: &'static str, params: P) -> Call<T>
+    where
+        T: SurrealValue + Send,
+        P: SurrealValue + Clone + Send + 'static,
+    {
+        let mut attempt = 0;
+        loop {
+            match self.call_fn(function, params.clone()).await {
+                Err(error) if error.is_transient_conflict() && attempt < CONFLICT_RETRIES => {
+                    attempt += 1;
+                    // Attente croissante (10 ms à 200 ms) et tirée au hasard, pour que deux
+                    // transactions en conflit ne se rejouent pas en même temps
+                    let ceiling = (5u64 << attempt).min(200);
+                    let pause = ceiling / 2 + u64::from(OsRng.next_u32()) % (ceiling / 2 + 1);
+                    tokio::time::sleep(std::time::Duration::from_millis(pause)).await;
+                }
+                other => return other,
+            }
+        }
     }
 
     /// `fn::scheduler_settings_get` : réglages enregistrés et effectifs d'une portée.
@@ -166,9 +196,11 @@ impl SchedulerStore {
         self.call_fn("scheduler_run_list", params).await
     }
 
-    /// `fn::scheduler_run_cancel` : exécution annulée, ou annulation demandée.
+    /// `fn::scheduler_run_cancel` : exécution annulée, ou annulation demandée. L'exécution en
+    /// cours est réécrite par chaque battement de son bail : un conflit d'écriture passager est
+    /// rejoué comme pour les appels du moteur.
     pub async fn run_cancel(&self, params: RunCancelParams) -> Call<Run> {
-        self.call_fn("scheduler_run_cancel", params).await
+        self.engine_call("scheduler_run_cancel", params).await
     }
 
     /// `fn::scheduler_run_retry` : nouvelle exécution d'une exécution terminée en échec ou annulée.
@@ -183,51 +215,73 @@ impl SchedulerStore {
 
     /// `fn::scheduler_due_list` : moteur : planifications dues et rejeux en cours.
     pub async fn due_list(&self, params: DueListParams) -> Call<DueList> {
-        self.call_fn("scheduler_due_list", params).await
+        self.engine_call("scheduler_due_list", params).await
     }
 
     /// `fn::scheduler_schedule_fire` : moteur : échéances d'une planification traitées.
     pub async fn schedule_fire(&self, params: ScheduleFireParams) -> Call<FireResult> {
-        self.call_fn("scheduler_schedule_fire", params).await
+        self.engine_call("scheduler_schedule_fire", params).await
     }
 
     /// `fn::scheduler_schedule_next_set` : moteur : prochaine échéance écrite, ou planification invalide.
     pub async fn schedule_next_set(&self, params: ScheduleNextSetParams) -> Call<Schedule> {
-        self.call_fn("scheduler_schedule_next_set", params).await
+        self.engine_call("scheduler_schedule_next_set", params)
+            .await
     }
 
     /// `fn::scheduler_backfill_fire` : moteur : exécutions d'un rejeu créées.
     pub async fn backfill_fire(&self, params: BackfillFireParams) -> Call<BackfillFireResult> {
-        self.call_fn("scheduler_backfill_fire", params).await
+        self.engine_call("scheduler_backfill_fire", params).await
     }
 
     /// `fn::scheduler_run_claim` : moteur : exécutions réservées sous bail.
     pub async fn run_claim(&self, params: RunClaimParams) -> Call<ClaimResult> {
-        self.call_fn("scheduler_run_claim", params).await
+        self.engine_call("scheduler_run_claim", params).await
     }
 
     /// `fn::scheduler_run_heartbeat` : moteur : bail prolongé.
     pub async fn run_heartbeat(&self, params: RunHeartbeatParams) -> Call<Heartbeat> {
-        self.call_fn("scheduler_run_heartbeat", params).await
+        self.engine_call("scheduler_run_heartbeat", params).await
     }
 
     /// `fn::scheduler_run_complete` : moteur : exécution terminée avec succès.
     pub async fn run_complete(&self, params: RunCompleteParams) -> Call<Run> {
-        self.call_fn("scheduler_run_complete", params).await
+        self.engine_call("scheduler_run_complete", params).await
     }
 
     /// `fn::scheduler_run_fail` : moteur : tentative terminée en échec.
     pub async fn run_fail(&self, params: RunFailParams) -> Call<Run> {
-        self.call_fn("scheduler_run_fail", params).await
+        self.engine_call("scheduler_run_fail", params).await
     }
 
     /// `fn::scheduler_run_rescue` : moteur : exécutions au bail expiré reprises.
     pub async fn run_rescue(&self, params: RunRescueParams) -> Call<RescueResult> {
-        self.call_fn("scheduler_run_rescue", params).await
+        self.engine_call("scheduler_run_rescue", params).await
     }
 
     /// `fn::scheduler_run_prune` : moteur : exécutions terminées élaguées.
     pub async fn run_prune(&self, params: RunPruneParams) -> Call<PruneResult> {
-        self.call_fn("scheduler_run_prune", params).await
+        self.engine_call("scheduler_run_prune", params).await
+    }
+
+    /// `fn::scheduler_run_publish` : moteur : publication différée et fin de l'exécution dans
+    /// la même transaction.
+    pub async fn run_publish(&self, params: RunPublishParams) -> Call<Run> {
+        self.engine_call("scheduler_run_publish", params).await
+    }
+
+    /// `fn::scheduler_health` : moteur : files, exécutions en retard, tâches `handler` actives.
+    pub async fn health(&self, params: HealthParams) -> Call<EngineHealth> {
+        self.engine_call("scheduler_health", params).await
+    }
+
+    /// Fonction SurrealQL `fn::<target>` d'une tâche `function` (cible déclarée par le module
+    /// propriétaire et contrôlée par le lot 1) ; rend la donnée de son résultat.
+    pub(crate) async fn call_task_function(
+        &self,
+        target: &'static str,
+        params: FunctionCallParams,
+    ) -> Call<SchedulerValue> {
+        self.engine_call(target, params).await
     }
 }

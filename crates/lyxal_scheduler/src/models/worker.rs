@@ -5,7 +5,7 @@ use lyxal_surreal::SurrealValue;
 use std::fmt;
 use surrealdb::types::{Error as SurrealTypeError, Kind, Value};
 
-use super::enums::{RunOrigin, RunState};
+use super::enums::{Executor, RunOrigin, RunState};
 use super::types::{SchedulerDatetime, SchedulerDuration, SchedulerRecordId, SchedulerValue};
 
 /// Jeton du bail d'une exécution réservée : exigé par chaque battement et chaque fin de
@@ -49,6 +49,9 @@ pub struct RunClaimParams {
     pub node: String,
     /// Nombre maximal d'exécutions réservées (100 au plus).
     pub limit: Option<i64>,
+    /// Tâches `handler` dont le nœud a le code (absent : toutes) ; une autre tâche `handler`
+    /// n'est réservée qu'après avoir attendu plus que son délai maximal.
+    pub handlers: Option<Vec<String>>,
     /// Langue des messages d'erreur.
     pub language: Option<String>,
 }
@@ -66,6 +69,12 @@ pub struct ClaimedRun {
     pub locked_until: SchedulerDatetime,
     /// Délai maximal de la tentative.
     pub timeout: SchedulerDuration,
+    /// Exécuteur de la tâche.
+    pub executor: Executor,
+    /// Cible de la tâche (handler, fonction ou type d'événement).
+    pub target: String,
+    /// Annulation déjà demandée.
+    pub cancel_requested: bool,
     /// Organisation (absente : installation).
     pub tenant: Option<SchedulerRecordId>,
     /// Planification d'origine.
@@ -126,6 +135,61 @@ pub struct RunCompleteParams {
     pub result: Option<SchedulerValue>,
     /// Langue des messages d'erreur.
     pub language: Option<String>,
+}
+
+/// Paramètres de `fn::scheduler_run_publish`.
+#[derive(Debug, Clone, SurrealValue)]
+pub struct RunPublishParams {
+    /// Exécution d'une tâche `event`.
+    pub run: SchedulerRecordId,
+    /// Jeton du bail.
+    pub lease: LeaseToken,
+    /// Langue des messages d'erreur.
+    pub language: Option<String>,
+}
+
+/// Paramètres de `fn::scheduler_health`.
+#[derive(Debug, Clone, Default, SurrealValue)]
+pub struct HealthParams {
+    /// Retard au-delà duquel une exécution réservable est comptée (5 min par défaut).
+    pub late_after: Option<SchedulerDuration>,
+    /// Langue des messages d'erreur.
+    pub language: Option<String>,
+}
+
+/// File vue par la sonde de santé.
+#[derive(Debug, Clone, PartialEq, SurrealValue)]
+pub struct QueueStatus {
+    /// Nom de la file.
+    pub name: String,
+    /// File en pause.
+    pub paused: bool,
+}
+
+/// Résultat de `fn::scheduler_health`.
+#[derive(Debug, Clone, PartialEq, SurrealValue)]
+pub struct EngineHealth {
+    /// Files.
+    pub queues: Vec<QueueStatus>,
+    /// Exécutions réservables en retard.
+    pub late: i64,
+    /// Tâches `handler` actives.
+    pub handler_tasks: Vec<String>,
+}
+
+/// Paramètres passés à la fonction SurrealQL d'une tâche `function`.
+#[derive(Debug, Clone, SurrealValue)]
+pub struct FunctionCallParams {
+    /// Arguments de l'exécution.
+    pub args: SchedulerValue,
+    /// Exécution (clé d'idempotence).
+    pub run: SchedulerRecordId,
+    /// Organisation (absente : installation).
+    pub tenant: Option<SchedulerRecordId>,
+    /// Date prévue.
+    pub scheduled_for: SchedulerDatetime,
+    /// Tentative en cours.
+    pub attempt: i64,
 }
 
 /// Erreur d'une tentative remise par l'exécuteur.
