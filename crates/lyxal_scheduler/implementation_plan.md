@@ -6,9 +6,11 @@ exécutent les tâches, les modules inscrivent leurs handlers, et l'hôte héber
 s'appuie sur le socle SurrealQL (lot 1) et le calcul des dates (lot 2). Aucune ligne de code avant
 la validation du CTO (`.agents/AGENTS.md` §3).
 
-## 1. Questions soumises au CTO
+## 1. Décisions du CTO (15 novembre 2026)
 
-| N° | Question | Proposition |
+W1 à W5 validées selon les propositions.
+
+| N° | Question | Décision |
 | :- | :--- | :--- |
 | **W1** | Bail du planificateur (décision S4) | Nouvelle valeur `leader` pour `runtime_lease.kind` dans `lyxal_runtime` (fonctions `fn::runtime_lease_acquire`, `_renew`, `_release` inchangées par ailleurs) ; clé `scheduler` ; durée 30 s, renouvelé toutes les 10 s. Un nœud qui perd le bail s'arrête de planifier au tour suivant ; les doublons restent impossibles (identifiant `[planification, date]`). |
 | **W2** | Rythme | Planificateur : un tour par seconde. Exécuteurs : interrogation de chaque file chaque seconde quand elle est vide, aussitôt après chaque fin sinon. Reprise des baux expirés toutes les 30 s ; élagage toutes les heures. |
