@@ -97,7 +97,6 @@ export type ViewPage =
 	| "functions"
 	| "parameters"
 	| "migrations"
-	| "scheduler"
 	| "booking"
 	| "settings/general"
 	| "settings/databases"

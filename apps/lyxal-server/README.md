@@ -52,6 +52,7 @@ déclaré manque.
 | `lyxal_notification` | toujours | `NotificationModule`, `NotificationConsumer` (événements `auth.*`), `NotificationEmailWorker`, `NotificationPurgeWorker`, `NotificationHealthCheck` |
 | `lyxal_storage` | toujours | `StorageModule`, `StorageCleanupWorker` (si un support est configuré), `StorageHealthCheck` ; supports disque et S3 ; envoi reprenable |
 | `lyxal_secrets` | toujours | `SecretsModule`, `SecretsMaintenanceWorker` (purge, rescellement), `SecretsHealthCheck` ; trousseau maître du coffre-fort ; `SecretsClient` pour les modules hébergés |
+| `lyxal_scheduler` | toujours | `ManifestModule` (socle SurrealQL ; moteur Rust : lot 3 de son programme) |
 | `lyxal_base` | toujours | `ManifestModule` |
 | `lyxal_catalogue` | toujours | `ManifestModule` (SurrealQL seul) |
 | `lyxal_pipeline_ingestion` | fonctionnalité `module-ingestion` (par défaut) | `PipelineIngestionModule`, `IngestionWorker` (lit les fichiers sources des lots dans `lyxal_storage`), `IngestionHealthCheck` ; bucket `ingestion-sources` créé au démarrage |
