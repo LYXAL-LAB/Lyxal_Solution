@@ -7,9 +7,11 @@ du lot 2 ou 3 **au nom de l'appelant** (sa session SurrealDB), jamais au nom du 
 contrat `{ ok, data, error }`. Aucune logique métier dans l'hôte. Aucune ligne de code avant la
 validation du CTO (`.agents/AGENTS.md` §3).
 
-## 1. Questions soumises au CTO
+## 1. Décisions du CTO (15 novembre 2026)
 
-| N° | Question | Proposition |
+X1 à X4 validées selon les propositions.
+
+| N° | Question | Décision |
 | :- | :--- | :--- |
 | **X1** | Identifiant d'une exécution dans une adresse | Une exécution d'échéance a un identifiant composé `scheduler_run:[planification, date]`, qui ne passe pas tel quel dans une adresse. Les routes l'acceptent et le rendent sous une **forme texte unique** : l'identifiant SurrealQL complet encodé en base64url (sans remplissage). L'hôte décode la chaîne ; elle est contrôlée par la règle `surql_record_string` du Core avec la table `scheduler_run` (`string::is_record`, qui accepte les identifiants composés), convertie en identifiant natif, puis contrôlée par la règle `record_id` limitée à `scheduler_run` (la règle `record`, qui découpe la chaîne à chaque « : », refuserait un identifiant composé). Aucune autre forme acceptée. |
 | **X2** | Fonctions du moteur | **Aucune route** pour les fonctions du moteur (`due_list`, `schedule_fire`, `run_claim`, `run_heartbeat`, `run_complete`, `run_fail`, `run_publish`, `run_rescue`, `run_prune`, `backfill_fire`, `schedule_next_set`, `task_set_state`) : elles restent réservées aux workers de l'hôte. |
