@@ -172,9 +172,9 @@ bascule des workers périodiques existants (`AuthPurgeWorker`, `NotificationPurg
 * **Hôte** : parcours de bout en bout, droits de l'appelant.
 * Contrôle complet : `scripts/ci/ci_local.sh` à chaque lot.
 
-## 8. Décisions soumises au CTO
+## 8. Décisions du CTO (validées le 15 novembre 2026)
 
-| Code | Décision proposée |
+| Code | Décision |
 | :--- | :--- |
 | **S1** | Repartir de zéro dans `crates/lyxal_scheduler/` ; supprimer le dossier `lyxal_scheduler/` (copie de Croniq) et les écrans Surrealist `views/scheduler/` au lot 1. Les idées valables de Croniq sont reprises (calendriers, rattrapage, prévision, états). |
 | **S2** | Trois exécuteurs seulement : code Rust inscrit par un module, fonction SurrealQL publique d'un module, publication différée d'un événement. Les tâches sont déclarées par les modules ; aucune commande système ni requête libre. |
