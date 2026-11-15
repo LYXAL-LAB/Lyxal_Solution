@@ -23,7 +23,10 @@ validation du CTO (`.agents/AGENTS.md` §3).
 
 Structure canonique (§4) : `manifest.toml` (dépendances `lyxal_core`, `lyxal_error`,
 `lyxal_event`, `lyxal_auth`), `schema/`, `functions/`, `events/`, `error/`, `seeds/`, `tests/`,
-`README.md`, `ROADMAP.md`. Pas de migration (régime pré-production), version `0.1.0`. Aucun code
+`README.md`, `ROADMAP.md`. Aucun dossier `migrations/` : le schéma cible complet est déclaré dans
+`schema/` (`DEFINE … OVERWRITE`, rejouable), comme dans tous les modules du dépôt ; le §0.3
+limite un module à une migration au plus, il n'en exige pas, et une `0001_initial.surql` recopiant
+`schema/` dupliquerait le schéma (§5.1). Version `0.1.0`. Aucun code
 Rust dans ce lot : l'hôte porte le module par un `ManifestModule` (`build.rs`).
 `RECHERCHE_SOURCES.md` reste jusqu'à la clôture (lot 5).
 
@@ -221,4 +224,4 @@ l'implémentation.
 * Architecture : module du noyau, sans dépendance vers un module métier ; aucun cycle.
 * Core : entrées par le moteur ; aucune extension demandée.
 * Crypto : aucune opération.
-* Zéro dette : `0.1.0`, aucune migration, ancien dossier et écrans supprimés, aucun alias.
+* Zéro dette : `0.1.0`, schéma unique dans `schema/` (aucune migration corrective), ancien dossier et écrans supprimés, aucun alias.
