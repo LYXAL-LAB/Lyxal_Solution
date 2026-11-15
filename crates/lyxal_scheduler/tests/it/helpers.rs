@@ -43,7 +43,12 @@ pub fn parse(spec: &ScheduleSpec) -> Spec {
 }
 
 pub fn parse_with(spec: &ScheduleSpec, calendars: &[&[CalendarRule]]) -> Spec {
-    Spec::parse(spec, created(), CalendarSet::parse(calendars).expect("calendriers")).expect("règles lues")
+    Spec::parse(
+        spec,
+        created(),
+        CalendarSet::parse(calendars).expect("calendriers"),
+    )
+    .expect("règles lues")
 }
 
 pub fn parse_err(spec: &ScheduleSpec) -> SpecError {
@@ -63,7 +68,7 @@ pub fn next_n(spec: &Spec, after: Timestamp, n: usize) -> Vec<String> {
             break;
         };
         let z = t.to_zoned(spec.time_zone().clone());
-        out.push(format!("{}{}", z.datetime(), z.offset()));
+        out.push(z.strftime("%Y-%m-%dT%H:%M:%S%:z").to_string());
         cursor = t;
     }
     out

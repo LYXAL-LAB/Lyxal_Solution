@@ -23,7 +23,7 @@ use jiff::tz::TimeZone;
 use jiff::{SignedDuration, Timestamp};
 
 use crate::error::{SpecError, SpecReason};
-use crate::models::{SchedulerDatetime, SchedulerDuration, ScheduleSpec};
+use crate::models::{ScheduleSpec, SchedulerDatetime, SchedulerDuration};
 
 /// Écart minimal entre deux échéances d'une planification (U1).
 pub const MIN_GAP: SignedDuration = SignedDuration::from_secs(60);
@@ -106,7 +106,11 @@ impl Spec {
         calendars: CalendarSet,
     ) -> Result<Self, SpecError> {
         let tz = TimeZone::get(&spec.timezone).map_err(|e| {
-            SpecError::new("timezone", SpecReason::Timezone, format!("{}: {e}", spec.timezone))
+            SpecError::new(
+                "timezone",
+                SpecReason::Timezone,
+                format!("{}: {e}", spec.timezone),
+            )
         })?;
         let crons = spec
             .cron
@@ -137,7 +141,11 @@ impl Spec {
                 Ok(step)
             })
             .collect::<Result<Vec<_>, _>>()?;
-        let at = spec.at.as_ref().map(|v| to_timestamp("at", v)).transpose()?;
+        let at = spec
+            .at
+            .as_ref()
+            .map(|v| to_timestamp("at", v))
+            .transpose()?;
         let start_at = spec
             .start_at
             .as_ref()
@@ -162,11 +170,19 @@ impl Spec {
         }
         if let (Some(start), Some(end)) = (start_at, end_at) {
             if end <= start {
-                return Err(SpecError::new("end_at", SpecReason::Range, "fin avant le début"));
+                return Err(SpecError::new(
+                    "end_at",
+                    SpecReason::Range,
+                    "fin avant le début",
+                ));
             }
         }
         if jitter.is_some_and(|j| j > MAX_JITTER) {
-            return Err(SpecError::new("jitter", SpecReason::Jitter, "décalage de plus d'une heure"));
+            return Err(SpecError::new(
+                "jitter",
+                SpecReason::Jitter,
+                "décalage de plus d'une heure",
+            ));
         }
         Ok(Self {
             crons,

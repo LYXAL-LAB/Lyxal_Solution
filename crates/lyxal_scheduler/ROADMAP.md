@@ -9,8 +9,7 @@ détaillé, validé par le CTO avant toute ligne de code (`.agents/AGENTS.md` §
 
 | Lot | Contenu | Touche |
 | :- | :--- | :--- |
-| **2** | Calcul des dates en Rust : cron 5 à 7 champs, intervalles, date unique, fuseaux, changement d'heure (règle d'Oban et `croner`, S5), exclusions, calendriers, bornes, décalage aléatoire, prévision ; contrôle des expressions à l'écriture ; crate Rust, types `XxxParams` / `XxxResult` et wrappers `store.call_fn` | `lyxal_scheduler` |
-| **3** | Moteur : bail du planificateur (`runtime_lease.kind = leader`, S4), échéances, rattrapage, chevauchement, rejeu de période, exécuteurs par file avec concurrence et équité, battement, reprise, délai maximal, annulation, tentatives, élagage ; `TaskHandler`, exécuteurs `function` et `event`, `SchedulerClient`, module, sonde de santé, hébergement par l'hôte | `lyxal_scheduler`, `lyxal_runtime`, `apps/lyxal-server` |
+| **3** | Moteur : bail du planificateur (`runtime_lease.kind = leader`, S4), échéances, rattrapage, chevauchement, rejeu de période, exécuteurs par file avec concurrence et équité, battement, reprise, délai maximal, annulation, tentatives, élagage ; application du décalage aléatoire (U5) à `available_at` ; `TaskHandler`, exécuteurs `function` et `event`, `SchedulerClient`, module, sonde de santé, hébergement par l'hôte | `lyxal_scheduler`, `lyxal_runtime`, `apps/lyxal-server` |
 | **4** | Hôte : routes HTTP `/api/v1/scheduler/*` au nom de l'appelant (planifications, calendriers, exécutions, files, prévision, rejeu, déclenchement immédiat) | `apps/lyxal-server` |
 | **5** | Clôture : audit `lyxal-audit`, procédures d'exploitation, documents, `RECHERCHE_SOURCES.md` réduit en `MODELE_SOURCES.md` | docs |
 

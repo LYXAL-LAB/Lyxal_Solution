@@ -10,13 +10,15 @@ use std::path::PathBuf;
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
-pub const ALPHA: &str = "auth_organization:alpha";
-
 pub async fn installed_client() -> Surreal<Any> {
     let client = surrealdb::engine::any::connect("mem://")
         .await
         .expect("connexion");
-    client.use_ns("scheduler").use_db("test").await.expect("ns/db");
+    client
+        .use_ns("scheduler")
+        .use_db("test")
+        .await
+        .expect("ns/db");
     let crates = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .expect("dossier crates")
@@ -102,9 +104,7 @@ pub async fn raw<P: SurrealValue + Send + 'static>(
 /// exclus (jeton de bail, jamais rendu dans `Run`).
 pub fn lossless<T: SurrealValue>(raw: Value, ignored: &[&str]) -> T {
     let decoded = T::from_value(raw.clone()).unwrap_or_else(|e| panic!("décodage : {e} — {raw:?}"));
-    let encoded = T::from_value(raw.clone())
-        .expect("décodage")
-        .into_value();
+    let encoded = T::from_value(raw.clone()).expect("décodage").into_value();
     contained(&raw, &encoded, "$", ignored);
     decoded
 }

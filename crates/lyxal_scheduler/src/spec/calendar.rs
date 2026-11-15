@@ -18,7 +18,7 @@ use std::collections::BTreeSet;
 use surrealdb::types::Number;
 
 use crate::error::{SpecError, SpecReason};
-use crate::models::{CalendarRule, RuleKind, RuleMode};
+use crate::models::{CalendarRule, CalendarRules, RuleKind, RuleMode};
 
 const MINUTES_PER_DAY: u16 = 24 * 60;
 
@@ -46,7 +46,9 @@ impl Matcher {
             Self::Monthdays(days) => days.contains(&local.day()),
             Self::TimeRange(ranges) => {
                 let minute = minute_of_day(local.time());
-                ranges.iter().any(|&(start, end)| start <= minute && minute < end)
+                ranges
+                    .iter()
+                    .any(|&(start, end)| start <= minute && minute < end)
             }
         }
     }
@@ -101,8 +103,12 @@ fn parse_hhmm(rule: &str, text: &str) -> Result<u16, SpecError> {
     let (h, m) = text
         .split_once(':')
         .ok_or_else(|| invalid(rule, "heure HH:MM attendue"))?;
-    let hour: u16 = h.parse().map_err(|_| invalid(rule, "heure HH:MM attendue"))?;
-    let minute: u16 = m.parse().map_err(|_| invalid(rule, "heure HH:MM attendue"))?;
+    let hour: u16 = h
+        .parse()
+        .map_err(|_| invalid(rule, "heure HH:MM attendue"))?;
+    let minute: u16 = m
+        .parse()
+        .map_err(|_| invalid(rule, "heure HH:MM attendue"))?;
     if h.len() != 2 || m.len() != 2 || hour > 23 || minute > 59 {
         return Err(invalid(rule, "heure HH:MM attendue (00:00 à 23:59)"));
     }
@@ -135,8 +141,12 @@ fn parse_matcher(rule: &str, kind: RuleKind, values: &[Value]) -> Result<Matcher
                     let (m, d) = text
                         .split_once('-')
                         .ok_or_else(|| invalid(rule, "date MM-JJ attendue"))?;
-                    let month: i8 = m.parse().map_err(|_| invalid(rule, "date MM-JJ attendue"))?;
-                    let day: i8 = d.parse().map_err(|_| invalid(rule, "date MM-JJ attendue"))?;
+                    let month: i8 = m
+                        .parse()
+                        .map_err(|_| invalid(rule, "date MM-JJ attendue"))?;
+                    let day: i8 = d
+                        .parse()
+                        .map_err(|_| invalid(rule, "date MM-JJ attendue"))?;
                     // Année bissextile de référence : le 29 février est possible.
                     Date::new(2024, month, day)
                         .map_err(|e| invalid(rule, format!("date impossible : {e}")))?;
@@ -214,6 +224,13 @@ impl CalendarSet {
             })
             .collect::<Result<Vec<_>, SpecError>>()?;
         Ok(Self { calendars })
+    }
+
+    /// Lit les règles des calendriers d'une planification due ou d'un rejeu
+    /// (`fn::scheduler_due_list`).
+    pub fn from_calendars(calendars: &[CalendarRules]) -> Result<Self, SpecError> {
+        let rules: Vec<&[CalendarRule]> = calendars.iter().map(|c| c.rules.as_slice()).collect();
+        Self::parse(&rules)
     }
 
     /// Vrai si aucun calendrier n'est donné.

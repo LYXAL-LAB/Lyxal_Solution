@@ -67,6 +67,15 @@ impl CronRule {
     /// Refuse une expression illisible et une expression à plusieurs valeurs de secondes, qui
     /// donnerait deux échéances dans la même minute (U1 : au moins une minute d'écart).
     pub fn parse(rule: &str, source: &str) -> Result<Self, SpecError> {
+        // U2 : jour du mois OU jour de la semaine. Le préfixe `+` de `croner` (les deux à la fois)
+        // changerait cette règle pour une seule expression : il est refusé.
+        if source.contains('+') {
+            return Err(SpecError::new(
+                rule,
+                SpecReason::CronSyntax,
+                "préfixe « + » refusé : jour du mois ou jour de la semaine (U2)",
+            ));
+        }
         let cron = parser()
             .parse(source)
             .map_err(|e| SpecError::new(rule, SpecReason::CronSyntax, describe(&e)))?;
@@ -99,7 +108,10 @@ impl CronRule {
         after: Timestamp,
         tz: &TimeZone,
     ) -> Result<CronNext, SpecError> {
-        match self.cron.find_next_occurrence(&after.to_zoned(tz.clone()), false) {
+        match self
+            .cron
+            .find_next_occurrence(&after.to_zoned(tz.clone()), false)
+        {
             Ok(next) => Ok(CronNext::At(next.timestamp())),
             Err(CronError::TimeSearchLimitExceeded) => Ok(CronNext::Exhausted),
             Err(error) => Err(SpecError::new(
@@ -112,15 +124,18 @@ impl CronRule {
 
     /// Vrai si la date `at`, lue dans le fuseau `tz`, correspond à l'expression ; à la minute
     /// près pour une expression sans secondes.
-    pub(crate) fn matches(&self, rule: &str, at: Timestamp, tz: &TimeZone) -> Result<bool, SpecError> {
+    pub(crate) fn matches(
+        &self,
+        rule: &str,
+        at: Timestamp,
+        tz: &TimeZone,
+    ) -> Result<bool, SpecError> {
         let zoned = at.to_zoned(tz.clone());
         let probe = if self.with_seconds {
             zoned
         } else {
-            let into_minute = SignedDuration::new(
-                i64::from(zoned.second()),
-                zoned.subsec_nanosecond(),
-            );
+            let into_minute =
+                SignedDuration::new(i64::from(zoned.second()), zoned.subsec_nanosecond());
             at.checked_sub(into_minute)
                 .map_err(|e| SpecError::new(rule, SpecReason::OutOfRange, e.to_string()))?
                 .to_zoned(tz.clone())

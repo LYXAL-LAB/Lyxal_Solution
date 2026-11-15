@@ -33,7 +33,9 @@ pub use schedule::{
     RunSummary, Schedule, ScheduleBackfillParams, ScheduleCreateParams, ScheduleListParams,
     SchedulePauseParams, ScheduleRefParams, ScheduleTriggerParams, ScheduleUpdateParams,
 };
-pub use settings::{Settings, SettingsGetParams, SettingsResult, SettingsSetParams, StoredSettings};
+pub use settings::{
+    Settings, SettingsGetParams, SettingsResult, SettingsSetParams, StoredSettings,
+};
 pub use shared::{CalendarRule, CalendarRules, Deleted, Page, RetryPolicy, RunError, ScheduleSpec};
 pub use task::{Task, TaskGetParams, TaskListParams, TaskSetStateParams};
 pub use types::{SchedulerDatetime, SchedulerDuration, SchedulerRecordId, SchedulerValue};

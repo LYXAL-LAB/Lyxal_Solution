@@ -6,7 +6,9 @@ use rand_core::{OsRng, RngCore};
 
 use super::calendar::Verdict;
 use super::cron::CronNext;
-use super::{Spec, GAP_SAMPLE, MAX_FIRE_TIMES, MAX_FORECAST, MAX_JITTER, MIN_GAP, SEARCH_TRIES, SEARCH_YEARS};
+use super::{
+    Spec, GAP_SAMPLE, MAX_FIRE_TIMES, MAX_FORECAST, MAX_JITTER, MIN_GAP, SEARCH_TRIES, SEARCH_YEARS,
+};
 use crate::error::{SpecError, SpecReason};
 
 /// Dates d'échéance entre deux instants, dans l'ordre.
@@ -27,8 +29,14 @@ fn out_of_range(rule: &str, error: impl std::fmt::Display) -> SpecError {
 }
 
 /// Prochain multiple de l'intervalle `step` depuis `anchor` (à partir du multiple `first`),
-/// strictement après `after` ; `None` au-delà des dates représentables.
-fn every_next(anchor: Timestamp, first: i128, step: SignedDuration, after: Timestamp) -> Option<Timestamp> {
+/// strictement après `after` ; `None` au-delà de la dernière date représentable (an 9999) :
+/// l'intervalle ne donne alors plus de date, ce qui n'est pas une erreur.
+fn every_next(
+    anchor: Timestamp,
+    first: i128,
+    step: SignedDuration,
+    after: Timestamp,
+) -> Option<Timestamp> {
     let step = step.as_nanos();
     if step <= 0 {
         return None;
@@ -90,7 +98,11 @@ impl Spec {
                     .to_ambiguous_zoned(resume)
                     .compatible()
                     .ok()
-                    .and_then(|z| z.timestamp().checked_sub(SignedDuration::from_nanos(1)).ok())
+                    .and_then(|z| {
+                        z.timestamp()
+                            .checked_sub(SignedDuration::from_nanos(1))
+                            .ok()
+                    })
                     .filter(|&r| r > at)
                     .unwrap_or(at);
                 Ok(Some(resume))
@@ -100,7 +112,11 @@ impl Spec {
 
     /// Recherche de la prochaine date permise strictement après `after`, au plus tard à
     /// `until` (et à `end_at`).
-    fn search(&self, after: Timestamp, until: Option<Timestamp>) -> Result<Option<Timestamp>, SpecError> {
+    fn search(
+        &self,
+        after: Timestamp,
+        until: Option<Timestamp>,
+    ) -> Result<Option<Timestamp>, SpecError> {
         let begin = match self.start_at {
             Some(start) => {
                 let before_start = start

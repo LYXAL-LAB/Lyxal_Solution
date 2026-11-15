@@ -10,13 +10,16 @@ les évolutions dans [`ROADMAP.md`](ROADMAP.md).
 Le **socle SurrealQL** est en place : réglages, tâches déclarées par les modules, files,
 calendriers d'exceptions, planifications, exécutions et leurs états, réservation sous bail,
 nouvelles tentatives, chevauchement, rattrapage, rejeu de période, droits par organisation,
-journal des actions et événements. Le **calcul des dates** (cron, intervalles, fuseaux,
-calendriers) et la **boucle du moteur** (planificateur et exécuteurs Rust) ne sont pas encore
-écrits : aucune exécution n'est lancée tant qu'ils n'existent pas. Les fonctions du moteur
-reçoivent les dates calculées par Rust ; les tests les fournissent à sa place.
+journal des actions et événements. Le **crate Rust** fournit le calcul des dates (cron,
+intervalles, date unique, fuseaux et changements d'heure, exclusions, calendriers, bornes,
+décalage aléatoire, prévision), le contrôle des planifications avant écriture et les appels
+typés de chaque fonction publique (voir « Partie Rust »). La **boucle du moteur** (planificateur
+et exécuteurs) n'est pas encore écrite : aucune exécution n'est lancée tant qu'elle n'existe
+pas.
 
 Manifeste : `lyxal_scheduler` 0.1.0, dépendances `lyxal_core`, `lyxal_error`, `lyxal_event`,
-`lyxal_auth`. Pas de code Rust : l'hôte `lyxal-server` porte le module par un `ManifestModule`.
+`lyxal_auth`. Le crate n'a pas encore de `LyxalModule` : l'hôte `lyxal-server` porte le module
+par un `ManifestModule`.
 
 ## Les trois objets
 
@@ -71,8 +74,9 @@ scheduler.
 
 * `spec` : `{ cron: [..], every: [..], at, exclude_cron: [..], timezone (UTC par défaut),
   start_at, end_at, jitter (1 h au plus) }`, au moins une règle `cron`, `every` ou `at`. La forme
-  est contrôlée ici ; la syntaxe cron et le nom du fuseau le seront par le calcul des dates en Rust,
-  qui déclare une planification fausse `invalid` (`fn::scheduler_schedule_next_set`).
+  est contrôlée ici ; la syntaxe cron, le fuseau et les écarts le sont par le calcul des dates en
+  Rust (`SchedulerService` avant l'écriture ; le moteur déclare `invalid` une planification
+  écrite sans passer par Rust, par `fn::scheduler_schedule_next_set`).
 * `calendars` : calendriers d'exceptions de la même portée (10 au plus).
 * `next_fire_at` : écrit par le moteur seulement ; toute modification de `spec`, `calendars` ou
   de la pause le remet à `NONE` (date à recalculer).
@@ -220,6 +224,73 @@ mises en pause, reprises, supprimées, rejeux, déclenchements, exécutions diff
 relances ; auteur, type de session, adresse. Les échéances traitées par le moteur ne sont pas
 journalisées (suivies par `scheduler_run`).
 
+## Partie Rust
+
+### Calcul des dates (`spec/`)
+
+`Spec::parse(spec, created_at, calendars)` lit les règles ; fonctions pures, l'instant de
+référence est toujours un paramètre :
+
+* `next_after(t)` : prochaine échéance strictement après `t`, ou `None` s'il n'y en a plus ;
+* `fire_times_between(from, to, limit)` : échéances de `]from, to]`, 1000 au plus par appel,
+  avec `truncated` pour reprendre après la dernière (dates manquées, rejeu de période) ;
+* `forecast(t, n)` : les `n` prochaines échéances (100 au plus) avec leur heure locale ;
+* `validate(now)`, `max_jitter(t)`, `draw_jitter(max)`.
+
+Règles :
+
+* **Cron** (`croner`, MIT) : 5 à 7 champs (`[secondes] minutes heures jour mois jour-de-semaine
+  [année]` ; l'année exige les 7 champs), alias `@hourly`…`@yearly`, noms `JAN`-`DEC` et
+  `SUN`-`SAT`, `L`, `5L`, `15W`, `LW`, `6#3`, `?` (Quartz) ; jours de la semaine de 0 à 7 (0 et 7 :
+  dimanche, numérotation Vixie et non Quartz). Jour du mois **ou** jour de la semaine quand les
+  deux sont restreints (U2) ; le préfixe `+` de `croner` (les deux à la fois) est refusé.
+* **Fuseau** : nom IANA par planification, UTC par défaut ; base des fuseaux embarquée.
+* **Changement d'heure** (S5, règle d'Oban et de `croner`, conforme à OCPS) : une heure fixe
+  absente au printemps s'exécute au premier instant qui suit le saut (2 h 30 → 3 h 00) ; une
+  heure fixe répétée à l'automne s'exécute une fois (premier passage) ; un joker ou un pas
+  (`*/15`, `0 * * * *`) s'exécute à chaque passage réel. `croner` applique déjà cette règle ;
+  aucun traitement n'a été ajouté.
+* **Intervalles** (`every`, U3) : durée réelle, insensible au changement d'heure ; première
+  échéance à `start_at`, sinon un intervalle après la création de la planification.
+* **Date unique** `at` ; **bornes** `start_at` et `end_at` incluses ; rien après `end_at`.
+* **Exclusions** `exclude_cron` : une date qui correspond est écartée (à la minute pour une
+  expression sans secondes).
+* **Calendriers** : pour chaque calendrier, toutes les règles d'inclusion et aucune règle
+  d'exclusion, sur l'heure locale du fuseau (`dates` `AAAA-MM-JJ`, `annual` `MM-JJ`,
+  `weekdays` 1 à 7, `monthdays` 1 à 31, `time_range` `HH:MM-HH:MM` à fin exclue, qui passe minuit
+  si la fin précède le début).
+* **Écart minimal** (U1) : une seule valeur de secondes par expression, intervalles d'une minute
+  au moins, et au moins une minute entre deux échéances consécutives des 200 premières.
+* **Recherche bornée** (U4) : 5 ans et 10 000 dates écartées au plus, sinon erreur
+  `no_future_fire` (le moteur passe la planification à `invalid`).
+* **Décalage aléatoire** (U5) : tiré par `OsRng` entre 0 et `jitter`, borné à 1 h et à la moitié
+  du plus petit écart entre deux échéances ; `scheduled_for` reste l'identité de l'exécution.
+
+### Contrats (`models/`, `store.rs`)
+
+`SchedulerStore` (`Surreal<Any>`, `LyxalSurrealCall`) : un wrapper d'une ligne
+`store.call_fn("scheduler_…", params)` pour chacune des 38 fonctions publiques. Chaque
+`XxxParams` porte exactement les champs lus par sa fonction (un champ `None` est omis et prend la
+valeur par défaut de SurrealQL) ; chaque résultat est une structure nommée (`SurrealValue`).
+Le jeton de bail (`LeaseToken`) est opaque et masqué dans `Debug`.
+
+### Service (`service.rs`)
+
+`SchedulerService` : `schedule_create` et `schedule_update` contrôlent les règles (syntaxe,
+fuseau, au moins une échéance future, U1, U5, règles des calendriers lus avec les droits de
+l'appelant) avant d'appeler le wrapper ; erreur `SCHEDULER_SPEC_INVALID` avec la règle fautive
+et la raison (`cron_syntax`, `timezone`, `min_interval`, `jitter`, `calendar_rule`, `range`,
+`no_future_fire`, `out_of_range`). `validate_spec` contrôle sans écrire ; `forecast` lit une
+planification et rend ses prochaines échéances.
+
+### Tests Rust
+
+`cargo test -p lyxal_scheduler` : 46 tests — expressions cron (jeux de cas de `croner`, Quartz
+et Croniq), changement d'heure à Paris et New York, calendriers, intervalles, bornes,
+exclusions, décalage, dates manquées, prévision ; et en base embarquée (`mem://`) chacune des
+38 fonctions appelée par son wrapper, avec décodage sans perte de chaque résultat. Ils ne
+remplacent pas le banc SurrealQL.
+
 ## Fichiers
 
 | Dossier | Contenu |
@@ -229,4 +300,6 @@ journalisées (suivies par `scheduler_run`).
 | `events/` | gardes, journal, bus |
 | `error/` | 19 définitions d'erreurs |
 | `seeds/` | permissions et attributions de rôles ; files `default` (10) et `maintenance` (2) |
+| `src/` | crate Rust : `spec/` (calcul des dates), `models/` (contrats), `store.rs` (wrappers), `service.rs`, `error.rs` |
+| `tests/it/` | tests Rust (calcul des dates, contrats en base embarquée) |
 | `tests/` | banc SurrealQL (`scripts/ci/test_lyxal_modules.py`) : droits, tâches et files, calendriers, planifications, échéances, chevauchement, exécutions, réservation et fin, places et élagage, journal, fonctions internes |

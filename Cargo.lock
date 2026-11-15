@@ -4168,11 +4168,9 @@ dependencies = [
  "lyxal_runtime",
  "lyxal_surreal",
  "rand_core 0.6.4",
- "serde",
  "surrealdb",
  "thiserror 1.0.69",
  "tokio",
- "tracing",
 ]
 
 [[package]]

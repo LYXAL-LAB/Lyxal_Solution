@@ -52,7 +52,10 @@ fn every_shorter_than_a_minute_refused_u1() {
     let mut spec = spec_of("UTC");
     spec.every = vec![dur(30)];
     let err = parse_err(&spec);
-    assert_eq!((err.rule.as_str(), err.reason), ("every[0]", SpecReason::MinInterval));
+    assert_eq!(
+        (err.rule.as_str(), err.reason),
+        ("every[0]", SpecReason::MinInterval)
+    );
 }
 
 #[test]
@@ -60,14 +63,18 @@ fn smallest_gap_between_rules_u1() {
     // Deux expressions à 30 s d'écart : refusées à l'écriture.
     let spec = parse(&cron_spec("UTC", &["0 9 * * *", "30 0 9 * * *"]));
     assert_eq!(
-        spec.validate(ts("2026-01-01T00:00:00Z")).expect_err("U1").reason,
+        spec.validate(ts("2026-01-01T00:00:00Z"))
+            .expect_err("U1")
+            .reason,
         SpecReason::MinInterval
     );
     // Expression et intervalle : 1 min d'écart au moins, accepté.
     let mut ok = cron_spec("UTC", &["0 9 * * *"]);
     ok.every = vec![dur(3600)];
     ok.start_at = Some(dt("2026-01-01T00:01:00Z"));
-    parse(&ok).validate(ts("2026-01-01T00:00:00Z")).expect("écart d'une minute");
+    parse(&ok)
+        .validate(ts("2026-01-01T00:00:00Z"))
+        .expect("écart d'une minute");
 }
 
 #[test]
@@ -85,7 +92,12 @@ fn bounds_start_and_end() {
             "2026-02-03T09:00:00+00:00"
         ]
     );
-    assert_eq!(parsed.next_after(ts("2026-02-03T09:00:00Z")).expect("calcul"), None);
+    assert_eq!(
+        parsed
+            .next_after(ts("2026-02-03T09:00:00Z"))
+            .expect("calcul"),
+        None
+    );
     // Fin avant le début.
     spec.end_at = Some(dt("2026-01-01T00:00:00Z"));
     assert_eq!(reason(&spec), SpecReason::Range);
@@ -102,10 +114,18 @@ fn single_date_at() {
         next_n(&parsed, ts("2026-01-01T00:00:00Z"), 3),
         ["2026-05-01T08:00:00+00:00"]
     );
-    assert_eq!(parsed.next_after(ts("2026-05-01T08:00:00Z")).expect("calcul"), None);
+    assert_eq!(
+        parsed
+            .next_after(ts("2026-05-01T08:00:00Z"))
+            .expect("calcul"),
+        None
+    );
     // Date passée : aucune échéance future, refusée à l'écriture.
     assert_eq!(
-        parsed.validate(ts("2026-06-01T00:00:00Z")).expect_err("passée").reason,
+        parsed
+            .validate(ts("2026-06-01T00:00:00Z"))
+            .expect_err("passée")
+            .reason,
         SpecReason::NoFutureFire
     );
     // Avec une expression cron : la plus proche des deux.
@@ -154,19 +174,29 @@ fn exclude_cron_minute_and_second_precision() {
 fn exclusion_of_every_date_stops_after_10000_tries_u4() {
     let mut spec = cron_spec("UTC", &["* * * * *"]);
     spec.exclude_cron = vec!["* * * * *".to_string()];
-    let err = parse(&spec).next_after(ts("2026-01-01T00:00:00Z")).expect_err("U4");
+    let err = parse(&spec)
+        .next_after(ts("2026-01-01T00:00:00Z"))
+        .expect_err("U4");
     assert_eq!(err.reason, SpecReason::NoFutureFire);
     assert!(err.message.contains("10000"), "{}", err.message);
     // Expression dont la prochaine date est à plus de 5 ans.
-    let err = parse(&cron_spec("UTC", &["0 0 1 1 * 2040"]))
+    let err = parse(&cron_spec("UTC", &["0 0 0 1 1 * 2040"]))
         .next_after(ts("2026-01-01T00:00:00Z"))
         .expect_err("U4");
     assert_eq!(err.reason, SpecReason::NoFutureFire);
     // Date impossible : aucune échéance, refusée à l'écriture.
     let impossible = parse(&cron_spec("UTC", &["0 0 30 2 *"]));
-    assert_eq!(impossible.next_after(ts("2026-01-01T00:00:00Z")).expect("calcul"), None);
     assert_eq!(
-        impossible.validate(ts("2026-01-01T00:00:00Z")).expect_err("jamais").reason,
+        impossible
+            .next_after(ts("2026-01-01T00:00:00Z"))
+            .expect("calcul"),
+        None
+    );
+    assert_eq!(
+        impossible
+            .validate(ts("2026-01-01T00:00:00Z"))
+            .expect_err("jamais")
+            .reason,
         SpecReason::NoFutureFire
     );
 }
@@ -182,21 +212,30 @@ fn jitter_bounds_u5() {
     spec.jitter = Some(dur(301));
     let parsed = parse(&spec);
     assert_eq!(
-        parsed.validate(ts("2026-01-01T00:00:00Z")).expect_err("U5").reason,
+        parsed
+            .validate(ts("2026-01-01T00:00:00Z"))
+            .expect_err("U5")
+            .reason,
         SpecReason::Jitter
     );
     spec.jitter = Some(dur(300));
     let parsed = parse(&spec);
-    parsed.validate(ts("2026-01-01T00:00:00Z")).expect("moitié de l'écart");
+    parsed
+        .validate(ts("2026-01-01T00:00:00Z"))
+        .expect("moitié de l'écart");
     assert_eq!(
-        parsed.max_jitter(ts("2026-01-01T00:00:00Z")).expect("borne"),
+        parsed
+            .max_jitter(ts("2026-01-01T00:00:00Z"))
+            .expect("borne"),
         SignedDuration::from_secs(300)
     );
     // Toutes les 6 h avec 1 h : borne d'une heure.
     let mut spec = cron_spec("UTC", &["0 */6 * * *"]);
     spec.jitter = Some(dur(3600));
     assert_eq!(
-        parse(&spec).max_jitter(ts("2026-01-01T00:00:00Z")).expect("borne"),
+        parse(&spec)
+            .max_jitter(ts("2026-01-01T00:00:00Z"))
+            .expect("borne"),
         SignedDuration::from_secs(3600)
     );
     // Sans décalage : zéro.
@@ -211,11 +250,18 @@ fn jitter_bounds_u5() {
 #[test]
 fn draw_jitter_stays_within_bounds_u5() {
     let max = SignedDuration::from_secs(90);
-    let draws: Vec<SignedDuration> = (0..1000).map(|_| draw_jitter(max).expect("tirage")).collect();
-    assert!(draws.iter().all(|d| *d >= SignedDuration::ZERO && *d <= max));
+    let draws: Vec<SignedDuration> = (0..1000)
+        .map(|_| draw_jitter(max).expect("tirage"))
+        .collect();
+    assert!(draws
+        .iter()
+        .all(|d| *d >= SignedDuration::ZERO && *d <= max));
     // Tirages répartis : pas tous identiques.
     assert!(draws.iter().any(|d| *d != draws[0]));
-    assert_eq!(draw_jitter(SignedDuration::ZERO).expect("tirage"), SignedDuration::ZERO);
+    assert_eq!(
+        draw_jitter(SignedDuration::ZERO).expect("tirage"),
+        SignedDuration::ZERO
+    );
 }
 
 #[test]
@@ -237,9 +283,16 @@ fn missed_fire_times_between_two_instants() {
     assert_eq!(first.times.len(), MAX_FIRE_TIMES);
     assert!(first.truncated);
     let last = *first.times.last().expect("dernière");
+    let second = parsed.fire_times_between(last, to, 5000).expect("calcul");
+    assert_eq!(
+        (second.times.len(), second.truncated),
+        (MAX_FIRE_TIMES, true)
+    );
+    let last = *second.times.last().expect("dernière");
     let rest = parsed.fire_times_between(last, to, 5000).expect("calcul");
-    assert_eq!(rest.times.len(), 2 * 24 * 60 - MAX_FIRE_TIMES);
+    assert_eq!(rest.times.len(), 2 * 24 * 60 - 2 * MAX_FIRE_TIMES);
     assert!(!rest.truncated);
+    assert_eq!(rest.times.last(), Some(&to));
     // Limite plus petite demandée.
     let few = parsed.fire_times_between(from, to, 3).expect("calcul");
     assert_eq!((few.times.len(), few.truncated), (3, true));
@@ -253,7 +306,9 @@ fn missed_fire_times_between_two_instants() {
 #[test]
 fn forecast_with_local_time() {
     let parsed = parse(&cron_spec("Europe/Paris", &["30 2 * * *"]));
-    let got = parsed.forecast(ts("2026-03-27T12:00:00Z"), 3).expect("prévision");
+    let got = parsed
+        .forecast(ts("2026-03-27T12:00:00Z"), 3)
+        .expect("prévision");
     let shown: Vec<String> = got.iter().map(|z| z.to_string()).collect();
     assert_eq!(
         shown,
@@ -271,14 +326,21 @@ fn forecast_with_local_time() {
     // Moins de dates qu'il n'en est demandé : celles qui restent.
     let mut once = spec_of("UTC");
     once.at = Some(dt("2026-05-01T08:00:00Z"));
-    assert_eq!(parse(&once).forecast(ts("2026-01-01T00:00:00Z"), 5).expect("prévision").len(), 1);
+    assert_eq!(
+        parse(&once)
+            .forecast(ts("2026-01-01T00:00:00Z"), 5)
+            .expect("prévision")
+            .len(),
+        1
+    );
 }
 
 #[test]
 fn anchor_is_the_creation_when_given() {
     let mut spec = spec_of("UTC");
     spec.every = vec![dur(3600)];
-    let parsed = Spec::parse(&spec, ts("2026-01-01T00:20:00Z"), CalendarSet::empty()).expect("règles lues");
+    let parsed =
+        Spec::parse(&spec, ts("2026-01-01T00:20:00Z"), CalendarSet::empty()).expect("règles lues");
     assert_eq!(
         next_n(&parsed, ts("2026-01-01T00:00:00Z"), 2),
         ["2026-01-01T01:20:00+00:00", "2026-01-01T02:20:00+00:00"]

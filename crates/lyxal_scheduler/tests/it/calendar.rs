@@ -31,17 +31,32 @@ fn weekdays_include_and_exclude() {
 
 #[test]
 fn dates_include_and_exclude() {
-    let holidays = [rule(Exclude, Dates, vec![text("2026-01-02"), text("2026-01-03")])];
+    let holidays = [rule(
+        Exclude,
+        Dates,
+        vec![text("2026-01-02"), text("2026-01-03")],
+    )];
     let spec = parse_with(&daily_nine(), &[&holidays[..]]);
     assert_eq!(
         next_n(&spec, ts("2026-01-01T10:00:00Z"), 1),
         ["2026-01-04T09:00:00+00:00"]
     );
-    let only = [rule(Include, Dates, vec![text("2026-03-10"), text("2026-01-20")])];
+    let only = [rule(
+        Include,
+        Dates,
+        vec![text("2026-03-10"), text("2026-01-20")],
+    )];
     let spec = parse_with(&daily_nine(), &[&only[..]]);
     assert_eq!(
-        next_n(&spec, ts("2026-01-01T00:00:00Z"), 3),
+        next_n(&spec, ts("2026-01-01T00:00:00Z"), 2),
         ["2026-01-20T09:00:00+00:00", "2026-03-10T09:00:00+00:00"]
+    );
+    // Après la dernière date incluse : aucune date permise dans les 5 ans (U4).
+    assert_eq!(
+        spec.next_after(ts("2026-03-10T09:00:00Z"))
+            .expect_err("U4")
+            .reason,
+        SpecReason::NoFutureFire
     );
 }
 
@@ -91,7 +106,11 @@ fn monthdays_include_and_exclude() {
 fn time_range_include_exclude_and_midnight() {
     let mut hourly = cron_spec("UTC", &["0 * * * *"]);
     hourly.cron = vec!["0 * * * *".to_string()];
-    let office = [rule(Include, TimeRange, vec![text("09:00-12:00"), text("14:00-16:00")])];
+    let office = [rule(
+        Include,
+        TimeRange,
+        vec![text("09:00-12:00"), text("14:00-16:00")],
+    )];
     let spec = parse_with(&hourly, &[&office[..]]);
     assert_eq!(
         next_n(&spec, ts("2026-01-05T00:00:00Z"), 6),
@@ -112,7 +131,10 @@ fn time_range_include_exclude_and_midnight() {
     );
     let all_day = [rule(Include, TimeRange, vec![text("00:00-00:00")])];
     let spec = parse_with(&hourly, &[&all_day[..]]);
-    assert_eq!(next_n(&spec, ts("2026-01-05T20:30:00Z"), 1), ["2026-01-05T21:00:00+00:00"]);
+    assert_eq!(
+        next_n(&spec, ts("2026-01-05T20:30:00Z"), 1),
+        ["2026-01-05T21:00:00+00:00"]
+    );
 }
 
 #[test]
@@ -200,7 +222,9 @@ fn calendar_that_excludes_everything_stops_u4() {
     )
     .expect("règles lues");
     assert_eq!(
-        spec.validate(ts("2026-01-01T00:00:00Z")).expect_err("U4").reason,
+        spec.validate(ts("2026-01-01T00:00:00Z"))
+            .expect_err("U4")
+            .reason,
         SpecReason::NoFutureFire
     );
 }
