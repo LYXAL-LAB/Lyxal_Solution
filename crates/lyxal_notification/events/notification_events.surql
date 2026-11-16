@@ -83,3 +83,81 @@ THEN {
     });
     IF !$published.ok { THROW $published.error.code; };
 };
+
+-- ----------------------------------------------------------------------------
+-- Abonnés, préférences, abonnements aux sujets (identifiants seulement : jamais l'adresse, le
+-- téléphone ni le nom ; la clé d'un abonné est aléatoire)
+-- ----------------------------------------------------------------------------
+
+DEFINE EVENT OVERWRITE notification_subscriber_changed_event ON TABLE notification_subscriber
+WHEN $event = "CREATE" OR $event = "DELETE"
+    OR ($event = "UPDATE" AND ($before.email != $after.email OR $before.phone != $after.phone
+        OR $before.first_name != $after.first_name OR $before.last_name != $after.last_name
+        OR $before.locale != $after.locale OR $before.timezone != $after.timezone OR $before.data != $after.data))
+THEN {
+    -- Un compte n'est lié qu'à son identifiant auth:<identité> : personne ne crée l'abonné d'un
+    -- autre à son propre compte pour lire ensuite ses informations et ses préférences
+    IF $event = "CREATE" AND $after.identity IS NOT NONE
+        AND $after.subscriber_id != string::concat("auth:", <string> record::id($after.identity)) {
+        THROW "NOTIFICATION_SUBSCRIBER_IDENTITY_MISMATCH";
+    };
+    LET $record = IF $event = "DELETE" { $before } ELSE { $after };
+    LET $published = fn::event_publish({
+        event_id: rand::uuid::v7(),
+        event_type: IF $event = "CREATE" { "notification.subscriber.created" } ELSE IF $event = "DELETE" { "notification.subscriber.deleted" } ELSE { "notification.subscriber.updated" },
+        producer: "lyxal_notification",
+        source: $record.id,
+        payload: {
+            subscriber_id: <string> $record.id,
+            tenant: IF $record.tenant IS NONE { NONE } ELSE { <string> $record.tenant },
+            identity_id: IF $record.identity IS NONE { NONE } ELSE { <string> $record.identity }
+        },
+        metadata: {}
+    });
+    IF !$published.ok { THROW $published.error.code; };
+};
+
+DEFINE EVENT OVERWRITE notification_preference_updated_event ON TABLE notification_preference
+WHEN $event = "CREATE" OR ($event = "UPDATE" AND ($before.channels != $after.channels OR $before.quiet_hours != $after.quiet_hours))
+THEN {
+    LET $published = fn::event_publish({
+        event_id: rand::uuid::v7(),
+        event_type: "notification.preference.updated",
+        producer: "lyxal_notification",
+        source: $after.id,
+        payload: {
+            preference_id: <string> $after.id,
+            tenant: IF $after.tenant IS NONE { NONE } ELSE { <string> $after.tenant },
+            level: $after.level,
+            subscriber_id: IF $after.subscriber IS NONE { NONE } ELSE { <string> $after.subscriber },
+            workflow_id: IF $after.workflow IS NONE { NONE } ELSE { <string> $after.workflow },
+            category_id: IF $after.category IS NONE { NONE } ELSE { <string> $after.category }
+        },
+        metadata: {}
+    });
+    IF !$published.ok { THROW $published.error.code; };
+};
+
+DEFINE EVENT OVERWRITE notification_topic_member_event ON TABLE notification_topic_member
+WHEN $event = "CREATE" OR $event = "DELETE"
+THEN {
+    -- Un compte n'est lié qu'à son identifiant auth:<identité> : personne ne crée l'abonné d'un
+    -- autre à son propre compte pour lire ensuite ses informations et ses préférences
+    IF $event = "CREATE" AND $after.identity IS NOT NONE
+        AND $after.subscriber_id != string::concat("auth:", <string> record::id($after.identity)) {
+        THROW "NOTIFICATION_SUBSCRIBER_IDENTITY_MISMATCH";
+    };
+    LET $record = IF $event = "DELETE" { $before } ELSE { $after };
+    LET $published = fn::event_publish({
+        event_id: rand::uuid::v7(),
+        event_type: IF $event = "CREATE" { "notification.topic.subscribed" } ELSE { "notification.topic.unsubscribed" },
+        producer: "lyxal_notification",
+        source: $record.id,
+        payload: {
+            topic_id: <string> $record.topic,
+            subscriber_id: <string> $record.subscriber
+        },
+        metadata: {}
+    });
+    IF !$published.ok { THROW $published.error.code; };
+};

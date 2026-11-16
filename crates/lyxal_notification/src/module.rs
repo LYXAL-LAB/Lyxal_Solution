@@ -33,7 +33,7 @@ impl NotificationModule {
         let descriptor = ModuleDescriptorBuilder::new(ModuleId::new(MODULE_ID), "0.1.0")
             .name("Lyxal Notification")
             .description(
-                "Notifications sortantes : parcours, gabarits, file d'envoi e-mail, journal et liste de suppression",
+                "Notifications sortantes : abonnés, sujets, préférences, parcours, gabarits, file d'envoi e-mail, diffusions, journal et liste de suppression",
             )
             .capability("database")
             .capability("events")

@@ -2,17 +2,47 @@
 
 use lyxal_surreal::SurrealValue;
 
+use super::subscriber::SubscriberInput;
 use super::types::{NotificationDatetime, NotificationRecordId};
 
-/// Destinataire d'un parcours.
-#[derive(Debug, Clone, PartialEq, SurrealValue)]
+/// Destinataire d'un message, tel que le rendu le voit (`recipient` des gabarits) : adresse
+/// copiée de l'abonné au déclenchement.
+#[derive(Clone, PartialEq, SurrealValue)]
 pub struct Recipient {
     /// Adresse e-mail (normalisée par la base).
     pub email: String,
     /// Langue préférée (BCP 47).
     pub locale: Option<String>,
-    /// Nom affiché.
+    /// Prénom affiché.
     pub name: Option<String>,
+}
+
+impl std::fmt::Debug for Recipient {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Recipient")
+            .field("locale", &self.locale)
+            .finish_non_exhaustive()
+    }
+}
+
+/// Destinataire(s) d'un déclenchement (`to`).
+#[derive(Debug, Clone, SurrealValue)]
+#[surreal(untagged)]
+pub enum TriggerTarget {
+    /// Un abonné, créé ou mis à jour à la volée (un identifiant seul doit exister).
+    Subscriber(SubscriberInput),
+    /// Une liste de 100 abonnés au plus (un déclenchement par abonné, clé `<clé>/<subscriber_id>`).
+    List(Vec<SubscriberInput>),
+    /// Diffusion à un sujet (traitée par le worker).
+    Topic {
+        /// Clé du sujet.
+        topic: String,
+    },
+    /// Diffusion à tous les abonnés de la portée (traitée par le worker) ; `all` vaut `true`.
+    All {
+        /// Toujours `true`.
+        all: bool,
+    },
 }
 
 /// Paramètres de `fn::notification_trigger`. Les identifiants transmis sont des textes
@@ -29,11 +59,15 @@ pub struct TriggerParams {
     pub idempotency_key: String,
     /// Événement d'origine.
     pub event_id: Option<String>,
-    /// Destinataire.
-    pub recipient: Recipient,
+    /// Destinataire(s).
+    pub to: TriggerTarget,
+    /// `subscriber_id` de l'auteur de l'action.
+    pub actor: Option<String>,
+    /// Auteur exclu (vrai par défaut).
+    pub exclude_actor: Option<bool>,
     /// Variables non sensibles (objet JSON).
     pub payload: serde_json::Value,
-    /// Variables sensibles scellées sous le contexte du module (`enc:v2`).
+    /// Variables sensibles scellées sous le contexte du module (`enc:v2`) ; un seul abonné.
     pub secret: Option<String>,
     /// Fin de validité du secret.
     pub expires_at: Option<NotificationDatetime>,
@@ -47,34 +81,71 @@ impl std::fmt::Debug for TriggerParams {
             .field("trigger_event", &self.trigger_event)
             .field("idempotency_key", &self.idempotency_key)
             .field("event_id", &self.event_id)
-            .field("recipient", &self.recipient)
+            .field("to", &self.to)
             .field("secret", &self.secret.as_ref().map(|_| "[REDACTED]"))
             .field("expires_at", &self.expires_at)
             .finish_non_exhaustive()
     }
 }
 
-/// Issue d'un déclenchement.
+/// Forme d'un déclenchement.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, SurrealValue)]
+#[surreal(untagged, rename_all = "lowercase")]
+pub enum TriggerKind {
+    /// Un abonné.
+    Subscriber,
+    /// Une liste d'abonnés.
+    List,
+    /// Une diffusion (sujet ou tous).
+    Broadcast,
+}
+
+/// Issue d'un déclenchement pour un abonné, ou d'une diffusion.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, SurrealValue)]
 #[surreal(untagged, rename_all = "lowercase")]
 pub enum TriggerStatus {
-    /// Déclenchement créé, étapes en file.
+    /// Déclenchement (ou diffusion) créé.
     Created,
     /// Clé déjà utilisée : déclenchement existant renvoyé.
     Duplicate,
-    /// Adresse supprimée : déclenchement abandonné.
+    /// Écarté : adresse supprimée, préférence, auteur de l'action.
     Skipped,
+}
+
+/// Issue d'un abonné d'une liste.
+#[derive(Debug, Clone, PartialEq, SurrealValue)]
+pub struct ListRun {
+    /// Identifiant de l'abonné.
+    pub subscriber_id: String,
+    /// `created`, `duplicate`, `skipped`, `no_address` ou `rejected`.
+    pub status: String,
+    /// Déclenchement.
+    pub run_id: Option<NotificationRecordId>,
+    /// Motif d'abandon.
+    pub skip_reason: Option<String>,
+    /// Code d'erreur d'un abonné refusé (`NOTIFICATION_*`).
+    pub code: Option<String>,
 }
 
 /// Résultat de `fn::notification_trigger`.
 #[derive(Debug, Clone, PartialEq, SurrealValue)]
 pub struct TriggerResult {
-    /// Déclenchement.
-    pub run_id: NotificationRecordId,
-    /// Issue.
-    pub status: TriggerStatus,
-    /// Motif d'abandon (`suppressed:<motif>`).
+    /// Forme du déclenchement.
+    pub kind: TriggerKind,
+    /// Issue (abonné ou diffusion).
+    pub status: Option<TriggerStatus>,
+    /// Abonné (un abonné).
+    pub subscriber: Option<NotificationRecordId>,
+    /// Déclenchement (un abonné ; absent si écarté avant sa création).
+    pub run_id: Option<NotificationRecordId>,
+    /// Motif d'abandon (`suppressed:<motif>`, `preference:<niveau>`, `actor`).
     pub skip_reason: Option<String>,
     /// Étapes créées (ou existantes pour un rejeu).
+    #[surreal(default)]
     pub job_ids: Vec<NotificationRecordId>,
+    /// Issue par abonné (liste).
+    #[surreal(default)]
+    pub runs: Vec<ListRun>,
+    /// Diffusion (sujet ou tous).
+    pub broadcast_id: Option<NotificationRecordId>,
 }

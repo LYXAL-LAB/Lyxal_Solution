@@ -4,6 +4,7 @@
 use lyxal_i18n::ResolvedText;
 use lyxal_surreal::SurrealValue;
 
+use super::preference::QuietHoursRule;
 use super::trigger::Recipient;
 use super::types::{NotificationDatetime, NotificationRecordId};
 
@@ -62,10 +63,31 @@ pub struct ClaimedJob {
     pub secret: Option<String>,
     /// Parcours sensible : aucun objet conservé.
     pub sensitive: bool,
+    /// Parcours critique : ni heures calmes ni lien de désabonnement.
+    pub critical: bool,
     /// Nom d'expéditeur des réglages.
     pub from_name: Option<String>,
     /// Adresse de réponse des réglages.
     pub reply_to: Option<String>,
+    /// Heures calmes de l'abonné (absentes pour un parcours critique).
+    pub quiet_hours: Option<QuietHoursRule>,
+    /// Cible du lien de désabonnement (absente pour un parcours critique).
+    pub unsubscribe: Option<UnsubscribeTarget>,
+}
+
+/// Cible du lien de désabonnement d'un message : la catégorie du parcours, sinon le parcours.
+#[derive(Debug, Clone, PartialEq, Eq, SurrealValue)]
+pub struct UnsubscribeTarget {
+    /// Portée (`installation` ou clé de l'organisation).
+    pub scope: String,
+    /// Abonné.
+    pub subscriber: NotificationRecordId,
+    /// Catégorie du parcours.
+    pub category: Option<NotificationRecordId>,
+    /// Parcours (sans catégorie).
+    pub workflow: Option<NotificationRecordId>,
+    /// Canal.
+    pub channel: String,
 }
 
 impl std::fmt::Debug for ClaimedJob {
@@ -77,6 +99,8 @@ impl std::fmt::Debug for ClaimedJob {
             .field("attempt", &self.attempt)
             .field("locale", &self.locale)
             .field("sensitive", &self.sensitive)
+            .field("critical", &self.critical)
+            .field("quiet_hours", &self.quiet_hours)
             .field("secret", &self.secret.as_ref().map(|_| "[REDACTED]"))
             .finish_non_exhaustive()
     }
@@ -107,6 +131,8 @@ pub struct JobReleaseParams {
     pub job_id: String,
     /// Jeton de réservation.
     pub claim_token: String,
+    /// Reprise au plus tôt (fin des heures calmes) ; immédiate si absente.
+    pub not_before: Option<NotificationDatetime>,
 }
 
 /// Résultat de `fn::notification_job_release`.
@@ -114,6 +140,8 @@ pub struct JobReleaseParams {
 pub struct JobReleased {
     /// État de l'étape (`queued`).
     pub status: String,
+    /// Prochaine exécution possible.
+    pub next_retry_at: NotificationDatetime,
 }
 
 /// Paramètres de `fn::notification_job_complete`.
@@ -208,6 +236,8 @@ pub struct PurgeResult {
     pub log_entries: i64,
     /// Déclenchements supprimés (étapes et messages avec eux).
     pub runs: i64,
+    /// Diffusions terminées supprimées.
+    pub broadcasts: i64,
 }
 
 /// Paramètres de `fn::notification_settings_get`.
@@ -224,6 +254,8 @@ pub struct EffectiveSettings {
     pub from_name: Option<String>,
     /// Adresse de réponse.
     pub reply_to: Option<String>,
+    /// Fuseau horaire par défaut des abonnés.
+    pub timezone: Option<String>,
     /// Tentatives au plus.
     pub max_attempts: i64,
     /// Conservation des déclenchements (jours).

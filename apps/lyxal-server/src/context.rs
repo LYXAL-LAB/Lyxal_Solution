@@ -1,4 +1,5 @@
 use crate::modules::auth::AuthHost;
+use crate::modules::notification::NotificationHost;
 use crate::modules::scheduler::SchedulerHost;
 use crate::modules::secrets::SecretsHost;
 use crate::{config::AppConfig, database::Database, health::HealthRegistry, metrics::Metrics};
@@ -21,6 +22,8 @@ pub struct AppContext {
     pub secrets: Option<SecretsHost>,
     /// Planificateur (routes `/scheduler/*`), absent si le module n'est pas hébergé.
     pub scheduler: Option<SchedulerHost>,
+    /// Notifications (routes `/notification/*`), absent si le module n'est pas hébergé.
+    pub notification: Option<NotificationHost>,
 }
 
 /// Ce que les routes des fichiers reçoivent de l'hôte : les supports configurés et, s'il y en a
@@ -51,6 +54,7 @@ impl AppContext {
             storage,
             secrets: None,
             scheduler: None,
+            notification: None,
         }
     }
 
@@ -63,6 +67,12 @@ impl AppContext {
     /// Contexte avec le planificateur (routes `/scheduler/*`).
     pub fn with_scheduler(mut self, scheduler: SchedulerHost) -> Self {
         self.scheduler = Some(scheduler);
+        self
+    }
+
+    /// Contexte avec les notifications (routes `/notification/*`).
+    pub fn with_notification(mut self, notification: NotificationHost) -> Self {
+        self.notification = Some(notification);
         self
     }
 }

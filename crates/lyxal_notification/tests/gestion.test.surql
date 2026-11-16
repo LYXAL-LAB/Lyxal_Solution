@@ -197,10 +197,11 @@ RETURN fn::notification_workflow_list({ tenant: "auth_organization:alpha", statu
     RETURN $w == [] AND fn::notification_workflow_list({ tenant: "auth_organization:alpha" }).error.code == "NOTIFICATION_PERMISSION_DENIED";
 };
 
--- test: un membre sans permission ne lit rien
+-- test: un membre sans permission ne liste rien et ne lit aucun gabarit ; il voit les parcours de son organisation (réglage de ses préférences), pas ceux d'une autre
 -- en tant que: membre
 RETURN fn::notification_workflow_list({ tenant: "auth_organization:alpha" }).error.code == "NOTIFICATION_PERMISSION_DENIED"
-    AND array::len(SELECT * FROM notification_workflow) == 0;
+    AND array::len(SELECT * FROM notification_template) == 0
+    AND array::len(SELECT * FROM notification_workflow WHERE scope_key = "beta") == 0;
 
 -- test: désactivation (un parcours n'est jamais supprimé)
 -- en tant que: admin
@@ -214,7 +215,7 @@ RETURN fn::notification_workflow_list({ tenant: "auth_organization:alpha" }).err
 -- en tant que: admin
 RETURN fn::notification_settings_set({ tenant: "auth_organization:alpha", from_name: "Alpha BTP", reply_to: "Contact@Alpha.test", max_attempts: 3 }).ok
     AND fn::notification_settings_get({ tenant: "auth_organization:alpha" }).data.effective
-        == { from_name: "Alpha BTP", reply_to: "contact@alpha.test", max_attempts: 3, retention_days_runs: 90, retention_days_log: 30 };
+        == { from_name: "Alpha BTP", reply_to: "contact@alpha.test", timezone: NONE, max_attempts: 3, retention_days_runs: 90, retention_days_log: 30 };
 
 -- test: réglages modifiés sans recréation ; valeurs hors bornes refusées
 -- en tant que: admin

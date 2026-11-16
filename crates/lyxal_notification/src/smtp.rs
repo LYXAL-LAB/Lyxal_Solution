@@ -5,6 +5,7 @@
 //! `permanent`. La signature DKIM est faite par le relais (décision N4).
 
 use async_trait::async_trait;
+use lettre::message::header::{HeaderName, HeaderValue};
 use lettre::message::{Mailbox, MultiPart};
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::transport::smtp::extension::ClientId;
@@ -16,6 +17,11 @@ use std::time::Duration;
 use crate::error::{NotificationError, NotificationResult};
 use crate::models::FailureClass;
 use crate::render::RenderedEmail;
+
+/// En-tête du lien de désabonnement (RFC 2369).
+const LIST_UNSUBSCRIBE: HeaderName = HeaderName::new_from_ascii_str("List-Unsubscribe");
+/// En-tête du désabonnement en un clic (RFC 8058).
+const LIST_UNSUBSCRIBE_POST: HeaderName = HeaderName::new_from_ascii_str("List-Unsubscribe-Post");
 
 /// Sécurité de la connexion SMTP.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -86,6 +92,10 @@ pub struct OutgoingEmail {
     pub from_name: Option<String>,
     /// Adresse de réponse.
     pub reply_to: Option<String>,
+    /// Lien de désabonnement en un clic : en-têtes `List-Unsubscribe` et
+    /// `List-Unsubscribe-Post: List-Unsubscribe=One-Click` (RFC 8058) ; absent pour un parcours
+    /// critique.
+    pub list_unsubscribe: Option<String>,
     /// Message rendu.
     pub content: RenderedEmail,
 }
@@ -215,6 +225,19 @@ impl SmtpTransport {
                 .parse()
                 .map_err(|_| invalid("adresse de réponse"))?;
             builder = builder.reply_to(Mailbox::new(None, address));
+        }
+        if let Some(url) = email.list_unsubscribe {
+            // Adresse faite par `UnsubscribeLinks` : ASCII sans espace ni chevron
+            if !url.is_ascii() || url.contains(|c: char| c.is_whitespace() || c == '<' || c == '>')
+            {
+                return Err(invalid("lien de désabonnement"));
+            }
+            builder = builder
+                .raw_header(HeaderValue::new(LIST_UNSUBSCRIBE, format!("<{url}>")))
+                .raw_header(HeaderValue::new(
+                    LIST_UNSUBSCRIBE_POST,
+                    "List-Unsubscribe=One-Click".to_string(),
+                ));
         }
         builder
             .multipart(MultiPart::alternative_plain_html(

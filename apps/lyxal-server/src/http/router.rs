@@ -1,4 +1,4 @@
-use super::{auth, handlers, middleware, scheduler, secrets, storage, uploads};
+use super::{auth, handlers, middleware, notification, scheduler, secrets, storage, uploads};
 use crate::{config::CorsConfig, context::AppContext, error::ServerError};
 use axum::{
     http::{HeaderName, HeaderValue, Method},
@@ -22,7 +22,8 @@ pub fn build_router(context: AppContext) -> Result<Router, ServerError> {
         .route("/system/modules", get(handlers::modules))
         .nest("/auth", auth::routes())
         .nest("/secrets", secrets::routes())
-        .nest("/scheduler", scheduler::routes());
+        .nest("/scheduler", scheduler::routes())
+        .nest("/notification", notification::routes());
 
     // Limite du corps et délai total : toutes les routes, sauf les fichiers
     let general = Router::new()

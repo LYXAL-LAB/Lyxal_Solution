@@ -19,9 +19,12 @@ pub enum NotificationError {
     /// Gabarit impossible à rendre (syntaxe, variable inconnue, budget dépassé, langue absente).
     #[error("rendu impossible : {0}")]
     Render(String),
-    /// Configuration refusée (SMTP, adresse d'expéditeur).
+    /// Configuration refusée (SMTP, adresse d'expéditeur, adresse publique des liens).
     #[error("configuration invalide : {0}")]
     Configuration(String),
+    /// Jeton de désabonnement illisible, altéré ou d'une autre clé.
+    #[error("lien de désabonnement invalide")]
+    Unsubscribe,
 }
 
 impl NotificationError {
@@ -32,6 +35,7 @@ impl NotificationError {
             Self::Secret(_) => "NOTIFICATION_SECRET_UNAVAILABLE".to_string(),
             Self::Render(_) => "NOTIFICATION_RENDER_FAILED".to_string(),
             Self::Configuration(_) => "NOTIFICATION_SMTP_NOT_CONFIGURED".to_string(),
+            Self::Unsubscribe => "NOTIFICATION_UNSUBSCRIBE_INVALID".to_string(),
         }
     }
 

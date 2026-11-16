@@ -91,3 +91,30 @@ IF !record::exists(error_definition:CORE_SANITIZE_INVALID_TYPE) THEN (
         }
     }
 ) END;
+
+IF !record::exists(error_definition:CORE_CONDITION_INVALID) THEN (
+    CREATE error_definition:CORE_CONDITION_INVALID CONTENT {
+        code: "CORE_CONDITION_INVALID",
+        module: "core",
+        domain: "condition",
+        category: "internal",
+        severity: "error",
+        message: "A lyxal_core condition has an invalid shape or exceeds its limits",
+        default_language: "en",
+        http_status: 500,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Condition invalide transmise au Core",
+                description: "fn::utils_condition_evaluate a reçu une condition de forme invalide (nœud inconnu, opérateur inconnu, valeur manquante) ou qui dépasse ses limites de profondeur ou de règles.",
+                resolution: "Contrôler la condition à son enregistrement avec fn::utils_condition_check et refuser une condition invalide avec l'erreur du module."
+            },
+            en: {
+                label: "Invalid condition passed to the Core",
+                description: "fn::utils_condition_evaluate received a condition with an invalid shape (unknown node, unknown operator, missing value) or exceeding its depth or rule limits.",
+                resolution: "Check the condition when it is saved with fn::utils_condition_check and reject an invalid condition with the module's error."
+            }
+        }
+    }
+) END;

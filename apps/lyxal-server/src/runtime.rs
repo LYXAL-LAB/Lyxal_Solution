@@ -20,6 +20,8 @@ pub struct Started {
     pub secrets: modules::secrets::SecretsHost,
     /// Planificateur : registre des handlers des modules hébergés, files servies.
     pub scheduler: modules::scheduler::SchedulerHost,
+    /// Notifications : session système et liens de désabonnement (routes `/notification/*`).
+    pub notification: modules::notification::NotificationHost,
 }
 
 /// Construit le runtime, installe le noyau et les modules hébergés, puis les démarre.
@@ -83,5 +85,6 @@ pub async fn start(config: &AppConfig, client: &Surreal<Any>) -> Result<Started,
         storage: services.storage,
         secrets: services.secrets,
         scheduler: services.scheduler,
+        notification: services.notification,
     })
 }

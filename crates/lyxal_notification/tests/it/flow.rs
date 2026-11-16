@@ -35,7 +35,7 @@ struct Published {
     payload: serde_json::Value,
 }
 
-fn worker(
+pub(crate) fn worker(
     client: &Surreal<Any>,
     engine: &Arc<CryptoEngine<StaticKeyResolver>>,
     server: &TestSmtpServer,
@@ -61,7 +61,7 @@ fn worker(
 }
 
 /// Corps décodé d'un message MIME simple (parties en quoted-printable ou Base64).
-fn decoded(data: &str) -> String {
+pub(crate) fn decoded(data: &str) -> String {
     let mut out = String::new();
     for part in data.split("\n--") {
         let Some((headers, body)) = part.split_once("\n\n") else {
@@ -176,6 +176,24 @@ async fn invitation_from_auth_is_delivered_once_and_leaves_no_secret() {
     assert_eq!(secrets.len(), 1, "un seul déclenchement");
     let queued = secrets[0].clone().expect("secret en file");
     assert!(queued.starts_with("enc:v2:"));
+    // Personne invitée sans compte : abonné email:<adresse> de l'organisation, sans identité
+    let mut response = client
+        .query("SELECT VALUE [subscriber_id, tenant, identity] FROM notification_subscriber")
+        .await
+        .expect("abonnés");
+    let subscribers: Vec<(
+        String,
+        lyxal_surreal::RecordId,
+        Option<lyxal_surreal::RecordId>,
+    )> = response.take(0).expect("abonnés");
+    assert_eq!(
+        subscribers,
+        vec![(
+            "email:claire@exemple.fr".to_string(),
+            organization.id.clone(),
+            None
+        )]
+    );
     assert_ne!(
         Some(queued.as_str()),
         published.payload["secret"].as_str(),
@@ -459,4 +477,20 @@ async fn security_alert_from_auth_is_delivered_once() {
     let body = decoded(&received[0].data);
     assert!(body.contains("Inès"), "{body}");
     assert!(body.contains("passkey « Téléphone »"), "{body}");
+    // Personne qui a un compte : abonné auth:<clé> de l'installation, lié à son compte ; parcours
+    // critique : aucun lien de désabonnement
+    let mut response = client
+        .query("SELECT VALUE [subscriber_id, scope_key, <string> identity] FROM notification_subscriber")
+        .await
+        .expect("abonnés");
+    let subscribers: Vec<(String, String, String)> = response.take(0).expect("abonnés");
+    assert_eq!(
+        subscribers,
+        vec![(
+            "auth:alerte".to_string(),
+            "installation".to_string(),
+            "auth_identity:alerte".to_string()
+        )]
+    );
+    assert!(!received[0].data.contains("List-Unsubscribe"));
 }

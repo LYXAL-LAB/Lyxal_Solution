@@ -56,13 +56,13 @@ DEFINE TABLE OVERWRITE notification_suppression
         FOR select WHERE fn::notification_can({ action: "read_config", tenant: tenant })
         FOR create WHERE fn::notification_can({ action: "manage", tenant: tenant }) OR fn::notification_can({ action: "worker", tenant: tenant })
         FOR update, delete WHERE fn::notification_can({ action: "manage", tenant: tenant })
-    COMMENT "Adresses à ne plus contacter (rejet définitif, plainte, désabonnement, manuel)";
+    COMMENT "Adresses à ne plus contacter (rejet définitif, plainte, blocage manuel)";
 
 DEFINE FIELD OVERWRITE tenant ON TABLE notification_suppression TYPE option<record<auth_organization>> REFERENCE ON DELETE CASCADE READONLY COMMENT "Organisation (NONE : installation)";
 DEFINE FIELD OVERWRITE scope_key ON TABLE notification_suppression TYPE string VALUE IF $this.tenant IS NONE { "installation" } ELSE { <string> record::id($this.tenant) } COMMENT "Portée d'unicité";
 DEFINE FIELD OVERWRITE channel ON TABLE notification_suppression TYPE string ASSERT $value IN ["email"] READONLY COMMENT "Canal";
 DEFINE FIELD OVERWRITE address ON TABLE notification_suppression TYPE string ASSERT string::len($value) >= 3 AND string::len($value) <= 254 AND $value == string::lowercase($value) READONLY COMMENT "Adresse normalisée";
-DEFINE FIELD OVERWRITE reason ON TABLE notification_suppression TYPE string ASSERT $value IN ["hard_bounce", "complaint", "unsubscribe", "manual"] COMMENT "Motif";
+DEFINE FIELD OVERWRITE reason ON TABLE notification_suppression TYPE string ASSERT $value IN ["hard_bounce", "complaint", "manual"] COMMENT "Motif";
 DEFINE FIELD OVERWRITE source ON TABLE notification_suppression TYPE option<string> ASSERT $value IS NONE OR string::len($value) <= 256 COMMENT "Origine (code SMTP, administrateur…)";
 DEFINE FIELD OVERWRITE created_at ON TABLE notification_suppression TYPE datetime DEFAULT time::now() READONLY COMMENT "Création";
 DEFINE FIELD OVERWRITE keep_until ON TABLE notification_suppression TYPE option<datetime> COMMENT "Fin de la suppression (NONE : sans limite)";

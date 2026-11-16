@@ -5,7 +5,7 @@ pub mod auth;
 mod i18n;
 #[cfg(feature = "module-ingestion")]
 mod ingestion;
-mod notification;
+pub mod notification;
 pub mod scheduler;
 pub mod secrets;
 mod storage;
@@ -161,6 +161,8 @@ pub struct HostedServices {
     pub secrets: secrets::SecretsHost,
     /// Planificateur : registre des handlers ouvert aux modules hébergés, exécuteurs par file.
     pub scheduler: scheduler::SchedulerHost,
+    /// Notifications : session système et liens de désabonnement (routes `/notification/*`).
+    pub notification: notification::NotificationHost,
     #[cfg(feature = "module-ingestion")]
     publication: bool,
     /// Envoi des notifications configuré (clé applicative et relais SMTP).
@@ -180,8 +182,7 @@ pub async fn register_services(
     let storage = storage::register_services(runtime, client, config)?;
     let secrets = secrets::register_services(runtime, client, config)?;
     let scheduler = scheduler::register_services(runtime, client, config)?;
-    let notification_delivery =
-        notification::register_services(runtime, client, config, crypto).await?;
+    let notification = notification::register_services(runtime, client, config, crypto).await?;
     #[cfg(feature = "module-ingestion")]
     {
         let publication =
@@ -191,8 +192,9 @@ pub async fn register_services(
             storage,
             secrets,
             scheduler,
+            notification: notification.host,
             publication,
-            notification_delivery,
+            notification_delivery: notification.delivery,
         })
     }
     #[cfg(not(feature = "module-ingestion"))]
@@ -201,7 +203,8 @@ pub async fn register_services(
         storage,
         secrets,
         scheduler,
-        notification_delivery,
+        notification: notification.host,
+        notification_delivery: notification.delivery,
     })
 }
 

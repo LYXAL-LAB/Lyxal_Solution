@@ -184,12 +184,16 @@ impl Default for SchedulerConfig {
 
 /// Notifications sortantes : relais SMTP unique de l'installation (avant `lyxal_secrets`). Sans
 /// relais ou sans clé applicative, aucun e-mail n'est envoyé (abonnements suspendus, sonde
-/// « dégradé »).
+/// « dégradé »). `public_url` (`LYXAL__NOTIFICATION__PUBLIC_URL`) : adresse publique de l'hôte,
+/// qui active les liens de désabonnement en un clic (avec la clé applicative) ; sans elle, aucun
+/// e-mail ne porte de lien ni d'en-tête `List-Unsubscribe`.
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NotificationConfig {
     #[serde(default)]
     pub smtp: Option<SmtpConfig>,
+    #[serde(default)]
+    pub public_url: Option<String>,
 }
 
 /// Relais SMTP : `LYXAL__NOTIFICATION__SMTP__HOST`, `__PORT`, `__SECURITY` (`tls`, `starttls`,

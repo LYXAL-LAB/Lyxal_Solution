@@ -15,7 +15,7 @@ DEFINE TABLE OVERWRITE notification_run
         FOR select WHERE fn::notification_can({ action: "read", tenant: tenant }) OR fn::notification_can({ action: "send", tenant: tenant })
         FOR create WHERE fn::notification_can({ action: "send", tenant: tenant })
         FOR update, delete WHERE fn::notification_can({ action: "worker", tenant: tenant })
-    COMMENT "Déclenchements de parcours pour un destinataire";
+    COMMENT "Déclenchements de parcours pour un abonné";
 
 DEFINE FIELD OVERWRITE tenant ON TABLE notification_run
     TYPE option<record<auth_organization>>
@@ -35,23 +35,40 @@ DEFINE FIELD OVERWRITE workflow ON TABLE notification_run
 
 DEFINE FIELD OVERWRITE idempotency_key ON TABLE notification_run
     TYPE string
-    ASSERT string::len($value) >= 1 AND string::len($value) <= 128
+    ASSERT string::len($value) >= 1 AND string::len($value) <= 400
     READONLY
-    COMMENT "Clé d'idempotence (event_id de lyxal_event ou clé fournie)";
+    COMMENT "Clé d'idempotence (event_id de lyxal_event ou clé fournie ; <clé>/<subscriber_id> pour une liste ou une diffusion)";
 
 DEFINE FIELD OVERWRITE event_id ON TABLE notification_run
     TYPE option<string>
     READONLY
     COMMENT "Événement déclencheur";
 
-DEFINE FIELD OVERWRITE recipient ON TABLE notification_run
+DEFINE FIELD OVERWRITE subscriber ON TABLE notification_run
+    TYPE option<record<notification_subscriber>>
+    REFERENCE ON DELETE UNSET
+    COMMENT "Abonné destinataire (retiré si l'abonné est supprimé : le déclenchement garde l'adresse utilisée jusqu'à sa purge)";
+
+DEFINE FIELD OVERWRITE address ON TABLE notification_run
     TYPE object
     READONLY
-    COMMENT "Destinataire : { email, locale, name }";
+    COMMENT "Adresse utilisée, copiée de l'abonné au déclenchement : { email, phone, locale, name, timezone }";
 
-DEFINE FIELD OVERWRITE recipient.email ON TABLE notification_run TYPE string;
-DEFINE FIELD OVERWRITE recipient.locale ON TABLE notification_run TYPE option<string>;
-DEFINE FIELD OVERWRITE recipient.name ON TABLE notification_run TYPE option<string>;
+DEFINE FIELD OVERWRITE address.email ON TABLE notification_run TYPE option<string>;
+DEFINE FIELD OVERWRITE address.phone ON TABLE notification_run TYPE option<string>;
+DEFINE FIELD OVERWRITE address.locale ON TABLE notification_run TYPE option<string>;
+DEFINE FIELD OVERWRITE address.name ON TABLE notification_run TYPE option<string>;
+DEFINE FIELD OVERWRITE address.timezone ON TABLE notification_run TYPE option<string>;
+
+DEFINE FIELD OVERWRITE broadcast ON TABLE notification_run
+    TYPE option<record<notification_broadcast>>
+    REFERENCE ON DELETE UNSET
+    COMMENT "Diffusion d'origine";
+
+DEFINE FIELD OVERWRITE actor ON TABLE notification_run
+    TYPE option<string>
+    READONLY
+    COMMENT "subscriber_id de l'auteur de l'action";
 
 DEFINE FIELD OVERWRITE organization_locale ON TABLE notification_run
     TYPE option<string>
@@ -80,7 +97,7 @@ DEFINE FIELD OVERWRITE status ON TABLE notification_run
 
 DEFINE FIELD OVERWRITE skip_reason ON TABLE notification_run
     TYPE option<string>
-    COMMENT "Motif d'abandon (adresse supprimée…)";
+    COMMENT "Motif d'abandon (suppressed:<motif>, preference:<niveau>, no_address:<canal>)";
 
 DEFINE FIELD OVERWRITE created_at ON TABLE notification_run
     TYPE datetime
@@ -99,6 +116,7 @@ DEFINE FIELD OVERWRITE purge_after ON TABLE notification_run
 DEFINE INDEX OVERWRITE notification_run_idempotency ON TABLE notification_run FIELDS scope_key, idempotency_key UNIQUE;
 DEFINE INDEX OVERWRITE notification_run_purge ON TABLE notification_run FIELDS purge_after;
 DEFINE INDEX OVERWRITE notification_run_secret_expiry ON TABLE notification_run FIELDS expires_at;
+DEFINE INDEX OVERWRITE notification_run_subscriber ON TABLE notification_run FIELDS subscriber;
 
 DEFINE TABLE OVERWRITE notification_job
     TYPE NORMAL
@@ -130,6 +148,8 @@ DEFINE FIELD OVERWRITE next_retry_at ON TABLE notification_job TYPE datetime DEF
 DEFINE FIELD OVERWRITE locked_until ON TABLE notification_job TYPE option<datetime> COMMENT "Fin de réservation";
 DEFINE FIELD OVERWRITE claim_token ON TABLE notification_job TYPE option<string> COMMENT "Jeton de réservation (UUID v7)";
 DEFINE FIELD OVERWRITE worker_id ON TABLE notification_job TYPE option<string> COMMENT "Worker réservataire";
+
+DEFINE FIELD OVERWRITE skip_reason ON TABLE notification_job TYPE option<string> COMMENT "Motif d'une étape écartée (preference:<niveau>, no_address:<canal>)";
 
 DEFINE FIELD OVERWRITE last_error ON TABLE notification_job
     TYPE option<object>

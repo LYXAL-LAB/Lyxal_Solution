@@ -3,7 +3,7 @@ name = "lyxal_notification"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Notifications sortantes de Lyxal OS : parcours, gabarits, file d'envoi e-mail, journal et liste de suppression"
+description = "Notifications sortantes de Lyxal OS : abonnés, sujets, préférences, parcours, gabarits, file d'envoi e-mail, diffusions, journal et liste de suppression"
 
 [dependencies]
 lyxal_error = { workspace = true }
@@ -24,10 +24,13 @@ uuid = { workspace = true }
 fastrand = { workspace = true }
 zeroize = "1.8"
 minijinja = { version = "3.1", features = ["fuel"] }
+# Heures calmes dans le fuseau de l'abonné (comme lyxal_scheduler)
+jiff = { version = "0.2", features = ["tzdb-bundle-always"] }
+# Jetons de désabonnement (Base64url)
+base64 = "0.22"
 # SMTP en TLS (rustls, fournisseur ring) ; DKIM laissé au relais (décision N4)
 lettre = { version = "0.11.23", default-features = false, features = ["builder", "smtp-transport", "pool", "tokio1-rustls", "ring", "webpki-roots"] }
 
 [dev-dependencies]
 lyxal_auth = { workspace = true }
 tokio = { workspace = true, features = ["net", "io-util"] }
-base64 = "0.22"

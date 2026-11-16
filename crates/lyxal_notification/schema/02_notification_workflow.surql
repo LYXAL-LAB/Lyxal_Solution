@@ -4,14 +4,18 @@
 -- RÔLE   : Parcours de notification (modèle Novu `notification-template`)
 -- ============================================================================
 -- Les étapes sont un tableau d'objets ordonnés ; V1-a : une étape `email`. Le déclencheur est un
--- type d'événement `lyxal_event`. `critical` : ignore les désabonnements (jamais les rejets
--- définitifs). `sensitive` : aucun contenu rendu n'est conservé.
+-- type d'événement `lyxal_event`. `critical` : ignore les choix de l'abonné, sa liste de
+-- désabonnements et ses heures calmes (jamais les rejets définitifs). `sensitive` : aucun
+-- contenu rendu n'est conservé. `category` : catégorie de désabonnement ; `preferences` :
+-- canaux par défaut et canaux imposés (que l'abonné ne peut pas changer).
 
 DEFINE TABLE OVERWRITE notification_workflow
     TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
+        -- Lus aussi par chaque personne de la portée, pour régler ses préférences
         FOR select WHERE fn::notification_can({ action: "read_config", tenant: tenant })
+            OR fn::notification_can({ action: "member", tenant: tenant })
         FOR create, update WHERE fn::notification_can({ action: "manage", tenant: tenant })
         FOR delete NONE
     COMMENT "Parcours de notification déclenchés par événement ou par appel direct";
@@ -52,7 +56,26 @@ DEFINE FIELD OVERWRITE status ON TABLE notification_workflow
 DEFINE FIELD OVERWRITE critical ON TABLE notification_workflow
     TYPE bool
     DEFAULT false
-    COMMENT "Ignore les désabonnements (jamais les rejets définitifs)";
+    COMMENT "Ignore les choix de l'abonné, les désabonnements et les heures calmes (jamais les rejets définitifs)";
+
+DEFINE FIELD OVERWRITE category ON TABLE notification_workflow
+    TYPE option<record<notification_category>>
+    REFERENCE ON DELETE UNSET
+    COMMENT "Catégorie de désabonnement (de la portée du parcours ou de l'installation)";
+
+DEFINE FIELD OVERWRITE preferences ON TABLE notification_workflow
+    TYPE object
+    DEFAULT { channels: {}, enforced: [] }
+    COMMENT "Préférences du parcours : { channels : défaut par canal (true si absent), enforced : canaux imposés }";
+
+DEFINE FIELD OVERWRITE preferences.channels ON TABLE notification_workflow TYPE object DEFAULT {};
+DEFINE FIELD OVERWRITE preferences.channels.email ON TABLE notification_workflow TYPE option<bool>;
+DEFINE FIELD OVERWRITE preferences.channels.sms ON TABLE notification_workflow TYPE option<bool>;
+DEFINE FIELD OVERWRITE preferences.channels.chat ON TABLE notification_workflow TYPE option<bool>;
+DEFINE FIELD OVERWRITE preferences.channels.push ON TABLE notification_workflow TYPE option<bool>;
+DEFINE FIELD OVERWRITE preferences.channels.in_app ON TABLE notification_workflow TYPE option<bool>;
+DEFINE FIELD OVERWRITE preferences.channels.webhook ON TABLE notification_workflow TYPE option<bool>;
+DEFINE FIELD OVERWRITE preferences.enforced ON TABLE notification_workflow TYPE array<string> DEFAULT [];
 
 DEFINE FIELD OVERWRITE sensitive ON TABLE notification_workflow
     TYPE bool

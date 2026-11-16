@@ -49,7 +49,7 @@ déclaré manque.
 | `lyxal_error` | toujours | `ManifestModule` |
 | `lyxal_event` | toujours | `ManifestModule` ; moteur démarré par le runtime |
 | `lyxal_auth` | toujours | `AuthModule`, `AuthHealthCheck` |
-| `lyxal_notification` | toujours | `NotificationModule`, `NotificationConsumer` (événements `auth.*`), `NotificationEmailWorker`, `NotificationPurgeWorker`, `NotificationHealthCheck` |
+| `lyxal_notification` | toujours | `NotificationModule`, `NotificationConsumer` (événements `auth.*`), `NotificationEmailWorker` (avec les liens de désabonnement), `NotificationBroadcastWorker`, `NotificationPurgeWorker`, `NotificationHealthCheck` ; routes `/api/v1/notification/*` |
 | `lyxal_storage` | toujours | `StorageModule`, `StorageCleanupWorker` (si un support est configuré), `StorageHealthCheck` ; supports disque et S3 ; envoi reprenable |
 | `lyxal_secrets` | toujours | `SecretsModule`, `SecretsMaintenanceWorker` (purge, rescellement), `SecretsHealthCheck` ; trousseau maître du coffre-fort ; `SecretsClient` pour les modules hébergés |
 | `lyxal_scheduler` | toujours | `SchedulerModule`, `SchedulerLeaderWorker` (planificateur élu par le bail `leader` du runtime), un `SchedulerExecutorWorker` par file (enregistré après l'installation, une fois les files connues), `SchedulerHealthCheck` ; registre des handlers ouvert aux modules hébergés (`SchedulerHost::handlers`, aucun inscrit pour l'instant) |
@@ -81,6 +81,7 @@ du code Rust, déclarer son implémentation et ses services dans `src/modules/` 
 | `scheduler` | `workers` (places de chaque exécuteur de file sur ce nœud, 1 à 64, 4 par défaut) |
 | `auth` | `public_url` (facultative : adresse publique de l'interface, pour les liens des messages et l'origine des passkeys), `passkey_rp_id` (facultatif : domaine des passkeys, défaut : hôte de `public_url`) |
 | `notification.smtp` | `host`, `port`, `security` (`tls`, `starttls`, `local_plain`), `username`, `password`, `from_address`, `from_name`, `timeout_seconds` (section facultative) |
+| `notification` | `public_url` (facultative : adresse publique de l'hôte, qui active les liens de désabonnement en un clic avec la clé applicative) |
 | `storage` | `disk.root` (facultatif : dossier du support de fichiers `default`), `s3.<nom>` (facultatif : `endpoint`, `region`, `bucket`, `access_key_id`, `secret_access_key` par variable d'environnement seulement, `path_style`, `allow_http`), `antivirus` (facultatif : `address` ou `socket`, `timeout_seconds`), `idle_timeout_seconds` (délai d'inactivité d'un envoi ou d'un téléchargement, 5 à 600, 60 par défaut) |
 
 Les identifiants Root ne figurent dans aucun fichier : `LYXAL__DATABASE__USERNAME` et
@@ -118,7 +119,17 @@ enveloppe `enc:v2`). Le relais : `LYXAL__NOTIFICATION__SMTP__HOST`, `__PORT`, `_
 `__FROM_ADDRESS`, et si besoin `__USERNAME` / `__PASSWORD` (variable d'environnement seulement).
 `local_plain` (sans chiffrement) n'est accepté que pour un relais de la boucle locale. Sans clé
 ou sans relais, aucun e-mail n'est envoyé : les abonnements aux événements `auth.*` restent
-suspendus (les événements attendent en file) et la sonde du module est dégradée.
+suspendus (les événements attendent en file) et la sonde du module est dégradée. Les diffusions
+(sujet ou tous les abonnés) sont découpées en déclenchements par le worker des diffusions dans
+tous les cas.
+
+Liens de désabonnement en un clic : avec la clé applicative et
+`LYXAL__NOTIFICATION__PUBLIC_URL` (adresse publique de l'hôte, `https://…`), chaque e-mail non
+critique porte un lien `{public_url}/api/v1/notification/unsubscribe?t=<jeton>` et les en-têtes
+`List-Unsubscribe` / `List-Unsubscribe-Post` (RFC 8058). Le jeton est signé HMAC-SHA256 par une
+clé dérivée de la clé applicative (HKDF-SHA256, `lyxal_crypto`) : changer la clé applicative
+invalide les liens déjà envoyés. Sans l'une des deux, aucun lien n'est mis et les routes
+répondent `404`.
 
 Le stockage des fichiers (`lyxal_storage`) écrit sous un dossier du serveur :
 `LYXAL__STORAGE__DISK__ROOT` (créé s'il n'existe pas ; à placer sur un volume sauvegardé, hors
@@ -391,6 +402,17 @@ ignorés, invalides, illisibles ; `--tenant`, `--overwrite-reviewed` pour écras
 `--dry-run` pour ne rien écrire) ; `check` liste les textes que le rendu refuse. `import` et
 `check` sortent en erreur (`SERVER_COMMAND_FAILED`) si un texte est invalide ou illisible.
 
+Désabonnement (`/api/v1/notification`, sans session ; le jeton signé est vérifié en temps
+constant avant toute lecture de la base ; réponses `Cache-Control: no-store`) :
+
+| Route | Réponse |
+| :--- | :--- |
+| `GET /unsubscribe?t=<jeton>` | petite page de confirmation (HTML sans script, `Referrer-Policy: no-referrer`) dont le bouton fait le `POST` ; ne désabonne pas (un lien ouvert par un antivirus de messagerie reste sans effet) ; jeton refusé : `400` |
+| `POST /unsubscribe?t=<jeton>` | désabonnement en un clic (corps `List-Unsubscribe=One-Click` du client de messagerie, RFC 8058) : e-mail coupé pour la catégorie du parcours (ou le parcours) ; `200` sans contenu, ou une page pour un navigateur (`Accept: text/html`) ; rejouable ; jeton refusé, abonné, catégorie ou parcours supprimés : `400` ; base indisponible : `503` |
+
+Liens non configurés : `404`. Le débit de ces routes est borné par la limite de concurrence de
+l'hôte (aucune lecture de la base pour un jeton refusé).
+
 Chaque requête porte un identifiant `x-request-id` (repris de la requête ou généré). Couches :
 limite de corps, délai, limite de concurrence, rattrapage des paniques, CORS paramétré.
 
@@ -447,5 +469,8 @@ ressources de chaque module, définitions `SERVER_*`, corps des réponses d'erre
 service absent). `tests/scheduler_http.rs` parcourt les routes `/api/v1/scheduler/*` avec le
 moteur réel (handler d'essai inscrit par le test) : planification contrôlée, prévision,
 déclenchement, rejeu, exécution différée exécutée puis annulée et relancée, droits, `no-store`,
-absence des routes du moteur.
+absence des routes du moteur. `tests/notification_http.rs` parcourt les routes de désabonnement
+(clé applicative et `notification.public_url` fournies) : page sans effet, un clic rejouable,
+page pour un navigateur, jeton modifié ou absent (`400`), abonné supprimé (`400`), liens non
+configurés (`404`).
 `scripts/ci/ci_local.sh` rejoue la CI complète.

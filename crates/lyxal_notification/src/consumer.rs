@@ -5,7 +5,10 @@
 //!
 //! Pour chaque événement : ouverture du secret sous le contexte du producteur (lié à
 //! l'événement), rescellement sous le contexte de la file, puis `fn::notification_trigger`
-//! idempotent par l'identifiant d'événement (livraison au moins une fois). Un secret illisible,
+//! idempotent par l'identifiant d'événement (livraison au moins une fois). Le destinataire est
+//! un abonné créé ou mis à jour à la volée (décision B1) : `auth:<clé de l'identité>`, lié à son
+//! compte, pour une personne qui en a un ; `email:<adresse>` pour une personne invitée sans
+//! compte. Un secret illisible,
 //! une charge utile invalide ou un parcours absent partent en lettre morte (`terminal: true`) ;
 //! une base indisponible est rejouée (`terminal: false`).
 
@@ -17,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
 use crate::error::{NotificationError, NotificationResult};
-use crate::models::{NotificationDatetime, Recipient, TriggerParams};
+use crate::models::{NotificationDatetime, SubscriberInput, TriggerParams, TriggerTarget};
 use crate::secret::SecretCodec;
 use crate::store::NotificationStore;
 
@@ -288,7 +291,7 @@ impl SecurityAlertHandler {
         event_id: &str,
     ) -> NotificationResult<()> {
         let alert = event.alert();
-        let Some(email) = alert.recipient_email.clone() else {
+        let Some(email) = alert.recipient_email.as_deref() else {
             return Ok(());
         };
         if alert.first == Some(true) {
@@ -301,11 +304,14 @@ impl SecurityAlertHandler {
                 trigger_event: None,
                 idempotency_key: event_id.to_string(),
                 event_id: Some(event_id.to_string()),
-                recipient: Recipient {
+                to: TriggerTarget::Subscriber(auth_subscriber(
+                    Some(&alert.identity_id),
                     email,
-                    locale: alert.recipient_locale.clone(),
-                    name: alert.recipient_name.clone(),
-                },
+                    alert.recipient_locale.clone(),
+                    alert.recipient_name.clone(),
+                )),
+                actor: None,
+                exclude_actor: None,
                 payload: compact(serde_json::json!({
                     "alert": E::ALERT,
                     "method": alert.method,
@@ -333,6 +339,31 @@ impl<E: SecurityAlert> Handler<E> for SecurityAlertHandler {
                 error: format!("{} : {error}", error.code()),
                 terminal: !error.is_retryable(),
             })
+    }
+}
+
+/// Abonné d'un événement `auth.*` (décision B1) : `auth:<clé>` lié au compte quand l'identité est
+/// connue, sinon `email:<adresse>` (personne invitée sans compte).
+pub fn auth_subscriber(
+    identity_id: Option<&str>,
+    email: &str,
+    locale: Option<String>,
+    first_name: Option<String>,
+) -> SubscriberInput {
+    let identity = identity_id.and_then(|id| {
+        id.strip_prefix("auth_identity:")
+            .filter(|key| !key.is_empty() && !key.contains(':'))
+    });
+    SubscriberInput {
+        subscriber_id: match identity {
+            Some(key) => format!("auth:{key}"),
+            None => format!("email:{}", email.trim().to_lowercase()),
+        },
+        email: Some(email.to_string()),
+        locale,
+        first_name,
+        identity: identity.map(|key| format!("auth_identity:{key}")),
+        ..SubscriberInput::default()
     }
 }
 
@@ -387,11 +418,14 @@ impl<R: KeyResolver> AuthMessageHandler<R> {
                 trigger_event: Some(E::EVENT_TYPE.to_string()),
                 idempotency_key: event_id.to_string(),
                 event_id: Some(event_id.to_string()),
-                recipient: Recipient {
-                    email: message.recipient_email.clone(),
-                    locale: message.recipient_locale.clone(),
-                    name: message.recipient_name.clone(),
-                },
+                to: TriggerTarget::Subscriber(auth_subscriber(
+                    message.identity_id.as_deref(),
+                    &message.recipient_email,
+                    message.recipient_locale.clone(),
+                    message.recipient_name.clone(),
+                )),
+                actor: None,
+                exclude_actor: None,
                 payload: event.variables(),
                 secret: Some(sealed),
                 expires_at: Some(expires_at),
@@ -477,5 +511,28 @@ impl<R: KeyResolver + 'static> EventConsumerModule for NotificationConsumer<R> {
             .register::<PasskeyCloneDetected, _>(alerts())
             .map_err(error)?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_known_identity_is_the_auth_subscriber_otherwise_the_address() {
+        let known = auth_subscriber(
+            Some("auth_identity:abc"),
+            "Claire@Exemple.fr",
+            Some("fr".into()),
+            Some("Claire".into()),
+        );
+        assert_eq!(known.subscriber_id, "auth:abc");
+        assert_eq!(known.identity.as_deref(), Some("auth_identity:abc"));
+        assert_eq!(known.email.as_deref(), Some("Claire@Exemple.fr"));
+        let guest = auth_subscriber(None, " Invite@Exemple.fr ", None, None);
+        assert_eq!(guest.subscriber_id, "email:invite@exemple.fr");
+        assert_eq!(guest.identity, None);
+        let malformed = auth_subscriber(Some("autre:x"), "a@exemple.fr", None, None);
+        assert_eq!(malformed.subscriber_id, "email:a@exemple.fr");
     }
 }

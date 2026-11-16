@@ -25,13 +25,13 @@ Ces éléments appartiennent aux modules. Le Core fournit les briques ; les modu
 
 ```text
 lyxal_core/
-├── manifest.toml            (id lyxal_core, version 0.1.0, 480 fonctions déclarées)
+├── manifest.toml            (id lyxal_core, version 0.1.0, 483 fonctions déclarées)
 ├── Readme.md
 └── functions/
-    ├── validations/   functions/ (195) · tests/ (195)   fn::validation_*
+    ├── validations/   functions/ (196) · tests/ (196)   fn::validation_*
     ├── sanitize/      functions/ (97) · tests/ (97)     fn::sanitize_*
     ├── security/      functions/ (71) · tests/ (71)     fn::security_*
-    └── utils/         functions/ (117) · tests/ (117)   fn::utils_*
+    └── utils/         functions/ (119) · tests/ (119)   fn::utils_*
 ```
 
 Chaque fonction a son fichier (`functions/<domaine>/functions/<nom>.surql`) et son fichier de tests (`functions/<domaine>/tests/<nom>.test.surql`).
@@ -142,6 +142,29 @@ Elles gardent des **paramètres typés** et renvoient une valeur ou un objet. Se
 * `fn::utils_to_csv` applique les guillemets RFC 4180. La lecture d'un CSV est du parsing : elle se fait en Rust (`.agents/rules/lyxal_standards_and_checklist.md` §10).
 * Les conversions `fn::utils_ensure_bool`, `ensure_number`, `decode_uri` et `from_hex` lèvent `CORE_INVALID_ARGUMENT` sur une donnée non convertible : elles s'appliquent à une donnée déjà validée.
 
+### Conditions (`fn::utils_condition_*`)
+
+Règle générique, sans métier, pour décider si une valeur (un objet en général) remplit une condition : abonnements conditionnels, conditions d'étape, choix d'un fournisseur, déclencheurs sur événement.
+
+| Fonction | Rôle |
+| :--- | :--- |
+| `fn::utils_condition_check($condition, $limits)` | contrôle la forme sans évaluer ; renvoie `{ valid, code, details: { path, reason }, rules, depth }`, sans lever pour une condition invalide (le module renvoie sa propre erreur) |
+| `fn::utils_condition_evaluate($value, $condition, $limits)` | évalue ; renvoie `{ matched, error }` ; une forme invalide lève `CORE_CONDITION_INVALID` |
+
+* Forme : `{ all: [...] }`, `{ any: [...] }` (groupes non vides), `{ not: {...} }`, ou règle `{ field: "payload.montant", op: "gt", value: 1000 }`. Le champ est un chemin à points lu par `fn::utils_object_get_path`.
+* Opérateurs : `eq`, `ne` (égalité profonde `==`) ; `lt`, `lte`, `gt`, `gte`, `between` (bornes incluses) sur deux nombres, deux chaînes ou deux dates (`fn::utils_compare_numbers`, `_strings` sensible à la casse, `_dates`) ; `in`, `not_in` (liste de 1 à 100 valeurs) ; `contains` (sous-chaîne ou élément d'un tableau) ; `starts_with`, `ends_with` ; `exists`, `missing` (ni `NONE` ni `NULL`) ; `empty` (absent, `""`, `[]`, `{}`).
+* Champ absent : la règle est fausse, sans erreur (vraie pour `ne`, `not_in`, `missing`, `empty`). Types incompatibles : règle fausse avec `error: { field, op, reason: "type_mismatch" }` ; sa négation reste fausse.
+* `all` s'arrête au premier échec, `any` au premier succès.
+* Limites `{ max_depth, max_rules }` : profondeur 5 et 50 règles par défaut, réglables jusqu'à 10 et 200 (au-delà : `CORE_INVALID_ARGUMENT`). Dépassement : `too_deep` ou `too_many_rules`.
+
+```surql
+-- À l'enregistrement
+LET $check = fn::utils_condition_check($params.condition, NONE);
+IF !$check.valid { RETURN fn::error_result("<MODULE>_CONDITION_INVALID", $language, $check.details); };
+-- À l'usage
+LET $ok = fn::utils_condition_evaluate({ subscriber: $subscriber, payload: $payload }, $condition, NONE).matched;
+```
+
 ### Erreurs de programmation (`THROW`)
 
 Seul un argument invalide fourni par le code appelant (borne négative, bornes inversées, liste vide, option inconnue) interrompt une fonction, avec un code fixe défini dans `crates/lyxal_core/error/core_definitions.surql` (déclaré dans le manifeste, installé après le schéma de `lyxal_error`) :
@@ -151,6 +174,7 @@ Seul un argument invalide fourni par le code appelant (borne négative, bornes i
 | `CORE_INVALID_ARGUMENT` | argument de configuration invalide |
 | `CORE_UNSUPPORTED_OPTION` | option inconnue (ex. opérateur de `fn::validation_compare`, règle absente d'un catalogue) |
 | `CORE_SANITIZE_INVALID_TYPE` | valeur NULL ou de mauvais type transmise à une fonction `fn::sanitize_*` (la donnée aurait dû être validée avant) |
+| `CORE_CONDITION_INVALID` | condition de forme invalide transmise à `fn::utils_condition_evaluate` (à contrôler à son enregistrement par `fn::utils_condition_check`) |
 
 L'en-tête de chaque fichier de fonction liste ses cas de `THROW`.
 
@@ -212,7 +236,7 @@ Aucun module ne l'appelle encore. L'adoption se fera à la reprise de chaque mod
 
 `scripts/ci/test_lyxal_core.py` démarre un serveur SurrealDB 3.3.4 jetable et :
 
-1. charge les 480 fonctions et vérifie qu'elles sont toutes définies ;
+1. charge les 483 fonctions et vérifie qu'elles sont toutes définies ;
 2. vérifie que chaque fonction a son fichier `<nom>.test.surql`, et inversement ;
 3. exécute chaque fichier de tests.
 
