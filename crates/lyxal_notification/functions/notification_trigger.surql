@@ -105,7 +105,8 @@ DEFINE FUNCTION OVERWRITE fn::notification_trigger_target($params: object) -> ob
     LET $to = $params.to;
     LET $subscriber_schema = { fields: fn::notification_subscriber_fields({}), unknown_keys: "reject" };
     IF type::is_array($to) {
-        IF array::len($to) < 1 OR array::len($to) > 100 { RETURN { valid: false, by_field: { to: ["CORE_VALIDATION_TOO_LONG"] } }; };
+        LET $bounds = fn::validation_array_length($to, 1, 100);
+        IF !$bounds.valid { RETURN { valid: false, by_field: { to: [$bounds.code] } }; };
         LET $items = array::map($to, |$item| fn::validation_object_execute(IF type::is_string($item) { { subscriber_id: $item } } ELSE { $item }, $subscriber_schema, 60));
         LET $invalid = array::filter(array::map($items, |$item, $index| [<string> $index, $item]), |$entry| !$entry[1].valid);
         IF array::len($invalid) > 0 { RETURN { valid: false, by_field: { to: object::from_entries(array::map($invalid, |$entry| [$entry[0], $entry[1].by_field])) } }; };

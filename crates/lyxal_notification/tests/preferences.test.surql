@@ -178,6 +178,11 @@ RETURN fn::notification_my_preference_set({ tenant: "auth_organization:alpha", l
 RETURN count(SELECT id FROM notification_preference) == 2
     AND (SELECT VALUE subscriber_id FROM notification_subscriber) == ["auth:membre"];
 
+-- test: elle ne lie pas son compte à l'abonné d'une autre personne (identifiant auth:<autre>)
+-- en tant que: membre
+-- attendu-erreur: NOTIFICATION_SUBSCRIBER_IDENTITY_MISMATCH
+CREATE notification_subscriber CONTENT { tenant: auth_organization:alpha, subscriber_id: "auth:voisin", identity: auth_identity:membre };
+
 -- test: une autre personne sans réglage lit les valeurs par défaut, sans abonné créé
 -- en tant que: voisin
 {
@@ -207,15 +212,17 @@ RETURN fn::notification_my_subscriber({ tenant: NONE, create: false }).code == "
 -- en tant que: admin
 RETURN fn::notification_unsubscribe({ subscriber: "notification_subscriber:x", category: "notification_category:actualites", channel: "email" }).error.code == "NOTIFICATION_PERMISSION_DENIED";
 
--- test: désabonnement par lien : coupe l'e-mail pour la catégorie ; publie notification.subscriber.unsubscribed
+-- test: désabonnement par lien : coupe l'e-mail pour la catégorie, y compris un « oui » de l'abonné pour un parcours de la catégorie ; publie notification.subscriber.unsubscribed
 {
     LET $s = fn::notification_subscriber_find({ tenant: auth_organization:alpha, subscriber_id: "t" });
+    LET $opt_in = fn::notification_preference_write({ tenant: auth_organization:alpha, level: "subscriber_workflow", subscriber: $s.id, workflow: notification_workflow:lettre, channels: { email: true } });
     LET $r = fn::notification_unsubscribe({ subscriber: <string> $s.id, category: "notification_category:actualites", channel: "email" }).data;
     LET $again = fn::notification_unsubscribe({ subscriber: <string> $s.id, category: "notification_category:actualites", channel: "email" }).ok;
     LET $event = (SELECT VALUE payload FROM ONLY event_outbox WHERE event_type = "notification.subscriber.unsubscribed" LIMIT 1);
-    RETURN $r == { subscriber: $s.id, level: "subscriber_category", channel: "email" } AND $again
+    RETURN $opt_in.channels.email == true AND $r == { subscriber: $s.id, level: "subscriber_category", channel: "email" } AND $again
         AND (SELECT VALUE channels FROM ONLY notification_preference WHERE subscriber = $s.id AND level = "subscriber_category" LIMIT 1) == { email: false }
-        AND fn::notification_preference_resolve({ tenant: auth_organization:alpha, workflow: (SELECT * FROM ONLY notification_workflow:lettre), subscriber: $s }).channels.email == { allowed: false, level: "subscriber_category" }
+        AND (SELECT VALUE channels FROM ONLY notification_preference WHERE subscriber = $s.id AND level = "subscriber_workflow" AND workflow = notification_workflow:lettre LIMIT 1) == { email: false, push: false, sms: true }
+        AND fn::notification_preference_resolve({ tenant: auth_organization:alpha, workflow: (SELECT * FROM ONLY notification_workflow:lettre), subscriber: $s }).channels.email == { allowed: false, level: "subscriber_workflow" }
         AND $event == { subscriber_id: <string> $s.id, tenant: "auth_organization:alpha", category_id: "notification_category:actualites", channel: "email" };
 };
 
@@ -233,8 +240,8 @@ RETURN fn::notification_unsubscribe({ subscriber: "notification_subscriber:x", c
 -- en tant que: admin
 {
     LET $r = fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "lettre", idempotency_key: "pref-1", to: { subscriber_id: "t" } }).data;
-    RETURN $r.status == "skipped" AND $r.skip_reason == "preference:subscriber_category"
-        AND (SELECT VALUE [status, skip_reason] FROM notification_job WHERE run = $r.run_id) == [["skipped", "preference:subscriber_category"]];
+    RETURN $r.status == "skipped" AND $r.skip_reason == "preference:subscriber_workflow"
+        AND (SELECT VALUE [status, skip_reason] FROM notification_job WHERE run = $r.run_id) == [["skipped", "preference:subscriber_workflow"]];
 };
 
 -- test: un choix fait après le déclenchement est respecté à la réservation : étape écartée, rien n'est rendu

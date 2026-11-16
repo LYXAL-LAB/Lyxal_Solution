@@ -35,7 +35,10 @@ RETURN fn::notification_trigger_target({ to: { subscriber_id: "a", email: "a@exe
     AND fn::notification_trigger_target({ to: { all: true } }).kind == "all"
     AND !fn::notification_trigger_target({ to: { all: false } }).valid
     AND !fn::notification_trigger_target({ to: { topic: "Pas Snake" } }).valid
-    AND !fn::notification_trigger_target({ to: [] }).valid
+    AND fn::notification_trigger_target({ to: [] }).by_field == { to: ["CORE_VALIDATION_TOO_SHORT"] }
+    AND fn::notification_trigger_target({ to: (<array> (1..=101)).map(|$i| <string> $i) }).by_field == { to: ["CORE_VALIDATION_TOO_LONG"] }
+    -- Invité à l'adresse la plus longue admise (254) : identifiant email:<adresse> accepté
+    AND fn::notification_trigger_target({ to: { subscriber_id: string::concat("email:", string::repeat("a", 254)) } }).valid
     AND fn::notification_trigger_target({ to: ["a", { email: "x@exemple.fr" }] }).by_field.to["1"] IS NOT NONE;
 
 -- test: liste : un déclenchement par abonné (clé <clé>/<subscriber_id>), auteur exclu, inconnu refusé sans arrêter la liste

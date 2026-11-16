@@ -277,7 +277,9 @@ DEFINE FUNCTION OVERWRITE fn::notification_my_subscriber($params: object) -> obj
     LET $existing = fn::notification_subscriber_find({ tenant: $params.tenant, subscriber_id: $subscriber_id });
     IF $existing IS NOT NONE OR !$params.create { RETURN { code: NONE, subscriber: $existing }; };
     -- Abonné créé pour régler ses préférences : adresse et langue de son compte
-    LET $traits = (SELECT VALUE traits FROM ONLY $identity) ?? {};
+    LET $account = fn::auth_identity_get({ identity: <string> $identity });
+    IF !$account.ok { RETURN { code: $account.error.code }; };
+    LET $traits = $account.data.traits ?? {};
     LET $saved = fn::notification_subscriber_save({
         tenant: $params.tenant,
         input: { subscriber_id: $subscriber_id, identity: $identity, email: $traits.email, locale: $traits.locale },
@@ -369,6 +371,14 @@ DEFINE FUNCTION OVERWRITE fn::notification_unsubscribe($params: object) {
         workflow: $p.workflow, category: $p.category, channels: object::from_entries([[$p.channel, false]])
     });
     IF $saved == NONE { RETURN fn::error_result("NOTIFICATION_WRITE_FORBIDDEN", $p.language, { table: "notification_preference" }); };
+    -- Catégorie : les choix « oui » de l'abonné pour un parcours de la catégorie, plus forts
+    -- qu'elle (décision B4), sont coupés aussi pour que le lien arrête bien ces messages
+    IF $p.category IS NOT NONE {
+        UPDATE notification_preference
+            SET channels = object::extend(channels, object::from_entries([[$p.channel, false]]))
+            WHERE subscriber = $subscriber.id AND level = "subscriber_workflow"
+                AND workflow.category = $p.category AND channels[$p.channel] = true;
+    };
     LET $published = fn::event_publish({
         event_id: rand::uuid::v7(),
         event_type: "notification.subscriber.unsubscribed",

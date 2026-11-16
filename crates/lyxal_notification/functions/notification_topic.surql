@@ -159,7 +159,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_topic_subscribe($params: object) {
         fields: {
             tenant: { pipeline: [{ rule: "record", options: { expected_table: "auth_organization" } }] },
             key: { pipeline: [{ rule: "snake_case_name", options: { min_length: 1, max_length: 64 } }], required: true },
-            subscribers: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: false, min_length: 1, max_length: 128 } }, { rule: "array_non_empty" }, { rule: "array_unique" }, { rule: "array_length", options: { max_length: 100 } }], required: true },
+            subscribers: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: false, min_length: 1, max_length: 264 } }, { rule: "array_non_empty" }, { rule: "array_unique" }, { rule: "array_length", options: { max_length: 100 } }], required: true },
             condition: { pipeline: [{ rule: "is_object" }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
@@ -206,7 +206,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_topic_unsubscribe($params: object) {
         fields: {
             tenant: { pipeline: [{ rule: "record", options: { expected_table: "auth_organization" } }] },
             key: { pipeline: [{ rule: "snake_case_name", options: { min_length: 1, max_length: 64 } }], required: true },
-            subscribers: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: false, min_length: 1, max_length: 128 } }, { rule: "array_non_empty" }, { rule: "array_unique" }, { rule: "array_length", options: { max_length: 100 } }], required: true },
+            subscribers: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: false, min_length: 1, max_length: 264 } }, { rule: "array_non_empty" }, { rule: "array_unique" }, { rule: "array_length", options: { max_length: 100 } }], required: true },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"

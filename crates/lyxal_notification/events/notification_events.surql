@@ -95,6 +95,12 @@ WHEN $event = "CREATE" OR $event = "DELETE"
         OR $before.first_name != $after.first_name OR $before.last_name != $after.last_name
         OR $before.locale != $after.locale OR $before.timezone != $after.timezone OR $before.data != $after.data))
 THEN {
+    -- Un compte n'est lié qu'à son identifiant auth:<identité> : personne ne crée l'abonné d'un
+    -- autre à son propre compte pour lire ensuite ses informations et ses préférences
+    IF $event = "CREATE" AND $after.identity IS NOT NONE
+        AND $after.subscriber_id != string::concat("auth:", <string> record::id($after.identity)) {
+        THROW "NOTIFICATION_SUBSCRIBER_IDENTITY_MISMATCH";
+    };
     LET $record = IF $event = "DELETE" { $before } ELSE { $after };
     LET $published = fn::event_publish({
         event_id: rand::uuid::v7(),
@@ -135,6 +141,12 @@ THEN {
 DEFINE EVENT OVERWRITE notification_topic_member_event ON TABLE notification_topic_member
 WHEN $event = "CREATE" OR $event = "DELETE"
 THEN {
+    -- Un compte n'est lié qu'à son identifiant auth:<identité> : personne ne crée l'abonné d'un
+    -- autre à son propre compte pour lire ensuite ses informations et ses préférences
+    IF $event = "CREATE" AND $after.identity IS NOT NONE
+        AND $after.subscriber_id != string::concat("auth:", <string> record::id($after.identity)) {
+        THROW "NOTIFICATION_SUBSCRIBER_IDENTITY_MISMATCH";
+    };
     LET $record = IF $event = "DELETE" { $before } ELSE { $after };
     LET $published = fn::event_publish({
         event_id: rand::uuid::v7(),

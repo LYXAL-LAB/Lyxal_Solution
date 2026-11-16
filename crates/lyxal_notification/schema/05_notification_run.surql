@@ -35,7 +35,7 @@ DEFINE FIELD OVERWRITE workflow ON TABLE notification_run
 
 DEFINE FIELD OVERWRITE idempotency_key ON TABLE notification_run
     TYPE string
-    ASSERT string::len($value) >= 1 AND string::len($value) <= 260
+    ASSERT string::len($value) >= 1 AND string::len($value) <= 400
     READONLY
     COMMENT "Clé d'idempotence (event_id de lyxal_event ou clé fournie ; <clé>/<subscriber_id> pour une liste ou une diffusion)";
 

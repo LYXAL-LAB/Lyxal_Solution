@@ -40,7 +40,7 @@ DEFINE FIELD OVERWRITE scope_key ON TABLE notification_subscriber
 
 DEFINE FIELD OVERWRITE subscriber_id ON TABLE notification_subscriber
     TYPE string
-    ASSERT string::len($value) >= 1 AND string::len($value) <= 128
+    ASSERT string::len($value) >= 1 AND string::len($value) <= 264
     READONLY
     COMMENT "Identifiant stable choisi par l'application, unique dans sa portée (auth:<identité>, email:<adresse>…)";
 
@@ -48,7 +48,7 @@ DEFINE FIELD OVERWRITE identity ON TABLE notification_subscriber
     TYPE option<record<auth_identity>>
     REFERENCE ON DELETE CASCADE
     READONLY
-    COMMENT "Compte lyxal_auth lié (abonné auth:<identité>) ; l'abonné est supprimé avec lui";
+    COMMENT "Compte lyxal_auth lié (abonné auth:<identité> seulement, gardé par notification_subscriber_changed_event) ; l'abonné est supprimé avec lui";
 
 DEFINE FIELD OVERWRITE email ON TABLE notification_subscriber
     TYPE option<string>

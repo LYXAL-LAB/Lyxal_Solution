@@ -12,7 +12,7 @@
 
 DEFINE FUNCTION OVERWRITE fn::notification_subscriber_fields($params: object) -> object {
     RETURN {
-        subscriber_id: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 128 } }], required: true },
+        subscriber_id: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 264 } }], required: true },
         email: { pipeline: [{ rule: "email", options: { max_length: 254 } }] },
         phone: { pipeline: [{ rule: "phone" }] },
         first_name: { pipeline: [{ rule: "optional_string", options: { max_length: 64 } }] },
@@ -119,7 +119,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_subscriber_get($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
             tenant: { pipeline: [{ rule: "record", options: { expected_table: "auth_organization" } }] },
-            subscriber_id: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 128 } }], required: true },
+            subscriber_id: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 264 } }], required: true },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -175,7 +175,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_subscriber_delete($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
             tenant: { pipeline: [{ rule: "record", options: { expected_table: "auth_organization" } }] },
-            subscriber_id: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 128 } }], required: true },
+            subscriber_id: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 264 } }], required: true },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"

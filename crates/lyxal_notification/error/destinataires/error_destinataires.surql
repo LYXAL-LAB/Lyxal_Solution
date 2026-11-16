@@ -327,3 +327,30 @@ IF !record::exists(error_definition:NOTIFICATION_BROADCAST_INCOMPLETE) THEN (
         }
     }
 ) END;
+
+IF !record::exists(error_definition:NOTIFICATION_SUBSCRIBER_IDENTITY_MISMATCH) THEN (
+    CREATE error_definition:NOTIFICATION_SUBSCRIBER_IDENTITY_MISMATCH CONTENT {
+        code: "NOTIFICATION_SUBSCRIBER_IDENTITY_MISMATCH",
+        module: "notification",
+        domain: "destinataires",
+        category: "validation",
+        severity: "error",
+        message: "Subscriber identifier does not match the linked account",
+        default_language: "fr",
+        http_status: 400,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Identifiant d'abonné et compte différents",
+                description: "Un abonné lié à un compte a pour identifiant auth:<identité> de ce compte.",
+                resolution: "Utilisez l'identifiant auth:<identité> du compte, ou ne liez pas de compte."
+            },
+            en: {
+                label: "Subscriber identifier and account differ",
+                description: "A subscriber linked to an account has that account's auth:<identity> identifier.",
+                resolution: "Use the account's auth:<identity> identifier, or do not link an account."
+            }
+        }
+    }
+) END;
