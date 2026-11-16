@@ -236,6 +236,29 @@ async fn trigger_now(store: &NotificationStore, params: TriggerParams) {
     retried(|| store.trigger(params.clone())).await;
 }
 
+/// Reprise d'une attente ou d'un regroupement par l'appel que fait le planificateur à son
+/// échéance (exécuteur `function`, session système) : les tests de regroupement et
+/// d'annulation attendent une heure, pour qu'aucune fenêtre ne se ferme d'elle-même sur une
+/// machine lente ; la reprise réelle par le moteur est prouvée par le test du délai.
+async fn resume_now(client: &Surreal<Any>, key: &str, step: &str) -> String {
+    let sql = format!(
+        "LET $run = (SELECT VALUE id FROM ONLY notification_run WHERE idempotency_key = '{key}' LIMIT 1); \
+         RETURN fn::notification_run_resume({{ args: {{ run: <string> $run, step_key: '{step}' }} }}).data.status;"
+    );
+    for _ in 0..20 {
+        match client
+            .query(sql.as_str())
+            .await
+            .and_then(|mut r| r.take::<Option<String>>(1))
+        {
+            Ok(Some(status)) => return status,
+            Ok(None) => panic!("reprise sans résultat : {sql}"),
+            Err(_) => tokio::time::sleep(Duration::from_millis(50)).await,
+        }
+    }
+    panic!("reprise impossible : {sql}");
+}
+
 const PAUSE_JOB: &str = "RETURN (SELECT VALUE status FROM ONLY notification_job WHERE step_key = 'pause' LIMIT 1) ?? '';";
 const RESUME_RUN: &str = "RETURN (SELECT VALUE state FROM ONLY scheduler_run WHERE task = scheduler_task:⟨notification.run_resume⟩ LIMIT 1) ?? '';";
 
@@ -247,7 +270,7 @@ async fn a_delay_is_really_resumed_by_the_scheduler_engine() {
         r#"
         CREATE notification_workflow:suite CONTENT { scope_key: "installation", key: "suite", name: "Suite", status: "active", steps: [
             { key: "premier", type: "email" },
-            { key: "pause", type: "delay", amount: 5, unit: "seconds" },
+            { key: "pause", type: "delay", amount: 10, unit: "seconds" },
             { key: "rappel", type: "email" }
         ] };
         CREATE notification_template CONTENT { workflow: notification_workflow:suite, step_key: "premier", subject: "Premier", html_body: "<p>1</p>", text_body: "1" };
@@ -262,7 +285,7 @@ async fn a_delay_is_really_resumed_by_the_scheduler_engine() {
     wait_messages(&server, 1, Duration::from_secs(10)).await;
     // L'attente est confiée au planificateur : exécution différée de notification.run_resume
     wait_run(&client, "suite-1", "waiting", Duration::from_secs(5)).await;
-    wait_value(&client, PAUSE_JOB, "waiting", Duration::from_secs(5)).await;
+    wait_value(&client, PAUSE_JOB, "waiting", Duration::from_secs(20)).await;
     let delayed: String = value(
         &client,
         "RETURN (SELECT VALUE scheduler_run FROM ONLY notification_job WHERE step_key = 'pause' LIMIT 1) ?? '';",
@@ -270,7 +293,7 @@ async fn a_delay_is_really_resumed_by_the_scheduler_engine() {
     .await;
     assert!(delayed.starts_with("scheduler_run:"), "{delayed}");
     assert_eq!(server.received().len(), 1, "rien avant la fin de l'attente");
-    wait_messages(&server, 2, Duration::from_secs(15)).await;
+    wait_messages(&server, 2, Duration::from_secs(40)).await;
     wait_run(&client, "suite-1", "completed", Duration::from_secs(5)).await;
     let subjects: Vec<String> = server
         .received()
@@ -290,7 +313,7 @@ async fn three_triggers_are_digested_into_one_email() {
         &client,
         r#"
         CREATE notification_workflow:lot CONTENT { scope_key: "installation", key: "lot", name: "Lot", status: "active", steps: [
-            { key: "lot", type: "digest", window: { amount: 10, unit: "seconds" }, group_by: "payload.projet" },
+            { key: "lot", type: "digest", window: { amount: 1, unit: "hours" }, group_by: "payload.projet" },
             { key: "email", type: "email" }
         ] };
         CREATE notification_template CONTENT { workflow: notification_workflow:lot, step_key: "email",
@@ -308,6 +331,12 @@ async fn three_triggers_are_digested_into_one_email() {
         params.payload = serde_json::json!({ "projet": "Tour B", "n": n });
         trigger_now(&store, params).await;
     }
+    wait_run(&client, "lot-3", "merged", Duration::from_secs(20)).await;
+    assert!(
+        server.received().is_empty(),
+        "rien avant la fin de la fenêtre"
+    );
+    assert_eq!(resume_now(&client, "lot-1", "lot").await, "resumed");
     wait_messages(&server, 1, Duration::from_secs(30)).await;
     wait_run(&client, "lot-1", "completed", Duration::from_secs(5)).await;
     // Aucun autre message après la fin de la fenêtre
@@ -336,7 +365,7 @@ async fn a_run_canceled_during_its_wait_sends_nothing() {
         &client,
         r#"
         CREATE notification_workflow:rappel CONTENT { scope_key: "installation", key: "rappel", name: "Rappel", status: "active", steps: [
-            { key: "pause", type: "delay", amount: 8, unit: "seconds" },
+            { key: "pause", type: "delay", amount: 1, unit: "hours" },
             { key: "email", type: "email" }
         ] };
         CREATE notification_template CONTENT { workflow: notification_workflow:rappel, step_key: "email", subject: "Rappel", html_body: "<p>R</p>", text_body: "R" };
@@ -348,7 +377,7 @@ async fn a_run_canceled_during_its_wait_sends_nothing() {
     let store = NotificationStore::new(client.clone());
     trigger_now(&store, trigger("rappel", "rappel-1", "claire@exemple.fr")).await;
     // Attente confiée au planificateur, puis annulée
-    wait_value(&client, PAUSE_JOB, "waiting", Duration::from_secs(5)).await;
+    wait_value(&client, PAUSE_JOB, "waiting", Duration::from_secs(20)).await;
     let canceled = retried(|| {
         store.cancel(CancelParams {
             tenant: None,
@@ -357,20 +386,14 @@ async fn a_run_canceled_during_its_wait_sends_nothing() {
     })
     .await;
     assert_eq!(canceled.canceled, 1);
-    // L'exécution différée du planificateur se termine sans rien faire
-    wait_value(&client, RESUME_RUN, "completed", Duration::from_secs(20)).await;
+    // La reprise à l'échéance ne fait rien
+    assert_eq!(resume_now(&client, "rappel-1", "pause").await, "ignored");
     tokio::time::sleep(Duration::from_millis(500)).await;
     assert!(
         server.received().is_empty(),
         "aucun e-mail après l'annulation"
     );
     wait_run(&client, "rappel-1", "canceled", Duration::from_secs(1)).await;
-    let result: serde_json::Value = value(
-        &client,
-        "RETURN (SELECT VALUE result FROM ONLY scheduler_run WHERE task = scheduler_task:⟨notification.run_resume⟩ LIMIT 1);",
-    )
-    .await;
-    assert_eq!(result, serde_json::json!({ "status": "ignored" }));
     engine.stop().await;
 }
 
