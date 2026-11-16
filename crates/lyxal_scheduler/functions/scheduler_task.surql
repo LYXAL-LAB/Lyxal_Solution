@@ -17,15 +17,28 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_task_create_refusal($after: object) -> o
     IF !$checked.valid OR $checked.value != $name { RETURN "SCHEDULER_INVALID_PARAMETERS"; };
     LET $short = string::split($name, ".")[0];
     IF $after.module != "lyxal_" + $short { RETURN "SCHEDULER_INVALID_PARAMETERS"; };
-    -- Cible du même module seulement
+    -- Module déclarant installé : release du runtime en cours d'installation (seed du module) ou
+    -- installée (contrats publics fn::runtime_release_list et fn::runtime_module_list, Y3)
+    LET $releases = fn::runtime_release_list({ module_id: $after.module });
+    IF !$releases.ok OR !array::any($releases.data, |$r| $r.status IN ["Installing", "Installed", "Active"]) { RETURN "SCHEDULER_INVALID_PARAMETERS"; };
+    -- Cible du même module seulement : nom complet du module suivi d'un séparateur
+    LET $separator = IF $after.executor = "function" { "_" } ELSE { "." };
     LET $as_function = fn::validation_lyxal_function_name($after.target, false, 128);
     LET $as_event = fn::validation_lyxal_event_name($after.target, 2, IF $after.executor = "handler" { 2 } ELSE { 5 });
     LET $target = IF $after.executor = "function" {
-        $as_function.valid AND $as_function.value == $after.target AND string::starts_with($after.target, $short + "_")
+        $as_function.valid AND $as_function.value == $after.target AND string::starts_with($after.target, $short + $separator)
     } ELSE {
-        $as_event.valid AND $as_event.value == $after.target AND string::starts_with($after.target, $short + ".")
+        $as_event.valid AND $as_event.value == $after.target AND string::starts_with($after.target, $short + $separator)
     };
     IF !$target { RETURN "SCHEDULER_INVALID_PARAMETERS"; };
+    -- Un module dont le nom est le début du nom d'un autre module connu du runtime ne vise jamais
+    -- les fonctions ou les événements de cet autre module (lyxal_pipeline ↛ pipeline_ingestion_*)
+    LET $modules = fn::runtime_module_list({});
+    IF !$modules.ok { RETURN "SCHEDULER_INVALID_PARAMETERS"; };
+    LET $foreign = array::any($modules.data.module_id, |$other| $other != $after.module
+        AND string::starts_with($other, $after.module + "_")
+        AND string::starts_with($after.target, string::slice($other, 6) + $separator));
+    IF $foreign { RETURN "SCHEDULER_INVALID_PARAMETERS"; };
     -- Un handler est inscrit et retrouvé par le nom de sa tâche : sa cible est ce nom
     IF $after.executor = "handler" AND $after.target != $name { RETURN "SCHEDULER_INVALID_PARAMETERS"; };
     IF $after.permission IS NOT NONE AND !record::exists(type::record("auth_permission", $after.permission)) { RETURN "SCHEDULER_INVALID_PARAMETERS"; };
@@ -35,7 +48,7 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_task_create_refusal($after: object) -> o
     -- Schéma des arguments : contrôlé par le moteur du Core (CORE_INVALID_ARGUMENT s'il est faux)
     IF $after.args_schema IS NOT NONE { fn::utils_engine_schema($after.args_schema, fn::validation_step_catalog(), 100); };
     RETURN NONE;
-} COMMENT "Interne : refus d'une déclaration de tâche ($after) : session système seulement ; identifiant ⟨module.action⟩ en minuscules, module = lyxal_<module> ; cible du même module (handler : le nom même de la tâche, fonction <module>_<action>, événement <module>.…) ; permission existante ; politique de tentatives normalisée (10 tentatives, 24 h au plus) ; file existante ; schéma des arguments valide pour le moteur du Core. NONE ou code d'erreur";
+} COMMENT "Interne : refus d'une déclaration de tâche ($after) : session système seulement ; identifiant ⟨module.action⟩ en minuscules, module = lyxal_<module> ; module installé (release du runtime Installing, Installed ou Active) ; cible du même module (handler : le nom même de la tâche, fonction <module>_<action>, événement <module>.…), jamais celle d'un autre module connu du runtime dont le nom commence par celui du module (Y3) ; permission existante ; politique de tentatives normalisée (10 tentatives, 24 h au plus) ; file existante ; schéma des arguments valide pour le moteur du Core. NONE ou code d'erreur";
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_task_update_refusal (interne, garde de modification)

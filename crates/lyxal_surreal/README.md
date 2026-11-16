@@ -57,7 +57,10 @@ pub async fn booking_create(store: &BookingStore, params: BookingCreateParams)
 
 `call_fn` :
 
-* refuse un nom de fonction hors `^[a-z0-9_]+$` (`InvalidFunctionName`), avant toute requête ;
+* prend le nom de la fonction en `&str` : un nom fixe (`"booking_create"`) ou lu à l'exécution
+  (cible d'une tâche du planificateur) ;
+* refuse un nom de fonction hors `^[a-z0-9_]+$` (`InvalidFunctionName { function }`, nom refusé
+  en `String`), avant toute requête ;
 * exécute `RETURN fn::<nom>($params);` en liant les paramètres par `SurrealValue` (types natifs
   `RecordId`, `Datetime`, sans passage par JSON) ;
 * lit le contrat `{ ok, data, error }` et renvoie `T`, `Call(Business(LyxalError))` ou

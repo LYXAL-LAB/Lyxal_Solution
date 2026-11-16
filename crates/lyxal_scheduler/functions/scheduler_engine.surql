@@ -2,9 +2,11 @@
 -- FONCTIONS : moteur — échéances, rattrapage, rejeu de période
 -- MODULE    : lyxal_scheduler
 -- ============================================================================
--- Appelées par le planificateur Rust (lot 3), sous la session système ou un compte de service
--- scheduler.worker. Rust calcule les dates (cron, intervalles, fuseau, calendriers) ; ces
--- fonctions appliquent le rattrapage, le chevauchement et les règles d'état.
+-- Appelées par le planificateur Rust (lot 3), sous la session système. Rust calcule les dates
+-- (cron, intervalles, fuseau, calendriers) ; ces fonctions appliquent le rattrapage, le
+-- chevauchement, la limite d'exécutions en attente et les règles d'état. Celles qui écrivent
+-- reçoivent la garde de génération { node, generation } du bail d'élection du planificateur et
+-- refusent (SCHEDULER_LEADER_FENCED) si ce nœud ne le détient plus (Y2).
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_due_list
@@ -102,18 +104,20 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_fire_available($fire_times: array, $at: 
 
 DEFINE FUNCTION OVERWRITE fn::scheduler_schedule_fire($params: object) {
     LET $report = fn::validation_object_execute($params, {
-        fields: {
+        fields: object::extend(fn::scheduler_leader_fields(), {
             schedule: { pipeline: fn::scheduler_ref("scheduler_schedule"), required: true },
             fire_times: { pipeline: fn::scheduler_fire_times_pipeline([{ rule: "past_datetime", options: { allow_equal: true } }]), required: true },
             next_fire_at: { pipeline: [{ rule: "datetime" }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
-        },
+        }),
         unknown_keys: "reject"
     }, 20);
     IF !$report.valid { RETURN fn::scheduler_invalid($params, $report.by_field); };
     LET $p = $report.value;
     IF fn::scheduler_fire_times_disordered($p.fire_times) { RETURN fn::scheduler_fire_times_invalid($params); };
     IF !fn::scheduler_can({ action: "worker" }) { RETURN fn::error_result("SCHEDULER_PERMISSION_DENIED", $p.language, {}); };
+    LET $fenced = fn::scheduler_leader_fenced($p);
+    IF $fenced IS NOT NONE { RETURN $fenced; };
     LET $schedule = (SELECT * FROM ONLY $p.schedule);
     IF $schedule == NONE { RETURN fn::error_result("SCHEDULER_SCHEDULE_NOT_FOUND", $p.language, { schedule: <string> $p.schedule }); };
     IF $schedule.state != "active" OR $schedule.paused { RETURN fn::error_result("SCHEDULER_SCHEDULE_STATE_INVALID", $p.language, { state: $schedule.state, paused: $schedule.paused }); };
@@ -123,9 +127,12 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_schedule_fire($params: object) {
     LET $now = time::now();
     LET $window = $schedule.catchup_window ?? fn::scheduler_settings_effective({ tenant: $schedule.tenant }).catchup_window;
     LET $selected = fn::scheduler_catchup_select($p.fire_times.at, $schedule.catchup, $window, $now);
-    -- Exécutions restantes : au plus autant de créations
-    LET $capped = IF $schedule.remaining IS NONE { $selected } ELSE { array::slice($selected, 0, $schedule.remaining) };
-    LET $runs = array::fold($capped, [], |$acc, $t| {
+    -- Une échéance déjà créée est ignorée ; exécutions restantes : au plus autant de créations
+    LET $fresh = array::filter($selected, |$t| !record::exists(type::record("scheduler_run", [$schedule.id, $t])));
+    LET $capped = IF $schedule.remaining IS NONE { $fresh } ELSE { array::slice($fresh, 0, $schedule.remaining) };
+    -- Limite d'exécutions en attente de la portée : les échéances au-delà sont ignorées et comptées
+    LET $allowed = array::slice($capped, 0, fn::scheduler_pending_room($schedule.tenant));
+    LET $runs = array::fold($allowed, [], |$acc, $t| {
         LET $run = fn::scheduler_run_spawn($schedule, $task, type::record("scheduler_run", [$schedule.id, $t]), $t, fn::scheduler_fire_available($p.fire_times, $t), "schedule", $schedule.overlap);
         RETURN IF $run == NONE { $acc } ELSE { array::append($acc, { id: $run.id, state: $run.state, scheduled_for: $run.scheduled_for }) };
     });
@@ -141,8 +148,8 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_schedule_fire($params: object) {
         remaining = $remaining,
         state = IF $done { "completed" } ELSE { state });
     IF $updated == NONE { RETURN fn::error_result("SCHEDULER_WRITE_FORBIDDEN", $p.language, { table: "scheduler_schedule" }); };
-    RETURN fn::result_ok({ runs: $runs, ignored: array::len($p.fire_times) - array::len($runs), schedule: $updated });
-} COMMENT "Moteur : traite les échéances d'une planification ({ schedule, fire_times : échéances passées calculées par Rust, chacune { at : date prévue, available_at : date de disponibilité décalée par le décalage aléatoire (U5), jamais avant at }, next_fire_at : prochaine échéance, NONE s'il n'y en a plus }) : rattrapage (last, all, none dans la fenêtre), au plus remaining créations, exécutions scheduler_run:[planification, date] (une échéance déjà créée est ignorée) soumises au chevauchement ; décrémente remaining ; planification terminée (completed) à 0 ou sans prochaine échéance. { runs, ignored, schedule }. Droit : session système ou scheduler.worker";
+    RETURN fn::result_ok({ runs: $runs, ignored: array::len($p.fire_times) - array::len($runs), limited: array::len($capped) - array::len($allowed), schedule: $updated });
+} COMMENT "Moteur (planificateur) : traite les échéances d'une planification ({ node, generation : garde de génération du bail du planificateur ; schedule ; fire_times : échéances passées calculées par Rust, chacune { at : date prévue, available_at : date de disponibilité décalée par le décalage aléatoire (U5), jamais avant at } ; next_fire_at : prochaine échéance, NONE s'il n'y en a plus }) : rattrapage (last, all, none dans la fenêtre), au plus remaining créations, au plus autant de créations que de places sous la limite max_pending_runs de la portée (les échéances au-delà sont ignorées et comptées dans limited), exécutions scheduler_run:[planification, date] (une échéance déjà créée est ignorée) soumises au chevauchement ; décrémente remaining ; planification terminée (completed) à 0 ou sans prochaine échéance. { runs, ignored, limited, schedule }. Bail perdu : SCHEDULER_LEADER_FENCED. Droit : session système (seule à lire le bail)";
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_schedule_next_set
@@ -150,12 +157,12 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_schedule_fire($params: object) {
 
 DEFINE FUNCTION OVERWRITE fn::scheduler_schedule_next_set($params: object) {
     LET $report = fn::validation_object_execute($params, {
-        fields: {
+        fields: object::extend(fn::scheduler_leader_fields(), {
             schedule: { pipeline: fn::scheduler_ref("scheduler_schedule"), required: true },
             next_fire_at: { pipeline: [{ rule: "datetime" }] },
             invalid_reason: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 1000 } }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
-        },
+        }),
         unknown_keys: "reject"
     }, 20);
     IF !$report.valid { RETURN fn::scheduler_invalid($params, $report.by_field); };
@@ -164,6 +171,8 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_schedule_next_set($params: object) {
         RETURN fn::scheduler_invalid($params, { "$": [{ code: "CORE_VALIDATION_COMBINATION", details: { allowed: ["next_fire_at", "invalid_reason"], max: 1 } }] });
     };
     IF !fn::scheduler_can({ action: "worker" }) { RETURN fn::error_result("SCHEDULER_PERMISSION_DENIED", $p.language, {}); };
+    LET $fenced = fn::scheduler_leader_fenced($p);
+    IF $fenced IS NOT NONE { RETURN $fenced; };
     LET $schedule = (SELECT * FROM ONLY $p.schedule);
     IF $schedule == NONE { RETURN fn::error_result("SCHEDULER_SCHEDULE_NOT_FOUND", $p.language, { schedule: <string> $p.schedule }); };
     IF $schedule.state != "active" { RETURN fn::error_result("SCHEDULER_SCHEDULE_STATE_INVALID", $p.language, { state: $schedule.state }); };
@@ -174,7 +183,7 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_schedule_next_set($params: object) {
     };
     IF $updated == NONE { RETURN fn::error_result("SCHEDULER_WRITE_FORBIDDEN", $p.language, { table: "scheduler_schedule" }); };
     RETURN fn::result_ok($updated);
-} COMMENT "Moteur : écrit la prochaine échéance calculée par Rust ({ schedule, next_fire_at }) ou déclare la planification invalide ({ schedule, invalid_reason } : expression cron ou fuseau refusés) ; un seul des deux. Planification non active : SCHEDULER_SCHEDULE_STATE_INVALID. Droit : session système ou scheduler.worker";
+} COMMENT "Moteur (planificateur) : écrit la prochaine échéance calculée par Rust ({ node, generation, schedule, next_fire_at }) ou déclare la planification invalide ({ node, generation, schedule, invalid_reason } : expression cron ou fuseau refusés, écart de moins d'une minute U1, aucune échéance U4) ; un seul des deux. Planification non active : SCHEDULER_SCHEDULE_STATE_INVALID ; bail perdu : SCHEDULER_LEADER_FENCED. Droit : session système (seule à lire le bail)";
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_backfill_fire
@@ -182,18 +191,20 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_schedule_next_set($params: object) {
 
 DEFINE FUNCTION OVERWRITE fn::scheduler_backfill_fire($params: object) {
     LET $report = fn::validation_object_execute($params, {
-        fields: {
+        fields: object::extend(fn::scheduler_leader_fields(), {
             backfill: { pipeline: fn::scheduler_ref("scheduler_backfill"), required: true },
             fire_times: { pipeline: fn::scheduler_fire_times_pipeline([{ rule: "datetime" }]), required: true },
             done: { pipeline: [{ rule: "boolean" }], default: false },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
-        },
+        }),
         unknown_keys: "reject"
     }, 20);
     IF !$report.valid { RETURN fn::scheduler_invalid($params, $report.by_field); };
     LET $p = $report.value;
     IF fn::scheduler_fire_times_disordered($p.fire_times) { RETURN fn::scheduler_fire_times_invalid($params); };
     IF !fn::scheduler_can({ action: "worker" }) { RETURN fn::error_result("SCHEDULER_PERMISSION_DENIED", $p.language, {}); };
+    LET $fenced = fn::scheduler_leader_fenced($p);
+    IF $fenced IS NOT NONE { RETURN $fenced; };
     LET $backfill = (SELECT * FROM ONLY $p.backfill);
     IF $backfill == NONE OR $backfill.state NOTINSIDE ["pending", "running"] {
         RETURN fn::error_result("SCHEDULER_SCHEDULE_STATE_INVALID", $p.language, { backfill: <string> $p.backfill, state: $backfill.state });
@@ -205,11 +216,15 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_backfill_fire($params: object) {
     LET $task = (SELECT * FROM ONLY $schedule.task);
     IF $task.state != "active" { RETURN fn::error_result("SCHEDULER_TASK_DISABLED", $p.language, { task: <string> $schedule.task }); };
     LET $overlap = $backfill.overlap ?? $schedule.overlap;
-    LET $runs = array::fold(array::sort::asc(array::distinct($p.fire_times.at)), [], |$acc, $t| {
+    -- Une échéance déjà exécutée est ignorée ; limite d'exécutions en attente de la portée : les
+    -- échéances au-delà sont ignorées et comptées
+    LET $fresh = array::filter(array::sort::asc(array::distinct($p.fire_times.at)), |$t| !record::exists(type::record("scheduler_run", [$schedule.id, $t])));
+    LET $allowed = array::slice($fresh, 0, fn::scheduler_pending_room($schedule.tenant));
+    LET $runs = array::fold($allowed, [], |$acc, $t| {
         LET $run = fn::scheduler_run_spawn($schedule, $task, type::record("scheduler_run", [$schedule.id, $t]), $t, fn::scheduler_fire_available($p.fire_times, $t), "backfill", $overlap);
         RETURN IF $run == NONE { $acc } ELSE { array::append($acc, { id: $run.id, state: $run.state, scheduled_for: $run.scheduled_for }) };
     });
     LET $updated = (UPDATE ONLY $backfill.id SET state = IF $p.done { "done" } ELSE { "running" }, runs_created += array::len($runs));
     IF $updated == NONE { RETURN fn::error_result("SCHEDULER_WRITE_FORBIDDEN", $p.language, { table: "scheduler_backfill" }); };
-    RETURN fn::result_ok({ runs: $runs, backfill: $updated });
-} COMMENT "Moteur : crée les exécutions d'un rejeu de période ({ backfill, fire_times : échéances de la période calculées par Rust, chacune { at, available_at (jamais avant at) }, done : dernier lot }) : scheduler_run:[planification, date] (origin: backfill ; une échéance déjà exécutée est ignorée), chevauchement du rejeu ou de la planification ; rejeu running, puis done. { runs, backfill }. Droit : session système ou scheduler.worker";
+    RETURN fn::result_ok({ runs: $runs, limited: array::len($fresh) - array::len($allowed), backfill: $updated });
+} COMMENT "Moteur (planificateur) : crée les exécutions d'un rejeu de période ({ node, generation : garde de génération du bail du planificateur ; backfill ; fire_times : échéances de la période calculées par Rust, chacune { at, available_at (jamais avant at) } ; done : dernier lot }) : scheduler_run:[planification, date] (origin: backfill ; une échéance déjà exécutée est ignorée), au plus autant de créations que de places sous la limite max_pending_runs de la portée (les échéances au-delà sont ignorées et comptées dans limited), chevauchement du rejeu ou de la planification ; rejeu running, puis done. { runs, limited, backfill }. Bail perdu (vérifié à chaque lot) : SCHEDULER_LEADER_FENCED. Droit : session système (seule à lire le bail)";

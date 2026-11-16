@@ -26,6 +26,17 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_create_refusal($after: object) -> op
     };
     IF ($after.origin = "enqueue") != ($after.schedule IS NONE) AND $after.origin != "retry" { RETURN "SCHEDULER_RUN_STATE_INVALID"; };
     IF $after.schedule IS NONE AND $after.state != "queued" { RETURN "SCHEDULER_RUN_STATE_INVALID"; };
+    -- Relance : d'une exécution dead ou cancelled lisible, dont elle reprend l'organisation, la
+    -- tâche, les arguments et la planification (si elle existe encore) ; jamais créée librement
+    IF ($after.origin = "retry") != ($after.retry_of IS NOT NONE) { RETURN "SCHEDULER_RUN_STATE_INVALID"; };
+    IF $after.origin = "retry" {
+        LET $origin = (SELECT tenant, schedule, task, args, state FROM ONLY $after.retry_of);
+        IF $origin == NONE { RETURN "SCHEDULER_RUN_NOT_FOUND"; };
+        IF $origin.state NOTINSIDE ["dead", "cancelled"] OR $origin.tenant != $after.tenant OR $origin.task != $after.task OR $origin.args != $after.args
+            OR $after.schedule != (IF $origin.schedule IS NOT NONE AND record::exists($origin.schedule) { $origin.schedule } ELSE { NONE }) {
+            RETURN "SCHEDULER_RUN_STATE_INVALID";
+        };
+    };
     IF $after.schedule IS NOT NONE {
         LET $schedule = (SELECT tenant, task FROM ONLY $after.schedule);
         IF $schedule == NONE { RETURN "SCHEDULER_SCHEDULE_NOT_FOUND"; };
@@ -38,7 +49,7 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_create_refusal($after: object) -> op
     LET $args = fn::scheduler_args_check($task, $after.args, $after.tenant);
     IF !$args.valid OR $args.value != $after.args { RETURN "SCHEDULER_ARGS_INVALID"; };
     RETURN NONE;
-} COMMENT "Interne : refus de création d'une exécution ($after) : état initial (queued, waiting ou skipped, sans tentative ni bail) ; échéance et rejeu par le moteur, identifiant [planification, date prévue] ; auteur = appelant hors session système ; planification de la même organisation et de la même tâche ; exécution différée sans planification ; tâche utilisable, file et tentatives de la tâche ; arguments conformes. NONE ou code d'erreur";
+} COMMENT "Interne : refus de création d'une exécution ($after) : état initial (queued, waiting ou skipped, sans tentative ni bail) ; échéance et rejeu par le moteur, identifiant [planification, date prévue] ; auteur = appelant hors session système ; planification de la même organisation et de la même tâche ; exécution différée sans planification ; relance (et elle seule) avec retry_of, exécution dead ou cancelled lisible de la même organisation, de la même tâche et des mêmes arguments, planification d'origine reprise si elle existe encore ; tâche utilisable, file et tentatives de la tâche ; arguments conformes. La permission propre de la tâche est exigée par les permissions de la table. NONE ou code d'erreur";
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_run_update_refusal (interne, garde de modification)
@@ -46,12 +57,20 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_create_refusal($after: object) -> op
 
 DEFINE FUNCTION OVERWRITE fn::scheduler_run_update_refusal($before: object, $after: object) -> option<string> {
     LET $engine = fn::scheduler_can({ action: "worker" });
-    LET $frozen = ["schedule", "task", "args", "queue", "origin", "scheduled_for", "unique_key", "max_attempts", "priority"];
+    LET $frozen = ["schedule", "task", "args", "queue", "origin", "retry_of", "scheduled_for", "unique_key", "max_attempts", "priority"];
     IF array::any($frozen, |$f| $before[$f] != $after[$f]) { RETURN "SCHEDULER_RUN_STATE_INVALID"; };
     IF $before.created_by != $after.created_by AND !($after.created_by IS NONE AND $before.created_by IS NOT NONE AND !record::exists($before.created_by)) {
         RETURN "SCHEDULER_RUN_STATE_INVALID";
     };
     IF $before.cancel_requested AND !$after.cancel_requested { RETURN "SCHEDULER_RUN_STATE_INVALID"; };
+    -- Annulation (ou demande d'annulation) : scheduler.run.manage ou moteur ; sans ce droit,
+    -- seulement les exécutions d'une planification supprimée (fn::scheduler_schedule_delete),
+    -- par une personne qui lit l'organisation (sans lecture, record::exists vaudrait faux)
+    IF !$engine AND (($before.state != "cancelled" AND $after.state = "cancelled") OR (!$before.cancel_requested AND $after.cancel_requested))
+        AND !fn::scheduler_can({ action: "run_manage", tenant: $before.tenant })
+        AND !($before.schedule IS NOT NONE AND fn::scheduler_can({ action: "read", tenant: $before.tenant }) AND !record::exists($before.schedule)) {
+        RETURN "SCHEDULER_PERMISSION_DENIED";
+    };
     LET $terminal = ["completed", "dead", "cancelled", "skipped"];
     IF $before.state IN $terminal { RETURN IF $before.state != $after.state OR $before.result != $after.result OR $before.error != $after.error OR $before.finished_at != $after.finished_at { "SCHEDULER_RUN_STATE_INVALID" } ELSE { NONE }; };
     -- Champs du moteur : tentative, bail, dates, résultat, erreur
@@ -74,7 +93,7 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_update_refusal($before: object, $aft
         LET $busy = (SELECT VALUE id FROM scheduler_run WHERE schedule = $before.schedule AND id != $before.id AND state IN ["queued", "running", "retrying"] LIMIT 1);
         RETURN IF array::len($busy) > 0 OR $engine_fields { "SCHEDULER_RUN_STATE_INVALID" } ELSE { NONE };
     };
-    -- Annulation d'une exécution qui ne tourne pas : par toute personne autorisée à modifier
+    -- Annulation d'une exécution qui ne tourne pas (droit contrôlé plus haut)
     IF $before.state != "running" AND $after.state = "cancelled" {
         RETURN IF $engine_fields { "SCHEDULER_RUN_STATE_INVALID" } ELSE { NONE };
     };
@@ -89,7 +108,7 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_update_refusal($before: object, $aft
     IF $after.state IN ["retrying", "dead"] AND $after.error IS NONE { RETURN "SCHEDULER_RUN_STATE_INVALID"; };
     IF $after.state = "retrying" AND ($after.attempt >= $after.max_attempts OR $after.finished_at IS NOT NONE) { RETURN "SCHEDULER_RUN_STATE_INVALID"; };
     RETURN NONE;
-} COMMENT "Interne : refus d'une modification d'exécution ($before, $after) : planification, tâche, arguments, file, origine, date prévue, clé d'unicité, tentatives permises et priorité figés ; état terminal figé ; demande d'annulation irréversible ; transitions waiting → queued (aucune autre exécution active de la planification) | cancelled, queued | retrying → running (moteur) | cancelled, running → completed | retrying | dead | cancelled (moteur) ; réservation avec un bail nouveau et la tentative suivante ; fin avec le bail rendu, erreur pour retrying et dead, retrying seulement s'il reste des tentatives ; champs du moteur (bail, tentative, dates, résultat, erreur) par le moteur seulement. NONE ou code d'erreur";
+} COMMENT "Interne : refus d'une modification d'exécution ($before, $after) : planification, tâche, arguments, file, origine, exécution relancée, date prévue, clé d'unicité, tentatives permises et priorité figés ; état terminal figé ; demande d'annulation irréversible ; annulation et demande d'annulation par scheduler.run.manage ou le moteur (sinon seulement les exécutions d'une planification supprimée) ; transitions waiting → queued (aucune autre exécution active de la planification) | cancelled, queued | retrying → running (moteur) | cancelled, running → completed | retrying | dead | cancelled (moteur) ; réservation avec un bail nouveau et la tentative suivante ; fin avec le bail rendu, erreur pour retrying et dead, retrying seulement s'il reste des tentatives ; champs du moteur (bail, tentative, dates, résultat, erreur) par le moteur seulement. NONE ou code d'erreur";
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_run_delete_refusal (interne, garde de suppression)
@@ -109,6 +128,16 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_pending_full($tenant: option<record<auth
     LET $pending = count(SELECT VALUE id FROM scheduler_run WHERE scope_key = fn::scheduler_scope_key($tenant) AND state IN ["waiting", "queued", "retrying"]);
     RETURN IF $pending >= $max { $max } ELSE { NONE };
 } COMMENT "Interne : limite max_pending_runs de la portée si elle est atteinte (exécutions waiting, queued ou retrying), sinon NONE";
+
+-- ----------------------------------------------------------------------------
+-- fn::scheduler_pending_room (interne)
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::scheduler_pending_room($tenant: option<record<auth_organization>>) -> int {
+    LET $max = fn::scheduler_settings_effective({ tenant: $tenant }).max_pending_runs;
+    LET $pending = count(SELECT VALUE id FROM scheduler_run WHERE scope_key = fn::scheduler_scope_key($tenant) AND state IN ["waiting", "queued", "retrying"]);
+    RETURN math::max([$max - $pending, 0]);
+} COMMENT "Interne : places restantes sous la limite max_pending_runs de la portée (exécutions waiting, queued ou retrying), jamais négatif ; utilisé par les échéances et les rejeux de période";
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_run_enqueue
@@ -271,6 +300,8 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_retry($params: object) {
     LET $run = (SELECT * FROM ONLY $p.run);
     IF $run == NONE { RETURN fn::error_result("SCHEDULER_RUN_NOT_FOUND", $p.language, { run: <string> $p.run }); };
     IF !fn::scheduler_can({ action: "run_manage", tenant: $run.tenant }) { RETURN fn::error_result("SCHEDULER_PERMISSION_DENIED", $p.language, {}); };
+    -- Relancer fait exécuter la tâche : sa permission propre est exigée (Y1)
+    IF !fn::scheduler_can({ action: "run_manage", tenant: $run.tenant, task: $run.task }) { RETURN fn::error_result("SCHEDULER_PERMISSION_DENIED", $p.language, { task: record::id($run.task) }); };
     IF $run.state NOTINSIDE ["dead", "cancelled"] { RETURN fn::error_result("SCHEDULER_RUN_STATE_INVALID", $p.language, { state: $run.state }); };
     LET $task = (SELECT * FROM ONLY $run.task);
     LET $usable = fn::scheduler_task_usable($task, $run.tenant);
@@ -288,6 +319,7 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_retry($params: object) {
         queue: $task.queue,
         priority: $run.priority,
         origin: "retry",
+        retry_of: $run.id,
         scheduled_for: $now,
         available_at: $now,
         state: "queued",
@@ -295,8 +327,8 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_retry($params: object) {
         created_by: fn::scheduler_caller().identity
     });
     IF $created == NONE { RETURN fn::error_result("SCHEDULER_WRITE_FORBIDDEN", $p.language, { table: "scheduler_run" }); };
-    RETURN fn::result_ok(object::extend($created, { retry_of: <string> $run.id }));
-} COMMENT "Relance une exécution dead ou cancelled ({ run }) : nouvelle exécution immédiate (origin: retry) avec les mêmes arguments, tentatives remises à zéro ; l'exécution d'origine reste dans l'historique. Tâche désactivée : SCHEDULER_TASK_DISABLED. Droit : exécutions";
+    RETURN fn::result_ok($created);
+} COMMENT "Relance une exécution dead ou cancelled ({ run }) : nouvelle exécution immédiate (origin: retry, retry_of : l'exécution relancée) avec les mêmes arguments, tentatives remises à zéro ; l'exécution d'origine reste dans l'historique. Tâche désactivée : SCHEDULER_TASK_DISABLED. Droit : exécutions et permission propre de la tâche";
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_run_ref
@@ -316,4 +348,4 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_ref($params: object) {
     LET $native = fn::validation_record_id(type::record($p.run), ["scheduler_run"]);
     IF !$native.valid { RETURN fn::scheduler_invalid($params, { run: [$native.code] }); };
     RETURN fn::result_ok($native.value);
-} COMMENT "Identifiant natif d'une exécution d'après sa forme texte SurrealQL complète ({ run : « scheduler_run:clé » ou « scheduler_run:[planification, date] » }), utilisé par les routes de l'hôte après le décodage base64url (RunRef) : chaîne contrôlée par la règle surql_record_string limitée à scheduler_run, convertie, puis contrôlée par la règle record_id limitée à scheduler_run ; ni lecture ni écriture. Aucune autre table acceptée (SCHEDULER_INVALID_PARAMETERS). Droit : aucun";
+} COMMENT "Identifiant natif d'une exécution d'après sa forme texte SurrealQL complète ({ run : « scheduler_run:clé » ou « scheduler_run:[planification, date] » }), utilisé par les routes de l'hôte après le décodage base64url (RunRef) : chaîne contrôlée par la règle surql_record_string du Core limitée à scheduler_run (identifiant entier sous sa forme texte canonique), convertie, puis contrôlée par la règle record_id limitée à scheduler_run ; ni lecture ni écriture. Aucune autre table acceptée (SCHEDULER_INVALID_PARAMETERS). Droit : aucun";

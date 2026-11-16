@@ -3,10 +3,10 @@
 -- MODULE    : lyxal_scheduler
 -- ============================================================================
 -- Une planification dit « quand » exécuter une tâche, avec quels arguments. La permission propre
--- de la tâche est contrôlée à la création et à chaque modification (T2) ; la pause, la reprise
--- et la suppression n'exigent que scheduler.schedule.write (un gestionnaire arrête une
--- planification dont l'auteur a perdu le droit). Les gardes valent aussi pour une écriture
--- directe dans la table.
+-- de la tâche est exigée pour tout ce qui la fait exécuter (Y1) : création, modification,
+-- reprise, déclenchement, rejeu ; la pause et la suppression n'exigent que
+-- scheduler.schedule.write (un gestionnaire arrête une planification dont l'auteur a perdu le
+-- droit). Les gardes valent aussi pour une écriture directe dans la table.
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_spec_check (interne)
@@ -132,7 +132,13 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_schedule_update_refusal($before: object,
         LET $allowed = IF $engine { { active: ["completed", "invalid"], invalid: ["active", "completed"] } } ELSE { { invalid: ["active"] } };
         IF $after.state NOTINSIDE ($allowed[$before.state] ?? []) { RETURN "SCHEDULER_SCHEDULE_STATE_INVALID"; };
         IF $after.state = "invalid" AND $after.invalid_reason IS NONE { RETURN "SCHEDULER_SCHEDULE_STATE_INVALID"; };
-        IF $before.state = "invalid" AND $after.state = "active" AND ($after.invalid_reason IS NOT NONE OR $after.next_fire_at IS NOT NONE) { RETURN "SCHEDULER_SCHEDULE_STATE_INVALID"; };
+        -- Une planification invalide redevient active seulement avec des règles ou des calendriers nouveaux
+        IF $before.state = "invalid" AND $after.state = "active" AND ($after.invalid_reason IS NOT NONE OR $after.next_fire_at IS NOT NONE
+            OR ($before.spec = $after.spec AND $before.calendars = $after.calendars)) { RETURN "SCHEDULER_SCHEDULE_STATE_INVALID"; };
+    };
+    -- Reprise : elle fait exécuter la tâche, sa permission propre est exigée (Y1)
+    IF $before.paused AND !$after.paused AND !$engine AND !fn::scheduler_can({ action: "write", tenant: $before.tenant, task: $before.task }) {
+        RETURN "SCHEDULER_PERMISSION_DENIED";
     };
     -- Arguments, règles, calendriers et politiques : permission propre de la tâche (T2) et contenu valide
     IF array::len($user_fields) > 0 {
@@ -145,7 +151,7 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_schedule_update_refusal($before: object,
         RETURN "SCHEDULER_PERMISSION_DENIED";
     };
     RETURN NONE;
-} COMMENT "Interne : refus d'une modification de planification ($before, $after) : auteur figé ; prochaine échéance, dernière exécution et invalidité écrites par le moteur seulement (une remise à calculer est permise) ; planification terminée figée ; modification des règles, des calendriers ou de la pause avec prochaine échéance remise à NONE ; transitions active → completed | invalid (moteur), invalid → active (règles corrigées) ; arguments, règles, calendriers, politiques et exécutions restantes avec la permission propre de la tâche et un contenu valide. NONE ou code d'erreur";
+} COMMENT "Interne : refus d'une modification de planification ($before, $after) : auteur figé ; prochaine échéance, dernière exécution et invalidité écrites par le moteur seulement (une remise à calculer est permise) ; planification terminée figée ; modification des règles, des calendriers ou de la pause avec prochaine échéance remise à NONE ; transitions active → completed | invalid (moteur), invalid → active (règles ou calendriers nouveaux seulement) ; arguments, règles, calendriers, politiques, exécutions restantes et reprise avec la permission propre de la tâche, et un contenu valide. NONE ou code d'erreur";
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_schedule_view (interne)
@@ -370,12 +376,12 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_schedule_resume($params: object) {
     LET $p = $report.value;
     LET $schedule = (SELECT * FROM ONLY $p.schedule);
     IF $schedule == NONE { RETURN fn::error_result("SCHEDULER_SCHEDULE_NOT_FOUND", $p.language, { schedule: <string> $p.schedule }); };
-    IF !fn::scheduler_can({ action: "write", tenant: $schedule.tenant }) { RETURN fn::error_result("SCHEDULER_PERMISSION_DENIED", $p.language, {}); };
+    IF !fn::scheduler_can({ action: "write", tenant: $schedule.tenant, task: $schedule.task }) { RETURN fn::error_result("SCHEDULER_PERMISSION_DENIED", $p.language, {}); };
     IF !$schedule.paused OR $schedule.state = "completed" { RETURN fn::error_result("SCHEDULER_SCHEDULE_STATE_INVALID", $p.language, { state: $schedule.state, paused: $schedule.paused }); };
     LET $updated = (UPDATE ONLY $schedule.id SET paused = false, paused_reason = NONE, next_fire_at = NONE);
     IF $updated == NONE { RETURN fn::error_result("SCHEDULER_WRITE_FORBIDDEN", $p.language, { table: "scheduler_schedule" }); };
     RETURN fn::result_ok(fn::scheduler_schedule_view($schedule.id));
-} COMMENT "Reprend une planification en pause ({ schedule }) ; la prochaine échéance est recalculée à partir de maintenant (les échéances manquées pendant la pause suivent le rattrapage). Droit : écriture";
+} COMMENT "Reprend une planification en pause ({ schedule }) ; la prochaine échéance est recalculée à partir de maintenant (les échéances manquées pendant la pause suivent le rattrapage). Droit : écriture et permission propre de la tâche (la reprise fait exécuter la tâche, Y1)";
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_schedule_delete
@@ -394,12 +400,14 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_schedule_delete($params: object) {
     LET $schedule = (SELECT * FROM ONLY $p.schedule);
     IF $schedule == NONE { RETURN fn::error_result("SCHEDULER_SCHEDULE_NOT_FOUND", $p.language, { schedule: <string> $p.schedule }); };
     IF !fn::scheduler_can({ action: "write", tenant: $schedule.tenant }) { RETURN fn::error_result("SCHEDULER_PERMISSION_DENIED", $p.language, {}); };
-    -- Exécutions en attente annulées ; celle en cours reçoit une demande d'annulation ; l'historique reste
+    LET $deleted = (DELETE ONLY $schedule.id RETURN BEFORE);
+    IF $deleted == NONE { RETURN fn::error_result("SCHEDULER_WRITE_FORBIDDEN", $p.language, { table: "scheduler_schedule" }); };
+    -- Puis, dans la même transaction, ses exécutions en attente sont annulées et celle en cours
+    -- reçoit une demande d'annulation (la garde des exécutions le permet sans
+    -- scheduler.run.manage parce que la planification n'existe plus) ; l'historique reste
     UPDATE scheduler_run SET state = "cancelled", finished_at = time::now(), cancel_reason = "schedule_deleted"
         WHERE schedule = $schedule.id AND state IN ["waiting", "queued", "retrying"];
     UPDATE scheduler_run SET cancel_requested = true, cancel_reason = "schedule_deleted"
         WHERE schedule = $schedule.id AND state = "running" AND !cancel_requested;
-    LET $deleted = (DELETE ONLY $schedule.id RETURN BEFORE);
-    IF $deleted == NONE { RETURN fn::error_result("SCHEDULER_WRITE_FORBIDDEN", $p.language, { table: "scheduler_schedule" }); };
     RETURN fn::result_ok({ deleted: <string> $schedule.id });
 } COMMENT "Supprime une planification ({ schedule }) : ses exécutions en attente sont annulées, celle en cours reçoit une demande d'annulation, ses rejeux sont supprimés ; l'historique des exécutions est gardé. Droit : écriture (sans la permission de la tâche)";

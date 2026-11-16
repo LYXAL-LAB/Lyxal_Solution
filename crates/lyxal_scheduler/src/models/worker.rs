@@ -175,6 +175,8 @@ pub struct EngineHealth {
     pub late: i64,
     /// Tâches `handler` actives.
     pub handler_tasks: Vec<String>,
+    /// Tâches `handler` inscrites sur au moins un nœud qui a réservé dans la dernière minute.
+    pub handlers_served: Vec<String>,
 }
 
 /// Paramètres passés à la fonction SurrealQL d'une tâche `function`.
@@ -217,8 +219,12 @@ pub struct RunFailParams {
 }
 
 /// Paramètres de `fn::scheduler_run_rescue`.
-#[derive(Debug, Clone, Default, SurrealValue)]
+#[derive(Debug, Clone, SurrealValue)]
 pub struct RunRescueParams {
+    /// Nœud qui détient le bail du planificateur (garde de génération).
+    pub node: String,
+    /// Génération du bail du planificateur détenu par ce nœud.
+    pub generation: i64,
     /// Nombre maximal d'exécutions reprises (1000 au plus).
     pub limit: Option<i64>,
     /// Langue des messages d'erreur.
@@ -244,8 +250,12 @@ pub struct RescueResult {
 }
 
 /// Paramètres de `fn::scheduler_run_prune`.
-#[derive(Debug, Clone, Default, SurrealValue)]
+#[derive(Debug, Clone, SurrealValue)]
 pub struct RunPruneParams {
+    /// Nœud qui détient le bail du planificateur (garde de génération).
+    pub node: String,
+    /// Génération du bail du planificateur détenu par ce nœud.
+    pub generation: i64,
     /// Nombre maximal d'exécutions supprimées (10000 au plus).
     pub limit: Option<i64>,
     /// Langue des messages d'erreur.

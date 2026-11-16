@@ -294,7 +294,7 @@ mod tests {
             }),
             IngestionError::from(lyxal_surreal::LyxalSurrealError::Call(
                 lyxal_error::LyxalCallError::InvalidContract {
-                    function: "fn::test",
+                    function: "fn::test".to_string(),
                 },
             )),
         ]

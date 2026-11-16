@@ -84,6 +84,10 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_claim($params: object) {
     IF !fn::scheduler_can({ action: "worker" }) { RETURN fn::error_result("SCHEDULER_PERMISSION_DENIED", $p.language, {}); };
     LET $queue = (SELECT * FROM ONLY fn::scheduler_queue_record($p.queue));
     IF $queue == NONE { RETURN fn::error_result("SCHEDULER_QUEUE_NOT_FOUND", $p.language, { queue: $p.queue }); };
+    -- Handlers de ce nœud pour la sonde de santé (un handler manquant ici peut exister ailleurs)
+    IF $p.handlers IS NOT NONE {
+        UPSERT type::record("scheduler_node", [$p.node, $p.queue]) SET node = $p.node, queue = $queue.id, handlers = array::distinct($p.handlers);
+    };
     IF $queue.paused { RETURN fn::result_ok({ items: [], paused: true }); };
     LET $now = time::now();
     LET $disabled = (SELECT VALUE id FROM scheduler_task WHERE state = "disabled");
@@ -111,7 +115,7 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_claim($params: object) {
             ELSE { { items: array::append($acc.items, $claimed.run), full: false } };
     });
     RETURN fn::result_ok({ items: $outcome.items, paused: false });
-} COMMENT "Moteur : réserve les exécutions disponibles d'une file ({ queue, node, limit (100 au plus), handlers : noms des tâches handler dont le nœud a le code, absent : toutes }) par priorité puis date, dans les places de la file et de chaque organisation (une organisation pleine laisse passer les autres) ; file en pause : aucune ; tâches désactivées ignorées ; une tâche handler absente de handlers n'est réservée qu'après avoir attendu plus que son délai maximal (l'exécuteur la termine alors en échec SCHEDULER_HANDLER_NOT_FOUND). Chaque exécution réservée porte son jeton de bail (lease), à rendre à chaque battement et à la fin, son exécuteur et sa cible. { items, paused }. Droit : session système ou scheduler.worker";
+} COMMENT "Moteur : réserve les exécutions disponibles d'une file ({ queue, node, limit (100 au plus), handlers : noms des tâches handler dont le nœud a le code, absent : toutes }) par priorité puis date, dans les places de la file et de chaque organisation (une organisation pleine laisse passer les autres) ; file en pause : aucune ; tâches désactivées ignorées ; handlers du nœud enregistrés pour la sonde de santé (scheduler_node) ; une tâche handler absente de handlers n'est réservée qu'après avoir attendu plus que son délai maximal (l'exécuteur la termine alors en échec SCHEDULER_HANDLER_NOT_FOUND). Chaque exécution réservée porte son jeton de bail (lease), à rendre à chaque battement et à la fin, son exécuteur et sa cible. { items, paused }. Droit : session système ou scheduler.worker";
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_run_leased (interne)
@@ -146,8 +150,11 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_heartbeat($params: object) {
     LET $timeout = (SELECT VALUE timeout FROM ONLY $leased.run.task);
     LET $updated = (UPDATE ONLY $p.run SET locked_until = time::now() + $timeout + fn::scheduler_lease_margin() WHERE state = "running" AND lease = $lease);
     IF $updated == NONE { RETURN fn::error_result("SCHEDULER_LEASE_LOST", $p.language, { run: <string> $p.run }); };
+    -- Présence du nœud dans la file rafraîchie aussi par les battements : un nœud dont toutes les
+    -- places sont occupées ne réserve plus, mais il sert toujours ses handlers (sonde de santé)
+    UPDATE type::record("scheduler_node", [$updated.lease_node, record::id($updated.queue)]) SET seen_at = time::now();
     RETURN fn::result_ok({ run: $updated.id, locked_until: $updated.locked_until, cancel_requested: $updated.cancel_requested });
-} COMMENT "Moteur : prolonge le bail d'une exécution en cours ({ run, lease }) et indique si son annulation est demandée : { run, locked_until, cancel_requested }. Bail perdu : SCHEDULER_LEASE_LOST. Droit : session système ou scheduler.worker";
+} COMMENT "Moteur : prolonge le bail d'une exécution en cours ({ run, lease }) et indique si son annulation est demandée : { run, locked_until, cancel_requested }. Bail perdu : SCHEDULER_LEASE_LOST. Rafraîchit aussi la présence du nœud dans la file (scheduler_node). Droit : session système ou scheduler.worker";
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_retry_delay (interne)
@@ -322,15 +329,17 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_failure_outcome($run: object, $error: ob
 
 DEFINE FUNCTION OVERWRITE fn::scheduler_run_rescue($params: object) {
     LET $report = fn::validation_object_execute($params, {
-        fields: {
+        fields: object::extend(fn::scheduler_leader_fields(), {
             limit: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 1000 } }], default: 100 },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
-        },
+        }),
         unknown_keys: "reject"
     }, 20);
     IF !$report.valid { RETURN fn::scheduler_invalid($params, $report.by_field); };
     LET $p = $report.value;
     IF !fn::scheduler_can({ action: "worker" }) { RETURN fn::error_result("SCHEDULER_PERMISSION_DENIED", $p.language, {}); };
+    LET $fenced = fn::scheduler_leader_fenced($p);
+    IF $fenced IS NOT NONE { RETURN $fenced; };
     -- locked_until NONE se compare comme inférieur à toute date : condition explicite
     LET $expired = (SELECT * FROM scheduler_run WHERE state = "running" AND locked_until IS NOT NONE AND locked_until < time::now()
         ORDER BY locked_until ASC LIMIT $p.limit);
@@ -340,7 +349,7 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_rescue($params: object) {
         RETURN IF $updated == NONE { $acc } ELSE { array::append($acc, { id: $updated.id, state: $updated.state }) };
     });
     RETURN fn::result_ok({ rescued: $rescued, reconciled: fn::scheduler_counters_reconcile() });
-} COMMENT "Moteur : reprend les exécutions dont le bail a expiré ({ limit (1000 au plus) }) : retrying s'il reste des tentatives, cancelled si l'annulation était demandée, sinon dead ; erreur SCHEDULER_LEASE_LOST ; places rendues ; puis recale les compteurs de places sur les exécutions réellement en cours (places d'exécutions disparues avec leur organisation). { rescued, reconciled }. Droit : session système ou scheduler.worker";
+} COMMENT "Moteur (planificateur) : reprend les exécutions dont le bail a expiré ({ node, generation : garde de génération du bail du planificateur ; limit (1000 au plus) }) : retrying s'il reste des tentatives, cancelled si l'annulation était demandée, sinon dead ; erreur SCHEDULER_LEASE_LOST ; places rendues ; puis recale les compteurs de places sur les exécutions réellement en cours (places d'exécutions disparues avec leur organisation). { rescued, reconciled }. Bail du planificateur perdu : SCHEDULER_LEADER_FENCED. Droit : session système (seule à lire le bail)";
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_counters_reconcile (interne)
@@ -384,15 +393,17 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_prunable($id: record<scheduler_run>,
 
 DEFINE FUNCTION OVERWRITE fn::scheduler_run_prune($params: object) {
     LET $report = fn::validation_object_execute($params, {
-        fields: {
+        fields: object::extend(fn::scheduler_leader_fields(), {
             limit: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 10000 } }], default: 1000 },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
-        },
+        }),
         unknown_keys: "reject"
     }, 20);
     IF !$report.valid { RETURN fn::scheduler_invalid($params, $report.by_field); };
     LET $p = $report.value;
     IF !fn::scheduler_can({ action: "worker" }) { RETURN fn::error_result("SCHEDULER_PERMISSION_DENIED", $p.language, {}); };
+    LET $fenced = fn::scheduler_leader_fenced($p);
+    IF $fenced IS NOT NONE { RETURN $fenced; };
     LET $now = time::now();
     -- Conservation minimale d'un jour ; l'éligibilité (conservation de la portée, N dernières de
     -- chaque planification) est évaluée avant la limite, pour qu'un lot d'exécutions gardées ne
@@ -403,8 +414,10 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_prune($params: object) {
         ORDER BY finished_at ASC LIMIT $p.limit);
     LET $ids = $doomed.id;
     DELETE scheduler_run WHERE id IN $ids;
+    -- Exécuteurs sans réservation depuis un jour (nœud arrêté)
+    DELETE scheduler_node WHERE seen_at < $now - 1d;
     RETURN fn::result_ok({ deleted: array::len($ids) });
-} COMMENT "Moteur : élague les exécutions terminées plus vieilles que la conservation de leur portée ({ limit (10000 au plus) }), en gardant toujours les keep_last_runs dernières de chaque planification (S7). { deleted }. Droit : session système ou scheduler.worker";
+} COMMENT "Moteur (planificateur) : élague les exécutions terminées plus vieilles que la conservation de leur portée ({ node, generation : garde de génération du bail du planificateur ; limit (10000 au plus) }), en gardant toujours les keep_last_runs dernières de chaque planification (S7) ; oublie les exécuteurs sans réservation depuis un jour. { deleted }. Bail du planificateur perdu : SCHEDULER_LEADER_FENCED. Droit : session système (seule à lire le bail)";
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_health
@@ -425,6 +438,7 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_health($params: object) {
     RETURN fn::result_ok({
         queues: array::map((SELECT id, paused FROM scheduler_queue ORDER BY id ASC), |$q| { name: <string> record::id($q.id), paused: $q.paused }),
         late: count(SELECT VALUE id FROM scheduler_run WHERE state IN ["queued", "retrying"] AND available_at < $limit),
-        handler_tasks: (SELECT VALUE target FROM scheduler_task WHERE executor = "handler" AND state = "active" ORDER BY target ASC)
+        handler_tasks: (SELECT VALUE target FROM scheduler_task WHERE executor = "handler" AND state = "active" ORDER BY target ASC),
+        handlers_served: array::sort::asc(array::distinct(array::flatten(SELECT VALUE handlers FROM scheduler_node WHERE seen_at >= time::now() - 1m)))
     });
-} COMMENT "Moteur (sonde de santé) : files { name, paused }, nombre d'exécutions réservables qui attendent depuis plus de late_after (5 min par défaut, 1 j au plus) au-delà de leur date de disponibilité, tâches handler actives (handler_tasks). Aucune donnée d'organisation. Droit : session système ou scheduler.worker";
+} COMMENT "Moteur (sonde de santé) : files { name, paused }, nombre d'exécutions réservables qui attendent depuis plus de late_after (5 min par défaut, 1 j au plus) au-delà de leur date de disponibilité, tâches handler actives (handler_tasks), tâches handler inscrites sur au moins un nœud qui a réservé dans la dernière minute (handlers_served). Aucune donnée d'organisation. Droit : session système ou scheduler.worker";

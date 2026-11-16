@@ -17,6 +17,10 @@
 
 -- préparation: organisations, identités, sessions et tâches d'essai déclarées en session système
 {
+    -- Fondation de l'hôte : module fictif lyxal_essai installé (release du runtime), bail du planificateur tenu par le nœud n1
+    fn::runtime_module_upsert({ module_id: "lyxal_essai", name: "Essai" });
+    fn::runtime_release_register({ module_id: "lyxal_essai", version: "0.1.0", manifest_version: 1, status: "Installed" });
+    fn::runtime_lease_acquire({ kind: "leader", key: "scheduler", node_id: "n1", ttl_seconds: 86400 });
     CREATE auth_organization:alpha CONTENT { slug: "alpha", name: "Alpha BTP" };
     CREATE auth_organization:beta CONTENT { slug: "beta", name: "Beta Bois" };
     FOR $n IN ["admin", "redacteur", "sanstache", "lecteur", "operateur", "membre"] {
@@ -220,12 +224,12 @@ RETURN array::len(UPDATE scheduler_slot:["maintenance", "alpha"] SET running = 0
 {
     LET $alpha = (SELECT VALUE items FROM ONLY passe:m).filter(|$r| $r.tenant = auth_organization:alpha)[0];
     UPDATE $alpha.id SET locked_until = time::now() - 1s;
-    LET $r = fn::scheduler_run_rescue({ limit: 10 });
+    LET $r = fn::scheduler_run_rescue({ node: "n1", generation: 1, limit: 10 });
     LET $run = (SELECT * FROM ONLY $alpha.id);
     RETURN $r.data.rescued = [{ id: $alpha.id, state: "retrying" }] AND $run.error.code = "SCHEDULER_LEASE_LOST" AND $run.attempt = 1
         AND (SELECT VALUE running FROM ONLY scheduler_slot:["maintenance", "alpha"]) = 0
         AND fn::scheduler_run_complete({ run: $alpha.id, lease: $alpha.lease }).error.code = "SCHEDULER_LEASE_LOST"
-        AND fn::scheduler_run_rescue({}).data.rescued = [];
+        AND fn::scheduler_run_rescue({ node: "n1", generation: 1 }).data.rescued = [];
 };
 
 -- test: une personne ne prolonge pas un bail
@@ -236,8 +240,8 @@ UPDATE (SELECT VALUE items[0].id FROM ONLY passe:m) SET locked_until = time::now
 -- préparation: planification d'installation en pause sur échec, une échéance réservée
 {
     LET $s = fn::scheduler_schedule_create({ name: "tic", task: "essai.global", spec: { every: [1m] }, pause_on_failure: true }).data.id;
-    fn::scheduler_schedule_next_set({ schedule: $s, next_fire_at: time::now() + 1m });
-    fn::scheduler_schedule_fire({ schedule: $s, fire_times: [{ at: time::now() - 10s, available_at: time::now() - 10s }], next_fire_at: time::now() + 1m });
+    fn::scheduler_schedule_next_set({ node: "n1", generation: 1, schedule: $s, next_fire_at: time::now() + 1m });
+    fn::scheduler_schedule_fire({ node: "n1", generation: 1, schedule: $s, fire_times: [{ at: time::now() - 10s, available_at: time::now() - 10s }], next_fire_at: time::now() + 1m });
     LET $c = fn::scheduler_run_claim({ queue: "default", node: "n1", limit: 10 }).data.items.filter(|$r| $r.schedule = $s)[0];
     UPSERT passe:g SET schedule = $s, run = $c;
 };
@@ -267,15 +271,14 @@ RETURN fn::scheduler_run_retry({ run: (SELECT VALUE run.id FROM ONLY passe:g) })
 };
 
 -- test: élagage : terminées anciennes supprimées, les 3 dernières de la planification gardées, récentes gardées
--- en tant que: worker
 {
     LET $s = (SELECT VALUE schedule FROM ONLY passe:p);
     LET $before = count(SELECT * FROM scheduler_run);
-    LET $p = fn::scheduler_run_prune({ limit: 100 });
+    LET $p = fn::scheduler_run_prune({ node: "n1", generation: 1, limit: 100 });
     LET $kept = (SELECT VALUE scheduled_for FROM scheduler_run WHERE schedule = $s ORDER BY scheduled_for DESC);
     RETURN $p.data.deleted = 9 AND count(SELECT * FROM scheduler_run) = $before - 9 AND array::len($kept) = 3
         AND $kept[0] > time::now() - 40d - 2h
-        AND fn::scheduler_run_prune({}).data.deleted = 0;
+        AND fn::scheduler_run_prune({ node: "n1", generation: 1 }).data.deleted = 0;
 };
 
 -- test: seul le moteur réserve, bat, termine, reprend et élague
@@ -287,8 +290,8 @@ RETURN fn::scheduler_run_retry({ run: (SELECT VALUE run.id FROM ONLY passe:g) })
         fn::scheduler_run_heartbeat({ run: <string> $a.id, lease: "00000000-0000-7000-8000-000000000000" }),
         fn::scheduler_run_complete({ run: <string> $a.id, lease: "00000000-0000-7000-8000-000000000000" }),
         fn::scheduler_run_fail({ run: <string> $a.id, lease: "00000000-0000-7000-8000-000000000000", error: { code: "X" } }),
-        fn::scheduler_run_rescue({}),
-        fn::scheduler_run_prune({})
+        fn::scheduler_run_rescue({ node: "n1", generation: 1 }),
+        fn::scheduler_run_prune({ node: "n1", generation: 1 })
     ].all(|$r| $r.error.code = "SCHEDULER_PERMISSION_DENIED");
 };
 

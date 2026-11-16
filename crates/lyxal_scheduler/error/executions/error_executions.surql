@@ -164,3 +164,30 @@ IF !record::exists(error_definition:SCHEDULER_EXECUTOR_FAILED) THEN (
         }
     }
 ) END;
+
+IF !record::exists(error_definition:SCHEDULER_LEADER_FENCED) THEN (
+    CREATE error_definition:SCHEDULER_LEADER_FENCED CONTENT {
+        code: "SCHEDULER_LEADER_FENCED",
+        module: "scheduler",
+        domain: "executions",
+        category: "conflict",
+        severity: "error",
+        message: "Operation refused: the node no longer holds the scheduler leader lease",
+        default_language: "fr",
+        http_status: 412,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Planificateur n'est plus élu",
+                description: "Le nœud ne détient plus le bail du planificateur (autre nœud, autre génération ou bail expiré) : il n'écrit plus rien.",
+                resolution: "Aucune action : le nœud qui détient le bail reprend la planification."
+            },
+            en: {
+                label: "Scheduler no longer elected",
+                description: "The node no longer holds the scheduler lease (other node, other generation or expired lease): it writes nothing.",
+                resolution: "No action: the node holding the lease takes over scheduling."
+            }
+        }
+    }
+) END;

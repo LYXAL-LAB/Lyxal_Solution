@@ -17,6 +17,10 @@
 
 -- préparation: organisations, identités, sessions et tâches d'essai déclarées en session système
 {
+    -- Fondation de l'hôte : module fictif lyxal_essai installé (release du runtime), bail du planificateur tenu par le nœud n1
+    fn::runtime_module_upsert({ module_id: "lyxal_essai", name: "Essai" });
+    fn::runtime_release_register({ module_id: "lyxal_essai", version: "0.1.0", manifest_version: 1, status: "Installed" });
+    fn::runtime_lease_acquire({ kind: "leader", key: "scheduler", node_id: "n1", ttl_seconds: 86400 });
     CREATE auth_organization:alpha CONTENT { slug: "alpha", name: "Alpha BTP" };
     CREATE auth_organization:beta CONTENT { slug: "beta", name: "Beta Bois" };
     FOR $n IN ["admin", "redacteur", "sanstache", "lecteur", "operateur", "membre"] {
@@ -67,8 +71,8 @@
 -- préparation: le moteur traite une échéance (non journalisée)
 {
     LET $s = (SELECT VALUE id_schedule FROM ONLY passe:j);
-    fn::scheduler_schedule_next_set({ schedule: $s, next_fire_at: time::now() + 1h });
-    fn::scheduler_schedule_fire({ schedule: $s, fire_times: [{ at: time::now() - 1m, available_at: time::now() - 1m }], next_fire_at: time::now() + 1h });
+    fn::scheduler_schedule_next_set({ node: "n1", generation: 1, schedule: $s, next_fire_at: time::now() + 1h });
+    fn::scheduler_schedule_fire({ node: "n1", generation: 1, schedule: $s, fire_times: [{ at: time::now() - 1m, available_at: time::now() - 1m }], next_fire_at: time::now() + 1h });
 };
 
 -- test: une entrée par action, dans l'ordre ; auteur, session, jamais d'arguments

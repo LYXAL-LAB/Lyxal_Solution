@@ -88,31 +88,38 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_schedule_trigger($params: object) {
     IF $schedule == NONE { RETURN fn::error_result("SCHEDULER_SCHEDULE_NOT_FOUND", $p.language, { schedule: <string> $p.schedule }); };
     IF !fn::scheduler_can({ action: "write", tenant: $schedule.tenant, task: $schedule.task }) { RETURN fn::error_result("SCHEDULER_PERMISSION_DENIED", $p.language, {}); };
     IF $schedule.state != "active" { RETURN fn::error_result("SCHEDULER_SCHEDULE_STATE_INVALID", $p.language, { state: $schedule.state }); };
+    LET $overlap = $p.overlap ?? $schedule.overlap;
+    -- cancel_other annule les autres exécutions : réservé à scheduler.run.manage
+    IF $overlap = "cancel_other" AND !fn::scheduler_can({ action: "run_manage", tenant: $schedule.tenant }) {
+        RETURN fn::error_result("SCHEDULER_PERMISSION_DENIED", $p.language, { overlap: $overlap });
+    };
     LET $task = (SELECT * FROM ONLY $schedule.task);
     LET $usable = fn::scheduler_task_usable($task, $schedule.tenant);
     IF $usable IS NOT NONE { RETURN fn::error_result($usable, $p.language, { task: <string> $schedule.task }); };
     LET $full = fn::scheduler_pending_full($schedule.tenant);
     IF $full IS NOT NONE { RETURN fn::error_result("SCHEDULER_LIMIT_REACHED", $p.language, { limit: "max_pending_runs", max: $full }); };
     LET $now = time::now();
-    LET $run = fn::scheduler_run_spawn($schedule, $task, NONE, $now, $now, "trigger", $p.overlap ?? $schedule.overlap);
+    LET $run = fn::scheduler_run_spawn($schedule, $task, NONE, $now, $now, "trigger", $overlap);
     IF $run == NONE { RETURN fn::error_result("SCHEDULER_WRITE_FORBIDDEN", $p.language, { table: "scheduler_run" }); };
     RETURN fn::result_ok($run);
-} COMMENT "Déclenche tout de suite une planification active, même en pause ({ schedule, overlap : celui de la planification par défaut }) : nouvelle exécution (origin: trigger) soumise au chevauchement (queued, waiting ou skipped). Droit : écriture et permission propre de la tâche";
+} COMMENT "Déclenche tout de suite une planification active, même en pause ({ schedule, overlap : celui de la planification par défaut }) : nouvelle exécution (origin: trigger) soumise au chevauchement (queued, waiting ou skipped). Droit : écriture et permission propre de la tâche ; avec cancel_other, qui annule les autres exécutions, aussi scheduler.run.manage";
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_backfill_refusal (interne, garde de création)
 -- ----------------------------------------------------------------------------
 
 DEFINE FUNCTION OVERWRITE fn::scheduler_backfill_refusal($after: object) -> option<string> {
-    LET $schedule = (SELECT tenant FROM ONLY $after.schedule);
+    LET $schedule = (SELECT tenant, task FROM ONLY $after.schedule);
     IF $schedule == NONE { RETURN "SCHEDULER_SCHEDULE_NOT_FOUND"; };
+    -- Le rejeu fait exécuter la tâche : sa permission propre est exigée, aussi en écriture directe (Y1)
+    IF !fn::scheduler_can({ action: "write", tenant: $schedule.tenant, task: $schedule.task }) { RETURN "SCHEDULER_PERMISSION_DENIED"; };
     IF $schedule.tenant != $after.tenant OR $after.state != "pending" OR $after.runs_created != 0 { RETURN "SCHEDULER_INVALID_PARAMETERS"; };
     IF $after.to > time::now() OR $after.from >= $after.to OR $after.to - $after.from > 366d { RETURN "SCHEDULER_INVALID_PARAMETERS"; };
     LET $open = (SELECT VALUE id FROM scheduler_backfill WHERE schedule = $after.schedule AND id != $after.id AND state IN ["pending", "running"] LIMIT 1);
     IF array::len($open) > 0 { RETURN "SCHEDULER_BACKFILL_RUNNING"; };
     LET $caller = fn::scheduler_caller();
     RETURN IF !$caller.system AND $after.requested_by != $caller.identity { "SCHEDULER_PERMISSION_DENIED" } ELSE { NONE };
-} COMMENT "Interne : refus d'une demande de rejeu ($after) : planification existante de la même organisation ; état initial pending ; période passée, from < to, un an au plus ; aucun autre rejeu en cours de la planification (SCHEDULER_BACKFILL_RUNNING) ; demandeur = appelant hors session système. NONE ou code d'erreur";
+} COMMENT "Interne : refus d'une demande de rejeu ($after) : planification existante et lisible de la même organisation ; écriture et permission propre de la tâche de la planification (Y1) ; état initial pending ; période passée, from < to, un an au plus ; aucun autre rejeu en cours de la planification (SCHEDULER_BACKFILL_RUNNING) ; demandeur = appelant hors session système. NONE ou code d'erreur";
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_schedule_backfill

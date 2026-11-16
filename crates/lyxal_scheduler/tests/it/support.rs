@@ -1,6 +1,7 @@
-//! Base embarquée avec `lyxal_core`, `lyxal_error`, `lyxal_event`, `lyxal_auth` et
-//! `lyxal_scheduler` installés comme le fait l'hôte ; session système (racine) ; organisation
-//! et tâches d'essai déclarées comme le seed d'un module.
+//! Base embarquée avec `lyxal_core`, `lyxal_error`, le schéma du runtime, `lyxal_event`,
+//! `lyxal_auth` et `lyxal_scheduler` installés comme le fait l'hôte ; session système (racine) ;
+//! module d'essai `lyxal_essai` installé (release du runtime), organisation et tâches d'essai
+//! déclarées comme le seed d'un module.
 
 use lyxal_runtime::manifest::{ManifestParser, ModuleManifest};
 use lyxal_runtime::resource::ResourceProvider;
@@ -38,6 +39,9 @@ pub async fn installed_client() -> Surreal<Any> {
     lyxal_runtime::schema::install_batch(&client, &batch)
         .await
         .expect("noyau");
+    lyxal_runtime::schema::install_runtime_schema(&client)
+        .await
+        .expect("schéma du runtime");
     for name in ["lyxal_event", "lyxal_auth", "lyxal_scheduler"] {
         let (manifest, provider) = load(name);
         lyxal_runtime::schema::install_resources(&client, &manifest, &provider)
@@ -47,6 +51,8 @@ pub async fn installed_client() -> Surreal<Any> {
     client
         .query(
             r#"
+            fn::runtime_module_upsert({ module_id: "lyxal_essai", name: "Essai" });
+            fn::runtime_release_register({ module_id: "lyxal_essai", version: "0.1.0", manifest_version: 1, status: "Installed" });
             CREATE auth_organization:alpha CONTENT { slug: "alpha", name: "Alpha BTP" };
             CREATE scheduler_task:⟨essai.rapport⟩ CONTENT {
                 module: "lyxal_essai", executor: "handler", target: "essai.rapport",
@@ -64,6 +70,18 @@ pub async fn installed_client() -> Surreal<Any> {
         .and_then(|r| r.check())
         .expect("données d'essai");
     client
+}
+
+/// Prend le bail du planificateur pour le nœud `node` (une heure) et rend sa génération : la
+/// garde des fonctions du planificateur appelées directement par un test (Y2).
+pub async fn leader(client: &Surreal<Any>, node: &str) -> i64 {
+    let mut response = client
+        .query("RETURN fn::runtime_lease_acquire({ kind: 'leader', key: 'scheduler', node_id: $node, ttl_seconds: 3600 }).data.lease.generation;")
+        .bind(("node", node.to_string()))
+        .await
+        .expect("bail du planificateur");
+    let generation: Option<i64> = response.take(0).expect("génération");
+    generation.expect("bail du planificateur pris")
 }
 
 /// Lecteur de test : ressource lue sous le dossier source d'un module.

@@ -18,14 +18,18 @@ impl<T: SurrealValue> LyxalResult<T> {
     ///
     /// Rejette strictement tous les états incohérents (ex: ok=true avec data non convertible ou ok=false avec data=Some).
     /// Un succès sans donnée n'est accepté que si `T` accepte l'absence de valeur (`()` ou `Option<_>`).
-    pub fn into_result(self, function: &'static str) -> Result<T, LyxalCallError> {
+    pub fn into_result(self, function: &str) -> Result<T, LyxalCallError> {
         match (self.ok, self.data, self.error) {
             (true, Some(data), None) => Ok(data),
             (true, None, None) => {
-                T::from_value(Value::None).map_err(|_| LyxalCallError::InvalidContract { function })
+                T::from_value(Value::None).map_err(|_| LyxalCallError::InvalidContract {
+                    function: function.to_string(),
+                })
             }
             (false, None, Some(error)) => Err(LyxalCallError::Business(error)),
-            _ => Err(LyxalCallError::InvalidContract { function }),
+            _ => Err(LyxalCallError::InvalidContract {
+                function: function.to_string(),
+            }),
         }
     }
 }

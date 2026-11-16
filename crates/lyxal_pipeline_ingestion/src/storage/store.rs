@@ -751,7 +751,7 @@ impl IngestionStore {
                 ))),
                 _ => Err(IngestionError::from(LyxalSurrealError::Call(
                     lyxal_error::LyxalCallError::InvalidContract {
-                        function: "fn::ingestion_staged_save",
+                        function: "fn::ingestion_staged_save".to_string(),
                     },
                 ))),
             })

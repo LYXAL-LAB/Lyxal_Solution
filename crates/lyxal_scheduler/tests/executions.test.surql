@@ -8,7 +8,8 @@
 -- identité redacteur: {"id": "auth_session:redacteur", "pv": 1, "permissions": ["scheduler.schedule.read", "scheduler.schedule.write", "essai.rapport.run"]}
 -- identité sanstache: {"id": "auth_session:sanstache", "pv": 1, "permissions": ["scheduler.schedule.read", "scheduler.schedule.write"]}
 -- identité lecteur: {"id": "auth_session:lecteur", "pv": 1, "permissions": ["scheduler.schedule.read"]}
--- identité operateur: {"id": "auth_session:operateur", "pv": 1, "permissions": ["scheduler.schedule.read", "scheduler.run.manage"]}
+-- identité operateur: {"id": "auth_session:operateur", "pv": 1, "permissions": ["scheduler.schedule.read", "scheduler.run.manage", "essai.rapport.run"]}
+-- identité operateursanstache: {"id": "auth_session:operateursanstache", "pv": 1, "permissions": ["scheduler.schedule.read", "scheduler.run.manage"]}
 -- identité membre: {"id": "auth_session:membre", "pv": 1, "permissions": []}
 -- identité autre: {"id": "auth_session:autre", "pv": 1, "permissions": ["scheduler.schedule.read", "scheduler.schedule.write", "scheduler.run.manage", "scheduler.calendar.write", "scheduler.settings.manage", "essai.rapport.run"]}
 -- identité plateforme: {"id": "auth_session:plateforme", "pv": 1, "permissions": ["scheduler.installation.manage"]}
@@ -16,9 +17,13 @@
 
 -- préparation: organisations, identités, sessions et tâches d'essai déclarées en session système
 {
+    -- Fondation de l'hôte : module fictif lyxal_essai installé (release du runtime), bail du planificateur tenu par le nœud n1
+    fn::runtime_module_upsert({ module_id: "lyxal_essai", name: "Essai" });
+    fn::runtime_release_register({ module_id: "lyxal_essai", version: "0.1.0", manifest_version: 1, status: "Installed" });
+    fn::runtime_lease_acquire({ kind: "leader", key: "scheduler", node_id: "n1", ttl_seconds: 86400 });
     CREATE auth_organization:alpha CONTENT { slug: "alpha", name: "Alpha BTP" };
     CREATE auth_organization:beta CONTENT { slug: "beta", name: "Beta Bois" };
-    FOR $n IN ["admin", "redacteur", "sanstache", "lecteur", "operateur", "membre"] {
+    FOR $n IN ["admin", "redacteur", "sanstache", "lecteur", "operateur", "operateursanstache", "membre"] {
         CREATE type::record("auth_identity", $n) CONTENT { schema: auth_identity_schema:default_v1, traits: { email: $n + "@lyxal.test" } };
         RELATE (type::record("auth_identity", $n))->auth_member_of->auth_organization:alpha;
         CREATE type::record("auth_session", $n) CONTENT { identity: type::record("auth_identity", $n), organization: auth_organization:alpha, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
@@ -177,6 +182,11 @@ CREATE scheduler_run CONTENT { tenant: auth_organization:alpha, task: scheduler_
 -- attendu-erreur: SCHEDULER_RUN_STATE_INVALID
 CREATE scheduler_run CONTENT { tenant: auth_organization:alpha, task: scheduler_task:⟨essai.rapport⟩, args: { format: "pdf" }, queue: scheduler_queue:maintenance, priority: 5, origin: "enqueue", scheduled_for: time::now(), available_at: time::now(), state: "queued", max_attempts: 3 };
 
+-- test: A7 — annulation directe sans scheduler.run.manage refusée par la garde
+-- en tant que: sanstache
+-- attendu-erreur: SCHEDULER_PERMISSION_DENIED
+UPDATE (SELECT VALUE id_run FROM ONLY passe:e) SET state = "cancelled", finished_at = time::now(), cancel_reason = "direct";
+
 -- test: annulation d'une exécution en file, puis état terminal figé
 -- en tant que: operateur
 {
@@ -193,13 +203,36 @@ UPDATE (SELECT VALUE id_run FROM ONLY passe:e) SET state = "queued", finished_at
 -- attendu-erreur: SCHEDULER_RUN_STATE_INVALID
 DELETE scheduler_run WHERE state = "queued";
 
+-- test: A3 / Y1 — relance sans la permission propre de la tâche refusée, aussi en création directe (filtrée)
+-- en tant que: operateursanstache
+{
+    LET $origin = (SELECT VALUE id_run FROM ONLY passe:e);
+    LET $direct = (CREATE scheduler_run CONTENT { tenant: auth_organization:alpha, task: scheduler_task:⟨essai.rapport⟩, args: { format: "csv" }, queue: scheduler_queue:default, priority: 1, origin: "retry", retry_of: $origin, scheduled_for: time::now(), available_at: time::now(), state: "queued", max_attempts: 3, created_by: auth_identity:operateursanstache });
+    RETURN array::len($direct) = 0 AND fn::scheduler_run_retry({ run: <string> $origin }).error.code = "SCHEDULER_PERMISSION_DENIED";
+};
+
+-- test: A1 — création directe d'une relance sans exécution d'origine refusée par la garde
+-- en tant que: operateur
+-- attendu-erreur: SCHEDULER_RUN_STATE_INVALID
+CREATE scheduler_run CONTENT { tenant: auth_organization:alpha, task: scheduler_task:⟨essai.rapport⟩, args: { format: "pdf", note: "injecte" }, queue: scheduler_queue:default, priority: 0, origin: "retry", scheduled_for: time::now(), available_at: time::now(), state: "queued", max_attempts: 3, created_by: auth_identity:operateur };
+
+-- test: A1 — création directe d'une relance avec d'autres arguments que l'exécution d'origine refusée
+-- en tant que: operateur
+-- attendu-erreur: SCHEDULER_RUN_STATE_INVALID
+CREATE scheduler_run CONTENT { tenant: auth_organization:alpha, task: scheduler_task:⟨essai.rapport⟩, args: { format: "pdf", note: "injecte" }, queue: scheduler_queue:default, priority: 0, origin: "retry", retry_of: (SELECT VALUE id_run FROM ONLY passe:e), scheduled_for: time::now(), available_at: time::now(), state: "queued", max_attempts: 3, created_by: auth_identity:operateur };
+
+-- test: A1 — une exécution d'un autre type ne porte pas retry_of
+-- en tant que: admin
+-- attendu-erreur: SCHEDULER_RUN_STATE_INVALID
+CREATE scheduler_run CONTENT { tenant: auth_organization:alpha, task: scheduler_task:⟨essai.rapport⟩, args: { format: "csv" }, queue: scheduler_queue:default, priority: 0, origin: "enqueue", retry_of: (SELECT VALUE id_run FROM ONLY passe:e), scheduled_for: time::now(), available_at: time::now(), state: "queued", max_attempts: 3, created_by: auth_identity:admin };
+
 -- test: relance d'une exécution annulée : nouvelle exécution immédiate, mêmes arguments
 -- en tant que: operateur
 {
     LET $id = <string> (SELECT VALUE id_run FROM ONLY passe:e);
     LET $r = fn::scheduler_run_retry({ run: $id });
     RETURN $r.ok AND $r.data.origin = "retry" AND $r.data.state = "queued" AND $r.data.args = { format: "csv" } AND $r.data.attempt = 0
-        AND $r.data.retry_of = $id AND $r.data.created_by = auth_identity:operateur AND $r.data.priority = 1
+        AND <string> $r.data.retry_of = $id AND $r.data.created_by = auth_identity:operateur AND $r.data.priority = 1
         AND fn::scheduler_run_retry({ run: <string> $r.data.id }).error.code = "SCHEDULER_RUN_STATE_INVALID";
 };
 

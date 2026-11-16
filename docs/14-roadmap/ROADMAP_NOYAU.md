@@ -19,9 +19,9 @@ organisation sous une clé maîtresse propre, cycle de vie et rotation, accès t
 approbations, routes HTTP et partage à usage unique, clôture avec audit et procédures) ; ses
 évolutions sont dans `crates/lyxal_secrets/ROADMAP.md`.
 
-`lyxal_scheduler` (rang 5) est créé : son socle SurrealQL, le calcul des dates et son moteur
-(planificateur élu, exécuteurs, hébergement par l'hôte) sont en place ; ses lots suivants (4 et 5)
-sont dans `implementation_plan.md` à la racine et sa `ROADMAP.md`.
+La V1 de `lyxal_scheduler` (rang 5) est livrée (lots 1 à 5 : socle SurrealQL, calcul des dates en
+Rust, moteur avec planificateur élu et exécuteurs hébergés par l'hôte, routes HTTP, clôture avec
+audit et exploitation) ; ses évolutions sont dans `crates/lyxal_scheduler/ROADMAP.md`.
 
 `lyxal_notification` a été créé avant son rang (décision D8 du programme `lyxal_auth`) avec sa
 partie e-mail et des solutions d'attente pour `lyxal_secrets` et

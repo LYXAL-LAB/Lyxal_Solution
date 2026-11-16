@@ -6,9 +6,11 @@
 -- Une tâche est déclarée par le seed de son module (IF !record::exists(scheduler_task:⟨m.a⟩)
 -- THEN (CREATE …) END;), jamais par une personne. Identifiant ⟨module.action⟩ en minuscules ;
 -- module = lyxal_<module>. Seule la session système écrit (PERMISSIONS NONE pour toute autre
--- session) et, après création, seulement l'état (garde scheduler_task_guard). Les personnes
--- créent librement leurs planifications et exécutions différées d'une tâche active pour laquelle
--- elles ont la permission propre de la tâche.
+-- session) et, après création, seulement l'état (gardes scheduler_task_create_guard et
+-- scheduler_task_update_guard). Le module déclarant doit être installé (release du runtime) et
+-- la cible doit lui appartenir (Y3). Les personnes font exécuter une tâche active (planification,
+-- reprise, déclenchement, rejeu, exécution différée, relance) seulement avec sa permission
+-- propre (Y1) ; l'arrêter (pause, annulation, suppression) ne l'exige pas.
 
 DEFINE TABLE OVERWRITE scheduler_task
     TYPE NORMAL

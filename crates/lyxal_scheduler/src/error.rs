@@ -12,6 +12,9 @@ pub const SPEC_INVALID: &str = "SCHEDULER_SPEC_INVALID";
 pub const INVALID_PARAMETERS: &str = "SCHEDULER_INVALID_PARAMETERS";
 /// Bail d'une exécution perdu (un autre nœud l'a reprise ou elle est terminée).
 pub const LEASE_LOST: &str = "SCHEDULER_LEASE_LOST";
+/// Bail du planificateur perdu (autre nœud, autre génération ou bail expiré) : une fonction du
+/// planificateur refuse d'écrire (garde de génération, Y2).
+pub const LEADER_FENCED: &str = "SCHEDULER_LEADER_FENCED";
 /// Délai maximal d'une tentative dépassé (W4).
 pub const RUN_TIMEOUT: &str = "SCHEDULER_RUN_TIMEOUT";
 /// Aucun handler inscrit pour la tâche.

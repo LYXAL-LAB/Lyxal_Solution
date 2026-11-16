@@ -503,10 +503,13 @@ async fn the_scheduler_runs_with_its_workers_and_probe() {
         "{result:?}"
     );
 
-    // Une tâche d'essai de publication différée, exécutée par le moteur hébergé
+    // Une tâche d'essai de publication différée (module fictif lyxal_essai, installé : release
+    // du runtime), exécutée par le moteur hébergé
     client
         .query(
-            r#"CREATE scheduler_task:⟨essai.rappel⟩ CONTENT {
+            r#"fn::runtime_module_upsert({ module_id: "lyxal_essai", name: "Essai" });
+            fn::runtime_release_register({ module_id: "lyxal_essai", version: "0.1.0", manifest_version: 1, status: "Installed" });
+            CREATE scheduler_task:⟨essai.rappel⟩ CONTENT {
                 module: "lyxal_essai", executor: "event", target: "essai.rappel.envoi", scope: "installation",
                 retry: { max_attempts: 1, strategy: "fixed", initial_delay: 1s, max_delay: 1s }
             };"#,

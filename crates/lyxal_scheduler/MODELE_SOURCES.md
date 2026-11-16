@@ -1,50 +1,24 @@
-# `lyxal_scheduler` — recherche de sources
+# `lyxal_scheduler` — modèle et sources
 
-Étude préalable à la création du crate du Noyau Technique `lyxal_scheduler` (rang 5 de
-[`docs/14-roadmap/ROADMAP_NOYAU.md`](../../docs/14-roadmap/ROADMAP_NOYAU.md)) : le module
-existant du dépôt, les planificateurs open source du marché et les briques déjà présentes dans
-Lyxal OS. Le plan du programme est [`implementation_plan.md`](../../implementation_plan.md).
+Planificateurs dont `lyxal_scheduler` reprend un fonctionnement, règles de calcul des dates,
+moyens contre la double exécution, constats sur SurrealDB 3.3.4 et décisions du CTO qui fixent
+la conception du module. L'état du module et son exploitation sont décrits par son
+[`README.md`](README.md), ses évolutions par sa [`ROADMAP.md`](ROADMAP.md).
 
 Registres (crates.io, hex.pm, npm, RubyGems, NuGet, Maven Central, proxy Go), fichiers de
-licence et code source officiel lus le 15 novembre 2026. Le réseau de la session bloque
-docs.temporal.io, hexdocs.pm, riverqueue.com et docs.bullmq.io : pour ces projets, le
+licence et code source officiel lus le 15 novembre 2026. Pour Temporal et Oban, le
 fonctionnement a été lu dans le code source (proto Temporal, code Oban) ; pour Hatchet, Inngest,
-Kestra, Sidekiq Enterprise et River Pro, il vient de leur documentation publique et n'a pas été
-relu dans le code.
+Kestra, Sidekiq Enterprise et River Pro, il vient de leur documentation publique. Fonctionnement
+de SurrealDB essayé sur un serveur 3.3.4.
 
-## 1. Le module existant `lyxal_scheduler/`
+## 1. Principe d'assemblage
 
-Le dossier `lyxal_scheduler/`, à la racine du dépôt, est une copie adaptée de **Croniq**
-(github.com/nuetzliches/croniq, MIT OR Apache-2.0, v0.4.0) avec une couche SurrealQL.
-
-| Partie | Contenu réel |
-| :--- | :--- |
-| `engine/` | Workspace Rust séparé (13 crates, environ 57 000 lignes), absent du workspace Lyxal. Compile pour Linux une fois la cible Windows imposée par `engine/.cargo/config.toml` retirée ; **les tests ne compilent pas** (`SqliteStore` supprimé) et le portage vers SurrealDB est inachevé (`unimplemented!` dans dix tests serveur, tests de contrat désactivés). |
-| `schema/` | 13 tables `scheduler_*` ; 9 autres tables (utilisateurs, jetons, TOTP, OIDC…) utilisées par le Rust sans être déclarées. `PERMISSIONS NONE` partout, aucune organisation. |
-| `functions/` | 62 fonctions `fn::scheduler::*` à paramètres positionnels, sans `fn::result_ok` / `fn::error_result`, sans `lyxal_core`. |
-| `access/`, `api/` | 3 `DEFINE ACCESS` (administrateurs, clés API, runners sans secret) et 9 `DEFINE API`. |
-| Absents | `manifest.toml`, `error/`, `seeds/`, `tests/`, `migrations/`, `events/`, `ROADMAP.md`. |
-| Ailleurs | Écrans Surrealist `views/scheduler/` (11 fichiers) qui écrivent directement dans les tables ; ancien planificateur de l'agent IA (`lyxal_agent/.../scheduler.rs`), hors sujet. |
-
-**Écarts bloquants aux règles Lyxal** : identités et chiffrement en double de `lyxal_auth` et
-`lyxal_crypto` (`bcrypt`, `sha2`, `hmac`, `aes-gcm`, `hkdf`, `totp-rs`, `rand::rng()`) ; serveur
-HTTP propre au lieu de l'hôte `lyxal-server` ; 25 `tokio::spawn` hors `LyxalWorker` ; runner
-qui exécute une commande shell arbitraire (`sh -c`) ; transport `Surreal<Client>` et 119 requêtes
-écrites à la main au lieu de `call_fn` ; aucune organisation ; documents et commentaires
-historiques (« Source : Croniq migrations… », liens `file:///C:/…`).
-
-**Ce qui mérite d'être repris** (idées, réécrites dans le nouveau crate) :
-
-* calcul de la prochaine date et traitement du changement d'heure, avec ses tests ;
-* calendriers d'exceptions (« toutes les inclusions et aucune exclusion ») ;
-* politique de rattrapage et prévision des N prochaines dates ;
-* modèle de données : définition, planification et exécution séparées ; date planifiée
-  constante à travers les nouvelles tentatives ; clé d'idempotence ; états
-  `queued → claimed → running → completed | failed | dead` ; réservation conditionnelle ; remise en
-  file des exécutions abandonnées ; purge par âge ou en gardant les N dernières.
-
-**À jeter** : serveur, CLI, MCP, authentification, runners distants et exécuteur shell, langage de
-configuration propre à Croniq, `access/`, `api/`, tables d'identité, écrans Surrealist actuels.
+* **Modèles** : Temporal Schedules (planifications), Oban (file des exécutions), Quartz (syntaxe
+  cron et calendriers), Hatchet (équité entre organisations) ; fonctionnement transcrit en
+  SurrealQL (données, règles, droits) et en Rust (calcul des dates, moteur). Aucun code copié
+  d'un projet sous licence LGPL, MPL, AGPL, SSPL ou propriétaire.
+* **Dépendances ajoutées** : `croner` (MIT) pour les expressions cron ; `jiff` (déjà dans le
+  dépôt) pour les fuseaux et les dates.
 
 ## 2. Candidats open source
 
@@ -70,7 +44,7 @@ configuration propre à Croniq, `access/`, `api/`, tables d'identité, écrans S
 | Windmill | AGPL-3.0 + propriétaire | Rust | 1.875.0 | Modèle seulement |
 | Inngest (serveur) | SSPL-1.0 | Go | v1.53.0 | Modèle seulement |
 
-## 3. Fonctions d'un planificateur de premier rang
+## 3. Modèles retenus, par fonction
 
 | Fonction | Meilleur modèle | Ce qui est repris |
 | :--- | :--- | :--- |
@@ -131,29 +105,24 @@ La règle d'Oban et `croner` ne perd ni ne double une tâche quotidienne.
    même si deux nœuds se croient seuls.
 3. **Réservation atomique** : passage conditionnel `queued → claimed` avec un bail ; les baux
    expirés sont repris (Oban Lifeline, Quartz recovery).
-4. **Garde de génération** sur chaque écriture du moteur, comme `lyxal_event`.
+4. **Garde de génération** sur chaque écriture du planificateur, comme `lyxal_event` : le bail
+   d'élection `leader` du runtime (clé `scheduler`) porte une génération croissante ; chaque
+   fonction du planificateur reçoit `{ node, generation }` et refuse d'écrire
+   (`SCHEDULER_LEADER_FENCED`) si le bail n'est plus le sien (Y2). Chaque exécution réservée a
+   son propre jeton de bail, exigé par chaque fin de tentative.
 
-## 6. Ce que Lyxal OS fournit déjà
+## 6. SurrealDB 3.3.4
 
-| Brique | Fourni | Conséquence |
+| Capacité | Constat | Décision |
 | :--- | :--- | :--- |
-| `lyxal_runtime` | `LyxalWorker`, supervision, annulation, sondes de santé, baux à génération (`fn::runtime_lease_*`) | Réutilisés. Le champ `runtime_lease.kind` n'accepte aujourd'hui que `migration` et `installation` |
-| `lyxal_event` | Outbox, livraison au moins une fois, nouvelles tentatives, dead letter, rejeu | Les événements du scheduler passent par lui. Il n'a pas de publication différée |
-| `lyxal_auth` | Identités, organisations, permissions | Droits `scheduler.*` ; aucune identité propre |
-| `lyxal_core` | Moteurs de validation, `fn::validation_retry_policy` | Entrées et politiques de tentatives |
-| `lyxal-server` | Hôte HTTP | Routes `/api/v1/scheduler/*` ; aucun serveur propre |
-
-**Besoins exprimés par les autres modules** :
-
-* `lyxal_notification` (lot V1-c) : délais longs (attente fixe, jusqu'à une date, date lue dans
-  l'événement), digests planifiés, purges ;
-* `lyxal_auth` : purges planifiées ;
-* `lyxal_connect` (à venir) : renouvellement des jetons en arrière-plan ;
-* `lyxal_error` (V3) : seuils d'alerte périodiques.
-
-Workers périodiques existants, candidats à une bascule après le programme :
-`AuthPurgeWorker`, `NotificationPurgeWorker`, `StorageCleanupWorker`,
-`SecretsMaintenanceWorker`.
+| Minuterie, cron | Aucune : SurrealDB n'exécute rien de lui-même | Calcul des dates et moteur en Rust ; règles et états en SurrealQL |
+| `DEFINE EVENT` | Exécuté dans la transaction de l'écriture ; un `THROW` l'annule | Gardes de toutes les tables (aussi pour une écriture directe), journal, publication |
+| Droits d'une fonction | Une fonction s'exécute avec les droits de l'appelant ; `record::exists` et `SELECT` ne voient que ce qu'il peut lire | Contrôles de droits en tête des fonctions ; un enregistrement illisible vaut introuvable |
+| Écriture refusée par les permissions | `CREATE` rend `[]`, `UPDATE ONLY` et `DELETE ONLY` rendent `NONE`, sans erreur | Écriture principale vérifiée (`SCHEDULER_WRITE_FORBIDDEN`) |
+| `NONE` dans une comparaison | Inférieur à toute date | Conditions explicites `IS NOT NONE` (bail, prochaine échéance) |
+| `type::record` d'une chaîne | Ignore un texte qui suit l'identifiant | Règle `surql_record_string` du Core : l'identifiant relu doit redonner exactement la chaîne (Y4) |
+| Bail du runtime (`runtime_lease`) | Table lisible par la session système seulement | Fonctions du planificateur réservées à la session système de l'hôte |
+| Identifiant composé | `CREATE scheduler_run:[planification, date]` échoue s'il existe déjà | Une échéance ne crée jamais deux exécutions |
 
 ## 7. Sources
 
@@ -180,3 +149,14 @@ Workers périodiques existants, candidats à une bascule après le programme :
   https://github.com/cloudflare/saffron , https://docs.rs/jiff
 * Registres : crates.io, hex.pm, npmjs.com, rubygems.org, nuget.org, Maven Central,
   proxy.golang.org
+
+## 8. Décisions du CTO
+
+| Programme | Décisions |
+| :--- | :--- |
+| Programme V1 (15 nov. 2026) | **S1** repartir de zéro dans `crates/lyxal_scheduler/`, ancien dossier (copie de Croniq) et écrans Surrealist supprimés, idées valables reprises (calendriers, rattrapage, prévision, états) ; **S2** trois exécuteurs seulement (code Rust inscrit, fonction SurrealQL publique du module, publication différée d'un événement), tâches déclarées par les modules, aucune commande système ni requête libre ; **S3** `croner` avec `jiff` ; **S4** bail du planificateur dans `lyxal_runtime` (nouvelle valeur `leader` de `runtime_lease.kind`) ; **S5** changement d'heure selon la règle d'Oban et `croner` (heure manquante : juste après le saut ; heure répétée : une exécution), fuseau par planification, UTC par défaut ; **S6** valeurs par défaut de Temporal : chevauchement `skip`, rattrapage de la dernière échéance dans une fenêtre d'une heure, politiques `skip`, `buffer_one`, `buffer_all`, `cancel_other`, `allow_all` ; **S7** exécution au moins une fois, handlers idempotents, historique de 30 jours et toujours les 10 dernières exécutions de chaque planification ; **S8** aucune bascule de module dans ce programme |
+| Lot 1 (socle SurrealQL) | **T1** tâche déclarée par le seed du module propriétaire, nom `<module>.<action>`, seule la session système l'active ou la désactive ; **T2** permission propre de la tâche contrôlée à la création et à chaque modification, exécution au nom du système pour l'organisation de la planification ; **T3** équité par deux compteurs à écriture conditionnelle (places de la file, places d'une organisation dans la file, 10 par défaut) ; **T4** journal simple en ajout seul des actions des personnes ; **T5** limites : arguments 16 Kio, résultat 4 Kio, message d'erreur 1 000 caractères, 1 000 planifications et 10 000 exécutions en attente par organisation, réglables |
+| Lot 2 (calcul des dates) | **U1** cron de 5 à 7 champs, au moins une minute entre deux échéances (`SCHEDULER_SPEC_INVALID`) ; **U2** jour du mois ou jour de la semaine (règle Vixie), `?` de Quartz accepté ; **U3** intervalle compté depuis `start_at`, sinon la création, en durée réelle ; **U4** recherche limitée à 5 ans et 10 000 essais, sinon planification `invalid` (`no_future_fire`) ; **U5** décalage aléatoire tiré à chaque échéance, borné à une heure et à la moitié du plus petit écart, seule la date de disponibilité décalée |
+| Lot 3 (moteur) | **W1** bail `leader` du runtime, clé `scheduler`, 30 s renouvelé toutes les 10 s ; **W2** un tour du planificateur par seconde, exécuteurs chaque seconde ou aussitôt après une fin, reprise des baux toutes les 30 s, élagage toutes les heures ; **W3** `LYXAL__SCHEDULER__WORKERS` tâches à la fois par file et par nœud (4 par défaut, 1 à 64) ; **W4** délai maximal : annulation du handler et échec `SCHEDULER_RUN_TIMEOUT` retentable, une fonction SurrealQL partie n'est plus attendue ; **W5** publication différée : charge = arguments, source = l'exécution, métadonnées `{ scheduled_for, attempt, tenant }`, publication et fin dans la même transaction |
+| Lot 4 (routes de l'hôte) | **X1** exécution désignée par l'identifiant SurrealQL complet en base64url sans remplissage, contrôlé par la règle `surql_record_string` du Core puis `record_id` ; **X2** aucune route pour les fonctions du moteur ; **X3** routes de prévision et de contrôle d'une règle sans écriture ; **X4** `Cache-Control: no-store` sur toutes les réponses |
+| Lot 5 (clôture, 16 nov. 2026) | **Y1** permission propre de la tâche exigée pour tout ce qui la fait exécuter (création, modification, reprise, déclenchement, rejeu, exécution différée, relance), pas pour ce qui l'arrête (pause, annulation, suppression), aussi en écriture directe ; **Y2** garde de génération `{ node, generation }` sur les fonctions du planificateur, code `SCHEDULER_LEADER_FENCED` ; **Y3** le module déclarant une tâche doit être installé, et un nom de module qui est le début d'un autre nom de module installé ne vise pas les fonctions de cet autre module ; **Y4** règle `surql_record_string` du Core corrigée (extension du Core) : identifiant entier sous sa forme texte canonique, aucun contrôle local dans le module ; **Y5** `LyxalSurrealCall::call_fn` accepte un nom `&str` (rupture coordonnée), contournement du moteur supprimé |

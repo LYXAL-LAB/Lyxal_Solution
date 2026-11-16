@@ -131,7 +131,9 @@ réessayable), `RUNTIME_INVALID_MANIFEST` (`validation`, 422).
   (`fn::runtime_lease_*`) et mémoire (tests, processus unique). `SurrealLeaderLeaseManager`
   (nature `leader`) élit un seul nœud pour un rôle (`acquire`, `renew` qui rend `None` quand le
   bail est perdu, `release`, `inspect`) : le planificateur de `lyxal_scheduler` (clé `scheduler`)
-  s'en sert.
+  s'en sert, et ses fonctions SurrealQL vérifient le bail par `fn::runtime_lease_get` (garde de
+  génération) ; la déclaration d'une tâche lit les modules installés par `fn::runtime_module_list`
+  et `fn::runtime_release_list`.
 * **Persistance** : `RuntimeStore` ; `SurrealRuntimeStore` (`Surreal<Any>`, `LyxalSurrealCall`),
   `MemoryRuntimeStore`.
 * **Réconciliation** : `DesiredRuntimeState`, `RuntimeObserver`, `RuntimeDiffer`,
