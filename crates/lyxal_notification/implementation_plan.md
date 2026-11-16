@@ -9,7 +9,10 @@ passent par `lyxal_scheduler` (K3). Le module reste sur l'e-mail : les autres ca
 lots 3 à 6 et se brancheront sur le même moteur d'étapes. Aucune ligne de code avant la
 validation du CTO (`.agents/AGENTS.md` §3).
 
-## 1. Questions soumises au CTO
+## 1. Décisions du CTO
+
+Décisions C1 à C7 **validées par le CTO** le 16 novembre 2026, telles que proposées ci-dessous
+(C2 précise K3 et a été validée avec elle).
 
 | N° | Question | Proposition |
 | :- | :--- | :--- |
