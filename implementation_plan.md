@@ -56,7 +56,9 @@ Repris de `MODELE_SOURCES.md` §2 ; une seule migration réécrite en place (ré
 Le déclenchement vise désormais un **abonné**, un **sujet** ou **tous** (diffusion) ; le
 déclenchement par adresse e-mail directe de `lyxal_auth` reste possible (abonné créé à la volée).
 
-## 4. Décisions soumises au CTO
+## 4. Décisions du CTO
+
+Décisions K1 à K10 **validées par le CTO** le 16 novembre 2026, telles que proposées ci-dessous.
 
 | N° | Question | Proposition |
 | :- | :--- | :--- |
