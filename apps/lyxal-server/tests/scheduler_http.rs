@@ -267,6 +267,8 @@ async fn the_scheduler_is_used_through_http_on_behalf_of_the_caller() {
     client
         .query(
             r#"
+            fn::runtime_module_upsert({ module_id: "lyxal_essai", name: "Essai" });
+            fn::runtime_release_register({ module_id: "lyxal_essai", version: "0.1.0", manifest_version: 1, status: "Installed" });
             CREATE auth_organization:alpha CONTENT { slug: "alpha", name: "Alpha BTP" };
             CREATE auth_organization:beta CONTENT { slug: "beta", name: "Beta Bois" };
             CREATE auth_permission:⟨essai.rapport.run⟩ CONTENT { code: "essai.rapport.run", module: "lyxal_essai", scope: "organization", description: { fr: "Lancer le rapport", en: "Run the report" } };
@@ -276,6 +278,10 @@ async fn the_scheduler_is_used_through_http_on_behalf_of_the_caller() {
                 module: "lyxal_essai", executor: "handler", target: "essai.rapport", permission: "essai.rapport.run",
                 description: { fr: "Rapport", en: "Report" },
                 args_schema: { fields: { format: { pipeline: [{ rule: "enum", options: { allowed: ["pdf", "csv"], case_sensitive: true } }], required: true } }, unknown_keys: "reject" },
+                retry: { max_attempts: 1, strategy: "fixed", initial_delay: 1s, max_delay: 1s }, timeout: 1m
+            };
+            CREATE scheduler_task:⟨essai.unique⟩ CONTENT {
+                module: "lyxal_essai", executor: "handler", target: "essai.unique", unique_for: 1h,
                 retry: { max_attempts: 1, strategy: "fixed", initial_delay: 1s, max_delay: 1s }, timeout: 1m
             };
             CREATE auth_application:admin CONTENT { tenant: auth_organization:alpha, client_id: "lyxal-test-planif-admin", name: "Admin", type: "machine", redirect_uris: [], state: "active", permissions_version: 1 };
@@ -346,7 +352,7 @@ async fn the_scheduler_is_used_through_http_on_behalf_of_the_caller() {
 
     let tasks = send(&router, "GET", "/tasks?module=lyxal_essai", admin, None).await;
     assert_eq!(tasks.status, StatusCode::OK, "{}", tasks.body);
-    assert_eq!(tasks.data()["total"], 1);
+    assert_eq!(tasks.data()["total"], 2);
     let task = send(&router, "GET", "/tasks/essai.rapport", admin, None).await;
     assert_eq!(task.status, StatusCode::OK, "{}", task.body);
     assert_eq!(task.data()["permission"], "essai.rapport.run");
@@ -769,6 +775,17 @@ async fn the_scheduler_is_used_through_http_on_behalf_of_the_caller() {
     let completed = wait_state(&router, &admin_token, &retry, "completed").await;
     assert_eq!(completed["result"]["format"], "pdf");
 
+    // --- Unicité : l'exécution existante est rendue avec 200, rien n'est créé (A9) ----------
+    let unique =
+        json!({ "tenant": ALPHA, "task": "essai.unique", "unique_key": "lot-1", "delay": "1h" });
+    let first = send(&router, "POST", "/runs", admin, Some(unique.clone())).await;
+    assert_eq!(first.status, StatusCode::CREATED, "{}", first.body);
+    assert_eq!(first.data()["duplicate"], false);
+    let again = send(&router, "POST", "/runs", admin, Some(unique)).await;
+    assert_eq!(again.status, StatusCode::OK, "{}", again.body);
+    assert_eq!(again.data()["duplicate"], true);
+    assert_eq!(again.data()["id"], first.data()["id"]);
+
     // --- Identifiants d'exécution : aucune autre forme acceptée -----------------------------
     let plain = send(&router, "GET", "/runs/scheduler_run:abc", admin, None).await;
     assert_eq!(plain.status, StatusCode::BAD_REQUEST, "{}", plain.body);
@@ -972,6 +989,8 @@ async fn the_scheduler_is_used_through_http_on_behalf_of_the_caller() {
             reply.status,
             reply.body
         );
+        // Adresse inconnue aussi marquée `no-store` (A10)
+        assert_eq!(reply.header("cache-control"), "no-store", "{method} {path}");
     }
 
     // --- Suppressions -------------------------------------------------------------------------

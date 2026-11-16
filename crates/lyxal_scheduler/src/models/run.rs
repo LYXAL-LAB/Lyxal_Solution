@@ -153,6 +153,6 @@ pub struct Run {
     pub updated_at: SchedulerDatetime,
     /// Exécution existante rendue par l'unicité (`fn::scheduler_run_enqueue` seulement).
     pub duplicate: Option<bool>,
-    /// Exécution relancée (`fn::scheduler_run_retry` seulement).
-    pub retry_of: Option<String>,
+    /// Exécution relancée (relance seulement : `origin` vaut `retry`).
+    pub retry_of: Option<SchedulerRecordId>,
 }

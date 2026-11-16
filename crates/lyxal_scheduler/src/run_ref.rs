@@ -3,8 +3,8 @@
 //! routes de l'hôte l'acceptent et le rendent sous une forme unique : l'identifiant SurrealQL
 //! complet encodé en base64url sans remplissage. Le décodage contrôle la chaîne en SurrealQL
 //! (`fn::scheduler_run_ref` : règle `surql_record_string` du Core limitée à `scheduler_run`,
-//! conversion, puis règle `record_id` limitée à `scheduler_run`) ; aucune autre forme n'est
-//! acceptée.
+//! qui exige l'identifiant entier sous sa forme texte canonique, conversion, puis règle
+//! `record_id` limitée à `scheduler_run`) ; aucune autre forme n'est acceptée.
 
 use std::fmt;
 
@@ -28,7 +28,7 @@ impl RunRef {
     }
 
     /// Forme texte d'un identifiant d'exécution déjà écrit en SurrealQL (`<string> $run.id`,
-    /// comme `retry_of` ou l'exécution d'une entrée du journal).
+    /// comme l'exécution d'une entrée du journal).
     pub fn from_sql(text: &str) -> Self {
         Self(URL_SAFE_NO_PAD.encode(text.as_bytes()))
     }

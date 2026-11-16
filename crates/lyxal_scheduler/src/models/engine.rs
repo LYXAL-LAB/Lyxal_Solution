@@ -1,5 +1,7 @@
 //! Fonctions du moteur : échéances dues, échéances traitées, prochaine échéance, rejeu de
 //! période (`fn::scheduler_due_list`, `_schedule_fire`, `_schedule_next_set`, `_backfill_fire`).
+//! Celles qui écrivent portent la garde de génération du bail du planificateur (`node`,
+//! `generation` : Y2) et sont refusées (`SCHEDULER_LEADER_FENCED`) si ce nœud ne le tient plus.
 
 use lyxal_surreal::SurrealValue;
 
@@ -99,6 +101,10 @@ impl FireTime {
 /// Paramètres de `fn::scheduler_schedule_fire`.
 #[derive(Debug, Clone, SurrealValue)]
 pub struct ScheduleFireParams {
+    /// Nœud qui détient le bail du planificateur (garde de génération).
+    pub node: String,
+    /// Génération du bail du planificateur détenu par ce nœud.
+    pub generation: i64,
     /// Planification.
     pub schedule: SchedulerRecordId,
     /// Échéances passées calculées par `crate::spec` (1000 au plus).
@@ -127,6 +133,9 @@ pub struct FireResult {
     pub runs: Vec<FiredRun>,
     /// Échéances fournies sans exécution créée (rattrapage, doublon, limite).
     pub ignored: i64,
+    /// Échéances ignorées parce que la limite d'exécutions en attente de la portée est atteinte
+    /// (`max_pending_runs`, A4).
+    pub limited: i64,
     /// Planification mise à jour.
     pub schedule: Schedule,
 }
@@ -135,11 +144,16 @@ pub struct FireResult {
 /// seul des deux.
 #[derive(Debug, Clone, SurrealValue)]
 pub struct ScheduleNextSetParams {
+    /// Nœud qui détient le bail du planificateur (garde de génération).
+    pub node: String,
+    /// Génération du bail du planificateur détenu par ce nœud.
+    pub generation: i64,
     /// Planification.
     pub schedule: SchedulerRecordId,
     /// Prochaine échéance calculée.
     pub next_fire_at: Option<SchedulerDatetime>,
-    /// Motif d'invalidité (expression ou fuseau refusés, `no_future_fire`).
+    /// Motif d'invalidité (expression ou fuseau refusés, écart de moins d'une minute U1,
+    /// `no_future_fire`).
     pub invalid_reason: Option<String>,
     /// Langue des messages d'erreur.
     pub language: Option<String>,
@@ -148,6 +162,10 @@ pub struct ScheduleNextSetParams {
 /// Paramètres de `fn::scheduler_backfill_fire`.
 #[derive(Debug, Clone, SurrealValue)]
 pub struct BackfillFireParams {
+    /// Nœud qui détient le bail du planificateur (garde de génération, vérifiée à chaque lot).
+    pub node: String,
+    /// Génération du bail du planificateur détenu par ce nœud.
+    pub generation: i64,
     /// Rejeu.
     pub backfill: SchedulerRecordId,
     /// Échéances de la période calculées par `crate::spec` (1000 au plus).
@@ -192,6 +210,9 @@ pub struct Backfill {
 pub struct BackfillFireResult {
     /// Exécutions créées.
     pub runs: Vec<FiredRun>,
+    /// Échéances ignorées parce que la limite d'exécutions en attente de la portée est atteinte
+    /// (`max_pending_runs`, A4).
+    pub limited: i64,
     /// Rejeu mis à jour.
     pub backfill: Backfill,
 }

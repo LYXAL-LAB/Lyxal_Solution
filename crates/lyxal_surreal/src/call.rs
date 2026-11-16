@@ -25,11 +25,7 @@ pub trait LyxalSurrealCall {
     /// Les paramètres et le résultat traversent la frontière Rust ↔ SurrealDB via le trait natif
     /// `SurrealValue` (`#[derive(SurrealValue)]` sur les `XxxParams` / `XxxResult`).
     /// Désérialise et retourne le contrat universel `LyxalResult<T>`.
-    async fn call_fn<T, P>(
-        &self,
-        function_name: &str,
-        params: P,
-    ) -> Result<T, LyxalSurrealError>
+    async fn call_fn<T, P>(&self, function_name: &str, params: P) -> Result<T, LyxalSurrealError>
     where
         T: SurrealValue + Send,
         P: SurrealValue + Send + 'static,

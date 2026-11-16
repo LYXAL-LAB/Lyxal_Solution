@@ -738,10 +738,7 @@ async fn runs_of_people_and_modules() {
         .expect("relancée");
     assert_eq!(
         (retried.origin, retried.retry_of.clone()),
-        (
-            RunOrigin::Retry,
-            Some(lyxal_surreal::ToSql::to_sql(&delayed.id))
-        )
+        (RunOrigin::Retry, Some(delayed.id.clone()))
     );
     let other: Run = lossless(
         raw(
@@ -784,6 +781,9 @@ async fn runs_of_people_and_modules() {
 #[tokio::test]
 async fn engine_and_workers() {
     let (client, store, service) = bench().await;
+    // Bail du planificateur pris par ce test : garde de génération des fonctions du planificateur
+    let generation = crate::support::leader(&client, "essai").await;
+    let node = || "essai".to_string();
     let first = service
         .schedule_create(schedule_params("premiere"))
         .await
@@ -825,6 +825,8 @@ async fn engine_and_workers() {
     // schedule_next_set : prochaine échéance, ou planification invalide
     let next = store
         .schedule_next_set(ScheduleNextSetParams {
+            node: node(),
+            generation,
             schedule: first.id.clone(),
             next_fire_at: Some(now_plus(3600)),
             invalid_reason: None,
@@ -838,6 +840,8 @@ async fn engine_and_workers() {
             &store,
             "scheduler_schedule_next_set",
             ScheduleNextSetParams {
+                node: node(),
+                generation,
                 schedule: third.id.clone(),
                 next_fire_at: None,
                 invalid_reason: Some("no_future_fire: spec".to_string()),
@@ -852,6 +856,8 @@ async fn engine_and_workers() {
     // schedule_fire : échéances passées, prochaine échéance
     let fired = store
         .schedule_fire(ScheduleFireParams {
+            node: node(),
+            generation,
             schedule: first.id.clone(),
             fire_times: vec![FireTime::at(now_plus(-120)), FireTime::at(now_plus(-60))],
             next_fire_at: Some(now_plus(3600)),
@@ -859,12 +865,14 @@ async fn engine_and_workers() {
         })
         .await
         .expect("échéances");
-    assert_eq!((fired.runs.len(), fired.ignored), (2, 0));
+    assert_eq!((fired.runs.len(), fired.ignored, fired.limited), (2, 0, 0));
     let fired_raw: FireResult = lossless(
         raw(
             &store,
             "scheduler_schedule_fire",
             ScheduleFireParams {
+                node: node(),
+                generation,
                 schedule: second.id.clone(),
                 fire_times: vec![FireTime::at(now_plus(-30))],
                 next_fire_at: Some(now_plus(3600)),
@@ -910,6 +918,8 @@ async fn engine_and_workers() {
     assert_eq!(due.backfills.len(), 2);
     let replayed = store
         .backfill_fire(BackfillFireParams {
+            node: node(),
+            generation,
             backfill: backfill.id.clone(),
             fire_times: vec![FireTime::at(now_plus(-5400))],
             done: Some(true),
@@ -926,6 +936,8 @@ async fn engine_and_workers() {
             &store,
             "scheduler_backfill_fire",
             BackfillFireParams {
+                node: node(),
+                generation,
                 backfill: backfill_raw.id.clone(),
                 fire_times: vec![FireTime::at(now_plus(-5000))],
                 done: None,
@@ -1080,6 +1092,8 @@ async fn engine_and_workers() {
     }
     let rescued = store
         .run_rescue(RunRescueParams {
+            node: node(),
+            generation,
             limit: Some(10),
             language: None,
         })
@@ -1087,13 +1101,25 @@ async fn engine_and_workers() {
         .expect("reprise");
     assert_eq!(rescued.rescued.len(), usize::from(more.items.len() > 2));
     let _: RescueResult = lossless(
-        raw(&store, "scheduler_run_rescue", RunRescueParams::default()).await,
+        raw(
+            &store,
+            "scheduler_run_rescue",
+            RunRescueParams {
+                node: node(),
+                generation,
+                limit: None,
+                language: None,
+            },
+        )
+        .await,
         &[],
     );
 
     // run_prune : rien d'assez ancien
     let pruned = store
         .run_prune(RunPruneParams {
+            node: node(),
+            generation,
             limit: Some(100),
             language: None,
         })
@@ -1101,7 +1127,17 @@ async fn engine_and_workers() {
         .expect("élagage");
     assert_eq!(pruned.deleted, 0);
     let _: PruneResult = lossless(
-        raw(&store, "scheduler_run_prune", RunPruneParams::default()).await,
+        raw(
+            &store,
+            "scheduler_run_prune",
+            RunPruneParams {
+                node: node(),
+                generation,
+                limit: None,
+                language: None,
+            },
+        )
+        .await,
         &[],
     );
 }
@@ -1155,6 +1191,7 @@ async fn engine_wrappers_publish_and_report_health() {
     );
     let health = store.health(HealthParams::default()).await.expect("santé");
     assert_eq!(health.handler_tasks, vec!["essai.rapport".to_string()]);
+    assert!(health.handlers_served.is_empty());
     let _: EngineHealth = lossless(
         raw(&store, "scheduler_health", HealthParams::default()).await,
         &[],

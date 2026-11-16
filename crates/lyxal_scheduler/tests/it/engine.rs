@@ -96,6 +96,18 @@ impl Bench {
         self.store.run_enqueue(params).await.expect("différée").id
     }
 
+    /// Prochaine échéance écrite comme le moteur (session système), sans bail du planificateur :
+    /// le planificateur du test prend ensuite le bail lui-même.
+    async fn set_next(&self, schedule: &RecordId, at: SchedulerDatetime) {
+        self.client
+            .query("UPDATE $s SET next_fire_at = $at;")
+            .bind(("s", schedule.clone()))
+            .bind(("at", at))
+            .await
+            .and_then(|r| r.check())
+            .expect("prochaine échéance");
+    }
+
     async fn wait_state(&self, run: &RecordId, state: &str, within: Duration) {
         let deadline = tokio::time::Instant::now() + within;
         loop {
@@ -135,10 +147,6 @@ fn leader_timing() -> LeaderTiming {
 
 async fn bench() -> Bench {
     let client = installed_client().await;
-    // Baux du runtime (bail d'élection du planificateur), installés par l'hôte
-    lyxal_runtime::schema::install_runtime_schema(&client)
-        .await
-        .expect("schéma du runtime");
     client
         .query(
             r#"
@@ -555,16 +563,7 @@ async fn two_leaders_one_lease_and_no_duplicate_runs() {
     // Trois échéances manquées puis la suivante : les deux nœuds tournent en même temps
     let start_at = now_plus_ms(-150_000);
     let schedule = every_minute(&bench.store, "double", start_at, Overlap::AllowAll, None).await;
-    bench
-        .store
-        .schedule_next_set(ScheduleNextSetParams {
-            schedule: schedule.id.clone(),
-            next_fire_at: Some(start_at),
-            invalid_reason: None,
-            language: None,
-        })
-        .await
-        .expect("prochaine échéance");
+    bench.set_next(&schedule.id, start_at).await;
     let a = bench.leader("noeud-a");
     let b = bench.leader("noeud-b");
     let token = CancellationToken::new();
@@ -790,16 +789,7 @@ async fn overlap_skip_and_buffer_one_seen_by_the_engine() {
     let skip = every_minute(&bench.store, "skip", start_at, Overlap::Skip, None).await;
     let buffer = every_minute(&bench.store, "buffer", start_at, Overlap::BufferOne, None).await;
     for schedule in [&skip, &buffer] {
-        bench
-            .store
-            .schedule_next_set(ScheduleNextSetParams {
-                schedule: schedule.id.clone(),
-                next_fire_at: Some(start_at),
-                invalid_reason: None,
-                language: None,
-            })
-            .await
-            .expect("prochaine échéance");
+        bench.set_next(&schedule.id, start_at).await;
     }
     let leader = bench.leader("noeud-a");
     let report = leader
@@ -844,16 +834,7 @@ async fn jitter_delays_availability_but_not_the_scheduled_date() {
         Some(30),
     )
     .await;
-    bench
-        .store
-        .schedule_next_set(ScheduleNextSetParams {
-            schedule: schedule.id.clone(),
-            next_fire_at: Some(start_at),
-            invalid_reason: None,
-            language: None,
-        })
-        .await
-        .expect("prochaine échéance");
+    bench.set_next(&schedule.id, start_at).await;
     let report = bench
         .leader("noeud-a")
         .run_once(&CancellationToken::new())
@@ -1018,6 +999,154 @@ async fn health_reports_served_queues_and_missing_handlers() {
     );
     default.stop(Duration::from_secs(5)).await;
     maintenance.stop(Duration::from_secs(5)).await;
+}
+
+#[tokio::test]
+async fn a_leader_fenced_in_the_middle_of_a_turn_writes_nothing() {
+    let bench = bench().await;
+    // Renouvellement rare : le nœud a croit tenir le bail sans le relire avant d'écrire
+    let timing = LeaderTiming {
+        lease_renew: Duration::from_secs(3600),
+        ..leader_timing()
+    };
+    let leader = |node: &str| {
+        SchedulerLeaderWorker::with_timing(
+            bench.engine(node),
+            SurrealLeaderLeaseManager::new(bench.client.clone()),
+            timing,
+        )
+        .expect("planificateur")
+    };
+    let (a, b) = (leader("noeud-a"), leader("noeud-b"));
+    let token = CancellationToken::new();
+    assert!(a.run_once(&token).await.expect("tour").leader);
+    // Le bail de a expire (nœud figé) et b le prend : nouvelle génération
+    bench
+        .client
+        .query("UPDATE runtime_lease SET expires_at = time::unix(time::now()) - 1 WHERE kind = 'leader';")
+        .await
+        .and_then(|r| r.check())
+        .expect("bail expiré");
+    assert!(b.run_once(&token).await.expect("tour").leader);
+    // Une planification devient due : a, qui ne sait pas encore qu'il a perdu le bail, est
+    // refusé par la garde de génération dès sa première écriture et n'écrit rien
+    let start_at = now_plus_ms(-150_000);
+    let schedule = every_minute(&bench.store, "cloture", start_at, Overlap::AllowAll, None).await;
+    bench.set_next(&schedule.id, start_at).await;
+    let report = a.run_once(&token).await.expect("tour");
+    assert!(!report.leader, "{report:?}");
+    assert_eq!((report.fired, report.failed), (0, 0));
+    assert!(runs_of(&bench, &schedule.id).await.is_empty());
+    // a a oublié son bail : il ne planifie plus tant que b le tient ; b planifie
+    assert!(!a.run_once(&token).await.expect("tour").leader);
+    let report = b.run_once(&token).await.expect("tour");
+    assert_eq!(report.fired, 3, "{report:?}");
+}
+
+#[tokio::test]
+async fn rules_written_directly_below_one_minute_make_the_schedule_invalid() {
+    let bench = bench().await;
+    // Deux échéances par minute : refusées à l'écriture par `SchedulerService` (U1), mais
+    // écrites ici directement en SurrealQL (`SchedulerStore`, sans contrôle des dates)
+    let mut spec = ScheduleSpec::new("UTC");
+    spec.cron = vec!["0 * * * * *".to_string(), "30 * * * * *".to_string()];
+    let mut params = ScheduleCreateParams::new("trente-secondes", "essai.rapport", spec);
+    params.tenant = Some(RecordId::new("auth_organization", "alpha"));
+    params.args = Some(object(&[("format", "pdf")]));
+    let schedule = bench
+        .store
+        .schedule_create(params)
+        .await
+        .expect("planification");
+    let report = bench
+        .leader("noeud-a")
+        .run_once(&CancellationToken::new())
+        .await
+        .expect("tour");
+    assert_eq!((report.invalid, report.fired), (1, 0), "{report:?}");
+    let reason: Option<String> = bench
+        .query(
+            "RETURN (SELECT VALUE invalid_reason FROM ONLY $run WHERE state = 'invalid');",
+            &schedule.id,
+        )
+        .await;
+    assert!(
+        reason
+            .as_deref()
+            .is_some_and(|r| r.starts_with("min_interval")),
+        "{reason:?}"
+    );
+}
+
+#[tokio::test]
+async fn the_pending_limit_caps_the_runs_of_a_turn() {
+    let bench = bench().await;
+    bench
+        .store
+        .settings_set(SettingsSetParams {
+            tenant: Some(RecordId::new("auth_organization", "alpha")),
+            max_pending_runs: Some(2),
+            ..SettingsSetParams::default()
+        })
+        .await
+        .expect("réglages");
+    let start_at = now_plus_ms(-150_000);
+    let schedule = every_minute(&bench.store, "limite", start_at, Overlap::AllowAll, None).await;
+    bench.set_next(&schedule.id, start_at).await;
+    let report = bench
+        .leader("noeud-a")
+        .run_once(&CancellationToken::new())
+        .await
+        .expect("tour");
+    assert_eq!((report.fired, report.limited), (2, 1), "{report:?}");
+    assert_eq!(runs_of(&bench, &schedule.id).await.len(), 2);
+}
+
+#[tokio::test]
+async fn a_handler_served_by_another_node_is_not_reported_missing() {
+    let mut bench = bench().await;
+    // Nœud b : tous les handlers, exécuteur de la file maintenance (il s'inscrit en réservant)
+    let mut handlers = HandlerRegistry::new();
+    for task in ["essai.rapport", "essai.lent", "essai.court", "essai.long"] {
+        let (handler, ..) = waiter(task);
+        handlers.register(Arc::new(handler)).expect("handler");
+    }
+    let node_b = SchedulerEngine::new(bench.store.clone(), handlers, NodeId::new("noeud-b"));
+    let b = start(Arc::new(
+        SchedulerExecutorWorker::with_timing(node_b, "maintenance", 1, exec_timing())
+            .expect("exécuteur"),
+    ));
+    // Nœud a : aucun handler, exécuteurs de ses deux files
+    bench.handlers = HandlerRegistry::new();
+    let engine = bench.engine("noeud-a");
+    let check = SchedulerHealthCheck::new(engine.clone());
+    let a = ["default", "maintenance"].map(|queue| {
+        start(Arc::new(
+            SchedulerExecutorWorker::with_timing(engine.clone(), queue, 1, exec_timing())
+                .expect("exécuteur"),
+        ))
+    });
+    eventually("files servies", Duration::from_secs(5), || async {
+        engine.executors().queues().len() == 2
+    })
+    .await;
+    let ctx = ModuleContext::new("lyxal_scheduler");
+    let mut report = check.check(&ctx).await.expect("sonde");
+    for _ in 0..50 {
+        if report.status == HealthStatus::Healthy {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        report = check.check(&ctx).await.expect("sonde");
+    }
+    assert_eq!(report.status, HealthStatus::Healthy, "{:?}", report.message);
+    let message = report.message.unwrap_or_default();
+    assert!(message.contains("servis par un autre nœud"), "{message}");
+    assert!(message.contains("essai.rapport"), "{message}");
+    b.stop(Duration::from_secs(5)).await;
+    for worker in a {
+        worker.stop(Duration::from_secs(5)).await;
+    }
 }
 
 #[test]

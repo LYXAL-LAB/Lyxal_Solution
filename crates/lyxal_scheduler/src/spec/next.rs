@@ -262,6 +262,14 @@ impl Spec {
         if self.next_after(now)?.is_none() {
             return Err(no_future_fire("aucune échéance future"));
         }
+        self.check_rhythm(now)
+    }
+
+    /// Rythme des échéances à partir de `now` : au moins une minute entre deux échéances (U1),
+    /// décalage aléatoire d'au plus la moitié du plus petit écart (U5). Contrôlé à l'écriture
+    /// (`Spec::validate`) et par le planificateur à chaque calcul (des règles écrites
+    /// directement en SurrealQL n'y passent pas) ; une planification sans échéance future passe.
+    pub fn check_rhythm(&self, now: Timestamp) -> Result<(), SpecError> {
         let Some(gap) = self.smallest_gap(now)? else {
             return Ok(());
         };

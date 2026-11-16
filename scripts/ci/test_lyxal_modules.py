@@ -5,9 +5,11 @@ Un module est testé s'il a un `manifest.toml` et des fichiers `tests/*.test.sur
 
 Pour chaque fichier de tests :
 
-1. une base neuve est créée ; le module et ses dépendances y sont installés depuis leurs
-   manifestes (phases `schemas`, `functions`, `error_definitions`, `events`, `seeds`,
-   `migrations`, dans l'ordre déclaré), comme le fait `lyxal_runtime` ;
+1. une base neuve est créée ; comme le fait l'hôte `lyxal-server`, le schéma du runtime
+   (`lyxal_runtime` : baux, modules et releases) y est installé après `lyxal_core` et
+   `lyxal_error`, puis le module et ses dépendances depuis leurs manifestes (phases `schemas`,
+   `functions`, `error_definitions`, `events`, `seeds`, `migrations`, dans l'ordre déclaré),
+   comme le fait `lyxal_runtime` ;
 2. un accès `lyxal_test` (`TYPE RECORD WITH JWT`, HS512, clé aléatoire) y est défini, pour
    exécuter des blocs sous l'identité d'un utilisateur ;
 3. les blocs `-- test:` sont exécutés dans l'ordre, chacun dans sa propre requête : les
@@ -112,7 +114,9 @@ class ModuleDatabase:
     def install(self) -> None:
         with tempfile.NamedTemporaryFile("w", suffix=".surql", delete=False) as bundle:
             bundle.write("OPTION IMPORT;\n")
-            for name in install_order(self.module):
+            # Fondation de l'hôte d'abord (lyxal_core, lyxal_error, schéma du runtime)
+            foundation = install_order("lyxal_runtime")
+            for name in foundation + [m for m in install_order(self.module) if m not in foundation]:
                 for file in resources(name):
                     bundle.write(file.read_text() + "\n")
             bundle.write(f'DEFINE ACCESS {ACCESS} ON DATABASE TYPE RECORD WITH JWT ALGORITHM HS512 KEY "{self.key}";\n')

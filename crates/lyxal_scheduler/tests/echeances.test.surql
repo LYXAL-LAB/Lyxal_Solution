@@ -16,6 +16,10 @@
 
 -- préparation: organisations, identités, sessions et tâches d'essai déclarées en session système
 {
+    -- Fondation de l'hôte : module fictif lyxal_essai installé (release du runtime), bail du planificateur tenu par le nœud n1
+    fn::runtime_module_upsert({ module_id: "lyxal_essai", name: "Essai" });
+    fn::runtime_release_register({ module_id: "lyxal_essai", version: "0.1.0", manifest_version: 1, status: "Installed" });
+    fn::runtime_lease_acquire({ kind: "leader", key: "scheduler", node_id: "n1", ttl_seconds: 86400 });
     CREATE auth_organization:alpha CONTENT { slug: "alpha", name: "Alpha BTP" };
     CREATE auth_organization:beta CONTENT { slug: "beta", name: "Beta Bois" };
     FOR $n IN ["admin", "redacteur", "sanstache", "lecteur", "operateur", "membre"] {
@@ -70,12 +74,11 @@
 };
 
 -- test: une même date ne crée qu'une exécution (deux appels de fire)
--- en tant que: worker
 {
     LET $s = (SELECT VALUE id FROM ONLY scheduler_schedule WHERE name = "rattrapage-all" LIMIT 1);
     LET $t = time::now() - 5m;
-    LET $a = fn::scheduler_schedule_fire({ schedule: $s, fire_times: [{ at: $t, available_at: $t }], next_fire_at: time::now() + 5m });
-    LET $b = fn::scheduler_schedule_fire({ schedule: $s, fire_times: [{ at: $t, available_at: $t }, { at: $t, available_at: $t }], next_fire_at: time::now() + 5m });
+    LET $a = fn::scheduler_schedule_fire({ node: "n1", generation: 1, schedule: $s, fire_times: [{ at: $t, available_at: $t }], next_fire_at: time::now() + 5m });
+    LET $b = fn::scheduler_schedule_fire({ node: "n1", generation: 1, schedule: $s, fire_times: [{ at: $t, available_at: $t }, { at: $t, available_at: $t }], next_fire_at: time::now() + 5m });
     RETURN array::len($a.data.runs) = 1 AND $a.data.runs[0].id = type::record("scheduler_run", [$s, $t])
         AND array::len($b.data.runs) = 0 AND $b.data.ignored = 2
         AND count(SELECT * FROM scheduler_run WHERE schedule = $s) = 1
@@ -90,30 +93,27 @@
 };
 
 -- test: rattrapage all : toutes les échéances de la fenêtre, pas celles d'avant
--- en tant que: worker
 {
     LET $s = (SELECT VALUE id FROM ONLY scheduler_schedule WHERE name = "rattrapage-all" LIMIT 1);
-    LET $f = fn::scheduler_schedule_fire({ schedule: $s, fire_times: [{ at: time::now() - 3h, available_at: time::now() - 3h }, { at: time::now() - 2h, available_at: time::now() - 2h }, { at: time::now() - 50m, available_at: time::now() - 50m }, { at: time::now() - 20m, available_at: time::now() - 20m }, { at: time::now() - 2m, available_at: time::now() - 2m }], next_fire_at: time::now() + 8m });
+    LET $f = fn::scheduler_schedule_fire({ node: "n1", generation: 1, schedule: $s, fire_times: [{ at: time::now() - 3h, available_at: time::now() - 3h }, { at: time::now() - 2h, available_at: time::now() - 2h }, { at: time::now() - 50m, available_at: time::now() - 50m }, { at: time::now() - 20m, available_at: time::now() - 20m }, { at: time::now() - 2m, available_at: time::now() - 2m }], next_fire_at: time::now() + 8m });
     RETURN array::len($f.data.runs) = 3 AND $f.data.ignored = 2 AND $f.data.runs.all(|$r| $r.state = "queued");
 };
 
 -- test: rattrapage last : la plus récente de la fenêtre seulement
--- en tant que: worker
 {
     LET $s = (SELECT VALUE id FROM ONLY scheduler_schedule WHERE name = "rattrapage-last" LIMIT 1);
     LET $t = time::now() - 20m;
-    LET $f = fn::scheduler_schedule_fire({ schedule: $s, fire_times: [{ at: time::now() - 3h, available_at: time::now() - 3h }, { at: time::now() - 50m, available_at: time::now() - 50m }, { at: $t, available_at: $t }], next_fire_at: time::now() + 1h });
-    LET $g = fn::scheduler_schedule_fire({ schedule: $s, fire_times: [{ at: time::now() - 3h, available_at: time::now() - 3h }, { at: time::now() - 2h, available_at: time::now() - 2h }], next_fire_at: time::now() + 1h });
+    LET $f = fn::scheduler_schedule_fire({ node: "n1", generation: 1, schedule: $s, fire_times: [{ at: time::now() - 3h, available_at: time::now() - 3h }, { at: time::now() - 50m, available_at: time::now() - 50m }, { at: $t, available_at: $t }], next_fire_at: time::now() + 1h });
+    LET $g = fn::scheduler_schedule_fire({ node: "n1", generation: 1, schedule: $s, fire_times: [{ at: time::now() - 3h, available_at: time::now() - 3h }, { at: time::now() - 2h, available_at: time::now() - 2h }], next_fire_at: time::now() + 1h });
     RETURN array::len($f.data.runs) = 1 AND $f.data.runs[0].scheduled_for = $t AND array::len($g.data.runs) = 0 AND $g.data.ignored = 2;
 };
 
 -- test: rattrapage none : seulement l'échéance courante (moins d'une minute de retard)
--- en tant que: worker
 {
     LET $s = (SELECT VALUE id FROM ONLY scheduler_schedule WHERE name = "rattrapage-none" LIMIT 1);
-    LET $late = fn::scheduler_schedule_fire({ schedule: $s, fire_times: [{ at: time::now() - 30m, available_at: time::now() - 30m }, { at: time::now() - 10m, available_at: time::now() - 10m }], next_fire_at: time::now() + 1h });
+    LET $late = fn::scheduler_schedule_fire({ node: "n1", generation: 1, schedule: $s, fire_times: [{ at: time::now() - 30m, available_at: time::now() - 30m }, { at: time::now() - 10m, available_at: time::now() - 10m }], next_fire_at: time::now() + 1h });
     LET $now = time::now() - 5s;
-    LET $on_time = fn::scheduler_schedule_fire({ schedule: $s, fire_times: [{ at: time::now() - 20m, available_at: time::now() - 20m }, { at: $now, available_at: $now }], next_fire_at: time::now() + 1h });
+    LET $on_time = fn::scheduler_schedule_fire({ node: "n1", generation: 1, schedule: $s, fire_times: [{ at: time::now() - 20m, available_at: time::now() - 20m }, { at: $now, available_at: $now }], next_fire_at: time::now() + 1h });
     RETURN array::len($late.data.runs) = 0 AND array::len($on_time.data.runs) = 1 AND $on_time.data.runs[0].scheduled_for = $now;
 };
 
@@ -121,21 +121,20 @@
 {
     LET $s = (SELECT VALUE id FROM ONLY scheduler_schedule WHERE name = "rattrapage-all" LIMIT 1);
     fn::scheduler_schedule_update({ schedule: $s, catchup_window: 4h });
-    LET $f = fn::scheduler_schedule_fire({ schedule: $s, fire_times: [{ at: time::now() - 3h, available_at: time::now() - 3h }], next_fire_at: time::now() + 1h });
+    LET $f = fn::scheduler_schedule_fire({ node: "n1", generation: 1, schedule: $s, fire_times: [{ at: time::now() - 3h, available_at: time::now() - 3h }], next_fire_at: time::now() + 1h });
     RETURN array::len($f.data.runs) = 1;
 };
 
 -- test: exécutions restantes : au plus autant de créations, puis planification terminée
--- en tant que: worker
 {
     LET $s = (SELECT VALUE id FROM ONLY scheduler_schedule WHERE name = "trois-fois" LIMIT 1);
-    LET $a = fn::scheduler_schedule_fire({ schedule: $s, fire_times: [{ at: time::now() - 4m, available_at: time::now() - 4m }, { at: time::now() - 3m, available_at: time::now() - 3m }], next_fire_at: time::now() + 1m });
+    LET $a = fn::scheduler_schedule_fire({ node: "n1", generation: 1, schedule: $s, fire_times: [{ at: time::now() - 4m, available_at: time::now() - 4m }, { at: time::now() - 3m, available_at: time::now() - 3m }], next_fire_at: time::now() + 1m });
     LET $mid = $a.data.schedule;
     UPDATE passe:t SET id_schedule = $s;
-    LET $b = fn::scheduler_schedule_fire({ schedule: $s, fire_times: [{ at: time::now() - 2m, available_at: time::now() - 2m }, { at: time::now() - 1m, available_at: time::now() - 1m }], next_fire_at: time::now() + 1m });
+    LET $b = fn::scheduler_schedule_fire({ node: "n1", generation: 1, schedule: $s, fire_times: [{ at: time::now() - 2m, available_at: time::now() - 2m }, { at: time::now() - 1m, available_at: time::now() - 1m }], next_fire_at: time::now() + 1m });
     RETURN array::len($a.data.runs) = 2 AND $mid.remaining = 1 AND $mid.state = "active"
         AND array::len($b.data.runs) = 1 AND $b.data.schedule.remaining = 0 AND $b.data.schedule.state = "completed" AND $b.data.schedule.next_fire_at IS NONE
-        AND fn::scheduler_schedule_fire({ schedule: $s, fire_times: [{ at: time::now(), available_at: time::now() }], next_fire_at: time::now() + 1m }).error.code = "SCHEDULER_SCHEDULE_STATE_INVALID";
+        AND fn::scheduler_schedule_fire({ node: "n1", generation: 1, schedule: $s, fire_times: [{ at: time::now(), available_at: time::now() }], next_fire_at: time::now() + 1m }).error.code = "SCHEDULER_SCHEDULE_STATE_INVALID";
 };
 
 -- test: planification terminée : plus de modification ni de pause
@@ -148,22 +147,21 @@
 };
 
 -- test: sans prochaine échéance, la planification se termine
--- en tant que: worker
 {
     LET $s = (SELECT VALUE id FROM ONLY scheduler_schedule WHERE name = "rattrapage-none" LIMIT 1);
-    LET $f = fn::scheduler_schedule_fire({ schedule: $s, fire_times: [] });
+    LET $f = fn::scheduler_schedule_fire({ node: "n1", generation: 1, schedule: $s, fire_times: [] });
     RETURN $f.data.schedule.state = "completed" AND $f.data.runs = []
-        AND fn::scheduler_schedule_next_set({ schedule: $s, next_fire_at: time::now() + 1h }).error.code = "SCHEDULER_SCHEDULE_STATE_INVALID";
+        AND fn::scheduler_schedule_next_set({ node: "n1", generation: 1, schedule: $s, next_fire_at: time::now() + 1h }).error.code = "SCHEDULER_SCHEDULE_STATE_INVALID";
 };
 
 -- test: planification en pause et tâche désactivée : pas d'échéance ; absentes de la liste
 {
     LET $p = (SELECT VALUE id FROM ONLY scheduler_schedule WHERE name = "en-pause" LIMIT 1);
     LET $l = (SELECT VALUE id FROM ONLY scheduler_schedule WHERE name = "rattrapage-last" LIMIT 1);
-    LET $paused = fn::scheduler_schedule_fire({ schedule: $p, fire_times: [{ at: time::now(), available_at: time::now() }], next_fire_at: time::now() + 1m });
+    LET $paused = fn::scheduler_schedule_fire({ node: "n1", generation: 1, schedule: $p, fire_times: [{ at: time::now(), available_at: time::now() }], next_fire_at: time::now() + 1m });
     UPDATE $l SET next_fire_at = NONE, spec.every = [11m];
     fn::scheduler_task_set_state({ task: "essai.rapport", state: "disabled" });
-    LET $disabled = fn::scheduler_schedule_fire({ schedule: $l, fire_times: [{ at: time::now(), available_at: time::now() }], next_fire_at: time::now() + 1m });
+    LET $disabled = fn::scheduler_schedule_fire({ node: "n1", generation: 1, schedule: $l, fire_times: [{ at: time::now(), available_at: time::now() }], next_fire_at: time::now() + 1m });
     LET $due = fn::scheduler_due_list({ limit: 50 }).data.schedules;
     fn::scheduler_task_set_state({ task: "essai.rapport", state: "active" });
     LET $due_after = fn::scheduler_due_list({ limit: 50 }).data.schedules.id;
@@ -172,12 +170,11 @@
 };
 
 -- test: dates futures et paramètres faux refusés
--- en tant que: worker
 {
     LET $s = (SELECT VALUE id FROM ONLY scheduler_schedule WHERE name = "rattrapage-last" LIMIT 1);
-    RETURN fn::scheduler_schedule_fire({ schedule: $s, fire_times: [{ at: time::now() + 1h, available_at: time::now() + 1h }], next_fire_at: time::now() + 2h }).error.code = "SCHEDULER_INVALID_PARAMETERS"
-        AND fn::scheduler_schedule_fire({ schedule: $s }).error.code = "SCHEDULER_INVALID_PARAMETERS"
-        AND fn::scheduler_schedule_fire({ schedule: "scheduler_schedule:inconnue", fire_times: [] }).error.code = "SCHEDULER_SCHEDULE_NOT_FOUND"
+    RETURN fn::scheduler_schedule_fire({ node: "n1", generation: 1, schedule: $s, fire_times: [{ at: time::now() + 1h, available_at: time::now() + 1h }], next_fire_at: time::now() + 2h }).error.code = "SCHEDULER_INVALID_PARAMETERS"
+        AND fn::scheduler_schedule_fire({ node: "n1", generation: 1, schedule: $s }).error.code = "SCHEDULER_INVALID_PARAMETERS"
+        AND fn::scheduler_schedule_fire({ node: "n1", generation: 1, schedule: "scheduler_schedule:inconnue", fire_times: [] }).error.code = "SCHEDULER_SCHEDULE_NOT_FOUND"
         AND fn::scheduler_due_list({ limit: 0 }).error.code = "SCHEDULER_INVALID_PARAMETERS";
 };
 
@@ -187,9 +184,9 @@
     LET $s = <string> (SELECT VALUE id FROM ONLY scheduler_schedule WHERE name = "rattrapage-last" LIMIT 1);
     RETURN [
         fn::scheduler_due_list({}),
-        fn::scheduler_schedule_fire({ schedule: $s, fire_times: [], next_fire_at: time::now() + 1h }),
-        fn::scheduler_schedule_next_set({ schedule: $s, next_fire_at: time::now() + 1h }),
-        fn::scheduler_backfill_fire({ backfill: "scheduler_backfill:x", fire_times: [] })
+        fn::scheduler_schedule_fire({ node: "n1", generation: 1, schedule: $s, fire_times: [], next_fire_at: time::now() + 1h }),
+        fn::scheduler_schedule_next_set({ node: "n1", generation: 1, schedule: $s, next_fire_at: time::now() + 1h }),
+        fn::scheduler_backfill_fire({ node: "n1", generation: 1, backfill: "scheduler_backfill:x", fire_times: [] })
     ].all(|$r| $r.error.code = "SCHEDULER_PERMISSION_DENIED");
 };
 
@@ -210,24 +207,23 @@
 };
 
 -- test: rejeu de période : exécutions créées, doublon ignoré, bornes, fin
--- en tant que: worker
 {
     LET $b = (SELECT VALUE id_backfill FROM ONLY passe:b);
     LET $from = (SELECT VALUE from FROM ONLY passe:b);
     LET $listed = fn::scheduler_due_list({}).data.backfills;
-    LET $one = fn::scheduler_backfill_fire({ backfill: $b, fire_times: [{ at: $from + 1h, available_at: $from + 1h }, { at: $from + 2h, available_at: $from + 2h }] });
-    LET $two = fn::scheduler_backfill_fire({ backfill: $b, fire_times: [{ at: $from + 2h, available_at: $from + 2h }, { at: $from + 3h, available_at: $from + 3h }], done: true });
+    LET $one = fn::scheduler_backfill_fire({ node: "n1", generation: 1, backfill: $b, fire_times: [{ at: $from + 1h, available_at: $from + 1h }, { at: $from + 2h, available_at: $from + 2h }] });
+    LET $two = fn::scheduler_backfill_fire({ node: "n1", generation: 1, backfill: $b, fire_times: [{ at: $from + 2h, available_at: $from + 2h }, { at: $from + 3h, available_at: $from + 3h }], done: true });
     RETURN $listed[0].id = $b AND $listed[0].spec.every = [11m]
         AND array::len($one.data.runs) = 2 AND $one.data.backfill.state = "running" AND $one.data.runs.all(|$r| string::starts_with(<string> $r.id, "scheduler_run:["))
         AND array::len($two.data.runs) = 1 AND $two.data.backfill.state = "done" AND $two.data.backfill.runs_created = 3
         AND count(SELECT * FROM scheduler_run WHERE origin = "backfill") = 3
-        AND fn::scheduler_backfill_fire({ backfill: $b, fire_times: [] }).error.code = "SCHEDULER_SCHEDULE_STATE_INVALID";
+        AND fn::scheduler_backfill_fire({ node: "n1", generation: 1, backfill: $b, fire_times: [] }).error.code = "SCHEDULER_SCHEDULE_STATE_INVALID";
 };
 
 -- test: dates hors de la période refusées
 {
     LET $s = (SELECT VALUE id FROM ONLY scheduler_schedule WHERE name = "rattrapage-all" LIMIT 1);
     LET $b = fn::scheduler_schedule_backfill({ schedule: $s, from: time::now() - 2d, to: time::now() - 1d }).data.id;
-    RETURN fn::scheduler_backfill_fire({ backfill: $b, fire_times: [{ at: time::now() - 3d, available_at: time::now() - 3d }] }).error.code = "SCHEDULER_INVALID_PARAMETERS"
-        AND fn::scheduler_backfill_fire({ backfill: $b, fire_times: [{ at: time::now() - 1h, available_at: time::now() - 1h }] }).error.code = "SCHEDULER_INVALID_PARAMETERS";
+    RETURN fn::scheduler_backfill_fire({ node: "n1", generation: 1, backfill: $b, fire_times: [{ at: time::now() - 3d, available_at: time::now() - 3d }] }).error.code = "SCHEDULER_INVALID_PARAMETERS"
+        AND fn::scheduler_backfill_fire({ node: "n1", generation: 1, backfill: $b, fire_times: [{ at: time::now() - 1h, available_at: time::now() - 1h }] }).error.code = "SCHEDULER_INVALID_PARAMETERS";
 };

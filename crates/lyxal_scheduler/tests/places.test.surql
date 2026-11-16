@@ -15,6 +15,10 @@
 
 -- préparation: organisations, identités, sessions et tâches d'essai déclarées en session système
 {
+    -- Fondation de l'hôte : module fictif lyxal_essai installé (release du runtime), bail du planificateur tenu par le nœud n1
+    fn::runtime_module_upsert({ module_id: "lyxal_essai", name: "Essai" });
+    fn::runtime_release_register({ module_id: "lyxal_essai", version: "0.1.0", manifest_version: 1, status: "Installed" });
+    fn::runtime_lease_acquire({ kind: "leader", key: "scheduler", node_id: "n1", ttl_seconds: 86400 });
     CREATE auth_organization:alpha CONTENT { slug: "alpha", name: "Alpha BTP" };
     CREATE auth_organization:beta CONTENT { slug: "beta", name: "Beta Bois" };
     FOR $n IN ["admin", "redacteur", "sanstache", "lecteur", "operateur", "membre"] {
@@ -80,12 +84,11 @@
 DELETE auth_organization:alpha;
 
 -- test: la reprise recale les places de la file sur les exécutions réellement en cours
--- en tant que: worker
 {
     LET $before = (SELECT VALUE running FROM ONLY scheduler_queue:default);
-    LET $r = fn::scheduler_run_rescue({});
+    LET $r = fn::scheduler_run_rescue({ node: "n1", generation: 1 });
     LET $after = (SELECT VALUE running FROM ONLY scheduler_queue:default);
-    RETURN $before = 2 AND $r.data.reconciled >= 1 AND $after = 1 AND fn::scheduler_run_rescue({}).data.reconciled = 0;
+    RETURN $before = 2 AND $r.data.reconciled >= 1 AND $after = 1 AND fn::scheduler_run_rescue({ node: "n1", generation: 1 }).data.reconciled = 0;
 };
 
 -- préparation: beta garde 3 exécutions par planification ; « ancienne » : 3 exécutions il y a 60 jours (gardées) ; « recente » : 5 il y a 40 jours (2 à élaguer)
@@ -103,12 +106,11 @@ DELETE auth_organization:alpha;
 };
 
 -- test: les plus anciennes, gardées, ne bloquent pas l'élagage des suivantes
--- en tant que: worker
 {
     LET $e = (SELECT * FROM ONLY passe:e);
     LET $oldest = (SELECT id, tenant, schedule, scheduled_for, finished_at FROM scheduler_run WHERE schedule = $e.ancienne ORDER BY scheduled_for ASC LIMIT 1)[0];
     LET $kept = fn::scheduler_run_prunable($oldest.id, $oldest.tenant, $oldest.schedule, $oldest.scheduled_for, $oldest.finished_at, time::now());
-    LET $p = fn::scheduler_run_prune({ limit: 3 });
+    LET $p = fn::scheduler_run_prune({ node: "n1", generation: 1, limit: 3 });
     RETURN !$kept AND $p.data.deleted = 2
         AND count(SELECT * FROM scheduler_run WHERE schedule = $e.ancienne) = 3
         AND count(SELECT * FROM scheduler_run WHERE schedule = $e.recente) = 3;

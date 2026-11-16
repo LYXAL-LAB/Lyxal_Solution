@@ -18,6 +18,10 @@
 
 -- préparation: organisations, identités, sessions et tâches d'essai déclarées en session système
 {
+    -- Fondation de l'hôte : module fictif lyxal_essai installé (release du runtime), bail du planificateur tenu par le nœud n1
+    fn::runtime_module_upsert({ module_id: "lyxal_essai", name: "Essai" });
+    fn::runtime_release_register({ module_id: "lyxal_essai", version: "0.1.0", manifest_version: 1, status: "Installed" });
+    fn::runtime_lease_acquire({ kind: "leader", key: "scheduler", node_id: "n1", ttl_seconds: 86400 });
     CREATE auth_organization:alpha CONTENT { slug: "alpha", name: "Alpha BTP" };
     CREATE auth_organization:beta CONTENT { slug: "beta", name: "Beta Bois" };
     FOR $n IN ["admin", "redacteur", "sanstache", "lecteur", "operateur", "membre"] {
@@ -61,24 +65,22 @@
 };
 
 -- test: échéances avec disponibilité décalée : identité [planification, date prévue], réservation à la date de disponibilité
--- en tant que: worker
 {
     LET $s = (SELECT VALUE schedule FROM ONLY passe:m);
     LET $t = time::now() - 1m;
-    LET $f = fn::scheduler_schedule_fire({ schedule: $s, fire_times: [{ at: $t, available_at: $t + 10m }], next_fire_at: time::now() + 9m });
+    LET $f = fn::scheduler_schedule_fire({ node: "n1", generation: 1, schedule: $s, fire_times: [{ at: $t, available_at: $t + 10m }], next_fire_at: time::now() + 9m });
     LET $run = (SELECT * FROM ONLY $f.data.runs[0].id);
     RETURN $f.ok AND $f.data.runs[0].id = type::record("scheduler_run", [$s, $t]) AND $run.scheduled_for = $t AND $run.available_at = $t + 10m
         AND fn::scheduler_run_claim({ queue: "default", node: "n1", limit: 10 }).data.items = [];
 };
 
 -- test: disponibilité avant la date prévue refusée (échéance et rejeu)
--- en tant que: worker
 {
     LET $s = (SELECT VALUE schedule FROM ONLY passe:m);
     LET $t = time::now() - 2m;
-    RETURN fn::scheduler_schedule_fire({ schedule: $s, fire_times: [{ at: $t, available_at: $t - 1s }], next_fire_at: time::now() + 9m }).error.code = "SCHEDULER_INVALID_PARAMETERS"
-        AND fn::scheduler_schedule_fire({ schedule: $s, fire_times: [{ at: $t }], next_fire_at: time::now() + 9m }).error.code = "SCHEDULER_INVALID_PARAMETERS"
-        AND fn::scheduler_backfill_fire({ backfill: "scheduler_backfill:x", fire_times: [{ at: $t, available_at: $t - 1s }] }).error.details.fields.fire_times[0].code = "CORE_VALIDATION_RANGE_ORDER"
+    RETURN fn::scheduler_schedule_fire({ node: "n1", generation: 1, schedule: $s, fire_times: [{ at: $t, available_at: $t - 1s }], next_fire_at: time::now() + 9m }).error.code = "SCHEDULER_INVALID_PARAMETERS"
+        AND fn::scheduler_schedule_fire({ node: "n1", generation: 1, schedule: $s, fire_times: [{ at: $t }], next_fire_at: time::now() + 9m }).error.code = "SCHEDULER_INVALID_PARAMETERS"
+        AND fn::scheduler_backfill_fire({ node: "n1", generation: 1, backfill: "scheduler_backfill:x", fire_times: [{ at: $t, available_at: $t - 1s }] }).error.details.fields.fire_times[0].code = "CORE_VALIDATION_RANGE_ORDER"
         AND fn::scheduler_due_list({}).data.schedules.all(|$d| $d.created_at IS NOT NONE);
 };
 

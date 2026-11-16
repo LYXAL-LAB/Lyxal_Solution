@@ -250,11 +250,11 @@ Routes du planificateur, sous `/api/v1/scheduler` (JSON, réponses `LyxalResult`
 | `GET /queues` ; `POST /queues/{nom}/pause` (`reason`), `POST /queues/{nom}/resume` | `queue_list`, `queue_pause`, `queue_resume` | lecture / installation |
 | `GET /calendars?tenant=`, `POST /calendars` ; `GET`, `PATCH`, `DELETE /calendars/{id}` | `calendar_list`, `_create`, `_get`, `_update`, `_delete` | lecture / calendriers |
 | `GET /schedules?tenant=&task=&state=&paused=`, `POST /schedules` ; `GET`, `PATCH`, `DELETE /schedules/{id}` | `schedule_list`, `_create` et `_update` contrôlées par `SchedulerService`, `_get`, `_delete` | lecture / écriture et permission de la tâche |
-| `POST /schedules/{id}/pause` (`reason`), `/resume`, `/trigger` (`overlap`), `/backfill` (`from`, `to`, `overlap`) | `schedule_pause`, `_resume`, `_trigger`, `_backfill` | écriture |
+| `POST /schedules/{id}/pause` (`reason`), `/resume`, `/trigger` (`overlap`), `/backfill` (`from`, `to`, `overlap`) | `schedule_pause`, `_resume`, `_trigger`, `_backfill` | écriture ; permission de la tâche sauf pour la pause ; `trigger` avec `cancel_other` : aussi exécutions |
 | `GET /schedules/{id}/forecast?count=` | prochaines échéances (10 par défaut, 100 au plus), heure locale comprise | lecture |
 | `POST /specs/validate` (`tenant`, `spec`, `calendars`, `created_at`) | contrôle d'une règle de dates sans écriture, avec les mêmes règles de forme que l'écriture (`fn::scheduler_spec_validate`) puis le calcul des dates : `{ valid: true }` ou `SCHEDULER_SPEC_INVALID` | lecture |
-| `GET /runs?tenant=&schedule=&task=&state=&since=`, `POST /runs` (`task`, `tenant`, `args`, `run_at` ou `delay`, `priority`, `unique_key`) ; `GET /runs/{id}` | `run_list`, `run_enqueue`, `run_get` | lecture / écriture et permission de la tâche |
-| `POST /runs/{id}/cancel` (`reason`), `POST /runs/{id}/retry` | `run_cancel`, `run_retry` | exécutions |
+| `GET /runs?tenant=&schedule=&task=&state=&since=`, `POST /runs` (`task`, `tenant`, `args`, `run_at` ou `delay`, `priority`, `unique_key` ; 201, ou 200 avec l'exécution existante quand l'unicité la rend, `duplicate`) ; `GET /runs/{id}` | `run_list`, `run_enqueue`, `run_get` | lecture / écriture et permission de la tâche |
+| `POST /runs/{id}/cancel` (`reason`), `POST /runs/{id}/retry` | `run_cancel`, `run_retry` | exécutions ; relance : aussi permission de la tâche |
 | `GET /audit?tenant=&schedule=&action=&since=` | `audit_list` | lecture |
 
 * **Droits** : jeton d'accès de l'appelant ; chaque requête s'exécute sous une session
@@ -276,7 +276,8 @@ Routes du planificateur, sous `/api/v1/scheduler` (JSON, réponses `LyxalResult`
   `error.details.fields.rule` (`cron[0]`, `timezone`, `calendars[1].rules[2]`…) et `reason`
   (`cron_syntax`, `timezone`, `min_interval`…).
 * **Cache** : toutes les réponses portent `Cache-Control: no-store` et `Pragma: no-cache`
-  (arguments et résultats de tâches).
+  (arguments et résultats de tâches), y compris le 404 d'une adresse inconnue sous
+  `/api/v1/scheduler`.
 
 La connexion (`lyxal_auth`) demande la clé applicative et `auth.public_url`
 (`LYXAL__AUTH__PUBLIC_URL`, ex. `https://console.example.com`). Au démarrage, l'hôte crée les

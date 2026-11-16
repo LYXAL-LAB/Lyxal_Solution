@@ -17,6 +17,10 @@
 
 -- préparation: organisations, identités, sessions et tâches d'essai déclarées en session système
 {
+    -- Fondation de l'hôte : module fictif lyxal_essai installé (release du runtime), bail du planificateur tenu par le nœud n1
+    fn::runtime_module_upsert({ module_id: "lyxal_essai", name: "Essai" });
+    fn::runtime_release_register({ module_id: "lyxal_essai", version: "0.1.0", manifest_version: 1, status: "Installed" });
+    fn::runtime_lease_acquire({ kind: "leader", key: "scheduler", node_id: "n1", ttl_seconds: 86400 });
     CREATE auth_organization:alpha CONTENT { slug: "alpha", name: "Alpha BTP" };
     CREATE auth_organization:beta CONTENT { slug: "beta", name: "Beta Bois" };
     FOR $n IN ["admin", "redacteur", "sanstache", "lecteur", "operateur", "membre"] {
@@ -137,7 +141,7 @@ RETURN fn::scheduler_schedule_create({ tenant: "auth_organization:alpha", name: 
 -- préparation: retour à la limite par défaut ; le moteur calcule l'échéance
 {
     UPDATE scheduler_settings:alpha SET max_schedules = NONE;
-    fn::scheduler_schedule_next_set({ schedule: (SELECT VALUE id_schedule FROM ONLY passe:s), next_fire_at: time::now() + 1h });
+    fn::scheduler_schedule_next_set({ node: "n1", generation: 1, schedule: (SELECT VALUE id_schedule FROM ONLY passe:s), next_fire_at: time::now() + 1h });
 };
 
 -- test: lecture, liste filtrée par un lecteur
@@ -166,14 +170,27 @@ RETURN fn::scheduler_schedule_create({ tenant: "auth_organization:alpha", name: 
         AND fn::scheduler_schedule_update({ schedule: $id, spec: { cron: [] } }).error.code = "SCHEDULER_SPEC_INVALID";
 };
 
--- test: sans la permission propre de la tâche : pas de modification, mais pause, reprise permises
+-- test: sans la permission propre de la tâche : ni modification ni reprise (Y1), mais pause permise
 -- en tant que: sanstache
 {
     LET $id = <string> (SELECT VALUE id_schedule FROM ONLY passe:s);
     LET $u = fn::scheduler_schedule_update({ schedule: $id, args: { format: "pdf" } });
     LET $p = fn::scheduler_schedule_pause({ schedule: $id, reason: "Congés" });
     LET $r = fn::scheduler_schedule_resume({ schedule: $id });
-    RETURN $u.error.code = "SCHEDULER_PERMISSION_DENIED" AND $p.data.paused AND $p.data.paused_reason = "Congés" AND !$r.data.paused AND $r.data.paused_reason IS NONE;
+    RETURN $u.error.code = "SCHEDULER_PERMISSION_DENIED" AND $p.data.paused AND $p.data.paused_reason = "Congés"
+        AND $r.error.code = "SCHEDULER_PERMISSION_DENIED";
+};
+
+-- test: A3 — reprise directe sans la permission de la tâche refusée par la garde (la reprise fait exécuter la tâche)
+-- en tant que: sanstache
+-- attendu-erreur: SCHEDULER_PERMISSION_DENIED
+UPDATE (SELECT VALUE id_schedule FROM ONLY passe:s) SET paused = false, paused_reason = NONE;
+
+-- test: reprise par une personne qui a la permission de la tâche
+-- en tant que: redacteur
+{
+    LET $r = fn::scheduler_schedule_resume({ schedule: <string> (SELECT VALUE id_schedule FROM ONLY passe:s) });
+    RETURN $r.ok AND !$r.data.paused AND $r.data.paused_reason IS NONE;
 };
 
 -- test: modification directe sans la permission de la tâche refusée par la garde
@@ -214,12 +231,12 @@ UPDATE (SELECT VALUE id_schedule FROM ONLY passe:s) SET created_by = auth_identi
 -- test: planification déclarée invalide par le moteur, puis corrigée : de nouveau active
 {
     LET $id = (SELECT VALUE id_schedule FROM ONLY passe:s);
-    LET $inv = fn::scheduler_schedule_next_set({ schedule: $id, invalid_reason: "Expression cron refusée" });
+    LET $inv = fn::scheduler_schedule_next_set({ node: "n1", generation: 1, schedule: $id, invalid_reason: "Expression cron refusée" });
     LET $fix = fn::scheduler_schedule_update({ schedule: $id, spec: { cron: ["0 7 * * *"] } });
     RETURN $inv.data.state = "invalid" AND $inv.data.invalid_reason = "Expression cron refusée" AND $inv.data.next_fire_at IS NONE
         AND $fix.data.state = "active" AND $fix.data.invalid_reason IS NONE
-        AND fn::scheduler_schedule_next_set({ schedule: $id, next_fire_at: time::now() + 1h, invalid_reason: "x" }).error.code = "SCHEDULER_INVALID_PARAMETERS"
-        AND fn::scheduler_schedule_next_set({ schedule: $id }).error.code = "SCHEDULER_INVALID_PARAMETERS";
+        AND fn::scheduler_schedule_next_set({ node: "n1", generation: 1, schedule: $id, next_fire_at: time::now() + 1h, invalid_reason: "x" }).error.code = "SCHEDULER_INVALID_PARAMETERS"
+        AND fn::scheduler_schedule_next_set({ node: "n1", generation: 1, schedule: $id }).error.code = "SCHEDULER_INVALID_PARAMETERS";
 };
 
 -- test: déclenchement immédiat par le rédacteur

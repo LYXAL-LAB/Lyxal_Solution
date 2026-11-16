@@ -250,7 +250,7 @@ mod tests {
         let res = LyxalSurrealError::Call(LyxalCallError::InvalidContract {
             function: "f".to_string(),
         })
-            .into_response();
+        .into_response();
         assert_eq!(res.status().as_u16(), 500);
         let body = to_bytes(res.into_body(), usize::MAX).await.expect("corps");
         let json: serde_json::Value = serde_json::from_slice(&body).expect("JSON");

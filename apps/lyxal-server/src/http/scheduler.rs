@@ -23,7 +23,7 @@ use axum::body::Bytes;
 use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::Response;
-use axum::routing::{get, post};
+use axum::routing::{any, get, post};
 use axum::Router;
 use lyxal_scheduler::models::{
     AuditEntry, AuditListParams, Calendar, CalendarCreateParams, CalendarListParams,
@@ -104,8 +104,9 @@ pub fn routes() -> Router<AppContext> {
         .route("/runs/:id/cancel", post(run_cancel))
         .route("/runs/:id/retry", post(run_retry))
         .route("/audit", get(audit_list))
-        // Adresse inconnue du planificateur : 404 sans corps, aussi marqué `no-store` (X4)
-        .fallback(|| async { StatusCode::NOT_FOUND })
+        // Adresse inconnue du planificateur : 404 sans corps, aussi marqué `no-store` (X4) ; une
+        // route attrape-tout plutôt qu'un `fallback`, qu'un routeur imbriqué deux fois ne garde pas
+        .route("/*rest", any(|| async { StatusCode::NOT_FOUND }))
         .layer(axum::middleware::map_response(auth::no_store))
 }
 
@@ -282,8 +283,8 @@ fn run_json(run: Run) -> Value {
     let id = RunRef::encode(&run.id).to_string();
     let retry_of = run
         .retry_of
-        .as_deref()
-        .map(|text| RunRef::from_sql(text).to_string());
+        .as_ref()
+        .map(|origin| RunRef::encode(origin).to_string());
     let mut value = data(run);
     value["id"] = id.into();
     if let Some(retry_of) = retry_of {

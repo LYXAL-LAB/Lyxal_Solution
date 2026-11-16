@@ -91,3 +91,36 @@ DEFINE FIELD OVERWRITE updated_at ON TABLE scheduler_slot
     COMMENT "Dernière modification";
 
 DEFINE INDEX OVERWRITE scheduler_slot_queue ON TABLE scheduler_slot FIELDS queue, scope_key UNIQUE;
+
+-- Exécuteurs actifs (sonde de santé) : handlers inscrits sur chaque nœud qui sert une file,
+-- réécrits à chaque réservation (fn::scheduler_run_claim), élagués après un jour sans réservation
+-- (fn::scheduler_run_prune). Un handler manquant n'est signalé que si aucun nœud actif ne l'a.
+
+DEFINE TABLE OVERWRITE scheduler_node
+    TYPE NORMAL
+    SCHEMAFULL
+    PERMISSIONS
+        FOR select, create, update, delete WHERE fn::scheduler_can({ action: "worker" })
+    COMMENT "Exécuteurs actifs : handlers inscrits par nœud et par file (identifiant [nœud, file])";
+
+DEFINE FIELD OVERWRITE node ON TABLE scheduler_node
+    TYPE string
+    ASSERT string::len($value) >= 1 AND string::len($value) <= 128
+    COMMENT "Nœud";
+
+DEFINE FIELD OVERWRITE queue ON TABLE scheduler_node
+    TYPE record<scheduler_queue>
+    COMMENT "File servie";
+
+DEFINE FIELD OVERWRITE handlers ON TABLE scheduler_node
+    TYPE array<string>
+    DEFAULT []
+    ASSERT array::len($value) <= 1000
+    COMMENT "Tâches handler dont le nœud a le code";
+
+DEFINE FIELD OVERWRITE seen_at ON TABLE scheduler_node
+    TYPE datetime
+    VALUE time::now()
+    COMMENT "Dernière réservation du nœud dans la file";
+
+DEFINE INDEX OVERWRITE scheduler_node_seen ON TABLE scheduler_node FIELDS seen_at;

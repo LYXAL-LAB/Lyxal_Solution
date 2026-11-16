@@ -2,9 +2,13 @@
 //! `scheduler`, 30 s, renouvelé toutes les 10 s). À chaque tour (1 s) : planifications dues
 //! (dates manquées et suivante calculées par `spec`, décalage aléatoire U5 appliqué à la date de
 //! disponibilité), rejeux de période ; toutes les 30 s, reprise des baux expirés ; toutes les
-//! heures, élagage. Sans bail : attend. Un nœud qui perd le bail cesse de planifier au tour
-//! suivant ; une même échéance ne crée jamais deux exécutions (identifiant
-//! `[planification, date]`).
+//! heures, élagage. Sans bail : attend. Chaque écriture du planificateur porte la garde de
+//! génération du bail (`node`, `generation` : Y2) : un nœud qui a perdu le bail, même au milieu
+//! d'un tour ou entre deux lots d'un rejeu, est refusé (`SCHEDULER_LEADER_FENCED`), oublie son
+//! bail et cesse de planifier ; une même échéance ne crée jamais deux exécutions (identifiant
+//! `[planification, date]`). Les règles d'une planification sont recontrôlées à chaque calcul
+//! (écart d'au moins une minute U1, décalage U5) : des règles écrites directement en SurrealQL
+//! qui ne les respectent pas rendent la planification invalide.
 
 use async_trait::async_trait;
 use jiff::{SignedDuration, Timestamp};
@@ -20,7 +24,7 @@ use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
 
 use super::{SchedulerEngine, LEADER_KEY};
-use crate::error::{SchedulerError, SchedulerResult, SpecError, SpecReason};
+use crate::error::{SchedulerError, SchedulerResult, SpecError, SpecReason, LEADER_FENCED};
 use crate::models::{
     BackfillFireParams, DueBackfill, DueListParams, DueSchedule, FireTime, RunPruneParams,
     RunRescueParams, ScheduleFireParams, ScheduleNextSetParams, SchedulerDatetime,
@@ -70,6 +74,9 @@ pub struct LeaderReport {
     pub fired: u64,
     /// Exécutions créées par les rejeux.
     pub backfilled: u64,
+    /// Échéances ignorées parce que la limite d'exécutions en attente d'une organisation est
+    /// atteinte (`max_pending_runs`, A4).
+    pub limited: u64,
     /// Planifications déclarées invalides.
     pub invalid: u64,
     /// Exécutions reprises après l'expiration de leur bail.
@@ -91,6 +98,23 @@ struct LeaderState {
     renewed: Option<Instant>,
     rescued: Option<Instant>,
     pruned: Option<Instant>,
+}
+
+/// Garde de génération remise à chaque écriture du planificateur : nœud et génération du bail
+/// détenu pour ce tour (Y2).
+#[derive(Debug, Clone)]
+struct Fence {
+    node: String,
+    generation: i64,
+}
+
+impl Fence {
+    fn of(lease: &LeaderLease) -> Self {
+        Self {
+            node: lease.owner.as_str().to_string(),
+            generation: i64::try_from(lease.generation).unwrap_or(i64::MAX),
+        }
+    }
 }
 
 /// Worker planificateur.
@@ -116,6 +140,9 @@ fn plan(
         created,
         CalendarSet::from_calendars(&due.calendars)?,
     )?;
+    // U1 et U5 contrôlés par le moteur aussi : des règles écrites directement en SurrealQL ne
+    // passent pas par le contrôle de l'écriture (`SchedulerService`)
+    spec.check_rhythm(now)?;
     let next = spec.next_after(now)?.map(to_datetime).transpose()?;
     let window = to_signed_duration("catchup_window", &due.catchup_window)?;
     let out_of_range =
@@ -249,7 +276,36 @@ impl SchedulerLeaderWorker {
                 return Ok(report);
             }
         }
+        let Some(fence) = state.lease.as_ref().map(Fence::of) else {
+            return Ok(report);
+        };
+        let outcome = self
+            .tour(&fence, &mut state, cancellation, &mut report)
+            .await;
+        match outcome {
+            Err(error) if error.is_code(LEADER_FENCED) => {
+                // Bail perdu au milieu du tour (autre nœud, autre génération, bail expiré) : ce
+                // nœud l'oublie et ne planifie plus ; il tentera de le reprendre au tour suivant
+                tracing::warn!(node = %fence.node, generation = fence.generation, "bail du planificateur perdu pendant le tour : écritures refusées, la planification s'arrête sur ce nœud");
+                state.lease = None;
+                state.renewed = None;
+                report.leader = false;
+                Ok(report)
+            }
+            Err(error) => Err(error),
+            Ok(()) => Ok(report),
+        }
+    }
 
+    /// Corps d'un tour sous la garde `fence` : échéances, rejeux, reprise et élagage. Une
+    /// écriture refusée pour bail perdu (`SCHEDULER_LEADER_FENCED`) arrête le tour.
+    async fn tour(
+        &self,
+        fence: &Fence,
+        state: &mut LeaderState,
+        cancellation: &CancellationToken,
+        report: &mut LeaderReport,
+    ) -> SchedulerResult<()> {
         let due = self
             .engine
             .store()
@@ -261,18 +317,24 @@ impl SchedulerLeaderWorker {
         let now = to_timestamp("now", &due.now)?;
         for schedule in &due.schedules {
             if cancellation.is_cancelled() {
-                return Ok(report);
+                return Ok(());
             }
-            if let Err(error) = self.fire(schedule, now, &mut report).await {
+            if let Err(error) = self.fire(fence, schedule, now, report).await {
+                if error.is_code(LEADER_FENCED) {
+                    return Err(error);
+                }
                 report.failed += 1;
                 tracing::warn!(schedule = %schedule.id.to_sql(), code = %error.code(), error = %error, "échéances non traitées");
             }
         }
         for backfill in &due.backfills {
             if cancellation.is_cancelled() {
-                return Ok(report);
+                return Ok(());
             }
-            if let Err(error) = self.backfill(backfill, cancellation, &mut report).await {
+            if let Err(error) = self.backfill(fence, backfill, cancellation, report).await {
+                if error.is_code(LEADER_FENCED) {
+                    return Err(error);
+                }
                 report.failed += 1;
                 tracing::warn!(backfill = %backfill.id.to_sql(), code = %error.code(), error = %error, "rejeu non traité");
             }
@@ -286,7 +348,12 @@ impl SchedulerLeaderWorker {
             match self
                 .engine
                 .store()
-                .run_rescue(RunRescueParams::default())
+                .run_rescue(RunRescueParams {
+                    node: fence.node.clone(),
+                    generation: fence.generation,
+                    limit: None,
+                    language: None,
+                })
                 .await
             {
                 Ok(rescue) => {
@@ -299,8 +366,11 @@ impl SchedulerLeaderWorker {
                     }
                 }
                 Err(error) => {
-                    report.failed += 1;
                     let error = SchedulerError::from(error);
+                    if error.is_code(LEADER_FENCED) {
+                        return Err(error);
+                    }
+                    report.failed += 1;
                     tracing::warn!(code = %error.code(), error = %error, "reprise des baux expirés impossible");
                 }
             }
@@ -313,24 +383,33 @@ impl SchedulerLeaderWorker {
             match self
                 .engine
                 .store()
-                .run_prune(RunPruneParams::default())
+                .run_prune(RunPruneParams {
+                    node: fence.node.clone(),
+                    generation: fence.generation,
+                    limit: None,
+                    language: None,
+                })
                 .await
             {
                 Ok(pruned) => report.pruned += u64::try_from(pruned.deleted).unwrap_or(0),
                 Err(error) => {
-                    report.failed += 1;
                     let error = SchedulerError::from(error);
+                    if error.is_code(LEADER_FENCED) {
+                        return Err(error);
+                    }
+                    report.failed += 1;
                     tracing::warn!(code = %error.code(), error = %error, "élagage impossible");
                 }
             }
         }
-        Ok(report)
+        Ok(())
     }
 
     /// Échéances d'une planification due ; une planification dont les règles ne se lisent plus
     /// (ou dont aucune date n'est trouvée, U4) est déclarée invalide.
     async fn fire(
         &self,
+        fence: &Fence,
         due: &DueSchedule,
         now: Timestamp,
         report: &mut LeaderReport,
@@ -338,7 +417,7 @@ impl SchedulerLeaderWorker {
         let store = self.engine.store();
         let (next, missed, max_jitter) = match plan(due, now) {
             Ok(plan) => plan,
-            Err(error) => return self.invalidate(due, error, report).await,
+            Err(error) => return self.invalidate(fence, due, error, report).await,
         };
 
         if due.next_fire_at.is_none() && missed.is_empty() {
@@ -349,6 +428,8 @@ impl SchedulerLeaderWorker {
                 Some(next) => {
                     store
                         .schedule_next_set(ScheduleNextSetParams {
+                            node: fence.node.clone(),
+                            generation: fence.generation,
                             schedule: due.id.clone(),
                             next_fire_at: Some(next),
                             invalid_reason: None,
@@ -359,6 +440,8 @@ impl SchedulerLeaderWorker {
                 None => {
                     store
                         .schedule_fire(ScheduleFireParams {
+                            node: fence.node.clone(),
+                            generation: fence.generation,
                             schedule: due.id.clone(),
                             fire_times: Vec::new(),
                             next_fire_at: None,
@@ -383,6 +466,8 @@ impl SchedulerLeaderWorker {
         }
         let fired = store
             .schedule_fire(ScheduleFireParams {
+                node: fence.node.clone(),
+                generation: fence.generation,
                 schedule: due.id.clone(),
                 fire_times,
                 next_fire_at: next,
@@ -390,11 +475,16 @@ impl SchedulerLeaderWorker {
             })
             .await?;
         report.fired += u64::try_from(fired.runs.len()).unwrap_or(0);
+        if fired.limited > 0 {
+            report.limited += u64::try_from(fired.limited).unwrap_or(0);
+            tracing::warn!(schedule = %due.id.to_sql(), limited = fired.limited, "limite d'exécutions en attente atteinte : échéances ignorées");
+        }
         Ok(())
     }
 
     async fn invalidate(
         &self,
+        fence: &Fence,
         due: &DueSchedule,
         error: SpecError,
         report: &mut LeaderReport,
@@ -403,6 +493,8 @@ impl SchedulerLeaderWorker {
         self.engine
             .store()
             .schedule_next_set(ScheduleNextSetParams {
+                node: fence.node.clone(),
+                generation: fence.generation,
                 schedule: due.id.clone(),
                 next_fire_at: None,
                 invalid_reason: Some(error.invalid_reason()),
@@ -415,9 +507,11 @@ impl SchedulerLeaderWorker {
 
     /// Exécutions d'un rejeu de période, par lots de 1000 dates (une date déjà exécutée est
     /// ignorée : un rejeu interrompu reprend du début sans doublon). Règles illisibles : le rejeu
-    /// est clos sans exécution.
+    /// est clos sans exécution. Le bail est revérifié par la base à chaque lot (garde de
+    /// génération) : un nœud qui le perd entre deux lots s'arrête au lot suivant.
     async fn backfill(
         &self,
+        fence: &Fence,
         due: &DueBackfill,
         cancellation: &CancellationToken,
         report: &mut LeaderReport,
@@ -435,6 +529,8 @@ impl SchedulerLeaderWorker {
                 tracing::warn!(backfill = %due.id.to_sql(), reason = %error.reason, rule = %error.rule, "règles de dates refusées : rejeu clos sans exécution");
                 store
                     .backfill_fire(BackfillFireParams {
+                        node: fence.node.clone(),
+                        generation: fence.generation,
                         backfill: due.id.clone(),
                         fire_times: Vec::new(),
                         done: Some(true),
@@ -460,6 +556,8 @@ impl SchedulerLeaderWorker {
             let done = !batch.truncated;
             let fired = store
                 .backfill_fire(BackfillFireParams {
+                    node: fence.node.clone(),
+                    generation: fence.generation,
                     backfill: due.id.clone(),
                     fire_times,
                     done: Some(done),
@@ -467,6 +565,10 @@ impl SchedulerLeaderWorker {
                 })
                 .await?;
             report.backfilled += u64::try_from(fired.runs.len()).unwrap_or(0);
+            if fired.limited > 0 {
+                report.limited += u64::try_from(fired.limited).unwrap_or(0);
+                tracing::warn!(backfill = %due.id.to_sql(), limited = fired.limited, "limite d'exécutions en attente atteinte : échéances du rejeu ignorées");
+            }
             match (done, batch.times.last()) {
                 (false, Some(last)) => cursor = *last,
                 _ => return Ok(()),
@@ -504,16 +606,18 @@ impl LyxalWorker for SchedulerLeaderWorker {
                     let LeaderReport {
                         fired,
                         backfilled,
+                        limited,
                         invalid,
                         rescued,
                         pruned,
                         failed,
                         ..
                     } = report;
-                    if fired + backfilled + invalid + rescued + pruned + failed > 0 {
+                    if fired + backfilled + limited + invalid + rescued + pruned + failed > 0 {
                         tracing::info!(
                             fired,
                             backfilled,
+                            limited,
                             invalid,
                             rescued,
                             pruned,

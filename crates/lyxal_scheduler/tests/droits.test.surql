@@ -16,6 +16,10 @@
 
 -- préparation: organisations, identités, sessions et tâches d'essai déclarées en session système
 {
+    -- Fondation de l'hôte : module fictif lyxal_essai installé (release du runtime), bail du planificateur tenu par le nœud n1
+    fn::runtime_module_upsert({ module_id: "lyxal_essai", name: "Essai" });
+    fn::runtime_release_register({ module_id: "lyxal_essai", version: "0.1.0", manifest_version: 1, status: "Installed" });
+    fn::runtime_lease_acquire({ kind: "leader", key: "scheduler", node_id: "n1", ttl_seconds: 86400 });
     CREATE auth_organization:alpha CONTENT { slug: "alpha", name: "Alpha BTP" };
     CREATE auth_organization:beta CONTENT { slug: "beta", name: "Beta Bois" };
     FOR $n IN ["admin", "redacteur", "sanstache", "lecteur", "operateur", "membre"] {
@@ -191,8 +195,8 @@ RETURN fn::scheduler_settings_get({ tenant: "auth_organization:alpha" }).error.c
         fn::scheduler_audit_list({ tenant: $alpha }),
         fn::scheduler_due_list({}),
         fn::scheduler_run_claim({ queue: "default", node: "n1" }),
-        fn::scheduler_run_rescue({}),
-        fn::scheduler_run_prune({})
+        fn::scheduler_run_rescue({ node: "n1", generation: 1 }),
+        fn::scheduler_run_prune({ node: "n1", generation: 1 })
     ].all(|$r| $r.error.code = "SCHEDULER_PERMISSION_DENIED");
 };
 

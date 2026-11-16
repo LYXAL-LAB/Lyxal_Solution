@@ -1,7 +1,9 @@
 //! Sonde de santé de `lyxal_scheduler` : base joignable (`fn::scheduler_health`), chaque file
 //! active servie par un exécuteur sur ce nœud, aucune exécution réservable en attente depuis plus
-//! de 5 minutes au-delà de sa date, et un handler inscrit pour chaque tâche `handler` active.
-//! Le texte ne contient aucune donnée d'organisation.
+//! de 5 minutes au-delà de sa date, et un handler inscrit pour chaque tâche `handler` active sur
+//! au moins un nœud actif (registre des handlers par nœud tenu par les exécuteurs) : un handler
+//! absent de ce nœud mais servi par un autre est une simple information. Le texte ne contient
+//! aucune donnée d'organisation.
 
 use async_trait::async_trait;
 use lyxal_runtime::health::{HealthCheckResult, ModuleHealthCheck};
@@ -58,12 +60,12 @@ impl ModuleHealthCheck for SchedulerHealthCheck {
             .map(|q| q.name.as_str())
             .collect();
         let registered = self.engine.handlers().tasks();
-        let missing: Vec<&str> = health
+        let (elsewhere, missing): (Vec<&str>, Vec<&str>) = health
             .handler_tasks
             .iter()
             .filter(|task| !registered.contains(task))
             .map(String::as_str)
-            .collect();
+            .partition(|task| health.handlers_served.iter().any(|served| served == task));
         let mut problems = Vec::new();
         if served.is_empty() {
             problems.push("aucune file n'a d'exécuteur sur ce nœud".to_string());
@@ -78,19 +80,26 @@ impl ModuleHealthCheck for SchedulerHealthCheck {
         }
         if !missing.is_empty() {
             problems.push(format!(
-                "tâches handler actives sans handler inscrit : {}",
+                "tâches handler actives sans handler inscrit sur aucun nœud actif : {}",
                 missing.join(", ")
             ));
         }
         if problems.is_empty() {
+            let mut message = format!(
+                "{} file(s) servie(s), {} handler(s) inscrit(s)",
+                served.len(),
+                registered.len()
+            );
+            if !elsewhere.is_empty() {
+                message.push_str(&format!(
+                    " ; handlers servis par un autre nœud : {}",
+                    elsewhere.join(", ")
+                ));
+            }
             return Ok(HealthCheckResult::healthy(
                 self.module_id.clone(),
                 elapsed(),
-                Some(format!(
-                    "{} file(s) servie(s), {} handler(s) inscrit(s)",
-                    served.len(),
-                    registered.len()
-                )),
+                Some(message),
             ));
         }
         Ok(HealthCheckResult::degraded(
