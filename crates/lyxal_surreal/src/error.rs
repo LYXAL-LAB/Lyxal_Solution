@@ -13,7 +13,7 @@ pub enum LyxalSurrealError {
     Database(#[from] surrealdb::Error),
 
     #[error("Invalid function name: {function}")]
-    InvalidFunctionName { function: &'static str },
+    InvalidFunctionName { function: String },
 
     #[error("Unsupported endpoint scheme for endpoint: {endpoint}")]
     UnsupportedEndpoint { endpoint: String },
@@ -166,7 +166,9 @@ mod tests {
     fn transport_errors() -> Vec<LyxalSurrealError> {
         vec![
             LyxalSurrealError::Database(surrealdb::Error::internal("db error".into())),
-            LyxalSurrealError::InvalidFunctionName { function: "bad" },
+            LyxalSurrealError::InvalidFunctionName {
+                function: "bad".to_string(),
+            },
             LyxalSurrealError::UnsupportedEndpoint {
                 endpoint: "ftp://localhost".into(),
             },
@@ -185,7 +187,9 @@ mod tests {
         assert!(err.is_business_code("TEST_ERR"));
         assert!(!err.is_business_code("OTHER_ERR"));
 
-        let db_err = LyxalSurrealError::InvalidFunctionName { function: "foo" };
+        let db_err = LyxalSurrealError::InvalidFunctionName {
+            function: "foo".to_string(),
+        };
         assert!(!db_err.is_business_code("TEST_ERR"));
     }
 
@@ -243,7 +247,9 @@ mod tests {
         assert_eq!(json["error"]["code"], "BOOKING_SLOT_TAKEN");
 
         // Une réponse hors contrat donne ERROR_INVALID_FUNCTION_RESPONSE
-        let res = LyxalSurrealError::Call(LyxalCallError::InvalidContract { function: "f" })
+        let res = LyxalSurrealError::Call(LyxalCallError::InvalidContract {
+            function: "f".to_string(),
+        })
             .into_response();
         assert_eq!(res.status().as_u16(), 500);
         let body = to_bytes(res.into_body(), usize::MAX).await.expect("corps");

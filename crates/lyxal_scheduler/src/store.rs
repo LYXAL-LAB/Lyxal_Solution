@@ -52,7 +52,7 @@ impl SchedulerStore {
     /// rejeu est sûr). Les nœuds et les tentatives d'un nœud se disputent les mêmes compteurs de
     /// places, et le planificateur réécrit les planifications que modifient les personnes ;
     /// toute autre erreur est rendue telle quelle.
-    async fn engine_call<T, P>(&self, function: &'static str, params: P) -> Call<T>
+    async fn engine_call<T, P>(&self, function: &str, params: P) -> Call<T>
     where
         T: SurrealValue + Send,
         P: SurrealValue + Clone + Send + 'static,
@@ -294,10 +294,11 @@ impl SchedulerStore {
     }
 
     /// Fonction SurrealQL `fn::<target>` d'une tâche `function` (cible déclarée par le module
-    /// propriétaire et contrôlée par le lot 1) ; rend la donnée de son résultat.
+    /// propriétaire et contrôlée à la déclaration de la tâche ; nom contrôlé par `call_fn`) ;
+    /// rend la donnée de son résultat.
     pub(crate) async fn call_task_function(
         &self,
-        target: &'static str,
+        target: &str,
         params: FunctionCallParams,
     ) -> Call<SchedulerValue> {
         self.engine_call(target, params).await

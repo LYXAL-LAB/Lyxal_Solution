@@ -10,16 +10,20 @@
 --   queued ◄──── retrying ◄───(échec, tentatives restantes)── running ──► dead
 --   waiting / queued / retrying ──(annulation)──► cancelled ; running ──(annulation acquittée)──► cancelled
 --   (chevauchement skip, création) ──► skipped
--- Transitions, champs figés et jeton du bail gardés par scheduler_run_update_guard
--- (fn::scheduler_run_update_refusal) ; le jeton du bail n'est lisible que par le moteur.
+-- Création gardée par scheduler_run_create_guard (une relance porte retry_of, l'exécution dead
+-- ou cancelled dont elle reprend la tâche, l'organisation et les arguments), transitions, champs
+-- figés et jeton du bail par scheduler_run_update_guard (fn::scheduler_run_update_refusal) ;
+-- annulation réservée à scheduler.run.manage et au moteur ; le jeton du bail n'est lisible que
+-- par le moteur. Créer une exécution (déclenchement, exécution différée, relance) exige la
+-- permission propre de la tâche (Y1).
 
 DEFINE TABLE OVERWRITE scheduler_run
     TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
         FOR select WHERE fn::scheduler_can({ action: "read", tenant: tenant }) OR fn::scheduler_can({ action: "worker" })
-        FOR create WHERE fn::scheduler_can({ action: "write", tenant: tenant, task: task })
-            OR (origin = "retry" AND fn::scheduler_can({ action: "run_manage", tenant: tenant }))
+        FOR create WHERE (origin != "retry" AND fn::scheduler_can({ action: "write", tenant: tenant, task: task }))
+            OR (origin = "retry" AND fn::scheduler_can({ action: "run_manage", tenant: tenant, task: task }))
             OR fn::scheduler_can({ action: "worker" })
         FOR update WHERE fn::scheduler_can({ action: "write", tenant: tenant })
             OR fn::scheduler_can({ action: "run_manage", tenant: tenant })
@@ -65,6 +69,10 @@ DEFINE FIELD OVERWRITE origin ON TABLE scheduler_run
     TYPE string
     ASSERT $value IN ["schedule", "backfill", "trigger", "enqueue", "retry"]
     COMMENT "Origine : échéance, rejeu de période, déclenchement immédiat, exécution différée, relance (figée)";
+
+DEFINE FIELD OVERWRITE retry_of ON TABLE scheduler_run
+    TYPE option<record<scheduler_run>>
+    COMMENT "Relance : exécution dead ou cancelled relancée (obligatoire pour origin retry, NONE sinon), figée";
 
 DEFINE FIELD OVERWRITE scheduled_for ON TABLE scheduler_run
     TYPE datetime

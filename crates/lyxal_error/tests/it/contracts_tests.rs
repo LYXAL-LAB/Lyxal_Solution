@@ -121,9 +121,7 @@ fn test_lyxal_result_rejects_inconsistent_ok_true_with_none_data() {
     let err = res.into_result("test_func").unwrap_err();
     assert!(matches!(
         err,
-        LyxalCallError::InvalidContract {
-            function: "test_func"
-        }
+        LyxalCallError::InvalidContract { function } if function == "test_func"
     ));
 }
 
@@ -153,9 +151,7 @@ fn test_lyxal_result_rejects_inconsistent_ok_false_with_some_data() {
     let err = res.into_result("test_func").unwrap_err();
     assert!(matches!(
         err,
-        LyxalCallError::InvalidContract {
-            function: "test_func"
-        }
+        LyxalCallError::InvalidContract { function } if function == "test_func"
     ));
 }
 
@@ -185,9 +181,7 @@ fn test_lyxal_result_rejects_inconsistent_ok_true_with_some_error() {
     let err = res.into_result("test_func").unwrap_err();
     assert!(matches!(
         err,
-        LyxalCallError::InvalidContract {
-            function: "test_func"
-        }
+        LyxalCallError::InvalidContract { function } if function == "test_func"
     ));
 }
 
@@ -202,9 +196,7 @@ fn test_lyxal_result_rejects_inconsistent_ok_false_with_none_error() {
     let err = res.into_result("test_func").unwrap_err();
     assert!(matches!(
         err,
-        LyxalCallError::InvalidContract {
-            function: "test_func"
-        }
+        LyxalCallError::InvalidContract { function } if function == "test_func"
     ));
 }
 
@@ -212,7 +204,7 @@ fn test_lyxal_result_rejects_inconsistent_ok_false_with_none_error() {
 fn test_lyxal_call_error_helpers() {
     // Une violation de contrat n'est jamais une erreur métier
     let contract_err = LyxalCallError::InvalidContract {
-        function: "test_func",
+        function: "test_func".to_string(),
     };
     assert!(!contract_err.is_business_code("ERROR_INVALID_FUNCTION_RESPONSE"));
     assert!(format!("{contract_err}").contains("test_func"));

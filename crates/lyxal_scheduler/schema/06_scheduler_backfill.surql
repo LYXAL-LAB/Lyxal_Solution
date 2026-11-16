@@ -5,7 +5,8 @@
 -- ============================================================================
 -- Créée par fn::scheduler_schedule_backfill ; le moteur calcule les échéances de la période et
 -- les passe à fn::scheduler_backfill_fire. Un seul rejeu en cours (pending ou running) par
--- planification ; période passée, from < to, un an au plus (garde scheduler_backfill_guard).
+-- planification ; période passée, from < to, un an au plus ; demande avec la permission propre
+-- de la tâche de la planification, aussi par écriture directe (garde scheduler_backfill_guard).
 
 DEFINE TABLE OVERWRITE scheduler_backfill
     TYPE NORMAL

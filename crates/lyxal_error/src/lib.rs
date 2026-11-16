@@ -31,9 +31,7 @@ mod tests {
         };
         assert!(matches!(
             res.into_result("test_func"),
-            Err(LyxalCallError::InvalidContract {
-                function: "test_func"
-            })
+            Err(LyxalCallError::InvalidContract { function }) if function == "test_func"
         ));
     }
 
@@ -61,9 +59,7 @@ mod tests {
         };
         assert!(matches!(
             res.into_result("test_func"),
-            Err(LyxalCallError::InvalidContract {
-                function: "test_func"
-            })
+            Err(LyxalCallError::InvalidContract { function }) if function == "test_func"
         ));
     }
 }

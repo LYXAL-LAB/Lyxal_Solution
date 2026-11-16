@@ -10,7 +10,8 @@
 //!
 //! Une exécution est désignée, dans une adresse comme dans une réponse, par la forme texte de son
 //! identifiant (`RunRef`, X1) : l'identifiant SurrealQL complet en base64url sans remplissage.
-//! Toutes les réponses portent `Cache-Control: no-store` (arguments et résultats de tâches, X4).
+//! Toutes les réponses portent `Cache-Control: no-store` (arguments et résultats de tâches, X4),
+//! y compris le 404 d'une adresse inconnue du planificateur.
 //! Un corps ou un paramètre illisible rend `SERVER_INVALID_REQUEST` ; toute autre erreur est
 //! celle du module (`SCHEDULER_*`). Réponses au contrat `LyxalResult` (`{ ok, data, error }`).
 
@@ -103,6 +104,8 @@ pub fn routes() -> Router<AppContext> {
         .route("/runs/:id/cancel", post(run_cancel))
         .route("/runs/:id/retry", post(run_retry))
         .route("/audit", get(audit_list))
+        // Adresse inconnue du planificateur : 404 sans corps, aussi marqué `no-store` (X4)
+        .fallback(|| async { StatusCode::NOT_FOUND })
         .layer(axum::middleware::map_response(auth::no_store))
 }
 
@@ -823,7 +826,8 @@ async fn run_list(
 }
 
 /// Exécution différée (`run_at` ou `delay`) ou immédiate d'une tâche :
-/// `{ task, tenant, args, run_at, delay, priority, unique_key }`.
+/// `{ task, tenant, args, run_at, delay, priority, unique_key }` : 201, ou 200 avec l'exécution
+/// existante quand une exécution non terminée de même clé d'unicité est rendue (`duplicate`).
 async fn run_enqueue(
     State(context): State<AppContext>,
     headers: HeaderMap,
@@ -832,7 +836,13 @@ async fn run_enqueue(
     handle(context, headers, |service| async move {
         let params: RunEnqueueParams = params(body(&bytes)?)?;
         let run = service.store().run_enqueue(params).await.map_err(surreal)?;
-        done(StatusCode::CREATED, run_json(run))
+        // Exécution non terminée de même clé d'unicité rendue telle quelle : rien n'est créé
+        let status = if run.duplicate == Some(true) {
+            StatusCode::OK
+        } else {
+            StatusCode::CREATED
+        };
+        done(status, run_json(run))
     })
     .await
 }

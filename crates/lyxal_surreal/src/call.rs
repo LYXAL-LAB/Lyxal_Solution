@@ -27,7 +27,7 @@ pub trait LyxalSurrealCall {
     /// Désérialise et retourne le contrat universel `LyxalResult<T>`.
     async fn call_fn<T, P>(
         &self,
-        function_name: &'static str,
+        function_name: &str,
         params: P,
     ) -> Result<T, LyxalSurrealError>
     where
@@ -36,7 +36,7 @@ pub trait LyxalSurrealCall {
     {
         if !validate_function_name(function_name) {
             return Err(LyxalSurrealError::InvalidFunctionName {
-                function: function_name,
+                function: function_name.to_string(),
             });
         }
 
@@ -55,8 +55,8 @@ pub trait LyxalSurrealCall {
             Ok(raw) => raw,
             Err(error) => return Err(self.resolve_thrown(error, function_name).await),
         };
-        let result = raw.ok_or(LyxalCallError::InvalidContract {
-            function: function_name,
+        let result = raw.ok_or_else(|| LyxalCallError::InvalidContract {
+            function: function_name.to_string(),
         })?;
         Ok(result.into_result(function_name)?)
     }
@@ -68,7 +68,7 @@ pub trait LyxalSurrealCall {
     async fn resolve_thrown(
         &self,
         error: surrealdb::Error,
-        function_name: &'static str,
+        function_name: &str,
     ) -> LyxalSurrealError {
         let Some(code) = thrown_code(error.is_thrown(), error.message()) else {
             return error.into();

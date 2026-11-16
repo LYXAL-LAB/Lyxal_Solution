@@ -323,14 +323,17 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_failure_outcome($run: object, $error: ob
 DEFINE FUNCTION OVERWRITE fn::scheduler_run_rescue($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
+        fields: object::extend(fn::scheduler_leader_fields(), {
             limit: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 1000 } }], default: 100 },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
-        },
+        }),
         unknown_keys: "reject"
     }, 20);
     IF !$report.valid { RETURN fn::scheduler_invalid($params, $report.by_field); };
     LET $p = $report.value;
     IF !fn::scheduler_can({ action: "worker" }) { RETURN fn::error_result("SCHEDULER_PERMISSION_DENIED", $p.language, {}); };
+    LET $fenced = fn::scheduler_leader_fenced($p);
+    IF $fenced IS NOT NONE { RETURN $fenced; };
     -- locked_until NONE se compare comme inférieur à toute date : condition explicite
     LET $expired = (SELECT * FROM scheduler_run WHERE state = "running" AND locked_until IS NOT NONE AND locked_until < time::now()
         ORDER BY locked_until ASC LIMIT $p.limit);
@@ -340,7 +343,7 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_rescue($params: object) {
         RETURN IF $updated == NONE { $acc } ELSE { array::append($acc, { id: $updated.id, state: $updated.state }) };
     });
     RETURN fn::result_ok({ rescued: $rescued, reconciled: fn::scheduler_counters_reconcile() });
-} COMMENT "Moteur : reprend les exécutions dont le bail a expiré ({ limit (1000 au plus) }) : retrying s'il reste des tentatives, cancelled si l'annulation était demandée, sinon dead ; erreur SCHEDULER_LEASE_LOST ; places rendues ; puis recale les compteurs de places sur les exécutions réellement en cours (places d'exécutions disparues avec leur organisation). { rescued, reconciled }. Droit : session système ou scheduler.worker";
+} COMMENT "Moteur (planificateur) : reprend les exécutions dont le bail a expiré ({ node, generation : garde de génération du bail du planificateur ; limit (1000 au plus) }) : retrying s'il reste des tentatives, cancelled si l'annulation était demandée, sinon dead ; erreur SCHEDULER_LEASE_LOST ; places rendues ; puis recale les compteurs de places sur les exécutions réellement en cours (places d'exécutions disparues avec leur organisation). { rescued, reconciled }. Bail du planificateur perdu : SCHEDULER_LEADER_FENCED. Droit : session système (seule à lire le bail)";
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_counters_reconcile (interne)
@@ -384,15 +387,17 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_prunable($id: record<scheduler_run>,
 
 DEFINE FUNCTION OVERWRITE fn::scheduler_run_prune($params: object) {
     LET $report = fn::validation_object_execute($params, {
-        fields: {
+        fields: object::extend(fn::scheduler_leader_fields(), {
             limit: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 10000 } }], default: 1000 },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
-        },
+        }),
         unknown_keys: "reject"
     }, 20);
     IF !$report.valid { RETURN fn::scheduler_invalid($params, $report.by_field); };
     LET $p = $report.value;
     IF !fn::scheduler_can({ action: "worker" }) { RETURN fn::error_result("SCHEDULER_PERMISSION_DENIED", $p.language, {}); };
+    LET $fenced = fn::scheduler_leader_fenced($p);
+    IF $fenced IS NOT NONE { RETURN $fenced; };
     LET $now = time::now();
     -- Conservation minimale d'un jour ; l'éligibilité (conservation de la portée, N dernières de
     -- chaque planification) est évaluée avant la limite, pour qu'un lot d'exécutions gardées ne
@@ -404,7 +409,7 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_prune($params: object) {
     LET $ids = $doomed.id;
     DELETE scheduler_run WHERE id IN $ids;
     RETURN fn::result_ok({ deleted: array::len($ids) });
-} COMMENT "Moteur : élague les exécutions terminées plus vieilles que la conservation de leur portée ({ limit (10000 au plus) }), en gardant toujours les keep_last_runs dernières de chaque planification (S7). { deleted }. Droit : session système ou scheduler.worker";
+} COMMENT "Moteur (planificateur) : élague les exécutions terminées plus vieilles que la conservation de leur portée ({ node, generation : garde de génération du bail du planificateur ; limit (10000 au plus) }), en gardant toujours les keep_last_runs dernières de chaque planification (S7). { deleted }. Bail du planificateur perdu : SCHEDULER_LEADER_FENCED. Droit : session système (seule à lire le bail)";
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_health

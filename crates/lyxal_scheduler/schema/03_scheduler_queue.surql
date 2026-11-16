@@ -7,7 +7,8 @@
 -- dépassement entre deux nœuds) : places de la file (running < concurrency) et places d'une
 -- organisation dans la file (scheduler_slot, réglage tenant_concurrency). Les compteurs ne
 -- changent que par la réservation et la fin d'une exécution (moteur : session système ou
--- scheduler.worker, gardes scheduler_queue_guard et scheduler_slot_guard).
+-- scheduler.worker) : garde scheduler_queue_update_guard pour les files, permissions de la
+-- table pour scheduler_slot (écriture par le moteur seulement).
 
 DEFINE TABLE OVERWRITE scheduler_queue
     TYPE NORMAL

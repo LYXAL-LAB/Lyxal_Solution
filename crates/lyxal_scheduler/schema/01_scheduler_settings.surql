@@ -6,13 +6,17 @@
 -- Une ligne par portée. Un champ absent prend la valeur de l'installation, sinon la valeur par
 -- défaut du module (fn::scheduler_settings_effective) : rattrapage 1 h, conservation 30 jours,
 -- 10 dernières exécutions gardées, 10 exécutions simultanées par organisation et par file,
--- 1 000 planifications, 10 000 exécutions en attente, arguments de 16 Kio.
+-- 1 000 planifications, 10 000 exécutions en attente, arguments de 16 Kio. Les réglages de
+-- l'installation, qui s'appliquent à toutes les organisations, sont lisibles par qui détient
+-- une permission scheduler.* de son organisation active ; ceux d'une organisation par le droit
+-- de lecture de cette organisation.
 
 DEFINE TABLE OVERWRITE scheduler_settings
     TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
-        FOR select WHERE tenant IS NONE OR fn::scheduler_can({ action: "read", tenant: tenant })
+        FOR select WHERE (tenant IS NONE AND fn::scheduler_can({ action: "member" }))
+            OR fn::scheduler_can({ action: "read", tenant: tenant })
             OR fn::scheduler_can({ action: "worker" })
         FOR create, update WHERE fn::scheduler_can({ action: "settings", tenant: tenant })
         FOR delete NONE

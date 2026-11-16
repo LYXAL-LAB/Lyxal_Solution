@@ -33,6 +33,22 @@ RETURN fn::validation_surql_record_string(NULL, "identity_user")
 RETURN fn::validation_surql_record_string(42, "identity_user")
     == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
 
+-- test: texte après l'identifiant refusé (ignoré par type::record)
+RETURN fn::validation_surql_record_string("identity_user:abc xyz", "identity_user")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "record" } };
+
+-- test: texte après un identifiant composé refusé
+RETURN fn::validation_surql_record_string("scheduler_run:[scheduler_schedule:x, d'2026-01-01T00:00:00Z'] trailing", "scheduler_run")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "record" } };
+
+-- test: écriture non canonique d'un identifiant composé refusée
+RETURN fn::validation_surql_record_string("scheduler_run:[scheduler_schedule:x,d'2026-01-01T00:00:00Z']", "scheduler_run")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "record" } };
+
+-- test: identifiant composé sous sa forme canonique accepté
+RETURN fn::validation_surql_record_string("scheduler_run:[scheduler_schedule:x, d'2026-01-01T00:00:00Z']", "scheduler_run")
+    == { valid: true, value: "scheduler_run:[scheduler_schedule:x, d'2026-01-01T00:00:00Z']", code: NONE, details: {} };
+
 -- test: table invalide
 -- attendu-erreur: CORE_INVALID_ARGUMENT
 RETURN fn::validation_surql_record_string("a:b", "a-b");

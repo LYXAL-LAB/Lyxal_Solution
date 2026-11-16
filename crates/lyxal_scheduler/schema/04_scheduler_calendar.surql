@@ -11,7 +11,7 @@
 --   monthdays  : 1 à 31 ;
 --   time_range : "HH:MM-HH:MM" (plage horaire, fin exclue ; une plage qui passe minuit est admise).
 -- Nom unique dans la portée ; suppression refusée tant qu'une planification l'utilise
--- (garde scheduler_calendar_guard).
+-- (gardes scheduler_calendar_write_guard et scheduler_calendar_delete_guard).
 
 DEFINE TABLE OVERWRITE scheduler_calendar
     TYPE NORMAL

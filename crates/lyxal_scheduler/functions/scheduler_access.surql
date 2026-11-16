@@ -20,6 +20,13 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_can($params: object) -> bool {
         RETURN fn::auth_has_permission({ permission: "scheduler.schedule.read", tenant: $context.data.organization })
             OR fn::auth_has_permission({ permission: "scheduler.schedule.write", tenant: $context.data.organization });
     };
+    IF $params.action = "member" {
+        IF fn::auth_has_permission({ permission: "scheduler.worker" }) OR fn::auth_has_permission({ permission: "scheduler.installation.manage" }) { RETURN true; };
+        LET $context = fn::auth_context({});
+        IF !$context.ok OR $context.data.organization IS NONE { RETURN false; };
+        RETURN array::any(["scheduler.schedule.read", "scheduler.schedule.write", "scheduler.run.manage", "scheduler.calendar.write", "scheduler.settings.manage"],
+            |$permission| fn::auth_has_permission({ permission: $permission, tenant: $context.data.organization }));
+    };
     LET $permission = {
         read: "scheduler.schedule.read",
         write: "scheduler.schedule.write",
@@ -39,7 +46,7 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_can($params: object) -> bool {
     LET $task = (SELECT permission FROM ONLY $params.task);
     IF $task == NONE { RETURN false; };
     RETURN $task.permission IS NONE OR fn::auth_has_permission({ permission: $task.permission, tenant: $params.tenant });
-} COMMENT "Vrai si l'appelant peut effectuer l'action ({ action : read, write, run_manage, calendar, settings, catalog, installation, worker ; tenant : organisation ou NONE pour l'installation ; task : tâche dont la permission propre est aussi exigée }). Session système : tout. Organisation : permission scheduler.* de l'organisation active ; installation : scheduler.installation.manage ; catalog (tâches et files) : lecture ou écriture dans l'organisation active, installation ou moteur ; worker : scheduler.worker. Jamais d'erreur";
+} COMMENT "Vrai si l'appelant peut effectuer l'action ({ action : read, write, run_manage, calendar, settings, catalog, member, installation, worker ; tenant : organisation ou NONE pour l'installation ; task : tâche dont la permission propre est aussi exigée }). Session système : tout. Organisation : permission scheduler.* de l'organisation active ; installation : scheduler.installation.manage ; catalog (tâches et files) : lecture ou écriture dans l'organisation active, installation ou moteur ; member (réglages de l'installation) : une permission scheduler.* de l'organisation active, installation ou moteur ; worker : scheduler.worker. Jamais d'erreur";
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_caller (interne)
@@ -184,3 +191,32 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_payload($run: object) -> object {
         error_code: $run.error.code
     };
 } COMMENT "Interne : charge d'un événement scheduler.run.* (exécution, organisation, planification, tâche, origine, date prévue, tentative, code d'erreur) ; jamais d'arguments ni de résultat";
+
+-- ----------------------------------------------------------------------------
+-- fn::scheduler_leader_held (interne)
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::scheduler_leader_held($node: string, $generation: int) -> bool {
+    LET $lease = fn::runtime_lease_get({ kind: "leader", key: "scheduler" });
+    RETURN $lease.ok AND $lease.data IS NOT NONE AND $lease.data.owner_node_id = $node AND $lease.data.generation = $generation;
+} COMMENT "Interne (garde de génération, Y2) : vrai si le bail d'élection du planificateur (runtime_lease leader, clé scheduler, contrat public fn::runtime_lease_get de lyxal_runtime) est détenu, non expiré à l'heure de la base, par le nœud $node dans la génération $generation. Le bail n'est lisible que par la session système : pour toute autre session, faux";
+
+-- ----------------------------------------------------------------------------
+-- fn::scheduler_leader_fields (interne)
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::scheduler_leader_fields() -> object {
+    RETURN {
+        node: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 128 } }], required: true },
+        generation: { pipeline: [{ rule: "integer", options: { min_value: 1 } }], required: true }
+    };
+} COMMENT "Interne : schéma du moteur de validation de la garde de génération { node, generation } des fonctions du planificateur";
+
+-- ----------------------------------------------------------------------------
+-- fn::scheduler_leader_fenced (interne)
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::scheduler_leader_fenced($p: object) -> option<object> {
+    RETURN IF fn::scheduler_leader_held($p.node, $p.generation) { NONE }
+        ELSE { fn::error_result("SCHEDULER_LEADER_FENCED", $p.language, { node: $p.node, generation: $p.generation }) };
+} COMMENT "Interne : erreur SCHEDULER_LEADER_FENCED si le nœud $p.node ne détient plus le bail du planificateur dans la génération $p.generation, sinon NONE ; vérifiée par chaque fonction du planificateur avant toute écriture";

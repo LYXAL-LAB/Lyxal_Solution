@@ -6,7 +6,10 @@
 --
 -- Valide une chaîne de Record ID SurrealQL (« table:id »,
 -- string::is_record), facultativement d'une table donnée ; la chaîne n'est
--- pas convertie.
+-- pas convertie. Elle doit être entièrement l'identifiant, sous sa forme
+-- texte canonique : l'identifiant relu par type::record doit redonner
+-- exactement la chaîne (refus d'un texte qui suit l'identifiant, ignoré par
+-- type::record, ou d'une autre écriture du même identifiant).
 --
 -- Paramètres
 --   $value          : any — valeur à contrôler
@@ -45,7 +48,8 @@ DEFINE FUNCTION OVERWRITE fn::validation_surql_record_string(
     };
     LET $clean = string::trim($value);
     IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
-    IF !string::is_record($clean) {
+    -- Forme texte canonique seulement : type::record ignore un texte qui suit l'identifiant
+    IF !string::is_record($clean) OR <string> type::record($clean) != $clean {
         RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "record" } };
     };
     IF $table IS NOT NONE AND !string::is_record($clean, $table) {
@@ -53,5 +57,5 @@ DEFINE FUNCTION OVERWRITE fn::validation_surql_record_string(
     };
     RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "Valide une chaîne de Record ID SurrealQL (« table:id », string::is_record), facultativement d'une table donnée ; la chaîne n'est pas convertie. Renvoie { valid, value, code, details }."
+COMMENT "Valide une chaîne de Record ID SurrealQL (« table:id », string::is_record), facultativement d'une table donnée ; la chaîne n'est pas convertie et doit être entièrement l'identifiant sous sa forme texte canonique (identifiant relu par type::record identique à la chaîne, sinon CORE_VALIDATION_FORMAT). Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

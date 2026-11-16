@@ -4,11 +4,9 @@
 //! perdu est journalisée, jamais réécrite.
 
 use lyxal_runtime::worker::CancellationToken;
-use lyxal_surreal::{validate_function_name, LyxalCallError, LyxalSurrealError, ToSql};
-use std::collections::HashMap;
+use lyxal_surreal::{LyxalCallError, LyxalSurrealError, ToSql};
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::{Mutex, OnceLock, PoisonError};
 use std::time::Duration;
 use surrealdb::types::Object;
 
@@ -25,8 +23,6 @@ use crate::models::{
 
 /// Marge ajoutée au délai maximal pour l'échéance du bail (`fn::scheduler_lease_margin`).
 const LEASE_MARGIN: Duration = Duration::from_secs(60);
-/// Noms de fonctions de tâches retenus au plus (une entrée par tâche `function` déclarée).
-const MAX_FUNCTIONS: usize = 4096;
 
 /// Issue d'une tentative, pour le journal du worker.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -57,39 +53,23 @@ enum Stopped {
     LeaseLost,
 }
 
-/// Nom `&'static` de la fonction SurrealQL d'une tâche, pour `LyxalSurrealCall::call_fn`.
-/// Les cibles sont déclarées par les seeds des modules (une par tâche `function`) : chaque nom
-/// est retenu une fois pour toute la vie du processus, dans la limite de `MAX_FUNCTIONS`.
-fn function_name(target: &str) -> Option<&'static str> {
-    if !validate_function_name(target) {
-        return None;
-    }
-    static NAMES: OnceLock<Mutex<HashMap<String, &'static str>>> = OnceLock::new();
-    let mut names = NAMES
-        .get_or_init(Mutex::default)
-        .lock()
-        .unwrap_or_else(PoisonError::into_inner);
-    if let Some(name) = names.get(target) {
-        return Some(name);
-    }
-    if names.len() >= MAX_FUNCTIONS {
-        return None;
-    }
-    let name: &'static str = Box::leak(target.to_string().into_boxed_str());
-    names.insert(target.to_string(), name);
-    Some(name)
-}
-
 /// Échec d'une tentative d'après l'erreur d'un appel : erreur métier (code et retentabilité de
-/// la master data, libellé sans détail) ou erreur technique (`SCHEDULER_EXECUTOR_FAILED`).
+/// la master data, libellé sans détail), nom de fonction refusé par `call_fn` (terminal : la
+/// cible ne changera pas) ou erreur technique (`SCHEDULER_EXECUTOR_FAILED`, retentable).
 fn failure_of(error: &SchedulerError) -> TaskFailure {
     if let SchedulerError::Surreal(inner) = error {
-        if let LyxalSurrealError::Call(LyxalCallError::Business(business)) = inner.as_ref() {
-            return TaskFailure {
-                code: business.code.clone(),
-                message: business.label.clone(),
-                retryable: business.retryable,
-            };
+        match inner.as_ref() {
+            LyxalSurrealError::Call(LyxalCallError::Business(business)) => {
+                return TaskFailure {
+                    code: business.code.clone(),
+                    message: business.label.clone(),
+                    retryable: business.retryable,
+                };
+            }
+            LyxalSurrealError::InvalidFunctionName { .. } => {
+                return TaskFailure::terminal(EXECUTOR_FAILED, "nom de fonction de tâche refusé");
+            }
+            _ => {}
         }
     }
     TaskFailure::retryable(EXECUTOR_FAILED, error.to_string())
@@ -143,16 +123,11 @@ async fn execute(
             )
         }
         Executor::Function => {
-            let Some(name) = function_name(&run.target) else {
-                return Executed::Output(Err(TaskFailure::terminal(
-                    EXECUTOR_FAILED,
-                    "nom de fonction de tâche refusé",
-                )));
-            };
+            // Nom contrôlé par `call_fn` : un nom refusé est une erreur technique terminale
             let called = engine
                 .store()
                 .call_task_function(
-                    name,
+                    &run.target,
                     FunctionCallParams {
                         args: run.args.clone(),
                         run: run.id.clone(),
@@ -370,16 +345,19 @@ async fn fail(
 
 #[cfg(test)]
 mod tests {
-    use super::{function_name, short_result};
+    use super::{failure_of, short_result};
+    use crate::error::{SchedulerError, EXECUTOR_FAILED};
     use crate::models::SchedulerValue;
+    use lyxal_surreal::LyxalSurrealError;
 
     #[test]
-    fn task_function_names_are_checked_and_kept_once() {
-        let first = function_name("essai_purge").expect("nom valide");
-        let second = function_name("essai_purge").expect("nom valide");
-        assert!(std::ptr::eq(first, second));
-        assert!(function_name("essai_purge($x); DELETE x").is_none());
-        assert!(function_name("").is_none());
+    fn refused_function_names_fail_for_good() {
+        let refused = SchedulerError::from(LyxalSurrealError::InvalidFunctionName {
+            function: "essai_purge($x); DELETE x".to_string(),
+        });
+        let failure = failure_of(&refused);
+        assert_eq!(failure.code, EXECUTOR_FAILED);
+        assert!(!failure.retryable);
     }
 
     #[test]

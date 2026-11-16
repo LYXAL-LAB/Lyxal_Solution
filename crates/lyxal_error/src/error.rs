@@ -39,7 +39,7 @@ pub enum LyxalCallError {
     /// Réponse qui ne respecte pas le contrat `{ ok, data, error }`
     /// (code `ERROR_INVALID_FUNCTION_RESPONSE`).
     #[error("Invalid result contract from function: {function}")]
-    InvalidContract { function: &'static str },
+    InvalidContract { function: String },
 }
 
 impl LyxalCallError {
