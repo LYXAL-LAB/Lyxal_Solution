@@ -312,6 +312,7 @@ impl SecurityAlertHandler {
                 )),
                 actor: None,
                 exclude_actor: None,
+                overrides: None,
                 payload: compact(serde_json::json!({
                     "alert": E::ALERT,
                     "method": alert.method,
@@ -426,6 +427,7 @@ impl<R: KeyResolver> AuthMessageHandler<R> {
                 )),
                 actor: None,
                 exclude_actor: None,
+                overrides: None,
                 payload: event.variables(),
                 secret: Some(sealed),
                 expires_at: Some(expires_at),

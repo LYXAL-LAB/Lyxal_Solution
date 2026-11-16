@@ -1,5 +1,7 @@
-//! Module `lyxal_notification` : implémentation `LyxalModule`, consommateur des événements
-//! `auth.*`, workers d'envoi, de diffusion et de purge, sonde de santé, liens de désabonnement.
+//! Module `lyxal_notification` : implémentation `LyxalModule` (planification de la purge par
+//! `lyxal_scheduler` à l'installation), consommateur des événements `auth.*`, workers d'envoi, de
+//! diffusion et d'étapes (attentes confiées au planificateur), sonde de santé, liens de
+//! désabonnement et aperçu des étapes.
 //!
 //! L'envoi demande la clé applicative (`LYXAL__CRYPTO__APPLICATION_KEY`, secrets scellés) et le
 //! relais SMTP (`LYXAL__NOTIFICATION__SMTP__*`). Sans l'un des deux : aucun e-mail n'est envoyé,
@@ -16,8 +18,9 @@ use lyxal_event::EventSubscription;
 use lyxal_notification::{
     BroadcastWorkerSettings, EmailTransport, EmailWorkerSettings, NotificationBroadcastWorker,
     NotificationConsumer, NotificationEmailWorker, NotificationHealthCheck, NotificationModule,
-    NotificationPurgeWorker, NotificationStore, SecretCodec, SmtpSecurity, SmtpSettings,
-    SmtpTransport, UnsubscribeLinks, AUTH_HANDLER, AUTH_SUBSCRIPTIONS, CONSUMER_MODULE,
+    NotificationStepWorker, NotificationStore, SecretCodec, SmtpSecurity, SmtpSettings,
+    SmtpTransport, StepWorkerSettings, UnsubscribeLinks, AUTH_HANDLER, AUTH_SUBSCRIPTIONS,
+    CONSUMER_MODULE,
 };
 use lyxal_runtime::{LyxalModule, LyxalRuntime};
 use std::sync::Arc;
@@ -27,10 +30,6 @@ use surrealdb::Surreal;
 
 pub const MODULE_ID: &str = lyxal_notification::MODULE_ID;
 
-/// Intervalle de la purge.
-const PURGE_INTERVAL: Duration = Duration::from_secs(600);
-/// Éléments purgés par paquet.
-const PURGE_BATCH: u32 = 500;
 /// Tentatives de livraison d'un événement `auth.*` avant lettre morte.
 const AUTH_EVENT_MAX_ATTEMPTS: u32 = 10;
 
@@ -50,8 +49,9 @@ pub struct NotificationServices {
     pub host: NotificationHost,
 }
 
-pub fn module() -> Arc<dyn LyxalModule> {
-    Arc::new(NotificationModule::new())
+/// Module sur la session système de l'hôte (planification de la purge à l'installation).
+pub fn module(client: &Surreal<Any>) -> Arc<dyn LyxalModule> {
+    Arc::new(NotificationModule::new(client.clone()))
 }
 
 fn configuration_error(field: &str, error: impl std::fmt::Display) -> ServerError {
@@ -102,7 +102,7 @@ pub fn unsubscribe_links(config: &AppConfig) -> Result<Option<Arc<UnsubscribeLin
     }
 }
 
-/// Purge, diffusions, sonde et, si la clé applicative et le relais SMTP sont configurés,
+/// Attentes des parcours, diffusions, sonde et, si la clé applicative et le relais SMTP sont configurés,
 /// consommateur des événements `auth.*` et worker d'envoi (avec les liens de désabonnement s'ils
 /// sont configurés).
 pub async fn register_services(
@@ -112,10 +112,9 @@ pub async fn register_services(
     crypto: Option<Arc<CryptoEngine<StaticKeyResolver>>>,
 ) -> Result<NotificationServices, ServerError> {
     let store = NotificationStore::new(client.clone());
-    runtime.register_worker(Arc::new(NotificationPurgeWorker::new(
+    runtime.register_worker(Arc::new(NotificationStepWorker::new(
         store.clone(),
-        PURGE_INTERVAL,
-        PURGE_BATCH,
+        StepWorkerSettings::default(),
     )?))?;
     runtime.register_worker(Arc::new(NotificationBroadcastWorker::new(
         store.clone(),

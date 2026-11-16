@@ -175,7 +175,10 @@ DEFINE FUNCTION OVERWRITE fn::notification_template_create($params: object) {
     LET $workflow = (SELECT * FROM ONLY $p.workflow);
     IF $workflow == NONE { RETURN fn::error_result("NOTIFICATION_WORKFLOW_NOT_FOUND", $p.language, {}); };
     IF !fn::notification_can({ action: "manage", tenant: $workflow.tenant }) { RETURN fn::error_result("NOTIFICATION_PERMISSION_DENIED", $p.language, {}); };
-    IF $p.step_key NOT IN $workflow.steps.key { RETURN fn::error_result("NOTIFICATION_INVALID_INPUT", $p.language, { fields: { step_key: "unknown step" } }); };
+    -- Un gabarit pour une étape de canal seulement
+    IF $p.step_key NOT IN array::filter($workflow.steps, |$step| $step.type IN fn::notification_channels({})).key {
+        RETURN fn::error_result("NOTIFICATION_INVALID_INPUT", $p.language, { fields: { step_key: "unknown channel step" } });
+    };
     -- Mise en page de la même portée que le parcours, ou de l'installation
     IF $p.layout IS NOT NONE AND (SELECT VALUE scope_key FROM ONLY $p.layout) NOT IN [$workflow.scope_key, "installation"] {
         RETURN fn::error_result("NOTIFICATION_NOT_FOUND", $p.language, { resource: "layout" });
@@ -251,3 +254,68 @@ DEFINE FUNCTION OVERWRITE fn::notification_template_get($params: object) {
     IF $template == NONE { RETURN fn::error_result("NOTIFICATION_NOT_FOUND", $report.value.language, { resource: "template" }); };
     RETURN fn::result_ok($template);
 } COMMENT "Gabarit ({ template }) avec son contenu et ses clés. Permission notification.read";
+
+-- ----------------------------------------------------------------------------
+-- fn::notification_step_preview : données de l'aperçu d'une étape (rendu par Rust)
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::notification_step_preview($params: object) {
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            workflow: { pipeline: [{ rule: "record", options: { expected_table: "notification_workflow" } }], required: true },
+            step_key: { pipeline: [{ rule: "snake_case_name", options: { min_length: 1, max_length: 64 } }], required: true },
+            payload: { pipeline: [{ rule: "is_object" }], default: {} },
+            locale: { pipeline: [{ rule: "locale", options: { require_region: false } }] },
+            digest: { pipeline: [{ rule: "is_object" }, { rule: "object", options: { schema: {
+                fields: {
+                    count: { pipeline: [{ rule: "integer", options: { min_value: 0, max_value: 1000000 } }], required: true },
+                    events: { pipeline: [{ rule: "array_objects", options: { allow_empty_objects: true } }, { rule: "array_length", options: { min_length: 0, max_length: 100 } }], default: [] }
+                },
+                unknown_keys: "reject"
+            } } }] },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 40);
+    IF !$report.valid {
+        RETURN fn::error_result("NOTIFICATION_INVALID_INPUT", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
+    };
+    LET $p = $report.value;
+    LET $workflow = (SELECT * FROM ONLY $p.workflow);
+    IF $workflow == NONE { RETURN fn::error_result("NOTIFICATION_WORKFLOW_NOT_FOUND", $p.language, {}); };
+    -- Parcours de l'installation : lisible comme sa configuration (repli de toute organisation)
+    IF !fn::notification_can({ action: IF $workflow.tenant IS NONE { "read_config" } ELSE { "read" }, tenant: $workflow.tenant }) {
+        RETURN fn::error_result("NOTIFICATION_PERMISSION_DENIED", $p.language, {});
+    };
+    LET $step = array::find($workflow.steps, |$s| $s.key = $p.step_key);
+    IF $step IS NONE OR $step.type NOT IN fn::notification_channels({}) { RETURN fn::error_result("NOTIFICATION_NOT_FOUND", $p.language, { resource: "step" }); };
+    LET $template = (SELECT * FROM ONLY notification_template WHERE workflow = $workflow.id AND step_key = $p.step_key LIMIT 1);
+    IF $template == NONE { RETURN fn::error_result("NOTIFICATION_TEMPLATE_REQUIRED", $p.language, { steps: [$p.step_key] }); };
+    -- Langue demandée, sinon celle de l'organisation du parcours, sinon celle de l'installation
+    LET $organization = IF $workflow.tenant IS NONE { NONE } ELSE { (SELECT name, locale FROM ONLY $workflow.tenant) };
+    LET $chosen = fn::i18n_locale_resolve({ candidates: array::filter([$p.locale, $organization.locale], |$l| $l IS NOT NONE) });
+    LET $locale = IF $chosen.ok { $chosen.data.locale } ELSE { NONE };
+    LET $texts = IF $locale IS NONE OR array::len($template.keys ?? []) = 0 { { ok: true, data: [] } } ELSE {
+        fn::i18n_resolve_many({ keys: $template.keys, locale: $locale, tenant: IF $workflow.tenant IS NONE { NONE } ELSE { <string> $workflow.tenant } })
+    };
+    LET $layout = IF $template.layout IS NONE { NONE } ELSE { (SELECT html, text FROM ONLY $template.layout) };
+    LET $settings = fn::notification_settings_effective({ tenant: $workflow.tenant });
+    RETURN fn::result_ok({
+        workflow: $workflow.id,
+        step_key: $p.step_key,
+        locale: $locale,
+        recipient_locale: $p.locale,
+        organization_name: $organization.name,
+        subject: $template.subject,
+        html_body: $template.html_body,
+        text_body: $template.text_body,
+        texts: IF $texts.ok { $texts.data } ELSE { [] },
+        texts_error: IF $chosen.ok { IF $texts.ok { NONE } ELSE { $texts.error.code } } ELSE { $chosen.error.code },
+        layout_html: $layout.html,
+        layout_text: $layout.text,
+        payload: $p.payload,
+        digest: $p.digest,
+        from_name: $settings.from_name,
+        reply_to: $settings.reply_to
+    });
+} COMMENT "Données de l'aperçu d'une étape de canal ({ workflow, step_key, payload : données d'exemple, locale, digest : { count, events } d'exemple }) : gabarit, langue (demandée, sinon de l'organisation, sinon de l'installation), textes des clés dans cette langue, mise en page, réglages ; aucune écriture, aucun secret. Rendu par le moteur Rust (NotificationPreview). Permission notification.read (parcours de l'installation : lecture de sa configuration)";

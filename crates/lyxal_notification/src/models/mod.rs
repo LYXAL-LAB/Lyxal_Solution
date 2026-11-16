@@ -1,6 +1,6 @@
 //! Contrats publics des fonctions SurrealQL `fn::notification_*` : paramètres (`XxxParams`) et
 //! résultats. Les fonctions de gestion des parcours, gabarits et mises en page sont appelées
-//! directement par la console.
+//! directement par la console ; la forme de leurs étapes est décrite par `WorkflowStep`.
 
 mod broadcast;
 mod preference;
@@ -9,6 +9,7 @@ mod subscriber;
 mod topic;
 mod trigger;
 mod types;
+mod workflow;
 
 pub use broadcast::{
     BroadcastClaim, BroadcastClaimParams, BroadcastCompleteParams, BroadcastCompleted,
@@ -22,7 +23,7 @@ pub use preference::{
 };
 pub use queue::{
     ClaimedJob, EffectiveSettings, FailureClass, JobClaimParams, JobCompleteParams, JobCompleted,
-    JobFailParams, JobFailed, JobReleaseParams, JobReleased, JobRenewParams, JobRenewed,
+    JobFailParams, JobFailed, JobReleaseParams, JobReleased, JobRenewParams, JobRenewed, PurgeArgs,
     PurgeParams, PurgeResult, Settings, SettingsGetParams, UnsubscribeTarget,
 };
 pub use subscriber::{
@@ -39,3 +40,8 @@ pub use trigger::{
     ListRun, Recipient, TriggerKind, TriggerParams, TriggerResult, TriggerStatus, TriggerTarget,
 };
 pub use types::{NotificationDatetime, NotificationRecordId};
+pub use workflow::{
+    BulkEntry, BulkError, CancelParams, CancelResult, DigestVars, SpanUnit, StepOverride,
+    StepPreviewParams, StepPreviewResult, StepSpan, TestSendParams, TriggerBulkParams,
+    TriggerBulkResult, TriggerOverrides, WaitScheduleParams, WaitScheduleResult, WorkflowStep,
+};

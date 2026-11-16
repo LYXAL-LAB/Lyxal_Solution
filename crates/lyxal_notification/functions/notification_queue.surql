@@ -5,23 +5,10 @@
 -- Réservation par `locked_until` et `claim_token` : plusieurs workers se partagent la file sans
 -- envoyer deux fois la même étape ; une réservation expirée est reprise. Le délai avant une
 -- nouvelle tentative est calculé par le worker (attente exponentielle avec gigue, comme
--- lyxal_event) ; la base décide de la nouvelle tentative ou de l'échec définitif. Permission
--- notification.worker (ou session système).
-
--- ----------------------------------------------------------------------------
--- fn::notification_run_finalize : état d'un déclenchement quand ses étapes sont terminées ;
--- le secret est alors effacé
--- ----------------------------------------------------------------------------
-
-DEFINE FUNCTION OVERWRITE fn::notification_run_finalize($params: object) -> object {
-    LET $statuses = (SELECT VALUE status FROM notification_job WHERE run = $params.run);
-    IF array::any($statuses, |$s| $s IN ["queued", "running"]) { RETURN { finalized: false }; };
-    LET $final = IF array::any($statuses, |$s| $s = "failed") { "failed" }
-        ELSE IF array::all($statuses, |$s| $s IN ["skipped", "canceled"]) { "skipped" }
-        ELSE { "completed" };
-    UPDATE $params.run SET status = $final, secret = NONE;
-    RETURN { finalized: true, status: $final };
-} COMMENT "Termine un déclenchement ({ run }) quand toutes ses étapes sont terminées : état final, secret effacé";
+-- lyxal_event) ; la base décide de la nouvelle tentative ou de l'échec définitif. Une étape
+-- terminée fait avancer son déclenchement (fn::notification_run_advance). Seules les étapes de
+-- canal passent par cette file ; les attentes passent par lyxal_scheduler
+-- (fn::notification_wait_schedule). Permission notification.worker (ou session système).
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_job_claim
@@ -44,23 +31,30 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_claim($params: object) {
     IF !fn::notification_can({ action: "worker" }) { RETURN fn::error_result("NOTIFICATION_PERMISSION_DENIED", $p.language, {}); };
     LET $now = time::now();
     -- Étapes dont le secret a expiré : annulées, jamais envoyées en retard
+    LET $channels = fn::notification_channels({});
     LET $expired = (SELECT VALUE id FROM notification_job
-        WHERE status IN ["queued", "running"] AND run.expires_at <= $now AND (locked_until IS NONE OR locked_until < $now));
+        WHERE type IN $channels AND status IN ["queued", "running"] AND run.expires_at IS NOT NONE AND run.expires_at <= $now AND (locked_until IS NONE OR locked_until < $now));
     FOR $job IN $expired {
         UPDATE $job SET status = "canceled", locked_until = NONE, claim_token = NONE,
             last_error = { class: "permanent", code: "NOTIFICATION_RUN_EXPIRED", detail: "secret expiré avant l'envoi" };
-        fn::notification_run_finalize({ run: (SELECT VALUE run FROM ONLY $job) });
+        fn::notification_run_advance({ run: (SELECT VALUE run FROM ONLY $job) });
+    };
+    -- Déclenchement annulé : étapes en file ou à réservation expirée annulées, jamais renvoyées
+    LET $orphans = (SELECT VALUE id FROM notification_job
+        WHERE type IN $channels AND status IN ["queued", "running"] AND run.status = "canceled" AND (locked_until IS NONE OR locked_until < $now));
+    FOR $job IN $orphans {
+        UPDATE $job SET status = "canceled", skip_reason = "canceled", locked_until = NONE, claim_token = NONE;
     };
     -- Réservation expirée après la dernière tentative (worker arrêté pendant l'envoi) : échec définitif
     LET $abandoned = (SELECT VALUE id FROM notification_job
-        WHERE status = "running" AND locked_until < $now AND attempts >= max_attempts);
+        WHERE type IN $channels AND status = "running" AND locked_until < $now AND attempts >= max_attempts);
     FOR $job IN $abandoned {
         UPDATE $job SET status = "failed", locked_until = NONE, claim_token = NONE,
             last_error = { class: "transient", code: "NOTIFICATION_JOB_LEASE_EXPIRED", detail: "réservation expirée après la dernière tentative" };
-        fn::notification_run_finalize({ run: (SELECT VALUE run FROM ONLY $job) });
+        fn::notification_run_advance({ run: (SELECT VALUE run FROM ONLY $job) });
     };
     LET $due = (SELECT VALUE id FROM notification_job
-        WHERE status IN ["queued", "running"] AND attempts < max_attempts AND next_retry_at <= $now AND (locked_until IS NONE OR locked_until < $now)
+        WHERE type IN $channels AND status IN ["queued", "running"] AND attempts < max_attempts AND next_retry_at <= $now AND (locked_until IS NONE OR locked_until < $now)
         ORDER BY next_retry_at LIMIT $p.limit);
     -- Réservation conditionnelle : si un autre worker l'a prise entre-temps, l'étape est ignorée
     LET $claim = <string> rand::uuid::v7();
@@ -76,11 +70,11 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_claim($params: object) {
         LET $workflow = (SELECT * FROM ONLY $run.workflow);
         LET $subscriber = IF $run.subscriber IS NONE { NONE } ELSE { (SELECT * FROM ONLY $run.subscriber) };
         LET $decision = fn::notification_preference_resolve({ tenant: $run.tenant, workflow: $workflow, subscriber: $subscriber });
-        LET $choice = $decision.channels[$job.channel];
+        LET $choice = $decision.channels[$job.type];
         IF !$choice.allowed {
             UPDATE $job.id SET status = "skipped", skip_reason = string::concat("preference:", $choice.level),
                 locked_until = NONE, claim_token = NONE, attempts -= 1;
-            fn::notification_run_finalize({ run: $job.run });
+            fn::notification_run_advance({ run: $job.run });
             RETURN NONE;
         };
         RETURN fn::notification_job_payload({ job: $job, workflow: $workflow, quiet_hours: $decision.quiet_hours });
@@ -133,6 +127,8 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_payload($params: object) -> objec
         from_name: $settings.from_name,
         reply_to: $settings.reply_to,
         quiet_hours: $params.quiet_hours,
+        -- Regroupement porté par ce déclenchement : nombre et données des événements
+        digest: IF $run.digest IS NONE { NONE } ELSE { (SELECT count, events.{ payload, at } AS events FROM ONLY $run.digest WHERE carrier = $run.id) },
         -- Désabonnement en un clic (hors parcours critique) : catégorie du parcours, sinon le parcours
         unsubscribe: IF $workflow.critical OR $run.subscriber IS NONE { NONE } ELSE {
             {
@@ -140,11 +136,11 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_payload($params: object) -> objec
                 subscriber: $run.subscriber,
                 category: $workflow.category,
                 workflow: IF $workflow.category IS NONE { $workflow.id } ELSE { NONE },
-                channel: $job.channel
+                channel: $job.type
             }
         }
     };
-} COMMENT "Données de rendu d'une étape réservée ({ job, workflow, quiet_hours }) : gabarit, langue de l'envoi (destinataire, organisation, installation), textes des clés du gabarit dans cette langue (texts ; texts_error : code I18N_* si leur lecture a échoué), mise en page, réglages, secret scellé, heures calmes, cible du lien de désabonnement (NONE pour un parcours critique)";
+} COMMENT "Données de rendu d'une étape réservée ({ job, workflow, quiet_hours }) : gabarit, regroupement porté ({ count, events }), langue de l'envoi (destinataire, organisation, installation), textes des clés du gabarit dans cette langue (texts ; texts_error : code I18N_* si leur lecture a échoué), mise en page, réglages, secret scellé, heures calmes, cible du lien de désabonnement (NONE pour un parcours critique)";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_job_check : réservation encore détenue ?
@@ -187,7 +183,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_complete($params: object) {
     LET $message = (CREATE ONLY notification_message CONTENT {
         run: $run.id,
         job: $job.id,
-        channel: $job.channel,
+        channel: $job.type,
         to: $run.address.email,
         subject: IF $sensitive { NONE } ELSE { $p.subject },
         provider_message_id: $p.provider_message_id,
@@ -200,9 +196,9 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_complete($params: object) {
         purge_after: time::now() + duration::from_days($settings.retention_days_log)
     };
     UPDATE $job.id SET status = "completed", locked_until = NONE, claim_token = NONE, last_error = NONE;
-    LET $final = fn::notification_run_finalize({ run: $run.id });
-    RETURN fn::result_ok({ message: $message.id, status: "completed", run_status: $final.status });
-} COMMENT "Termine une étape envoyée ({ job_id, claim_token, provider_message_id, smtp_code, subject }) : message (objet omis si sensible), journal, déclenchement terminé et secret effacé si c'était la dernière étape. Permission notification.worker";
+    LET $next = fn::notification_run_advance({ run: $run.id });
+    RETURN fn::result_ok({ message: $message.id, status: "completed", run_status: IF $next.status IN ["completed", "failed", "skipped", "canceled", "merged"] { $next.status } ELSE { NONE } });
+} COMMENT "Termine une étape envoyée ({ job_id, claim_token, provider_message_id, smtp_code, subject }) : message (objet omis si sensible), journal, puis étape suivante du déclenchement ; déclenchement terminé et secret effacé si c'était la dernière étape (run_status). Permission notification.worker";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_job_fail
@@ -231,13 +227,16 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_fail($params: object) {
     LET $job = $check.job;
     LET $run = (SELECT * FROM ONLY $job.run);
     LET $settings = fn::notification_settings_effective({ tenant: $run.tenant });
-    LET $retry = $p.class = "transient" AND $job.attempts < $job.max_attempts;
+    -- Déclenchement annulé pendant l'envoi : aucune nouvelle tentative
+    LET $canceled = $run.status = "canceled";
+    LET $retry = !$canceled AND $p.class = "transient" AND $job.attempts < $job.max_attempts;
     LET $next = time::now() + duration::from_secs($p.retry_delay_seconds);
     LET $error = { class: $p.class, code: $p.code, detail: $p.detail ?? "" };
+    LET $status = IF $retry { "queued" } ELSE IF $canceled { "canceled" } ELSE { "failed" };
     IF $retry {
         UPDATE $job.id SET status = "queued", next_retry_at = $next, locked_until = NONE, claim_token = NONE, last_error = $error;
     } ELSE {
-        UPDATE $job.id SET status = "failed", locked_until = NONE, claim_token = NONE, last_error = $error;
+        UPDATE $job.id SET status = $status, locked_until = NONE, claim_token = NONE, last_error = $error;
     };
     CREATE notification_delivery_log CONTENT {
         run: $run.id, job: $job.id, attempt: $job.attempts, status: IF $retry { "retry" } ELSE { "failed" },
@@ -250,13 +249,13 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_fail($params: object) {
             reason: "hard_bounce", source: $p.code
         };
     };
-    LET $final = IF $retry { { finalized: false } } ELSE { fn::notification_run_finalize({ run: $run.id }) };
+    LET $final = IF $retry { { status: NONE } } ELSE { fn::notification_run_advance({ run: $run.id }) };
     RETURN fn::result_ok({
-        status: IF $retry { "queued" } ELSE { "failed" },
+        status: $status,
         next_retry_at: IF $retry { $next } ELSE { NONE },
         run_status: $final.status
     });
-} COMMENT "Enregistre l'échec d'une étape ({ job_id, claim_token, class : transient, permanent, recipient_rejected ; code, detail, retry_delay_seconds }) : nouvelle tentative tant que attempts < max_attempts pour un échec temporaire, sinon échec définitif ; destinataire refusé : adresse supprimée (hard_bounce). Permission notification.worker";
+} COMMENT "Enregistre l'échec d'une étape ({ job_id, claim_token, class : transient, permanent, recipient_rejected ; code, detail, retry_delay_seconds }) : nouvelle tentative tant que attempts < max_attempts pour un échec temporaire, sinon échec définitif ; déclenchement annulé entre-temps : étape annulée, sans nouvelle tentative ; destinataire refusé : adresse supprimée (hard_bounce). Permission notification.worker";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_purge
@@ -265,26 +264,41 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_fail($params: object) {
 DEFINE FUNCTION OVERWRITE fn::notification_purge($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
-            limit: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 10000 } }], default: 500 },
+            args: { pipeline: [{ rule: "is_object" }, { rule: "object", options: { schema: {
+                fields: { limit: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 10000 } }], default: 1000 } },
+                unknown_keys: "reject"
+            } } }], default: {} },
+            run: { pipeline: [{ rule: "record_id", options: { allowed_tables: ["scheduler_run"] } }] },
+            tenant: { pipeline: [{ rule: "record_id", options: { allowed_tables: ["auth_organization"] } }] },
+            scheduled_for: { pipeline: [{ rule: "datetime" }] },
+            attempt: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 100 } }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
-    }, 20);
+    }, 30);
     IF !$report.valid {
         RETURN fn::error_result("NOTIFICATION_INVALID_INPUT", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
     LET $p = $report.value;
     IF !fn::notification_can({ action: "worker" }) { RETURN fn::error_result("NOTIFICATION_PERMISSION_DENIED", $p.language, {}); };
+    LET $limit = $p.args.limit ?? 1000;
     LET $now = time::now();
-    LET $secrets = (UPDATE notification_run SET secret = NONE WHERE secret IS NOT NONE AND expires_at <= $now RETURN id);
-    LET $log_ids = (SELECT VALUE id FROM notification_delivery_log WHERE purge_after <= $now LIMIT $p.limit);
+    LET $secrets = (UPDATE notification_run SET secret = NONE WHERE secret IS NOT NONE AND expires_at IS NOT NONE AND expires_at <= $now RETURN id);
+    LET $log_ids = (SELECT VALUE id FROM notification_delivery_log WHERE purge_after <= $now LIMIT $limit);
     LET $logs = IF array::len($log_ids) = 0 { [] } ELSE { (DELETE $log_ids RETURN BEFORE) };
-    LET $run_ids = (SELECT VALUE id FROM notification_run WHERE purge_after <= $now AND status != "pending" LIMIT $p.limit);
+    LET $run_ids = (SELECT VALUE id FROM notification_run WHERE purge_after <= $now AND status NOT IN ["pending", "waiting"] LIMIT $limit);
     LET $runs = IF array::len($run_ids) = 0 { [] } ELSE { (DELETE $run_ids RETURN BEFORE) };
-    LET $broadcast_ids = (SELECT VALUE id FROM notification_broadcast WHERE purge_after <= $now AND status = "completed" LIMIT $p.limit);
+    LET $broadcast_ids = (SELECT VALUE id FROM notification_broadcast WHERE purge_after <= $now AND status = "completed" LIMIT $limit);
     LET $broadcasts = IF array::len($broadcast_ids) = 0 { [] } ELSE { (DELETE $broadcast_ids RETURN BEFORE) };
-    RETURN fn::result_ok({ secrets_cleared: array::len($secrets), log_entries: array::len($logs), runs: array::len($runs), broadcasts: array::len($broadcasts) });
-} COMMENT "Purge par paquets ({ limit }) : secrets expirés effacés, journal, déclenchements et diffusions terminés au-delà de leur durée de conservation supprimés (étapes et messages avec eux). Permission notification.worker";
+    LET $digest_ids = (SELECT VALUE id FROM notification_digest WHERE status = "closed" AND purge_after <= $now LIMIT $limit);
+    LET $digests = IF array::len($digest_ids) = 0 { [] } ELSE { (DELETE $digest_ids RETURN BEFORE) };
+    LET $counter_ids = (SELECT VALUE id FROM notification_rate_limit WHERE purge_after <= $now LIMIT $limit);
+    LET $counters = IF array::len($counter_ids) = 0 { [] } ELSE { (DELETE $counter_ids RETURN BEFORE) };
+    RETURN fn::result_ok({
+        secrets_cleared: array::len($secrets), log_entries: array::len($logs), runs: array::len($runs),
+        broadcasts: array::len($broadcasts), digests: array::len($digests), rate_limits: array::len($counters)
+    });
+} COMMENT "Purge par paquets, appelée par lyxal_scheduler (tâche notification.purge, planification horaire notification-purge) avec { args : { limit : 1000 par défaut }, run, tenant, scheduled_for, attempt } : secrets expirés effacés ; journal, déclenchements terminés (étapes, messages et regroupements portés avec eux), diffusions terminées, regroupements fermés et compteurs de limitation expirés supprimés au-delà de leur conservation. Permission notification.worker (session système du moteur)";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_job_renew : réservation renouvelée juste avant l'envoi

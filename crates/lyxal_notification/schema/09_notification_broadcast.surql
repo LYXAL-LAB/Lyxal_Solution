@@ -29,6 +29,7 @@ DEFINE FIELD OVERWRITE actor ON TABLE notification_broadcast TYPE option<string>
 DEFINE FIELD OVERWRITE exclude_actor ON TABLE notification_broadcast TYPE bool DEFAULT true READONLY COMMENT "Auteur exclu de la diffusion";
 DEFINE FIELD OVERWRITE payload ON TABLE notification_broadcast TYPE object DEFAULT {} READONLY COMMENT "Variables non sensibles";
 DEFINE FIELD OVERWRITE payload.* ON TABLE notification_broadcast TYPE any;
+DEFINE FIELD OVERWRITE overrides ON TABLE notification_broadcast TYPE object FLEXIBLE DEFAULT {} READONLY COMMENT "Surcharges du déclenchement, reprises par chaque déclenchement de la diffusion";
 
 DEFINE FIELD OVERWRITE status ON TABLE notification_broadcast
     TYPE string

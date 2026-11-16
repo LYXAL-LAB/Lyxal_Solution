@@ -4087,6 +4087,7 @@ dependencies = [
  "lyxal_event",
  "lyxal_i18n",
  "lyxal_runtime",
+ "lyxal_scheduler",
  "lyxal_surreal",
  "minijinja",
  "serde",

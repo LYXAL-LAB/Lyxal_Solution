@@ -20,6 +20,7 @@ use lyxal_auth::{AuthError, CodeProof, IssuedTokens, LoginActions, LoginOutcome,
 use lyxal_crypto::SecretString;
 use lyxal_error::{LyxalError, LyxalResult};
 use lyxal_i18n::{accept_language, I18nStore, LocaleResolveParams};
+use lyxal_notification::NotificationError;
 use lyxal_scheduler::SchedulerError;
 use lyxal_secrets::SecretsError;
 use lyxal_storage::StorageError;
@@ -86,6 +87,8 @@ pub enum ApiError {
     Secrets(SecretsError),
     /// Erreur métier ou du service du planificateur.
     Scheduler(SchedulerError),
+    /// Erreur métier ou du service des notifications.
+    Notification(NotificationError),
     /// Erreur de l'hôte.
     Server(ServerError),
 }
@@ -105,6 +108,12 @@ impl From<SecretsError> for ApiError {
 impl From<SchedulerError> for ApiError {
     fn from(error: SchedulerError) -> Self {
         Self::Scheduler(error)
+    }
+}
+
+impl From<NotificationError> for ApiError {
+    fn from(error: NotificationError) -> Self {
+        Self::Notification(error)
     }
 }
 
@@ -151,7 +160,8 @@ async fn business(
 }
 
 /// Erreur rendue au client : définition de master data résolue par la base pour un code
-/// `AUTH_*`, `STORAGE_*`, `SECRETS_*` ou `SCHEDULER_*` ; erreur de l'hôte sinon. Aucun détail interne.
+/// `AUTH_*`, `STORAGE_*`, `SECRETS_*`, `SCHEDULER_*` ou `NOTIFICATION_*` ; erreur de l'hôte sinon.
+/// Aucun détail interne.
 pub(super) async fn render_error(
     context: &AppContext,
     error: ApiError,
@@ -204,6 +214,14 @@ pub(super) async fn render_error(
                     // Autres erreurs du service Rust : définition dans la master data du module
                     _ => resolve(context, &error.code(), language).await,
                 };
+            (resolved, error.code(), error.to_string())
+        }
+        ApiError::Notification(error) => {
+            let resolved = match error {
+                NotificationError::Surreal(inner) => business(context, inner, language).await,
+                // Erreurs du service Rust (rendu) : définition dans la master data du module
+                _ => resolve(context, &error.code(), language).await,
+            };
             (resolved, error.code(), error.to_string())
         }
     };
@@ -484,6 +502,7 @@ pub(super) async fn respond(
                     ApiError::Storage(error) => error.to_string(),
                     ApiError::Secrets(error) => error.to_string(),
                     ApiError::Scheduler(error) => error.to_string(),
+                    ApiError::Notification(error) => error.to_string(),
                     ApiError::Server(error) => error.to_string(),
                 };
                 tracing::warn!(error = %original, "erreur d'origine remplacée par une panne de lecture de la langue");

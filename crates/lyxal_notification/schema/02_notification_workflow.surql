@@ -3,7 +3,8 @@
 -- MODULE : lyxal_notification
 -- RÔLE   : Parcours de notification (modèle Novu `notification-template`)
 -- ============================================================================
--- Les étapes sont un tableau d'objets ordonnés ; V1-a : une étape `email`. Le déclencheur est un
+-- Les étapes sont un tableau d'objets exécutés dans l'ordre : canal (`email`), attente (`delay`),
+-- regroupement (`digest`), limitation (`throttle`). Le déclencheur est un
 -- type d'événement `lyxal_event`. `critical` : ignore les choix de l'abonné, sa liste de
 -- désabonnements et ses heures calmes (jamais les rejets définitifs). `sensitive` : aucun
 -- contenu rendu n'est conservé. `category` : catégorie de désabonnement ; `preferences` :
@@ -92,17 +93,42 @@ DEFINE FIELD OVERWRITE payload_schema.* ON TABLE notification_workflow
 DEFINE FIELD OVERWRITE steps ON TABLE notification_workflow
     TYPE array<object>
     DEFAULT []
-    COMMENT "Étapes ordonnées : [{ key, channel }]";
+    COMMENT "Étapes exécutées dans l'ordre : [{ key, type, condition, … }] (forme contrôlée par fn::notification_step_check)";
 
 DEFINE FIELD OVERWRITE steps.* ON TABLE notification_workflow
     TYPE object;
 
 DEFINE FIELD OVERWRITE steps.*.key ON TABLE notification_workflow
-    TYPE string;
-
-DEFINE FIELD OVERWRITE steps.*.channel ON TABLE notification_workflow
     TYPE string
-    ASSERT $value IN ["email"];
+    COMMENT "Clé de l'étape, unique dans le parcours";
+
+DEFINE FIELD OVERWRITE steps.*.type ON TABLE notification_workflow
+    TYPE string
+    ASSERT $value IN ["email", "delay", "digest", "throttle"]
+    COMMENT "Type : canal (email) ou étape d'enchaînement (delay, digest, throttle)";
+
+DEFINE FIELD OVERWRITE steps.*.condition ON TABLE notification_workflow
+    TYPE option<object>
+    FLEXIBLE
+    COMMENT "Condition lyxal_core sur { payload, subscriber, steps } : fausse, l'étape est sautée";
+
+-- Attente (delay) : amount + unit, ou until (chemin d'une date dans les données) et offset
+DEFINE FIELD OVERWRITE steps.*.amount ON TABLE notification_workflow TYPE option<int>;
+DEFINE FIELD OVERWRITE steps.*.unit ON TABLE notification_workflow TYPE option<string>;
+DEFINE FIELD OVERWRITE steps.*.until ON TABLE notification_workflow TYPE option<string>;
+DEFINE FIELD OVERWRITE steps.*.offset ON TABLE notification_workflow TYPE option<object>;
+DEFINE FIELD OVERWRITE steps.*.offset.amount ON TABLE notification_workflow TYPE int;
+DEFINE FIELD OVERWRITE steps.*.offset.unit ON TABLE notification_workflow TYPE string;
+
+-- Regroupement (digest) et limitation (throttle) : fenêtre, clé lue dans les données
+DEFINE FIELD OVERWRITE steps.*.window ON TABLE notification_workflow TYPE option<object>;
+DEFINE FIELD OVERWRITE steps.*.window.amount ON TABLE notification_workflow TYPE int;
+DEFINE FIELD OVERWRITE steps.*.window.unit ON TABLE notification_workflow TYPE string;
+DEFINE FIELD OVERWRITE steps.*.group_by ON TABLE notification_workflow TYPE option<string>;
+DEFINE FIELD OVERWRITE steps.*.lookback ON TABLE notification_workflow TYPE option<object>;
+DEFINE FIELD OVERWRITE steps.*.lookback.amount ON TABLE notification_workflow TYPE int;
+DEFINE FIELD OVERWRITE steps.*.lookback.unit ON TABLE notification_workflow TYPE string;
+DEFINE FIELD OVERWRITE steps.*.limit ON TABLE notification_workflow TYPE option<int>;
 
 DEFINE FIELD OVERWRITE tags ON TABLE notification_workflow
     TYPE array<string>

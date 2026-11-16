@@ -6,18 +6,16 @@ ordre du CTO avec un `implementation_plan.md` validé.
 
 | Lot | Contenu | Prérequis |
 | :--- | :--- | :--- |
-| **V1-c — Parcours complets** | Délais, digest, throttle (`notification_rate_limit`), conditions d'étape (`fn::utils_condition_evaluate`), surcharges, contrôles, envoi groupé, annulation, aperçu et test | délais longs : `lyxal_scheduler` |
-| **V1-d — Fil in-app** | États, compteurs, actions, onglets, snooze, temps réel | point 1 |
+| **V1-d — Fil in-app** | États, compteurs, actions, onglets, snooze, temps réel ; valeur « lu » d'un message du fil fournie aux conditions d'étape (« sauter si déjà lu », décision C6) | point 1 |
 | **V1-e — Autres canaux** | `notification_integration` (fournisseurs par locataire, identifiants dans `lyxal_secrets`), fournisseurs e-mail par API (SES, Postmark…), retours de rejets asynchrones (`notification_provider_event`), adresses des abonnés par canal (appareils push, messageries), SMS, chat par webhook (Slack, Teams), puis push (point 4) | `lyxal_secrets` |
-| **V2 — Observabilité et console** | Écrans de la console, aperçu, statistiques horaires, suivi des ouvertures et clics (désactivé par défaut, décision N7), webhooks sortants signés (point 2), révisions publiées, contrôle des domaines d'envoi, étape HTTP (point 6) | `lyxal_secrets` |
+| **V2 — Observabilité et console** | Écrans de la console (dont l'aperçu des étapes), regroupement à heure fixe (ex. chaque jour à 9 h), statistiques horaires, suivi des ouvertures et clics (désactivé par défaut, décision N7), webhooks sortants signés (point 2), révisions publiées, contrôle des domaines d'envoi, étape HTTP (point 6) | `lyxal_secrets` |
 | **V3 — Événementiel avancé** | Interactions humaines (approuver / choisir par message), courrier entrant (point 5), connexions chat OAuth, outils IA | `lyxal_connect` |
 
 ## Solutions d'attente du lot V1-a à remplacer
 
 * Relais SMTP unique dans la configuration de l'hôte → intégrations par locataire avec
-  `lyxal_secrets` (V1-e), sans migration (régime zéro dette).
-* Purge et nouvelles tentatives par `LyxalWorker` → envois différés et délais longs par
-  `lyxal_scheduler` (V1-c).
+  `lyxal_secrets` (V1-e), sans migration (régime zéro dette). Le choix du fournisseur s'ajoutera
+  alors aux surcharges d'un déclenchement (décision C5).
 
 ## Points à décider par le CTO
 

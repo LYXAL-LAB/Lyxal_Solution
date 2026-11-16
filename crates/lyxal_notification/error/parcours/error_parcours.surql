@@ -245,3 +245,111 @@ IF !record::exists(error_definition:NOTIFICATION_TEMPLATE_KEY_UNKNOWN) THEN (
         }
     }
 ) END;
+
+IF !record::exists(error_definition:NOTIFICATION_STEP_INVALID) THEN (
+    CREATE error_definition:NOTIFICATION_STEP_INVALID CONTENT {
+        code: "NOTIFICATION_STEP_INVALID",
+        module: "notification",
+        domain: "parcours",
+        category: "validation",
+        severity: "error",
+        message: "Workflow step invalid",
+        default_language: "fr",
+        http_status: 422,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Étape de parcours invalide",
+                description: "Une étape du parcours est mal formée pour son type, ou l'ordre des étapes est refusé (détail par étape et par champ, ou raison : duplicate_key, delay_form, no_channel_step, no_channel_after).",
+                resolution: "Corrigez l'étape signalée : une attente a une durée ou une date des données, un regroupement ou une limitation précède une étape de canal, et le parcours a au moins une étape de canal."
+            },
+            en: {
+                label: "Invalid workflow step",
+                description: "A workflow step is malformed for its type, or the step order is refused (detail per step and field, or reason: duplicate_key, delay_form, no_channel_step, no_channel_after).",
+                resolution: "Fix the reported step: a delay has a duration or a date from the data, a digest or throttle precedes a channel step, and the workflow has at least one channel step."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:NOTIFICATION_WAIT_TOO_LONG) THEN (
+    CREATE error_definition:NOTIFICATION_WAIT_TOO_LONG CONTENT {
+        code: "NOTIFICATION_WAIT_TOO_LONG",
+        module: "notification",
+        domain: "parcours",
+        category: "validation",
+        severity: "error",
+        message: "Wait too long",
+        default_language: "fr",
+        http_status: 422,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Attente trop longue",
+                description: "Une attente, une fenêtre de regroupement ou de limitation dépasse le réglage max_wait_days (détail : step, max_days).",
+                resolution: "Raccourcissez la durée, ou relevez max_wait_days dans les réglages (366 jours au plus)."
+            },
+            en: {
+                label: "Wait too long",
+                description: "A wait, a digest or throttle window exceeds the max_wait_days setting (detail: step, max_days).",
+                resolution: "Shorten the duration, or raise max_wait_days in the settings (366 days at most)."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:NOTIFICATION_RUN_NOT_FOUND) THEN (
+    CREATE error_definition:NOTIFICATION_RUN_NOT_FOUND CONTENT {
+        code: "NOTIFICATION_RUN_NOT_FOUND",
+        module: "notification",
+        domain: "parcours",
+        category: "not_found",
+        severity: "error",
+        message: "No run in progress",
+        default_language: "fr",
+        http_status: 404,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Aucun déclenchement en cours",
+                description: "Aucun déclenchement en cours ou en attente ne porte cette clé d'idempotence dans cette portée.",
+                resolution: "Vérifiez la clé et la portée ; un déclenchement terminé ne peut plus être annulé."
+            },
+            en: {
+                label: "No run in progress",
+                description: "No pending or waiting run has this idempotency key in this scope.",
+                resolution: "Check the key and the scope; a finished run can no longer be canceled."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:NOTIFICATION_OVERRIDE_INVALID) THEN (
+    CREATE error_definition:NOTIFICATION_OVERRIDE_INVALID CONTENT {
+        code: "NOTIFICATION_OVERRIDE_INVALID",
+        module: "notification",
+        domain: "parcours",
+        category: "validation",
+        severity: "error",
+        message: "Override invalid",
+        default_language: "fr",
+        http_status: 422,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Surcharge invalide",
+                description: "Une surcharge du déclenchement vise une étape inconnue du parcours, ou change un réglage que son type ne permet pas (détail : step, fields).",
+                resolution: "Toute étape peut être sautée (skip) ; une attente reçoit amount et unit ; un regroupement reçoit window."
+            },
+            en: {
+                label: "Invalid override",
+                description: "A trigger override targets a step unknown to the workflow, or changes a setting its type does not allow (detail: step, fields).",
+                resolution: "Any step can be skipped (skip); a delay takes amount and unit; a digest takes window."
+            }
+        }
+    }
+) END;

@@ -4,6 +4,7 @@ use lyxal_surreal::SurrealValue;
 
 use super::subscriber::SubscriberInput;
 use super::types::{NotificationDatetime, NotificationRecordId};
+use super::workflow::TriggerOverrides;
 
 /// Destinataire d'un message, tel que le rendu le voit (`recipient` des gabarits) : adresse
 /// copiée de l'abonné au déclenchement.
@@ -67,6 +68,8 @@ pub struct TriggerParams {
     pub exclude_actor: Option<bool>,
     /// Variables non sensibles (objet JSON).
     pub payload: serde_json::Value,
+    /// Surcharges des étapes pour ce déclenchement.
+    pub overrides: Option<TriggerOverrides>,
     /// Variables sensibles scellées sous le contexte du module (`enc:v2`) ; un seul abonné.
     pub secret: Option<String>,
     /// Fin de validité du secret.
@@ -82,6 +85,7 @@ impl std::fmt::Debug for TriggerParams {
             .field("idempotency_key", &self.idempotency_key)
             .field("event_id", &self.event_id)
             .field("to", &self.to)
+            .field("overrides", &self.overrides)
             .field("secret", &self.secret.as_ref().map(|_| "[REDACTED]"))
             .field("expires_at", &self.expires_at)
             .finish_non_exhaustive()
@@ -138,9 +142,10 @@ pub struct TriggerResult {
     pub subscriber: Option<NotificationRecordId>,
     /// Déclenchement (un abonné ; absent si écarté avant sa création).
     pub run_id: Option<NotificationRecordId>,
-    /// Motif d'abandon (`suppressed:<motif>`, `preference:<niveau>`, `actor`).
+    /// Motif d'abandon (`suppressed:<motif>`, `preference:<niveau>`, `condition`, `throttled`,
+    /// `actor`…).
     pub skip_reason: Option<String>,
-    /// Étapes créées (ou existantes pour un rejeu).
+    /// Étapes engagées (ou existantes pour un rejeu) : les premières étapes du parcours.
     #[surreal(default)]
     pub job_ids: Vec<NotificationRecordId>,
     /// Issue par abonné (liste).

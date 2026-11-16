@@ -3,17 +3,18 @@
 -- MODULE    : lyxal_notification
 -- ============================================================================
 -- Un parcours n'est jamais supprimé : il passe à l'état `inactive`. Il ne peut être activé que si
--- chaque étape a un gabarit.
+-- chaque étape de canal a un gabarit. Les étapes sont contrôlées par fn::notification_step_check.
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_workflow_missing_templates : étapes sans gabarit
 -- ----------------------------------------------------------------------------
 
 DEFINE FUNCTION OVERWRITE fn::notification_workflow_missing_templates($params: object) -> array {
-    RETURN array::filter($params.steps.key, |$step| {
+    LET $channels = fn::notification_channels({});
+    RETURN array::filter(array::filter($params.steps, |$step| $step.type IN $channels).key, |$step| {
         RETURN array::len(SELECT VALUE id FROM notification_template WHERE workflow = $params.workflow AND step_key = $step) = 0;
     });
-} COMMENT "Clés des étapes ({ workflow, steps }) sans gabarit";
+} COMMENT "Clés des étapes de canal ({ workflow, steps }) sans gabarit";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_workflow_create
@@ -37,13 +38,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_workflow_create($params: object) {
                 unknown_keys: "reject"
             } } }] },
             payload_schema: { pipeline: [{ rule: "is_object" }] },
-            steps: { pipeline: [{ rule: "array_objects", options: { allow_empty_objects: false } }, { rule: "array_non_empty" }, { rule: "each", options: { pipeline: [{ rule: "object", options: { schema: {
-                fields: {
-                    key: { pipeline: [{ rule: "snake_case_name", options: { min_length: 1, max_length: 64 } }], required: true },
-                    channel: { pipeline: [{ rule: "enum", options: { allowed: ["email"], case_sensitive: true } }], required: true }
-                },
-                unknown_keys: "reject"
-            } } }] } }], required: true },
+            steps: { pipeline: [{ rule: "array_objects", options: { allow_empty_objects: false } }, { rule: "array_length", options: { min_length: 1, max_length: 20 } }], required: true },
             tags: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: true } }, { rule: "array_unique" }, { rule: "each", options: { pipeline: [{ rule: "snake_case_name", options: { min_length: 1, max_length: 64 } }] } }], default: [] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
@@ -53,10 +48,9 @@ DEFINE FUNCTION OVERWRITE fn::notification_workflow_create($params: object) {
         RETURN fn::error_result("NOTIFICATION_INVALID_INPUT", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
     LET $p = $report.value;
-    IF !fn::validation_pipeline_execute($p.steps.key, [{ rule: "array_unique" }], 5).valid {
-        RETURN fn::error_result("NOTIFICATION_INVALID_INPUT", $p.language, { fields: { steps: "duplicate step key" } });
-    };
     IF !fn::notification_can({ action: "manage", tenant: $p.tenant }) { RETURN fn::error_result("NOTIFICATION_PERMISSION_DENIED", $p.language, {}); };
+    LET $steps = fn::notification_step_check({ steps: $p.steps, tenant: $p.tenant });
+    IF $steps.code IS NOT NONE { RETURN fn::error_result($steps.code, $p.language, $steps.details); };
     -- Un schéma de variables invalide est refusé par lyxal_core (CORE_INVALID_ARGUMENT)
     IF $p.payload_schema IS NOT NONE { fn::validation_object_execute({}, $p.payload_schema, 80); };
     LET $category = IF $p.category IS NONE { NONE } ELSE { fn::notification_category_find({ tenant: $p.tenant, key: $p.category, own_only: false }) };
@@ -72,12 +66,12 @@ DEFINE FUNCTION OVERWRITE fn::notification_workflow_create($params: object) {
         critical: $p.critical,
         sensitive: $p.sensitive,
         payload_schema: $p.payload_schema,
-        steps: $p.steps,
+        steps: $steps.steps,
         tags: $p.tags
     });
     IF array::len($inserted) = 0 { RETURN fn::error_result("NOTIFICATION_WORKFLOW_KEY_TAKEN", $p.language, { key: $p.key }); };
     RETURN fn::result_ok($inserted[0]);
-} COMMENT "Crée un parcours à l'état brouillon ({ tenant, key, name, trigger_event, critical, sensitive, category (clé, de la portée ou de l'installation), preferences : { channels : défaut par canal, enforced : canaux imposés }, payload_schema, steps : [{ key, channel }], tags }) ; clé unique dans sa portée. Permission notification.manage (notification.installation.manage sans tenant)";
+} COMMENT "Crée un parcours à l'état brouillon ({ tenant, key, name, trigger_event, critical, sensitive, category (clé, de la portée ou de l'installation), preferences : { channels : défaut par canal, enforced : canaux imposés }, payload_schema, steps : [{ key, type, condition, … }] (fn::notification_step_check), tags }) ; clé unique dans sa portée. Permission notification.manage (notification.installation.manage sans tenant)";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_workflow_update
@@ -101,13 +95,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_workflow_update($params: object) {
             } } }] },
             clear_category: { pipeline: [{ rule: "boolean" }], default: false },
             payload_schema: { pipeline: [{ rule: "is_object" }] },
-            steps: { pipeline: [{ rule: "array_objects", options: { allow_empty_objects: false } }, { rule: "array_non_empty" }, { rule: "each", options: { pipeline: [{ rule: "object", options: { schema: {
-                fields: {
-                    key: { pipeline: [{ rule: "snake_case_name", options: { min_length: 1, max_length: 64 } }], required: true },
-                    channel: { pipeline: [{ rule: "enum", options: { allowed: ["email"], case_sensitive: true } }], required: true }
-                },
-                unknown_keys: "reject"
-            } } }] } }] },
+            steps: { pipeline: [{ rule: "array_objects", options: { allow_empty_objects: false } }, { rule: "array_length", options: { min_length: 1, max_length: 20 } }] },
             tags: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: true } }, { rule: "array_unique" }, { rule: "each", options: { pipeline: [{ rule: "snake_case_name", options: { min_length: 1, max_length: 64 } }] } }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
@@ -116,15 +104,14 @@ DEFINE FUNCTION OVERWRITE fn::notification_workflow_update($params: object) {
     IF !$report.valid {
         RETURN fn::error_result("NOTIFICATION_INVALID_INPUT", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
-    LET $p = $report.value;
-    IF $p.steps IS NOT NONE AND !fn::validation_pipeline_execute($p.steps.key, [{ rule: "array_unique" }], 5).valid {
-        RETURN fn::error_result("NOTIFICATION_INVALID_INPUT", $p.language, { fields: { steps: "duplicate step key" } });
-    };
-    LET $workflow = (SELECT * FROM ONLY $p.workflow);
-    IF $workflow == NONE { RETURN fn::error_result("NOTIFICATION_WORKFLOW_NOT_FOUND", $p.language, {}); };
-    IF !fn::notification_can({ action: "manage", tenant: $workflow.tenant }) { RETURN fn::error_result("NOTIFICATION_PERMISSION_DENIED", $p.language, {}); };
+    LET $workflow = (SELECT * FROM ONLY $report.value.workflow);
+    IF $workflow == NONE { RETURN fn::error_result("NOTIFICATION_WORKFLOW_NOT_FOUND", $report.value.language, {}); };
+    IF !fn::notification_can({ action: "manage", tenant: $workflow.tenant }) { RETURN fn::error_result("NOTIFICATION_PERMISSION_DENIED", $report.value.language, {}); };
+    LET $steps = IF $report.value.steps IS NONE { NONE } ELSE { fn::notification_step_check({ steps: $report.value.steps, tenant: $workflow.tenant }) };
+    IF $steps.code IS NOT NONE { RETURN fn::error_result($steps.code, $report.value.language, $steps.details); };
+    LET $p = IF $steps IS NONE { $report.value } ELSE { object::extend($report.value, { steps: $steps.steps }) };
     IF $p.payload_schema IS NOT NONE { fn::validation_object_execute({}, $p.payload_schema, 80); };
-    -- Un parcours actif garde un gabarit prêt pour chaque étape
+    -- Un parcours actif garde un gabarit prêt pour chaque étape de canal
     IF $workflow.status = "active" AND $p.steps IS NOT NONE {
         LET $missing = fn::notification_workflow_missing_templates({ workflow: $workflow.id, steps: $p.steps });
         IF array::len($missing) > 0 { RETURN fn::error_result("NOTIFICATION_TEMPLATE_REQUIRED", $p.language, { steps: $missing }); };
@@ -140,7 +127,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_workflow_update($params: object) {
     LET $updated = (UPDATE ONLY $workflow.id MERGE $changes);
     IF $updated == NONE { RETURN fn::error_result("NOTIFICATION_WRITE_FORBIDDEN", $p.language, { table: "notification_workflow" }); };
     RETURN fn::result_ok($updated);
-} COMMENT "Modifie un parcours ({ workflow, name, trigger_event, critical, sensitive, category (clé), clear_category, preferences, payload_schema, steps, tags }) ; seuls les champs fournis changent ; un parcours actif garde un gabarit prêt par étape. Permission notification.manage";
+} COMMENT "Modifie un parcours ({ workflow, name, trigger_event, critical, sensitive, category (clé), clear_category, preferences, payload_schema, steps (fn::notification_step_check), tags }) ; seuls les champs fournis changent ; un parcours actif garde un gabarit prêt par étape de canal. Permission notification.manage";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_workflow_get
@@ -221,4 +208,4 @@ DEFINE FUNCTION OVERWRITE fn::notification_workflow_set_status($params: object) 
     LET $updated = (UPDATE ONLY $workflow.id SET status = $p.status);
     IF $updated == NONE { RETURN fn::error_result("NOTIFICATION_WRITE_FORBIDDEN", $p.language, { table: "notification_workflow" }); };
     RETURN fn::result_ok($updated);
-} COMMENT "Change l'état d'un parcours ({ workflow, status : draft, active, inactive }) ; activation seulement si chaque étape a un gabarit et sa version dans la langue par défaut. Permission notification.manage";
+} COMMENT "Change l'état d'un parcours ({ workflow, status : draft, active, inactive }) ; activation seulement si chaque étape de canal a un gabarit. Permission notification.manage";

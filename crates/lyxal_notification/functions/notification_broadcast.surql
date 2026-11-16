@@ -86,7 +86,8 @@ DEFINE FUNCTION OVERWRITE fn::notification_broadcast_step($params: object) {
             tenant: $broadcast.tenant, workflow: $workflow, subscriber: $subscriber,
             idempotency_key: string::concat($broadcast.idempotency_key, "/", $subscriber.subscriber_id),
             event_id: $broadcast.event_id, payload: $broadcast.payload, secret: NONE, expires_at: NONE,
-            settings: $settings, actor: $broadcast.actor, broadcast: $broadcast.id
+            settings: $settings, actor: $broadcast.actor, broadcast: $broadcast.id,
+            overrides: $broadcast.overrides ?? {}, test: false
         });
         RETURN $run.status;
     });

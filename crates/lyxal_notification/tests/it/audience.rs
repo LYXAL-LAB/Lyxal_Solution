@@ -31,8 +31,8 @@ async fn alpha(client: &Surreal<Any>) {
             r#"
             CREATE auth_organization:alpha CONTENT { slug: "alpha", name: "Alpha BTP" };
             CREATE notification_category:actualites CONTENT { tenant: auth_organization:alpha, key: "actualites", name: "Actualités" };
-            CREATE notification_workflow:lettre CONTENT { tenant: auth_organization:alpha, key: "lettre", name: "Lettre", status: "active", category: notification_category:actualites, steps: [{ key: "email", channel: "email" }] };
-            CREATE notification_workflow:alerte CONTENT { tenant: auth_organization:alpha, key: "alerte", name: "Alerte", status: "active", critical: true, steps: [{ key: "email", channel: "email" }] };
+            CREATE notification_workflow:lettre CONTENT { tenant: auth_organization:alpha, key: "lettre", name: "Lettre", status: "active", category: notification_category:actualites, steps: [{ key: "email", type: "email" }] };
+            CREATE notification_workflow:alerte CONTENT { tenant: auth_organization:alpha, key: "alerte", name: "Alerte", status: "active", critical: true, steps: [{ key: "email", type: "email" }] };
             FOR $w IN [notification_workflow:lettre, notification_workflow:alerte] {
                 CREATE notification_template CONTENT {
                     workflow: $w, step_key: "email", keys: [],
@@ -75,6 +75,7 @@ async fn trigger(
             to,
             actor: Some("m-0000".to_string()),
             exclude_actor: None,
+            overrides: None,
             payload: serde_json::json!({ "n": key }),
             secret: None,
             expires_at: None,

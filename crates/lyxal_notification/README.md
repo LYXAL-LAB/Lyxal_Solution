@@ -4,27 +4,32 @@ Module du Noyau Technique de Lyxal OS : **notifications sortantes**. Canal e-mai
 pour les messages de `lyxal_auth` (vérification d'adresse, récupération, invitation, alertes de
 sécurité) et pour les parcours des modules métiers ; destinataires (**abonnés**, **sujets**),
 **catégories**, **préférences** à tous les niveaux, **heures calmes**, **désabonnement en un
-clic** et **diffusion** à un sujet ou à tous. Toutes les règles vivent dans SurrealDB (fonctions
-`fn::notification_*`) ; le crate Rust ouvre et scelle les secrets (`lyxal_crypto`), rend les
-gabarits (MiniJinja), calcule les heures calmes dans le fuseau de l'abonné (`jiff`), signe les
-liens de désabonnement (`lyxal_crypto`) et envoie par SMTP (`lettre`). Modèle repris de Novu et
+clic**, **diffusion** à un sujet ou à tous, et **parcours à étapes** : attente, regroupement
+(digest), limitation (throttle), conditions d'étape, surcharges au déclenchement, envoi groupé,
+annulation, aperçu et envoi de test. Toutes les règles vivent dans SurrealDB (fonctions
+`fn::notification_*`) ; les attentes et la purge passent par `lyxal_scheduler` ; le crate Rust
+ouvre et scelle les secrets (`lyxal_crypto`), rend les gabarits (MiniJinja), calcule les heures
+calmes dans le fuseau de l'abonné (`jiff`), signe les liens de désabonnement (`lyxal_crypto`) et
+envoie par SMTP (`lettre`). Modèle repris de Novu et
 Postal ([`MODELE_SOURCES.md`](MODELE_SOURCES.md)) ; lots suivants dans [`ROADMAP.md`](ROADMAP.md).
 
 ## 1. Modèle
 
 | Table | Contenu |
 | :--- | :--- |
-| `notification_settings` | réglages de l'installation, surchargés par organisation : expéditeur, adresse de réponse, fuseau horaire par défaut des abonnés, tentatives au plus, durées de conservation |
+| `notification_settings` | réglages de l'installation, surchargés par organisation : expéditeur, adresse de réponse, fuseau horaire par défaut des abonnés, tentatives au plus, durées de conservation, `max_wait_days` (durée maximale d'une attente ou d'une fenêtre, 30 jours par défaut, 1 à 366) |
 | `notification_subscriber` | abonné : `subscriber_id` stable choisi par l'application (unique par portée), compte `lyxal_auth` lié facultatif (`identity`, supprimé avec lui), e-mail, téléphone (E.164), prénom, nom, langue, fuseau, `data` (8 Kio) ; clé d'enregistrement aléatoire |
 | `notification_topic`, `notification_topic_member` | sujets (clé unique par portée) et abonnements, avec condition `lyxal_core` facultative ; supprimés avec le sujet ou l'abonné |
 | `notification_category` | catégorie de désabonnement des parcours ; celles de l'installation servent à toutes les organisations |
 | `notification_preference` | choix par canal (`email`, `sms`, `chat`, `push`, `in_app`, `webhook` : vrai, faux ou absent) d'un niveau : `tenant_workflow`, `subscriber_global` (avec les heures calmes), `subscriber_category`, `subscriber_workflow` ; unique par cible |
-| `notification_workflow` | parcours : clé unique dans sa portée, événement déclencheur (`lyxal_event`), état `draft` / `active` / `inactive` (jamais supprimé), `critical`, `sensitive`, `category`, `preferences` (`{ channels, enforced }` : défauts et canaux imposés), schéma des variables (`lyxal_core`), étapes ordonnées `[{ key, channel }]` |
+| `notification_workflow` | parcours : clé unique dans sa portée, événement déclencheur (`lyxal_event`), état `draft` / `active` / `inactive` (jamais supprimé), `critical`, `sensitive`, `category`, `preferences` (`{ channels, enforced }` : défauts et canaux imposés), schéma des variables (`lyxal_core`), étapes typées exécutées dans l'ordre (§1.3, 20 au plus) |
 | `notification_layout` | mise en page HTML et texte contenant `{{ content }}` |
 | `notification_template` | gabarit d'une étape, en une seule version : objet, HTML, texte, mise en page, et `keys`, les clés `lyxal_i18n` de ses phrases |
 | `notification_broadcast` | diffusion d'un parcours à un sujet ou à tous les abonnés d'une portée, idempotente par (portée, clé) : auteur exclu, curseur, compteurs, réservation du worker |
-| `notification_run` | déclenchement pour un abonné, **idempotent** par (portée, clé) : abonné (retiré s'il est supprimé), adresse copiée au déclenchement (`address`), diffusion d'origine, auteur ; secret scellé effacé dès la fin de ses étapes ou à son expiration |
-| `notification_job` | étape à exécuter : file réservée par `locked_until` et `claim_token`, tentatives, dernière erreur, motif d'une étape écartée (`preference:<niveau>`, `no_address:<canal>`) |
+| `notification_run` | déclenchement pour un abonné, **idempotent** par (portée, clé) : abonné (retiré s'il est supprimé), adresse copiée au déclenchement (`address`), diffusion d'origine, auteur, étape courante (`cursor`), surcharges (`overrides`), envoi de test (`test`), regroupement porté ou rejoint (`digest`) ; états `pending`, `waiting`, `completed`, `failed`, `skipped`, `canceled`, `merged` ; secret scellé effacé dès la fin de ses étapes, à l'annulation ou à son expiration |
+| `notification_job` | étape engagée (une par étape et par déclenchement, index unique) : type de l'étape, file d'envoi réservée par `locked_until` et `claim_token` (canaux), fin d'une attente (`wait_until`) et exécution différée du planificateur (`scheduler_run`), tentatives, dernière erreur, motif d'une étape écartée (`preference:<niveau>`, `no_address:<canal>`, `condition`, `override`, `throttled`, `test`, `canceled`) ; états `queued`, `running`, `waiting`, `completed`, `failed`, `skipped`, `canceled`, `merged` |
+| `notification_digest` | regroupement : portée, parcours, abonné, étape, clé de regroupement, déclenchement porteur, fin de la fenêtre, nombre et données des événements (100 premiers), état `open` / `closed` ; un seul ouvert par clé (index unique sur `open_slot`) |
+| `notification_rate_limit` | compteur de limitation d'une fenêtre fixe (identifiant : portée, parcours, abonné, étape, clé, début de la fenêtre), date de purge |
 | `notification_message` | message envoyé (destinataire, `Message-ID`) ; **aucun corps**, objet absent pour un parcours sensible |
 | `notification_delivery_log` | journal en ajout seul (tentative, issue, code), jamais de secret |
 | `notification_suppression` | adresses à ne plus contacter : `hard_bounce`, `complaint`, `manual` (le désabonnement est une préférence, pas une suppression de l'adresse) |
@@ -33,9 +38,10 @@ Portée : champ `tenant` (organisation `lyxal_auth`, absent pour l'installation)
 `scope_key` (`installation` ou clé de l'organisation) pour les index uniques. Un parcours, une
 mise en page ou une liste de suppression de l'installation sert de repli à toutes les
 organisations. Les données d'une organisation (réglages, abonnés, sujets, catégories,
-préférences, parcours, mises en page, gabarits, diffusions, déclenchements et leurs envois, liste
-de suppression) sont supprimées avec elle quand `lyxal_auth` la purge (`REFERENCE ON DELETE
-CASCADE` sur `tenant`).
+préférences, parcours, mises en page, gabarits, diffusions, déclenchements et leurs envois,
+regroupements et compteurs, liste de suppression) sont supprimées avec elle quand `lyxal_auth`
+la purge (`REFERENCE ON DELETE CASCADE` sur `tenant`) ; les regroupements et compteurs d'un
+abonné partent avec lui.
 
 ### 1.1. Abonnés et déclenchement
 
@@ -119,6 +125,71 @@ Règles :
 * HTML des gabarits et mises en page nettoyé à l'enregistrement (scripts, iframes, gestionnaires
   d'événement) ; objet sans caractère de contrôle.
 
+### 1.3. Parcours à étapes
+
+Chaque étape a un `type` et une `key` unique dans le parcours ; les étapes s'exécutent **dans
+l'ordre** (décision C1) : une étape n'est engagée qu'à la fin de la précédente. Forme contrôlée
+par `fn::notification_step_check` (moteur de `lyxal_core`, détail par étape et par champ :
+`NOTIFICATION_STEP_INVALID`) :
+
+| Type | Champs |
+| :--- | :--- |
+| `email` | canal (les autres canaux s'ajoutent aux lots suivants) |
+| `delay` | `amount` + `unit` (`seconds` … `weeks`), ou `until` : chemin d'une date RFC 3339 dans les données (ex. `payload.rendez_vous`), avec `offset` facultatif (`{ amount: -1, unit: "days" }`) |
+| `digest` | `window` (`{ amount, unit }`), `group_by` (chemin facultatif de la clé de regroupement), `lookback` facultatif |
+| `throttle` | `limit` (1 à 1000), `window`, `group_by` (chemin facultatif) |
+
+Champ commun `condition` (forme `lyxal_core`, contrôlée par `fn::utils_condition_check` :
+`NOTIFICATION_CONDITION_INVALID`), évaluée par `fn::utils_condition_evaluate` sur
+`{ payload, subscriber: { subscriber_id, locale, timezone, data }, steps: { <clé>: { status } } }`
+(jamais le secret) : fausse, l'étape est sautée (`skipped`, motif `condition`). Un parcours a au
+moins une étape de canal ; un regroupement ou une limitation précède au moins une étape de
+canal ; toute durée est bornée par `max_wait_days` (`NOTIFICATION_WAIT_TOO_LONG`). Seules les
+étapes de canal ont un gabarit.
+
+Moteur (`fn::notification_run_advance`, idempotente, appelée au déclenchement, à la fin de
+chaque envoi et à la fin de chaque attente) : depuis l'étape courante, il engage les étapes
+jusqu'à la première qui attend :
+
+* **canal** : étape en file (adresse et préférences appliquées, relues à la réservation ; heures
+  calmes à la réservation) ; envoyée par le worker du canal, puis le déclenchement avance ;
+* **attente** : étape en file avec sa fin (`wait_until`, date passée : terminée aussitôt ; date
+  absente ou illisible : `NOTIFICATION_PAYLOAD_INVALID` ; au-delà de `max_wait_days` :
+  `NOTIFICATION_WAIT_TOO_LONG` ; l'étape et le déclenchement échouent) ; le worker d'étapes la
+  confie au planificateur (`fn::notification_wait_schedule` → `fn::scheduler_run_enqueue`, tâche
+  `notification.run_resume`, unique par déclenchement et étape) et la passe `waiting` ; à
+  l'échéance, le planificateur appelle `fn::notification_run_resume`, qui termine l'attente et
+  fait avancer le déclenchement. Qui déclenche n'a besoin d'aucune permission `scheduler.*` ;
+* **regroupement** (C3) : fenêtre fixe et clé lue dans les données ; un regroupement ouvert pour
+  la clé est rejoint (déclenchement et étape `merged`, événement `notification.run.merged`) ;
+  sinon le déclenchement l'ouvre, le porte et attend la fin de la fenêtre comme une attente. Avec
+  `lookback`, sans arrivée pour la clé depuis cette durée, le message part tout de suite. À la
+  fermeture, le gabarit reçoit `digest.count` et `digest.events` (100 premiers `{ payload, at }`).
+  Le regroupement à heure fixe est à la feuille de route ;
+* **limitation** (C4) : au plus `limit` messages par fenêtre fixe, par abonné, parcours et clé ;
+  au-delà, le déclenchement s'arrête (motif `throttled`, rien n'attend). Un parcours critique
+  n'est jamais limité.
+
+Surcharges au déclenchement (C5, `overrides: { steps: { <clé>: { skip, amount, unit, window } } }`,
+contrôlées par `fn::notification_override_check`, `NOTIFICATION_OVERRIDE_INVALID`) : sauter
+toute étape, changer la durée d'une attente ou la fenêtre d'un regroupement ; aucun texte
+remplacé. Annulation (`fn::notification_cancel`) : les déclenchements en cours de la clé (et
+`<clé>/…` d'une liste ou d'une diffusion) passent `canceled`, leurs étapes en file ou en attente
+aussi, un regroupement porté est refermé sans envoi ; un envoi déjà parti n'est pas rappelé ;
+l'exécution différée du planificateur se termine alors sans rien faire. Envoi de test (C7,
+`fn::notification_test_send`, `notification.manage`) : un abonné, parcours quel que soit son
+état, attentes, regroupements et limitations ignorés (`skipped`, motif `test`), liste de
+suppression et préférences appliquées. « Sauter si déjà lu » (C6) arrive avec le fil in-app :
+les conditions lisent déjà l'état des étapes précédentes.
+
+Tâches de `lyxal_scheduler` déclarées par le seed du module (exécuteur `function`, portée
+`installation`, file `default`, permission propre `notification.worker`) :
+
+| Tâche | Cible | Usage |
+| :--- | :--- | :--- |
+| `notification.run_resume` | `fn::notification_run_resume` | fin d'une attente ou d'un regroupement (`unique_for` 1 j, arguments `{ run, step_key }`) |
+| `notification.purge` | `fn::notification_purge` | planification horaire `notification-purge` (cron `0 * * * *`, décalage de 5 min au plus), créée à l'installation du module si elle est absente |
+
 ## 2. Droits
 
 | Permission | Portée | Accès |
@@ -144,19 +215,20 @@ Le désabonnement par lien est appelé par l'hôte (session système) après vé
 
 | Domaine | Fonctions |
 | :--- | :--- |
-| Déclenchement | `notification_trigger` (`to` : abonné, liste, `{ topic }`, `{ all: true }` ; `actor`, `exclude_actor`) |
+| Déclenchement | `notification_trigger` (`to` : abonné, liste, `{ topic }`, `{ all: true }` ; `actor`, `exclude_actor`, `overrides`), `notification_trigger_bulk` (1 à 100 déclenchements, rapport par entrée), `notification_cancel` (`notification.send`), `notification_test_send` (`notification.manage`) |
 | Abonnés | `notification_subscriber_upsert`, `_get`, `_list` (recherche, pagination), `_delete`, `_import` (500 au plus, rapport créés / modifiés / inchangés / refusés par ligne) |
 | Sujets | `notification_topic_create`, `_update`, `_get`, `_list`, `_delete`, `_subscribe` (100 abonnés au plus, condition facultative), `_unsubscribe`, `_members` |
 | Catégories | `notification_category_create`, `_update`, `_list`, `_delete` (refusée si un parcours l'utilise) |
 | Préférences | `notification_preference_get` (par niveau, et résultat calculé pour un parcours), `_set` (organisation ou abonné), `notification_my_preference_get`, `notification_my_preference_set` (personne connectée), `notification_unsubscribe` (lien vérifié par l'hôte) |
 | Diffusions (worker) | `notification_broadcast_claim`, `_step` (paquet suivant, 500 au plus), `_complete` |
-| Parcours | `notification_workflow_create`, `_update` (`category` par clé, `clear_category`, `preferences`), `_get`, `_list`, `_set_status` |
+| Parcours | `notification_workflow_create`, `_update` (`category` par clé, `clear_category`, `preferences`, étapes typées), `_get`, `_list`, `_set_status` ; `notification_step_preview` (données de l'aperçu d'une étape, `notification.read`) |
 | Mises en page | `notification_layout_create`, `_update`, `_get`, `_list` |
 | Gabarits | `notification_template_create` (**workflow**, **step_key**, **subject**, **html_body**, **text_body**, `keys`, `layout`), `_update` (champs fournis seulement, `clear_layout`), `_get` |
-| Réglages | `notification_settings_get`, `_set` |
+| Réglages | `notification_settings_get`, `_set` (`max_wait_days` compris) |
 | Liste de suppression | `notification_suppression_add`, `_remove`, `_list` |
 | Activité | `notification_run_get`, `_list` |
-| File d'envoi (worker) | `notification_job_claim`, `_renew`, `_release` (`not_before` : fin des heures calmes), `_complete`, `_fail`, `notification_purge` |
+| File d'envoi (worker) | `notification_job_claim`, `_renew`, `_release` (`not_before` : fin des heures calmes), `_complete`, `_fail` |
+| Attentes (worker, planificateur) | `notification_wait_schedule` (paquet de 500 au plus), `notification_run_resume` et `notification_purge` (forme d'appel du planificateur `{ args, run, tenant, scheduled_for, attempt }`) |
 
 Entrées validées et nettoyées par `lyxal_core` ; erreurs `NOTIFICATION_*` (master data
 `error/`) ; toute écriture vérifiée (`NOTIFICATION_WRITE_FORBIDDEN`). Conditions d'abonnement
@@ -164,16 +236,23 @@ contrôlées à l'enregistrement par `fn::utils_condition_check` (`NOTIFICATION_
 Fonctions internes (appelées par les précédentes) : `notification_subscriber_fields`, `_save`,
 `_find`, `notification_topic_find`, `notification_category_find`, `notification_channels`,
 `notification_preference_key`, `_fields`, `_resolve`, `_write`, `_apply`, `_targets`, `_view`,
-`notification_my_subscriber`, `notification_trigger_target`, `notification_run_create`.
+`notification_my_subscriber`, `notification_trigger_target`, `_workflow`, `_one`, `_single`,
+`notification_run_create` ; parcours à étapes : `notification_duration_seconds`,
+`notification_step_fields`, `_check`, `_context`, `_enter`, `notification_override_check`,
+`notification_job_add`, `notification_wait_due`, `_end`, `notification_group_key`,
+`notification_digest_join`, `_merge`, `notification_throttle_hit`, `notification_run_advance`,
+`_finalize`.
 
-File d'envoi : réservation conditionnelle (une étape n'est réservée qu'une fois ; une
+File d'envoi (étapes de canal seulement) : réservation conditionnelle (une étape n'est réservée qu'une fois ; une
 réservation expirée est reprise, sauf après la dernière tentative : échec définitif),
 renouvelée juste avant chaque envoi ; étape non commencée rendue à la file à l'arrêt du worker ; étape
 dont le secret a expiré annulée, jamais envoyée en retard ; échec temporaire rejoué tant que
 `attempts < max_attempts` ; destinataire refusé : échec définitif et adresse supprimée
 (`hard_bounce`) ; à la réservation, les préférences sont relues (étape désormais refusée :
-écartée) et l'étape porte les heures calmes de l'abonné et la cible de son lien de
-désabonnement.
+écartée) et l'étape porte les heures calmes de l'abonné, la cible de son lien de désabonnement
+et le regroupement porté. Une étape terminée (envoyée, écartée, en échec définitif) fait avancer
+son déclenchement. Purge (planificateur, toutes les heures) : secrets expirés, journal,
+déclenchements terminés, diffusions terminées, regroupements fermés et compteurs expirés.
 
 ## 4. Événements
 
@@ -193,7 +272,9 @@ Alertes de sécurité (sans secret) : `auth.mfa.enrolled`, `auth.mfa.removed`,
 l'abonné `auth:<identité>` de l'installation (adresse, langue et prénom pris dans la charge
 utile), idempotent par l'identifiant d'événement.
 
-Publiés : `notification.message.sent`, `notification.message.failed`,
+Publiés : `notification.run.canceled` (`run_id`, `tenant`, `workflow_id`),
+`notification.run.merged` (`run_id`, `digest_id`), `notification.message.sent`,
+`notification.message.failed` (étapes de canal),
 `notification.address.suppressed` (identifiants, parcours, canal, adresse pour la suppression ;
 jamais de contenu ni de secret) ; `notification.subscriber.created`, `.updated` (adresse, nom,
 langue, fuseau ou données changés), `.deleted`, `notification.subscriber.unsubscribed` (lien de
@@ -204,18 +285,24 @@ téléphone ni le nom.
 ## 5. Rust
 
 * `NotificationStore` : appels typés (`LyxalSurrealCall`) ; `XxxParams` / résultats dans
-  `models/` (déclenchement et `TriggerTarget`, abonnés, sujets et catégories, préférences,
-  diffusions, file, purge, réglages). Les fonctions de gestion des parcours, gabarits et mises en
-  page sont appelées par la console. Adresses, téléphones et noms masqués dans `Debug`.
+  `models/` (déclenchement, `TriggerTarget` et `TriggerOverrides`, envoi groupé, annulation,
+  envoi de test, abonnés, sujets et catégories, préférences, diffusions, file, attentes, aperçu,
+  purge, réglages ; étapes typées `WorkflowStep`, énumération par `type`). Les fonctions de
+  gestion des parcours, gabarits et mises en page sont appelées par la console. Les appels des
+  workers qui enregistrent une issue (`job_complete`, `job_fail`, `wait_schedule`) sont rejoués
+  après un conflit d'écriture transitoire de SurrealDB (transaction non validée) : un envoi fait
+  n'est jamais refait faute d'avoir pu l'enregistrer. Adresses, téléphones et noms masqués dans
+  `Debug`.
 * `SecretCodec` : ouverture et rescellement (`CryptoEngine`, contextes non vides).
 * `NotificationConsumer` (`EventConsumerModule`) et `AuthMessageHandler` : secret illisible,
   charge utile invalide ou parcours absent → lettre morte ; base indisponible → rejoué.
   `SecurityAlertHandler` : alertes de sécurité vers `auth_security_alert`. `auth_subscriber` :
   abonné `auth:<identité>` ou `email:<adresse>` d'un événement `auth.*`.
 * `Renderer` : MiniJinja sans chargeur, variable affichée inconnue = erreur, échappement HTML
-  automatique, budget d'exécution, mise en page autour du contenu. Variables `recipient`,
-  `payload`, `secret`, `organization`, `unsubscribe_url` (lien de désabonnement, absent pour un
-  parcours critique : `{% if unsubscribe_url %}`).
+  automatique, budget d'exécution, mise en page autour du contenu ; rend tout `MessageSource`
+  (étape réservée, aperçu). Variables `recipient`, `payload`, `secret`, `organization`, `digest`
+  (`count`, `events` : regroupement porté, `{% if digest %}`), `unsubscribe_url` (lien de
+  désabonnement, absent pour un parcours critique : `{% if unsubscribe_url %}`).
   Fonction `t("clé", nom=valeur, …)` : texte de la clé, lu à la réservation (`ClaimedJob.texts`),
   rendu par `lyxal_i18n` (ICU MessageFormat 1 : arguments, pluriels) dans la **langue du texte
   retenu** — un texte français servi en repli à un envoi en anglais garde les pluriels du
@@ -256,16 +343,44 @@ téléphone ni le nom.
   `with_unsubscribe_links` ; attente exponentielle plafonnée avec gigue complète, base 30 s,
   plafond 6 h), `NotificationBroadcastWorker` (diffusions par paquets de 500, réservation
   renouvelée à chaque paquet ; arrêté, il laisse expirer la réservation et la diffusion reprend
-  au paquet suivant) et `NotificationPurgeWorker` (`LyxalWorker`) ; `NotificationModule`,
+  au paquet suivant) et `NotificationStepWorker` (attentes et regroupements confiés au
+  planificateur, toutes les secondes quand il y a du travail, sinon toutes les 5 s) ;
+  `NotificationModule` (son installation crée la planification horaire de la purge par
+  `SchedulerClient::schedule`, `ensure_purge_schedule`, si elle est absente),
   `NotificationHealthCheck` (« dégradé » sans relais ou sans clé).
+* `NotificationPreview` (C7) : aperçu d'une étape (objet, HTML, texte) avec des données
+  d'exemple, par le moteur de rendu du worker (`Renderer::preview` : une variable absente,
+  secret compris, s'affiche vide), sans écriture ; données lues par
+  `fn::notification_step_preview` au nom de l'appelant.
 
 Hébergé par `lyxal-server` (`build.rs`, `src/modules/notification.rs`) : clé applicative
 `LYXAL__CRYPTO__APPLICATION_KEY` et relais `LYXAL__NOTIFICATION__SMTP__*` ; sans l'un des deux,
 aucun e-mail n'est envoyé et les abonnements `auth.*` restent suspendus. Liens de désabonnement :
 clé applicative et `LYXAL__NOTIFICATION__PUBLIC_URL` ; routes de l'hôte
-`GET` / `POST /api/v1/notification/unsubscribe` (`apps/lyxal-server/README.md`).
+`GET` / `POST /api/v1/notification/unsubscribe` ; aperçu : `POST /api/v1/notification/preview`
+(jeton d'accès, `notification.read`) (`apps/lyxal-server/README.md`). L'hôte installe
+`lyxal_scheduler` avant ce module (dépendance du manifeste) et sert la file `default` du
+planificateur, qui exécute les reprises et la purge.
 
-## 6. Vérification
+## 6. Exploitation
+
+* **Réglages** : `max_wait_days` (`fn::notification_settings_set`, organisation ou
+  installation) borne toute attente, fenêtre de regroupement ou de limitation, à
+  l'enregistrement d'un parcours comme au déclenchement.
+* **Attentes en cours** : étapes `delay` / `digest` `queued` (pas encore confiées) ou `waiting`
+  (exécution différée `scheduler_run` notée sur l'étape, lisible par `fn::scheduler_run_get`).
+  Une exécution refusée par le planificateur (ex. `SCHEDULER_LIMIT_REACHED`, réglage
+  `max_pending_runs` de l'installation) laisse l'étape en file : le worker d'étapes la représente
+  au passage suivant et journalise les codes.
+* **Reprise après panne** : une reprise est idempotente (étape déjà terminée, déclenchement
+  annulé ou purgé : rien) ; le planificateur la retente selon la politique de la tâche
+  (5 tentatives) ; une attente échue avant d'avoir été confiée est reprise directement par le
+  worker d'étapes.
+* **Purge** : planification `notification-purge` (pause, déclenchement immédiat et historique par
+  les routes `/api/v1/scheduler/*`) ; argument facultatif `limit` (1 000 par catégorie et par
+  passage).
+
+## 7. Vérification
 
 * Banc SurrealQL `tests/*.test.surql` (socle, gestion, déclenchement, file d'envoi, fonctions
   internes ; abonnés : portée, unicité, import avec erreurs par ligne, droits, données
@@ -273,7 +388,14 @@ clé applicative et `LYXAL__NOTIFICATION__PUBLIC_URL` ; routes de l'hôte
   catégories ; préférences : chaque niveau, ordre B4, parcours critique, canal imposé, heures
   calmes, préférences de la personne connectée, désabonnement par lien, préférences relues à la
   réservation ; diffusions : paquets, reprise sans doublon, auteur exclu, condition, réservation
-  perdue ; listes), exécuté par `scripts/ci/test_lyxal_modules.py`.
+  perdue ; listes ; étapes typées et refus (forme, bornes, condition, ordre, `max_wait_days`),
+  surcharges, aperçu ; moteur : ordre, condition fausse, étape sautée, idempotence, attente sur
+  durée, date des données, décalage, date passée, absente ou trop lointaine, attentes confiées au
+  planificateur, reprise normale, rejouée, après annulation, tâches déclarées ; regroupement :
+  ouverture, rejoint, clé, 100 événements, fermeture et variables, recul ; limitation : sous et
+  au-dessus de la limite, clé, fenêtre suivante, parcours critique ; annulation : abonné, liste,
+  regroupement porté, envoi déjà parti, rien en cours ; envoi groupé ; envoi de test ; purge des
+  regroupements et compteurs ; droits), exécuté par `scripts/ci/test_lyxal_modules.py`.
 * Tests Rust : rendu (textes traduits, pluriel d'un texte servi en repli, échappement, clés et
   arguments refusés), classement SMTP, délais ; `tests/it/` de bout en bout sur le moteur
   embarqué avec un serveur SMTP de test (invitation de `lyxal_auth` reçue, aucune trace du jeton
@@ -282,7 +404,11 @@ clé applicative et `LYXAL__NOTIFICATION__PUBLIC_URL` ; routes de l'hôte
   invitation reçue via l'abonné `email:`, alerte de sécurité via l'abonné `auth:` ; lien de
   désabonnement reçu (en-têtes et corps) puis utilisé : plus d'e-mail de la catégorie, un parcours
   critique passe toujours, sans lien ; jeton modifié refusé ; heures calmes qui reportent un
-  envoi ; diffusion à un sujet de 1 200 abonnés en trois paquets, auteur exclu. Unitaires : jeton
+  envoi ; diffusion à un sujet de 1 200 abonnés en trois paquets, auteur exclu ; avec le moteur
+  réel de `lyxal_scheduler` (planificateur, exécuteur, worker d'étapes, worker d'envoi) : attente
+  réellement reprise puis second e-mail, trois déclenchements regroupés en un e-mail, annulation
+  pendant une attente sans envoi, purge exécutée par l'exécuteur `function`, planification de la
+  purge créée une seule fois, aperçu d'une étape. Unitaires : jeton
   (aller-retour, falsification, autre clé), heures calmes (fuseau, passage de minuit, jours,
   plages enchaînées, changement d'heure), lien dans le rendu.
 * `scripts/ci/ci_local.sh`.

@@ -15,7 +15,7 @@
     CREATE auth_session:worker CONTENT { identity: auth_identity:worker, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
     CREATE auth_session:admin CONTENT { identity: auth_identity:admin, organization: auth_organization:alpha, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
     fn::notification_settings_set({ tenant: "auth_organization:alpha", from_name: "Alpha BTP", reply_to: "contact@alpha.test", max_attempts: 2 });
-    CREATE notification_workflow:devis CONTENT { tenant: auth_organization:alpha, key: "devis", name: "Devis", status: "active", steps: [{ key: "email", channel: "email" }] };
+    CREATE notification_workflow:devis CONTENT { tenant: auth_organization:alpha, key: "devis", name: "Devis", status: "active", steps: [{ key: "email", type: "email" }] };
     CREATE notification_template:devis_email CONTENT { tenant: auth_organization:alpha, workflow: notification_workflow:devis, step_key: "email", subject: "Devis {{ payload.n }}", html_body: "<p>{{ t(\"notification.common.greeting\") }}</p>", text_body: "Devis", keys: ["notification.common.greeting"] };
     fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "devis-1", to: { subscriber_id: "email:client@exemple.fr", email: "client@exemple.fr", locale: "en-GB" }, payload: { n: "D-1" }, secret: "enc:v2:cle-2026:AAAAAAAAAAAAAAAAAAAAAAAA" });
     fn::notification_trigger({ tenant: "auth_organization:alpha", trigger_event: "auth.invitation.created", idempotency_key: "invit-1", to: { subscriber_id: "email:invitee@exemple.fr", email: "invitee@exemple.fr", locale: "de" }, payload: { invitation_id: "i", organization_name: "Alpha BTP" }, secret: "enc:v2:cle-2026:BBBBBBBBBBBBBBBBBBBBBBBB", expires_at: time::now() + 1d });
@@ -212,7 +212,7 @@ RETURN fn::notification_job_complete({ job_id: <string> test_ref:bail1.job, clai
 -- test: purge : déclenchements terminés (étapes, messages et journal avec eux) et journal expiré
 -- en tant que: worker
 {
-    LET $r = fn::notification_purge({ limit: 100 }).data;
+    LET $r = fn::notification_purge({ args: { limit: 100 } }).data;
     RETURN $r.runs == 2 AND $r.log_entries == 1;
 };
 

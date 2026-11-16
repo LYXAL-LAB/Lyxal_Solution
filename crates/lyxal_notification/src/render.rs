@@ -8,9 +8,13 @@
 //! * objet ramené à une seule ligne (aucun caractère de contrôle : pas d'injection d'en-tête).
 //!
 //! Variables : `recipient` (`email`, `locale`, `name`), `payload`, `secret`, `organization`
-//! (`name`), `unsubscribe_url` (lien de désabonnement en un clic, absent pour un parcours
-//! critique ou sans adresse publique : à tester par `{% if unsubscribe_url %}`). Le message rendu
-//! n'est conservé nulle part.
+//! (`name`), `digest` (`count`, `events` : regroupement porté par le déclenchement, absent sinon :
+//! à tester par `{% if digest %}`), `unsubscribe_url` (lien de désabonnement en un clic, absent
+//! pour un parcours critique ou sans adresse publique : à tester par `{% if unsubscribe_url %}`).
+//! Le message rendu n'est conservé nulle part.
+//!
+//! Aperçu (`Renderer::preview`) : même moteur, mais une variable absente des données d'exemple
+//! s'affiche vide (aucun secret n'est fourni à un aperçu).
 //!
 //! Un gabarit existe en une seule version. Ses phrases sont des clés `lyxal_i18n` appelées par
 //! `t("clé", nom=valeur, …)` : le texte, lu à la réservation dans la langue de l'envoi, est
@@ -33,7 +37,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::error::{NotificationError, NotificationResult};
-use crate::models::ClaimedJob;
+use crate::models::{ClaimedJob, DigestVars, StepPreviewResult};
 
 /// Budget d'exécution par gabarit (instructions MiniJinja).
 pub const DEFAULT_FUEL: u64 = 50_000;
@@ -56,61 +60,164 @@ impl std::fmt::Debug for RenderedEmail {
     }
 }
 
+/// Ce que le rendu lit d'un message : une étape réservée (`ClaimedJob`) ou l'aperçu d'une étape
+/// (`StepPreviewResult`).
+pub trait MessageSource {
+    /// Objet, corps HTML et corps texte du gabarit (absents : étape sans gabarit).
+    fn template(&self) -> (Option<&str>, Option<&str>, Option<&str>);
+    /// Mises en page HTML et texte.
+    fn layout(&self) -> (Option<&str>, Option<&str>);
+    /// Langue de l'envoi.
+    fn locale(&self) -> Option<&str>;
+    /// Textes des clés du gabarit, et code `I18N_*` s'ils n'ont pas pu être lus.
+    fn texts(&self) -> (&[ResolvedText], Option<&str>);
+    /// Destinataire : adresse, langue et prénom.
+    fn recipient(&self) -> (Option<&str>, Option<&str>, Option<&str>);
+    /// Variables non sensibles.
+    fn payload(&self) -> &serde_json::Value;
+    /// Nom de l'organisation.
+    fn organization_name(&self) -> Option<&str>;
+    /// Regroupement porté.
+    fn digest(&self) -> Option<&DigestVars>;
+}
+
+impl MessageSource for ClaimedJob {
+    fn template(&self) -> (Option<&str>, Option<&str>, Option<&str>) {
+        (
+            self.subject.as_deref(),
+            self.html_body.as_deref(),
+            self.text_body.as_deref(),
+        )
+    }
+    fn layout(&self) -> (Option<&str>, Option<&str>) {
+        (self.layout_html.as_deref(), self.layout_text.as_deref())
+    }
+    fn locale(&self) -> Option<&str> {
+        self.locale.as_deref()
+    }
+    fn texts(&self) -> (&[ResolvedText], Option<&str>) {
+        (&self.texts, self.texts_error.as_deref())
+    }
+    fn recipient(&self) -> (Option<&str>, Option<&str>, Option<&str>) {
+        (
+            Some(self.recipient.email.as_str()),
+            self.recipient.locale.as_deref(),
+            self.recipient.name.as_deref(),
+        )
+    }
+    fn payload(&self) -> &serde_json::Value {
+        &self.payload
+    }
+    fn organization_name(&self) -> Option<&str> {
+        self.organization_name.as_deref()
+    }
+    fn digest(&self) -> Option<&DigestVars> {
+        self.digest.as_ref()
+    }
+}
+
+impl MessageSource for StepPreviewResult {
+    fn template(&self) -> (Option<&str>, Option<&str>, Option<&str>) {
+        (
+            self.subject.as_deref(),
+            self.html_body.as_deref(),
+            self.text_body.as_deref(),
+        )
+    }
+    fn layout(&self) -> (Option<&str>, Option<&str>) {
+        (self.layout_html.as_deref(), self.layout_text.as_deref())
+    }
+    fn locale(&self) -> Option<&str> {
+        self.locale.as_deref()
+    }
+    fn texts(&self) -> (&[ResolvedText], Option<&str>) {
+        (&self.texts, self.texts_error.as_deref())
+    }
+    fn recipient(&self) -> (Option<&str>, Option<&str>, Option<&str>) {
+        (None, self.recipient_locale.as_deref(), None)
+    }
+    fn payload(&self) -> &serde_json::Value {
+        &self.payload
+    }
+    fn organization_name(&self) -> Option<&str> {
+        self.organization_name.as_deref()
+    }
+    fn digest(&self) -> Option<&DigestVars> {
+        self.digest.as_ref()
+    }
+}
+
 /// Moteur de rendu (sans état partagé entre messages).
 pub struct Renderer {
     fuel: u64,
+    undefined: UndefinedBehavior,
 }
 
 impl Default for Renderer {
     fn default() -> Self {
-        Self { fuel: DEFAULT_FUEL }
+        Self {
+            fuel: DEFAULT_FUEL,
+            undefined: UndefinedBehavior::SemiStrict,
+        }
     }
 }
 
 impl Renderer {
     /// Moteur avec un budget d'exécution par gabarit.
     pub fn with_fuel(fuel: u64) -> Self {
-        Self { fuel }
+        Self {
+            fuel,
+            ..Self::default()
+        }
     }
 
-    /// Rend l'objet, le corps HTML et le corps texte d'une étape réservée, avec le lien de
+    /// Moteur de l'aperçu : une variable absente des données d'exemple (secret compris)
+    /// s'affiche vide au lieu de faire échouer le rendu.
+    pub fn preview() -> Self {
+        Self {
+            undefined: UndefinedBehavior::Chainable,
+            ..Self::default()
+        }
+    }
+
+    /// Rend l'objet, le corps HTML et le corps texte d'un message, avec le lien de
     /// désabonnement s'il y en a un.
-    pub fn render(
+    pub fn render<S: MessageSource>(
         &self,
-        job: &ClaimedJob,
+        message: &S,
         secret: Option<&serde_json::Map<String, serde_json::Value>>,
         unsubscribe_url: Option<&str>,
     ) -> NotificationResult<RenderedEmail> {
-        let (Some(subject), Some(html_body), Some(text_body)) =
-            (&job.subject, &job.html_body, &job.text_body)
-        else {
+        let (Some(subject), Some(html_body), Some(text_body)) = message.template() else {
             return Err(NotificationError::Render("étape sans gabarit".to_string()));
         };
-        if let Some(code) = &job.texts_error {
+        let (texts, texts_error) = message.texts();
+        if let Some(code) = texts_error {
             return Err(NotificationError::Render(format!(
                 "textes du gabarit illisibles : {code}"
             )));
         }
-        let Some(send_locale) = job.locale.as_deref() else {
+        let Some(send_locale) = message.locale() else {
             return Err(NotificationError::Render(
                 "langue de l'envoi absente".to_string(),
             ));
         };
+        let (email, recipient_locale, name) = message.recipient();
         let unreadable = |error: FormatError| NotificationError::Render(error.to_string());
-        let formatter = Formatter::new(format_locale(job.recipient.locale.as_deref(), send_locale))
-            .map_err(unreadable)?;
-        let texts = Texts::new(&job.texts).map_err(unreadable)?;
+        let formatter =
+            Formatter::new(format_locale(recipient_locale, send_locale)).map_err(unreadable)?;
+        let texts = Texts::new(texts).map_err(unreadable)?;
         let env = self.environment(Arc::new(formatter), Arc::new(texts));
         let context = Value::from_pairs([
             (
                 "recipient",
                 Value::from_pairs([
-                    ("email", Value::from(job.recipient.email.clone())),
-                    ("locale", optional(&job.recipient.locale)),
-                    ("name", optional(&job.recipient.name)),
+                    ("email", optional(email)),
+                    ("locale", optional(recipient_locale)),
+                    ("name", optional(name)),
                 ]),
             ),
-            ("payload", json_value(&job.payload)),
+            ("payload", json_value(message.payload())),
             (
                 "secret",
                 secret.map_or_else(
@@ -120,17 +227,27 @@ impl Renderer {
             ),
             (
                 "organization",
-                Value::from_pairs([("name", optional(&job.organization_name))]),
+                Value::from_pairs([("name", optional(message.organization_name()))]),
+            ),
+            (
+                "digest",
+                message.digest().map_or(Value::from(()), |digest| {
+                    Value::from_pairs([
+                        ("count", Value::from(digest.count)),
+                        ("events", json_value(&digest.events)),
+                    ])
+                }),
             ),
             (
                 "unsubscribe_url",
                 unsubscribe_url.map_or(Value::from(()), Value::from),
             ),
         ]);
+        let (layout_html, layout_text) = message.layout();
         let subject = render(&env, "subject.txt", subject, context.clone())?;
         let html = render(&env, "body.html", html_body, context.clone())?;
         let text = render(&env, "body.txt", text_body, context.clone())?;
-        let html = match &job.layout_html {
+        let html = match layout_html {
             Some(layout) => render(
                 &env,
                 "layout.html",
@@ -139,7 +256,7 @@ impl Renderer {
             )?,
             None => html,
         };
-        let text = match &job.layout_text {
+        let text = match layout_text {
             Some(layout) => render(
                 &env,
                 "layout.txt",
@@ -162,7 +279,7 @@ impl Renderer {
 
     fn environment(&self, formatter: Arc<Formatter>, texts: Arc<Texts>) -> Environment<'static> {
         let mut env = Environment::new();
-        env.set_undefined_behavior(UndefinedBehavior::SemiStrict);
+        env.set_undefined_behavior(self.undefined);
         env.set_fuel(Some(self.fuel));
         env.set_recursion_limit(32);
         env.set_auto_escape_callback(|name| {
@@ -321,6 +438,7 @@ fn with_content(context: &Value, content: Value) -> Value {
         "payload",
         "secret",
         "organization",
+        "digest",
         "unsubscribe_url",
     ]
     .iter()
@@ -330,8 +448,8 @@ fn with_content(context: &Value, content: Value) -> Value {
     Value::from_pairs(pairs)
 }
 
-fn optional(value: &Option<String>) -> Value {
-    value.clone().map_or(Value::from(()), Value::from)
+fn optional(value: Option<&str>) -> Value {
+    value.map_or(Value::from(()), Value::from)
 }
 
 /// Conversion JSON → valeur MiniJinja.
@@ -400,6 +518,7 @@ mod tests {
             from_name: None,
             reply_to: None,
             quiet_hours: None,
+            digest: None,
             unsubscribe: None,
         }
     }

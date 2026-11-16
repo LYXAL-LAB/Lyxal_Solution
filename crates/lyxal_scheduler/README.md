@@ -18,7 +18,9 @@ typés de chaque fonction publique (voir « Partie Rust »). Le **moteur** tourn
 exécutions, un exécuteur par file et par nœud les exécute (handler Rust inscrit par un module,
 fonction SurrealQL du module, publication différée d'un événement). Les interfaces y accèdent par
 les routes HTTP `/api/v1/scheduler/*` de l'hôte, au nom de l'appelant (voir « Accès par
-l'hôte »). Aucun module n'inscrit encore de tâche (S8). L'exploitation est décrite à la fin de ce
+l'hôte »). `lyxal_notification` déclare les premières tâches (exécuteur `function` : reprise
+des parcours à la fin d'une attente, purge horaire) ; aucun module n'inscrit encore de handler
+Rust (S8). L'exploitation est décrite à la fin de ce
 document (« Exploitation »).
 
 Manifeste : `lyxal_scheduler` 0.1.0, dépendances `lyxal_core`, `lyxal_error`, `lyxal_event`,

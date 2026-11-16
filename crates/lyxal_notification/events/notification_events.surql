@@ -41,7 +41,7 @@ THEN {
 };
 
 DEFINE EVENT OVERWRITE notification_message_failed_event ON TABLE notification_job
-WHEN $event = "UPDATE" AND $before.status != "failed" AND $after.status = "failed"
+WHEN $event = "UPDATE" AND $before.status != "failed" AND $after.status = "failed" AND $after.type IN fn::notification_channels({})
 THEN {
     LET $run = (SELECT tenant, workflow FROM ONLY $after.run);
     LET $published = fn::event_publish({
@@ -54,10 +54,49 @@ THEN {
             job_id: <string> $after.id,
             workflow_id: <string> $run.workflow,
             tenant: IF $run.tenant IS NONE { NONE } ELSE { <string> $run.tenant },
-            channel: $after.channel,
+            channel: $after.type,
             attempts: $after.attempts,
             error_class: $after.last_error.class,
             error_code: $after.last_error.code
+        },
+        metadata: {}
+    });
+    IF !$published.ok { THROW $published.error.code; };
+};
+
+-- ----------------------------------------------------------------------------
+-- Déclenchements annulés ou fusionnés dans un regroupement (identifiants seulement)
+-- ----------------------------------------------------------------------------
+
+DEFINE EVENT OVERWRITE notification_run_canceled_event ON TABLE notification_run
+WHEN $event = "UPDATE" AND $before.status != "canceled" AND $after.status = "canceled"
+THEN {
+    LET $published = fn::event_publish({
+        event_id: rand::uuid::v7(),
+        event_type: "notification.run.canceled",
+        producer: "lyxal_notification",
+        source: $after.id,
+        payload: {
+            run_id: <string> $after.id,
+            tenant: IF $after.tenant IS NONE { NONE } ELSE { <string> $after.tenant },
+            workflow_id: <string> $after.workflow
+        },
+        metadata: {}
+    });
+    IF !$published.ok { THROW $published.error.code; };
+};
+
+DEFINE EVENT OVERWRITE notification_run_merged_event ON TABLE notification_run
+WHEN $event = "UPDATE" AND $before.status != "merged" AND $after.status = "merged"
+THEN {
+    LET $published = fn::event_publish({
+        event_id: rand::uuid::v7(),
+        event_type: "notification.run.merged",
+        producer: "lyxal_notification",
+        source: $after.id,
+        payload: {
+            run_id: <string> $after.id,
+            digest_id: IF $after.digest IS NONE { NONE } ELSE { <string> $after.digest }
         },
         metadata: {}
     });

@@ -25,13 +25,13 @@
     CREATE auth_session:membre CONTENT { identity: auth_identity:membre, organization: auth_organization:alpha, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
     CREATE auth_session:autre CONTENT { identity: auth_identity:autre, organization: auth_organization:beta, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
     CREATE auth_session:plateforme CONTENT { identity: auth_identity:plateforme, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
-    CREATE notification_workflow:devis_installation CONTENT { key: "devis", name: "Devis (installation)", trigger_event: "crm.quote.sent", status: "active", steps: [{ key: "email", channel: "email" }] };
+    CREATE notification_workflow:devis_installation CONTENT { key: "devis", name: "Devis (installation)", trigger_event: "crm.quote.sent", status: "active", steps: [{ key: "email", type: "email" }] };
     CREATE notification_workflow:devis_alpha CONTENT {
         tenant: auth_organization:alpha, key: "devis", name: "Devis Alpha", trigger_event: "crm.quote.sent", status: "active",
         payload_schema: { fields: { quote_number: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 32 } }], required: true } }, unknown_keys: "reject" },
-        steps: [{ key: "email", channel: "email" }]
+        steps: [{ key: "email", type: "email" }]
     };
-    CREATE notification_workflow:brouillon_alpha CONTENT { tenant: auth_organization:alpha, key: "brouillon", name: "Brouillon", status: "draft", steps: [{ key: "email", channel: "email" }] };
+    CREATE notification_workflow:brouillon_alpha CONTENT { tenant: auth_organization:alpha, key: "brouillon", name: "Brouillon", status: "draft", steps: [{ key: "email", type: "email" }] };
 };
 
 -- test: déclenchement par clé : parcours de l'organisation, une étape en file
@@ -121,12 +121,12 @@ RETURN fn::notification_suppression_add({ tenant: "auth_organization:alpha", add
 RETURN (SELECT VALUE payload.address FROM event_outbox WHERE event_type = "notification.address.suppressed" ORDER BY payload.address)
     == ["desabonne@exemple.fr", "inexistant@exemple.fr"];
 
--- test: parcours non critique vers une adresse en plainte : déclenchement et étape abandonnés
+-- test: parcours non critique vers une adresse en plainte : déclenchement abandonné avant toute étape
 -- en tant que: envoyeur
 {
     LET $r = fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "s-1", to: { subscriber_id: "email:desabonne@exemple.fr", email: "desabonne@exemple.fr" }, payload: { quote_number: "1" }, secret: "enc:v2:cle-2026:CCCCCCCCCCCCCCCCCCCCCCCC" }).data;
     RETURN $r.status == "skipped" AND $r.skip_reason == "suppressed:complaint"
-        AND (SELECT VALUE status FROM notification_job WHERE run = $r.run_id) == ["skipped"];
+        AND (SELECT VALUE status FROM notification_job WHERE run = $r.run_id) == [];
 };
 
 -- test: un déclenchement abandonné ne conserve pas le secret

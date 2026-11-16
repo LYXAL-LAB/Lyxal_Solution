@@ -49,7 +49,7 @@ déclaré manque.
 | `lyxal_error` | toujours | `ManifestModule` |
 | `lyxal_event` | toujours | `ManifestModule` ; moteur démarré par le runtime |
 | `lyxal_auth` | toujours | `AuthModule`, `AuthHealthCheck` |
-| `lyxal_notification` | toujours | `NotificationModule`, `NotificationConsumer` (événements `auth.*`), `NotificationEmailWorker` (avec les liens de désabonnement), `NotificationBroadcastWorker`, `NotificationPurgeWorker`, `NotificationHealthCheck` ; routes `/api/v1/notification/*` |
+| `lyxal_notification` | toujours | `NotificationModule` (son installation crée la planification horaire `notification-purge` du planificateur), `NotificationConsumer` (événements `auth.*`), `NotificationEmailWorker` (avec les liens de désabonnement), `NotificationBroadcastWorker`, `NotificationStepWorker` (attentes des parcours confiées au planificateur), `NotificationHealthCheck` ; routes `/api/v1/notification/*` |
 | `lyxal_storage` | toujours | `StorageModule`, `StorageCleanupWorker` (si un support est configuré), `StorageHealthCheck` ; supports disque et S3 ; envoi reprenable |
 | `lyxal_secrets` | toujours | `SecretsModule`, `SecretsMaintenanceWorker` (purge, rescellement), `SecretsHealthCheck` ; trousseau maître du coffre-fort ; `SecretsClient` pour les modules hébergés |
 | `lyxal_scheduler` | toujours | `SchedulerModule`, `SchedulerLeaderWorker` (planificateur élu par le bail `leader` du runtime), un `SchedulerExecutorWorker` par file (enregistré après l'installation, une fois les files connues), `SchedulerHealthCheck` ; registre des handlers ouvert aux modules hébergés (`SchedulerHost::handlers`, aucun inscrit pour l'instant) |
@@ -121,7 +121,11 @@ enveloppe `enc:v2`). Le relais : `LYXAL__NOTIFICATION__SMTP__HOST`, `__PORT`, `_
 ou sans relais, aucun e-mail n'est envoyé : les abonnements aux événements `auth.*` restent
 suspendus (les événements attendent en file) et la sonde du module est dégradée. Les diffusions
 (sujet ou tous les abonnés) sont découpées en déclenchements par le worker des diffusions dans
-tous les cas.
+tous les cas. Les attentes et regroupements des parcours sont confiés à `lyxal_scheduler` par le
+worker d'étapes (exécutions différées de la tâche `notification.run_resume`, exécutées par
+l'exécuteur de la file `default`) ; la purge est la planification horaire `notification-purge`
+(tâche `notification.purge`), créée à l'installation du module : `lyxal_scheduler` est installé
+avant `lyxal_notification` (dépendance du manifeste).
 
 Liens de désabonnement en un clic : avec la clé applicative et
 `LYXAL__NOTIFICATION__PUBLIC_URL` (adresse publique de l'hôte, `https://…`), chaque e-mail non
@@ -413,6 +417,13 @@ constant avant toute lecture de la base ; réponses `Cache-Control: no-store`) :
 Liens non configurés : `404`. Le débit de ces routes est borné par la limite de concurrence de
 l'hôte (aucune lecture de la base pour un jeton refusé).
 
+Aperçu d'une étape de parcours (`/api/v1/notification`, jeton d'accès `Authorization: Bearer` ;
+session SurrealDB au nom de l'appelant ; réponses `Cache-Control: no-store`) :
+
+| Route | Réponse |
+| :--- | :--- |
+| `POST /preview` | corps `{ workflow, step_key, payload, locale, digest: { count, events } }` (64 Kio au plus, aucun autre champ : aucun secret accepté) ; `200` et `{ subject, html, text }` rendus par le moteur du worker avec les données d'exemple (une variable absente s'affiche vide), sans écriture ; `notification.read` exigée par `fn::notification_step_preview` (parcours illisible : `NOTIFICATION_WORKFLOW_NOT_FOUND`) ; étape qui n'est pas un canal : `404` ; corps illisible ou champ inconnu : `400` (`SERVER_INVALID_REQUEST`) ; corps trop volumineux : `413` ; sans jeton : `401` |
+
 Chaque requête porte un identifiant `x-request-id` (repris de la requête ou généré). Couches :
 limite de corps, délai, limite de concurrence, rattrapage des paniques, CORS paramétré.
 
@@ -472,5 +483,7 @@ déclenchement, rejeu, exécution différée exécutée puis annulée et relanc�
 absence des routes du moteur. `tests/notification_http.rs` parcourt les routes de désabonnement
 (clé applicative et `notification.public_url` fournies) : page sans effet, un clic rejouable,
 page pour un navigateur, jeton modifié ou absent (`400`), abonné supprimé (`400`), liens non
-configurés (`404`).
+configurés (`404`). `tests/notification_preview_http.rs` parcourt la route d'aperçu (rendu au nom
+de l'appelant sans écriture, droits, corps refusé, `no-store`) et vérifie la planification de la
+purge créée par l'installation.
 `scripts/ci/ci_local.sh` rejoue la CI complète.

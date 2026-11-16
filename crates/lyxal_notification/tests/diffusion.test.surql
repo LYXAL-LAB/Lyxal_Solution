@@ -18,7 +18,7 @@
     CREATE auth_session:envoyeur CONTENT { identity: auth_identity:envoyeur, organization: auth_organization:alpha, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
     RELATE auth_identity:autre->auth_member_of->auth_organization:beta;
     CREATE auth_session:autre CONTENT { identity: auth_identity:autre, organization: auth_organization:beta, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
-    CREATE notification_workflow:annonce CONTENT { tenant: auth_organization:alpha, key: "annonce", name: "Annonce", status: "active", steps: [{ key: "email", channel: "email" }] };
+    CREATE notification_workflow:annonce CONTENT { tenant: auth_organization:alpha, key: "annonce", name: "Annonce", status: "active", steps: [{ key: "email", type: "email" }] };
     CREATE notification_topic:equipe CONTENT { tenant: auth_organization:alpha, key: "equipe", name: "Équipe" };
     FOR $n IN ["m1", "m2", "m3", "m4"] {
         LET $s = fn::notification_subscriber_save({ tenant: auth_organization:alpha, input: { subscriber_id: $n, email: string::concat($n, "@exemple.fr"), data: { region: IF $n = "m3" { "sud" } ELSE { "nord" } } }, must_exist: false }).subscriber;
@@ -160,5 +160,5 @@ RETURN fn::notification_run_create({
 -- test: purge : une diffusion terminée au-delà de sa conservation est supprimée
 {
     UPDATE notification_broadcast SET purge_after = time::now() - 1s WHERE status = "completed";
-    RETURN fn::notification_purge({ limit: 100 }).data.broadcasts == 2 AND count(SELECT id FROM notification_broadcast) == 0;
+    RETURN fn::notification_purge({ args: { limit: 100 } }).data.broadcasts == 2 AND count(SELECT id FROM notification_broadcast) == 0;
 };
