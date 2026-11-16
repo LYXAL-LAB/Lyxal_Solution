@@ -70,8 +70,23 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_claim($params: object) {
             WHERE status IN ["queued", "running"] AND attempts < max_attempts AND (locked_until IS NONE OR locked_until < $now);
     };
     LET $claimed = (SELECT * FROM notification_job WHERE claim_token = $claim ORDER BY next_retry_at);
-    RETURN fn::result_ok(array::map($claimed, |$job| fn::notification_job_payload({ job: $job })));
-} COMMENT "Réserve jusqu'à limit étapes dues ({ worker_id, limit, lease_seconds }) et renvoie tout le nécessaire au rendu ; les étapes dont le secret a expiré sont annulées. Permission notification.worker";
+    -- Préférences relues à la réservation : un choix fait depuis le déclenchement est respecté
+    LET $ready = array::filter(array::map($claimed, |$job| {
+        LET $run = (SELECT tenant, workflow, subscriber FROM ONLY $job.run);
+        LET $workflow = (SELECT * FROM ONLY $run.workflow);
+        LET $subscriber = IF $run.subscriber IS NONE { NONE } ELSE { (SELECT * FROM ONLY $run.subscriber) };
+        LET $decision = fn::notification_preference_resolve({ tenant: $run.tenant, workflow: $workflow, subscriber: $subscriber });
+        LET $choice = $decision.channels[$job.channel];
+        IF !$choice.allowed {
+            UPDATE $job.id SET status = "skipped", skip_reason = string::concat("preference:", $choice.level),
+                locked_until = NONE, claim_token = NONE, attempts -= 1;
+            fn::notification_run_finalize({ run: $job.run });
+            RETURN NONE;
+        };
+        RETURN fn::notification_job_payload({ job: $job, workflow: $workflow, quiet_hours: $decision.quiet_hours });
+    }), |$payload| $payload IS NOT NONE);
+    RETURN fn::result_ok($ready);
+} COMMENT "Réserve jusqu'à limit étapes dues ({ worker_id, limit, lease_seconds }) et renvoie tout le nécessaire au rendu (heures calmes et cible du désabonnement compris) ; les étapes dont le secret a expiré sont annulées, celles qu'une préférence refuse désormais sont écartées. Permission notification.worker";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_job_payload : données de rendu d'une étape réservée (langue résolue)
@@ -80,14 +95,14 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_claim($params: object) {
 DEFINE FUNCTION OVERWRITE fn::notification_job_payload($params: object) -> object {
     LET $job = $params.job;
     LET $run = (SELECT * FROM ONLY $job.run);
-    LET $workflow = (SELECT * FROM ONLY $run.workflow);
+    LET $workflow = $params.workflow ?? (SELECT * FROM ONLY $run.workflow);
     LET $template = (SELECT * FROM ONLY notification_template WHERE workflow = $workflow.id AND step_key = $job.step_key LIMIT 1);
     LET $settings = fn::notification_settings_effective({ tenant: $run.tenant });
     -- Langue de l'envoi : celle du destinataire, sinon celle de son organisation (notée sur le
     -- déclenchement par la base), sinon la langue
     -- par défaut de l'installation ; textes des clés du gabarit dans cette langue (surcharge de
     -- l'organisation, repli de lyxal_i18n)
-    LET $chosen = fn::i18n_locale_resolve({ candidates: array::filter([$run.recipient.locale, $run.organization_locale], |$l| $l IS NOT NONE) });
+    LET $chosen = fn::i18n_locale_resolve({ candidates: array::filter([$run.address.locale, $run.organization_locale], |$l| $l IS NOT NONE) });
     LET $locale = IF $chosen.ok { $chosen.data.locale } ELSE { NONE };
     LET $texts = IF $locale IS NONE OR array::len($template.keys ?? []) = 0 { { ok: true, data: [] } } ELSE {
         fn::i18n_resolve_many({ keys: $template.keys, locale: $locale, tenant: IF $run.tenant IS NONE { NONE } ELSE { <string> $run.tenant } })
@@ -102,7 +117,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_payload($params: object) -> objec
         organization_name: IF $run.tenant IS NONE { NONE } ELSE { (SELECT VALUE name FROM ONLY $run.tenant) },
         idempotency_key: $run.idempotency_key,
         attempt: $job.attempts,
-        recipient: $run.recipient,
+        recipient: { email: $run.address.email, locale: $run.address.locale, name: $run.address.name },
         locale: $locale,
         subject: $template.subject,
         html_body: $template.html_body,
@@ -114,10 +129,22 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_payload($params: object) -> objec
         payload: $run.payload,
         secret: $run.secret,
         sensitive: $workflow.sensitive,
+        critical: $workflow.critical,
         from_name: $settings.from_name,
-        reply_to: $settings.reply_to
+        reply_to: $settings.reply_to,
+        quiet_hours: $params.quiet_hours,
+        -- Désabonnement en un clic (hors parcours critique) : catégorie du parcours, sinon le parcours
+        unsubscribe: IF $workflow.critical OR $run.subscriber IS NONE { NONE } ELSE {
+            {
+                scope: $run.scope_key,
+                subscriber: $run.subscriber,
+                category: $workflow.category,
+                workflow: IF $workflow.category IS NONE { $workflow.id } ELSE { NONE },
+                channel: $job.channel
+            }
+        }
     };
-} COMMENT "Données de rendu d'une étape réservée ({ job }) : gabarit, langue de l'envoi (destinataire, organisation, installation), textes des clés du gabarit dans cette langue (texts ; texts_error : code I18N_* si leur lecture a échoué), mise en page, réglages, secret scellé";
+} COMMENT "Données de rendu d'une étape réservée ({ job, workflow, quiet_hours }) : gabarit, langue de l'envoi (destinataire, organisation, installation), textes des clés du gabarit dans cette langue (texts ; texts_error : code I18N_* si leur lecture a échoué), mise en page, réglages, secret scellé, heures calmes, cible du lien de désabonnement (NONE pour un parcours critique)";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_job_check : réservation encore détenue ?
@@ -161,7 +188,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_complete($params: object) {
         run: $run.id,
         job: $job.id,
         channel: $job.channel,
-        to: $run.recipient.email,
+        to: $run.address.email,
         subject: IF $sensitive { NONE } ELSE { $p.subject },
         provider_message_id: $p.provider_message_id,
         status: "sent"
@@ -219,7 +246,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_fail($params: object) {
     };
     IF $p.class = "recipient_rejected" {
         INSERT IGNORE INTO notification_suppression {
-            tenant: $run.tenant, channel: "email", address: $run.recipient.email,
+            tenant: $run.tenant, channel: "email", address: $run.address.email,
             reason: "hard_bounce", source: $p.code
         };
     };
@@ -254,8 +281,10 @@ DEFINE FUNCTION OVERWRITE fn::notification_purge($params: object) {
     LET $logs = IF array::len($log_ids) = 0 { [] } ELSE { (DELETE $log_ids RETURN BEFORE) };
     LET $run_ids = (SELECT VALUE id FROM notification_run WHERE purge_after <= $now AND status != "pending" LIMIT $p.limit);
     LET $runs = IF array::len($run_ids) = 0 { [] } ELSE { (DELETE $run_ids RETURN BEFORE) };
-    RETURN fn::result_ok({ secrets_cleared: array::len($secrets), log_entries: array::len($logs), runs: array::len($runs) });
-} COMMENT "Purge par paquets ({ limit }) : secrets expirés effacés, journal et déclenchements terminés au-delà de leur durée de conservation supprimés (étapes et messages avec eux). Permission notification.worker";
+    LET $broadcast_ids = (SELECT VALUE id FROM notification_broadcast WHERE purge_after <= $now AND status = "completed" LIMIT $p.limit);
+    LET $broadcasts = IF array::len($broadcast_ids) = 0 { [] } ELSE { (DELETE $broadcast_ids RETURN BEFORE) };
+    RETURN fn::result_ok({ secrets_cleared: array::len($secrets), log_entries: array::len($logs), runs: array::len($runs), broadcasts: array::len($broadcasts) });
+} COMMENT "Purge par paquets ({ limit }) : secrets expirés effacés, journal, déclenchements et diffusions terminés au-delà de leur durée de conservation supprimés (étapes et messages avec eux). Permission notification.worker";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_job_renew : réservation renouvelée juste avant l'envoi
@@ -292,6 +321,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_release($params: object) {
         fields: {
             job_id: { pipeline: [{ rule: "record", options: { expected_table: "notification_job" } }], required: true },
             claim_token: { pipeline: [{ rule: "uuid_v7", options: { allow_string: true } }], required: true },
+            not_before: { pipeline: [{ rule: "future_datetime", options: { allow_equal: false } }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -301,8 +331,9 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_release($params: object) {
     };
     LET $p = $report.value;
     IF !fn::notification_can({ action: "worker" }) { RETURN fn::error_result("NOTIFICATION_PERMISSION_DENIED", $p.language, {}); };
-    LET $released = (UPDATE ONLY $p.job_id SET status = "queued", locked_until = NONE, claim_token = NONE, attempts -= 1
+    LET $released = (UPDATE ONLY $p.job_id SET status = "queued", locked_until = NONE, claim_token = NONE, attempts -= 1,
+        next_retry_at = $p.not_before ?? next_retry_at
         WHERE status = "running" AND claim_token = <string> $p.claim_token);
     IF $released == NONE { RETURN fn::error_result("NOTIFICATION_JOB_CLAIM_LOST", $p.language, {}); };
-    RETURN fn::result_ok({ status: "queued" });
-} COMMENT "Rend à la file une étape réservée et non commencée ({ job_id, claim_token }), sans compter de tentative (arrêt du worker). Permission notification.worker";
+    RETURN fn::result_ok({ status: "queued", next_retry_at: $released.next_retry_at });
+} COMMENT "Rend à la file une étape réservée et non commencée ({ job_id, claim_token, not_before }), sans compter de tentative : arrêt du worker, ou heures calmes de l'abonné (reprise à not_before). Permission notification.worker";

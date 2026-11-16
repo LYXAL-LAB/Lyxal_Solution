@@ -23,7 +23,7 @@ RETURN (SELECT VALUE ->auth_role_grants->auth_permission.code FROM ONLY auth_rol
 
 -- test: réglages effectifs de l'installation
 -- en tant que: plateforme
-RETURN fn::notification_settings_get({}).data.effective == { from_name: NONE, reply_to: NONE, max_attempts: 8, retention_days_runs: 90, retention_days_log: 30 };
+RETURN fn::notification_settings_get({}).data.effective == { from_name: NONE, reply_to: NONE, timezone: NONE, max_attempts: 8, retention_days_runs: 90, retention_days_log: 30 };
 
 -- test: quatre parcours actifs et critiques pour lyxal_auth : trois messages sensibles déclenchés par leur événement, l'alerte de sécurité déclenchée par sa clé
 -- en tant que: plateforme
@@ -50,7 +50,7 @@ RETURN array::len(SELECT VALUE id FROM i18n_key WHERE namespace = i18n_namespace
 -- en tant que: plateforme
 RETURN fn::notification_workflow_get({ workflow: "notification_workflow:auth_security_alert" }).data.templates.map(|$t| [$t.step_key, array::len($t.keys)])
     == [["email", 16]]
-    AND fn::notification_trigger({ workflow_key: "auth_security_alert", idempotency_key: "alerte-invalide", recipient: { email: "a@exemple.fr" }, payload: { alert: "inconnue" } }).error.code == "NOTIFICATION_PAYLOAD_INVALID";
+    AND fn::notification_trigger({ workflow_key: "auth_security_alert", idempotency_key: "alerte-invalide", to: { subscriber_id: "email:a@exemple.fr", email: "a@exemple.fr" }, payload: { alert: "inconnue" } }).error.code == "NOTIFICATION_PAYLOAD_INVALID";
 
 -- test: la mise en page par défaut contient l'emplacement du contenu
 -- en tant que: plateforme

@@ -36,6 +36,11 @@ DEFINE FIELD OVERWRITE reply_to ON TABLE notification_settings
     ASSERT $value IS NONE OR string::len($value) <= 254
     COMMENT "Adresse de réponse";
 
+DEFINE FIELD OVERWRITE timezone ON TABLE notification_settings
+    TYPE option<string>
+    ASSERT $value IS NONE OR string::len($value) <= 64
+    COMMENT "Fuseau horaire IANA par défaut des abonnés (heures calmes), sinon UTC";
+
 DEFINE FIELD OVERWRITE max_attempts ON TABLE notification_settings
     TYPE option<int>
     ASSERT $value IS NONE OR ($value >= 1 AND $value <= 20)

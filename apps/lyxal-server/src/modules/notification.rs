@@ -1,20 +1,23 @@
 //! Module `lyxal_notification` : implémentation `LyxalModule`, consommateur des événements
-//! `auth.*`, workers d'envoi et de purge, sonde de santé.
+//! `auth.*`, workers d'envoi, de diffusion et de purge, sonde de santé, liens de désabonnement.
 //!
 //! L'envoi demande la clé applicative (`LYXAL__CRYPTO__APPLICATION_KEY`, secrets scellés) et le
 //! relais SMTP (`LYXAL__NOTIFICATION__SMTP__*`). Sans l'un des deux : aucun e-mail n'est envoyé,
 //! les abonnements aux événements `auth.*` sont suspendus (les événements attendent en file et
-//! reprennent quand la configuration est complète) et la sonde le signale.
+//! reprennent quand la configuration est complète) et la sonde le signale. Les diffusions sont
+//! toujours découpées en déclenchements (leurs e-mails attendent l'envoi). Les liens de
+//! désabonnement en un clic demandent la clé applicative (clé de signature dérivée par HKDF) et
+//! l'adresse publique de l'hôte (`LYXAL__NOTIFICATION__PUBLIC_URL`).
 
 use crate::config::{AppConfig, SmtpConfig};
 use crate::error::ServerError;
 use lyxal_crypto::{CryptoEngine, StaticKeyResolver};
 use lyxal_event::EventSubscription;
 use lyxal_notification::{
-    EmailTransport, EmailWorkerSettings, NotificationConsumer, NotificationEmailWorker,
-    NotificationHealthCheck, NotificationModule, NotificationPurgeWorker, NotificationStore,
-    SecretCodec, SmtpSecurity, SmtpSettings, SmtpTransport, AUTH_HANDLER, AUTH_SUBSCRIPTIONS,
-    CONSUMER_MODULE,
+    BroadcastWorkerSettings, EmailTransport, EmailWorkerSettings, NotificationBroadcastWorker,
+    NotificationConsumer, NotificationEmailWorker, NotificationHealthCheck, NotificationModule,
+    NotificationPurgeWorker, NotificationStore, SecretCodec, SmtpSecurity, SmtpSettings,
+    SmtpTransport, UnsubscribeLinks, AUTH_HANDLER, AUTH_SUBSCRIPTIONS, CONSUMER_MODULE,
 };
 use lyxal_runtime::{LyxalModule, LyxalRuntime};
 use std::sync::Arc;
@@ -30,6 +33,22 @@ const PURGE_INTERVAL: Duration = Duration::from_secs(600);
 const PURGE_BATCH: u32 = 500;
 /// Tentatives de livraison d'un événement `auth.*` avant lettre morte.
 const AUTH_EVENT_MAX_ATTEMPTS: u32 = 10;
+
+/// Ce que les routes `/notification/*` reçoivent de l'hôte : la session système et, s'ils sont
+/// configurés, les liens de désabonnement.
+#[derive(Clone)]
+pub struct NotificationHost {
+    pub store: NotificationStore,
+    pub links: Option<Arc<UnsubscribeLinks>>,
+}
+
+/// Services du module enregistrés auprès du runtime.
+pub struct NotificationServices {
+    /// Envoi configuré (clé applicative et relais SMTP).
+    pub delivery: bool,
+    /// Routes de l'hôte.
+    pub host: NotificationHost,
+}
 
 pub fn module() -> Arc<dyn LyxalModule> {
     Arc::new(NotificationModule::new())
@@ -64,27 +83,52 @@ fn smtp_transport(config: &SmtpConfig) -> Result<Arc<dyn EmailTransport>, Server
     Ok(Arc::new(transport))
 }
 
-/// Purge, sonde et, si la clé applicative et le relais SMTP sont configurés, consommateur des
-/// événements `auth.*` et worker d'envoi. Renvoie vrai si l'envoi est actif.
+/// Liens de désabonnement : clé applicative et adresse publique requises ; une adresse invalide
+/// arrête le démarrage.
+pub fn unsubscribe_links(config: &AppConfig) -> Result<Option<Arc<UnsubscribeLinks>>, ServerError> {
+    let material = crate::crypto::application_key_material(&config.crypto)?;
+    match (material, config.notification.public_url.as_deref()) {
+        (Some(material), Some(public_url)) => UnsubscribeLinks::new(public_url, &material)
+            .map(|links| Some(Arc::new(links)))
+            .map_err(|e| configuration_error("notification.public_url", e)),
+        (material, public_url) => {
+            tracing::warn!(
+                application_key = material.is_some(),
+                public_url = public_url.is_some(),
+                "liens de désabonnement désactivés : LYXAL__CRYPTO__APPLICATION_KEY et LYXAL__NOTIFICATION__PUBLIC_URL requis"
+            );
+            Ok(None)
+        }
+    }
+}
+
+/// Purge, diffusions, sonde et, si la clé applicative et le relais SMTP sont configurés,
+/// consommateur des événements `auth.*` et worker d'envoi (avec les liens de désabonnement s'ils
+/// sont configurés).
 pub async fn register_services(
     runtime: &LyxalRuntime,
     client: &Surreal<Any>,
     config: &AppConfig,
     crypto: Option<Arc<CryptoEngine<StaticKeyResolver>>>,
-) -> Result<bool, ServerError> {
+) -> Result<NotificationServices, ServerError> {
     let store = NotificationStore::new(client.clone());
     runtime.register_worker(Arc::new(NotificationPurgeWorker::new(
         store.clone(),
         PURGE_INTERVAL,
         PURGE_BATCH,
     )?))?;
+    runtime.register_worker(Arc::new(NotificationBroadcastWorker::new(
+        store.clone(),
+        BroadcastWorkerSettings::default(),
+    )?))?;
+    let links = unsubscribe_links(config)?;
     let transport = config
         .notification
         .smtp
         .as_ref()
         .map(smtp_transport)
         .transpose()?;
-    let enabled = match (crypto, transport.clone()) {
+    let delivery = match (crypto, transport.clone()) {
         (Some(crypto), Some(transport)) => {
             let codec = SecretCodec::new(crypto);
             runtime
@@ -93,12 +137,17 @@ pub async fn register_services(
                     codec.clone(),
                 )))
                 .await;
-            runtime.register_worker(Arc::new(NotificationEmailWorker::new(
+            let worker = NotificationEmailWorker::new(
                 store.clone(),
                 codec,
                 transport,
                 EmailWorkerSettings::default(),
-            )?))?;
+            )?;
+            let worker = match &links {
+                Some(links) => worker.with_unsubscribe_links(links.clone()),
+                None => worker,
+            };
+            runtime.register_worker(Arc::new(worker))?;
             true
         }
         (crypto, transport) => {
@@ -113,10 +162,13 @@ pub async fn register_services(
     runtime
         .health_registry()
         .register_check(Arc::new(NotificationHealthCheck::new(
-            store,
-            if enabled { transport } else { None },
+            store.clone(),
+            if delivery { transport } else { None },
         )))?;
-    Ok(enabled)
+    Ok(NotificationServices {
+        delivery,
+        host: NotificationHost { store, links },
+    })
 }
 
 /// Après l'installation des modules : abonnements aux événements `auth.*`, actifs si l'envoi est

@@ -8,7 +8,9 @@
 //! * objet ramené à une seule ligne (aucun caractère de contrôle : pas d'injection d'en-tête).
 //!
 //! Variables : `recipient` (`email`, `locale`, `name`), `payload`, `secret`, `organization`
-//! (`name`). Le message rendu n'est conservé nulle part.
+//! (`name`), `unsubscribe_url` (lien de désabonnement en un clic, absent pour un parcours
+//! critique ou sans adresse publique : à tester par `{% if unsubscribe_url %}`). Le message rendu
+//! n'est conservé nulle part.
 //!
 //! Un gabarit existe en une seule version. Ses phrases sont des clés `lyxal_i18n` appelées par
 //! `t("clé", nom=valeur, …)` : le texte, lu à la réservation dans la langue de l'envoi, est
@@ -71,11 +73,13 @@ impl Renderer {
         Self { fuel }
     }
 
-    /// Rend l'objet, le corps HTML et le corps texte d'une étape réservée.
+    /// Rend l'objet, le corps HTML et le corps texte d'une étape réservée, avec le lien de
+    /// désabonnement s'il y en a un.
     pub fn render(
         &self,
         job: &ClaimedJob,
         secret: Option<&serde_json::Map<String, serde_json::Value>>,
+        unsubscribe_url: Option<&str>,
     ) -> NotificationResult<RenderedEmail> {
         let (Some(subject), Some(html_body), Some(text_body)) =
             (&job.subject, &job.html_body, &job.text_body)
@@ -117,6 +121,10 @@ impl Renderer {
             (
                 "organization",
                 Value::from_pairs([("name", optional(&job.organization_name))]),
+            ),
+            (
+                "unsubscribe_url",
+                unsubscribe_url.map_or(Value::from(()), Value::from),
             ),
         ]);
         let subject = render(&env, "subject.txt", subject, context.clone())?;
@@ -308,10 +316,16 @@ fn render(
 }
 
 fn with_content(context: &Value, content: Value) -> Value {
-    let mut pairs: Vec<(String, Value)> = ["recipient", "payload", "secret", "organization"]
-        .iter()
-        .filter_map(|key| context.get_attr(key).ok().map(|v| ((*key).to_string(), v)))
-        .collect();
+    let mut pairs: Vec<(String, Value)> = [
+        "recipient",
+        "payload",
+        "secret",
+        "organization",
+        "unsubscribe_url",
+    ]
+    .iter()
+    .filter_map(|key| context.get_attr(key).ok().map(|v| ((*key).to_string(), v)))
+    .collect();
     pairs.push(("content".to_string(), content));
     Value::from_pairs(pairs)
 }
@@ -382,8 +396,11 @@ mod tests {
             payload: serde_json::json!({ "n": "<b>D-1</b>" }),
             secret: None,
             sensitive: false,
+            critical: false,
             from_name: None,
             reply_to: None,
+            quiet_hours: None,
+            unsubscribe: None,
         }
     }
 
@@ -396,6 +413,7 @@ mod tests {
                     "<p>{{ payload.n }} {{ organization.name }}</p>",
                     "{{ payload.n }}",
                 ),
+                None,
                 None,
             )
             .expect("rendu");
@@ -417,7 +435,7 @@ mod tests {
         j.locale = Some(locale.into());
         j.payload = payload;
         Renderer::default()
-            .render(&j, None)
+            .render(&j, None, None)
             .map(|rendered| rendered.text)
     }
 
@@ -450,7 +468,10 @@ mod tests {
         j.locale = Some("de".into());
         j.payload = serde_json::json!({ "n": "1234.5" });
         assert_eq!(
-            Renderer::default().render(&j, None).expect("rendu").text,
+            Renderer::default()
+                .render(&j, None, None)
+                .expect("rendu")
+                .text,
             "1.234,5"
         );
     }
@@ -521,7 +542,7 @@ mod tests {
                 "fr",
             ),
         ];
-        let rendered = Renderer::default().render(&j, None).expect("rendu");
+        let rendered = Renderer::default().render(&j, None, None).expect("rendu");
         assert_eq!(rendered.subject, "Devis D-1");
         // Texte traduit et arguments échappés dans le HTML, jamais dans le texte
         assert_eq!(
@@ -531,7 +552,10 @@ mod tests {
         assert_eq!(rendered.text, "1 article / Coefficient 2,5");
         j.payload = serde_json::json!({ "n": "D-1", "count": 3, "ratio": 2 });
         assert_eq!(
-            Renderer::default().render(&j, None).expect("rendu").text,
+            Renderer::default()
+                .render(&j, None, None)
+                .expect("rendu")
+                .text,
             "3 articles / Coefficient 2"
         );
     }
@@ -548,14 +572,17 @@ mod tests {
             resolved("a.items", ITEMS_EN, "icu_mf1", "en"),
         ];
         assert_eq!(
-            Renderer::default().render(&j, None).expect("rendu").text,
+            Renderer::default()
+                .render(&j, None, None)
+                .expect("rendu")
+                .text,
             "0 article ; 0 items ; 1,234.5"
         );
         // Destinataire d'une autre langue que l'envoi : nombres dans la langue de l'envoi
         j.recipient.locale = Some("de".into());
         j.locale = Some("fr".into());
         assert!(Renderer::default()
-            .render(&j, None)
+            .render(&j, None, None)
             .expect("rendu")
             .text
             .ends_with("1\u{202f}234,5"));
@@ -579,7 +606,7 @@ mod tests {
         let render = |text: &str| {
             let mut j = job("Objet", "<p>x</p>", text);
             j.texts = texts.clone();
-            Renderer::default().render(&j, None).map(|r| r.text)
+            Renderer::default().render(&j, None, None).map(|r| r.text)
         };
         assert_eq!(render("{{ t(\"a.simple\") }}").expect("rendu"), "Bonjour");
         for text in [
@@ -606,17 +633,17 @@ mod tests {
         unreadable.texts_error = Some("I18N_PERMISSION_DENIED".into());
         assert_eq!(
             Renderer::default()
-                .render(&unreadable, None)
+                .render(&unreadable, None, None)
                 .expect_err("textes illisibles")
                 .to_string(),
             "rendu impossible : textes du gabarit illisibles : I18N_PERMISSION_DENIED"
         );
         let mut unknown = job("Objet", "<p>x</p>", "x");
         unknown.texts = vec![resolved("a.b", "x", "mf2", "fr")];
-        assert!(Renderer::default().render(&unknown, None).is_err());
+        assert!(Renderer::default().render(&unknown, None, None).is_err());
         let mut no_locale = job("Objet", "<p>x</p>", "x");
         no_locale.locale = None;
-        assert!(Renderer::default().render(&no_locale, None).is_err());
+        assert!(Renderer::default().render(&no_locale, None, None).is_err());
     }
 
     #[test]
@@ -626,26 +653,52 @@ mod tests {
         j.layout_text = Some("-- {{ content }} --".into());
         let secret = serde_json::json!({ "code": "123456" });
         let rendered = Renderer::default()
-            .render(&j, secret.as_object())
+            .render(&j, secret.as_object(), None)
             .expect("rendu");
         assert_eq!(rendered.html, "<div><p>123456</p></div>");
         assert_eq!(rendered.text, "-- 123456 --");
     }
 
     #[test]
+    fn the_unsubscribe_link_is_offered_to_the_layout_when_there_is_one() {
+        let mut j = job("Lettre", "<p>x</p>", "x");
+        j.layout_html = Some(
+            "{{ content }}{% if unsubscribe_url %}<a href=\"{{ unsubscribe_url }}\">stop</a>{% endif %}"
+                .into(),
+        );
+        j.layout_text =
+            Some("{{ content }}{% if unsubscribe_url %} {{ unsubscribe_url }}{% endif %}".into());
+        let renderer = Renderer::default();
+        let with = renderer
+            .render(&j, None, Some("https://lyxal.test/u?t=a.b"))
+            .expect("rendu");
+        assert_eq!(
+            with.html,
+            "<p>x</p><a href=\"https:&#x2f;&#x2f;lyxal.test&#x2f;u?t=a.b\">stop</a>"
+        );
+        assert_eq!(with.text, "x https://lyxal.test/u?t=a.b");
+        let without = renderer.render(&j, None, None).expect("rendu");
+        assert_eq!(
+            (without.html.as_str(), without.text.as_str()),
+            ("<p>x</p>", "x")
+        );
+    }
+
+    #[test]
     fn unknown_variable_is_an_error_but_may_be_tested() {
         let renderer = Renderer::default();
         assert!(renderer
-            .render(&job("{{ payload.absent }}", "x", "x"), None)
+            .render(&job("{{ payload.absent }}", "x", "x"), None, None)
             .is_err());
         assert!(renderer
             .render(
                 &job("{% if payload.absent %}oui{% endif %}ok", "x", "x"),
+                None,
                 None
             )
             .is_ok());
         assert!(renderer
-            .render(&job("{{ secret.code }}", "x", "x"), None)
+            .render(&job("{{ secret.code }}", "x", "x"), None, None)
             .is_err());
     }
 
@@ -653,11 +706,12 @@ mod tests {
     fn includes_are_impossible_and_fuel_is_bounded() {
         let renderer = Renderer::with_fuel(1_000);
         assert!(renderer
-            .render(&job("{% include 'autre' %}", "x", "x"), None)
+            .render(&job("{% include 'autre' %}", "x", "x"), None, None)
             .is_err());
         assert!(renderer
             .render(
                 &job("{% for i in range(100000) %}{{ i }}{% endfor %}", "x", "x"),
+                None,
                 None
             )
             .is_err());
@@ -666,14 +720,14 @@ mod tests {
     #[test]
     fn subject_is_kept_on_one_line_and_missing_template_is_an_error() {
         let rendered = Renderer::default()
-            .render(&job("Bonjour\r\nBcc: espion@x.test", "x", "x"), None)
+            .render(&job("Bonjour\r\nBcc: espion@x.test", "x", "x"), None, None)
             .expect("rendu");
         assert!(!rendered.subject.contains('\n') && !rendered.subject.contains('\r'));
         let mut missing = job("s", "h", "t");
         missing.subject = None;
         assert_eq!(
             Renderer::default()
-                .render(&missing, None)
+                .render(&missing, None, None)
                 .expect_err("aucun gabarit")
                 .to_string(),
             "rendu impossible : étape sans gabarit"

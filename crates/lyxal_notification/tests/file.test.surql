@@ -17,8 +17,8 @@
     fn::notification_settings_set({ tenant: "auth_organization:alpha", from_name: "Alpha BTP", reply_to: "contact@alpha.test", max_attempts: 2 });
     CREATE notification_workflow:devis CONTENT { tenant: auth_organization:alpha, key: "devis", name: "Devis", status: "active", steps: [{ key: "email", channel: "email" }] };
     CREATE notification_template:devis_email CONTENT { tenant: auth_organization:alpha, workflow: notification_workflow:devis, step_key: "email", subject: "Devis {{ payload.n }}", html_body: "<p>{{ t(\"notification.common.greeting\") }}</p>", text_body: "Devis", keys: ["notification.common.greeting"] };
-    fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "devis-1", recipient: { email: "client@exemple.fr", locale: "en-GB" }, payload: { n: "D-1" }, secret: "enc:v2:cle-2026:AAAAAAAAAAAAAAAAAAAAAAAA" });
-    fn::notification_trigger({ tenant: "auth_organization:alpha", trigger_event: "auth.invitation.created", idempotency_key: "invit-1", recipient: { email: "invitee@exemple.fr", locale: "de" }, payload: { invitation_id: "i", organization_name: "Alpha BTP" }, secret: "enc:v2:cle-2026:BBBBBBBBBBBBBBBBBBBBBBBB", expires_at: time::now() + 1d });
+    fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "devis-1", to: { subscriber_id: "email:client@exemple.fr", email: "client@exemple.fr", locale: "en-GB" }, payload: { n: "D-1" }, secret: "enc:v2:cle-2026:AAAAAAAAAAAAAAAAAAAAAAAA" });
+    fn::notification_trigger({ tenant: "auth_organization:alpha", trigger_event: "auth.invitation.created", idempotency_key: "invit-1", to: { subscriber_id: "email:invitee@exemple.fr", email: "invitee@exemple.fr", locale: "de" }, payload: { invitation_id: "i", organization_name: "Alpha BTP" }, secret: "enc:v2:cle-2026:BBBBBBBBBBBBBBBBBBBBBBBB", expires_at: time::now() + 1d });
     DEFINE TABLE test_ref SCHEMALESS PERMISSIONS FULL;
 };
 
@@ -87,7 +87,7 @@ RETURN fn::notification_job_complete({ job_id: <string> test_ref:devis.job, clai
 };
 
 -- préparation: déclenchement pour l'échec temporaire
-fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "retry-1", recipient: { email: "lent@exemple.fr" }, payload: { n: "D-2" }, secret: "enc:v2:cle-2026:CCCCCCCCCCCCCCCCCCCCCCCC" });
+fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "retry-1", to: { subscriber_id: "email:lent@exemple.fr", email: "lent@exemple.fr" }, payload: { n: "D-2" }, secret: "enc:v2:cle-2026:CCCCCCCCCCCCCCCCCCCCCCCC" });
 
 -- test: échec temporaire : nouvelle tentative programmée
 -- en tant que: worker
@@ -115,8 +115,8 @@ fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "dev
 
 -- préparation: déclenchements pour le destinataire refusé et l'échec définitif
 {
-    fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "rejet-1", recipient: { email: "Absent@Exemple.fr" }, payload: { n: "D-3" } });
-    fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "permanent-1", recipient: { email: "x@exemple.fr" }, payload: { n: "D-4" } });
+    fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "rejet-1", to: { subscriber_id: "email:absent@exemple.fr", email: "Absent@Exemple.fr" }, payload: { n: "D-3" } });
+    fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "permanent-1", to: { subscriber_id: "email:x@exemple.fr", email: "x@exemple.fr" }, payload: { n: "D-4" } });
 };
 
 -- test: destinataire refusé : échec définitif dès la première tentative, adresse supprimée
@@ -141,7 +141,7 @@ RETURN fn::notification_job_fail({ job_id: <string> test_ref:devis.job, claim_to
 
 -- préparation: déclenchement dont le secret expire avant l'envoi
 {
-    LET $r = fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "expire-1", recipient: { email: "tard@exemple.fr" }, payload: { n: "D-5" }, secret: "enc:v2:cle-2026:DDDDDDDDDDDDDDDDDDDDDDDD" }).data;
+    LET $r = fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "expire-1", to: { subscriber_id: "email:tard@exemple.fr", email: "tard@exemple.fr" }, payload: { n: "D-5" }, secret: "enc:v2:cle-2026:DDDDDDDDDDDDDDDDDDDDDDDD" }).data;
     UPDATE $r.run_id SET expires_at = time::now() - 1m;
 };
 
@@ -157,8 +157,8 @@ RETURN fn::notification_job_fail({ job_id: <string> test_ref:devis.job, claim_to
 
 -- préparation: deux déclenchements pour les réservations expirées
 {
-    fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "bail-1", recipient: { email: "a@exemple.fr" }, payload: { n: "D-6" } });
-    fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "bail-2", recipient: { email: "b@exemple.fr" }, payload: { n: "D-7" } });
+    fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "bail-1", to: { subscriber_id: "email:a@exemple.fr", email: "a@exemple.fr" }, payload: { n: "D-6" } });
+    fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "bail-2", to: { subscriber_id: "email:b@exemple.fr", email: "b@exemple.fr" }, payload: { n: "D-7" } });
 };
 
 -- test: réservation des deux étapes
@@ -191,7 +191,7 @@ RETURN fn::notification_job_complete({ job_id: <string> test_ref:bail1.job, clai
 -- test: réservation renouvelée avant l'envoi ; jeton périmé refusé ; étape rendue sans tentative comptée
 -- en tant que: worker
 {
-    LET $r = fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "renouv-1", recipient: { email: "r@exemple.fr" }, payload: { n: "D-8" } }).data;
+    LET $r = fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "renouv-1", to: { subscriber_id: "email:r@exemple.fr", email: "r@exemple.fr" }, payload: { n: "D-8" } }).data;
     LET $job = fn::notification_job_claim({ worker_id: "w3", lease_seconds: 10 }).data[0];
     LET $renewed = fn::notification_job_renew({ job_id: <string> $job.job_id, claim_token: $job.claim_token, lease_seconds: 600 }).data;
     LET $stale = fn::notification_job_renew({ job_id: <string> $job.job_id, claim_token: "01a1bca0-0000-7000-8000-000000000000" });
@@ -227,7 +227,7 @@ RETURN array::len(SELECT * FROM notification_run WHERE idempotency_key IN ["devi
 UPDATE auth_organization:alpha SET locale = "en";
 
 -- préparation: déclenchement pour un destinataire sans langue
-fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "devis-sans-langue", recipient: { email: "sans-langue@exemple.fr" }, payload: { n: "D-9" }, secret: "enc:v2:cle-2026:AAAAAAAAAAAAAAAAAAAAAAAA" });
+fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "devis-sans-langue", to: { subscriber_id: "email:sans-langue@exemple.fr", email: "sans-langue@exemple.fr" }, payload: { n: "D-9" }, secret: "enc:v2:cle-2026:AAAAAAAAAAAAAAAAAAAAAAAA" });
 
 -- test: le worker (compte de service, sans droit de lire l'organisation) envoie dans la langue de l'organisation
 -- en tant que: worker

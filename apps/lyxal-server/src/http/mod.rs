@@ -2,6 +2,7 @@ mod auth;
 mod auth_mfa;
 mod handlers;
 mod middleware;
+mod notification;
 pub mod request_id;
 mod router;
 mod scheduler;

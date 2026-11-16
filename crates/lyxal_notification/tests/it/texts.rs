@@ -13,7 +13,7 @@ fn trigger(workflow: &str, key: &str, payload: &str) -> String {
         .map(|locale| {
             format!(
                 "fn::notification_trigger({{ workflow_key: '{workflow}', idempotency_key: '{key}-{locale}', \
-                 recipient: {{ email: '{key}-{locale}@exemple.fr', locale: '{locale}', name: 'Inès' }}, \
+                 to: {{ subscriber_id: 'email:{key}-{locale}@exemple.fr', email: '{key}-{locale}@exemple.fr', locale: '{locale}', first_name: 'Inès' }}, \
                  payload: {payload}, secret: 'enc:v2:cle-2026:AAAAAAAAAAAAAAAAAAAAAAAA', expires_at: time::now() + 1d }});"
             )
         })
@@ -144,7 +144,7 @@ async fn system_emails_render_in_french_and_english() {
                 .expect("étape réservée");
             assert_eq!(job.locale.as_deref(), Some(locale));
             let email = renderer
-                .render(job, secret.as_object())
+                .render(job, secret.as_object(), None)
                 .unwrap_or_else(|error| panic!("{key} {locale} : {error}"));
             assert!(
                 email.text.starts_with(greeting),
@@ -173,7 +173,7 @@ async fn system_emails_render_in_french_and_english() {
         .find(|job| job.idempotency_key == "invit-en")
         .expect("invitation");
     let email = renderer
-        .render(invitation, secret.as_object())
+        .render(invitation, secret.as_object(), None)
         .expect("invitation");
     assert_eq!(email.subject, "Invitation to join Alpha & Fils");
     assert!(

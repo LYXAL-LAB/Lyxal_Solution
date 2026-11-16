@@ -28,6 +28,14 @@ DEFINE FUNCTION OVERWRITE fn::notification_workflow_create($params: object) {
             trigger_event: { pipeline: [{ rule: "lyxal_event_name", options: { min_segments: 2, max_segments: 6 } }] },
             critical: { pipeline: [{ rule: "boolean" }], default: false },
             sensitive: { pipeline: [{ rule: "boolean" }], default: false },
+            category: { pipeline: [{ rule: "snake_case_name", options: { min_length: 1, max_length: 64 } }] },
+            preferences: { pipeline: [{ rule: "is_object" }, { rule: "object", options: { schema: {
+                fields: {
+                    channels: fn::notification_preference_fields({}).channels,
+                    enforced: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: true } }, { rule: "array_unique" }, { rule: "each", options: { pipeline: [{ rule: "enum", options: { allowed: fn::notification_channels({}), case_sensitive: true } }] } }], default: [] }
+                },
+                unknown_keys: "reject"
+            } } }] },
             payload_schema: { pipeline: [{ rule: "is_object" }] },
             steps: { pipeline: [{ rule: "array_objects", options: { allow_empty_objects: false } }, { rule: "array_non_empty" }, { rule: "each", options: { pipeline: [{ rule: "object", options: { schema: {
                 fields: {
@@ -51,7 +59,11 @@ DEFINE FUNCTION OVERWRITE fn::notification_workflow_create($params: object) {
     IF !fn::notification_can({ action: "manage", tenant: $p.tenant }) { RETURN fn::error_result("NOTIFICATION_PERMISSION_DENIED", $p.language, {}); };
     -- Un schéma de variables invalide est refusé par lyxal_core (CORE_INVALID_ARGUMENT)
     IF $p.payload_schema IS NOT NONE { fn::validation_object_execute({}, $p.payload_schema, 80); };
+    LET $category = IF $p.category IS NONE { NONE } ELSE { fn::notification_category_find({ tenant: $p.tenant, key: $p.category, own_only: false }) };
+    IF $p.category IS NOT NONE AND $category IS NONE { RETURN fn::error_result("NOTIFICATION_CATEGORY_NOT_FOUND", $p.language, { key: $p.category }); };
     LET $inserted = (INSERT IGNORE INTO notification_workflow {
+        category: $category.id,
+        preferences: $p.preferences ?? { channels: {}, enforced: [] },
         tenant: $p.tenant,
         key: $p.key,
         name: $p.name,
@@ -65,7 +77,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_workflow_create($params: object) {
     });
     IF array::len($inserted) = 0 { RETURN fn::error_result("NOTIFICATION_WORKFLOW_KEY_TAKEN", $p.language, { key: $p.key }); };
     RETURN fn::result_ok($inserted[0]);
-} COMMENT "Crée un parcours à l'état brouillon ({ tenant, key, name, trigger_event, critical, sensitive, payload_schema, steps : [{ key, channel }], tags }) ; clé unique dans sa portée. Permission notification.manage (notification.installation.manage sans tenant)";
+} COMMENT "Crée un parcours à l'état brouillon ({ tenant, key, name, trigger_event, critical, sensitive, category (clé, de la portée ou de l'installation), preferences : { channels : défaut par canal, enforced : canaux imposés }, payload_schema, steps : [{ key, channel }], tags }) ; clé unique dans sa portée. Permission notification.manage (notification.installation.manage sans tenant)";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_workflow_update
@@ -79,6 +91,15 @@ DEFINE FUNCTION OVERWRITE fn::notification_workflow_update($params: object) {
             trigger_event: { pipeline: [{ rule: "lyxal_event_name", options: { min_segments: 2, max_segments: 6 } }] },
             critical: { pipeline: [{ rule: "boolean" }] },
             sensitive: { pipeline: [{ rule: "boolean" }] },
+            category: { pipeline: [{ rule: "snake_case_name", options: { min_length: 1, max_length: 64 } }] },
+            preferences: { pipeline: [{ rule: "is_object" }, { rule: "object", options: { schema: {
+                fields: {
+                    channels: fn::notification_preference_fields({}).channels,
+                    enforced: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: true } }, { rule: "array_unique" }, { rule: "each", options: { pipeline: [{ rule: "enum", options: { allowed: fn::notification_channels({}), case_sensitive: true } }] } }], default: [] }
+                },
+                unknown_keys: "reject"
+            } } }] },
+            clear_category: { pipeline: [{ rule: "boolean" }], default: false },
             payload_schema: { pipeline: [{ rule: "is_object" }] },
             steps: { pipeline: [{ rule: "array_objects", options: { allow_empty_objects: false } }, { rule: "array_non_empty" }, { rule: "each", options: { pipeline: [{ rule: "object", options: { schema: {
                 fields: {
@@ -108,14 +129,18 @@ DEFINE FUNCTION OVERWRITE fn::notification_workflow_update($params: object) {
         LET $missing = fn::notification_workflow_missing_templates({ workflow: $workflow.id, steps: $p.steps });
         IF array::len($missing) > 0 { RETURN fn::error_result("NOTIFICATION_TEMPLATE_REQUIRED", $p.language, { steps: $missing }); };
     };
+    LET $category = IF $p.category IS NONE { NONE } ELSE { fn::notification_category_find({ tenant: $workflow.tenant, key: $p.category, own_only: false }) };
+    IF $p.category IS NOT NONE AND $category IS NONE { RETURN fn::error_result("NOTIFICATION_CATEGORY_NOT_FOUND", $p.language, { key: $p.category }); };
     LET $changes = object::from_entries(array::filter(
-        array::map(["name", "trigger_event", "critical", "sensitive", "payload_schema", "steps", "tags"], |$f| [$f, $p[$f]]),
+        array::map(["name", "trigger_event", "critical", "sensitive", "payload_schema", "steps", "tags", "preferences"], |$f| [$f, $p[$f]]),
         |$e| $e[1] IS NOT NONE
     ));
+    LET $changes = IF $category IS NONE { $changes } ELSE { object::extend($changes, { category: $category.id }) };
+    IF $p.clear_category { UPDATE $workflow.id SET category = NONE; };
     LET $updated = (UPDATE ONLY $workflow.id MERGE $changes);
     IF $updated == NONE { RETURN fn::error_result("NOTIFICATION_WRITE_FORBIDDEN", $p.language, { table: "notification_workflow" }); };
     RETURN fn::result_ok($updated);
-} COMMENT "Modifie un parcours ({ workflow, name, trigger_event, critical, sensitive, payload_schema, steps, tags }) ; seuls les champs fournis changent ; un parcours actif garde un gabarit prêt par étape. Permission notification.manage";
+} COMMENT "Modifie un parcours ({ workflow, name, trigger_event, critical, sensitive, category (clé), clear_category, preferences, payload_schema, steps, tags }) ; seuls les champs fournis changent ; un parcours actif garde un gabarit prêt par étape. Permission notification.manage";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_workflow_get

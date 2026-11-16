@@ -210,6 +210,8 @@ functions = [
     "functions/utils/functions/compare_records.surql",
     "functions/utils/functions/compare_strings.surql",
     "functions/utils/functions/compare_versions.surql",
+    "functions/utils/functions/condition_check.surql",
+    "functions/utils/functions/condition_evaluate.surql",
     "functions/utils/functions/date_add_days.surql",
     "functions/utils/functions/date_add_months.surql",
     "functions/utils/functions/date_age.surql",

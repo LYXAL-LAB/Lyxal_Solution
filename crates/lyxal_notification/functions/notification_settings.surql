@@ -37,6 +37,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_settings_set($params: object) {
             tenant: { pipeline: [{ rule: "record", options: { expected_table: "auth_organization" } }] },
             from_name: { pipeline: [{ rule: "display_name", options: { min_length: 1, max_length: 128, allow_emoji: false } }] },
             reply_to: { pipeline: [{ rule: "email", options: { max_length: 254 } }] },
+            timezone: { pipeline: [{ rule: "timezone", options: { allow_utc: true } }] },
             max_attempts: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 20 } }] },
             retention_days_runs: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 3650 } }] },
             retention_days_log: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 3650 } }] },
@@ -51,7 +52,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_settings_set($params: object) {
     IF !fn::notification_can({ action: "manage", tenant: $p.tenant }) { RETURN fn::error_result("NOTIFICATION_PERMISSION_DENIED", $p.language, {}); };
     LET $scope = IF $p.tenant IS NONE { "installation" } ELSE { <string> record::id($p.tenant) };
     LET $changes = object::from_entries(array::filter(
-        array::map(["from_name", "reply_to", "max_attempts", "retention_days_runs", "retention_days_log"], |$f| [$f, $p[$f]]),
+        array::map(["from_name", "reply_to", "timezone", "max_attempts", "retention_days_runs", "retention_days_log"], |$f| [$f, $p[$f]]),
         |$e| $e[1] IS NOT NONE
     ));
     LET $changes = IF $changes.reply_to IS NONE { $changes } ELSE {
@@ -65,7 +66,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_settings_set($params: object) {
     };
     IF $saved == NONE { RETURN fn::error_result("NOTIFICATION_WRITE_FORBIDDEN", $p.language, { table: "notification_settings" }); };
     RETURN fn::result_ok($saved);
-} COMMENT "Enregistre les réglages d'une portée ({ tenant, from_name, reply_to, max_attempts, retention_days_runs, retention_days_log }) ; seuls les champs fournis changent. Permission notification.manage";
+} COMMENT "Enregistre les réglages d'une portée ({ tenant, from_name, reply_to, timezone, max_attempts, retention_days_runs, retention_days_log }) ; seuls les champs fournis changent. Permission notification.manage";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_suppression_add
@@ -76,7 +77,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_suppression_add($params: object) {
         fields: {
             tenant: { pipeline: [{ rule: "record", options: { expected_table: "auth_organization" } }] },
             address: { pipeline: [{ rule: "email", options: { max_length: 254 } }], required: true },
-            reason: { pipeline: [{ rule: "enum", options: { allowed: ["hard_bounce", "complaint", "unsubscribe", "manual"], case_sensitive: true } }], default: "manual" },
+            reason: { pipeline: [{ rule: "enum", options: { allowed: ["hard_bounce", "complaint", "manual"], case_sensitive: true } }], default: "manual" },
             source: { pipeline: [{ rule: "optional_string", options: { max_length: 256 } }] },
             keep_until: { pipeline: [{ rule: "future_datetime", options: { allow_equal: false } }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
@@ -137,7 +138,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_suppression_list($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
             tenant: { pipeline: [{ rule: "record", options: { expected_table: "auth_organization" } }] },
-            reason: { pipeline: [{ rule: "enum", options: { allowed: ["hard_bounce", "complaint", "unsubscribe", "manual"], case_sensitive: true } }] },
+            reason: { pipeline: [{ rule: "enum", options: { allowed: ["hard_bounce", "complaint", "manual"], case_sensitive: true } }] },
             limit: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 1000 } }], default: 100 },
             start: { pipeline: [{ rule: "integer", options: { min_value: 0 } }], default: 0 },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }

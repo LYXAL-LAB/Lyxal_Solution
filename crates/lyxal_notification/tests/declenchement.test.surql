@@ -1,7 +1,7 @@
 -- lyxal-test: assertions
 -- Déclenchement : parcours de l'organisation puis de l'installation (clé ou événement),
--- validation des variables, idempotence, parcours inactif ou inconnu, liste de suppression
--- (parcours critique contre désabonnement et rejet définitif), activité, permissions.
+-- abonné créé à la volée, validation des variables, idempotence, parcours inactif ou inconnu,
+-- liste de suppression (parcours critique contre plainte et rejet définitif), activité, permissions.
 --
 -- identité admin: { "id": "auth_session:admin", "pv": 1, "permissions": ["notification.read", "notification.manage", "notification.send"] }
 -- identité envoyeur: { "id": "auth_session:envoyeur", "pv": 1, "permissions": ["notification.send"] }
@@ -39,15 +39,16 @@
 {
     LET $r = fn::notification_trigger({
         tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "devis-001",
-        recipient: { email: "Client@Exemple.fr", locale: "fr-FR", name: "Claire" },
+        to: { subscriber_id: "email:client@exemple.fr", email: "Client@Exemple.fr", locale: "fr-FR", first_name: "Claire" },
         payload: { quote_number: "D-001" }, secret: "enc:v2:cle-2026:AAAAAAAAAAAAAAAAAAAAAAAA"
     }).data;
     RETURN $r.status == "created" AND array::len($r.job_ids) == 1 AND $r.skip_reason IS NONE;
 };
 
--- test: déclenchement enregistré : parcours de l'organisation, adresse normalisée, secret conservé scellé
-RETURN (SELECT workflow, recipient, status, secret FROM ONLY notification_run WHERE idempotency_key = "devis-001" LIMIT 1)
-    == { workflow: notification_workflow:devis_alpha, recipient: { email: "client@exemple.fr", locale: "fr-FR", name: "Claire" }, status: "pending", secret: "enc:v2:cle-2026:AAAAAAAAAAAAAAAAAAAAAAAA" };
+-- test: déclenchement enregistré : parcours de l'organisation, abonné créé à la volée, adresse normalisée copiée, secret conservé scellé
+RETURN (SELECT workflow, subscriber.subscriber_id AS subscriber_id, address, status, secret FROM ONLY notification_run WHERE idempotency_key = "devis-001" LIMIT 1)
+    == { workflow: notification_workflow:devis_alpha, subscriber_id: "email:client@exemple.fr", address: { email: "client@exemple.fr", locale: "fr-FR", name: "Claire" }, status: "pending", secret: "enc:v2:cle-2026:AAAAAAAAAAAAAAAAAAAAAAAA" }
+    AND (SELECT VALUE [email, first_name, locale] FROM ONLY notification_subscriber WHERE scope_key = "alpha" AND subscriber_id = "email:client@exemple.fr" LIMIT 1) == ["client@exemple.fr", "Claire", "fr-FR"];
 
 -- test: le secret n'est pas lisible par qui déclenche
 -- en tant que: envoyeur
@@ -60,7 +61,7 @@ RETURN (SELECT VALUE secret FROM ONLY notification_run WHERE idempotency_key = "
     LET $first = (SELECT VALUE id FROM ONLY notification_run WHERE idempotency_key = "devis-001" LIMIT 1);
     LET $r = fn::notification_trigger({
         tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "devis-001",
-        recipient: { email: "autre@exemple.fr" }, payload: { quote_number: "D-002" }
+        to: { subscriber_id: "email:autre@exemple.fr", email: "autre@exemple.fr" }, payload: { quote_number: "D-002" }
     }).data;
     RETURN $r.status == "duplicate" AND $r.run_id == $first AND array::len($r.job_ids) == 1
         AND array::len(SELECT * FROM notification_job WHERE run = $first) == 1;
@@ -68,12 +69,12 @@ RETURN (SELECT VALUE secret FROM ONLY notification_run WHERE idempotency_key = "
 
 -- test: variables refusées par le schéma du parcours
 -- en tant que: envoyeur
-RETURN fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "devis-002", recipient: { email: "c@exemple.fr" }, payload: { autre: 1 } }).error.code == "NOTIFICATION_PAYLOAD_INVALID";
+RETURN fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "devis-002", to: { subscriber_id: "email:c@exemple.fr", email: "c@exemple.fr" }, payload: { autre: 1 } }).error.code == "NOTIFICATION_PAYLOAD_INVALID";
 
 -- test: une autre organisation déclenche le parcours de l'installation de même clé
 -- en tant que: autre
 {
-    LET $r = fn::notification_trigger({ tenant: "auth_organization:beta", workflow_key: "devis", idempotency_key: "devis-001", recipient: { email: "c@exemple.fr" } }).data;
+    LET $r = fn::notification_trigger({ tenant: "auth_organization:beta", workflow_key: "devis", idempotency_key: "devis-001", to: { subscriber_id: "email:c@exemple.fr", email: "c@exemple.fr" } }).data;
     RETURN $r.status == "created" AND (SELECT VALUE workflow FROM ONLY $r.run_id) == notification_workflow:devis_installation;
 };
 
@@ -82,7 +83,7 @@ RETURN fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_ke
 {
     LET $r = fn::notification_trigger({
         tenant: "auth_organization:alpha", trigger_event: "auth.invitation.created", idempotency_key: "01a1bca0-0000-7000-8000-000000000010",
-        event_id: "01a1bca0-0000-7000-8000-000000000010", recipient: { email: "invitee@exemple.fr", locale: "en" },
+        event_id: "01a1bca0-0000-7000-8000-000000000010", to: { subscriber_id: "email:invitee@exemple.fr", email: "invitee@exemple.fr", locale: "en" },
         payload: { invitation_id: "auth_organization_invitation:x", organization_name: "Alpha BTP", inviter_name: NONE },
         secret: "enc:v2:cle-2026:BBBBBBBBBBBBBBBBBBBBBBBB", expires_at: time::now() + 7d
     }).data;
@@ -91,50 +92,51 @@ RETURN fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_ke
 
 -- test: parcours inactif, inconnu, ou ni clé ni événement
 -- en tant que: envoyeur
-RETURN fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "brouillon", idempotency_key: "b-1", recipient: { email: "c@exemple.fr" } }).error.code == "NOTIFICATION_WORKFLOW_INACTIVE"
-    AND fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "inconnu", idempotency_key: "b-2", recipient: { email: "c@exemple.fr" } }).error.code == "NOTIFICATION_WORKFLOW_NOT_FOUND"
-    AND fn::notification_trigger({ tenant: "auth_organization:alpha", idempotency_key: "b-3", recipient: { email: "c@exemple.fr" } }).error.code == "NOTIFICATION_INVALID_INPUT";
+RETURN fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "brouillon", idempotency_key: "b-1", to: { subscriber_id: "email:c@exemple.fr", email: "c@exemple.fr" } }).error.code == "NOTIFICATION_WORKFLOW_INACTIVE"
+    AND fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "inconnu", idempotency_key: "b-2", to: { subscriber_id: "email:c@exemple.fr", email: "c@exemple.fr" } }).error.code == "NOTIFICATION_WORKFLOW_NOT_FOUND"
+    AND fn::notification_trigger({ tenant: "auth_organization:alpha", idempotency_key: "b-3", to: { subscriber_id: "email:c@exemple.fr", email: "c@exemple.fr" } }).error.code == "NOTIFICATION_INVALID_INPUT";
 
 -- test: entrées invalides : secret non scellé, adresse invalide, expiration passée
 -- en tant que: envoyeur
-RETURN fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "i-1", recipient: { email: "c@exemple.fr" }, payload: { quote_number: "1" }, secret: "https://lien-en-clair.test/abc123456789" }).error.code == "NOTIFICATION_INVALID_INPUT"
-    AND fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "i-2", recipient: { email: "pas-une-adresse" }, payload: { quote_number: "1" } }).error.code == "NOTIFICATION_INVALID_INPUT"
-    AND fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "i-3", recipient: { email: "c@exemple.fr" }, payload: { quote_number: "1" }, expires_at: time::now() - 1h }).error.code == "NOTIFICATION_INVALID_INPUT";
+RETURN fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "i-1", to: { subscriber_id: "email:c@exemple.fr", email: "c@exemple.fr" }, payload: { quote_number: "1" }, secret: "https://lien-en-clair.test/abc123456789" }).error.code == "NOTIFICATION_INVALID_INPUT"
+    AND fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "i-2", to: { subscriber_id: "email:pas-une-adresse", email: "pas-une-adresse" }, payload: { quote_number: "1" } }).error.code == "NOTIFICATION_INVALID_INPUT"
+    AND fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "i-3", to: { subscriber_id: "email:c@exemple.fr", email: "c@exemple.fr" }, payload: { quote_number: "1" }, expires_at: time::now() - 1h }).error.code == "NOTIFICATION_INVALID_INPUT";
 
 -- test: sans permission d'envoi, ou pour une autre organisation : refusé
 -- en tant que: membre
-RETURN fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "p-1", recipient: { email: "c@exemple.fr" }, payload: { quote_number: "1" } }).error.code == "NOTIFICATION_PERMISSION_DENIED";
+RETURN fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "p-1", to: { subscriber_id: "email:c@exemple.fr", email: "c@exemple.fr" }, payload: { quote_number: "1" } }).error.code == "NOTIFICATION_PERMISSION_DENIED";
 
 -- test: une organisation ne déclenche pas pour une autre ni pour l'installation
 -- en tant que: autre
-RETURN fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "p-2", recipient: { email: "c@exemple.fr" }, payload: { quote_number: "1" } }).error.code == "NOTIFICATION_PERMISSION_DENIED"
-    AND fn::notification_trigger({ workflow_key: "devis", idempotency_key: "p-3", recipient: { email: "c@exemple.fr" } }).error.code == "NOTIFICATION_PERMISSION_DENIED";
+RETURN fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "p-2", to: { subscriber_id: "email:c@exemple.fr", email: "c@exemple.fr" }, payload: { quote_number: "1" } }).error.code == "NOTIFICATION_PERMISSION_DENIED"
+    AND fn::notification_trigger({ workflow_key: "devis", idempotency_key: "p-3", to: { subscriber_id: "email:c@exemple.fr", email: "c@exemple.fr" } }).error.code == "NOTIFICATION_PERMISSION_DENIED";
 
--- test: adresses ajoutées à la liste de suppression (désabonnement, rejet définitif) ; adresse normalisée
+-- test: adresses ajoutées à la liste de suppression (plainte, rejet définitif) ; adresse normalisée ; le motif « désabonnement » n'existe plus
 -- en tant que: admin
-RETURN fn::notification_suppression_add({ tenant: "auth_organization:alpha", address: "Desabonne@Exemple.fr", reason: "unsubscribe", source: "lien de désabonnement" }).data.address == "desabonne@exemple.fr"
+RETURN fn::notification_suppression_add({ tenant: "auth_organization:alpha", address: "Desabonne@Exemple.fr", reason: "complaint", source: "boucle de retour" }).data.address == "desabonne@exemple.fr"
+    AND fn::notification_suppression_add({ tenant: "auth_organization:alpha", address: "x@exemple.fr", reason: "unsubscribe" }).error.code == "NOTIFICATION_INVALID_INPUT"
     AND fn::notification_suppression_add({ tenant: "auth_organization:alpha", address: "inexistant@exemple.fr", reason: "hard_bounce" }).data.reason == "hard_bounce";
 
 -- test: événement notification.address.suppressed publié pour chaque adresse
 RETURN (SELECT VALUE payload.address FROM event_outbox WHERE event_type = "notification.address.suppressed" ORDER BY payload.address)
     == ["desabonne@exemple.fr", "inexistant@exemple.fr"];
 
--- test: parcours non critique vers une adresse désabonnée : déclenchement et étape abandonnés
+-- test: parcours non critique vers une adresse en plainte : déclenchement et étape abandonnés
 -- en tant que: envoyeur
 {
-    LET $r = fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "s-1", recipient: { email: "desabonne@exemple.fr" }, payload: { quote_number: "1" }, secret: "enc:v2:cle-2026:CCCCCCCCCCCCCCCCCCCCCCCC" }).data;
-    RETURN $r.status == "skipped" AND $r.skip_reason == "suppressed:unsubscribe"
+    LET $r = fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "s-1", to: { subscriber_id: "email:desabonne@exemple.fr", email: "desabonne@exemple.fr" }, payload: { quote_number: "1" }, secret: "enc:v2:cle-2026:CCCCCCCCCCCCCCCCCCCCCCCC" }).data;
+    RETURN $r.status == "skipped" AND $r.skip_reason == "suppressed:complaint"
         AND (SELECT VALUE status FROM notification_job WHERE run = $r.run_id) == ["skipped"];
 };
 
 -- test: un déclenchement abandonné ne conserve pas le secret
 RETURN (SELECT VALUE secret FROM ONLY notification_run WHERE idempotency_key = "s-1" LIMIT 1) IS NONE;
 
--- test: parcours critique : un désabonnement ne bloque pas, un rejet définitif oui
+-- test: parcours critique : une plainte ne bloque pas, un rejet définitif oui
 -- en tant que: envoyeur
 {
-    LET $ok = fn::notification_trigger({ tenant: "auth_organization:alpha", trigger_event: "auth.invitation.created", idempotency_key: "s-2", recipient: { email: "desabonne@exemple.fr" }, payload: { invitation_id: "i", organization_name: "Alpha BTP" }, secret: "enc:v2:cle-2026:DDDDDDDDDDDDDDDDDDDDDDDD" }).data;
-    LET $ko = fn::notification_trigger({ tenant: "auth_organization:alpha", trigger_event: "auth.invitation.created", idempotency_key: "s-3", recipient: { email: "inexistant@exemple.fr" }, payload: { invitation_id: "i", organization_name: "Alpha BTP" }, secret: "enc:v2:cle-2026:EEEEEEEEEEEEEEEEEEEEEEEE" }).data;
+    LET $ok = fn::notification_trigger({ tenant: "auth_organization:alpha", trigger_event: "auth.invitation.created", idempotency_key: "s-2", to: { subscriber_id: "email:desabonne@exemple.fr", email: "desabonne@exemple.fr" }, payload: { invitation_id: "i", organization_name: "Alpha BTP" }, secret: "enc:v2:cle-2026:DDDDDDDDDDDDDDDDDDDDDDDD" }).data;
+    LET $ko = fn::notification_trigger({ tenant: "auth_organization:alpha", trigger_event: "auth.invitation.created", idempotency_key: "s-3", to: { subscriber_id: "email:inexistant@exemple.fr", email: "inexistant@exemple.fr" }, payload: { invitation_id: "i", organization_name: "Alpha BTP" }, secret: "enc:v2:cle-2026:EEEEEEEEEEEEEEEEEEEEEEEE" }).data;
     RETURN $ok.status == "created" AND $ko.status == "skipped" AND $ko.skip_reason == "suppressed:hard_bounce";
 };
 
@@ -144,16 +146,16 @@ RETURN fn::notification_suppression_add({ address: "bloque@exemple.fr", reason: 
 
 -- test: adresse bloquée par l'installation : déclenchement critique de l'organisation abandonné
 -- en tant que: envoyeur
-RETURN fn::notification_trigger({ tenant: "auth_organization:alpha", trigger_event: "auth.invitation.created", idempotency_key: "s-4", recipient: { email: "bloque@exemple.fr" }, payload: { invitation_id: "i", organization_name: "Alpha BTP" } }).data.skip_reason == "suppressed:manual";
+RETURN fn::notification_trigger({ tenant: "auth_organization:alpha", trigger_event: "auth.invitation.created", idempotency_key: "s-4", to: { subscriber_id: "email:bloque@exemple.fr", email: "bloque@exemple.fr" }, payload: { invitation_id: "i", organization_name: "Alpha BTP" } }).data.skip_reason == "suppressed:manual";
 
 -- test: une suppression d'une autre organisation ne s'applique pas
 -- en tant que: autre
-RETURN fn::notification_trigger({ tenant: "auth_organization:beta", workflow_key: "devis", idempotency_key: "s-5", recipient: { email: "desabonne@exemple.fr" } }).data.status == "created";
+RETURN fn::notification_trigger({ tenant: "auth_organization:beta", workflow_key: "devis", idempotency_key: "s-5", to: { subscriber_id: "email:desabonne@exemple.fr", email: "desabonne@exemple.fr" } }).data.status == "created";
 
 -- test: liste de suppression filtrée par motif ; remplacement sans doublon
 -- en tant que: admin
 RETURN fn::notification_suppression_list({ tenant: "auth_organization:alpha", reason: "hard_bounce" }).data.address == ["inexistant@exemple.fr"]
-    AND fn::notification_suppression_add({ tenant: "auth_organization:alpha", address: "desabonne@exemple.fr", reason: "complaint" }).data.reason == "complaint"
+    AND fn::notification_suppression_add({ tenant: "auth_organization:alpha", address: "desabonne@exemple.fr", reason: "manual" }).data.reason == "manual"
     AND array::len(fn::notification_suppression_list({ tenant: "auth_organization:alpha" }).data) == 2;
 
 -- test: adresse retirée ; une adresse absente est signalée

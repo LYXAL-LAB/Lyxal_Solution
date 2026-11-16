@@ -197,17 +197,17 @@ async fn count(db: &Surreal<Any>, table: &str) -> i64 {
 async fn test_surreal_bootstrap_idempotence() {
     let (_server, db) = setup_db().await;
 
-    // 9 définitions de lyxal_error + 3 définitions CORE_* de lyxal_core
-    assert_eq!(count(&db, "error_definition").await, 12);
+    // 9 définitions de lyxal_error + 4 définitions CORE_* de lyxal_core
+    assert_eq!(count(&db, "error_definition").await, 13);
     assert_eq!(
         count_where(&db, "error_definition", "module = 'core'").await,
-        3
+        4
     );
     assert_eq!(count(&db, "error_external_mapping").await, 0);
 
     // Le rejeu des définitions ne crée ni doublon ni erreur
     install_manifests(&db, &modules()).await;
-    assert_eq!(count(&db, "error_definition").await, 12);
+    assert_eq!(count(&db, "error_definition").await, 13);
 }
 
 #[tokio::test]

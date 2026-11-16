@@ -1,9 +1,15 @@
-//! Workers supervisés : envoi des e-mails et purge.
+//! Workers supervisés : envoi des e-mails, diffusions et purge.
 //!
-//! Le worker d'envoi réserve les étapes dues (`fn::notification_job_claim`), ouvre le secret,
-//! rend le message, l'envoie, puis termine l'étape ou enregistre l'échec. Délai avant une
+//! Le worker d'envoi réserve les étapes dues (`fn::notification_job_claim`), reporte celles qui
+//! tombent dans les heures calmes de l'abonné, ouvre le secret, rend le message (lien de
+//! désabonnement compris), l'envoie, puis termine l'étape ou enregistre l'échec. Délai avant une
 //! nouvelle tentative : attente exponentielle plafonnée avec gigue complète (comme `lyxal_event`).
 //! Une erreur de base n'interrompt pas le worker : la réservation expire et l'étape est reprise.
+//!
+//! Le worker des diffusions réserve une diffusion (`fn::notification_broadcast_claim`) et la
+//! traite par paquets de 500 abonnés (`fn::notification_broadcast_step`) ; arrêté en cours de
+//! route, il laisse expirer sa réservation et la diffusion reprend au paquet suivant, sans
+//! doublon.
 
 use async_trait::async_trait;
 use lyxal_crypto::KeyResolver;
@@ -18,13 +24,16 @@ use std::time::Duration;
 
 use crate::error::NotificationError;
 use crate::models::{
-    ClaimedJob, FailureClass, JobClaimParams, JobCompleteParams, JobFailParams, JobReleaseParams,
-    JobRenewParams, PurgeParams,
+    BroadcastClaimParams, BroadcastCompleteParams, BroadcastStepParams, ClaimedJob, FailureClass,
+    JobClaimParams, JobCompleteParams, JobFailParams, JobReleaseParams, JobRenewParams,
+    NotificationDatetime, PurgeParams,
 };
+use crate::quiet::quiet_until;
 use crate::render::Renderer;
 use crate::secret::SecretCodec;
 use crate::smtp::{EmailTransport, OutgoingEmail, SendFailure};
 use crate::store::NotificationStore;
+use crate::unsubscribe::UnsubscribeLinks;
 
 /// Identifiant du module propriétaire des workers.
 const MODULE: &str = "lyxal_notification";
@@ -100,6 +109,8 @@ pub enum JobOutcome {
     Abandoned,
     /// Arrêt du worker avant l'envoi : étape rendue à la file sans tentative comptée.
     Released,
+    /// Heures calmes de l'abonné : étape rendue à la file jusqu'à leur fin, sans tentative.
+    Deferred,
 }
 
 /// Worker d'envoi des e-mails.
@@ -110,6 +121,7 @@ pub struct NotificationEmailWorker<R: KeyResolver> {
     transport: Arc<dyn EmailTransport>,
     renderer: Renderer,
     settings: EmailWorkerSettings,
+    links: Option<Arc<UnsubscribeLinks>>,
 }
 
 impl<R: KeyResolver> NotificationEmailWorker<R> {
@@ -137,7 +149,15 @@ impl<R: KeyResolver> NotificationEmailWorker<R> {
             transport,
             renderer: Renderer::default(),
             settings,
+            links: None,
         })
+    }
+
+    /// Liens de désabonnement en un clic dans chaque e-mail non critique (sans eux : aucun lien
+    /// ni en-tête `List-Unsubscribe`).
+    pub fn with_unsubscribe_links(mut self, links: Arc<UnsubscribeLinks>) -> Self {
+        self.links = Some(links);
+        self
     }
 
     /// Un tour : réserve et traite les étapes dues, une à la fois. Avant chaque envoi, la
@@ -159,7 +179,15 @@ impl<R: KeyResolver> NotificationEmailWorker<R> {
         let mut outcomes = Vec::with_capacity(jobs.len());
         for job in jobs {
             if cancellation.is_cancelled() {
-                outcomes.push(self.release(&job).await);
+                outcomes.push(self.release(&job, None).await);
+                continue;
+            }
+            if let Some(end) = job
+                .quiet_hours
+                .as_ref()
+                .and_then(|rule| quiet_until(rule, jiff::Timestamp::now()))
+            {
+                outcomes.push(self.defer(&job, end).await);
                 continue;
             }
             if let Err(error) = self
@@ -193,12 +221,31 @@ impl<R: KeyResolver> NotificationEmailWorker<R> {
             .clamp(10, 3600)
     }
 
-    async fn release(&self, job: &ClaimedJob) -> JobOutcome {
+    /// Étape reportée à la fin des heures calmes de l'abonné.
+    async fn defer(&self, job: &ClaimedJob, end: jiff::Timestamp) -> JobOutcome {
+        match end.to_string().parse::<NotificationDatetime>() {
+            Ok(not_before) => match self.release(job, Some(not_before)).await {
+                JobOutcome::Released => JobOutcome::Deferred,
+                other => other,
+            },
+            Err(_) => {
+                tracing::warn!(job = %job.job_id.to_sql(), "fin des heures calmes illisible : reprise à l'expiration de la réservation");
+                JobOutcome::Abandoned
+            }
+        }
+    }
+
+    async fn release(
+        &self,
+        job: &ClaimedJob,
+        not_before: Option<NotificationDatetime>,
+    ) -> JobOutcome {
         match self
             .store
             .job_release(JobReleaseParams {
                 job_id: job.job_id.to_sql(),
                 claim_token: job.claim_token.clone(),
+                not_before,
             })
             .await
         {
@@ -271,14 +318,26 @@ impl<R: KeyResolver> NotificationEmailWorker<R> {
             ),
             None => None,
         };
-        let content = self.renderer.render(job, secret.as_ref())?;
+        let unsubscribe = self.unsubscribe_url(job)?;
+        let content = self
+            .renderer
+            .render(job, secret.as_ref(), unsubscribe.as_deref())?;
         Ok(OutgoingEmail {
             to: job.recipient.email.clone(),
             to_name: job.recipient.name.clone(),
             from_name: job.from_name.clone(),
             reply_to: job.reply_to.clone(),
+            list_unsubscribe: unsubscribe,
             content,
         })
+    }
+
+    /// Lien de désabonnement d'un message non critique (liens configurés).
+    fn unsubscribe_url(&self, job: &ClaimedJob) -> Result<Option<String>, NotificationError> {
+        match (&self.links, &job.unsubscribe) {
+            (Some(links), Some(target)) if !job.critical => links.url(target).map(Some),
+            _ => Ok(None),
+        }
     }
 
     /// Objet conservé dans le message : rendu sans secret, jamais pour un parcours sensible.
@@ -286,8 +345,9 @@ impl<R: KeyResolver> NotificationEmailWorker<R> {
         if job.sensitive {
             return None;
         }
+        let unsubscribe = self.unsubscribe_url(job).ok().flatten();
         self.renderer
-            .render(job, None)
+            .render(job, None, unsubscribe.as_deref())
             .ok()
             .map(|email| email.subject)
     }
@@ -305,6 +365,164 @@ impl<R: KeyResolver + 'static> LyxalWorker for NotificationEmailWorker<R> {
                 Ok(outcomes) => outcomes.len() >= self.settings.batch_size as usize,
                 Err(error) => {
                     tracing::warn!(code = %error.code(), "réservation des envois impossible");
+                    false
+                }
+            };
+            if busy {
+                continue;
+            }
+            tokio::select! {
+                _ = ctx.cancellation.cancelled() => break,
+                _ = tokio::time::sleep(self.settings.poll_interval) => {}
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Réglages du worker des diffusions.
+#[derive(Debug, Clone)]
+pub struct BroadcastWorkerSettings {
+    /// Attente entre deux réservations quand aucune diffusion n'attend.
+    pub poll_interval: Duration,
+    /// Abonnés par paquet (500 au plus).
+    pub batch_size: u32,
+    /// Durée de la réservation, renouvelée à chaque paquet.
+    pub lease: Duration,
+}
+
+impl Default for BroadcastWorkerSettings {
+    fn default() -> Self {
+        Self {
+            poll_interval: Duration::from_secs(5),
+            batch_size: 500,
+            lease: Duration::from_secs(120),
+        }
+    }
+}
+
+/// Bilan d'un passage sur une diffusion (journalisé, jamais d'adresse).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BroadcastOutcome {
+    /// Paquets traités par ce passage.
+    pub batches: u32,
+    /// Destinataires examinés par ce passage.
+    pub processed: i64,
+    /// Déclenchements créés par ce passage.
+    pub created: i64,
+    /// Diffusion terminée (sinon : arrêt du worker, reprise par un autre passage).
+    pub completed: bool,
+}
+
+/// Worker des diffusions : un déclenchement par abonné, par paquets.
+pub struct NotificationBroadcastWorker {
+    descriptor: WorkerDescriptor,
+    store: NotificationStore,
+    settings: BroadcastWorkerSettings,
+}
+
+impl NotificationBroadcastWorker {
+    /// Worker sur la session système de l'hôte.
+    pub fn new(
+        store: NotificationStore,
+        settings: BroadcastWorkerSettings,
+    ) -> Result<Self, RuntimeError> {
+        let module_id = ModuleId::new(MODULE);
+        let mut descriptor = WorkerDescriptor::new(
+            WorkerId::new(&module_id, "broadcast")?,
+            module_id,
+            "Lyxal Notification Broadcast",
+        );
+        descriptor.description =
+            Some("Diffusions à un sujet ou à tous les abonnés, traitées par paquets".to_string());
+        descriptor.criticality = WorkerCriticality::Optional;
+        Ok(Self {
+            descriptor,
+            store,
+            settings,
+        })
+    }
+
+    /// Réserve une diffusion et la traite paquet par paquet jusqu'à sa fin ou à l'annulation ;
+    /// `None` si aucune diffusion n'attend.
+    pub async fn run_once(
+        &self,
+        cancellation: &CancellationToken,
+    ) -> Result<Option<BroadcastOutcome>, NotificationError> {
+        let lease_seconds = i64::try_from(self.settings.lease.as_secs())
+            .unwrap_or(120)
+            .clamp(10, 3600);
+        let Some(claim) = self
+            .store
+            .broadcast_claim(BroadcastClaimParams {
+                worker_id: self.descriptor.id.to_string(),
+                lease_seconds,
+            })
+            .await?
+        else {
+            return Ok(None);
+        };
+        let broadcast_id = claim.broadcast_id.to_sql();
+        let mut outcome = BroadcastOutcome {
+            batches: 0,
+            processed: 0,
+            created: 0,
+            completed: false,
+        };
+        loop {
+            // Arrêt : la réservation expire, un autre passage reprend au paquet suivant
+            if cancellation.is_cancelled() {
+                return Ok(Some(outcome));
+            }
+            let step = self
+                .store
+                .broadcast_step(BroadcastStepParams {
+                    broadcast_id: broadcast_id.clone(),
+                    claim_token: claim.claim_token.clone(),
+                    size: i64::from(self.settings.batch_size.clamp(1, 500)),
+                    lease_seconds,
+                })
+                .await?;
+            outcome.batches += 1;
+            outcome.processed += step.processed;
+            outcome.created += step.created;
+            if step.done {
+                break;
+            }
+        }
+        self.store
+            .broadcast_complete(BroadcastCompleteParams {
+                broadcast_id,
+                claim_token: claim.claim_token,
+            })
+            .await?;
+        outcome.completed = true;
+        Ok(Some(outcome))
+    }
+}
+
+#[async_trait]
+impl LyxalWorker for NotificationBroadcastWorker {
+    fn descriptor(&self) -> &WorkerDescriptor {
+        &self.descriptor
+    }
+
+    async fn run(&self, ctx: WorkerContext) -> Result<(), RuntimeError> {
+        while !ctx.is_cancelled() {
+            let busy = match self.run_once(&ctx.cancellation).await {
+                Ok(Some(outcome)) => {
+                    tracing::info!(
+                        batches = outcome.batches,
+                        processed = outcome.processed,
+                        created = outcome.created,
+                        completed = outcome.completed,
+                        "diffusion traitée"
+                    );
+                    true
+                }
+                Ok(None) => false,
+                Err(error) => {
+                    tracing::warn!(code = %error.code(), "diffusion interrompue : reprise à l'expiration de la réservation");
                     false
                 }
             };
@@ -362,7 +580,10 @@ impl NotificationPurgeWorker {
                     limit: i64::from(self.batch),
                 })
                 .await?;
-            if result.runs < i64::from(self.batch) && result.log_entries < i64::from(self.batch) {
+            if result.runs < i64::from(self.batch)
+                && result.log_entries < i64::from(self.batch)
+                && result.broadcasts < i64::from(self.batch)
+            {
                 return Ok(());
             }
         }
