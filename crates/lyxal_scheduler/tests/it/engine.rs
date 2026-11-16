@@ -1004,8 +1004,11 @@ async fn health_reports_served_queues_and_missing_handlers() {
 #[tokio::test]
 async fn a_leader_fenced_in_the_middle_of_a_turn_writes_nothing() {
     let bench = bench().await;
-    // Renouvellement rare : le nœud a croit tenir le bail sans le relire avant d'écrire
+    // Renouvellement rare : le nœud a croit tenir le bail sans le relire avant d'écrire. Bail
+    // long : seule l'expiration forcée ci-dessous fait perdre le bail (b le garde jusqu'au bout,
+    // même sur une machine lente)
     let timing = LeaderTiming {
+        lease_ttl: Duration::from_secs(60),
         lease_renew: Duration::from_secs(3600),
         ..leader_timing()
     };
