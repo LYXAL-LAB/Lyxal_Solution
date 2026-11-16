@@ -126,8 +126,8 @@ RETURN array::len(fn::notification_category_list({ tenant: "auth_organization:al
 
 -- test: parcours rangé dans une catégorie (de l'organisation, sinon de l'installation) ; catégorie inconnue refusée
 -- en tant que: admin
-RETURN fn::notification_workflow_create({ tenant: "auth_organization:alpha", key: "relance", name: "Relance", category: "rappels", steps: [{ key: "email", channel: "email" }] }).data.category.key == "rappels"
-    AND fn::notification_workflow_create({ tenant: "auth_organization:alpha", key: "lettre", name: "Lettre", category: "inconnue", steps: [{ key: "email", channel: "email" }] }).error.code == "NOTIFICATION_CATEGORY_NOT_FOUND";
+RETURN fn::notification_workflow_create({ tenant: "auth_organization:alpha", key: "relance", name: "Relance", category: "rappels", steps: [{ key: "email", type: "email" }] }).data.category.key == "rappels"
+    AND fn::notification_workflow_create({ tenant: "auth_organization:alpha", key: "lettre", name: "Lettre", category: "inconnue", steps: [{ key: "email", type: "email" }] }).error.code == "NOTIFICATION_CATEGORY_NOT_FOUND";
 
 -- test: une catégorie utilisée par un parcours ne peut pas être supprimée ; retirée du parcours, elle peut l'être
 -- en tant que: admin

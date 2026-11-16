@@ -6,7 +6,7 @@
 -- préparation: organisation, parcours et déclenchement réservé
 {
     CREATE auth_organization:alpha CONTENT { slug: "alpha", name: "Alpha BTP" };
-    CREATE notification_workflow:w CONTENT { tenant: auth_organization:alpha, key: "w", name: "W", status: "active", steps: [{ key: "email", channel: "email" }, { key: "rappel", channel: "email" }] };
+    CREATE notification_workflow:w CONTENT { tenant: auth_organization:alpha, key: "w", name: "W", status: "active", steps: [{ key: "email", type: "email" }, { key: "rappel", type: "email" }] };
     UPDATE auth_organization:alpha SET locale = "en";
     CREATE notification_template:w_email CONTENT { tenant: auth_organization:alpha, workflow: notification_workflow:w, step_key: "email", subject: "S", html_body: "<p>H</p>", text_body: "T", keys: ["notification.common.greeting"] };
     fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "w", idempotency_key: "k-1", to: { subscriber_id: "email:c@exemple.fr", email: "c@exemple.fr", locale: "fr-CA" } });
@@ -24,10 +24,10 @@ RETURN fn::notification_has_content_slot({ text: "a {{ content }} b" }) AND !fn:
 
 -- test: réglages effectifs sans réglages de l'organisation : ceux de l'installation
 RETURN fn::notification_settings_effective({ tenant: auth_organization:alpha }).max_attempts == 8
-    AND fn::notification_settings_effective({}) == { from_name: NONE, reply_to: NONE, timezone: NONE, max_attempts: 8, retention_days_runs: 90, retention_days_log: 30 };
+    AND fn::notification_settings_effective({}) == { from_name: NONE, reply_to: NONE, timezone: NONE, max_attempts: 8, retention_days_runs: 90, retention_days_log: 30, max_wait_days: 30 };
 
 -- test: étapes sans gabarit
-RETURN fn::notification_workflow_missing_templates({ workflow: notification_workflow:w, steps: [{ key: "email" }, { key: "rappel" }] }) == ["rappel"];
+RETURN fn::notification_workflow_missing_templates({ workflow: notification_workflow:w, steps: [{ key: "email", type: "email" }, { key: "pause", type: "delay" }, { key: "rappel", type: "email" }] }) == ["rappel"];
 
 -- test: données de rendu : langue du destinataire inactive (fr-CA), repli sur sa langue parente active (fr)
 {
@@ -71,12 +71,18 @@ RETURN fn::notification_template_unknown_keys({ keys: ["notification.common.gree
         AND fn::notification_job_check({ job: notification_job:inconnu, claim_token: "x" }).code == "NOTIFICATION_NOT_FOUND";
 };
 
--- test: un déclenchement n'est terminé qu'avec toutes ses étapes
+-- test: étapes dans l'ordre : la seconde n'est engagée qu'à la fin de la première ; advance rejouée ne crée rien ; un déclenchement n'est terminé qu'avec toutes ses étapes
 {
     LET $run = (SELECT VALUE id FROM ONLY notification_run LIMIT 1);
+    LET $first = (SELECT VALUE step_key FROM notification_job WHERE run = $run);
     LET $before = fn::notification_run_finalize({ run: $run });
     UPDATE notification_job SET status = "completed" WHERE run = $run AND step_key = "email";
+    LET $next = fn::notification_run_advance({ run: $run });
+    LET $again = fn::notification_run_advance({ run: $run });
+    LET $jobs = (SELECT VALUE [step_key, status] FROM notification_job WHERE run = $run ORDER BY step_key);
     UPDATE notification_job SET status = "canceled" WHERE run = $run AND step_key = "rappel";
     LET $after = fn::notification_run_finalize({ run: $run });
-    RETURN $before == { finalized: false } AND $after == { finalized: true, status: "completed" };
+    RETURN $first == ["email"] AND $before == { status: "pending" } AND $next == { status: "pending" } AND $again == $next
+        AND $jobs == [["email", "completed"], ["rappel", "queued"]] AND (SELECT VALUE cursor FROM ONLY $run) == 2
+        AND $after == { status: "completed" } AND (SELECT VALUE [status, secret] FROM ONLY $run) == ["completed", NONE];
 };

@@ -7,6 +7,7 @@ use lyxal_surreal::SurrealValue;
 use super::preference::QuietHoursRule;
 use super::trigger::Recipient;
 use super::types::{NotificationDatetime, NotificationRecordId};
+use super::workflow::DigestVars;
 
 /// Paramètres de `fn::notification_job_claim`.
 #[derive(Debug, Clone, SurrealValue)]
@@ -71,6 +72,8 @@ pub struct ClaimedJob {
     pub reply_to: Option<String>,
     /// Heures calmes de l'abonné (absentes pour un parcours critique).
     pub quiet_hours: Option<QuietHoursRule>,
+    /// Regroupement porté par le déclenchement : nombre et données des événements.
+    pub digest: Option<DigestVars>,
     /// Cible du lien de désabonnement (absente pour un parcours critique).
     pub unsubscribe: Option<UnsubscribeTarget>,
 }
@@ -220,11 +223,19 @@ pub struct JobFailed {
     pub run_status: Option<String>,
 }
 
-/// Paramètres de `fn::notification_purge`.
-#[derive(Debug, Clone, SurrealValue)]
+/// Arguments de la purge (ceux de la tâche `notification.purge` du planificateur).
+#[derive(Debug, Clone, Default, SurrealValue)]
+pub struct PurgeArgs {
+    /// Éléments au plus par catégorie (1 à 10 000, 1 000 par défaut).
+    pub limit: Option<i64>,
+}
+
+/// Paramètres de `fn::notification_purge`, forme d'appel du planificateur réduite à ses
+/// arguments.
+#[derive(Debug, Clone, Default, SurrealValue)]
 pub struct PurgeParams {
-    /// Éléments au plus par catégorie (1 à 10 000).
-    pub limit: i64,
+    /// Arguments.
+    pub args: PurgeArgs,
 }
 
 /// Résultat de `fn::notification_purge`.
@@ -238,6 +249,10 @@ pub struct PurgeResult {
     pub runs: i64,
     /// Diffusions terminées supprimées.
     pub broadcasts: i64,
+    /// Regroupements fermés supprimés.
+    pub digests: i64,
+    /// Compteurs de limitation expirés supprimés.
+    pub rate_limits: i64,
 }
 
 /// Paramètres de `fn::notification_settings_get`.
@@ -262,6 +277,8 @@ pub struct EffectiveSettings {
     pub retention_days_runs: i64,
     /// Conservation du journal (jours).
     pub retention_days_log: i64,
+    /// Durée maximale d'une attente ou d'une fenêtre (jours).
+    pub max_wait_days: i64,
 }
 
 /// Résultat de `fn::notification_settings_get`.

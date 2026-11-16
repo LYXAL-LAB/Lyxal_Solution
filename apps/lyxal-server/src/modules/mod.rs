@@ -103,13 +103,14 @@ pub async fn install_foundation(client: &Surreal<Any>) -> Result<(), ServerError
     Ok(())
 }
 
-/// Packages de tous les modules hébergés, avec leur implémentation `LyxalModule`.
-pub fn packages() -> Result<Vec<ModulePackage>, ServerError> {
+/// Packages de tous les modules hébergés, avec leur implémentation `LyxalModule` (sur la session
+/// système de l'hôte `client` pour ceux dont l'installation écrit en base).
+pub fn packages(client: &Surreal<Any>) -> Result<Vec<ModulePackage>, ServerError> {
     EMBEDDED_MODULES
         .iter()
         .map(|module| {
             let manifest = manifest(module)?;
-            let implementation = implementation(module.id, &manifest)?;
+            let implementation = implementation(module.id, &manifest, client)?;
             Ok(ModulePackage::new(
                 manifest,
                 Arc::new(EmbeddedResourceProvider::new(module.files)),
@@ -123,6 +124,7 @@ pub fn packages() -> Result<Vec<ModulePackage>, ServerError> {
 fn implementation(
     id: &str,
     manifest: &ModuleManifest,
+    client: &Surreal<Any>,
 ) -> Result<Arc<dyn LyxalModule>, ServerError> {
     if id == auth::MODULE_ID {
         return Ok(auth::module());
@@ -131,7 +133,7 @@ fn implementation(
         return Ok(i18n::module());
     }
     if id == notification::MODULE_ID {
-        return Ok(notification::module());
+        return Ok(notification::module(client));
     }
     if id == storage::MODULE_ID {
         return Ok(storage::module());

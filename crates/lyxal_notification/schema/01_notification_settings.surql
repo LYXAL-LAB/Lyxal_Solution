@@ -56,6 +56,11 @@ DEFINE FIELD OVERWRITE retention_days_log ON TABLE notification_settings
     ASSERT $value IS NONE OR ($value >= 1 AND $value <= 3650)
     COMMENT "Conservation du journal de livraison (jours)";
 
+DEFINE FIELD OVERWRITE max_wait_days ON TABLE notification_settings
+    TYPE option<int>
+    ASSERT $value IS NONE OR ($value >= 1 AND $value <= 366)
+    COMMENT "Durée maximale d'une attente, d'une fenêtre de regroupement ou de limitation (jours, 30 par défaut)";
+
 DEFINE FIELD OVERWRITE updated_at ON TABLE notification_settings
     TYPE datetime
     VALUE time::now()

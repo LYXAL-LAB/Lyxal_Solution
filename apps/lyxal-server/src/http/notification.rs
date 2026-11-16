@@ -1,4 +1,5 @@
-//! Routes de `lyxal_notification` : désabonnement en un clic (RFC 8058, décision B6).
+//! Routes de `lyxal_notification` : désabonnement en un clic (RFC 8058, décision B6) et aperçu
+//! d'une étape de parcours (décision C7).
 //!
 //! `GET /api/v1/notification/unsubscribe?t=<jeton>` : petite page de confirmation qui ne change
 //! rien (un lien ouvert par un antivirus de messagerie ne désabonne pas) ; son bouton fait le
@@ -10,20 +11,37 @@
 //! configurés (clé applicative ou `notification.public_url` absente) : 404. Les requêtes sont
 //! bornées par la concurrence de l'hôte ; aucune réponse n'est mise en cache ni ne transmet le
 //! jeton à un autre site (`Referrer-Policy: no-referrer`).
+//!
+//! `POST /api/v1/notification/preview` : objet, HTML et texte d'une étape de canal rendus avec
+//! des données d'exemple (`{ workflow, step_key, payload, locale, digest }`, 64 Kio au plus,
+//! aucun autre champ, donc aucun secret). L'appelant est identifié par son jeton d'accès
+//! (`Authorization: Bearer`) : la session SurrealDB est à son nom et
+//! `fn::notification_step_preview` exige `notification.read`. Rien n'est écrit. Réponse au
+//! contrat `LyxalResult` ; corps illisible : `SERVER_INVALID_REQUEST`.
 
-use super::auth::no_store;
+use super::auth::{self, no_store, ApiError};
 use crate::context::AppContext;
-use axum::extract::{Query, State};
+use crate::error::ServerError;
+use axum::body::Bytes;
+use axum::extract::{DefaultBodyLimit, Query, State};
 use axum::http::header::{
     ACCEPT, CONTENT_SECURITY_POLICY, CONTENT_TYPE, REFERRER_POLICY, X_FRAME_OPTIONS,
 };
 use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::Router;
-use lyxal_notification::{NotificationError, UnsubscribeLinks};
+use lyxal_notification::models::{DigestVars, StepPreviewParams};
+use lyxal_notification::{
+    NotificationError, NotificationPreview, NotificationStore, UnsubscribeLinks,
+};
+use serde::Deserialize;
+use serde_json::json;
 use std::collections::HashMap;
 use std::sync::Arc;
+
+/// Taille maximale du corps d'une demande d'aperçu.
+const PREVIEW_BODY_LIMIT: usize = 64 * 1024;
 
 /// Routes `/notification/*`.
 pub fn routes() -> Router<AppContext> {
@@ -31,6 +49,10 @@ pub fn routes() -> Router<AppContext> {
         .route(
             "/unsubscribe",
             get(unsubscribe_page).post(unsubscribe_confirm),
+        )
+        .route(
+            "/preview",
+            post(preview).layer(DefaultBodyLimit::max(PREVIEW_BODY_LIMIT)),
         )
         .layer(axum::middleware::map_response(no_store))
 }
@@ -148,6 +170,59 @@ async fn unsubscribe_confirm(
             StatusCode::SERVICE_UNAVAILABLE.into_response()
         }
     }
+}
+
+/// Regroupement d'exemple d'un aperçu.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PreviewDigest {
+    count: i64,
+    #[serde(default)]
+    events: Vec<serde_json::Value>,
+}
+
+/// Corps d'une demande d'aperçu : aucun champ en plus (aucun secret accepté).
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PreviewBody {
+    workflow: String,
+    step_key: String,
+    #[serde(default)]
+    payload: Option<serde_json::Map<String, serde_json::Value>>,
+    locale: Option<String>,
+    digest: Option<PreviewDigest>,
+}
+
+/// `POST /preview` : aperçu d'une étape au nom de l'appelant.
+async fn preview(State(context): State<AppContext>, headers: HeaderMap, body: Bytes) -> Response {
+    let result = async {
+        let (_, session) = auth::caller_session(&context, &headers).await?;
+        let body: PreviewBody = serde_json::from_slice(&body).map_err(|_| {
+            ApiError::Server(ServerError::InvalidRequest {
+                message:
+                    "corps de l'aperçu : { workflow, step_key, payload, locale, digest } attendu"
+                        .to_string(),
+            })
+        })?;
+        let rendered = NotificationPreview::new(NotificationStore::new(session))
+            .render(StepPreviewParams {
+                workflow: body.workflow,
+                step_key: body.step_key,
+                payload: serde_json::Value::Object(body.payload.unwrap_or_default()),
+                locale: body.locale,
+                digest: body.digest.map(|digest| DigestVars {
+                    count: digest.count,
+                    events: serde_json::Value::Array(digest.events),
+                }),
+            })
+            .await?;
+        auth::ok(
+            StatusCode::OK,
+            json!({ "subject": rendered.subject, "html": rendered.html, "text": rendered.text }),
+        )
+    }
+    .await;
+    auth::respond(&context, &headers, result).await
 }
 
 #[cfg(test)]

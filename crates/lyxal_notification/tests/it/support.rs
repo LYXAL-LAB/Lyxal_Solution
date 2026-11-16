@@ -37,12 +37,24 @@ pub async fn installed_client() -> Surreal<Any> {
     lyxal_runtime::schema::install_batch(&client, &batch)
         .await
         .expect("noyau");
+    lyxal_runtime::schema::install_runtime_schema(&client)
+        .await
+        .expect("schéma du runtime");
     for name in [
         "lyxal_event",
         "lyxal_auth",
         "lyxal_i18n",
+        "lyxal_scheduler",
         "lyxal_notification",
     ] {
+        // Release en cours d'installation, comme le runtime : le seed du module déclare ses
+        // tâches du planificateur (la garde de scheduler_task l'exige)
+        client
+            .query("fn::runtime_module_upsert({ module_id: $id, name: $id }); fn::runtime_release_register({ module_id: $id, version: '0.1.0', manifest_version: 1, status: 'Installing' });")
+            .bind(("id", name.to_string()))
+            .await
+            .and_then(|r| r.check())
+            .unwrap_or_else(|e| panic!("release de {name} : {e}"));
         let (manifest, provider) = load(name);
         lyxal_runtime::schema::install_resources(&client, &manifest, &provider)
             .await

@@ -224,6 +224,21 @@ async fn restart_on_installed_database_is_idempotent() {
     assert_eq!(releases, Some(hosted));
 }
 
+/// Release du module en cours d'installation, comme l'enregistre le runtime avant d'installer ses
+/// ressources : le seed d'un module qui déclare des tâches du planificateur l'exige (garde de
+/// `scheduler_task`).
+async fn installing_release(
+    client: &surrealdb::Surreal<surrealdb::engine::any::Any>,
+    module: &str,
+) {
+    client
+        .query("fn::runtime_module_upsert({ module_id: $id, name: $id }); fn::runtime_release_register({ module_id: $id, version: '0.1.0', manifest_version: 1, status: 'Installing' });")
+        .bind(("id", module.to_string()))
+        .await
+        .and_then(|r| r.check())
+        .unwrap_or_else(|e| panic!("release de {module} : {e}"));
+}
+
 /// Une installation interrompue est reprise en rejouant les ressources des modules : chaque
 /// module embarqué doit pouvoir être installé deux fois sans erreur ni doublon.
 #[tokio::test]
@@ -234,6 +249,9 @@ async fn module_resources_are_replayable() {
 
     let client = database("replay").await;
     install_foundation(&client).await.expect("noyau");
+    for module in EMBEDDED_MODULES {
+        installing_release(&client, module.id).await;
+    }
     for _ in 0..2 {
         for module in EMBEDDED_MODULES {
             let manifest = ManifestParser::parse_str(module.manifest).expect("manifeste");
@@ -286,6 +304,7 @@ async fn every_emitted_error_code_is_defined() {
     let mut emitted = std::collections::BTreeSet::new();
     for module in EMBEDDED_MODULES {
         let manifest = ManifestParser::parse_str(module.manifest).expect("manifeste");
+        installing_release(&client, module.id).await;
         lyxal_runtime::schema::install_resources(
             &client,
             &manifest,

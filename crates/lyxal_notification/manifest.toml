@@ -2,7 +2,7 @@ manifest_version = 1
 id = "lyxal_notification"
 name = "Lyxal Notification"
 version = "0.1.0"
-description = "Notifications sortantes de Lyxal OS : abonnés, sujets, préférences, parcours, gabarits, file d'envoi e-mail, diffusions, journal et liste de suppression"
+description = "Notifications sortantes de Lyxal OS : abonnés, sujets, préférences, parcours à étapes (attente, regroupement, limitation, conditions), gabarits, file d'envoi e-mail, diffusions, journal et liste de suppression"
 capabilities = ["database", "events", "email"]
 
 [runtime]
@@ -28,6 +28,10 @@ version = ">=0.1.0"
 id = "lyxal_i18n"
 version = ">=0.1.0"
 
+[[dependencies]]
+id = "lyxal_scheduler"
+version = ">=0.1.0"
+
 [resources]
 schemas = [
     "schema/01_notification_settings.surql",
@@ -38,7 +42,8 @@ schemas = [
     "schema/06_notification_delivery.surql",
     "schema/07_notification_subscriber.surql",
     "schema/08_notification_preference.surql",
-    "schema/09_notification_broadcast.surql"
+    "schema/09_notification_broadcast.surql",
+    "schema/10_notification_digest.surql"
 ]
 functions = [
     "functions/notification_access.surql",
@@ -47,6 +52,8 @@ functions = [
     "functions/notification_category.surql",
     "functions/notification_preference.surql",
     "functions/notification_trigger.surql",
+    "functions/notification_step.surql",
+    "functions/notification_engine.surql",
     "functions/notification_broadcast.surql",
     "functions/notification_workflow.surql",
     "functions/notification_template.surql",

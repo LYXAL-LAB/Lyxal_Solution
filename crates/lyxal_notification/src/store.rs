@@ -4,22 +4,23 @@
 //! connectée pour ses propres préférences).
 
 use async_trait::async_trait;
-use lyxal_surreal::{LyxalSurrealCall, LyxalSurrealError};
+use lyxal_surreal::{LyxalSurrealCall, LyxalSurrealError, SurrealValue};
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
 use crate::models::{
     BroadcastClaim, BroadcastClaimParams, BroadcastCompleteParams, BroadcastCompleted,
-    BroadcastStep, BroadcastStepParams, Category, CategoryRefParams, CategorySaveParams,
-    ClaimedJob, Deleted, JobClaimParams, JobCompleteParams, JobCompleted, JobFailParams, JobFailed,
-    JobReleaseParams, JobReleased, JobRenewParams, JobRenewed, MyPreferenceGetParams,
-    MyPreferenceSetParams, Preference, PreferenceGetParams, PreferenceOverview,
-    PreferenceSetParams, PurgeParams, PurgeResult, ScopeParams, Settings, SettingsGetParams,
-    Subscriber, SubscriberImportParams, SubscriberImportResult, SubscriberListParams,
-    SubscriberRefParams, SubscriberUpsertParams, SubscriberUpsertResult, Topic, TopicListParams,
-    TopicMember, TopicMembersParams, TopicRefParams, TopicSaveParams, TopicSubscribeParams,
-    TopicSubscribed, TopicUnsubscribeParams, TopicUnsubscribed, TriggerParams, TriggerResult,
-    UnsubscribeParams, Unsubscribed,
+    BroadcastStep, BroadcastStepParams, CancelParams, CancelResult, Category, CategoryRefParams,
+    CategorySaveParams, ClaimedJob, Deleted, JobClaimParams, JobCompleteParams, JobCompleted,
+    JobFailParams, JobFailed, JobReleaseParams, JobReleased, JobRenewParams, JobRenewed,
+    MyPreferenceGetParams, MyPreferenceSetParams, Preference, PreferenceGetParams,
+    PreferenceOverview, PreferenceSetParams, PurgeParams, PurgeResult, ScopeParams, Settings,
+    SettingsGetParams, StepPreviewParams, StepPreviewResult, Subscriber, SubscriberImportParams,
+    SubscriberImportResult, SubscriberListParams, SubscriberRefParams, SubscriberUpsertParams,
+    SubscriberUpsertResult, TestSendParams, Topic, TopicListParams, TopicMember,
+    TopicMembersParams, TopicRefParams, TopicSaveParams, TopicSubscribeParams, TopicSubscribed,
+    TopicUnsubscribeParams, TopicUnsubscribed, TriggerBulkParams, TriggerBulkResult, TriggerParams,
+    TriggerResult, UnsubscribeParams, Unsubscribed, WaitScheduleParams, WaitScheduleResult,
 };
 
 /// Store de `lyxal_notification` sur un client SurrealDB (`Surreal<Any>`).
@@ -35,10 +36,39 @@ impl LyxalSurrealCall for NotificationStore {
     }
 }
 
+/// Rejeux d'un appel du worker après un conflit d'écriture transitoire.
+const CONFLICT_RETRIES: u32 = 12;
+
 impl NotificationStore {
     /// Store sur un client déjà connecté (espace de noms et base choisis).
     pub fn new(db: Surreal<Any>) -> Self {
         Self { db }
+    }
+
+    /// Appel d'une fonction des workers, rejoué après un conflit d'écriture transitoire de
+    /// SurrealDB (contrôle de concurrence optimiste : la transaction n'a pas été validée, le
+    /// rejeu est sûr). L'issue d'un envoi doit être enregistrée même quand un déclenchement ou
+    /// un autre worker écrit au même moment : sinon la réservation expirerait et le message
+    /// repartirait. Toute autre erreur est rendue telle quelle.
+    async fn worker_call<T, P>(&self, function: &str, params: P) -> Result<T, LyxalSurrealError>
+    where
+        T: SurrealValue + Send,
+        P: SurrealValue + Clone + Send + 'static,
+    {
+        let mut attempt = 0;
+        loop {
+            match self.call_fn(function, params.clone()).await {
+                Err(error) if error.is_transient_conflict() && attempt < CONFLICT_RETRIES => {
+                    attempt += 1;
+                    // Attente croissante (10 ms à 200 ms) tirée au hasard : deux transactions en
+                    // conflit ne se rejouent pas en même temps
+                    let ceiling = (5u64 << attempt).min(200);
+                    let pause = ceiling / 2 + fastrand::u64(0..=ceiling / 2);
+                    tokio::time::sleep(std::time::Duration::from_millis(pause)).await;
+                }
+                other => return other,
+            }
+        }
     }
 
     /// Client SurrealDB sous-jacent.
@@ -49,6 +79,44 @@ impl NotificationStore {
     /// `fn::notification_trigger` : déclenchement idempotent (abonné, liste, sujet ou tous).
     pub async fn trigger(&self, params: TriggerParams) -> Result<TriggerResult, LyxalSurrealError> {
         self.call_fn("notification_trigger", params).await
+    }
+
+    /// `fn::notification_trigger_bulk` : 1 à 100 déclenchements, rapport par entrée.
+    pub async fn trigger_bulk(
+        &self,
+        params: TriggerBulkParams,
+    ) -> Result<TriggerBulkResult, LyxalSurrealError> {
+        self.call_fn("notification_trigger_bulk", params).await
+    }
+
+    /// `fn::notification_cancel` : annulation des déclenchements en cours d'une clé.
+    pub async fn cancel(&self, params: CancelParams) -> Result<CancelResult, LyxalSurrealError> {
+        self.call_fn("notification_cancel", params).await
+    }
+
+    /// `fn::notification_test_send` : envoi de test d'un parcours à un abonné.
+    pub async fn test_send(
+        &self,
+        params: TestSendParams,
+    ) -> Result<TriggerResult, LyxalSurrealError> {
+        self.call_fn("notification_test_send", params).await
+    }
+
+    /// `fn::notification_step_preview` : données de l'aperçu d'une étape (sans écriture).
+    pub async fn step_preview(
+        &self,
+        params: StepPreviewParams,
+    ) -> Result<StepPreviewResult, LyxalSurrealError> {
+        self.call_fn("notification_step_preview", params).await
+    }
+
+    /// `fn::notification_wait_schedule` : attentes confiées au planificateur (rejoué après un
+    /// conflit d'écriture transitoire).
+    pub async fn wait_schedule(
+        &self,
+        params: WaitScheduleParams,
+    ) -> Result<WaitScheduleResult, LyxalSurrealError> {
+        self.worker_call("notification_wait_schedule", params).await
     }
 
     // ------------------------------------------------------------------------------------------
@@ -286,20 +354,23 @@ impl NotificationStore {
         self.call_fn("notification_job_release", params).await
     }
 
-    /// `fn::notification_job_complete` : étape envoyée.
+    /// `fn::notification_job_complete` : étape envoyée, étape suivante engagée (rejoué après un
+    /// conflit d'écriture transitoire).
     pub async fn job_complete(
         &self,
         params: JobCompleteParams,
     ) -> Result<JobCompleted, LyxalSurrealError> {
-        self.call_fn("notification_job_complete", params).await
+        self.worker_call("notification_job_complete", params).await
     }
 
-    /// `fn::notification_job_fail` : échec d'envoi.
+    /// `fn::notification_job_fail` : échec d'envoi (rejoué après un conflit d'écriture
+    /// transitoire).
     pub async fn job_fail(&self, params: JobFailParams) -> Result<JobFailed, LyxalSurrealError> {
-        self.call_fn("notification_job_fail", params).await
+        self.worker_call("notification_job_fail", params).await
     }
 
-    /// `fn::notification_purge` : purge par paquets.
+    /// `fn::notification_purge` : purge par paquets (appelée d'ordinaire par le planificateur,
+    /// tâche `notification.purge`).
     pub async fn purge(&self, params: PurgeParams) -> Result<PurgeResult, LyxalSurrealError> {
         self.call_fn("notification_purge", params).await
     }

@@ -1,4 +1,4 @@
-//! Workers supervisés : envoi des e-mails, diffusions et purge.
+//! Workers supervisés : envoi des e-mails, diffusions et attentes des parcours.
 //!
 //! Le worker d'envoi réserve les étapes dues (`fn::notification_job_claim`), reporte celles qui
 //! tombent dans les heures calmes de l'abonné, ouvre le secret, rend le message (lien de
@@ -10,6 +10,11 @@
 //! traite par paquets de 500 abonnés (`fn::notification_broadcast_step`) ; arrêté en cours de
 //! route, il laisse expirer sa réservation et la diffusion reprend au paquet suivant, sans
 //! doublon.
+//!
+//! Le worker d'étapes confie à `lyxal_scheduler` les attentes et les regroupements engagés
+//! (`fn::notification_wait_schedule`) ; le planificateur reprend chaque déclenchement à leur fin
+//! (`fn::notification_run_resume`). La purge est une planification horaire du planificateur
+//! (tâche `notification.purge`), créée à l'installation du module.
 
 use async_trait::async_trait;
 use lyxal_crypto::KeyResolver;
@@ -26,7 +31,7 @@ use crate::error::NotificationError;
 use crate::models::{
     BroadcastClaimParams, BroadcastCompleteParams, BroadcastStepParams, ClaimedJob, FailureClass,
     JobClaimParams, JobCompleteParams, JobFailParams, JobReleaseParams, JobRenewParams,
-    NotificationDatetime, PurgeParams,
+    NotificationDatetime, WaitScheduleParams, WaitScheduleResult,
 };
 use crate::quiet::quiet_until;
 use crate::render::Renderer;
@@ -538,72 +543,97 @@ impl LyxalWorker for NotificationBroadcastWorker {
     }
 }
 
-/// Worker de purge : secrets expirés, journal et déclenchements au-delà de leur conservation.
-pub struct NotificationPurgeWorker {
-    descriptor: WorkerDescriptor,
-    store: NotificationStore,
-    interval: Duration,
-    batch: u32,
+/// Réglages du worker d'étapes.
+#[derive(Debug, Clone)]
+pub struct StepWorkerSettings {
+    /// Attente entre deux passages quand le dernier a trouvé du travail.
+    pub busy_interval: Duration,
+    /// Attente entre deux passages quand rien n'attendait.
+    pub idle_interval: Duration,
+    /// Attentes confiées au plus par passage (500 au plus).
+    pub batch_size: u32,
 }
 
-impl NotificationPurgeWorker {
-    /// Purge toutes les `interval`, par paquets de `batch` éléments.
-    pub fn new(
-        store: NotificationStore,
-        interval: Duration,
-        batch: u32,
-    ) -> Result<Self, RuntimeError> {
-        let module_id = ModuleId::new(MODULE);
-        let mut descriptor = WorkerDescriptor::new(
-            WorkerId::new(&module_id, "purge")?,
-            module_id,
-            "Lyxal Notification Purge",
-        );
-        descriptor.description = Some(
-            "Effacement des secrets expirés et purge selon les durées de conservation".to_string(),
-        );
-        descriptor.criticality = WorkerCriticality::Optional;
-        Ok(Self {
-            descriptor,
-            store,
-            interval,
-            batch,
-        })
-    }
-
-    /// Une purge (paquets successifs tant qu'un paquet est plein).
-    pub async fn run_once(&self) -> Result<(), NotificationError> {
-        loop {
-            let result = self
-                .store
-                .purge(PurgeParams {
-                    limit: i64::from(self.batch),
-                })
-                .await?;
-            if result.runs < i64::from(self.batch)
-                && result.log_entries < i64::from(self.batch)
-                && result.broadcasts < i64::from(self.batch)
-            {
-                return Ok(());
-            }
+impl Default for StepWorkerSettings {
+    fn default() -> Self {
+        Self {
+            busy_interval: Duration::from_secs(1),
+            idle_interval: Duration::from_secs(5),
+            batch_size: 100,
         }
     }
 }
 
+/// Worker d'étapes : confie au planificateur les attentes et regroupements engagés par les
+/// parcours (session système de l'hôte : la personne qui déclenche n'a besoin d'aucune
+/// permission `scheduler.*`).
+pub struct NotificationStepWorker {
+    descriptor: WorkerDescriptor,
+    store: NotificationStore,
+    settings: StepWorkerSettings,
+}
+
+impl NotificationStepWorker {
+    /// Worker sur la session système de l'hôte.
+    pub fn new(
+        store: NotificationStore,
+        settings: StepWorkerSettings,
+    ) -> Result<Self, RuntimeError> {
+        let module_id = ModuleId::new(MODULE);
+        let mut descriptor = WorkerDescriptor::new(
+            WorkerId::new(&module_id, "steps")?,
+            module_id,
+            "Lyxal Notification Steps",
+        );
+        descriptor.description =
+            Some("Attentes et regroupements des parcours confiés au planificateur".to_string());
+        descriptor.criticality = WorkerCriticality::Optional;
+        Ok(Self {
+            descriptor,
+            store,
+            settings,
+        })
+    }
+
+    /// Un passage : un paquet d'attentes confiées au planificateur (ou reprises si déjà échues).
+    pub async fn run_once(&self) -> Result<WaitScheduleResult, NotificationError> {
+        Ok(self
+            .store
+            .wait_schedule(WaitScheduleParams {
+                limit: Some(i64::from(self.settings.batch_size.clamp(1, 500))),
+            })
+            .await?)
+    }
+}
+
 #[async_trait]
-impl LyxalWorker for NotificationPurgeWorker {
+impl LyxalWorker for NotificationStepWorker {
     fn descriptor(&self) -> &WorkerDescriptor {
         &self.descriptor
     }
 
     async fn run(&self, ctx: WorkerContext) -> Result<(), RuntimeError> {
         while !ctx.is_cancelled() {
-            if let Err(error) = self.run_once().await {
-                tracing::warn!(code = %error.code(), "purge des notifications impossible");
-            }
+            let busy = match self.run_once().await {
+                Ok(result) => {
+                    if result.failed > 0 {
+                        tracing::warn!(failed = result.failed, codes = ?result.codes, "attentes refusées par le planificateur : reprises au passage suivant");
+                    }
+                    result.more || result.scheduled + result.resumed + result.failed > 0
+                }
+                Err(error) => {
+                    tracing::warn!(code = %error.code(), "attentes des parcours non confiées au planificateur");
+                    false
+                }
+            };
+            let pause = if busy {
+                self.settings.busy_interval
+            } else {
+                self.settings.idle_interval
+            };
             tokio::select! {
                 _ = ctx.cancellation.cancelled() => break,
-                _ = tokio::time::sleep(self.interval) => {}
+                _ = tokio::time::sleep(pause) => {}
             }
         }
         Ok(())

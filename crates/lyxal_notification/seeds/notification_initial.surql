@@ -50,7 +50,8 @@ IF !record::exists(notification_settings:installation) THEN (
         scope_key: "installation",
         max_attempts: 8,
         retention_days_runs: 90,
-        retention_days_log: 30
+        retention_days_log: 30,
+        max_wait_days: 30
     }
 ) END;
 
@@ -78,7 +79,7 @@ IF !record::exists(notification_workflow:auth_verification) THEN (
         critical: true,
         sensitive: true,
         payload_schema: { fields: { identity_id: { pipeline: [{ rule: "optional_string", options: { max_length: 128 } }] } }, unknown_keys: "reject" },
-        steps: [{ key: "email", channel: "email" }],
+        steps: [{ key: "email", type: "email" }],
         tags: ["auth"]
     }
 ) END;
@@ -101,7 +102,7 @@ IF !record::exists(notification_workflow:auth_recovery) THEN (
         critical: true,
         sensitive: true,
         payload_schema: { fields: { identity_id: { pipeline: [{ rule: "optional_string", options: { max_length: 128 } }] } }, unknown_keys: "reject" },
-        steps: [{ key: "email", channel: "email" }],
+        steps: [{ key: "email", type: "email" }],
         tags: ["auth"]
     }
 ) END;
@@ -124,7 +125,7 @@ IF !record::exists(notification_workflow:auth_invitation) THEN (
         critical: true,
         sensitive: true,
         payload_schema: { fields: { invitation_id: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 128 } }], required: true }, organization_name: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 128 } }], required: true }, inviter_name: { pipeline: [{ rule: "optional_string", options: { max_length: 128 } }] } }, unknown_keys: "reject" },
-        steps: [{ key: "email", channel: "email" }],
+        steps: [{ key: "email", type: "email" }],
         tags: ["auth"]
     }
 ) END;
@@ -157,7 +158,7 @@ IF !record::exists(notification_workflow:auth_security_alert) THEN (
             reason: { pipeline: [{ rule: "optional_string", options: { max_length: 32 } }] },
             remaining: { pipeline: [{ rule: "integer", options: { min_value: 0, max_value: 20 } }] }
         }, unknown_keys: "reject" },
-        steps: [{ key: "email", channel: "email" }],
+        steps: [{ key: "email", type: "email" }],
         tags: ["auth", "security"]
     }
 ) END;
@@ -168,5 +169,61 @@ IF !record::exists(notification_template:auth_security_alert_email) THEN (
         html_body: "<p>{% if recipient.name %}{{ t(\"notification.common.greeting_named\", name=recipient.name) }}{% else %}{{ t(\"notification.common.greeting\") }}{% endif %}</p>\n<p>{% if payload.alert == \"mfa_enrolled\" %}{% if payload.method and payload.method == \"totp\" %}{{ t(\"notification.auth_security_alert.mfa_enrolled_totp\") }}{% else %}{% if payload.label %}{{ t(\"notification.auth_security_alert.mfa_enrolled_passkey_named\", label=payload.label) }}{% else %}{{ t(\"notification.auth_security_alert.mfa_enrolled_passkey\") }}{% endif %}{% endif %}{% elif payload.alert == \"mfa_removed\" %}{% if payload.reason and payload.reason == \"admin_reset\" %}{{ t(\"notification.auth_security_alert.mfa_removed_admin\") }}{% else %}{% if payload.method and payload.method == \"totp\" %}{{ t(\"notification.auth_security_alert.mfa_removed_totp\") }}{% else %}{% if payload.label %}{{ t(\"notification.auth_security_alert.mfa_removed_passkey_named\", label=payload.label) }}{% else %}{{ t(\"notification.auth_security_alert.mfa_removed_passkey\") }}{% endif %}{% endif %}{% endif %}{% elif payload.alert == \"recovery_codes_generated\" %}{{ t(\"notification.auth_security_alert.recovery_codes_generated\") }}{% elif payload.alert == \"recovery_code_used\" %}{{ t(\"notification.auth_security_alert.recovery_code_used\", remaining=payload.remaining) }}{% elif payload.alert == \"password_changed\" %}{{ t(\"notification.auth_security_alert.password_changed\") }}{% else %}{% if payload.label %}{{ t(\"notification.auth_security_alert.passkey_clone_detected_named\", label=payload.label) }}{% else %}{{ t(\"notification.auth_security_alert.passkey_clone_detected\") }}{% endif %}{% endif %}</p>\n<p>{{ t(\"notification.auth_security_alert.advice\") }}</p>",
         text_body: "{% if recipient.name %}{{ t(\"notification.common.greeting_named\", name=recipient.name) }}{% else %}{{ t(\"notification.common.greeting\") }}{% endif %}\n\n{% if payload.alert == \"mfa_enrolled\" %}{% if payload.method and payload.method == \"totp\" %}{{ t(\"notification.auth_security_alert.mfa_enrolled_totp\") }}{% else %}{% if payload.label %}{{ t(\"notification.auth_security_alert.mfa_enrolled_passkey_named\", label=payload.label) }}{% else %}{{ t(\"notification.auth_security_alert.mfa_enrolled_passkey\") }}{% endif %}{% endif %}{% elif payload.alert == \"mfa_removed\" %}{% if payload.reason and payload.reason == \"admin_reset\" %}{{ t(\"notification.auth_security_alert.mfa_removed_admin\") }}{% else %}{% if payload.method and payload.method == \"totp\" %}{{ t(\"notification.auth_security_alert.mfa_removed_totp\") }}{% else %}{% if payload.label %}{{ t(\"notification.auth_security_alert.mfa_removed_passkey_named\", label=payload.label) }}{% else %}{{ t(\"notification.auth_security_alert.mfa_removed_passkey\") }}{% endif %}{% endif %}{% endif %}{% elif payload.alert == \"recovery_codes_generated\" %}{{ t(\"notification.auth_security_alert.recovery_codes_generated\") }}{% elif payload.alert == \"recovery_code_used\" %}{{ t(\"notification.auth_security_alert.recovery_code_used\", remaining=payload.remaining) }}{% elif payload.alert == \"password_changed\" %}{{ t(\"notification.auth_security_alert.password_changed\") }}{% else %}{% if payload.label %}{{ t(\"notification.auth_security_alert.passkey_clone_detected_named\", label=payload.label) }}{% else %}{{ t(\"notification.auth_security_alert.passkey_clone_detected\") }}{% endif %}{% endif %}\n\n{{ t(\"notification.auth_security_alert.advice\") }}\n",
         keys: ["notification.common.greeting", "notification.common.greeting_named", "notification.auth_security_alert.subject", "notification.auth_security_alert.mfa_enrolled_totp", "notification.auth_security_alert.mfa_enrolled_passkey", "notification.auth_security_alert.mfa_enrolled_passkey_named", "notification.auth_security_alert.mfa_removed_admin", "notification.auth_security_alert.mfa_removed_totp", "notification.auth_security_alert.mfa_removed_passkey", "notification.auth_security_alert.mfa_removed_passkey_named", "notification.auth_security_alert.recovery_codes_generated", "notification.auth_security_alert.recovery_code_used", "notification.auth_security_alert.password_changed", "notification.auth_security_alert.passkey_clone_detected", "notification.auth_security_alert.passkey_clone_detected_named", "notification.auth_security_alert.advice"]
+    }
+) END;
+
+-- ----------------------------------------------------------------------------
+-- Tâches de lyxal_scheduler (contrat public des tâches déclarées par le seed d'un module)
+-- ----------------------------------------------------------------------------
+-- Exécuteur `function` : le moteur du planificateur appelle, en session système,
+-- fn::notification_run_resume (fin d'une attente ou d'un regroupement, exécution différée confiée
+-- par fn::notification_wait_schedule) et fn::notification_purge (planification horaire
+-- notification-purge créée à l'installation du module). Portée `installation` : un déclenchement
+-- d'organisation est repris par son identifiant (argument run), quelle que soit sa portée.
+-- Permission propre : notification.worker. Tous les champs sont donnés (une installation en mode
+-- import n'applique pas les valeurs par défaut du schéma).
+
+IF !record::exists(scheduler_task:⟨notification.run_resume⟩) THEN (
+    CREATE scheduler_task:⟨notification.run_resume⟩ CONTENT {
+        module: "lyxal_notification",
+        executor: "function",
+        target: "notification_run_resume",
+        permission: "notification.worker",
+        args_schema: { fields: {
+            run: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 128 } }], required: true },
+            step_key: { pipeline: [{ rule: "snake_case_name", options: { min_length: 1, max_length: 64 } }], required: true }
+        }, unknown_keys: "reject" },
+        queue: scheduler_queue:default,
+        priority: 3,
+        retry: { max_attempts: 5, strategy: "exponential", initial_delay: 10s, max_delay: 10m },
+        timeout: 1m,
+        unique_for: 1d,
+        scope: "installation",
+        state: "active",
+        description: { fr: "Reprise d'un parcours de notification à la fin d'une attente ou d'un regroupement", en: "Resume a notification workflow at the end of a delay or digest" },
+        created_at: time::now(),
+        updated_at: time::now()
+    }
+) END;
+
+IF !record::exists(scheduler_task:⟨notification.purge⟩) THEN (
+    CREATE scheduler_task:⟨notification.purge⟩ CONTENT {
+        module: "lyxal_notification",
+        executor: "function",
+        target: "notification_purge",
+        permission: "notification.worker",
+        args_schema: { fields: {
+            limit: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 10000 } }] }
+        }, unknown_keys: "reject" },
+        queue: scheduler_queue:default,
+        priority: 7,
+        retry: { max_attempts: 3, strategy: "exponential", initial_delay: 1m, max_delay: 30m },
+        timeout: 10m,
+        unique_for: NONE,
+        scope: "installation",
+        state: "active",
+        description: { fr: "Purge des notifications : secrets expirés, journal, déclenchements, regroupements et compteurs au-delà de leur conservation", en: "Notification purge: expired secrets, log, runs, digests and counters beyond their retention" },
+        created_at: time::now(),
+        updated_at: time::now()
     }
 ) END;

@@ -34,38 +34,38 @@ RETURN fn::notification_workflow_create({
     name: "Devis envoyé",
     trigger_event: "crm.quote.sent",
     payload_schema: { fields: { quote_number: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 32 } }], required: true } }, unknown_keys: "reject" },
-    steps: [{ key: "email", channel: "email" }],
+    steps: [{ key: "email", type: "email" }],
     tags: ["crm"]
 }).data.{ key, status, critical, sensitive, scope_key } == { key: "devis_envoye", status: "draft", critical: false, sensitive: false, scope_key: "alpha" };
 
 -- test: clé déjà utilisée dans la même organisation refusée ; autorisée dans une autre
 -- en tant que: admin
-RETURN fn::notification_workflow_create({ tenant: "auth_organization:alpha", key: "devis_envoye", name: "Doublon", steps: [{ key: "email", channel: "email" }] }).error.code == "NOTIFICATION_WORKFLOW_KEY_TAKEN";
+RETURN fn::notification_workflow_create({ tenant: "auth_organization:alpha", key: "devis_envoye", name: "Doublon", steps: [{ key: "email", type: "email" }] }).error.code == "NOTIFICATION_WORKFLOW_KEY_TAKEN";
 
 -- test: la même clé dans une autre organisation est acceptée
 -- en tant que: autre
-RETURN fn::notification_workflow_create({ tenant: "auth_organization:beta", key: "devis_envoye", name: "Devis", steps: [{ key: "email", channel: "email" }] }).ok;
+RETURN fn::notification_workflow_create({ tenant: "auth_organization:beta", key: "devis_envoye", name: "Devis", steps: [{ key: "email", type: "email" }] }).ok;
 
 -- test: entrées invalides (clé, étapes vides, canal inconnu, étapes en double)
 -- en tant que: admin
-RETURN fn::notification_workflow_create({ tenant: "auth_organization:alpha", key: "Pas Snake", name: "X", steps: [{ key: "email", channel: "email" }] }).error.code == "NOTIFICATION_INVALID_INPUT"
+RETURN fn::notification_workflow_create({ tenant: "auth_organization:alpha", key: "Pas Snake", name: "X", steps: [{ key: "email", type: "email" }] }).error.code == "NOTIFICATION_INVALID_INPUT"
     AND fn::notification_workflow_create({ tenant: "auth_organization:alpha", key: "vide", name: "X", steps: [] }).error.code == "NOTIFICATION_INVALID_INPUT"
-    AND fn::notification_workflow_create({ tenant: "auth_organization:alpha", key: "sms", name: "X", steps: [{ key: "sms", channel: "sms" }] }).error.code == "NOTIFICATION_INVALID_INPUT"
-    AND fn::notification_workflow_create({ tenant: "auth_organization:alpha", key: "double", name: "X", steps: [{ key: "email", channel: "email" }, { key: "email", channel: "email" }] }).error.code == "NOTIFICATION_INVALID_INPUT";
+    AND fn::notification_workflow_create({ tenant: "auth_organization:alpha", key: "sms", name: "X", steps: [{ key: "sms", channel: "sms" }] }).error.code == "NOTIFICATION_STEP_INVALID"
+    AND fn::notification_workflow_create({ tenant: "auth_organization:alpha", key: "double", name: "X", steps: [{ key: "email", type: "email" }, { key: "email", type: "email" }] }).error.code == "NOTIFICATION_STEP_INVALID";
 
 -- test: un schéma de variables invalide est refusé par lyxal_core
 -- en tant que: admin
 -- attendu-erreur: CORE_UNSUPPORTED_OPTION
-RETURN fn::notification_workflow_create({ tenant: "auth_organization:alpha", key: "schema_faux", name: "X", payload_schema: { fields: { a: { pipeline: [{ rule: "regle_inconnue" }] } } }, steps: [{ key: "email", channel: "email" }] });
+RETURN fn::notification_workflow_create({ tenant: "auth_organization:alpha", key: "schema_faux", name: "X", payload_schema: { fields: { a: { pipeline: [{ rule: "regle_inconnue" }] } } }, steps: [{ key: "email", type: "email" }] });
 
 -- test: un membre sans permission ne crée pas de parcours ; un administrateur d'une autre organisation non plus
 -- en tant que: membre
-RETURN fn::notification_workflow_create({ tenant: "auth_organization:alpha", key: "interdit", name: "X", steps: [{ key: "email", channel: "email" }] }).error.code == "NOTIFICATION_PERMISSION_DENIED";
+RETURN fn::notification_workflow_create({ tenant: "auth_organization:alpha", key: "interdit", name: "X", steps: [{ key: "email", type: "email" }] }).error.code == "NOTIFICATION_PERMISSION_DENIED";
 
 -- test: une organisation ne crée pas de parcours chez une autre, ni pour l'installation
 -- en tant que: autre
-RETURN fn::notification_workflow_create({ tenant: "auth_organization:alpha", key: "intrus", name: "X", steps: [{ key: "email", channel: "email" }] }).error.code == "NOTIFICATION_PERMISSION_DENIED"
-    AND fn::notification_workflow_create({ key: "intrus", name: "X", steps: [{ key: "email", channel: "email" }] }).error.code == "NOTIFICATION_PERMISSION_DENIED";
+RETURN fn::notification_workflow_create({ tenant: "auth_organization:alpha", key: "intrus", name: "X", steps: [{ key: "email", type: "email" }] }).error.code == "NOTIFICATION_PERMISSION_DENIED"
+    AND fn::notification_workflow_create({ key: "intrus", name: "X", steps: [{ key: "email", type: "email" }] }).error.code == "NOTIFICATION_PERMISSION_DENIED";
 
 -- test: un parcours sans gabarit ne peut pas être activé
 -- en tant que: admin
@@ -180,7 +180,7 @@ RETURN fn::notification_template_update({ template: <string> (SELECT VALUE id FR
 -- en tant que: admin
 {
     LET $w = (SELECT VALUE id FROM ONLY notification_workflow WHERE scope_key = "alpha" AND key = "devis_envoye" LIMIT 1);
-    RETURN fn::notification_workflow_update({ workflow: <string> $w, steps: [{ key: "email", channel: "email" }, { key: "rappel", channel: "email" }] }).error.code == "NOTIFICATION_TEMPLATE_REQUIRED"
+    RETURN fn::notification_workflow_update({ workflow: <string> $w, steps: [{ key: "email", type: "email" }, { key: "rappel", type: "email" }] }).error.code == "NOTIFICATION_TEMPLATE_REQUIRED"
         AND fn::notification_workflow_update({ workflow: <string> $w, name: "Devis transmis", tags: ["crm", "devis"] }).data.{ name, tags } == { name: "Devis transmis", tags: ["crm", "devis"] };
 };
 
@@ -215,7 +215,7 @@ RETURN fn::notification_workflow_list({ tenant: "auth_organization:alpha" }).err
 -- en tant que: admin
 RETURN fn::notification_settings_set({ tenant: "auth_organization:alpha", from_name: "Alpha BTP", reply_to: "Contact@Alpha.test", max_attempts: 3 }).ok
     AND fn::notification_settings_get({ tenant: "auth_organization:alpha" }).data.effective
-        == { from_name: "Alpha BTP", reply_to: "contact@alpha.test", timezone: NONE, max_attempts: 3, retention_days_runs: 90, retention_days_log: 30 };
+        == { from_name: "Alpha BTP", reply_to: "contact@alpha.test", timezone: NONE, max_attempts: 3, retention_days_runs: 90, retention_days_log: 30, max_wait_days: 30 };
 
 -- test: réglages modifiés sans recréation ; valeurs hors bornes refusées
 -- en tant que: admin

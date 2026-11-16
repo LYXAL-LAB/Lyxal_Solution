@@ -25,10 +25,10 @@
     RELATE auth_identity:autre->auth_member_of->auth_organization:beta;
     CREATE auth_session:autre CONTENT { identity: auth_identity:autre, organization: auth_organization:beta, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
     CREATE notification_category:actualites CONTENT { tenant: auth_organization:alpha, key: "actualites", name: "Actualités" };
-    CREATE notification_workflow:lettre CONTENT { tenant: auth_organization:alpha, key: "lettre", name: "Lettre", status: "active", category: notification_category:actualites, steps: [{ key: "email", channel: "email" }] };
-    CREATE notification_workflow:facture CONTENT { tenant: auth_organization:alpha, key: "facture", name: "Facture", status: "active", preferences: { channels: { email: true }, enforced: ["email"] }, steps: [{ key: "email", channel: "email" }] };
-    CREATE notification_workflow:alerte CONTENT { tenant: auth_organization:alpha, key: "alerte", name: "Alerte", status: "active", critical: true, steps: [{ key: "email", channel: "email" }] };
-    CREATE notification_workflow:sans_avis CONTENT { tenant: auth_organization:alpha, key: "sans_avis", name: "Sans avis", status: "active", preferences: { channels: { email: false }, enforced: [] }, steps: [{ key: "email", channel: "email" }] };
+    CREATE notification_workflow:lettre CONTENT { tenant: auth_organization:alpha, key: "lettre", name: "Lettre", status: "active", category: notification_category:actualites, steps: [{ key: "email", type: "email" }] };
+    CREATE notification_workflow:facture CONTENT { tenant: auth_organization:alpha, key: "facture", name: "Facture", status: "active", preferences: { channels: { email: true }, enforced: ["email"] }, steps: [{ key: "email", type: "email" }] };
+    CREATE notification_workflow:alerte CONTENT { tenant: auth_organization:alpha, key: "alerte", name: "Alerte", status: "active", critical: true, steps: [{ key: "email", type: "email" }] };
+    CREATE notification_workflow:sans_avis CONTENT { tenant: auth_organization:alpha, key: "sans_avis", name: "Sans avis", status: "active", preferences: { channels: { email: false }, enforced: [] }, steps: [{ key: "email", type: "email" }] };
     fn::notification_subscriber_save({ tenant: auth_organization:alpha, input: { subscriber_id: "s", email: "s@exemple.fr", timezone: "America/Montreal" }, must_exist: false });
     fn::notification_subscriber_save({ tenant: auth_organization:alpha, input: { subscriber_id: "t", email: "t@exemple.fr" }, must_exist: false });
 };

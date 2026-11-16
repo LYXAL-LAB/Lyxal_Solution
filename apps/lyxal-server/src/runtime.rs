@@ -55,7 +55,7 @@ pub async fn start(config: &AppConfig, client: &Surreal<Any>) -> Result<Started,
 
     let services = modules::register_services(&runtime, client, config).await?;
 
-    let report = runtime.install_packages(modules::packages()?).await?;
+    let report = runtime.install_packages(modules::packages(client)?).await?;
     if let Some(failure) = report.failed.first() {
         return Err(ServerError::ModuleInstall {
             module: failure.module_id.to_string(),

@@ -23,7 +23,7 @@
     };
     RELATE auth_identity:autre->auth_member_of->auth_organization:beta;
     CREATE auth_session:autre CONTENT { identity: auth_identity:autre, organization: auth_organization:beta, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
-    CREATE notification_workflow:info_alpha CONTENT { tenant: auth_organization:alpha, key: "info", name: "Info", status: "active", steps: [{ key: "email", channel: "email" }] };
+    CREATE notification_workflow:info_alpha CONTENT { tenant: auth_organization:alpha, key: "info", name: "Info", status: "active", steps: [{ key: "email", type: "email" }] };
 };
 
 -- test: abonné créé dans sa portée ; adresse normalisée, identifiant conservé

@@ -41,6 +41,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_settings_set($params: object) {
             max_attempts: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 20 } }] },
             retention_days_runs: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 3650 } }] },
             retention_days_log: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 3650 } }] },
+            max_wait_days: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 366 } }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -52,7 +53,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_settings_set($params: object) {
     IF !fn::notification_can({ action: "manage", tenant: $p.tenant }) { RETURN fn::error_result("NOTIFICATION_PERMISSION_DENIED", $p.language, {}); };
     LET $scope = IF $p.tenant IS NONE { "installation" } ELSE { <string> record::id($p.tenant) };
     LET $changes = object::from_entries(array::filter(
-        array::map(["from_name", "reply_to", "timezone", "max_attempts", "retention_days_runs", "retention_days_log"], |$f| [$f, $p[$f]]),
+        array::map(["from_name", "reply_to", "timezone", "max_attempts", "retention_days_runs", "retention_days_log", "max_wait_days"], |$f| [$f, $p[$f]]),
         |$e| $e[1] IS NOT NONE
     ));
     LET $changes = IF $changes.reply_to IS NONE { $changes } ELSE {
@@ -66,7 +67,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_settings_set($params: object) {
     };
     IF $saved == NONE { RETURN fn::error_result("NOTIFICATION_WRITE_FORBIDDEN", $p.language, { table: "notification_settings" }); };
     RETURN fn::result_ok($saved);
-} COMMENT "Enregistre les réglages d'une portée ({ tenant, from_name, reply_to, timezone, max_attempts, retention_days_runs, retention_days_log }) ; seuls les champs fournis changent. Permission notification.manage";
+} COMMENT "Enregistre les réglages d'une portée ({ tenant, from_name, reply_to, timezone, max_attempts, retention_days_runs, retention_days_log, max_wait_days : durée maximale des attentes, 1 à 366 jours }) ; seuls les champs fournis changent. Permission notification.manage";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_suppression_add
@@ -192,7 +193,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_run_list($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
             tenant: { pipeline: [{ rule: "record", options: { expected_table: "auth_organization" } }] },
-            status: { pipeline: [{ rule: "enum", options: { allowed: ["pending", "completed", "failed", "skipped"], case_sensitive: true } }] },
+            status: { pipeline: [{ rule: "enum", options: { allowed: ["pending", "waiting", "completed", "failed", "skipped", "canceled", "merged"], case_sensitive: true } }] },
             workflow: { pipeline: [{ rule: "record", options: { expected_table: "notification_workflow" } }] },
             limit: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 1000 } }], default: 100 },
             start: { pipeline: [{ rule: "integer", options: { min_value: 0 } }], default: 0 },
