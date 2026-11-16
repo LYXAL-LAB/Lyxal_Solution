@@ -8,7 +8,9 @@ déclenchement » par de vrais **abonnés**, ajoute les **sujets**, les **catég
 canaux viennent aux lots 3 à 6 ; ce lot reste sur l'e-mail mais prépare le téléphone et les
 canaux suivants. Aucune ligne de code avant la validation du CTO (`.agents/AGENTS.md` §3).
 
-## 1. Questions soumises au CTO
+## 1. Décisions du CTO
+
+Décisions B1 à B6 **validées par le CTO** le 16 novembre 2026, telles que proposées ci-dessous.
 
 | N° | Question | Proposition |
 | :- | :--- | :--- |
