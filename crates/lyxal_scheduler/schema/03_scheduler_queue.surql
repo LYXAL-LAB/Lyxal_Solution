@@ -121,6 +121,6 @@ DEFINE FIELD OVERWRITE handlers ON TABLE scheduler_node
 DEFINE FIELD OVERWRITE seen_at ON TABLE scheduler_node
     TYPE datetime
     VALUE time::now()
-    COMMENT "Dernière réservation du nœud dans la file";
+    COMMENT "Dernière réservation ou dernier battement du nœud dans la file";
 
 DEFINE INDEX OVERWRITE scheduler_node_seen ON TABLE scheduler_node FIELDS seen_at;

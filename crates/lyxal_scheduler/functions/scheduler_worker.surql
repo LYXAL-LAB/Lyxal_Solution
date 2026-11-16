@@ -150,8 +150,11 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_heartbeat($params: object) {
     LET $timeout = (SELECT VALUE timeout FROM ONLY $leased.run.task);
     LET $updated = (UPDATE ONLY $p.run SET locked_until = time::now() + $timeout + fn::scheduler_lease_margin() WHERE state = "running" AND lease = $lease);
     IF $updated == NONE { RETURN fn::error_result("SCHEDULER_LEASE_LOST", $p.language, { run: <string> $p.run }); };
+    -- Présence du nœud dans la file rafraîchie aussi par les battements : un nœud dont toutes les
+    -- places sont occupées ne réserve plus, mais il sert toujours ses handlers (sonde de santé)
+    UPDATE type::record("scheduler_node", [$updated.lease_node, record::id($updated.queue)]) SET seen_at = time::now();
     RETURN fn::result_ok({ run: $updated.id, locked_until: $updated.locked_until, cancel_requested: $updated.cancel_requested });
-} COMMENT "Moteur : prolonge le bail d'une exécution en cours ({ run, lease }) et indique si son annulation est demandée : { run, locked_until, cancel_requested }. Bail perdu : SCHEDULER_LEASE_LOST. Droit : session système ou scheduler.worker";
+} COMMENT "Moteur : prolonge le bail d'une exécution en cours ({ run, lease }) et indique si son annulation est demandée : { run, locked_until, cancel_requested }. Bail perdu : SCHEDULER_LEASE_LOST. Rafraîchit aussi la présence du nœud dans la file (scheduler_node). Droit : session système ou scheduler.worker";
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_retry_delay (interne)
