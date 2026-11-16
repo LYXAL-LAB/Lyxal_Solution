@@ -9,7 +9,9 @@ des fournisseurs** (délivré, rejeté, plainte) avec suppression automatique de
 Les SMS et messageries (lot 4) se brancheront sur les mêmes intégrations. Aucune ligne de code
 avant la validation du CTO (`.agents/AGENTS.md` §3).
 
-## 1. Questions soumises au CTO
+## 1. Décisions du CTO
+
+Décisions D1 à D6 **validées par le CTO** le 16 novembre 2026, telles que proposées ci-dessous.
 
 | N° | Question | Proposition |
 | :- | :--- | :--- |
