@@ -30,9 +30,11 @@ décalage aléatoire, élagage, compteurs de places ; banc 214 assertions et 71 
 | A13 | P2 | Réglages d'installation lisibles sans permission ; commentaires citant des gardes inexistantes ; une planification `invalid` peut être remise `active` sans règles corrigées | Lecture des réglages réservée au droit de lecture ; commentaires corrigés ; `invalid → active` seulement avec de nouvelles règles |
 | A14 | P2 | `RECHERCHE_SOURCES.md` décrit encore l'ancien dossier supprimé | Remplacé par `MODELE_SOURCES.md` (§3) |
 
-## 2. Décisions soumises au CTO
+## 2. Décisions du CTO (16 novembre 2026)
 
-| N° | Question | Proposition |
+Y1 à Y5 validées selon les propositions.
+
+| N° | Question | Décision |
 | :- | :--- | :--- |
 | **Y1** | Permission propre d'une tâche | Exigée pour **tout ce qui fait exécuter** la tâche : création, modification, reprise, déclenchement, rejeu, exécution différée et relance. Pas pour ce qui l'arrête : pause, annulation, suppression. |
 | **Y2** | Garde du bail du planificateur | Ajoutée (A5), sur le modèle de `lyxal_event` : nouveau code `SCHEDULER_LEADER_FENCED`. |
