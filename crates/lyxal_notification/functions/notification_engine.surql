@@ -244,13 +244,14 @@ DEFINE FUNCTION OVERWRITE fn::notification_run_advance($params: object) -> objec
     IF $first == NONE { RETURN { status: NONE }; };
     IF $first.status NOT IN ["pending", "waiting"] { RETURN { status: $first.status }; };
     LET $workflow = (SELECT * FROM ONLY $first.workflow);
-    FOR $index IN <array>($first.cursor..array::len($workflow.steps)) {
+    -- Étapes copiées au déclenchement : un parcours modifié depuis ne décale pas le curseur
+    FOR $index IN <array>($first.cursor..array::len($first.steps)) {
         LET $run = (SELECT * FROM ONLY $params.run);
         -- Arrêt : déclenchement terminé (fusionné, limité, annulé), étape en cours ou en échec
         IF $run.status NOT IN ["pending", "waiting"] { BREAK; };
         LET $jobs = (SELECT step_key, status FROM notification_job WHERE run = $run.id);
         IF array::any($jobs, |$job| $job.status IN ["queued", "running", "waiting", "failed"]) { BREAK; };
-        LET $step = $workflow.steps[$index];
+        LET $step = $first.steps[$index];
         IF !array::any($jobs, |$job| $job.step_key = $step.key) {
             fn::notification_step_enter({ run: $run, workflow: $workflow, step: $step, index: $index });
         };

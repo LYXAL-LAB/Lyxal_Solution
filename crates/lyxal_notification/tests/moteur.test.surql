@@ -214,3 +214,24 @@ RETURN fn::notification_wait_schedule({ limit: 0 }).error.code == "NOTIFICATION_
         AND $again.job IS NONE AND $entered.job IS NONE AND $ended == { status: "ignored", run_status: NONE }
         AND count(SELECT id FROM notification_job WHERE run = $run.id) == 3;
 };
+
+-- test: un parcours modifié pendant une attente ne change pas le déclenchement (étapes copiées au déclenchement)
+{
+    CREATE notification_workflow:modif CONTENT { tenant: auth_organization:alpha, key: "modif", name: "Modif", status: "active", steps: [
+        { key: "pause", type: "delay", amount: 1, unit: "hours" }, { key: "email", type: "email" }
+    ] };
+    CREATE notification_template CONTENT { tenant: auth_organization:alpha, workflow: notification_workflow:modif, step_key: "email", subject: "S", html_body: "<p>H</p>", text_body: "T" };
+    LET $r = fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "modif", idempotency_key: "modif-1", to: { subscriber_id: "client-9", email: "c9@exemple.fr" } }).data;
+    UPDATE notification_workflow:modif SET steps = [{ key: "email", type: "email" }];
+    LET $resumed = fn::notification_run_resume({ args: { run: <string> $r.run_id, step_key: "pause" } }).data;
+    RETURN $resumed.status == "resumed" AND (SELECT VALUE steps.key FROM ONLY $r.run_id) == ["pause", "email"]
+        AND (SELECT VALUE [step_key, status] FROM notification_job WHERE run = $r.run_id ORDER BY created_at) == [["pause", "completed"], ["email", "queued"]];
+};
+
+-- test: échéance : aucune sans secret (une longue attente ne fait rien expirer), 7 jours par défaut avec un secret
+{
+    LET $plain = fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "modif", idempotency_key: "modif-2", to: { subscriber_id: "client-9" } }).data;
+    LET $sealed = fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "modif", idempotency_key: "modif-3", to: { subscriber_id: "client-9" }, secret: "enc:v2:cle-2026:AAAAAAAAAAAAAAAAAAAAAAAA" }).data;
+    LET $at = (SELECT VALUE expires_at FROM ONLY $sealed.run_id);
+    RETURN (SELECT VALUE expires_at FROM ONLY $plain.run_id) IS NONE AND $at > time::now() + 6d AND $at <= time::now() + 7d;
+};

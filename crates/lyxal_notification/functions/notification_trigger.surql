@@ -69,9 +69,10 @@ DEFINE FUNCTION OVERWRITE fn::notification_run_create($params: object) -> object
         status: IF $skip IS NONE { "pending" } ELSE { "skipped" },
         skip_reason: $skip,
         cursor: 0,
+        steps: $workflow.steps,
         overrides: $params.overrides ?? {},
         test: $params.test ?? false,
-        expires_at: $params.expires_at ?? (time::now() + 7d),
+        expires_at: $params.expires_at ?? IF $params.secret IS NONE { NONE } ELSE { time::now() + 7d },
         purge_after: time::now() + duration::from_days($params.settings.retention_days_runs)
     });
     IF array::len($inserted) = 0 {

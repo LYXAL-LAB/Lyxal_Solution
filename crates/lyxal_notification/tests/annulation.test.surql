@@ -104,6 +104,27 @@ fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "rel
         AND (SELECT VALUE [step_key, status] FROM notification_job WHERE run = $job.run_id) == [["premier", "completed"]];
 };
 
+-- préparation: deux envois réservés par le worker puis annulés pendant l'envoi
+{
+    fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "relance", idempotency_key: "encours-1", to: { subscriber_id: "client-4", email: "c4@exemple.fr" } });
+    fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "relance", idempotency_key: "encours-2", to: { subscriber_id: "client-5", email: "c5@exemple.fr" } });
+};
+
+-- test: annulé pendant l'envoi : un échec temporaire ne remet pas l'étape en file, une réservation expirée n'est pas reprise
+{
+    LET $jobs = fn::notification_job_claim({ worker_id: "w1" }).data;
+    LET $a = $jobs.find(|$j| $j.idempotency_key = "encours-1");
+    LET $b = $jobs.find(|$j| $j.idempotency_key = "encours-2");
+    LET $c1 = fn::notification_cancel({ tenant: "auth_organization:alpha", idempotency_key: "encours-1" }).data.canceled;
+    LET $c2 = fn::notification_cancel({ tenant: "auth_organization:alpha", idempotency_key: "encours-2" }).data.canceled;
+    LET $failed = fn::notification_job_fail({ job_id: <string> $a.job_id, claim_token: $a.claim_token, class: "transient", code: "SMTP_421" }).data;
+    UPDATE notification_job SET locked_until = time::now() - 1s WHERE run.idempotency_key = "encours-2";
+    LET $again = fn::notification_job_claim({ worker_id: "w2" }).data;
+    RETURN $c1 == 1 AND $c2 == 1 AND $b IS NOT NONE AND $failed.status == "canceled" AND $failed.next_retry_at IS NONE
+        AND $again.filter(|$j| $j.idempotency_key IN ["encours-1", "encours-2"]) == []
+        AND (SELECT VALUE status FROM notification_job WHERE run.idempotency_key IN ["encours-1", "encours-2"]) == ["canceled", "canceled"];
+};
+
 -- test: annulation réservée à notification.send dans l'organisation
 -- en tant que: lecteur
 RETURN fn::notification_cancel({ tenant: "auth_organization:alpha", idempotency_key: "x" }).error.code == "NOTIFICATION_PERMISSION_DENIED";

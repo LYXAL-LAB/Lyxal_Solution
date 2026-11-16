@@ -108,6 +108,16 @@ DEFINE FIELD OVERWRITE cursor ON TABLE notification_run
     DEFAULT 0
     COMMENT "Étape courante : nombre d'étapes du parcours déjà engagées";
 
+DEFINE FIELD OVERWRITE steps ON TABLE notification_run
+    TYPE array<object>
+    DEFAULT []
+    READONLY
+    COMMENT "Étapes du parcours copiées au déclenchement : une modification du parcours ne change pas un déclenchement en cours (cursor reste juste)";
+
+DEFINE FIELD OVERWRITE steps.* ON TABLE notification_run
+    TYPE object
+    FLEXIBLE;
+
 DEFINE FIELD OVERWRITE overrides ON TABLE notification_run
     TYPE object
     FLEXIBLE
@@ -133,8 +143,8 @@ DEFINE FIELD OVERWRITE created_at ON TABLE notification_run
     COMMENT "Création";
 
 DEFINE FIELD OVERWRITE expires_at ON TABLE notification_run
-    TYPE datetime
-    COMMENT "Fin de validité du secret ; purge du déclenchement selon les réglages";
+    TYPE option<datetime>
+    COMMENT "Échéance : au-delà, les envois restants sont annulés et le secret effacé. Fournie au déclenchement, sinon 7 jours pour un déclenchement avec secret, sinon aucune (une longue attente ne fait rien expirer)";
 
 DEFINE FIELD OVERWRITE purge_after ON TABLE notification_run
     TYPE datetime
