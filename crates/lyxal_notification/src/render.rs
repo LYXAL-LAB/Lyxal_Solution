@@ -37,7 +37,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::error::{NotificationError, NotificationResult};
-use crate::models::{ClaimedJob, DigestVars, StepPreviewResult};
+use crate::models::{ClaimedJob, DigestVars, InboxAction, StepPreviewResult};
 
 /// Budget d'exécution par gabarit (instructions MiniJinja).
 pub const DEFAULT_FUEL: u64 = 50_000;
@@ -60,6 +60,28 @@ pub struct RenderedText {
     pub title: Option<String>,
     /// Texte.
     pub text: String,
+}
+
+/// Message du fil rendu (décision F3).
+pub struct RenderedInApp {
+    /// Titre, sur une ligne (variables échappées).
+    pub title: String,
+    /// Texte (Markdown du gabarit, variables échappées).
+    pub text: String,
+    /// Avatar.
+    pub avatar: Option<String>,
+    /// Lien de redirection.
+    pub redirect: Option<String>,
+    /// Boutons (libellé échappé, lien).
+    pub actions: Vec<InboxAction>,
+    /// Données rendues.
+    pub data: serde_json::Map<String, serde_json::Value>,
+}
+
+impl std::fmt::Debug for RenderedInApp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("RenderedInApp([REDACTED])")
+    }
 }
 
 impl std::fmt::Debug for RenderedText {
@@ -270,6 +292,58 @@ impl Renderer {
         Ok(RenderedText {
             title: title.filter(|title| !title.is_empty()),
             text,
+        })
+    }
+
+    /// Rend un message du fil (décision F3) : titre (une ligne) et texte avec échappement HTML
+    /// des variables (le Markdown écrit dans le gabarit reste tel quel), libellés des boutons
+    /// échappés de même ; liens (avatar, redirection, boutons) et données rendus sans
+    /// échappement, puis contrôlés par `fn::notification_inbox_deliver` (chemin de
+    /// l'application ou adresse HTTPS). Jamais de secret ni de lien de désabonnement.
+    pub fn render_in_app(&self, job: &ClaimedJob) -> NotificationResult<RenderedInApp> {
+        let (Some(subject), _, Some(text_body)) = job.template() else {
+            return Err(NotificationError::Render("étape sans gabarit".to_string()));
+        };
+        let (env, context) = self.prepare(job, None, None)?;
+        let title = single_line(&render(&env, "title.html", subject, context.clone())?);
+        let text = render(&env, "text.html", text_body, context.clone())?;
+        let link = |source: &str| {
+            render(&env, "link.txt", source, context.clone()).map(|url| url.trim().to_string())
+        };
+        let avatar = job.avatar.as_deref().map(link).transpose()?;
+        let redirect = job.redirect.as_deref().map(link).transpose()?;
+        let mut actions = Vec::with_capacity(job.actions.len());
+        for action in &job.actions {
+            actions.push(InboxAction {
+                kind: action.kind.clone(),
+                label: single_line(&render(&env, "label.html", &action.label, context.clone())?),
+                url: action.url.as_deref().map(link).transpose()?,
+            });
+        }
+        let mut data = serde_json::Map::new();
+        if let serde_json::Value::Object(templates) = &job.data_templates {
+            for (key, source) in templates {
+                let source = source.as_str().ok_or_else(|| {
+                    NotificationError::Render("donnée du fil : gabarit textuel attendu".to_string())
+                })?;
+                data.insert(
+                    key.clone(),
+                    serde_json::Value::String(render(&env, "data.txt", source, context.clone())?),
+                );
+            }
+        }
+        if text.len() > MAX_RENDERED_BYTES {
+            return Err(NotificationError::Render(
+                "message rendu trop volumineux".to_string(),
+            ));
+        }
+        Ok(RenderedInApp {
+            title,
+            text,
+            avatar,
+            redirect,
+            actions,
+            data,
         })
     }
 
@@ -584,7 +658,11 @@ mod tests {
             quiet_hours: None,
             digest: None,
             unsubscribe: None,
-            integration: crate::models::ClaimedIntegration {
+            avatar: None,
+            redirect: None,
+            actions: Vec::new(),
+            data_templates: serde_json::Value::Null,
+            integration: Some(crate::models::ClaimedIntegration {
                 id: lyxal_surreal::RecordId::new("notification_integration", "i"),
                 tenant: None,
                 key: "relais".into(),
@@ -593,8 +671,80 @@ mod tests {
                 settings: Default::default(),
                 credentials_path: Some("notification/smtp/relais".into()),
                 webhook_path: None,
-            },
+            }),
         }
+    }
+
+    #[test]
+    fn in_app_messages_escape_variables_and_keep_links_and_buttons() {
+        let mut fil = job(
+            "Devis {{ payload.n }}\r\n",
+            "ignoré",
+            "Le devis **{{ payload.n }}** de {{ organization.name }}",
+        );
+        fil.html_body = None;
+        fil.channel = "in_app".into();
+        fil.payload = serde_json::json!({ "n": "<b>D-1</b>", "id": "42", "q": "a&b" });
+        fil.avatar = Some("https://cdn.lyxal.test/{{ payload.id }}.png".into());
+        fil.redirect = Some("/devis/{{ payload.id }}?q={{ payload.q }}".into());
+        fil.actions = vec![
+            crate::models::TemplateAction {
+                kind: "primary".into(),
+                label: "Valider {{ payload.n }}".into(),
+                url: Some("/devis/{{ payload.id }}/valider".into()),
+            },
+            crate::models::TemplateAction {
+                kind: "secondary".into(),
+                label: "Plus tard".into(),
+                url: None,
+            },
+        ];
+        fil.data_templates =
+            serde_json::json!({ "devis": "{{ payload.id }}", "titre": "{{ payload.q }}" });
+        let rendered = Renderer::default().render_in_app(&fil).expect("rendu");
+        // Titre et texte : variables échappées, Markdown du gabarit gardé, titre sur une ligne
+        assert_eq!(rendered.title, "Devis &lt;b&gt;D-1&lt;&#x2f;b&gt;");
+        assert_eq!(
+            rendered.text,
+            "Le devis **&lt;b&gt;D-1&lt;&#x2f;b&gt;** de Alpha &amp; Fils"
+        );
+        // Liens et données : rendus tels quels (contrôlés à la livraison par lyxal_core)
+        assert_eq!(
+            rendered.avatar.as_deref(),
+            Some("https://cdn.lyxal.test/42.png")
+        );
+        assert_eq!(rendered.redirect.as_deref(), Some("/devis/42?q=a&b"));
+        assert_eq!(
+            rendered.actions,
+            vec![
+                InboxAction {
+                    kind: "primary".into(),
+                    label: "Valider &lt;b&gt;D-1&lt;&#x2f;b&gt;".into(),
+                    url: Some("/devis/42/valider".into()),
+                },
+                InboxAction {
+                    kind: "secondary".into(),
+                    label: "Plus tard".into(),
+                    url: None,
+                },
+            ]
+        );
+        assert_eq!(
+            serde_json::Value::Object(rendered.data.clone()),
+            serde_json::json!({ "devis": "42", "titre": "a&b" })
+        );
+        assert!(!format!("{rendered:?}").contains("D-1"));
+        // Jamais de secret dans le fil : la variable secret est vide
+        fil.text_body = Some("{{ secret.code }}".into());
+        assert!(Renderer::default().render_in_app(&fil).is_err());
+        // Sans titre ou sans texte : pas de rendu
+        fil.text_body = Some("x".into());
+        fil.subject = None;
+        assert!(Renderer::default().render_in_app(&fil).is_err());
+        // Donnée qui n'est pas un gabarit textuel : refusée
+        fil.subject = Some("x".into());
+        fil.data_templates = serde_json::json!({ "n": 1 });
+        assert!(Renderer::default().render_in_app(&fil).is_err());
     }
 
     #[test]

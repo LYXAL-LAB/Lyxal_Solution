@@ -5,6 +5,7 @@ use lyxal_i18n::ResolvedText;
 use lyxal_surreal::SurrealValue;
 
 use super::endpoint::{ClaimedEndpoint, EndpointOutcome};
+use super::feed::TemplateAction;
 use super::integration::ClaimedIntegration;
 use super::preference::QuietHoursRule;
 use super::trigger::Recipient;
@@ -16,7 +17,7 @@ use super::workflow::DigestVars;
 pub struct JobClaimParams {
     /// Identifiant du worker (journalisé sur l'étape).
     pub worker_id: String,
-    /// Canal servi par le worker (`email`, `sms`, `chat`, `webhook`).
+    /// Canal servi par le worker (`email`, `sms`, `chat`, `webhook`, `in_app`).
     pub channel: String,
     /// Étapes au plus (1 à 100).
     pub limit: i64,
@@ -43,7 +44,7 @@ pub struct ClaimedJob {
     pub idempotency_key: String,
     /// Tentative en cours (1 pour la première).
     pub attempt: i64,
-    /// Canal de l'étape (`email`, `sms`, `chat`, `webhook`).
+    /// Canal de l'étape (`email`, `sms`, `chat`, `webhook`, `in_app`).
     pub channel: String,
     /// Étape du parcours.
     pub step_key: String,
@@ -80,9 +81,21 @@ pub struct ClaimedJob {
     pub layout_html: Option<String>,
     /// Mise en page texte.
     pub layout_text: Option<String>,
+    /// Fil : avatar (gabarit d'un lien).
+    #[surreal(default)]
+    pub avatar: Option<String>,
+    /// Fil : lien de redirection (gabarit).
+    #[surreal(default)]
+    pub redirect: Option<String>,
+    /// Fil : boutons (gabarits du libellé et du lien), deux au plus.
+    #[surreal(default)]
+    pub actions: Vec<TemplateAction>,
+    /// Fil : données libres `{ clé : gabarit }`.
+    #[surreal(default)]
+    pub data_templates: serde_json::Value,
     /// Variables non sensibles.
     pub payload: serde_json::Value,
-    /// Variables sensibles scellées (`enc:v2`, contexte du module).
+    /// Variables sensibles scellées (`enc:v2`, contexte du module) ; jamais pour le fil.
     pub secret: Option<String>,
     /// Parcours sensible : aucun objet conservé.
     pub sensitive: bool,
@@ -94,8 +107,9 @@ pub struct ClaimedJob {
     pub digest: Option<DigestVars>,
     /// Cible du lien de désabonnement (absente pour un parcours critique).
     pub unsubscribe: Option<UnsubscribeTarget>,
-    /// Intégration de l'envoi (D1, bascule D3) : fournisseur, réglages, chemin des identifiants.
-    pub integration: ClaimedIntegration,
+    /// Intégration de l'envoi (D1, bascule D3) : fournisseur, réglages, chemin des identifiants ;
+    /// absente pour le fil (ni fournisseur ni intégration).
+    pub integration: Option<ClaimedIntegration>,
 }
 
 /// Cible du lien de désabonnement d'un message : la catégorie du parcours, sinon le parcours.
@@ -124,7 +138,7 @@ impl std::fmt::Debug for ClaimedJob {
             .field("sensitive", &self.sensitive)
             .field("critical", &self.critical)
             .field("quiet_hours", &self.quiet_hours)
-            .field("integration", &self.integration.id)
+            .field("integration", &self.integration.as_ref().map(|i| &i.id))
             .field("channel", &self.channel)
             .field("endpoints", &self.endpoints)
             .field("secret", &self.secret.as_ref().map(|_| "[REDACTED]"))
@@ -236,8 +250,8 @@ pub struct JobFailParams {
     /// Jeton de réservation.
     pub claim_token: String,
     /// Intégration de cette tentative (la suivante passe à la prochaine éligible après un échec
-    /// temporaire).
-    pub integration: String,
+    /// temporaire) ; absente pour le fil.
+    pub integration: Option<String>,
     /// Classe (`FailureClass::as_str`).
     pub class: String,
     /// Code (SMTP ou `NOTIFICATION_*`).
@@ -294,6 +308,8 @@ pub struct PurgeResult {
     pub rate_limits: i64,
     /// Retours des fournisseurs supprimés.
     pub provider_events: i64,
+    /// Messages du fil supprimés (réglage `retention_days_inbox`).
+    pub inbox_items: i64,
 }
 
 /// Paramètres de `fn::notification_settings_get`.
@@ -314,6 +330,8 @@ pub struct EffectiveSettings {
     pub retention_days_runs: i64,
     /// Conservation du journal (jours).
     pub retention_days_log: i64,
+    /// Conservation des messages du fil (jours).
+    pub retention_days_inbox: i64,
     /// Durée maximale d'une attente ou d'une fenêtre (jours).
     pub max_wait_days: i64,
     /// Hôtes autorisés de l'installation (adresses web et Mattermost ; vide : tout hôte public).

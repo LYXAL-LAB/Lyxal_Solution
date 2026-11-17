@@ -3,8 +3,9 @@
 -- MODULE : lyxal_notification
 -- RÔLE   : Messages envoyés, journal de livraison, liste de suppression
 -- ============================================================================
--- Aucun corps rendu n'est conservé ; l'objet est omis pour un parcours sensible. Le journal ne
--- contient jamais de secret.
+-- Aucun corps rendu n'est conservé ; l'objet est omis pour un parcours sensible et pour le fil
+-- (le contenu du fil n'est lisible que par la personne, décision F2). Le journal ne contient
+-- jamais de secret.
 
 DEFINE TABLE OVERWRITE notification_message
     TYPE NORMAL
@@ -16,8 +17,8 @@ DEFINE TABLE OVERWRITE notification_message
 
 DEFINE FIELD OVERWRITE run ON TABLE notification_message TYPE record<notification_run> REFERENCE ON DELETE CASCADE READONLY COMMENT "Déclenchement";
 DEFINE FIELD OVERWRITE job ON TABLE notification_message TYPE record<notification_job> REFERENCE ON DELETE CASCADE READONLY COMMENT "Étape";
-DEFINE FIELD OVERWRITE channel ON TABLE notification_message TYPE string ASSERT $value IN ["email", "sms", "chat", "webhook"] READONLY COMMENT "Canal";
-DEFINE FIELD OVERWRITE to ON TABLE notification_message TYPE string READONLY COMMENT "Destinataire : adresse e-mail, téléphone (E.164), ou hôte de l'adresse de messagerie ou web (jamais l'adresse complète)";
+DEFINE FIELD OVERWRITE channel ON TABLE notification_message TYPE string ASSERT $value IN ["email", "sms", "chat", "webhook", "in_app"] READONLY COMMENT "Canal";
+DEFINE FIELD OVERWRITE to ON TABLE notification_message TYPE string READONLY COMMENT "Destinataire : adresse e-mail, téléphone (E.164), hôte de l'adresse de messagerie ou web (jamais l'adresse complète), ou identifiant de l'abonné pour le fil (in_app : trace de l'envoi, sans contenu)";
 DEFINE FIELD OVERWRITE endpoint ON TABLE notification_message TYPE option<record<notification_endpoint>> REFERENCE ON DELETE UNSET READONLY COMMENT "Adresse de messagerie ou web servie (retirée si elle est supprimée)";
 DEFINE FIELD OVERWRITE parts ON TABLE notification_message TYPE option<int> ASSERT $value IS NONE OR ($value >= 1 AND $value <= 10) READONLY COMMENT "SMS : nombre de parties (décision E5)";
 DEFINE FIELD OVERWRITE subject ON TABLE notification_message TYPE option<string> COMMENT "Objet (absent pour un parcours sensible)";

@@ -46,6 +46,11 @@ DEFINE FIELD OVERWRITE retention_days_log ON TABLE notification_settings
     ASSERT $value IS NONE OR ($value >= 1 AND $value <= 3650)
     COMMENT "Conservation du journal de livraison (jours)";
 
+DEFINE FIELD OVERWRITE retention_days_inbox ON TABLE notification_settings
+    TYPE option<int>
+    ASSERT $value IS NONE OR ($value >= 1 AND $value <= 365)
+    COMMENT "Conservation des messages du fil dans l'application (jours, 90 par défaut, décision F8)";
+
 DEFINE FIELD OVERWRITE max_wait_days ON TABLE notification_settings
     TYPE option<int>
     ASSERT $value IS NONE OR ($value >= 1 AND $value <= 366)

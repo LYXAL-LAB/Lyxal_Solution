@@ -15,10 +15,13 @@
 //! (`LYXAL__NOTIFICATION__PUBLIC_URL`). SMS, messageries d'équipe et adresses web (lot 4) : un
 //! worker par canal, sous les mêmes conditions que l'e-mail ; les adresses de messagerie et web
 //! sont scellées par les routes de l'hôte avec la clé applicative ; les retours de livraison des
-//! SMS sont demandés à l'adresse publique de l'hôte.
+//! SMS sont demandés à l'adresse publique de l'hôte. Fil dans l'application (lot 5) : le worker
+//! du canal `in_app` (sans fournisseur, sans clé) et le temps réel (`FeedHub`, requête
+//! `LIVE SELECT` tenue par un worker supervisé) tournent toujours.
 
 use crate::config::AppConfig;
 use crate::error::ServerError;
+use crate::modules::notification_feed::{FeedHub, FeedHubWorker, FeedSettings};
 use crate::modules::secrets::SecretsHost;
 use lyxal_crypto::{CryptoEngine, StaticKeyResolver};
 use lyxal_event::EventSubscription;
@@ -44,7 +47,7 @@ const AUTH_EVENT_MAX_ATTEMPTS: u32 = 10;
 /// désabonnement s'ils sont configurés, l'envoi par les intégrations (retours des fournisseurs,
 /// essai) si le coffre-fort a sa clé maîtresse, le scellement des adresses de messagerie et web
 /// si la clé applicative est configurée, et l'adresse publique de l'hôte (signature des retours
-/// Twilio).
+/// Twilio), et le temps réel du fil dans l'application.
 #[derive(Clone)]
 pub struct NotificationHost {
     pub store: NotificationStore,
@@ -53,6 +56,8 @@ pub struct NotificationHost {
     pub channels: Option<ChannelDispatcher>,
     pub codec: Option<SecretCodec<StaticKeyResolver>>,
     pub public_url: Option<String>,
+    /// Répartition des changements du fil vers les flux SSE (route `/notification/feed/stream`).
+    pub feed: Option<FeedHub>,
 }
 
 /// Services du module enregistrés auprès du runtime.
@@ -112,6 +117,15 @@ pub async fn register_services(
         store.clone(),
         BroadcastWorkerSettings::default(),
     )?))?;
+    // Fil dans l'application : ni fournisseur ni secret, toujours servi
+    runtime.register_worker(Arc::new(
+        NotificationChannelWorker::<StaticKeyResolver>::in_app(
+            store.clone(),
+            SendWorkerSettings::default(),
+        )?,
+    ))?;
+    let feed = FeedHub::new(FeedSettings::default());
+    runtime.register_worker(Arc::new(FeedHubWorker::new(feed.clone(), client.clone())?))?;
     let links = unsubscribe_links(config)?;
     let providers = Arc::new(
         EmailProviders::new().map_err(|e| configuration_error("fournisseurs d'e-mail", e))?,
@@ -195,6 +209,7 @@ pub async fn register_services(
             channels,
             codec,
             public_url,
+            feed: Some(feed),
         },
     })
 }

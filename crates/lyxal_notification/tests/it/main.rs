@@ -6,11 +6,13 @@
 //! diffusion par paquets ; parcours à étapes avec le moteur de lyxal_scheduler (attente reprise,
 //! regroupement, annulation, planification de la purge, aperçu) ; fournisseurs HTTP contre de
 //! faux fournisseurs locaux, intégrations (choix, bascule, identifiants lus du coffre-fort) et
-//! retours des fournisseurs vérifiés.
+//! retours des fournisseurs vérifiés ; fil dans l'application (rendu échappé, liens contrôlés à
+//! la livraison, contenu en lecture seule).
 
 mod audience;
 mod channels;
 mod fake_provider;
+mod feed;
 mod flow;
 mod integrations;
 mod providers;

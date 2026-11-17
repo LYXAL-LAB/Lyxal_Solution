@@ -6,7 +6,10 @@
 -- Un seul gabarit par étape : il porte la structure (MiniJinja) ; ses phrases sont des clés
 -- lyxal_i18n appelées par t("clé"), déclarées dans keys et rendues dans la langue de l'envoi.
 -- E-mail : objet, HTML et texte. SMS, messagerie et adresse web (décision E5) : texte seul, avec
--- un objet (titre) facultatif ; ni HTML ni mise en page.
+-- un objet (titre) facultatif ; ni HTML ni mise en page. Fil dans l'application (décision F3) :
+-- titre (objet) et texte requis, avatar, lien de redirection, deux boutons au plus et données
+-- (gabarits MiniJinja) ; liens contrôlés à l'enregistrement et au rendu (chemin de l'application
+-- ou adresse HTTPS).
 
 DEFINE TABLE OVERWRITE notification_template
     TYPE NORMAL
@@ -48,6 +51,31 @@ DEFINE FIELD OVERWRITE text_body ON TABLE notification_template
     TYPE string
     ASSERT string::len($value) >= 1 AND string::len($value) <= 100000
     COMMENT "Corps texte (gabarit MiniJinja)";
+
+DEFINE FIELD OVERWRITE avatar ON TABLE notification_template
+    TYPE option<string>
+    ASSERT $value IS NONE OR (string::len($value) >= 1 AND string::len($value) <= 2048)
+    COMMENT "Fil : avatar (gabarit d'un chemin de l'application ou d'une adresse HTTPS)";
+
+DEFINE FIELD OVERWRITE redirect ON TABLE notification_template
+    TYPE option<string>
+    ASSERT $value IS NONE OR (string::len($value) >= 1 AND string::len($value) <= 2048)
+    COMMENT "Fil : lien de redirection (gabarit d'un chemin de l'application ou d'une adresse HTTPS)";
+
+DEFINE FIELD OVERWRITE actions ON TABLE notification_template
+    TYPE option<array<object>>
+    ASSERT $value IS NONE OR array::len($value) <= 2
+    COMMENT "Fil : boutons (deux au plus) [{ kind : primary ou secondary, label, url }] (gabarits)";
+
+DEFINE FIELD OVERWRITE actions[*] ON TABLE notification_template TYPE object;
+DEFINE FIELD OVERWRITE actions[*].kind ON TABLE notification_template TYPE string ASSERT $value IN ["primary", "secondary"];
+DEFINE FIELD OVERWRITE actions[*].label ON TABLE notification_template TYPE string ASSERT string::len($value) >= 1 AND string::len($value) <= 512;
+DEFINE FIELD OVERWRITE actions[*].url ON TABLE notification_template TYPE option<string> ASSERT $value IS NONE OR string::len($value) <= 2048;
+
+DEFINE FIELD OVERWRITE data ON TABLE notification_template
+    TYPE option<object>
+    FLEXIBLE
+    COMMENT "Fil : données libres { clé : gabarit } rendues à l'envoi (8 Kio au plus)";
 
 DEFINE FIELD OVERWRITE keys ON TABLE notification_template
     TYPE array<string>

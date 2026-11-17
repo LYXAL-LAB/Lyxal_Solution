@@ -39,6 +39,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_settings_set($params: object) {
             max_attempts: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 20 } }] },
             retention_days_runs: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 3650 } }] },
             retention_days_log: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 3650 } }] },
+            retention_days_inbox: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 365 } }] },
             max_wait_days: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 366 } }] },
             allowed_hosts: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: true } }, { rule: "array_length", options: { max_length: 100 } }, { rule: "each", options: { pipeline: [{ rule: "hostname", options: { allow_single_label: false } }] } }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
@@ -57,7 +58,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_settings_set($params: object) {
     IF !fn::notification_can({ action: "manage", tenant: $p.tenant }) { RETURN fn::error_result("NOTIFICATION_PERMISSION_DENIED", $p.language, {}); };
     LET $scope = IF $p.tenant IS NONE { "installation" } ELSE { <string> record::id($p.tenant) };
     LET $changes = object::from_entries(array::filter(
-        array::map(["timezone", "max_attempts", "retention_days_runs", "retention_days_log", "max_wait_days", "allowed_hosts"], |$f| [$f, $p[$f]]),
+        array::map(["timezone", "max_attempts", "retention_days_runs", "retention_days_log", "retention_days_inbox", "max_wait_days", "allowed_hosts"], |$f| [$f, $p[$f]]),
         |$e| $e[1] IS NOT NONE
     ));
     LET $existing = (SELECT VALUE id FROM ONLY notification_settings WHERE scope_key = $scope LIMIT 1);
@@ -68,7 +69,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_settings_set($params: object) {
     };
     IF $saved == NONE { RETURN fn::error_result("NOTIFICATION_WRITE_FORBIDDEN", $p.language, { table: "notification_settings" }); };
     RETURN fn::result_ok($saved);
-} COMMENT "Enregistre les réglages d'une portée ({ tenant, timezone, max_attempts, retention_days_runs, retention_days_log, max_wait_days : durée maximale des attentes, 1 à 366 jours ; allowed_hosts : installation seulement, hôtes autorisés des adresses web et Mattermost, vide : tout hôte public }) ; seuls les champs fournis changent. Permission notification.manage";
+} COMMENT "Enregistre les réglages d'une portée ({ tenant, timezone, max_attempts, retention_days_runs, retention_days_log, retention_days_inbox : conservation des messages du fil, 1 à 365 jours, 90 par défaut ; max_wait_days : durée maximale des attentes, 1 à 366 jours ; allowed_hosts : installation seulement, hôtes autorisés des adresses web et Mattermost, vide : tout hôte public }) ; seuls les champs fournis changent. Permission notification.manage";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_suppression_address (interne) : adresse contrôlée selon le canal

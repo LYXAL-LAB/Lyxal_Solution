@@ -194,7 +194,7 @@ RETURN fn::notification_step_preview({ workflow: (SELECT VALUE w FROM ONLY test_
     LET $workflow = { steps: [{ key: "pause", type: "delay", amount: 1, unit: "hours" }, { key: "lot", type: "digest", window: { amount: 1, unit: "hours" } }, { key: "email", type: "email" }] };
     RETURN fn::notification_duration_seconds({ amount: 2, unit: "weeks" }) == 1209600
         AND fn::notification_duration_seconds({ amount: -1, unit: "days" }) == -86400
-        AND object::keys(fn::notification_step_fields({})) == ["chat", "common", "delay", "digest", "email", "sms", "span", "throttle", "webhook"]
+        AND object::keys(fn::notification_step_fields({})) == ["chat", "common", "delay", "digest", "email", "in_app", "sms", "span", "throttle", "webhook"]
         AND fn::notification_step_check({ steps: $workflow.steps }).code IS NONE
         AND fn::notification_step_check({ steps: [{ key: "email", type: "email", condition: { field: "payload.a", op: "exists" } }] }).steps[0].condition == { field: "payload.a", op: "exists" }
         AND fn::notification_override_check({ overrides: { steps: { lot: { window: { amount: 2, unit: "hours" } }, email: { skip: true } } }, workflow: $workflow, max_wait_days: 30 }).overrides

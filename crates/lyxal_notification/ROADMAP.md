@@ -6,9 +6,8 @@ ordre du CTO avec un `implementation_plan.md` validé.
 
 | Lot | Contenu | Prérequis |
 | :--- | :--- | :--- |
-| **V1-d — Fil in-app** | États, compteurs, actions, onglets, snooze, temps réel ; valeur « lu » d'un message du fil fournie aux conditions d'étape (« sauter si déjà lu », décision C6) | point 1 |
 | **V1-e — Autres canaux** | SMS, messageries d'équipe et adresse web livrés (lot 4, README) ; restent : push (lot 6, point 4) ; choix de l'intégration dans les surcharges d'un déclenchement (décision C5) ; fournisseurs e-mail Amazon SES, SendGrid et OVHcloud (signatures RSA ou SHA-1 à vérifier, K5) ; retours des SMS de toutes les parties d'un message Vonage (seule la première est rattachée) ; Vonage par l'API Messages (webhooks signés JWT) | `lyxal_crypto` (K8) pour le push |
-| **V2 — Observabilité et console** | Écrans de la console (dont l'aperçu des étapes), regroupement à heure fixe (ex. chaque jour à 9 h), statistiques horaires, suivi des ouvertures et clics (désactivé par défaut, décision N7), webhooks sortants signés (point 2), révisions publiées, contrôle des domaines d'envoi, étape HTTP (point 6) | `lyxal_secrets` |
+| **V2 — Observabilité et console** | Écrans de la console (dont l'aperçu des étapes et les composants du fil dans l'application : cloche, onglets, boutons, sommeil, branchés sur les routes et le flux SSE du fil), regroupement à heure fixe (ex. chaque jour à 9 h), statistiques horaires, suivi des ouvertures et clics (désactivé par défaut, décision N7), webhooks sortants signés (point 2), révisions publiées, contrôle des domaines d'envoi, étape HTTP (point 6) | `lyxal_secrets` |
 | **V3 — Événementiel avancé** | Interactions humaines (approuver / choisir par message), courrier entrant (point 5), connexions chat OAuth, outils IA | `lyxal_connect` |
 
 ## Essais réels à faire (comptes des fournisseurs)
@@ -40,6 +39,7 @@ en service »), une adresse de réception à soi.
 | **Mattermost** | webhook entrant d'un serveur public ; puis le même hôte hors de `allowed_hosts` | — | message reçu ; hôte hors liste refusé (`NOTIFICATION_DESTINATION_FORBIDDEN`) sans appel |
 | **Google Chat** | webhook d'un espace d'essai | — | message reçu ; identifiant `spaces/…/messages/…` noté sur le message |
 | **Telegram** | robot d'essai (secret `{ bot_token }`), salon de groupe (`chat_id` négatif) et canal public (`@nom`) | — | message reçu ; robot bloqué ou salon introuvable : refus définitif (403, 400) ; `retry_after` d'un 429 : nouvel essai |
+| **Fil dans l'application (flux SSE)** | aucun fournisseur : un navigateur réel (Chrome, Firefox, Safari) ouvert sur `GET /api/v1/notification/feed/stream` par `fetch` avec l'en-tête `Authorization: Bearer` (un `EventSource` natif n'envoie pas d'en-tête), derrière le mandataire inverse réel de l'hôte ; puis un parcours avec une étape `in_app` déclenché pour la personne connectée | — | premier événement `counts`, puis `notification` et `counts` sans attendre (aucun tampon du mandataire : `X-Accel-Buffering: no`) ; signe de vie toutes les 25 s, flux gardé ouvert plus de 10 minutes ; « lu » dans un autre onglet : compteurs mis à jour dans le premier ; sixième onglet refusé (429) ; déconnexion ou expiration de la session : flux fermé et reconnexion du client avec un jeton frais ; redémarrage de l'hôte : reconnexion du client sans perte (liste relue) |
 | **Adresse web** | adresse d'essai publique en HTTPS (ex. service de capture de requêtes) ; puis une adresse qui redirige et une adresse qui répond 410 | — | corps et en-têtes `Lyxal-Signature`, `Lyxal-Delivery` reçus et signature vérifiée par un script du destinataire avec la clé montrée ; redirection non suivie (nouvel essai) ; 410 : refus définitif ; nom résolu en adresse privée (enregistrement DNS d'essai) : refusé sans appel |
 
 ## Limites connues
@@ -55,6 +55,12 @@ en service »), une adresse de réception à soi.
 * **Parties d'un SMS** : comptage simple (sans tenir compte d'un caractère d'extension coupé
   entre deux parties) ; à l'enregistrement, le texte du gabarit tel qu'écrit est compté (le
   texte rendu est recompté avant l'envoi).
+* **Temps réel du fil** : un message créé pendant une coupure de la requête `LIVE SELECT` n'est
+  pas renvoyé en événement `notification` (les compteurs sont relus à la reprise, la liste le
+  montre) ; chaque instance de l'hôte tient sa requête et ses connexions (aucune répartition
+  entre instances n'est nécessaire, la base notifie chacune). Le flux SSE demande l'en-tête
+  `Authorization` : un `EventSource` natif du navigateur ne peut pas l'ouvrir (lecture par
+  `fetch`).
 * **Modifier l'adresse** d'une messagerie ou d'une adresse web : en créer une autre (seuls le
   nom, l'état et le salon Telegram se modifient).
 

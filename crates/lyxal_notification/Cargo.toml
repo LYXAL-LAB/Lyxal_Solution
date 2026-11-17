@@ -3,7 +3,7 @@ name = "lyxal_notification"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Notifications sortantes de Lyxal OS : abonnés, sujets, préférences, parcours à étapes (attente, regroupement, limitation, conditions), gabarits, intégrations (e-mail par SMTP, Brevo, Mailgun, Postmark, Resend ; SMS par Brevo, Twilio, Vonage ; messageries d'équipe ; appel signé d'une adresse web) et retours des fournisseurs, file d'envoi, diffusions, journal et liste de suppression"
+description = "Notifications sortantes de Lyxal OS : abonnés, sujets, préférences, parcours à étapes (attente, regroupement, limitation, conditions), gabarits, intégrations (e-mail par SMTP, Brevo, Mailgun, Postmark, Resend ; SMS par Brevo, Twilio, Vonage ; messageries d'équipe ; appel signé d'une adresse web) et retours des fournisseurs, fil dans l'application en temps réel, file d'envoi, diffusions, journal et liste de suppression"
 
 [dependencies]
 lyxal_error = { workspace = true }

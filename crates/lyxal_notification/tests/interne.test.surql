@@ -25,7 +25,7 @@ RETURN fn::notification_has_content_slot({ text: "a {{ content }} b" }) AND !fn:
 
 -- test: réglages effectifs sans réglages de l'organisation : ceux de l'installation
 RETURN fn::notification_settings_effective({ tenant: auth_organization:alpha }).max_attempts == 8
-    AND fn::notification_settings_effective({}) == { timezone: NONE, max_attempts: 8, retention_days_runs: 90, retention_days_log: 30, max_wait_days: 30, allowed_hosts: [] };
+    AND fn::notification_settings_effective({}) == { timezone: NONE, max_attempts: 8, retention_days_runs: 90, retention_days_log: 30, retention_days_inbox: 90, max_wait_days: 30, allowed_hosts: [] };
 
 -- test: étapes sans gabarit
 RETURN fn::notification_workflow_missing_templates({ workflow: notification_workflow:w, steps: [{ key: "email", type: "email" }, { key: "pause", type: "delay" }, { key: "rappel", type: "email" }] }) == ["rappel"];

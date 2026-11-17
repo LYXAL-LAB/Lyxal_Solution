@@ -1,5 +1,5 @@
-//! Workers supervisés : envoi par canal (e-mail, SMS, messagerie, adresse web), diffusions et
-//! attentes des parcours.
+//! Workers supervisés : envoi par canal (e-mail, SMS, messagerie, adresse web, fil dans
+//! l'application), diffusions et attentes des parcours.
 //!
 //! Un worker d'envoi par canal réserve les étapes dues de son canal
 //! (`fn::notification_job_claim`, chacune avec l'intégration retenue : D1, bascule D3), reporte
@@ -8,7 +8,10 @@
 //! l'intégration dans `lyxal_secrets` et l'envoie par son fournisseur, puis termine l'étape ou
 //! enregistre l'échec (avec l'intégration utilisée). Messagerie et adresse web : chaque adresse
 //! de l'abonné est ouverte en mémoire (`SecretString`, jamais journalisée) le temps de son appel ;
-//! une adresse servie n'est pas rappelée par la tentative suivante. Délai avant une nouvelle
+//! une adresse servie n'est pas rappelée par la tentative suivante. Fil (`in_app`) : ni
+//! fournisseur, ni intégration, ni secret, ni heures calmes ; le message est rendu (variables
+//! échappées) puis livré par `fn::notification_inbox_deliver`, qui contrôle les liens rendus.
+//! Délai avant une nouvelle
 //! tentative : attente exponentielle plafonnée avec gigue complète (comme `lyxal_event`). Une
 //! erreur de base n'interrompt pas le worker : la réservation expire et l'étape est reprise.
 //!
@@ -36,15 +39,15 @@ use std::time::Duration;
 use crate::error::NotificationError;
 use crate::models::{
     BroadcastClaimParams, BroadcastCompleteParams, BroadcastStepParams, ClaimedEndpoint,
-    ClaimedJob, EndpointOutcome, FailureClass, JobClaimParams, JobCompleteParams, JobFailParams,
-    JobReleaseParams, JobRenewParams, NotificationDatetime, NotificationRecordId,
-    WaitScheduleParams, WaitScheduleResult,
+    ClaimedIntegration, ClaimedJob, EndpointOutcome, FailureClass, InboxDeliverParams,
+    JobClaimParams, JobCompleteParams, JobFailParams, JobReleaseParams, JobRenewParams,
+    NotificationDatetime, NotificationRecordId, WaitScheduleParams, WaitScheduleResult,
 };
 use crate::provider::{
     ChannelDispatcher, ChatService, EmailDispatcher, EmailMessage, ProviderError, ProviderReceipt,
 };
 use crate::quiet::quiet_until;
-use crate::render::{RenderedText, Renderer};
+use crate::render::{RenderedInApp, RenderedText, Renderer};
 use crate::secret::{EndpointField, SecretCodec};
 use crate::segments::SmsSegments;
 use crate::store::NotificationStore;
@@ -259,9 +262,17 @@ impl JobQueue {
     ) -> JobOutcome {
         let attempt = u32::try_from(job.attempt).unwrap_or(1);
         let job_id = job.job_id.to_sql();
-        let integration = job.integration.id.to_sql();
-        let recorded = match result {
-            Ok(delivery) => self
+        let integration = job.integration.as_ref().map(|i| i.id.to_sql());
+        // Envoi sans intégration (impossible hors du fil, qui ne passe pas par ici) : refusé
+        let result = match (result, &integration) {
+            (Ok(_), None) => Err((
+                ProviderError::configuration("étape sans intégration"),
+                Vec::new(),
+            )),
+            (result, _) => result,
+        };
+        let recorded = match (result, integration.clone()) {
+            (Ok(delivery), Some(integration)) => self
                 .store
                 .job_complete(JobCompleteParams {
                     job_id: job_id.clone(),
@@ -278,7 +289,8 @@ impl JobQueue {
                 })
                 .await
                 .map(|_| JobOutcome::Sent),
-            Err((failure, endpoints)) => {
+            (Ok(_), None) => return JobOutcome::Abandoned,
+            (Err((failure, endpoints)), integration) => {
                 let class = failure.class;
                 self.store
                     .job_fail(JobFailParams {
@@ -474,17 +486,17 @@ impl<R: KeyResolver + 'static> NotificationEmailWorker<R> {
 impl<R: KeyResolver + 'static> JobProcessor for NotificationEmailWorker<R> {
     async fn process(&self, job: ClaimedJob) -> JobOutcome {
         let result = match self.prepare(&job) {
-            Ok(email) => self
-                .dispatcher
-                .send(&job.integration, &email)
-                .await
-                .map(|receipt| Delivery {
-                    receipt: Some(receipt),
-                    subject: self.rendered_subject(&job),
-                    parts: None,
-                    endpoints: Vec::new(),
-                })
-                .map_err(|failure| (failure, Vec::new())),
+            Ok(email) => match claimed_integration(&job) {
+                Ok(integration) => self.dispatcher.send(integration, &email).await,
+                Err(error) => Err(error),
+            }
+            .map(|receipt| Delivery {
+                receipt: Some(receipt),
+                subject: self.rendered_subject(&job),
+                parts: None,
+                endpoints: Vec::new(),
+            })
+            .map_err(|failure| (failure, Vec::new())),
             Err(error) => Err((permanent(&error), Vec::new())),
         };
         self.queue.finish(&job, result).await
@@ -511,6 +523,8 @@ pub enum TextChannel {
     Chat,
     /// Appel signé des adresses web de l'abonné.
     Webhook,
+    /// Fil dans l'application (sans fournisseur ni intégration, décision F3).
+    InApp,
 }
 
 impl TextChannel {
@@ -520,17 +534,28 @@ impl TextChannel {
             Self::Sms => "sms",
             Self::Chat => "chat",
             Self::Webhook => "webhook",
+            Self::InApp => "in_app",
         }
     }
 }
 
-/// Worker d'envoi des SMS, des messages de messagerie ou des appels d'adresse web (un par canal).
+/// Envoi d'un canal de texte : par les intégrations (SMS, messagerie, adresse web), ou livraison
+/// dans le fil (ni secret ni fournisseur).
+enum ChannelSender<R: KeyResolver> {
+    Providers {
+        codec: SecretCodec<R>,
+        dispatcher: ChannelDispatcher,
+    },
+    Feed,
+}
+
+/// Worker d'envoi des SMS, des messages de messagerie, des appels d'adresse web ou des messages
+/// du fil (un par canal).
 pub struct NotificationChannelWorker<R: KeyResolver> {
     descriptor: WorkerDescriptor,
     queue: JobQueue,
     channel: TextChannel,
-    codec: SecretCodec<R>,
-    dispatcher: ChannelDispatcher,
+    sender: ChannelSender<R>,
     renderer: Renderer,
     links: Option<Arc<UnsubscribeLinks>>,
 }
@@ -545,7 +570,35 @@ impl<R: KeyResolver + 'static> NotificationChannelWorker<R> {
         dispatcher: ChannelDispatcher,
         settings: SendWorkerSettings,
     ) -> Result<Self, RuntimeError> {
+        Self::build(
+            channel,
+            store,
+            ChannelSender::Providers { codec, dispatcher },
+            settings,
+        )
+    }
+
+    /// Worker du fil dans l'application (canal `in_app`) : rendu puis livraison par
+    /// `fn::notification_inbox_deliver`, sans clé ni coffre-fort (aucun secret ni fournisseur).
+    pub fn in_app(
+        store: NotificationStore,
+        settings: SendWorkerSettings,
+    ) -> Result<Self, RuntimeError> {
+        Self::build(TextChannel::InApp, store, ChannelSender::Feed, settings)
+    }
+
+    fn build(
+        channel: TextChannel,
+        store: NotificationStore,
+        sender: ChannelSender<R>,
+        settings: SendWorkerSettings,
+    ) -> Result<Self, RuntimeError> {
         let (name, label, description) = match channel {
+            TextChannel::InApp => (
+                "in_app_sender",
+                "Lyxal Notification In-App Feed",
+                "Livraison des messages du fil dans l'application",
+            ),
             TextChannel::Sms => (
                 "sms_sender",
                 "Lyxal Notification SMS Sender",
@@ -572,17 +625,16 @@ impl<R: KeyResolver + 'static> NotificationChannelWorker<R> {
             },
             descriptor,
             channel,
-            codec,
-            dispatcher,
+            sender,
             renderer: Renderer::default(),
             links: None,
         })
     }
 
     /// Lien de désabonnement (variable `unsubscribe_url` des gabarits) dans chaque message non
-    /// critique ; jamais pour l'adresse web (appel de machine à machine).
+    /// critique ; jamais pour l'adresse web (appel de machine à machine) ni pour le fil.
     pub fn with_unsubscribe_links(mut self, links: Arc<UnsubscribeLinks>) -> Self {
-        if self.channel != TextChannel::Webhook {
+        if !matches!(self.channel, TextChannel::Webhook | TextChannel::InApp) {
             self.links = Some(links);
         }
         self
@@ -596,9 +648,20 @@ impl<R: KeyResolver + 'static> NotificationChannelWorker<R> {
         self.queue.run_once(cancellation, self).await
     }
 
+    /// Trousseau et envoi par les intégrations (absents pour le fil).
+    fn providers(&self) -> Result<(&SecretCodec<R>, &ChannelDispatcher), NotificationError> {
+        match &self.sender {
+            ChannelSender::Providers { codec, dispatcher } => Ok((codec, dispatcher)),
+            ChannelSender::Feed => Err(NotificationError::Configuration(
+                "canal sans fournisseur".to_string(),
+            )),
+        }
+    }
+
     /// Ouvre le secret et rend le titre et le texte.
     fn prepare(&self, job: &ClaimedJob) -> Result<RenderedText, NotificationError> {
-        let secret = open_secret(&self.codec, job)?;
+        let (codec, _) = self.providers()?;
+        let secret = open_secret(codec, job)?;
         let unsubscribe = unsubscribe_url(self.links.as_deref(), job)?;
         self.renderer
             .render_text(job, secret.as_ref(), unsubscribe.as_deref())
@@ -637,9 +700,12 @@ impl<R: KeyResolver + 'static> NotificationChannelWorker<R> {
                 Vec::new(),
             ));
         };
-        let receipt = self
-            .dispatcher
-            .send_sms(&job.integration, to, &text.text, segments.unicode())
+        let (_, dispatcher) = self
+            .providers()
+            .map_err(|error| (permanent(&error), Vec::new()))?;
+        let integration = claimed_integration(job).map_err(|failure| (failure, Vec::new()))?;
+        let receipt = dispatcher
+            .send_sms(integration, to, &text.text, segments.unicode())
             .await
             .map_err(|failure| (failure, Vec::new()))?;
         Ok(Delivery {
@@ -662,6 +728,7 @@ impl<R: KeyResolver + 'static> NotificationChannelWorker<R> {
             record_key(&job.job_id).unwrap_or_default(),
             record_key(&endpoint.id).unwrap_or_default()
         );
+        let (codec, dispatcher) = self.providers().map_err(|error| permanent(&error))?;
         let now = jiff::Timestamp::now();
         let body = serde_json::json!({
             "id": delivery_id,
@@ -675,8 +742,8 @@ impl<R: KeyResolver + 'static> NotificationChannelWorker<R> {
             "sent_at": now.to_string(),
         });
         deliver_to_endpoint(
-            &self.codec,
-            &self.dispatcher,
+            codec,
+            dispatcher,
             endpoint,
             &EndpointMessage {
                 title: text.title.as_deref(),
@@ -749,15 +816,87 @@ impl<R: KeyResolver + 'static> NotificationChannelWorker<R> {
 #[async_trait]
 impl<R: KeyResolver + 'static> JobProcessor for NotificationChannelWorker<R> {
     async fn process(&self, job: ClaimedJob) -> JobOutcome {
+        if self.channel == TextChannel::InApp {
+            return self.deliver_in_app(&job).await;
+        }
         let result = match self.prepare(&job) {
             Ok(text) => match self.channel {
                 TextChannel::Sms => self.send_sms(&job, &text).await,
-                TextChannel::Chat | TextChannel::Webhook => self.send_endpoints(&job, &text).await,
+                TextChannel::Chat | TextChannel::Webhook | TextChannel::InApp => {
+                    self.send_endpoints(&job, &text).await
+                }
             },
             Err(error) => Err((permanent(&error), Vec::new())),
         };
         self.queue.finish(&job, result).await
     }
+}
+
+impl<R: KeyResolver + 'static> NotificationChannelWorker<R> {
+    /// Fil : message rendu (variables échappées, sans secret) puis livré. Un refus de la base
+    /// (lien rendu refusé, donnée trop longue) est un échec définitif ; une base indisponible
+    /// laisse expirer la réservation (l'étape est reprise).
+    async fn deliver_in_app(&self, job: &ClaimedJob) -> JobOutcome {
+        let rendered = match self.renderer.render_in_app(job) {
+            Ok(rendered) => rendered,
+            Err(error) => {
+                return self
+                    .queue
+                    .finish(job, Err((permanent(&error), Vec::new())))
+                    .await
+            }
+        };
+        match self
+            .queue
+            .store
+            .inbox_deliver(inbox_params(job, rendered))
+            .await
+        {
+            Ok(_) => JobOutcome::Sent,
+            Err(error) => {
+                let error = NotificationError::from(error);
+                if is_refusal(&error) && error.code() != "NOTIFICATION_JOB_CLAIM_LOST" {
+                    tracing::warn!(job = %job.job_id.to_sql(), code = %error.code(), "message du fil refusé");
+                    self.queue
+                        .finish(job, Err((permanent(&error), Vec::new())))
+                        .await
+                } else {
+                    tracing::warn!(job = %job.job_id.to_sql(), code = %error.code(), "message du fil non livré : reprise à l'expiration de la réservation");
+                    JobOutcome::Abandoned
+                }
+            }
+        }
+    }
+}
+
+/// Paramètres de livraison d'un message du fil rendu.
+fn inbox_params(job: &ClaimedJob, rendered: RenderedInApp) -> InboxDeliverParams {
+    InboxDeliverParams {
+        job_id: job.job_id.to_sql(),
+        claim_token: job.claim_token.clone(),
+        title: rendered.title,
+        text: rendered.text,
+        avatar: rendered.avatar,
+        redirect: rendered.redirect,
+        actions: rendered.actions,
+        data: serde_json::Value::Object(rendered.data),
+    }
+}
+
+/// Refus métier de la base (code `NOTIFICATION_*`), par opposition à une panne.
+fn is_refusal(error: &NotificationError) -> bool {
+    matches!(
+        error,
+        NotificationError::Surreal(inner)
+            if matches!(inner.as_ref(), lyxal_surreal::LyxalSurrealError::Call(lyxal_surreal::LyxalCallError::Business(_)))
+    )
+}
+
+/// Intégration retenue à la réservation (toujours présente hors du fil).
+fn claimed_integration(job: &ClaimedJob) -> Result<&ClaimedIntegration, ProviderError> {
+    job.integration
+        .as_ref()
+        .ok_or_else(|| ProviderError::configuration("étape sans intégration"))
 }
 
 #[async_trait]

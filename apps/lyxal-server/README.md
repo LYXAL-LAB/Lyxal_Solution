@@ -49,7 +49,7 @@ déclaré manque.
 | `lyxal_error` | toujours | `ManifestModule` |
 | `lyxal_event` | toujours | `ManifestModule` ; moteur démarré par le runtime |
 | `lyxal_auth` | toujours | `AuthModule`, `AuthHealthCheck` |
-| `lyxal_notification` | toujours | `NotificationModule` (son installation crée la planification horaire `notification-purge` du planificateur), `NotificationConsumer` (événements `auth.*`), `NotificationEmailWorker` (envoi par les intégrations, identifiants lus dans `lyxal_secrets` ; avec les liens de désabonnement), trois `NotificationChannelWorker` (SMS, messagerie d'équipe, adresse web), `NotificationBroadcastWorker`, `NotificationStepWorker` (attentes des parcours confiées au planificateur), `NotificationHealthCheck` ; routes `/api/v1/notification/*` (désabonnement, aperçu, retours des fournisseurs, essai d'une intégration, adresses de messagerie et web) |
+| `lyxal_notification` | toujours | `NotificationModule` (son installation crée la planification horaire `notification-purge` du planificateur), `NotificationConsumer` (événements `auth.*`), `NotificationEmailWorker` (envoi par les intégrations, identifiants lus dans `lyxal_secrets` ; avec les liens de désabonnement), trois `NotificationChannelWorker` (SMS, messagerie d'équipe, adresse web), le `NotificationChannelWorker` du fil (`in_app`, toujours, sans clé), `FeedHubWorker` (requête `LIVE SELECT` du fil répartie par `FeedHub` vers les flux SSE, toujours), `NotificationBroadcastWorker`, `NotificationStepWorker` (attentes des parcours confiées au planificateur), `NotificationHealthCheck` ; routes `/api/v1/notification/*` (désabonnement, aperçu, retours des fournisseurs, essai d'une intégration, adresses de messagerie et web, fil dans l'application et son flux SSE) |
 | `lyxal_storage` | toujours | `StorageModule`, `StorageCleanupWorker` (si un support est configuré), `StorageHealthCheck` ; supports disque et S3 ; envoi reprenable |
 | `lyxal_secrets` | toujours | `SecretsModule`, `SecretsMaintenanceWorker` (purge, rescellement), `SecretsHealthCheck` ; trousseau maître du coffre-fort ; `SecretsClient` pour les modules hébergés |
 | `lyxal_scheduler` | toujours | `SchedulerModule`, `SchedulerLeaderWorker` (planificateur élu par le bail `leader` du runtime), un `SchedulerExecutorWorker` par file (enregistré après l'installation, une fois les files connues), `SchedulerHealthCheck` ; registre des handlers ouvert aux modules hébergés (`SchedulerHost::handlers`, aucun inscrit pour l'instant) |
@@ -459,6 +459,24 @@ session SurrealDB au nom de l'appelant ; réponses `Cache-Control: no-store`) :
 | :--- | :--- |
 | `POST /preview` | corps `{ workflow, step_key, payload, locale, digest: { count, events } }` (64 Kio au plus, aucun autre champ : aucun secret accepté) ; `200` et `{ subject, html, text }` rendus par le moteur du worker avec les données d'exemple (une variable absente s'affiche vide), sans écriture ; `notification.read` exigée par `fn::notification_step_preview` (parcours illisible : `NOTIFICATION_WORKFLOW_NOT_FOUND`) ; étape qui n'est pas un canal : `404` ; corps illisible ou champ inconnu : `400` (`SERVER_INVALID_REQUEST`) ; corps trop volumineux : `413` ; sans jeton : `401` |
 
+Fil dans l'application (`/api/v1/notification`, jeton d'accès `Authorization: Bearer` de la
+personne ; session SurrealDB à son nom : seul **son** fil, dans son organisation active, est lu
+et modifié, par les fonctions `fn::notification_feed_*` et les permissions de
+`notification_inbox` ; réponses `Cache-Control: no-store`). Un message d'une autre personne
+reçoit la même réponse qu'un message absent (`404`, `NOTIFICATION_FEED_ITEM_NOT_FOUND`) ; une
+session sans compte (compte de service) : `403` (`NOTIFICATION_FEED_NO_ACCOUNT`) ; sans jeton :
+`401` :
+
+| Route | Réponse |
+| :--- | :--- |
+| `GET /feed/stream` | flux SSE (`text/event-stream`, `X-Accel-Buffering: no`) : `event: counts` (`{ unseen, unread, total }`) d'abord, puis `event: notification` (nouveau message, même vue que la liste) et `event: counts` à chaque changement de son fil (relus par `fn::notification_feed_counts` dans sa session) et toutes les minutes ; commentaire `: keep-alive` toutes les 25 s, à chaque fois le jeton et la session sont revérifiés (session expirée ou révoquée, jeton expiré : le flux se ferme, le client se reconnecte avec un jeton frais) ; 5 flux au plus par personne (`429`, `NOTIFICATION_FEED_STREAM_LIMIT`) ; flux fermés à l'arrêt de l'hôte et pour un client qui ne lit plus. Un `EventSource` natif n'envoie pas d'en-tête `Authorization` : lecture par `fetch` |
+| `GET /feed` | paramètres `limit` (1 à 100, 20), `cursor` (dernier message reçu), onglet : `tags` et `severity` (listes séparées par des virgules), `archived`, `read` (`true` / `false`), `data.<clé>=<valeur>` ; `200` et `{ items, next_cursor }` (du plus récent au plus ancien, sans les messages en sommeil) |
+| `GET /feed/counts` | mêmes filtres ; `200` et `{ unseen, unread, total }` |
+| `POST /feed/mark` | corps `{ ids, state }` ou `{ all: true, filter, state }` (`state` : `seen`, `read`, `unread`, `archived`, `unarchived`) ; `200` et `{ state, updated }` |
+| `POST /feed/snooze` | corps `{ id, until }` (date RFC 3339, 3 minutes à 90 jours, sinon `400` `NOTIFICATION_SNOOZE_INVALID`) ; sans `until` : réveil immédiat ; `200` et le message |
+| `POST /feed/delete` | corps `{ id }` ou `{ all: true, filter }` ; `200` et `{ deleted }` |
+| `POST /feed/{id}/action` | corps `{ action : primary ou secondary, status : done ou reverted }` ; `200` et le message ; bouton absent : `400` (`NOTIFICATION_FEED_ACTION_INVALID`) |
+
 Chaque requête porte un identifiant `x-request-id` (repris de la requête ou généré). Couches :
 limite de corps, délai, limite de concurrence, rattrapage des paniques, CORS paramétré.
 
@@ -527,7 +545,12 @@ définitif qui supprime l'adresse) et d'essai (droits, faux fournisseur local, i
 `tests/notification_channels_http.rs` parcourt les routes des adresses (adresse scellée par
 l'hôte et ouverte par son seul contexte, jamais renvoyée, clé de signature montrée une fois puis
 renouvelée, droits, hôte refusé) et le retour Twilio signé (accepté, signature fausse refusée,
-rejeu dédoublonné) ;
+rejeu dédoublonné) ; `tests/notification_feed_http.rs` parcourt le fil dans l'application
+(flux SSE reçu par la seule personne concernée, compteurs poussés après « lu », routes du fil
+au nom de la personne, `404` pour une autre personne, limite de 5 flux, session sans compte,
+fermeture du flux à l'expiration de la session, reprise de la requête `LIVE SELECT` après
+`KILL`, fermeture des flux à l'arrêt du worker ; signes de vie donnés à la main, sans fenêtre
+de temps réelle) ;
 `tests/it/startup.rs` démarre l'hôte sans aucun réglage d'envoi (sonde des notifications
 dégradée).
 `scripts/ci/ci_local.sh` rejoue la CI complète.

@@ -62,6 +62,7 @@ impl NotificationModule {
             .capability("sms")
             .capability("chat")
             .capability("webhook")
+            .capability("in_app")
             .dependency(ModuleId::new("lyxal_core"))
             .dependency(ModuleId::new("lyxal_error"))
             .dependency(ModuleId::new("lyxal_event"))

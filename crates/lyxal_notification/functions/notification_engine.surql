@@ -48,7 +48,9 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_add($params: object) -> object {
 DEFINE FUNCTION OVERWRITE fn::notification_step_context($params: object) -> object {
     LET $run = $params.run;
     LET $subscriber = IF $run.subscriber IS NONE { NONE } ELSE { (SELECT subscriber_id, locale, timezone, data FROM ONLY $run.subscriber) };
-    LET $jobs = (SELECT step_key, status FROM notification_job WHERE run = $run.id);
+    LET $jobs = (SELECT id, step_key, type, status FROM notification_job WHERE run = $run.id);
+    -- Fil (décision F7) : vu et lu du message d'une étape in_app (faux sans message)
+    LET $feed = (SELECT job, seen_at, read_at FROM notification_inbox WHERE run = $run.id);
     RETURN {
         payload: $run.payload,
         subscriber: {
@@ -57,9 +59,14 @@ DEFINE FUNCTION OVERWRITE fn::notification_step_context($params: object) -> obje
             timezone: $subscriber.timezone,
             data: $subscriber.data ?? {}
         },
-        steps: object::from_entries(array::map($jobs, |$job| [$job.step_key, { status: $job.status }]))
+        steps: object::from_entries(array::map($jobs, |$job| [$job.step_key,
+            IF $job.type = "in_app" {
+                LET $item = array::find($feed, |$i| $i.job = $job.id);
+                { status: $job.status, seen: $item.seen_at IS NOT NONE, read: $item.read_at IS NOT NONE }
+            } ELSE { { status: $job.status } }
+        ]))
     };
-} COMMENT "Interne : contexte des conditions d'étape ({ run }) : { payload, subscriber : { subscriber_id, locale, timezone, data }, steps : { <clé> : { status } } } ; jamais le secret";
+} COMMENT "Interne : contexte des conditions d'étape ({ run }) : { payload, subscriber : { subscriber_id, locale, timezone, data }, steps : { <clé> : { status }, et pour une étape in_app seen et read (message du fil vu, lu ; faux sans message, décision F7) } } ; jamais le secret";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_wait_due : fin d'une attente ou d'une fenêtre de regroupement

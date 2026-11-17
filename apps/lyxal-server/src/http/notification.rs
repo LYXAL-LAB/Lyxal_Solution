@@ -128,6 +128,7 @@ pub fn routes() -> Router<AppContext> {
             "/my/endpoints/:endpoint/rotate",
             post(my_endpoint_rotate).layer(DefaultBodyLimit::max(TEST_BODY_LIMIT)),
         )
+        .merge(super::notification_feed::routes())
         .layer(axum::middleware::map_response(no_store))
 }
 
