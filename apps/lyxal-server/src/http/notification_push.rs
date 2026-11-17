@@ -1,4 +1,4 @@
-//! Routes push de `lyxal_notification` (lot 6, décisions G1, G2) : inscription des appareils par
+//! Routes push de `lyxal_notification` (décisions G1, G2) : inscription des appareils par
 //! la personne connectée, clé publique VAPID donnée aux navigateurs, paire VAPID neuve rangée dans
 //! le coffre-fort.
 //!
@@ -11,6 +11,12 @@
 //! `fn::notification_my_device_register` au nom de la personne (valeurs en clair contrôlées par
 //! `lyxal_core`, jamais enregistrées). Réponse `201` (nouvel appareil) ou `200` (inscription
 //! renvoyée : appareil existant mis à jour) et `{ created, device }`, sans jeton ni clé.
+//!
+//! `GET /api/v1/notification/my/devices?tenant=<organisation>` : appareils de la personne
+//! connectée (service, plateforme, nom, hôte ; jamais le jeton, les clés ni l'empreinte) ;
+//! `DELETE /api/v1/notification/my/devices/{appareil}?tenant=<organisation>` : retrait d'un de ses
+//! appareils (`fn::notification_my_device_list`, `_delete`, au nom de la personne ; l'appareil
+//! d'une autre personne est introuvable). Réponses `{ devices }` et `{ deleted }`.
 //!
 //! `GET /api/v1/notification/push/vapid-key?tenant=<organisation>` (jeton d'accès) : clé publique
 //! VAPID (`applicationServerKey` du navigateur, Base64url) de l'intégration Web Push de
@@ -33,14 +39,14 @@ use axum::body::Bytes;
 use axum::extract::{DefaultBodyLimit, Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::Response;
-use axum::routing::{get, post};
+use axum::routing::{delete, get, post};
 use axum::Router;
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 use lyxal_crypto::{EcdsaP256SigningKey, SecretBytes};
 use lyxal_notification::models::{
-    Device, DeviceRegisterParams, IntegrationGetParams, IntegrationSaveParams, MyDeviceListParams,
-    VapidKeyParams,
+    Device, DeviceRegisterParams, EndpointRefParams, IntegrationGetParams, IntegrationSaveParams,
+    MyDeviceListParams, VapidKeyParams,
 };
 use lyxal_notification::{device_fingerprint, DeviceField, NotificationError, NotificationStore};
 use lyxal_secrets::models::{SecretGetParams, Stage};
@@ -61,8 +67,11 @@ pub fn routes() -> Router<AppContext> {
     Router::new()
         .route(
             "/my/devices",
-            post(device_register).layer(DefaultBodyLimit::max(DEVICE_BODY_LIMIT)),
+            post(device_register)
+                .layer(DefaultBodyLimit::max(DEVICE_BODY_LIMIT))
+                .get(device_list),
         )
+        .route("/my/devices/:device", delete(device_delete))
         .route("/push/vapid-key", get(vapid_key))
         .route(
             "/integrations/:integration/vapid",
@@ -200,6 +209,58 @@ async fn device_register(
                 StatusCode::OK
             },
             json!({ "created": registered.created, "device": device_json(&registered.device) }),
+        )
+    }
+    .await;
+    auth::respond(&context, &headers, result).await
+}
+
+/// `GET /my/devices?tenant=` : appareils de la personne connectée.
+async fn device_list(
+    State(context): State<AppContext>,
+    Query(query): Query<HashMap<String, String>>,
+    headers: HeaderMap,
+) -> Response {
+    let result = async {
+        let (_, session) = auth::caller_session(&context, &headers).await?;
+        let tenant = query.get("tenant").cloned();
+        super::notification::tenant_key(tenant.as_deref())?;
+        let devices = NotificationStore::new(session)
+            .my_device_list(MyDeviceListParams { tenant })
+            .await
+            .map_err(NotificationError::from)?;
+        auth::ok(
+            StatusCode::OK,
+            json!({ "devices": devices.iter().map(device_json).collect::<Vec<_>>() }),
+        )
+    }
+    .await;
+    auth::respond(&context, &headers, result).await
+}
+
+/// `DELETE /my/devices/{appareil}?tenant=` : appareil retiré par la personne connectée.
+async fn device_delete(
+    State(context): State<AppContext>,
+    Path(key): Path<String>,
+    Query(query): Query<HashMap<String, String>>,
+    headers: HeaderMap,
+) -> Response {
+    let result = async {
+        let (_, session) = auth::caller_session(&context, &headers).await?;
+        let tenant = query.get("tenant").cloned();
+        super::notification::tenant_key(tenant.as_deref())?;
+        let key = super::notification::endpoint_key(&key)
+            .ok_or_else(|| invalid("appareil : identifiant invalide"))?;
+        let deleted = NotificationStore::new(session)
+            .my_device_delete(EndpointRefParams {
+                tenant,
+                endpoint: format!("notification_endpoint:{key}"),
+            })
+            .await
+            .map_err(NotificationError::from)?;
+        auth::ok(
+            StatusCode::OK,
+            json!({ "deleted": deleted.deleted.to_sql() }),
         )
     }
     .await;

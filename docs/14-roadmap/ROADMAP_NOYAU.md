@@ -23,10 +23,11 @@ La V1 de `lyxal_scheduler` (rang 5) est livrée (lots 1 à 5 : socle SurrealQL, 
 Rust, moteur avec planificateur élu et exécuteurs hébergés par l'hôte, routes HTTP, clôture avec
 audit et exploitation) ; ses évolutions sont dans `crates/lyxal_scheduler/ROADMAP.md`.
 
-`lyxal_notification` a été créé avant son rang (décision D8 du programme `lyxal_auth`) avec sa
-partie e-mail et des solutions d'attente pour `lyxal_secrets` et
-`lyxal_scheduler` ; ses lots suivants, qui dépendent de ces deux crates, sont dans
-`crates/lyxal_notification/ROADMAP.md`.
+La V1 de `lyxal_notification` est livrée (lots 1 à 7 : e-mail, parcours à étapes sur
+`lyxal_scheduler`, intégrations et retours des fournisseurs avec identifiants dans
+`lyxal_secrets`, SMS, messageries d'équipe et adresse web, fil dans l'application en temps réel,
+notifications push, clôture avec audit et exploitation) ; tous ses canaux sont en place et ses
+évolutions sont dans `crates/lyxal_notification/ROADMAP.md`.
 
 Aucun crate ne démarre sans ordre du CTO et `implementation_plan.md` validé
 (`.agents/AGENTS.md` §3). Les sources de chaque crate sont fixées par le CTO dans ce plan.

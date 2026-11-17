@@ -4,7 +4,8 @@
 //! retour Postmark (identifiants Basic) qui supprime l'adresse, identifiants faux, rejeu
 //! dédoublonné, corps illisible ou trop grand, intégration inconnue ou sans secret des retours ;
 //! retour Mailgun signé, horodatage trop ancien ; réponses sans détail ; essai d'une intégration
-//! (droits, envoi accepté puis refusé par le fournisseur, issue notée, aucun secret rendu).
+//! (droits, envoi accepté puis refusé par le fournisseur, issue notée, aucun secret rendu) ; relais
+//! SMTP d'une organisation dont le nom se résout en adresse privée refusé sans connexion.
 
 use axum::body::{to_bytes, Body};
 use axum::http::{Request, StatusCode};
@@ -15,7 +16,9 @@ use lyxal_crypto::{
     SecretBytes, StaticKeyResolver,
 };
 use lyxal_notification::models::{IntegrationSaveParams, IntegrationSettings};
-use lyxal_notification::{EmailDispatcher, EmailProviders, NotificationStore, SECRETS_CONSUMER};
+use lyxal_notification::{
+    EmailDispatcher, EmailProviders, NotificationStore, StaticResolver, SECRETS_CONSUMER,
+};
 use lyxal_secrets::models::{SecretCreateParams, Stage};
 use lyxal_secrets::{ClientWrite, SecretsStore};
 use lyxal_server::modules::notification::NotificationHost;
@@ -253,7 +256,15 @@ async fn provider_webhooks_and_integration_tests_go_through_the_host() {
     let vault = started.secrets.client(SECRETS_CONSUMER);
     let notification = NotificationHost {
         dispatcher: Some(EmailDispatcher::new(
-            Arc::new(EmailProviders::for_local_tests(&base).expect("faux fournisseurs")),
+            Arc::new(
+                EmailProviders::for_local_tests(&base)
+                    .expect("faux fournisseurs")
+                    // Relais SMTP d'Alpha dont le nom se résout dans le réseau interne
+                    .with_resolver(Arc::new(StaticResolver::new().with(
+                        "smtp.interne.test",
+                        "10.0.0.1:587".parse().expect("adresse"),
+                    ))),
+            ),
             vault.clone(),
         )),
         ..started.notification.clone()
@@ -605,6 +616,59 @@ async fn provider_webhooks_and_integration_tests_go_through_the_host() {
         fake.seen.lock().expect("verrou").len(),
         2,
         "aucun envoi refusé par les droits"
+    );
+
+    // Relais SMTP d'Alpha dont le nom se résout en adresse privée : refusé avant toute connexion,
+    // l'essai ne sonde pas le réseau interne
+    secrets
+        .secret_create(SecretCreateParams::new(
+            Some("auth_organization:alpha".to_string()),
+            "notification/smtp/interne",
+            "password",
+        ))
+        .await
+        .expect("fiche");
+    vault
+        .write(ClientWrite {
+            tenant: Some("auth_organization:alpha".to_string()),
+            path: "notification/smtp/interne".to_string(),
+            value: SecretBytes::new(br#"{"username":"lyxal","password":"relais-secret"}"#.to_vec())
+                .expect("valeur"),
+            stage: Stage::Current,
+        })
+        .await
+        .expect("valeur");
+    let relay = store
+        .integration_create(IntegrationSaveParams {
+            tenant: Some("auth_organization:alpha".into()),
+            key: "relais_interne".into(),
+            provider: Some("smtp".into()),
+            name: Some("Relais interne".into()),
+            settings: Some(IntegrationSettings {
+                host: Some("smtp.interne.test".into()),
+                port: Some(587),
+                security: Some("starttls".into()),
+                ..settings(None)
+            }),
+            credentials_path: Some("notification/smtp/interne".into()),
+            ..IntegrationSaveParams::default()
+        })
+        .await
+        .expect("intégration SMTP d'Alpha");
+    let relay_uri = format!(
+        "{}/test",
+        path(&relay.id).replace("/webhooks/", "/integrations/")
+    );
+    let reply = post(&router, &relay_uri, &[bearer(&admin)], body()).await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+    assert_eq!(
+        reply.json()["data"],
+        json!({ "accepted": false, "code": "NOTIFICATION_DESTINATION_FORBIDDEN" })
+    );
+    assert!(!reply.body.contains("10.0.0.1") && !reply.body.contains("relais-secret"));
+    assert_eq!(
+        rows(&client, "SELECT VALUE [last_test.ok, last_test.code] FROM notification_integration WHERE key = 'relais_interne'").await,
+        vec![json!([false, "NOTIFICATION_DESTINATION_FORBIDDEN"])]
     );
 
     started.runtime.stop_all().await.expect("arrêt");

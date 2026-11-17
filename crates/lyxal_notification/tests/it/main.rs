@@ -7,7 +7,7 @@
 //! regroupement, annulation, planification de la purge, aperçu) ; fournisseurs HTTP contre de
 //! faux fournisseurs locaux, intégrations (choix, bascule, identifiants lus du coffre-fort) et
 //! retours des fournisseurs vérifiés ; fil dans l'application (rendu échappé, liens contrôlés à
-//! la livraison, contenu en lecture seule).
+//! la livraison, contenu en lecture seule) ; chaque enveloppe du store appelée et son résultat relu.
 
 mod audience;
 mod channels;
@@ -20,5 +20,6 @@ mod providers;
 mod push;
 mod smtp_server;
 mod steps;
+mod store;
 mod support;
 mod texts;

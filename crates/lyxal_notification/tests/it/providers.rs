@@ -1,13 +1,18 @@
 //! Chaque fournisseur HTTP contre un faux fournisseur local : requête attendue (adresse fixe,
 //! authentification, corps, en-têtes `List-Unsubscribe`), réponse acceptée (identifiant du
 //! message), refus définitif (400, 401, 403, 422), échec temporaire (429, 5xx), redirection
-//! jamais suivie, réponse trop grande, fournisseur injoignable.
+//! jamais suivie, réponse trop grande, fournisseur injoignable ; relais SMTP d'une organisation
+//! dont le nom se résout en adresse privée refusé avant toute connexion.
 
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 use lyxal_crypto::SecretBytes;
 use lyxal_notification::models::{FailureClass, IntegrationSettings};
-use lyxal_notification::{Credentials, EmailMessage, EmailProviders, Provider, RenderedEmail};
+use lyxal_notification::{
+    Credentials, EmailMessage, EmailProviders, IntegrationScope, Provider, RenderedEmail,
+    StaticResolver,
+};
+use std::sync::Arc;
 
 use crate::fake_provider::{FakeProviders, Reply};
 
@@ -52,6 +57,7 @@ async fn each_provider_sends_the_expected_request() {
     let receipt = providers
         .send(
             Provider::Brevo,
+            IntegrationScope::Organization,
             &settings(),
             &message(true),
             &key("xkeysib-brevo"),
@@ -94,6 +100,7 @@ async fn each_provider_sends_the_expected_request() {
     let receipt = providers
         .send(
             Provider::Mailgun,
+            IntegrationScope::Organization,
             &mailgun,
             &message(true),
             &key("key-mailgun"),
@@ -128,6 +135,7 @@ async fn each_provider_sends_the_expected_request() {
     providers
         .send(
             Provider::Mailgun,
+            IntegrationScope::Organization,
             &mailgun,
             &message(false),
             &key("key-mailgun"),
@@ -144,6 +152,7 @@ async fn each_provider_sends_the_expected_request() {
     let receipt = providers
         .send(
             Provider::Postmark,
+            IntegrationScope::Organization,
             &settings(),
             &message(true),
             &key("pm-token"),
@@ -169,6 +178,7 @@ async fn each_provider_sends_the_expected_request() {
     let receipt = providers
         .send(
             Provider::Resend,
+            IntegrationScope::Organization,
             &settings(),
             &message(false),
             &key("re_secret"),
@@ -228,6 +238,7 @@ async fn responses_are_classified_without_following_redirects() {
         let result = providers
             .send(
                 Provider::Postmark,
+                IntegrationScope::Organization,
                 &settings(),
                 &message(false),
                 &key("pm-token"),
@@ -259,6 +270,7 @@ async fn an_unreachable_provider_is_a_transient_failure() {
     let error = providers
         .send(
             Provider::Resend,
+            IntegrationScope::Organization,
             &settings(),
             &message(false),
             &key("re_secret"),
@@ -276,8 +288,64 @@ async fn an_unreachable_provider_is_a_transient_failure() {
     )
     .expect("identifiants");
     let error = providers
-        .send(Provider::Brevo, &settings(), &message(false), &login)
+        .send(
+            Provider::Brevo,
+            IntegrationScope::Organization,
+            &settings(),
+            &message(false),
+            &login,
+        )
         .await
         .expect_err("forme");
     assert_eq!(error.code, "NOTIFICATION_INTEGRATION_SECRET_INVALID");
+}
+
+#[tokio::test]
+async fn an_organization_smtp_relay_resolving_to_a_private_address_is_refused() {
+    let resolver = StaticResolver::new()
+        .with(
+            "smtp.interne.test",
+            "10.0.0.1:587".parse().expect("adresse"),
+        )
+        .with(
+            "metadonnees.test",
+            "169.254.169.254:25".parse().expect("adresse"),
+        );
+    let providers = EmailProviders::for_local_tests("http://127.0.0.1:9")
+        .expect("fournisseurs")
+        .with_resolver(Arc::new(resolver));
+    let login = Credentials::parse(
+        Provider::Smtp,
+        &SecretBytes::new(br#"{"username":"u","password":"p"}"#.to_vec()).expect("valeur"),
+    )
+    .expect("identifiants");
+    for (host, port, security) in [
+        ("smtp.interne.test", 587, "starttls"),
+        ("metadonnees.test", 25, "tls"),
+    ] {
+        let relay = IntegrationSettings {
+            host: Some(host.into()),
+            port: Some(port),
+            security: Some(security.into()),
+            ..settings()
+        };
+        let error = providers
+            .send(
+                Provider::Smtp,
+                IntegrationScope::Organization,
+                &relay,
+                &message(false),
+                &login,
+            )
+            .await
+            .expect_err("relais interne refusé");
+        assert_eq!(
+            (error.class, error.code.as_str()),
+            (
+                FailureClass::Permanent,
+                "NOTIFICATION_DESTINATION_FORBIDDEN"
+            ),
+            "{host}"
+        );
+    }
 }

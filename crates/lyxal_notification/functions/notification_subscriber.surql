@@ -19,10 +19,10 @@ DEFINE FUNCTION OVERWRITE fn::notification_subscriber_fields($params: object) ->
         last_name: { pipeline: [{ rule: "optional_string", options: { max_length: 64 } }] },
         locale: { pipeline: [{ rule: "locale", options: { require_region: false } }] },
         timezone: { pipeline: [{ rule: "timezone", options: { allow_utc: true } }] },
-        data: { pipeline: [{ rule: "is_object" }] },
+        data: { pipeline: [{ rule: "is_object" }, { rule: "max_serialized_length", options: { max_length: 8192 } }] },
         identity: { pipeline: [{ rule: "record", options: { expected_table: "auth_identity" } }] }
     };
-} COMMENT "Champs lyxal_core d'un abonné reçu : subscriber_id, email, phone (E.164), first_name, last_name, locale, timezone, data, identity";
+} COMMENT "Champs lyxal_core d'un abonné reçu : subscriber_id, email, phone (E.164), first_name, last_name, locale, timezone, data (8 Kio au plus en JSON), identity";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_subscriber_save : création ou mise à jour d'un abonné validé
@@ -37,9 +37,6 @@ DEFINE FUNCTION OVERWRITE fn::notification_subscriber_save($params: object) -> o
     LET $scope = IF $params.tenant IS NONE { "installation" } ELSE { <string> record::id($params.tenant) };
     IF $input.identity IS NOT NONE AND $input.subscriber_id != string::concat("auth:", <string> record::id($input.identity)) {
         RETURN { code: "NOTIFICATION_INVALID_INPUT", details: { fields: { identity: ["NOTIFICATION_SUBSCRIBER_IDENTITY_MISMATCH"] } } };
-    };
-    IF $input.data IS NOT NONE AND string::len(<string> $input.data) > 8192 {
-        RETURN { code: "NOTIFICATION_INVALID_INPUT", details: { fields: { data: ["CORE_VALIDATION_TOO_LONG"] } } };
     };
     LET $email = IF $input.email IS NONE { NONE } ELSE { fn::sanitize_pipeline_execute($input.email, [{ rule: "email" }], 5) };
     LET $changes = object::from_entries(array::filter([
@@ -78,7 +75,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_subscriber_save($params: object) -> o
         };
     };
     RETURN { code: NONE, subscriber: $inserted[0], created: true, changed: true };
-} COMMENT "Crée ou met à jour un abonné validé ({ tenant, input, must_exist }) ; adresse normalisée, data de 8 Kio au plus ; un nouvel abonné auth:<identité> reprend les préférences de l'abonné email:<adresse> de la portée. Renvoie { code, details, subscriber, created, changed }";
+} COMMENT "Crée ou met à jour un abonné validé ({ tenant, input, must_exist }) ; adresse normalisée ; un nouvel abonné auth:<identité> reprend les préférences de l'abonné email:<adresse> de la portée. Renvoie { code, details, subscriber, created, changed }";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_subscriber_upsert

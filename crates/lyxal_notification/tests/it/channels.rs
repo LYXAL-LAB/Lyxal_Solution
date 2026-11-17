@@ -1,4 +1,4 @@
-//! Lot 4 : SMS, messageries d'équipe et adresses web contre de faux services locaux. Chaque
+//! SMS, messageries d'équipe et adresses web contre de faux services locaux. Chaque
 //! fournisseur de SMS (requête, identifiants, refus classés) ; chaque messagerie (corps, chemin,
 //! jeton Telegram) ; contrôles SSRF du client sortant (adresse privée IPv4 et IPv6, nom qui se
 //! résout en adresse privée, HTTP, adresse IP, redirection non suivie, liste d'hôtes) ; appel

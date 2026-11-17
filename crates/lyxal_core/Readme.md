@@ -25,7 +25,7 @@ Ces éléments appartiennent aux modules. Le Core fournit les briques ; les modu
 
 ```text
 lyxal_core/
-├── manifest.toml            (id lyxal_core, version 0.1.0, 483 fonctions déclarées)
+├── manifest.toml            (id lyxal_core, version 0.1.0, 484 fonctions déclarées)
 ├── Readme.md
 └── functions/
     ├── validations/   functions/ (196) · tests/ (196)   fn::validation_*
@@ -82,6 +82,7 @@ IF !$name.valid {
 * Une « date » est un datetime à minuit UTC.
 * `details.scope` précise ce qui est en cause quand ce n'est pas la valeur elle-même : `"item"` (un élément d'un tableau), `"key"` (une clé d'objet), `"value"` (une valeur d'objet) ou `"group"` (un groupe de champs). `details.bound` désigne la borne en cause d'un intervalle.
 * Un identifiant SurrealQL de table, namespace, base ou événement se valide avec `fn::validation_identifier`.
+* La taille d'un objet ou d'un tableau libre (données d'un abonné, métadonnées…) se borne avec `fn::validation_max_serialized_length($value, $max_length)` (règle `max_serialized_length` du moteur) : longueur en caractères de son texte JSON (`encoding::json::encode`).
 * Un motif d'expression régulière syntaxiquement invalide (`fn::validation_regex`) provoque l'erreur du moteur (`string::matches`) : SurrealDB 3.3.4 n'offre aucun moyen de le détecter sans lever.
 
 #### Catalogue des codes `CORE_VALIDATION_*`
@@ -188,7 +189,7 @@ Un seul moteur exécute les pipelines de tous les domaines. Il ne connaît aucun
 
 | Domaine | Catalogue | Points d'entrée | Résultat |
 | :--- | :--- | :--- | :--- |
-| `validations` | `fn::validation_step_catalog()` : 176 règles, une par validateur à une seule valeur | `fn::validation_pipeline_execute($value, $pipeline, $max_steps)`, `fn::validation_object_execute($value, $schema, $max_steps)` | rapport `{ valid, value, errors, warnings, by_field }` ; ne lève jamais pour une donnée invalide |
+| `validations` | `fn::validation_step_catalog()` : 177 règles, une par validateur à une seule valeur | `fn::validation_pipeline_execute($value, $pipeline, $max_steps)`, `fn::validation_object_execute($value, $schema, $max_steps)` | rapport `{ valid, value, errors, warnings, by_field }` ; ne lève jamais pour une donnée invalide |
 | `sanitize` | `fn::sanitize_step_catalog()` : 93 règles, une par fonction de valeurs (sauf `date_range`), plus `default` | `fn::sanitize_pipeline_execute($value, $pipeline, $max_steps)`, `fn::sanitize_object_execute($value, $schema, $max_steps)` | valeur nettoyée ; donnée non nettoyable → `CORE_SANITIZE_INVALID_TYPE` |
 | `security` | `fn::security_step_catalog()` : 22 règles (masquage et empreintes, détections, `permission_check`) | `fn::security_pipeline_execute($value, $pipeline, $max_steps)`, `fn::security_object_execute($value, $schema, $max_steps)` | `{ value, findings, score, decisions, allowed, errors }` |
 
@@ -236,7 +237,7 @@ Aucun module ne l'appelle encore. L'adoption se fera à la reprise de chaque mod
 
 `scripts/ci/test_lyxal_core.py` démarre un serveur SurrealDB 3.3.4 jetable et :
 
-1. charge les 483 fonctions et vérifie qu'elles sont toutes définies ;
+1. charge les 484 fonctions et vérifie qu'elles sont toutes définies ;
 2. vérifie que chaque fonction a son fichier `<nom>.test.surql`, et inversement ;
 3. exécute chaque fichier de tests.
 

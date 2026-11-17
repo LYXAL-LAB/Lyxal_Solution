@@ -1,4 +1,4 @@
-//! Lot 5 de `lyxal_notification` sur l'hôte (base embarquée, runtime démarré) : fil dans
+//! Fil de `lyxal_notification` sur l'hôte (base embarquée, runtime démarré) : fil dans
 //! l'application et son temps réel. Flux SSE ouvert avec la session `lyxal_auth` de la
 //! personne : compteurs d'abord, puis le nouveau message et ses compteurs, à elle seule (une
 //! collègue connectée ne reçoit que les siens) ; compteurs poussés après « lu » ; routes du fil

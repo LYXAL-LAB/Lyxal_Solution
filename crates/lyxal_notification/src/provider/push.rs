@@ -1,4 +1,4 @@
-//! Notifications push (lot 6, décisions G2 à G6) : **Web Push** (navigateurs, RFC 8030, 8291,
+//! Notifications push (décisions G2 à G6) : **Web Push** (navigateurs, RFC 8030, 8291,
 //! 8292), **Firebase Cloud Messaging** (API HTTP v1) et **Apple Push Notification service**
 //! (HTTP/2). Toute la cryptographie passe par `lyxal_crypto` (décision K8) : jetons ES256 (VAPID,
 //! APNs) et RS256 (compte de service Google), chiffrement `aes128gcm` de Web Push.
@@ -7,7 +7,7 @@
 //!   12 h, `sub` : contact de l'intégration) dans `Authorization: vapid t=<jeton>, k=<clé
 //!   publique>` ; corps chiffré pour les clés du navigateur, en-têtes `Content-Encoding:
 //!   aes128gcm`, `TTL`, `Urgency`. L'adresse donnée par le navigateur passe par le client
-//!   contrôlé du lot 4 ([`OutboundClient`]) : HTTPS, services push connus seulement, adresses
+//!   contrôlé ([`OutboundClient`]) : HTTPS, services push connus seulement, adresses
 //!   résolues vérifiées, aucune redirection. 404 et 410 : appareil retiré.
 //! * **FCM** : jeton RS256 du compte de service (portée `firebase.messaging`) échangé à
 //!   `oauth2.googleapis.com/token` contre un jeton d'accès gardé en mémoire jusqu'à son échéance

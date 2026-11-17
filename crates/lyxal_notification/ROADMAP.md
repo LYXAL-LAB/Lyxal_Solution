@@ -1,13 +1,12 @@
 # Feuille de route — `lyxal_notification`
 
 Évolutions à venir ; l'état actuel est décrit par [`README.md`](README.md). Correspondance
-détaillée avec Novu : [`MODELE_SOURCES.md`](MODELE_SOURCES.md) §1 et §2. Chaque lot démarre sur
-ordre du CTO avec un `implementation_plan.md` validé.
+détaillée avec Novu : [`MODELE_SOURCES.md`](MODELE_SOURCES.md) §1 et §2. Chaque étape démarre
+sur ordre du CTO avec un `implementation_plan.md` validé.
 
-| Lot | Contenu | Prérequis |
+| Étape | Contenu | Prérequis |
 | :--- | :--- | :--- |
-| **V1-e — Autres canaux** | **Terminée** : SMS, messageries d'équipe, adresse web (lot 4) et notifications push Web Push, FCM, APNs (lot 6) livrés (README) | — |
-| **Après V1-e** | Choix de l'intégration dans les surcharges d'un déclenchement (décision C5) ; fournisseurs e-mail Amazon SES, SendGrid et OVHcloud (signatures RSA ou SHA-1 à vérifier, K5) ; retours des SMS de toutes les parties d'un message Vonage (seule la première est rattachée) ; Vonage par l'API Messages (webhooks signés JWT) ; push : routes de l'hôte pour lister et retirer ses appareils, clé VAPID choisie par appareil quand une portée a plusieurs intégrations Web Push, boutons d'action et regroupement (`collapse`) des notifications push | — |
+| **Après V1** | Choix de l'intégration dans les surcharges d'un déclenchement (décision C5) ; fournisseurs e-mail Amazon SES, SendGrid et OVHcloud (signatures RSA ou SHA-1 à vérifier, K5) ; retours des SMS de toutes les parties d'un message Vonage (seule la première est rattachée) ; Vonage par l'API Messages (webhooks signés JWT) ; push : clé VAPID choisie par appareil quand une portée a plusieurs intégrations Web Push, boutons d'action et regroupement (`collapse`) des notifications push | — |
 | **V2 — Observabilité et console** | Écrans de la console (dont l'aperçu des étapes et les composants du fil dans l'application : cloche, onglets, boutons, sommeil, branchés sur les routes et le flux SSE du fil), regroupement à heure fixe (ex. chaque jour à 9 h), statistiques horaires, suivi des ouvertures et clics (désactivé par défaut, décision N7), webhooks sortants signés (point 2), révisions publiées, contrôle des domaines d'envoi, étape HTTP (point 6) | `lyxal_secrets` |
 | **V3 — Événementiel avancé** | Interactions humaines (approuver / choisir par message), courrier entrant (point 5), connexions chat OAuth, outils IA | `lyxal_connect` |
 
@@ -51,9 +50,6 @@ en service »), une adresse de réception à soi.
 
 ## Limites connues
 
-* **Relais SMTP d'une organisation** : hôte contrôlé à l'enregistrement (ni adresse IP, ni hôte
-  local, ni relais en clair) mais pas après résolution DNS ; le contrôle après résolution des
-  messageries et adresses web (`OutboundClient`) pourra s'y appliquer.
 * **Connexions SMTP** : une connexion par envoi ; un groupe de connexions par intégration
   viendra si le débit l'exige.
 * **Appels sortants contrôlés** : un client HTTP par appel (connexion à l'adresse vérifiée) ;
@@ -73,9 +69,6 @@ en service »), une adresse de réception à soi.
 * **Clé VAPID** : la clé donnée aux navigateurs est celle de l'intégration Web Push principale (puis
   par priorité) de la portée, sans condition ; une portée a une seule intégration Web Push utile.
   Changer de paire rend les abonnements existants inutilisables (retirés au premier envoi refusé).
-* **Appareils de la personne** : inscription par une route de l'hôte ; la liste et le retrait
-  (`fn::notification_my_device_list`, `_delete`) n'ont pas encore de route (comme les adresses du
-  lot 4).
 * **Jetons gardés en mémoire** : jeton d'accès FCM et jeton du fournisseur APNs gardés par chaque
   instance de l'hôte (aucun partage entre instances).
 

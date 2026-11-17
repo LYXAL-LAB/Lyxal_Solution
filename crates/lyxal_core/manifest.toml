@@ -409,6 +409,7 @@ functions = [
     "functions/validations/functions/lyxal_storage_path.surql",
     "functions/validations/functions/mac_address.surql",
     "functions/validations/functions/max_length.surql",
+    "functions/validations/functions/max_serialized_length.surql",
     "functions/validations/functions/mime_type.surql",
     "functions/validations/functions/min_length.surql",
     "functions/validations/functions/money.surql",

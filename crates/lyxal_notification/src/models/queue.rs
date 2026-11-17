@@ -99,7 +99,7 @@ pub struct ClaimedJob {
     /// Variables non sensibles.
     pub payload: serde_json::Value,
     /// Variables sensibles scellées (`enc:v2`, contexte du module) ; jamais pour le fil.
-    pub secret: Option<String>,
+    pub(crate) secret: Option<String>,
     /// Parcours sensible : aucun objet conservé.
     pub sensitive: bool,
     /// Parcours critique : ni heures calmes ni lien de désabonnement.

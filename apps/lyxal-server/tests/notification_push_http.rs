@@ -1,9 +1,10 @@
-//! Lot 6 de `lyxal_notification` sur l'hôte (base embarquée, runtime démarré, coffre-fort à clé
+//! Notifications push de `lyxal_notification` sur l'hôte (base embarquée, runtime démarré, coffre-fort à clé
 //! maîtresse éphémère) : paire VAPID neuve rangée dans le coffre-fort (droit de gestion, clé privée
 //! jamais montrée, clé publique notée sur l'intégration), clé publique VAPID donnée à la personne
 //! de l'organisation, inscription des appareils par la personne connectée (jeton et clés scellés
 //! par l'hôte sous l'empreinte du jeton, jamais relus ni renvoyés, inscription renvoyée mise à
-//! jour), refus (service push inconnu, autre organisation, sans jeton d'accès).
+//! jour), refus (service push inconnu, autre organisation, sans jeton d'accès) ; liste et retrait
+//! de ses appareils et de ses adresses de messagerie par la personne (jamais ceux d'une autre).
 
 use axum::body::{to_bytes, Body};
 use axum::http::{Request, StatusCode};
@@ -218,6 +219,8 @@ async fn devices_are_sealed_by_the_host_and_vapid_keys_are_kept_in_the_vault() {
             CREATE auth_identity:personne CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "personne@lyxal.test", locale: "fr" } };
             RELATE auth_identity:personne->auth_member_of->auth_organization:alpha;
             RELATE auth_identity:personne->auth_member_of->auth_organization:beta;
+            CREATE auth_identity:autre CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "autre@lyxal.test", locale: "fr" } };
+            RELATE auth_identity:autre->auth_member_of->auth_organization:alpha;
             "#,
         )
         .await
@@ -259,6 +262,14 @@ async fn devices_are_sealed_by_the_host_and_vapid_keys_are_kept_in_the_vault() {
         .to_string();
     let personne = person(&router, "lyxk_push-essai-alpha").await;
     let personne_beta = person(&router, "lyxk_push-essai-beta").await;
+    client
+        .query("CREATE auth_api_key CONTENT { identity: auth_identity:autre, organization: auth_organization:alpha, name: 'autre', key_hash: $hash, prefix: 'lyxk_pus', permissions: [] }")
+        .bind(("hash", lyxal_crypto::hash::blake3_hex(b"lyxk_push-essai-autre")))
+        .await
+        .expect("clé d'API")
+        .check()
+        .expect("clé d'API créée");
+    let autre = person(&router, "lyxk_push-essai-autre").await;
     let vapid_key = "/api/v1/notification/push/vapid-key?tenant=auth_organization:alpha";
 
     // Pas encore de clé VAPID : aucune clé à donner
@@ -484,5 +495,110 @@ async fn devices_are_sealed_by_the_host_and_vapid_keys_are_kept_in_the_vault() {
         Some(json!({ "tenant": "auth_organization:alpha", "provider": "fcm", "token": FCM_TOKEN })),
     )
     .await;
+    assert_eq!(reply.status, StatusCode::UNAUTHORIZED);
+
+    // Liste et retrait de ses appareils par la personne ; jamais ceux d'une autre personne
+    let mine = format!("{devices}?tenant=auth_organization:alpha");
+    let reply = call(&router, "GET", &mine, Some(&personne), None).await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+    let listed = reply.json()["data"]["devices"].clone();
+    assert_eq!(listed.as_array().map(Vec::len), Some(3), "{}", reply.body);
+    assert!(!reply.body.contains(FCM_TOKEN) && !reply.body.contains(&fingerprint));
+    let fcm = listed
+        .as_array()
+        .and_then(|list| list.iter().find(|d| d["provider"] == "fcm"))
+        .and_then(|d| d["id"].as_str())
+        .expect("appareil FCM")
+        .to_string();
+    let path = |id: &str| {
+        format!(
+            "{devices}/{}?tenant=auth_organization:alpha",
+            id.trim_start_matches("notification_endpoint:")
+        )
+    };
+    let reply = call(
+        &router,
+        "POST",
+        devices,
+        Some(&autre),
+        Some(json!({ "tenant": "auth_organization:alpha", "provider": "apns", "token": APNS_TOKEN.replace('0', "f") })),
+    )
+    .await;
+    assert_eq!(reply.status, StatusCode::CREATED, "{}", reply.body);
+    let reply = call(&router, "GET", &mine, Some(&autre), None).await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+    assert_eq!(
+        reply.json()["data"]["devices"].as_array().map(Vec::len),
+        Some(1)
+    );
+    let reply = call(&router, "DELETE", &path(&fcm), Some(&autre), None).await;
+    assert_eq!(
+        reply.json()["error"]["code"],
+        "NOTIFICATION_DEVICE_NOT_FOUND",
+        "{}",
+        reply.body
+    );
+    let reply = call(&router, "DELETE", &path(&fcm), Some(&personne), None).await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+    assert_eq!(reply.json()["data"]["deleted"], json!(fcm));
+    let reply = call(&router, "GET", &mine, Some(&personne), None).await;
+    assert_eq!(
+        reply.json()["data"]["devices"].as_array().map(Vec::len),
+        Some(2)
+    );
+    let reply = call(&router, "DELETE", &path("a:b"), Some(&personne), None).await;
+    assert_eq!(reply.status, StatusCode::BAD_REQUEST, "{}", reply.body);
+    let reply = call(&router, "GET", &mine, None, None).await;
+    assert_eq!(reply.status, StatusCode::UNAUTHORIZED);
+    // Adresses de messagerie et web : liste et retrait par la personne, jamais par une autre
+    let endpoints = "/api/v1/notification/my/endpoints";
+    let reply = call(&router, "POST", endpoints, Some(&personne),
+        Some(json!({ "tenant": "auth_organization:alpha", "channel": "chat", "provider": "slack", "name": "Équipe", "url": "https://hooks.slack.com/services/essai-salon-secret" }))).await;
+    assert_eq!(reply.status, StatusCode::CREATED, "{}", reply.body);
+    let created = reply.json()["data"]["endpoint"]["id"]
+        .as_str()
+        .expect("adresse")
+        .to_string();
+    let mine = format!("{endpoints}?tenant=auth_organization:alpha&channel=chat");
+    let reply = call(&router, "GET", &mine, Some(&personne), None).await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+    let listed = reply.json()["data"]["endpoints"].clone();
+    assert_eq!(listed.as_array().map(Vec::len), Some(1), "{}", reply.body);
+    assert_eq!(
+        (listed[0]["id"].as_str(), listed[0]["host"].as_str()),
+        (Some(created.as_str()), Some("hooks.slack.com"))
+    );
+    assert!(!reply.body.contains("essai-salon-secret"));
+    let reply = call(&router, "GET", &mine, Some(&autre), None).await;
+    assert_eq!(
+        reply.json()["data"]["endpoints"],
+        json!([]),
+        "{}",
+        reply.body
+    );
+    let path = |id: &str| {
+        format!(
+            "{endpoints}/{}?tenant=auth_organization:alpha",
+            id.trim_start_matches("notification_endpoint:")
+        )
+    };
+    let reply = call(&router, "DELETE", &path(&created), Some(&autre), None).await;
+    assert_eq!(
+        reply.json()["error"]["code"],
+        "NOTIFICATION_ENDPOINT_NOT_FOUND",
+        "{}",
+        reply.body
+    );
+    let reply = call(&router, "DELETE", &path(&created), Some(&personne), None).await;
+    assert_eq!(reply.status, StatusCode::OK, "{}", reply.body);
+    assert_eq!(reply.json()["data"]["deleted"], json!(created));
+    let reply = call(&router, "GET", &mine, Some(&personne), None).await;
+    assert_eq!(
+        reply.json()["data"]["endpoints"],
+        json!([]),
+        "{}",
+        reply.body
+    );
+    let reply = call(&router, "DELETE", &path(&created), None, None).await;
     assert_eq!(reply.status, StatusCode::UNAUTHORIZED);
 }

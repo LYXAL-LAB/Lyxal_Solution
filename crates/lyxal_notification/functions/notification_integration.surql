@@ -563,7 +563,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_provider_event_apply($params: object)
     -- l'opérateur) : adresse ajoutée à la liste de suppression de l'organisation du message
     IF $params.type IN ["bounced", "complained"] AND $message.channel IN ["email", "sms"] {
         INSERT IGNORE INTO notification_suppression {
-            tenant: $params.tenant, channel: $message.channel, address: string::lowercase($message.to),
+            tenant: $params.tenant, channel: $message.channel, address: $message.to,
             reason: IF $params.type = "bounced" { "hard_bounce" } ELSE { "complaint" },
             source: string::slice(string::concat("provider:", $params.event_id), 0, 256)
         };

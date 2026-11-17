@@ -54,7 +54,7 @@ RETURN fn::notification_subscriber_upsert({ tenant: "auth_organization:alpha", s
     AND fn::notification_subscriber_upsert({ tenant: "auth_organization:alpha", subscriber_id: "x", phone: "06 12 34 56 78" }).error.code == "NOTIFICATION_INVALID_INPUT"
     AND fn::notification_subscriber_upsert({ tenant: "auth_organization:alpha", subscriber_id: "x", timezone: "Paris" }).error.code == "NOTIFICATION_INVALID_INPUT"
     AND fn::notification_subscriber_upsert({ tenant: "auth_organization:alpha", subscriber_id: "x", locale: "pas une langue" }).error.code == "NOTIFICATION_INVALID_INPUT"
-    AND fn::notification_subscriber_upsert({ tenant: "auth_organization:alpha", subscriber_id: "x", data: { blob: string::repeat("a", 9000) } }).error.code == "NOTIFICATION_INVALID_INPUT"
+    AND fn::notification_subscriber_upsert({ tenant: "auth_organization:alpha", subscriber_id: "x", data: { blob: string::repeat("a", 9000) } }).error.details.fields == { data: ["CORE_VALIDATION_TOO_LONG"] }
     AND fn::notification_subscriber_upsert({ tenant: "auth_organization:alpha", subscriber_id: "auth:admin", identity: "auth_identity:claire" }).error.code == "NOTIFICATION_INVALID_INPUT"
     AND fn::notification_subscriber_upsert({ tenant: "auth_organization:alpha", subscriber_id: "x", inconnu: 1 }).error.code == "NOTIFICATION_INVALID_INPUT"
     AND fn::notification_subscriber_upsert({ tenant: "auth_organization:alpha", email: "a@exemple.fr" }).error.code == "NOTIFICATION_INVALID_INPUT";

@@ -117,6 +117,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_step_catalog() -> array<object> {
         { rule: "lyxal_storage_path", cost: 1, required: ["allow_file_extension", "max_length"] },
         { rule: "mac_address", cost: 1, required: ["allow_hyphen", "allow_colon"] },
         { rule: "max_length", cost: 1, required: ["max_length"] },
+        { rule: "max_serialized_length", cost: 1, required: ["max_length"] },
         { rule: "mime_type", cost: 1 },
         { rule: "min_length", cost: 1, required: ["min_length"] },
         { rule: "money", cost: 1, required: ["max_scale"] },

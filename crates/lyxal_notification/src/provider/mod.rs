@@ -1,19 +1,19 @@
 //! Fournisseurs d'e-mail (décision K5) : SMTP (`lettre`) et API HTTP de Brevo, Mailgun, Postmark
-//! et Resend (`reqwest`, décision K10). Chaque fournisseur implémente [`EmailProvider`] ;
-//! [`EmailProviders`] choisit celui d'une intégration et [`EmailDispatcher`] lit ses
-//! identifiants dans `lyxal_secrets` (chemin tracé, module annoncé comme consommateur) avant
-//! l'envoi. Les identifiants restent en [`SecretString`] : jamais journalisés, jamais dans un
-//! `Debug`, jamais écrits dans une table du module.
+//! et Resend (`reqwest`, décision K10). [`EmailProviders`] choisit le fournisseur d'une
+//! intégration et [`EmailDispatcher`] lit ses identifiants dans `lyxal_secrets` (chemin tracé,
+//! module annoncé comme consommateur) avant l'envoi. Les identifiants restent en
+//! [`SecretString`] : jamais journalisés, jamais dans un `Debug`, jamais écrits dans une table du
+//! module.
 //!
-//! Classement d'un échec (plan du lot 3, §6) : réponse 2xx acceptée ; 400, 401, 403, 422 et
-//! tout autre refus du client définitifs (aucune bascule) ; 429, 5xx, réseau ou délai dépassé
-//! temporaires (bascule vers l'intégration suivante, D3).
+//! Classement d'un échec (`README.md`) : réponse 2xx acceptée ; 400, 401, 403, 422 et tout autre
+//! refus du client définitifs (aucune bascule) ; 429, 5xx, réseau ou délai dépassé temporaires
+//! (bascule vers l'intégration suivante, D3).
 //!
-//! Autres canaux (lot 4) : SMS par Brevo, Twilio et Vonage ([`SmsApi`]) ; messageries d'équipe
-//! et adresse web par le client contrôlé ([`ChatSender`]) ; [`ChannelDispatcher`] lit les
-//! identifiants dans `lyxal_secrets` (jeton du robot Telegram compris).
+//! Autres canaux : SMS par Brevo, Twilio et Vonage ([`SmsApi`]) ; messageries d'équipe et adresse
+//! web par le client contrôlé ([`ChatSender`]) ; [`ChannelDispatcher`] lit les identifiants dans
+//! `lyxal_secrets` (jeton du robot Telegram compris).
 //!
-//! Notifications push (lot 6) : Web Push, FCM et APNs ([`PushApi`]) ; [`PushDispatcher`] lit les
+//! Notifications push : Web Push, FCM et APNs ([`PushApi`]) ; [`PushDispatcher`] lit les
 //! identifiants de l'intégration dans `lyxal_secrets` (clé VAPID, compte de service Google, clé
 //! APNs) avant l'envoi.
 
@@ -263,12 +263,35 @@ impl ProviderError {
     }
 }
 
+/// Portée d'une intégration : celle de l'installation (réglée par l'exploitant) ou celle d'une
+/// organisation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IntegrationScope {
+    /// Intégration de l'installation (sans organisation).
+    Installation,
+    /// Intégration d'une organisation.
+    Organization,
+}
+
+impl IntegrationScope {
+    /// Portée de l'intégration réservée.
+    pub fn of(integration: &ClaimedIntegration) -> Self {
+        if integration.tenant.is_some() {
+            Self::Organization
+        } else {
+            Self::Installation
+        }
+    }
+}
+
 /// Fournisseur d'e-mail.
 #[async_trait]
 pub trait EmailProvider: Send + Sync {
-    /// Envoie un message avec les réglages de l'intégration et ses identifiants.
+    /// Envoie un message avec les réglages de l'intégration de portée `scope` et ses
+    /// identifiants.
     async fn send(
         &self,
+        scope: IntegrationScope,
         settings: &IntegrationSettings,
         message: &EmailMessage,
         credentials: &Credentials,
@@ -300,16 +323,25 @@ impl EmailProviders {
         })
     }
 
-    /// Envoie par le fournisseur `provider`.
+    /// Mêmes fournisseurs, noms des relais SMTP résolus par `resolver` (tests :
+    /// [`crate::StaticResolver`]).
+    pub fn with_resolver(mut self, resolver: Arc<dyn crate::HostResolver>) -> Self {
+        self.smtp = self.smtp.with_resolver(resolver);
+        self
+    }
+
+    /// Envoie par le fournisseur `provider` avec les réglages d'une intégration de portée
+    /// `scope` (relais SMTP : boucle locale permise à l'installation seule).
     pub async fn send(
         &self,
         provider: Provider,
+        scope: IntegrationScope,
         settings: &IntegrationSettings,
         message: &EmailMessage,
         credentials: &Credentials,
     ) -> Result<ProviderReceipt, ProviderError> {
         match provider {
-            Provider::Smtp => self.smtp.send(settings, message, credentials).await,
+            Provider::Smtp => self.smtp.send(scope, settings, message, credentials).await,
             Provider::Brevo => self.api.brevo(settings, message, credentials).await,
             Provider::Mailgun => self.api.mailgun(settings, message, credentials).await,
             Provider::Postmark => self.api.postmark(settings, message, credentials).await,
@@ -357,7 +389,13 @@ impl EmailDispatcher {
         let credentials = Credentials::parse(provider, &value)?;
         drop(value);
         self.providers
-            .send(provider, &integration.settings, message, &credentials)
+            .send(
+                provider,
+                IntegrationScope::of(integration),
+                &integration.settings,
+                message,
+                &credentials,
+            )
             .await
     }
 

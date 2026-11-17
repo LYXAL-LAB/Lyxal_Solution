@@ -24,7 +24,7 @@ par SMTP (`lettre`) ou par les API des fournisseurs (`reqwest`), appelle les mes
 adresses web par un client sortant contrôlé (SSRF), scelle les adresses et les jetons des
 appareils (`lyxal_crypto`), signe les jetons des services push et chiffre les messages Web Push
 (`lyxal_crypto`, décision K8) et vérifie les retours (`lyxal_crypto`). Modèle repris de Novu et
-Postal ([`MODELE_SOURCES.md`](MODELE_SOURCES.md)) ; lots suivants dans [`ROADMAP.md`](ROADMAP.md).
+Postal ([`MODELE_SOURCES.md`](MODELE_SOURCES.md)) ; évolutions à venir dans [`ROADMAP.md`](ROADMAP.md).
 
 ## 1. Modèle
 
@@ -252,6 +252,15 @@ secrète).
   ne touche pas au secret.
 * **Organisation** : pas de relais SMTP en clair (`local_plain`), ni d'hôte IP ou local ; le
   relais en clair est réservé à l'installation et à la boucle locale.
+* **Relais SMTP, appel sortant contrôlé** (H1) : le nom du relais est **résolu à chaque envoi**
+  (et à chaque essai) et **chaque** adresse obtenue passe le même contrôle que les messageries et
+  adresses web (§1.5 : boucle locale, privée, lien local dont métadonnées des plateformes,
+  partagée, réservée, documentation, IPv4 portée par IPv6… refusées) ; une seule adresse interdite
+  refuse le relais (`NOTIFICATION_DESTINATION_FORBIDDEN`, définitif, sans connexion). La
+  connexion se fait à l'adresse vérifiée (aucune seconde résolution), le nom servant au TLS
+  (certificat du relais). Seul le relais de l'**installation**, réglé par l'exploitant, peut être
+  sur la boucle locale (dont `local_plain` sur `localhost` ou `127.0.0.1`) ; jamais un réseau
+  privé. L'essai d'une intégration ne peut donc pas sonder le réseau interne.
 * **Fournisseurs** : adresses des API fixées dans le code (Brevo `api.brevo.com/v3/smtp/email`,
   en-tête `api-key` ; Mailgun `api.mailgun.net` ou `api.eu.mailgun.net` `/v3/{domaine}/messages`,
   authentification `api:<clé>`, formulaire ; Postmark `api.postmarkapp.com/email`, en-tête
@@ -271,7 +280,7 @@ secrète).
   l'adresse web ; droit de gestion) envoie un message d'essai par le vrai fournisseur ; réponse
   `{ accepted, code }`, sans secret ; issue notée sur l'intégration (`last_test`).
 
-### 1.5. SMS, messageries d'équipe et adresse web (lot 4)
+### 1.5. SMS, messageries d'équipe et adresse web
 
 * **Destinataires** (E1) : SMS au téléphone de l'abonné (E.164) ; messagerie et adresse web à
   **toutes** les adresses actives de l'abonné pour le canal (`notification_endpoint`, 10 au plus),
@@ -339,7 +348,7 @@ secrète).
   supprimées ; sinon l'étape dont l'adresse (e-mail ou numéro) est supprimée est écartée
   (`suppressed:<motif>`).
 
-### 1.6. Fil dans l'application (lot 5)
+### 1.6. Fil dans l'application
 
 * **Destinataire** (F2) : l'abonné `auth:<identité>` lié à un compte `lyxal_auth` ; un invité sans
   compte (`email:…`) n'a pas de fil (étape écartée, `no_address:in_app`). Le fil d'une personne
@@ -372,7 +381,7 @@ secrète).
   appliquée ; conservation `retention_days_inbox` (90 jours par défaut, 1 à 365), purge par la
   planification `notification-purge`.
 
-### 1.7. Notifications push (lot 6)
+### 1.7. Notifications push
 
 * **Appareils** (G1) : adresses `push` de l'abonné, inscrites **par la personne elle-même**
   (`fn::notification_my_device_register`, route `POST /api/v1/notification/my/devices` de l'hôte,
@@ -391,7 +400,7 @@ secrète).
 * **Services** (G2, G6) : une intégration `channel: "push"` par service. Web Push : services push
   connus seulement (`fcm.googleapis.com`, `updates.push.services.mozilla.com`,
   `*.push.services.mozilla.com`, `*.notify.windows.com`, `web.push.apple.com`), en HTTPS, par le
-  client contrôlé du lot 4 (adresses résolues vérifiées, aucune redirection) ; jeton VAPID ES256
+  client contrôlé du §1.5 (adresses résolues vérifiées, aucune redirection) ; jeton VAPID ES256
   (`aud` : origine de l'adresse, `exp` 12 h, `sub` : contact) dans `Authorization: vapid t=…,
   k=…`, corps chiffré `aes128gcm` (RFC 8291), en-têtes `TTL` (1 jour) et `Urgency` (`high` pour un
   parcours critique). FCM : jeton RS256 du compte de service échangé à
@@ -400,7 +409,7 @@ secrète).
   `api.push.apple.com` (ou `api.sandbox.push.apple.com`), jeton ES256 du fournisseur (`kid`,
   `iss` : équipe, `iat`) renouvelé toutes les 50 minutes, en-têtes `apns-topic`,
   `apns-push-type: alert`, `apns-priority`, `apns-expiration`.
-* **Contenu** (G4) : titre, texte, lien (règles du lot 5 : chemin de l'application ou HTTPS,
+* **Contenu** (G4) : titre, texte, lien (règles du fil, §1.6 : chemin de l'application ou HTTPS,
   contrôlé à l'enregistrement du gabarit et après le rendu, `fn::notification_push_links_check`),
   icône, données ; jamais le secret du déclenchement ni de lien de désabonnement ; **4 Kio au
   plus** une fois chiffré : texte tronqué proprement (`…`), sinon `NOTIFICATION_PUSH_TOO_LARGE`
@@ -436,6 +445,15 @@ Contrôle unique : `fn::notification_can({ action, tenant, identity })` (actions
 `read_config`, `manage`, `send`, `worker`, `member`, `self`), utilisé par les fonctions et les
 `PERMISSIONS`. Le secret d'un déclenchement n'est lisible que par le worker (permission de champ).
 Le désabonnement par lien est appelé par l'hôte (session système) après vérification du jeton.
+**Exception documentée** (H3) : l'événement `notification_run_organization_locale` lit
+directement le champ `locale` de `auth_organization` (table de `lyxal_auth`, module dont
+`lyxal_notification` dépend) pour noter la langue de l'organisation sur le déclenchement.
+`fn::auth_organization_get` ne convient pas : il vérifie les droits de la personne qui
+déclenche, alors que la langue doit être lue quels que soient ses droits (ni qui déclenche ni le
+worker n'ont à lire l'organisation). C'est la seule lecture d'une table d'un autre module.
+Appareils et adresses de la personne : elle les inscrit, les liste et les retire elle-même
+(routes `/api/v1/notification/my/devices` et `/my/endpoints` de l'hôte, §5) ; ceux d'une autre
+personne sont introuvables.
 Intégrations : lecture `notification.read` (jamais de secret), gestion `notification.manage`
 (installation : `notification.installation.manage`) **et** droit de lire le secret
 (`secrets.value.read` ; installation : `secrets.installation.manage`) ; choix, retours et issue
@@ -466,7 +484,7 @@ conditions, F7) et le purge.
 | Parcours | `notification_workflow_create`, `_update` (`category` par clé, `clear_category`, `preferences`, étapes typées), `_get`, `_list`, `_set_status` ; `notification_step_preview` (données de l'aperçu d'une étape, `notification.read`) |
 | Mises en page | `notification_layout_create`, `_update`, `_get`, `_list` |
 | Gabarits | `notification_template_create` (**workflow**, **step_key**, **subject**, **html_body**, **text_body**, `keys`, `layout`), `_update` (champs fournis seulement, `clear_layout`), `_get` |
-| Fil (personne connectée) | `notification_feed_list` (`filter`, `cursor`, `limit`), `_counts` (`filter`), `_mark` (`ids` ou `all` + `filter`, `state` : `seen`, `read`, `unread`, `archived`, `unarchived`), `_snooze` (`id`, `until`), `_unsnooze`, `_delete` (`id`, ou `all` + `filter`), `_action` (`id`, `action`, `status`) ; `notification_inbox_deliver` (worker : message rendu d'une étape `in_app`) |
+| Fil (personne connectée) | `notification_feed_list` (`filter`, `cursor`, `limit`), `_counts` (`filter`), `_mark` (`ids` ou `all` + `filter`, `state` : `seen`, `read`, `unread`, `archived`, `unarchived`), `_snooze` (`id`, `until`), `_unsnooze`, `_delete` (`id`, ou `all` + `filter`), `_action` (`id`, `action`, `status`) ; `notification_inbox_deliver` (worker : message rendu d'une étape `in_app`) ; `notification_feed_view` (`{ item }` : vue d'un message, projection publique à **retour brut**, sans `result_ok`, pour une projection `SELECT` : requête `LIVE SELECT` de l'hôte) |
 | Réglages | `notification_settings_get`, `_set` (`max_wait_days`, `retention_days_inbox` compris ; expéditeur et adresse de réponse : réglages de l'intégration) |
 | Intégrations | `notification_integration_create`, `_update` (champs fournis, réglages remplacés en entier, `clear_condition`, `clear_webhook`), `_get` (par clé ou identifiant), `_list`, `_delete`, `_set_primary`, `_test` (essai : contrôle au nom de l'appelant, D6) ; `_select` (worker : ordre D1 / D3 d'une étape), `_test_record` et `notification_provider_event_record` (hôte) |
 | Appareils push | `notification_my_device_register` (valeurs scellées par l'hôte, contrôlées en clair ; inscription renvoyée mise à jour), `notification_my_device_list`, `_delete` (personne connectée) ; `notification_device_list` (`notification.read` : type et date) ; `notification_device_remove` (worker, G5) ; `notification_push_links_check` (worker : liens rendus) ; `notification_push_vapid_key` (hôte : clé publique VAPID d'une portée) |
@@ -483,7 +501,11 @@ Fonctions internes (appelées par les précédentes) : `notification_subscriber_
 `_find`, `notification_topic_find`, `notification_category_find`, `notification_channels`,
 `notification_preference_key`, `_fields`, `_resolve`, `_write`, `_apply`, `_targets`, `_view`,
 `notification_my_subscriber`, `notification_trigger_target`, `_workflow`, `_one`, `_single`,
-`notification_run_create` ; parcours à étapes : `notification_duration_seconds`,
+`notification_run_create`, `notification_settings_effective` ; file d'envoi :
+`notification_job_payload`, `_check` ; gabarits : `notification_html_clean`,
+`notification_has_content_slot`, `notification_template_content`, `_unknown_keys`,
+`notification_workflow_missing_templates` ; retours : `notification_provider_event_apply`,
+`_reconcile` ; parcours à étapes : `notification_duration_seconds`,
 `notification_step_fields`, `_check`, `_context`, `_enter`, `notification_override_check`,
 `notification_job_add`, `notification_wait_due`, `_end`, `notification_group_key`,
 `notification_digest_join`, `_merge`, `notification_throttle_hit`, `notification_run_advance`,
@@ -495,8 +517,8 @@ Fonctions internes (appelées par les précédentes) : `notification_subscriber_
 `notification_endpoint_official_hosts`, `_host_refusal`, `_fields`, `_view`, `_write`, `_find`,
 `_change`, `_payload`, `notification_my_endpoint_change`, `notification_job_endpoints`,
 `notification_job_endpoint_fields`, `notification_job_endpoint_record` ; fil :
-`notification_link_valid`, `notification_feed_scope`, `_filter_fields`, `_match`, `_view`,
-`_mine`, `_targets`, `notification_template_action_fields`, `_feed_refusal` ; push :
+`notification_link_valid`, `notification_feed_scope`, `_filter_fields`, `_match`, `_mine`,
+`_targets`, `notification_template_action_fields`, `_feed_refusal` ; push :
 `notification_device_fields`, `_shape`, `_view`, `_write`, `notification_template_push_refusal`.
 
 File d'envoi (étapes de canal seulement) : réservation conditionnelle (une étape n'est réservée qu'une fois ; une
@@ -508,8 +530,8 @@ dont le secret a expiré annulée, jamais envoyée en retard ; échec temporaire
 écartée) et l'étape porte les heures calmes de l'abonné, la cible de son lien de désabonnement
 et le regroupement porté. Une étape terminée (envoyée, écartée, en échec définitif) fait avancer
 son déclenchement. Purge (planificateur, toutes les heures) : secrets expirés, journal,
-déclenchements terminés, diffusions terminées, regroupements fermés, compteurs expirés et
-retours des fournisseurs.
+déclenchements terminés, diffusions terminées, regroupements fermés, compteurs expirés,
+retours des fournisseurs et messages du fil échus (§6.4).
 
 ## 4. Événements
 
@@ -567,7 +589,9 @@ données.
   `HmacKey`).
 * `OutboundClient` (E3) : contrôles SSRF, résolution par `HostResolver` (`SystemResolver` ;
   `StaticResolver` et `OutboundClient::for_local_tests` réservés aux tests : seule la boucle
-  locale s'ajoute aux adresses publiques), `forbidden_ip`, `HostRule`.
+  locale s'ajoute aux adresses publiques), `forbidden_ip`, `HostRule`. Le relais SMTP passe par
+  la même résolution et le même `forbidden_ip` (H1, `SmtpProvider::with_resolver`,
+  `EmailProviders::with_resolver` pour les tests).
 * `SmsApi` (Brevo, Twilio, Vonage ; `SmsEndpoints` fixes, `for_local_tests`), `SmsCredentials`,
   `SmsSegments` ; `ChatSender` (`ChatService`, `ChatTarget`, `chat_body`, appel signé
   `call_webhook`, `signature`) ; `ChannelDispatcher` : identifiants lus dans `lyxal_secrets`,
@@ -582,7 +606,7 @@ données.
   de la base (lien rendu refusé) est un échec définitif, une base indisponible laisse expirer la
   réservation. Appels du fil au nom de la personne : `feed_list`, `feed_counts`, `feed_mark`,
   `feed_snooze`, `feed_unsnooze`, `feed_delete`, `feed_action` (`models::Feed*`).
-* Push (lot 6) : `PushApi` (Web Push par `OutboundClient`, FCM, APNs en HTTP/2 ; adresses fixes,
+* Push : `PushApi` (Web Push par `OutboundClient`, FCM, APNs en HTTP/2 ; adresses fixes,
   `PushEndpoints::local` et `PushApi::for_local_tests` réservés aux faux services ; horloge
   injectée `PushClock`), `PushCredentials` (clé VAPID `{ private_key }`, fichier du compte de
   service Google, clé APNs `{ key_id, private_key }`, `Debug` masqué), jetons `vapid_token`,
@@ -623,9 +647,10 @@ données.
   Une date est un texte RFC 3339 ; `style` vaut `short`, `medium` (défaut) ou `long` pour la
   date seule, `datetime_short`, `datetime_medium` ou `datetime_long`, ou `time` ; `zone` est un
   identifiant IANA (`UTC` par défaut). Un montant est un entier ou un texte décimal (`"1234.50"`).
-* `EmailProvider` (trait : `send(réglages, EmailMessage, Credentials) -> ProviderReceipt` ou
-  `ProviderError`) et `EmailProviders` : `SmtpProvider` (`lettre`, TLS rustls, une connexion par
-  envoi ; classement : connexion ou 4xx → `transient`, 550 / 551 / 553 → `recipient_rejected`,
+* `EmailProvider` (trait : `send(portée, réglages, EmailMessage, Credentials) -> ProviderReceipt`
+  ou `ProviderError` ; `IntegrationScope` : `Installation` ou `Organization`, tirée de
+  l'intégration) et `EmailProviders` : `SmtpProvider` (`lettre`, TLS rustls, une connexion par
+  envoi à l'adresse vérifiée du relais (H1) ; classement : connexion ou 4xx → `transient`, 550 / 551 / 553 → `recipient_rejected`,
   autre 5xx → `permanent` ; DKIM par le relais) et les API de Brevo, Mailgun, Postmark et Resend
   (`reqwest`, rustls seulement, délai de 10 s, **aucune redirection suivie**, réponse lue sur
   64 Kio au plus ; adresses fixes dans le code, HTTPS seulement ; `EmailProviders::for_local_tests`
@@ -676,7 +701,12 @@ Hébergé par `lyxal-server` (`build.rs`, `src/modules/notification.rs`) : clé 
 sans l'une des deux, aucun e-mail n'est envoyé et les abonnements `auth.*` restent suspendus.
 L'hôte n'a aucun réglage d'envoi : les fournisseurs sont des intégrations. Retours :
 `POST /api/v1/notification/webhooks/{intégration}` ; essai :
-`POST /api/v1/notification/integrations/{intégration}/test`. Liens de désabonnement :
+`POST /api/v1/notification/integrations/{intégration}/test`. Appareils et adresses de la
+personne connectée : `GET` / `POST /api/v1/notification/my/devices`,
+`DELETE /api/v1/notification/my/devices/{appareil}`, `GET` / `POST /api/v1/notification/my/endpoints`,
+`DELETE /api/v1/notification/my/endpoints/{adresse}` (`?tenant=` : organisation active ; liste
+`{ devices }` ou `{ endpoints }` sans jeton, clé ni adresse complète ; retrait `{ deleted }`).
+Liens de désabonnement :
 clé applicative et `LYXAL__NOTIFICATION__PUBLIC_URL` ; routes de l'hôte
 `GET` / `POST /api/v1/notification/unsubscribe` ; aperçu : `POST /api/v1/notification/preview`
 (jeton d'accès, `notification.read`) ; fil : routes `/api/v1/notification/feed*` et flux SSE
@@ -695,6 +725,16 @@ flux fermés à l'arrêt. L'hôte installe
 planificateur, qui exécute les reprises et la purge.
 
 ## 6. Exploitation
+
+### 6.1. Mise en service
+
+Clés de l'hôte : `LYXAL__CRYPTO__APPLICATION_KEY` (scellement des secrets des messages, des
+adresses et des appareils ; liens de désabonnement) et `LYXAL__SECRETS__MASTER_KEY` (lecture des
+identifiants des intégrations) ; adresse publique `LYXAL__NOTIFICATION__PUBLIC_URL` (liens de
+désabonnement, retours des SMS). Chaque secret d'une intégration se range dans `lyxal_secrets`
+sous `notification/` de la **même portée** que l'intégration (installation ou organisation),
+consommateur `lyxal_notification` ; créer ou modifier l'intégration demande le droit de lire ce
+secret (`secrets.value.read`, ou `secrets.installation.manage` pour l'installation).
 
 * **Première mise en service** (D5) : une installation neuve n'envoie aucun e-mail tant qu'un
   administrateur de la plateforme (`platform_admin` : `notification.installation.manage` et
@@ -723,8 +763,6 @@ planificateur, qui exécute les reprises et la purge.
     *Soft bounce*, *Spam*, avec l'authentification Basic ; secret `{ "username": "…",
     "password": "…" }`.
   Une intégration SMTP n'a pas de retours (rejets connus à l'envoi : 550, 551, 553).
-* **Panne d'un fournisseur** : une seconde intégration (priorité plus grande) prend le relais à
-  la tentative suivante ; `notification_run_get` montre l'intégration de chaque tentative.
 * **SMS** : secret des identifiants (Twilio `{ account_sid, auth_token }`, Vonage `{ api_key,
   api_secret }`, Brevo `{ api_key }`), intégration `channel: "sms"` avec `settings: { sender }`
   (numéro de l'expéditeur, ou nom court là où l'opérateur l'accepte). Retours : `webhook_path`
@@ -768,9 +806,102 @@ planificateur, qui exécute les reprises et la purge.
   L'essai d'une intégration push (`POST /api/v1/notification/integrations/{intégration}/test`,
   `{ "to": "notification_endpoint:<clé>" }`) envoie une notification à un appareil du même
   service et de la même organisation.
-* **Réglages** : `max_wait_days` (`fn::notification_settings_set`, organisation ou
-  installation) borne toute attente, fenêtre de regroupement ou de limitation, à
-  l'enregistrement d'un parcours comme au déclenchement.
+* **Réglages de l'installation** (`fn::notification_settings_set` sans `tenant`, une
+  organisation surcharge les siens sauf `allowed_hosts`) : `timezone` (fuseau par défaut des
+  abonnés), `max_attempts` (tentatives d'une étape, 8 par défaut), `max_wait_days` (borne de toute
+  attente, fenêtre de regroupement ou de limitation, 30 jours par défaut, contrôlée à
+  l'enregistrement d'un parcours comme au déclenchement), `allowed_hosts` (hôtes des adresses web
+  et de Mattermost) et les durées de conservation (§6.4).
+* **Fil dans l'application** : aucun fournisseur ni clé ; une étape `in_app` dans un parcours,
+  son gabarit (titre, texte, liens, boutons), puis l'interface lit `GET /api/v1/notification/feed`
+  et écoute `GET /api/v1/notification/feed/stream` avec le jeton de la personne (lecture par
+  `fetch` : un `EventSource` natif n'envoie pas l'en-tête `Authorization`) ; à la fermeture du
+  flux (session expirée, arrêt de l'hôte, connexion lente), le client se reconnecte avec un
+  jeton frais et relit sa liste. Derrière un mandataire inverse : pas de tampon sur ce chemin
+  (l'hôte envoie `X-Accel-Buffering: no`) et un délai d'inactivité supérieur à 25 s.
+
+### 6.2. Surveillance
+
+* **Sonde de santé** (`GET /health`, module `lyxal_notification`) : « dégradé » sans clé
+  applicative ou clé maîtresse du coffre-fort (aucun envoi par fournisseur, abonnements `auth.*`
+  suspendus, `NOTIFICATION_CONFIGURATION_INVALID`) ou sans intégration e-mail active pour
+  l'installation (`NOTIFICATION_INTEGRATION_UNAVAILABLE`) ; « en panne » si les réglages ou les
+  intégrations sont illisibles (base indisponible).
+* **File d'envoi** : étapes `queued` (avec `next_retry_at` et `last_error`) et `running` (avec
+  `locked_until`) de `notification_job` ; une étape qui attend une intégration porte
+  `last_error.code = NOTIFICATION_INTEGRATION_UNAVAILABLE`. Activité par déclenchement :
+  `fn::notification_run_get` / `_list` (état, motif d'une étape écartée, intégration de chaque
+  tentative), journal `notification_delivery_log` (tentatives, codes), messages
+  `notification_message` (état `sent`, `delivered`, `bounced`, `complained`).
+* **Échecs et retours** : événements `notification.message.failed`,
+  `notification.message.bounced`, `.complained`, `notification.address.suppressed` (adresse ou
+  numéro ajouté à la liste de suppression) ; retours sans message connu gardés `unmatched` dans
+  `notification_provider_event` ; dernier essai de chaque intégration (`last_test`, `ok`, `code`).
+* **Appareils et adresses** : `notification.endpoint.removed` (appareil push retiré sur réponse de
+  son service) ; dernier résultat de chaque adresse ou appareil (`last_result`).
+* **Attentes et purge** : exécutions des tâches `notification.run_resume` et `notification.purge`
+  par les routes `/api/v1/scheduler/*` (historique, échecs) ; le worker d'étapes journalise les
+  codes d'une attente refusée par le planificateur.
+* **Journaux de l'hôte** : workers et routes ne journalisent que des identifiants et des codes
+  `NOTIFICATION_*` (jamais d'adresse, de jeton ni de secret) ; un échec d'écriture d'un worker est
+  journalisé et l'étape reprend à l'expiration de sa réservation.
+
+### 6.3. Incidents
+
+* **Fournisseur en panne** : un échec temporaire (réseau, délai, 429, 5xx) fait passer la
+  tentative suivante à l'intégration éligible suivante (bascule D3), avec attente exponentielle ;
+  sans seconde intégration, l'étape est rejouée tant que `attempts < max_attempts`. Ajouter une
+  intégration de secours (priorité plus grande) suffit, sans redémarrage ; `notification_run_get`
+  montre l'intégration de chaque tentative.
+* **Identifiants refusés ou jeton révoqué** (401, 403 chez le fournisseur, compte de service
+  Google ou clé APNs révoqués, jeton du robot Telegram) : refus **définitif**, sans bascule
+  (`NOTIFICATION_PROVIDER_REJECTED`) ; ranger les nouveaux identifiants dans le secret (nouvelle
+  version `current`), vérifier par l'essai de l'intégration, puis relancer les envois perdus
+  (nouveau déclenchement, nouvelle clé d'idempotence).
+* **Secret tourné** : le worker lit la version `current` du secret à **chaque** envoi : une
+  nouvelle version sert dès l'envoi suivant ; la rotation sans coupure de `lyxal_secrets` (quatre
+  étapes) s'applique telle quelle (révoquer l'ancienne valeur chez le fournisseur une fois la
+  nouvelle en place). Secret des retours : tant que le fournisseur signe avec l'ancienne valeur,
+  ses retours sont refusés (401) et il les renvoie.
+* **Clé VAPID changée** : les abonnements des navigateurs faits avec l'ancienne clé ne servent
+  plus ; ils sont retirés au premier envoi refusé (404, 410). L'application web relit la clé
+  (`GET /api/v1/notification/push/vapid-key`) et réinscrit l'appareil.
+* **Clé applicative changée ou perdue** : les valeurs scellées (adresses, appareils, secrets des
+  déclenchements en attente) ne s'ouvrent plus ; adresses et appareils sont à réinscrire, les
+  déclenchements en attente à relancer.
+* **Un abonné ne reçoit rien** : lire son déclenchement (`fn::notification_run_get`) : motif
+  d'étape écartée `preference:<niveau>` (préférences : `fn::notification_preference_get` avec
+  le parcours donne le résultat par canal et le niveau qui décide ; désabonnement par lien =
+  préférence `subscriber_category` fausse), `suppressed:<motif>` (liste de suppression :
+  `fn::notification_suppression_list`, retrait par `_remove`), `no_address:<canal>` (adresse,
+  téléphone, adresses de messagerie actives, appareils, compte lié pour le fil), `condition`,
+  `throttled` ; une étape rendue à la file jusqu'à la fin de ses **heures calmes** est `queued`
+  avec `next_retry_at` ; un message `bounced` ou `complained` a supprimé l'adresse.
+* **Relais SMTP refusé** (`NOTIFICATION_DESTINATION_FORBIDDEN`) : son nom se résout en adresse
+  interdite (réseau privé, boucle locale pour une organisation) ; le relais d'une organisation
+  doit être public.
+
+### 6.4. Purge et rétentions
+
+Planification horaire `notification-purge` (tâche `notification.purge`, créée à l'installation ;
+pause, déclenchement immédiat et historique par les routes `/api/v1/scheduler/*`), argument
+facultatif `limit` (1 000 par catégorie et par passage). Elle efface :
+
+* les secrets scellés des déclenchements expirés (un déclenchement terminé ou annulé perd son
+  secret aussitôt) ;
+* les déclenchements terminés au-delà de `retention_days_runs` (90 jours par défaut, 1 à 3 650),
+  avec leurs étapes et leurs messages ;
+* le journal `notification_delivery_log` et les retours des fournisseurs au-delà de
+  `retention_days_log` (30 jours par défaut, 1 à 3 650) ;
+* les diffusions terminées, les regroupements fermés et les compteurs de limitation échus ;
+* les messages du fil au-delà de `retention_days_inbox` (90 jours par défaut, 1 à 365).
+
+Durées réglées par `fn::notification_settings_set` (installation, ou organisation pour ses
+données). Un abonné supprimé emporte ses préférences, abonnements, adresses, appareils et
+messages du fil ; une organisation purgée par `lyxal_auth` emporte toutes ses données (§1).
+
+### 6.5. Exploitation courante
+
 * **Attentes en cours** : étapes `delay` / `digest` `queued` (pas encore confiées) ou `waiting`
   (exécution différée `scheduler_run` notée sur l'étape, lisible par `fn::scheduler_run_get`).
   Une exécution refusée par le planificateur (ex. `SCHEDULER_LIMIT_REACHED`, réglage
@@ -780,16 +911,6 @@ planificateur, qui exécute les reprises et la purge.
   annulé ou purgé : rien) ; le planificateur la retente selon la politique de la tâche
   (5 tentatives) ; une attente échue avant d'avoir été confiée est reprise directement par le
   worker d'étapes.
-* **Purge** : planification `notification-purge` (pause, déclenchement immédiat et historique par
-  les routes `/api/v1/scheduler/*`) ; argument facultatif `limit` (1 000 par catégorie et par
-  passage) ; messages du fil au-delà de `retention_days_inbox` compris.
-* **Fil dans l'application** : aucun fournisseur ni clé ; une étape `in_app` dans un parcours,
-  son gabarit (titre, texte, liens, boutons), puis l'interface lit `GET /api/v1/notification/feed`
-  et écoute `GET /api/v1/notification/feed/stream` avec le jeton de la personne (lecture par
-  `fetch` : un `EventSource` natif n'envoie pas l'en-tête `Authorization`) ; à la fermeture du
-  flux (session expirée, arrêt de l'hôte, connexion lente), le client se reconnecte avec un
-  jeton frais et relit sa liste. Derrière un mandataire inverse : pas de tampon sur ce chemin
-  (l'hôte envoie `X-Accel-Buffering: no`) et un délai d'inactivité supérieur à 25 s.
 
 ## 7. Vérification
 
@@ -837,7 +958,7 @@ planificateur, qui exécute les reprises et la purge.
   purge créée une seule fois, aperçu d'une étape. Unitaires : jeton
   (aller-retour, falsification, autre clé), heures calmes (fuseau, passage de minuit, jours,
   plages enchaînées, changement d'heure), lien dans le rendu.
-* Lot 4 : banc `tests/canaux.test.surql` (parties d'un SMS ; intégrations par canal et refus ;
+* Canaux de texte : banc `tests/canaux.test.surql` (parties d'un SMS ; intégrations par canal et refus ;
   adresses : création, hôtes officiels, HTTP, adresse IP, nom local, valeur non scellée, jamais
   relue, liste d'hôtes de l'installation, limite, droits, écriture filtrée, adresses de la
   personne connectée, nouvelle clé, événements ; gabarits par canal et longueur d'un SMS ; abonné
@@ -852,7 +973,7 @@ planificateur, qui exécute les reprises et la purge.
   Slack + adresse web, aucune adresse en clair en base ni dans un événement, retour Twilio →
   numéro supprimé ; SMS rendu trop long refusé sans envoi ; hôte : routes des adresses et retour
   Twilio (`apps/lyxal-server/tests/notification_channels_http.rs`).
-* Lot 5 : banc `tests/fil.test.surql` (liens du fil, gabarits du fil, gravité, étape in_app
+* Fil : banc `tests/fil.test.surql` (liens du fil, gabarits du fil, gravité, étape in_app
   refusée dans un parcours sensible ; livraison : abonné avec compte, invité écarté, liens rendus
   refusés, rejeu, trace d'envoi sans contenu, événements ; lecture par la personne seule : autre
   personne, même personne dans une autre organisation, autre organisation, gestionnaire, session
@@ -866,7 +987,7 @@ planificateur, qui exécute les reprises et la purge.
   SSE de la seule personne concernée, compteurs poussés après « lu », routes du fil (404 pour
   une autre personne), limite de 5 flux, session sans compte, fermeture à l'expiration de la
   session, reprise de la requête `LIVE SELECT` après `KILL`, fermeture à l'arrêt du worker.
-* Lot 6 : banc `tests/push.test.surql` (intégrations push : réglages et secrets ; inscription par
+* Push : banc `tests/push.test.surql` (intégrations push : réglages et secrets ; inscription par
   la personne seule, valeurs scellées exigées, service push inconnu, HTTP, jeton et clés mal
   formés, plateforme, autre organisation, inscription renvoyée mise à jour, limite de 10, écriture
   filtrée ; lecture sans jeton par la personne, une autre personne, un gestionnaire (type et date) ;
@@ -881,5 +1002,13 @@ planificateur, qui exécute les reprises et la purge.
   HTTP/2 et jeton du fournisseur renouvelé à 50 minutes, appareils invalides) ; de bout en bout :
   déclenchement → navigateur, Android et iPhone, l'iPhone désinscrit retiré, aucun jeton en clair ;
   hôte (`apps/lyxal-server/tests/notification_push_http.rs`) : paire VAPID rangée dans le
-  coffre-fort, clé publique, inscription scellée, inscription renvoyée, refus.
+  coffre-fort, clé publique, inscription scellée, inscription renvoyée, refus ; liste et retrait
+  de ses appareils et de ses adresses par la personne, refus pour ceux d'une autre personne.
+* Sécurité et contrats : relais SMTP résolu en adresse privée, mêlée ou locale refusé à l'envoi
+  (`src/provider/smtp.rs`, `tests/it/providers.rs`) et à l'essai de l'hôte
+  (`notification_webhooks_http.rs`) ; `Debug` sans adresse ni donnée personnelle
+  (`src/models/mod.rs`) ; descripteur du module égal à celui tiré de `manifest.toml`
+  (`src/module.rs`) ; chaque enveloppe de `NotificationStore` appelée et son résultat relu
+  (`tests/it/store.rs`) ; clôture d'une étape refusée par les permissions
+  (`NOTIFICATION_WRITE_FORBIDDEN`, `file.test.surql`, `fil.test.surql`).
 * `scripts/ci/ci_local.sh`.
