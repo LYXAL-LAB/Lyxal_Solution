@@ -288,34 +288,49 @@ async fn vapid_generate(
             base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(pair.public_key_uncompressed());
         let private = pem(&pair.export_pkcs8());
         let value = Zeroizing::new(json!({ "private_key": private.as_str() }).to_string());
-        // Clé privée rangée au nom de l'appelant : droits d'écriture du coffre-fort
-        let vault = secrets.service(SecretsStore::new(session));
-        let secret = vault
-            .store()
-            .secret_get(SecretGetParams::by_path(tenant.clone(), path))
-            .await
-            .map_err(lyxal_secrets::SecretsError::from)?;
-        vault
-            .put(PutValue {
-                secret: secret.id.to_sql(),
-                value: SecretBytes::new(value.as_bytes().to_vec())
-                    .map_err(NotificationError::from)?,
-                expected_version: None,
-                stage: Stage::Current,
-            })
-            .await?;
-        // Clé publique notée dans les réglages (droit de gestion et de lecture du secret)
+        // Clé publique notée d'abord : `integration_update` vérifie tous les droits de
+        // l'appelant (gestion, lecture du secret) avant que la clé privée ne change ; un refus
+        // laisse la paire en place intacte.
         let mut settings = current.settings.clone();
         settings.vapid_public_key = Some(public_key.clone());
+        let save = |settings| IntegrationSaveParams {
+            tenant: tenant.clone(),
+            key: current.key.clone(),
+            settings: Some(settings),
+            ..IntegrationSaveParams::default()
+        };
         store
-            .integration_update(IntegrationSaveParams {
-                tenant,
-                key: current.key.clone(),
-                settings: Some(settings),
-                ..IntegrationSaveParams::default()
-            })
+            .integration_update(save(settings))
             .await
             .map_err(NotificationError::from)?;
+        // Clé privée rangée au nom de l'appelant : droits d'écriture du coffre-fort. Échec :
+        // l'ancienne clé publique est remise, accordée à la clé privée restée en place.
+        let vault = secrets.service(SecretsStore::new(session));
+        let stored = async {
+            let secret = vault
+                .store()
+                .secret_get(SecretGetParams::by_path(tenant.clone(), path))
+                .await
+                .map_err(lyxal_secrets::SecretsError::from)?;
+            vault
+                .put(PutValue {
+                    secret: secret.id.to_sql(),
+                    value: SecretBytes::new(value.as_bytes().to_vec())
+                        .map_err(NotificationError::from)?,
+                    expected_version: None,
+                    stage: Stage::Current,
+                })
+                .await?;
+            Ok::<_, ApiError>(())
+        }
+        .await;
+        if let Err(error) = stored {
+            store
+                .integration_update(save(current.settings.clone()))
+                .await
+                .map_err(NotificationError::from)?;
+            return Err(error);
+        }
         auth::ok(
             StatusCode::OK,
             json!({ "integration": current.id.to_sql(), "public_key": public_key }),

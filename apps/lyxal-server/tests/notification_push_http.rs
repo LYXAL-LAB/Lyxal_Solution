@@ -213,6 +213,8 @@ async fn devices_are_sealed_by_the_host_and_vapid_keys_are_kept_in_the_vault() {
             CREATE auth_application:admin CONTENT { tenant: auth_organization:alpha, client_id: "lyxal-test-push-admin", name: "Admin", type: "machine", redirect_uris: [], state: "active", permissions_version: 1 };
             RELATE auth_application:admin->auth_has_role->auth_role:organization_admin SET granted_at = time::now();
             RELATE auth_application:admin->auth_has_role->auth_role:secrets_reader SET granted_at = time::now();
+            CREATE auth_application:gestion CONTENT { tenant: auth_organization:alpha, client_id: "lyxal-test-push-gestion", name: "Gestion", type: "machine", redirect_uris: [], state: "active", permissions_version: 1 };
+            RELATE auth_application:gestion->auth_has_role->auth_role:organization_admin SET granted_at = time::now();
             CREATE auth_identity:personne CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "personne@lyxal.test", locale: "fr" } };
             RELATE auth_identity:personne->auth_member_of->auth_organization:alpha;
             RELATE auth_identity:personne->auth_member_of->auth_organization:beta;
@@ -312,6 +314,38 @@ async fn devices_are_sealed_by_the_host_and_vapid_keys_are_kept_in_the_vault() {
         settings[0]["vapid_subject"],
         json!("mailto:contact@alpha.test")
     );
+
+    // Écriture du coffre-fort sans droit de lire le secret : refus avant tout changement, la
+    // paire en place reste accordée (clé privée inchangée, même clé publique)
+    let gestion = host
+        .access
+        .internal_service_token("lyxal-test-push-gestion")
+        .await
+        .expect("jeton")
+        .access_token
+        .expose_secret()
+        .to_string();
+    let reply = call(&router, "POST", generate, Some(&gestion), None).await;
+    assert_ne!(reply.status, StatusCode::OK, "{}", reply.body);
+    let after = started
+        .secrets
+        .client(SECRETS_CONSUMER)
+        .read(ClientRead {
+            tenant: Some("auth_organization:alpha".to_string()),
+            path: "notification/push/vapid".to_string(),
+            label: None,
+        })
+        .await
+        .expect("valeur du coffre-fort")
+        .value;
+    let after: Value = serde_json::from_slice(after.expose_secret()).expect("json");
+    assert_eq!(after["private_key"].as_str(), Some(private));
+    let settings = rows(
+        &client,
+        "SELECT VALUE settings FROM notification_integration:webpush_alpha",
+    )
+    .await;
+    assert_eq!(settings[0]["vapid_public_key"], json!(public_key));
 
     // Clé publique donnée à la personne de l'organisation ; pas pour une autre organisation
     let reply = call(&router, "GET", vapid_key, Some(&personne), None).await;
