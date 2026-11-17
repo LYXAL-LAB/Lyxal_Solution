@@ -115,7 +115,9 @@ async fn an_unsubscribe_link_is_received_then_used() {
     let store = NotificationStore::new(client.clone());
     let server = TestSmtpServer::start().await;
     let links = links();
-    let worker = worker(&client, &engine, &server).with_unsubscribe_links(links.clone());
+    let worker = worker(&client, &engine, &server)
+        .await
+        .with_unsubscribe_links(links.clone());
 
     let first = trigger(&store, "lettre", "lettre-1", claire()).await;
     assert_eq!(
@@ -219,7 +221,7 @@ async fn quiet_hours_postpone_a_message_without_counting_an_attempt() {
         })
         .await
         .expect("heures calmes");
-    let worker = worker(&client, &engine, &server);
+    let worker = worker(&client, &engine, &server).await;
     assert_eq!(
         worker
             .run_once(&CancellationToken::new())

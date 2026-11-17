@@ -9,18 +9,16 @@ use lyxal_notification::models::FailureClass;
 use lyxal_notification::secret::event_context;
 use lyxal_notification::{
     AuthMessageHandler, EmailWorkerSettings, InvitationCreated, JobOutcome,
-    NotificationEmailWorker, NotificationStore, SecretCodec, SmtpSecurity, SmtpSettings,
-    SmtpTransport, VerificationRequested,
+    NotificationEmailWorker, NotificationStore, SecretCodec, VerificationRequested,
 };
 use lyxal_runtime::worker::CancellationToken;
 use lyxal_surreal::{SurrealValue, ToSql};
 use std::sync::Arc;
-use std::time::Duration;
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
 use crate::smtp_server::TestSmtpServer;
-use crate::support::{crypto, installed_client};
+use crate::support::{crypto, dispatcher, installed_client, smtp_relay, vault};
 
 #[derive(Debug, PartialEq, SurrealValue)]
 struct Suppressed {
@@ -35,26 +33,19 @@ struct Published {
     payload: serde_json::Value,
 }
 
-pub(crate) fn worker(
+/// Worker d'envoi sur le relais SMTP de test, intégration principale de l'installation (son
+/// secret dans le coffre-fort).
+pub(crate) async fn worker(
     client: &Surreal<Any>,
     engine: &Arc<CryptoEngine<StaticKeyResolver>>,
     server: &TestSmtpServer,
 ) -> NotificationEmailWorker<StaticKeyResolver> {
-    let transport = SmtpTransport::new(SmtpSettings {
-        host: "127.0.0.1".to_string(),
-        port: server.port,
-        security: SmtpSecurity::LocalPlain,
-        username: None,
-        password: None,
-        from_address: "noreply@lyxal.test".to_string(),
-        from_name: Some("Lyxal".to_string()),
-        timeout: Duration::from_secs(5),
-    })
-    .expect("transport");
+    let vault = vault(client);
+    smtp_relay(client, &vault, server.port).await;
     NotificationEmailWorker::new(
         NotificationStore::new(client.clone()),
         SecretCodec::new(engine.clone()),
-        Arc::new(transport),
+        dispatcher(&vault, None),
         EmailWorkerSettings::default(),
     )
     .expect("worker")
@@ -202,6 +193,7 @@ async fn invitation_from_auth_is_delivered_once_and_leaves_no_secret() {
 
     let server = TestSmtpServer::start().await;
     let outcomes = worker(&client, &engine, &server)
+        .await
         .run_once(&CancellationToken::new())
         .await
         .expect("envoi");
@@ -324,7 +316,7 @@ async fn transient_failure_is_retried_and_rejected_recipient_is_suppressed() {
     let server = TestSmtpServer::start().await;
     server.script("lent@exemple.fr", vec!["451 4.3.0 réessayez plus tard"]);
     server.script("absent@exemple.fr", vec!["550 5.1.1 utilisateur inconnu"]);
-    let worker = worker(&client, &engine, &server);
+    let worker = worker(&client, &engine, &server).await;
 
     let mut outcomes = worker
         .run_once(&CancellationToken::new())
@@ -392,7 +384,7 @@ async fn shutdown_releases_reserved_jobs_without_sending() {
         .await
         .expect("déclenchement");
     let server = TestSmtpServer::start().await;
-    let worker = worker(&client, &engine, &server);
+    let worker = worker(&client, &engine, &server).await;
 
     let cancelled = CancellationToken::new();
     cancelled.cancel();
@@ -463,7 +455,7 @@ async fn security_alert_from_auth_is_delivered_once() {
         .expect("ignoré");
 
     let server = TestSmtpServer::start().await;
-    let worker = worker(&client, &engine, &server);
+    let worker = worker(&client, &engine, &server).await;
     assert_eq!(
         worker
             .run_once(&CancellationToken::new())

@@ -2,7 +2,7 @@ manifest_version = 1
 id = "lyxal_notification"
 name = "Lyxal Notification"
 version = "0.1.0"
-description = "Notifications sortantes de Lyxal OS : abonnés, sujets, préférences, parcours à étapes (attente, regroupement, limitation, conditions), gabarits, file d'envoi e-mail, diffusions, journal et liste de suppression"
+description = "Notifications sortantes de Lyxal OS : abonnés, sujets, préférences, parcours à étapes (attente, regroupement, limitation, conditions), gabarits, intégrations (e-mail par SMTP, Brevo, Mailgun, Postmark, Resend) et retours des fournisseurs, file d'envoi, diffusions, journal et liste de suppression"
 capabilities = ["database", "events", "email"]
 
 [runtime]
@@ -32,6 +32,10 @@ version = ">=0.1.0"
 id = "lyxal_scheduler"
 version = ">=0.1.0"
 
+[[dependencies]]
+id = "lyxal_secrets"
+version = ">=0.1.0"
+
 [resources]
 schemas = [
     "schema/01_notification_settings.surql",
@@ -43,7 +47,8 @@ schemas = [
     "schema/07_notification_subscriber.surql",
     "schema/08_notification_preference.surql",
     "schema/09_notification_broadcast.surql",
-    "schema/10_notification_digest.surql"
+    "schema/10_notification_digest.surql",
+    "schema/11_notification_integration.surql"
 ]
 functions = [
     "functions/notification_access.surql",
@@ -58,13 +63,15 @@ functions = [
     "functions/notification_workflow.surql",
     "functions/notification_template.surql",
     "functions/notification_settings.surql",
+    "functions/notification_integration.surql",
     "functions/notification_queue.surql"
 ]
 error_definitions = [
     "error/parametres/error_parametres.surql",
     "error/parcours/error_parcours.surql",
     "error/envoi/error_envoi.surql",
-    "error/destinataires/error_destinataires.surql"
+    "error/destinataires/error_destinataires.surql",
+    "error/integrations/error_integrations.surql"
 ]
 events = ["events/notification_events.surql"]
 seeds = ["seeds/notification_texts.surql", "seeds/notification_initial.surql"]

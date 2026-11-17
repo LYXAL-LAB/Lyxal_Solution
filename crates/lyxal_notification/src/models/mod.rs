@@ -3,6 +3,7 @@
 //! directement par la console ; la forme de leurs étapes est décrite par `WorkflowStep`.
 
 mod broadcast;
+mod integration;
 mod preference;
 mod queue;
 mod subscriber;
@@ -14,6 +15,12 @@ mod workflow;
 pub use broadcast::{
     BroadcastClaim, BroadcastClaimParams, BroadcastCompleteParams, BroadcastCompleted,
     BroadcastStep, BroadcastStepParams,
+};
+pub use integration::{
+    ClaimedIntegration, Integration, IntegrationGetParams, IntegrationListParams,
+    IntegrationRefParams, IntegrationSaveParams, IntegrationSelectParams, IntegrationSettings,
+    IntegrationTestParams, IntegrationTestRecordParams, IntegrationTestResult,
+    IntegrationTestTarget, ProviderEventParams, ProviderEventRecorded,
 };
 pub use preference::{
     ChannelDecision, ChannelDecisions, Channels, GlobalPreference, MyPreferenceGetParams,

@@ -9,7 +9,7 @@ pub mod key;
 pub mod secret;
 pub use error::{ContextField, CryptoError, IoOperation};
 pub use hash::{blake3, blake3_hex, sha256, sha256_hex, Blake3Hasher, Sha256Hasher};
-pub use key::{EncryptionKey, HmacKey, KeyId};
+pub use key::{EncryptionKey, ExternalHmacKey, HmacKey, KeyId, MAX_EXTERNAL_HMAC_KEY_BYTES};
 pub use secret::{SecretBytes, SecretString, MAX_SECRET_BYTES};
 
 mod cipher;
@@ -103,7 +103,8 @@ pub mod kdf;
 pub mod password;
 pub mod totp;
 pub use hmac::{
-    sign_hmac_sha256, sign_hmac_sha256_hex, verify_hmac_sha256, verify_hmac_sha256_hex,
+    sign_external_hmac_sha256, sign_hmac_sha256, sign_hmac_sha256_hex, verify_external_hmac_sha256,
+    verify_hmac_sha256, verify_hmac_sha256_hex,
 };
 pub use kdf::hkdf_sha256;
 pub use password::{

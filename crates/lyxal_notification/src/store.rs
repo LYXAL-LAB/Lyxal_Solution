@@ -22,6 +22,12 @@ use crate::models::{
     TopicUnsubscribeParams, TopicUnsubscribed, TriggerBulkParams, TriggerBulkResult, TriggerParams,
     TriggerResult, UnsubscribeParams, Unsubscribed, WaitScheduleParams, WaitScheduleResult,
 };
+use crate::models::{
+    ClaimedIntegration, Integration, IntegrationGetParams, IntegrationListParams,
+    IntegrationRefParams, IntegrationSaveParams, IntegrationSelectParams, IntegrationTestParams,
+    IntegrationTestRecordParams, IntegrationTestResult, IntegrationTestTarget, ProviderEventParams,
+    ProviderEventRecorded,
+};
 
 /// Store de `lyxal_notification` sur un client SurrealDB (`Surreal<Any>`).
 #[derive(Clone)]
@@ -373,6 +379,99 @@ impl NotificationStore {
     /// tâche `notification.purge`).
     pub async fn purge(&self, params: PurgeParams) -> Result<PurgeResult, LyxalSurrealError> {
         self.call_fn("notification_purge", params).await
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Intégrations et retours des fournisseurs
+    // ------------------------------------------------------------------------------------------
+
+    /// `fn::notification_integration_create` : réglages contrôlés, secrets existants et lisibles
+    /// par l'appelant (D2).
+    pub async fn integration_create(
+        &self,
+        params: IntegrationSaveParams,
+    ) -> Result<Integration, LyxalSurrealError> {
+        self.call_fn("notification_integration_create", params)
+            .await
+    }
+
+    /// `fn::notification_integration_update` : champs fournis seulement (D2 contrôlé).
+    pub async fn integration_update(
+        &self,
+        params: IntegrationSaveParams,
+    ) -> Result<Integration, LyxalSurrealError> {
+        self.call_fn("notification_integration_update", params)
+            .await
+    }
+
+    /// `fn::notification_integration_get` : intégration par identifiant, sans secret.
+    pub async fn integration_get(
+        &self,
+        params: IntegrationGetParams,
+    ) -> Result<ClaimedIntegration, LyxalSurrealError> {
+        self.call_fn("notification_integration_get", params).await
+    }
+
+    /// `fn::notification_integration_list` : intégrations d'une portée, sans secret.
+    pub async fn integration_list(
+        &self,
+        params: IntegrationListParams,
+    ) -> Result<Vec<Integration>, LyxalSurrealError> {
+        self.call_fn("notification_integration_list", params).await
+    }
+
+    /// `fn::notification_integration_delete` : le secret du coffre-fort n'est pas touché.
+    pub async fn integration_delete(
+        &self,
+        params: IntegrationRefParams,
+    ) -> Result<Deleted, LyxalSurrealError> {
+        self.call_fn("notification_integration_delete", params)
+            .await
+    }
+
+    /// `fn::notification_integration_set_primary` : principale de la portée pour son canal.
+    pub async fn integration_set_primary(
+        &self,
+        params: IntegrationRefParams,
+    ) -> Result<Integration, LyxalSurrealError> {
+        self.call_fn("notification_integration_set_primary", params)
+            .await
+    }
+
+    /// `fn::notification_integration_select` : intégrations éligibles d'une étape (D1, D3).
+    pub async fn integration_select(
+        &self,
+        params: IntegrationSelectParams,
+    ) -> Result<Vec<ClaimedIntegration>, LyxalSurrealError> {
+        self.call_fn("notification_integration_select", params)
+            .await
+    }
+
+    /// `fn::notification_integration_test` : contrôle de l'essai au nom de l'appelant (D6).
+    pub async fn integration_test(
+        &self,
+        params: IntegrationTestParams,
+    ) -> Result<IntegrationTestTarget, LyxalSurrealError> {
+        self.call_fn("notification_integration_test", params).await
+    }
+
+    /// `fn::notification_integration_test_record` : issue de l'essai (hôte).
+    pub async fn integration_test_record(
+        &self,
+        params: IntegrationTestRecordParams,
+    ) -> Result<IntegrationTestResult, LyxalSurrealError> {
+        self.call_fn("notification_integration_test_record", params)
+            .await
+    }
+
+    /// `fn::notification_provider_event_record` : retour vérifié par l'hôte (rejoué après un
+    /// conflit d'écriture transitoire).
+    pub async fn provider_event_record(
+        &self,
+        params: ProviderEventParams,
+    ) -> Result<ProviderEventRecorded, LyxalSurrealError> {
+        self.worker_call("notification_provider_event_record", params)
+            .await
     }
 
     /// `fn::notification_settings_get` : réglages effectifs.

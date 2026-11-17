@@ -1,5 +1,6 @@
-//! Routes de `lyxal_notification` : désabonnement en un clic (RFC 8058, décision B6) et aperçu
-//! d'une étape de parcours (décision C7).
+//! Routes de `lyxal_notification` : désabonnement en un clic (RFC 8058, décision B6), aperçu
+//! d'une étape de parcours (décision C7), retours des fournisseurs (D4) et essai d'une
+//! intégration (D6).
 //!
 //! `GET /api/v1/notification/unsubscribe?t=<jeton>` : petite page de confirmation qui ne change
 //! rien (un lien ouvert par un antivirus de messagerie ne désabonne pas) ; son bouton fait le
@@ -18,12 +19,28 @@
 //! (`Authorization: Bearer`) : la session SurrealDB est à son nom et
 //! `fn::notification_step_preview` exige `notification.read`. Rien n'est écrit. Réponse au
 //! contrat `LyxalResult` ; corps illisible : `SERVER_INVALID_REQUEST`.
+//!
+//! `POST /api/v1/notification/webhooks/{integration}` : retour d'un fournisseur, sans session.
+//! L'intégration (clé de son enregistrement) est lue par la session système ; son secret des
+//! retours est lu dans `lyxal_secrets` et le retour vérifié par `ProviderWebhook` (signature
+//! HMAC-SHA256 de Mailgun et de Resend, identifiants Basic de Postmark et de Brevo comparés en
+//! temps constant, horodatage signé à moins de 5 minutes), puis enregistré
+//! (`fn::notification_provider_event_record`, dédoublonné). Réponses sans corps ni détail :
+//! 200 (enregistré, déjà connu ou ignoré), 400 (corps illisible), 401 (signature, identifiants
+//! ou horodatage refusés), 404 (intégration inconnue ou sans secret des retours), 413 (plus de
+//! 256 Kio), 503 (secret illisible, coffre-fort ou base indisponible : le fournisseur réessaie).
+//!
+//! `POST /api/v1/notification/integrations/{integration}/test` : essai d'une intégration
+//! (`{ to }`), au nom de l'appelant (`fn::notification_integration_test` : droit de gestion de
+//! sa portée), envoyé avec le vrai fournisseur ; réponse `{ accepted, code }` (code
+//! `NOTIFICATION_*` d'un refus), jamais de secret ; l'issue est notée sur l'intégration.
 
 use super::auth::{self, no_store, ApiError};
 use crate::context::AppContext;
 use crate::error::ServerError;
 use axum::body::Bytes;
-use axum::extract::{DefaultBodyLimit, Query, State};
+use axum::extract::rejection::BytesRejection;
+use axum::extract::{DefaultBodyLimit, Path, Query, State};
 use axum::http::header::{
     ACCEPT, CONTENT_SECURITY_POLICY, CONTENT_TYPE, REFERRER_POLICY, X_FRAME_OPTIONS,
 };
@@ -31,9 +48,13 @@ use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Router;
-use lyxal_notification::models::{DigestVars, StepPreviewParams};
+use lyxal_notification::models::{
+    DigestVars, IntegrationGetParams, IntegrationTestParams, IntegrationTestRecordParams,
+    StepPreviewParams,
+};
 use lyxal_notification::{
-    NotificationError, NotificationPreview, NotificationStore, UnsubscribeLinks,
+    NotificationError, NotificationPreview, NotificationStore, UnsubscribeLinks, WebhookError,
+    WebhookRequest, MAX_WEBHOOK_BYTES,
 };
 use serde::Deserialize;
 use serde_json::json;
@@ -42,6 +63,8 @@ use std::sync::Arc;
 
 /// Taille maximale du corps d'une demande d'aperçu.
 const PREVIEW_BODY_LIMIT: usize = 64 * 1024;
+/// Taille maximale du corps d'une demande d'essai.
+const TEST_BODY_LIMIT: usize = 4 * 1024;
 
 /// Routes `/notification/*`.
 pub fn routes() -> Router<AppContext> {
@@ -53,6 +76,14 @@ pub fn routes() -> Router<AppContext> {
         .route(
             "/preview",
             post(preview).layer(DefaultBodyLimit::max(PREVIEW_BODY_LIMIT)),
+        )
+        .route(
+            "/webhooks/:integration",
+            post(webhook).layer(DefaultBodyLimit::max(MAX_WEBHOOK_BYTES)),
+        )
+        .route(
+            "/integrations/:integration/test",
+            post(integration_test).layer(DefaultBodyLimit::max(TEST_BODY_LIMIT)),
         )
         .layer(axum::middleware::map_response(no_store))
 }
@@ -225,10 +256,179 @@ async fn preview(State(context): State<AppContext>, headers: HeaderMap, body: By
     auth::respond(&context, &headers, result).await
 }
 
+/// Clé d'enregistrement d'une intégration dans le chemin : lettres, chiffres et `_` seulement.
+fn integration_id(key: &str) -> Option<String> {
+    (!key.is_empty()
+        && key.len() <= 64
+        && key.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_'))
+    .then(|| format!("notification_integration:{key}"))
+}
+
+/// Réponse sans corps.
+fn bare(status: StatusCode) -> Response {
+    status.into_response()
+}
+
+/// `POST /webhooks/{integration}` : retour d'un fournisseur, sans session.
+async fn webhook(
+    State(context): State<AppContext>,
+    Path(key): Path<String>,
+    headers: HeaderMap,
+    body: Result<Bytes, BytesRejection>,
+) -> Response {
+    let Some(host) = context.notification.as_ref() else {
+        return bare(StatusCode::NOT_FOUND);
+    };
+    let Some(id) = integration_id(&key) else {
+        return bare(StatusCode::NOT_FOUND);
+    };
+    let body = match body {
+        Ok(body) => body,
+        Err(rejection) if rejection.status() == StatusCode::PAYLOAD_TOO_LARGE => {
+            return bare(StatusCode::PAYLOAD_TOO_LARGE)
+        }
+        Err(_) => return bare(StatusCode::BAD_REQUEST),
+    };
+    let Some(dispatcher) = host.dispatcher.as_ref() else {
+        return bare(StatusCode::SERVICE_UNAVAILABLE);
+    };
+    let integration = match host
+        .store
+        .integration_get(IntegrationGetParams { integration: id })
+        .await
+    {
+        Ok(integration) if integration.webhook_path.is_some() => integration,
+        Ok(_) => return bare(StatusCode::NOT_FOUND),
+        Err(error) => {
+            let error = NotificationError::from(error);
+            if matches!(
+                error.code().as_str(),
+                "NOTIFICATION_INTEGRATION_NOT_FOUND" | "NOTIFICATION_INVALID_INPUT"
+            ) {
+                return bare(StatusCode::NOT_FOUND);
+            }
+            tracing::warn!(code = %error.code(), "retour d'un fournisseur : intégration illisible");
+            return bare(StatusCode::SERVICE_UNAVAILABLE);
+        }
+    };
+    let header = |name: &str| headers.get(name).and_then(|value| value.to_str().ok());
+    let request = WebhookRequest {
+        authorization: header("authorization"),
+        svix_id: header("svix-id"),
+        svix_timestamp: header("svix-timestamp"),
+        svix_signature: header("svix-signature"),
+        body: &body,
+    };
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|elapsed| i64::try_from(elapsed.as_secs()).unwrap_or(i64::MAX))
+        .unwrap_or_default();
+    let events = match dispatcher.verify_webhook(&integration, &request, now).await {
+        Ok(events) => events,
+        Err(error) => {
+            tracing::warn!(integration = %key, code = error.code(), "retour d'un fournisseur refusé");
+            return bare(match error {
+                WebhookError::TooLarge => StatusCode::PAYLOAD_TOO_LARGE,
+                WebhookError::Unauthorized => StatusCode::UNAUTHORIZED,
+                WebhookError::Invalid => StatusCode::BAD_REQUEST,
+                WebhookError::Secret => StatusCode::SERVICE_UNAVAILABLE,
+            });
+        }
+    };
+    for event in events {
+        if let Err(error) = host
+            .store
+            .provider_event_record(
+                event.record_params(lyxal_surreal::ToSql::to_sql(&integration.id)),
+            )
+            .await
+        {
+            // Le fournisseur réessaie ; les retours déjà enregistrés sont dédoublonnés
+            tracing::warn!(code = %NotificationError::from(error).code(), "retour d'un fournisseur non enregistré");
+            return bare(StatusCode::SERVICE_UNAVAILABLE);
+        }
+    }
+    bare(StatusCode::OK)
+}
+
+/// Corps d'une demande d'essai.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct TestBody {
+    to: String,
+}
+
+/// `POST /integrations/{integration}/test` : essai d'une intégration au nom de l'appelant.
+async fn integration_test(
+    State(context): State<AppContext>,
+    Path(key): Path<String>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Response {
+    let result = async {
+        let (_, session) = auth::caller_session(&context, &headers).await?;
+        let body: TestBody = serde_json::from_slice(&body).map_err(|_| {
+            ApiError::Server(ServerError::InvalidRequest {
+                message: "corps de l'essai : { to } attendu".to_string(),
+            })
+        })?;
+        let unavailable = || {
+            ApiError::Notification(NotificationError::Configuration(
+                "envoi par les intégrations indisponible (clé maîtresse du coffre-fort absente)"
+                    .to_string(),
+            ))
+        };
+        let host = context.notification.as_ref().ok_or_else(unavailable)?;
+        let dispatcher = host.dispatcher.as_ref().ok_or_else(unavailable)?;
+        let integration = integration_id(&key).ok_or_else(|| {
+            ApiError::Server(ServerError::InvalidRequest {
+                message: "intégration : identifiant invalide".to_string(),
+            })
+        })?;
+        // Droit de gestion et adresse contrôlés au nom de l'appelant
+        let target = NotificationStore::new(session)
+            .integration_test(IntegrationTestParams {
+                integration,
+                to: body.to,
+            })
+            .await
+            .map_err(NotificationError::from)?;
+        let code = match dispatcher.send_test(&target.integration, &target.to).await {
+            Ok(_) => None,
+            Err(error) => Some(error.code),
+        };
+        host.store
+            .integration_test_record(IntegrationTestRecordParams {
+                integration: lyxal_surreal::ToSql::to_sql(&target.integration.id),
+                ok: code.is_none(),
+                code: code.clone(),
+            })
+            .await
+            .map_err(NotificationError::from)?;
+        auth::ok(
+            StatusCode::OK,
+            json!({ "accepted": code.is_none(), "code": code }),
+        )
+    }
+    .await;
+    auth::respond(&context, &headers, result).await
+}
+
 #[cfg(test)]
 #[allow(clippy::expect_used)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_simple_integration_keys_are_read() {
+        assert_eq!(
+            integration_id("ab12_cd").as_deref(),
+            Some("notification_integration:ab12_cd")
+        );
+        for bad in ["", "a:b", "a/b", "⟨x⟩", "a b", &"x".repeat(65)] {
+            assert_eq!(integration_id(bad), None, "{bad}");
+        }
+    }
 
     #[test]
     fn only_base64url_tokens_are_read() {

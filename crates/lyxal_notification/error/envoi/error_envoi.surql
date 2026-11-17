@@ -218,30 +218,3 @@ IF !record::exists(error_definition:NOTIFICATION_SMTP_RECIPIENT_REJECTED) THEN (
         }
     }
 ) END;
-
-IF !record::exists(error_definition:NOTIFICATION_SMTP_NOT_CONFIGURED) THEN (
-    CREATE error_definition:NOTIFICATION_SMTP_NOT_CONFIGURED CONTENT {
-        code: "NOTIFICATION_SMTP_NOT_CONFIGURED",
-        module: "notification",
-        domain: "envoi",
-        category: "dependency",
-        severity: "error",
-        message: "SMTP not configured",
-        default_language: "fr",
-        http_status: 503,
-        retryable: false,
-        enabled: true,
-        translations: {
-            fr: {
-                label: "Serveur SMTP non configuré",
-                description: "L'hôte n'a pas de configuration SMTP ou de clé applicative : aucun e-mail n'est envoyé.",
-                resolution: "Renseignez la configuration notification.smtp et la clé applicative de l'hôte."
-            },
-            en: {
-                label: "SMTP not configured",
-                description: "The host has no SMTP configuration or application key: no email is sent.",
-                resolution: "Set the notification.smtp configuration and the host application key."
-            }
-        }
-    }
-) END;

@@ -3,7 +3,7 @@ name = "lyxal_notification"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Notifications sortantes de Lyxal OS : abonnés, sujets, préférences, parcours à étapes (attente, regroupement, limitation, conditions), gabarits, file d'envoi e-mail, diffusions, journal et liste de suppression"
+description = "Notifications sortantes de Lyxal OS : abonnés, sujets, préférences, parcours à étapes (attente, regroupement, limitation, conditions), gabarits, intégrations (e-mail par SMTP, Brevo, Mailgun, Postmark, Resend) et retours des fournisseurs, file d'envoi, diffusions, journal et liste de suppression"
 
 [dependencies]
 lyxal_error = { workspace = true }
@@ -14,6 +14,8 @@ lyxal_crypto = { workspace = true }
 lyxal_i18n = { workspace = true }
 # Attentes, regroupements et purge (contrats publics : SchedulerClient, tâches déclarées par seed)
 lyxal_scheduler = { workspace = true }
+# Identifiants des intégrations (contrat public : SecretsClient, module annoncé comme consommateur)
+lyxal_secrets = { workspace = true }
 async-trait = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -32,6 +34,8 @@ jiff = { version = "0.2", features = ["tzdb-bundle-always"] }
 base64 = "0.22"
 # SMTP en TLS (rustls, fournisseur ring) ; DKIM laissé au relais (décision N4)
 lettre = { version = "0.11.23", default-features = false, features = ["builder", "smtp-transport", "pool", "tokio1-rustls", "ring", "webpki-roots"] }
+# API HTTP des fournisseurs d'e-mail (K10) : rustls (fournisseur ring), sans native-tls ni OpenSSL
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 
 [dev-dependencies]
 lyxal_auth = { workspace = true }

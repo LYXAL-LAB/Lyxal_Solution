@@ -12,6 +12,7 @@ Toutes les erreurs retournent `CryptoError`, sans entrée, PHC, clé ni chemin r
 | SecretString | new(String) -> Result ; mêmes bornes, UTF-8 | expose_secret -> &str, len en bytes, is_empty, into_bytes -> SecretBytes |
 | EncryptionKey | import(SecretBytes) exige 32 bytes ; generate -> Result via OsRng faillible | aucun export public brut ; partage explicite par Arc |
 | HmacKey | import(SecretBytes) exige 32 bytes ; generate -> Result | type distinct de la clé AES, aucun export brut |
+| ExternalHmacKey | import(SecretBytes) 1 à 1024 bytes, tels quels ; jamais générée | clé d'un protocole externe (webhooks), type distinct de HmacKey, aucun export brut |
 | PasswordHash | parse(&str) valide PHC et budgets ; hash_password construit un hash | expose_phc -> &str, needs_rehash -> bool |
 | TotpSecret | generate(&TotpConfig) -> Result via OsRng (20 bytes SHA-1, 32 SHA-256) ; import(SecretBytes) exige 16..=64 bytes | expose_secret -> &[u8] (stockage chiffré), to_base32 -> SecretString |
 
@@ -106,8 +107,17 @@ HMAC-SHA256 : sign_hmac_sha256(&HmacKey,data)->Result<[u8;32]>,
 verify_hmac_sha256(&HmacKey,data,tag)->Result<bool>. Tag exactement32 ; format invalide
 => InvalidTagEncoding, mismatch=>false. Variantes hex : sortie minuscule64, vérification64
 sans trim et sans allocation proportionnelle à l'entrée. Les clés arbitrairement courtes
-ne sont pas offertes par l'API publique ; ne pas modifier une clé de protocole externe
+ne sont pas offertes par `HmacKey` ; ne pas modifier une clé de protocole externe
 par padding/dérivation improvisée pour satisfaire ce type.
+
+Clé HMAC d'un protocole externe (secret de signature des webhooks d'un fournisseur, extension
+validée par le CTO le 17 novembre 2026) : `ExternalHmacKey::import(SecretBytes)` accepte 1 à
+`MAX_EXTERNAL_HMAC_KEY_BYTES` (1024) octets, utilisés tels quels (la RFC 2104 complète ou
+condense elle-même) ; jamais générée, type distinct de `HmacKey`, `Debug` masqué, effacée à la
+libération. `sign_external_hmac_sha256(&ExternalHmacKey,data)->Result<[u8;32]>`,
+`verify_external_hmac_sha256(&ExternalHmacKey,data,tag)->Result<bool>` (temps constant, tag
+exactement 32, format invalide => InvalidTagEncoding). Réservée à la vérification ou à la
+signature imposée par un service extérieur ; les clés de la plateforme restent des `HmacKey`.
 
 hkdf_sha256(&SecretBytes,salt,info,len)->Result<SecretBytes> : sortie1..8160,
 info non vide<=1024 ; IKM de bonne entropie et admission du salt emprunté à l'hôte.

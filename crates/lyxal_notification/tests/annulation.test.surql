@@ -13,6 +13,7 @@
 
 -- préparation: organisations, sessions, parcours et gabarits
 {
+    CREATE notification_integration:relais CONTENT { key: "relais", channel: "email", provider: "smtp", name: "Relais", primary: true, settings: { from_address: "noreply@lyxal.test", host: "127.0.0.1", port: 2525, security: "local_plain" }, credentials_path: "notification/smtp/relais" };
     CREATE auth_organization:alpha CONTENT { slug: "alpha", name: "Alpha BTP" };
     CREATE auth_organization:beta CONTENT { slug: "beta", name: "Beta" };
     FOR $n IN ["envoyeur", "gestion", "lecteur", "membre", "autre", "worker"] {
@@ -99,7 +100,7 @@ fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "rel
 {
     LET $job = fn::notification_job_claim({ worker_id: "w1" }).data.find(|$j| $j.idempotency_key = "parti-1");
     LET $c = fn::notification_cancel({ tenant: "auth_organization:alpha", idempotency_key: "parti-1" }).data;
-    LET $done = fn::notification_job_complete({ job_id: <string> $job.job_id, claim_token: $job.claim_token }).data;
+    LET $done = fn::notification_job_complete({ job_id: <string> $job.job_id, claim_token: $job.claim_token, integration: "notification_integration:relais" }).data;
     RETURN $c.canceled == 1 AND $done.status == "completed" AND $done.run_status == "canceled"
         AND (SELECT VALUE [step_key, status] FROM notification_job WHERE run = $job.run_id) == [["premier", "completed"]];
 };
@@ -117,7 +118,7 @@ fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "rel
     LET $b = $jobs.find(|$j| $j.idempotency_key = "encours-2");
     LET $c1 = fn::notification_cancel({ tenant: "auth_organization:alpha", idempotency_key: "encours-1" }).data.canceled;
     LET $c2 = fn::notification_cancel({ tenant: "auth_organization:alpha", idempotency_key: "encours-2" }).data.canceled;
-    LET $failed = fn::notification_job_fail({ job_id: <string> $a.job_id, claim_token: $a.claim_token, class: "transient", code: "SMTP_421" }).data;
+    LET $failed = fn::notification_job_fail({ job_id: <string> $a.job_id, claim_token: $a.claim_token, integration: "notification_integration:relais", class: "transient", code: "SMTP_421" }).data;
     UPDATE notification_job SET locked_until = time::now() - 1s WHERE run.idempotency_key = "encours-2";
     LET $again = fn::notification_job_claim({ worker_id: "w2" }).data;
     RETURN $c1 == 1 AND $c2 == 1 AND $b IS NOT NONE AND $failed.status == "canceled" AND $failed.next_retry_at IS NONE

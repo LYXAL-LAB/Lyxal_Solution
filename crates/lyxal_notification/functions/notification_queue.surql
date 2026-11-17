@@ -77,10 +77,18 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_claim($params: object) {
             fn::notification_run_advance({ run: $job.run });
             RETURN NONE;
         };
-        RETURN fn::notification_job_payload({ job: $job, workflow: $workflow, quiet_hours: $decision.quiet_hours });
+        -- Intégration de l'envoi (D1, bascule D3) ; aucune : l'étape attend en file, sans tentative comptée
+        LET $integrations = fn::notification_integration_for_job({ job: $job });
+        IF array::len($integrations) = 0 {
+            UPDATE $job.id SET status = "queued", locked_until = NONE, claim_token = NONE, attempts -= 1,
+                next_retry_at = time::now() + 1m,
+                last_error = { class: "transient", code: "NOTIFICATION_INTEGRATION_UNAVAILABLE", detail: "aucune intégration éligible pour ce canal" };
+            RETURN NONE;
+        };
+        RETURN fn::notification_job_payload({ job: $job, workflow: $workflow, quiet_hours: $decision.quiet_hours, integration: $integrations[0] });
     }), |$payload| $payload IS NOT NONE);
     RETURN fn::result_ok($ready);
-} COMMENT "Réserve jusqu'à limit étapes dues ({ worker_id, limit, lease_seconds }) et renvoie tout le nécessaire au rendu (heures calmes et cible du désabonnement compris) ; les étapes dont le secret a expiré sont annulées, celles qu'une préférence refuse désormais sont écartées. Permission notification.worker";
+} COMMENT "Réserve jusqu'à limit étapes dues ({ worker_id, limit, lease_seconds }) et renvoie tout le nécessaire au rendu (heures calmes, cible du désabonnement et intégration de l'envoi compris) ; les étapes dont le secret a expiré sont annulées, celles qu'une préférence refuse désormais sont écartées ; une étape sans intégration éligible reste en file (nouvel essai dans une minute, sans tentative comptée). Permission notification.worker";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_job_payload : données de rendu d'une étape réservée (langue résolue)
@@ -91,7 +99,6 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_payload($params: object) -> objec
     LET $run = (SELECT * FROM ONLY $job.run);
     LET $workflow = $params.workflow ?? (SELECT * FROM ONLY $run.workflow);
     LET $template = (SELECT * FROM ONLY notification_template WHERE workflow = $workflow.id AND step_key = $job.step_key LIMIT 1);
-    LET $settings = fn::notification_settings_effective({ tenant: $run.tenant });
     -- Langue de l'envoi : celle du destinataire, sinon celle de son organisation (notée sur le
     -- déclenchement par la base), sinon la langue
     -- par défaut de l'installation ; textes des clés du gabarit dans cette langue (surcharge de
@@ -124,9 +131,9 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_payload($params: object) -> objec
         secret: $run.secret,
         sensitive: $workflow.sensitive,
         critical: $workflow.critical,
-        from_name: $settings.from_name,
-        reply_to: $settings.reply_to,
         quiet_hours: $params.quiet_hours,
+        -- Intégration de l'envoi : fournisseur, réglages (expéditeur), chemin du secret des identifiants
+        integration: fn::notification_integration_payload($params.integration),
         -- Regroupement porté par ce déclenchement : nombre et données des événements
         digest: IF $run.digest IS NONE { NONE } ELSE { (SELECT count, events.{ payload, at } AS events FROM ONLY $run.digest WHERE carrier = $run.id) },
         -- Désabonnement en un clic (hors parcours critique) : catégorie du parcours, sinon le parcours
@@ -140,7 +147,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_payload($params: object) -> objec
             }
         }
     };
-} COMMENT "Données de rendu d'une étape réservée ({ job, workflow, quiet_hours }) : gabarit, regroupement porté ({ count, events }), langue de l'envoi (destinataire, organisation, installation), textes des clés du gabarit dans cette langue (texts ; texts_error : code I18N_* si leur lecture a échoué), mise en page, réglages, secret scellé, heures calmes, cible du lien de désabonnement (NONE pour un parcours critique)";
+} COMMENT "Données de rendu d'une étape réservée ({ job, workflow, quiet_hours, integration }) : intégration de l'envoi, gabarit, regroupement porté ({ count, events }), langue de l'envoi (destinataire, organisation, installation), textes des clés du gabarit dans cette langue (texts ; texts_error : code I18N_* si leur lecture a échoué), mise en page, secret scellé, heures calmes, cible du lien de désabonnement (NONE pour un parcours critique)";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_job_check : réservation encore détenue ?
@@ -162,8 +169,9 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_complete($params: object) {
         fields: {
             job_id: { pipeline: [{ rule: "record", options: { expected_table: "notification_job" } }], required: true },
             claim_token: { pipeline: [{ rule: "uuid_v7", options: { allow_string: true } }], required: true },
+            integration: { pipeline: [{ rule: "record", options: { expected_table: "notification_integration" } }], required: true },
             provider_message_id: { pipeline: [{ rule: "optional_string", options: { max_length: 512 } }] },
-            smtp_code: { pipeline: [{ rule: "integer", options: { min_value: 200, max_value: 599 } }] },
+            response_code: { pipeline: [{ rule: "integer", options: { min_value: 200, max_value: 599 } }] },
             subject: { pipeline: [{ rule: "optional_string", options: { max_length: 998 } }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
@@ -180,25 +188,31 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_complete($params: object) {
     LET $run = (SELECT * FROM ONLY $job.run);
     LET $sensitive = (SELECT VALUE sensitive FROM ONLY $run.workflow);
     LET $settings = fn::notification_settings_effective({ tenant: $run.tenant });
+    LET $integration = (SELECT id, provider FROM ONLY $p.integration);
     LET $message = (CREATE ONLY notification_message CONTENT {
         run: $run.id,
         job: $job.id,
         channel: $job.type,
         to: $run.address.email,
         subject: IF $sensitive { NONE } ELSE { $p.subject },
+        integration: $integration.id,
+        provider: $integration.provider,
         provider_message_id: $p.provider_message_id,
         status: "sent"
     });
     IF $message == NONE { RETURN fn::error_result("NOTIFICATION_WRITE_FORBIDDEN", $p.language, { table: "notification_message" }); };
+    -- Retours du fournisseur reçus avant cet enregistrement (webhook plus rapide que le worker)
+    LET $reconciled = fn::notification_provider_event_reconcile({ integration: $integration.id, provider_message_id: $p.provider_message_id, message: $message.id, tenant: $run.tenant });
+    IF $reconciled IS NOT NONE { RETURN fn::error_result($reconciled, $p.language, { table: "notification_provider_event" }); };
     CREATE notification_delivery_log CONTENT {
         run: $run.id, job: $job.id, attempt: $job.attempts, status: "sent",
-        code: IF $p.smtp_code IS NONE { NONE } ELSE { <string> $p.smtp_code },
+        code: IF $p.response_code IS NONE { NONE } ELSE { <string> $p.response_code },
         purge_after: time::now() + duration::from_days($settings.retention_days_log)
     };
-    UPDATE $job.id SET status = "completed", locked_until = NONE, claim_token = NONE, last_error = NONE;
+    UPDATE $job.id SET status = "completed", locked_until = NONE, claim_token = NONE, last_error = NONE, integration = $integration.id;
     LET $next = fn::notification_run_advance({ run: $run.id });
     RETURN fn::result_ok({ message: $message.id, status: "completed", run_status: IF $next.status IN ["completed", "failed", "skipped", "canceled", "merged"] { $next.status } ELSE { NONE } });
-} COMMENT "Termine une étape envoyée ({ job_id, claim_token, provider_message_id, smtp_code, subject }) : message (objet omis si sensible), journal, puis étape suivante du déclenchement ; déclenchement terminé et secret effacé si c'était la dernière étape (run_status). Permission notification.worker";
+} COMMENT "Termine une étape envoyée ({ job_id, claim_token, integration, provider_message_id, response_code : code SMTP ou HTTP, subject }) : message (intégration, fournisseur, identifiant chez le fournisseur ; objet omis si sensible), journal, puis étape suivante du déclenchement ; déclenchement terminé et secret effacé si c'était la dernière étape (run_status). Permission notification.worker";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_job_fail
@@ -209,6 +223,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_fail($params: object) {
         fields: {
             job_id: { pipeline: [{ rule: "record", options: { expected_table: "notification_job" } }], required: true },
             claim_token: { pipeline: [{ rule: "uuid_v7", options: { allow_string: true } }], required: true },
+            integration: { pipeline: [{ rule: "record", options: { expected_table: "notification_integration" } }], required: true },
             class: { pipeline: [{ rule: "enum", options: { allowed: ["transient", "permanent", "recipient_rejected"], case_sensitive: true } }], required: true },
             code: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 64 } }], required: true },
             detail: { pipeline: [{ rule: "optional_string", options: { max_length: 512 } }], default: "" },
@@ -233,10 +248,12 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_fail($params: object) {
     LET $next = time::now() + duration::from_secs($p.retry_delay_seconds);
     LET $error = { class: $p.class, code: $p.code, detail: $p.detail ?? "" };
     LET $status = IF $retry { "queued" } ELSE IF $canceled { "canceled" } ELSE { "failed" };
+    -- Intégration de cette tentative : la suivante passe à la prochaine éligible (bascule D3)
+    LET $integration = IF record::exists($p.integration) { $p.integration } ELSE { NONE };
     IF $retry {
-        UPDATE $job.id SET status = "queued", next_retry_at = $next, locked_until = NONE, claim_token = NONE, last_error = $error;
+        UPDATE $job.id SET status = "queued", next_retry_at = $next, locked_until = NONE, claim_token = NONE, last_error = $error, integration = $integration;
     } ELSE {
-        UPDATE $job.id SET status = $status, locked_until = NONE, claim_token = NONE, last_error = $error;
+        UPDATE $job.id SET status = $status, locked_until = NONE, claim_token = NONE, last_error = $error, integration = $integration;
     };
     CREATE notification_delivery_log CONTENT {
         run: $run.id, job: $job.id, attempt: $job.attempts, status: IF $retry { "retry" } ELSE { "failed" },
@@ -255,7 +272,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_fail($params: object) {
         next_retry_at: IF $retry { $next } ELSE { NONE },
         run_status: $final.status
     });
-} COMMENT "Enregistre l'échec d'une étape ({ job_id, claim_token, class : transient, permanent, recipient_rejected ; code, detail, retry_delay_seconds }) : nouvelle tentative tant que attempts < max_attempts pour un échec temporaire, sinon échec définitif ; déclenchement annulé entre-temps : étape annulée, sans nouvelle tentative ; destinataire refusé : adresse supprimée (hard_bounce). Permission notification.worker";
+} COMMENT "Enregistre l'échec d'une étape ({ job_id, claim_token, integration, class : transient, permanent, recipient_rejected ; code, detail, retry_delay_seconds }) : intégration notée (après un échec temporaire, la tentative suivante passe à l'intégration éligible suivante, D3) ; nouvelle tentative tant que attempts < max_attempts pour un échec temporaire, sinon échec définitif ; déclenchement annulé entre-temps : étape annulée, sans nouvelle tentative ; destinataire refusé : adresse supprimée (hard_bounce). Permission notification.worker";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_purge
@@ -294,11 +311,14 @@ DEFINE FUNCTION OVERWRITE fn::notification_purge($params: object) {
     LET $digests = IF array::len($digest_ids) = 0 { [] } ELSE { (DELETE $digest_ids RETURN BEFORE) };
     LET $counter_ids = (SELECT VALUE id FROM notification_rate_limit WHERE purge_after <= $now LIMIT $limit);
     LET $counters = IF array::len($counter_ids) = 0 { [] } ELSE { (DELETE $counter_ids RETURN BEFORE) };
+    LET $event_ids = (SELECT VALUE id FROM notification_provider_event WHERE purge_after <= $now LIMIT $limit);
+    LET $events = IF array::len($event_ids) = 0 { [] } ELSE { (DELETE $event_ids RETURN BEFORE) };
     RETURN fn::result_ok({
         secrets_cleared: array::len($secrets), log_entries: array::len($logs), runs: array::len($runs),
-        broadcasts: array::len($broadcasts), digests: array::len($digests), rate_limits: array::len($counters)
+        broadcasts: array::len($broadcasts), digests: array::len($digests), rate_limits: array::len($counters),
+        provider_events: array::len($events)
     });
-} COMMENT "Purge par paquets, appelée par lyxal_scheduler (tâche notification.purge, planification horaire notification-purge) avec { args : { limit : 1000 par défaut }, run, tenant, scheduled_for, attempt } : secrets expirés effacés ; journal, déclenchements terminés (étapes, messages et regroupements portés avec eux), diffusions terminées, regroupements fermés et compteurs de limitation expirés supprimés au-delà de leur conservation. Permission notification.worker (session système du moteur)";
+} COMMENT "Purge par paquets, appelée par lyxal_scheduler (tâche notification.purge, planification horaire notification-purge) avec { args : { limit : 1000 par défaut }, run, tenant, scheduled_for, attempt } : secrets expirés effacés ; journal, déclenchements terminés (étapes, messages et regroupements portés avec eux), diffusions terminées, regroupements fermés, compteurs de limitation expirés et retours des fournisseurs supprimés au-delà de leur conservation. Permission notification.worker (session système du moteur)";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_job_renew : réservation renouvelée juste avant l'envoi

@@ -19,12 +19,15 @@ DEFINE FIELD OVERWRITE job ON TABLE notification_message TYPE record<notificatio
 DEFINE FIELD OVERWRITE channel ON TABLE notification_message TYPE string ASSERT $value IN ["email"] READONLY COMMENT "Canal";
 DEFINE FIELD OVERWRITE to ON TABLE notification_message TYPE string READONLY COMMENT "Destinataire";
 DEFINE FIELD OVERWRITE subject ON TABLE notification_message TYPE option<string> COMMENT "Objet (absent pour un parcours sensible)";
-DEFINE FIELD OVERWRITE provider ON TABLE notification_message TYPE string DEFAULT "smtp" COMMENT "Fournisseur";
-DEFINE FIELD OVERWRITE provider_message_id ON TABLE notification_message TYPE option<string> COMMENT "Identifiant du message chez le fournisseur";
-DEFINE FIELD OVERWRITE status ON TABLE notification_message TYPE string ASSERT $value IN ["sent", "rejected"] COMMENT "État";
+DEFINE FIELD OVERWRITE integration ON TABLE notification_message TYPE option<record<notification_integration>> REFERENCE ON DELETE UNSET COMMENT "Intégration qui a envoyé le message (retirée si elle est supprimée)";
+DEFINE FIELD OVERWRITE provider ON TABLE notification_message TYPE option<string> ASSERT $value IS NONE OR $value IN ["smtp", "brevo", "mailgun", "postmark", "resend"] READONLY COMMENT "Fournisseur de l'envoi";
+DEFINE FIELD OVERWRITE provider_message_id ON TABLE notification_message TYPE option<string> ASSERT $value IS NONE OR string::len($value) <= 512 READONLY COMMENT "Identifiant du message chez le fournisseur (unique par intégration)";
+DEFINE FIELD OVERWRITE status ON TABLE notification_message TYPE string ASSERT $value IN ["sent", "delivered", "bounced", "complained"] COMMENT "État : envoyé, puis d'après les retours du fournisseur";
 DEFINE FIELD OVERWRITE sent_at ON TABLE notification_message TYPE datetime DEFAULT time::now() COMMENT "Envoi";
+DEFINE FIELD OVERWRITE status_at ON TABLE notification_message TYPE option<datetime> COMMENT "Dernier retour du fournisseur";
 
 DEFINE INDEX OVERWRITE notification_message_run ON TABLE notification_message FIELDS run;
+DEFINE INDEX OVERWRITE notification_message_provider ON TABLE notification_message FIELDS integration, provider_message_id UNIQUE;
 
 DEFINE TABLE OVERWRITE notification_delivery_log
     TYPE NORMAL

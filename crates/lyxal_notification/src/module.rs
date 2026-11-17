@@ -7,13 +7,11 @@ use lyxal_runtime::types::ModuleId;
 use lyxal_runtime::{LyxalModule, ModuleContext, RuntimeError};
 use lyxal_scheduler::models::{Overlap, ScheduleCreateParams, ScheduleSpec};
 use lyxal_scheduler::{SchedulerClient, SchedulerResult, SchedulerStore};
-use std::sync::Arc;
 use std::time::Instant;
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
-use crate::models::SettingsGetParams;
-use crate::smtp::EmailTransport;
+use crate::models::{IntegrationListParams, SettingsGetParams};
 use crate::store::NotificationStore;
 
 /// Identifiant du module.
@@ -56,7 +54,7 @@ impl NotificationModule {
         let descriptor = ModuleDescriptorBuilder::new(ModuleId::new(MODULE_ID), "0.1.0")
             .name("Lyxal Notification")
             .description(
-                "Notifications sortantes de Lyxal OS : abonnés, sujets, préférences, parcours à étapes (attente, regroupement, limitation, conditions), gabarits, file d'envoi e-mail, diffusions, journal et liste de suppression",
+                "Notifications sortantes de Lyxal OS : abonnés, sujets, préférences, parcours à étapes (attente, regroupement, limitation, conditions), gabarits, intégrations (e-mail par SMTP, Brevo, Mailgun, Postmark, Resend) et retours des fournisseurs, file d'envoi, diffusions, journal et liste de suppression",
             )
             .capability("database")
             .capability("events")
@@ -67,6 +65,7 @@ impl NotificationModule {
             .dependency(ModuleId::new("lyxal_auth"))
             .dependency(ModuleId::new("lyxal_i18n"))
             .dependency(ModuleId::new("lyxal_scheduler"))
+            .dependency(ModuleId::new("lyxal_secrets"))
             .build();
         Self { descriptor, client }
     }
@@ -99,21 +98,23 @@ impl LyxalModule for NotificationModule {
     }
 }
 
-/// Sonde de santé : réglages lisibles et relais SMTP joignable. Sans transport (SMTP ou clé
-/// applicative absents) : « dégradé », aucun e-mail n'est envoyé.
+/// Sonde de santé : réglages lisibles, envoi configuré par l'hôte (clé applicative et clé
+/// maîtresse du coffre-fort) et intégration e-mail active pour l'installation. Sinon :
+/// « dégradé » (les e-mails attendent en file).
 pub struct NotificationHealthCheck {
     module_id: ModuleId,
     store: NotificationStore,
-    transport: Option<Arc<dyn EmailTransport>>,
+    delivery: bool,
 }
 
 impl NotificationHealthCheck {
-    /// Sonde sur le store de la session système de l'hôte et le transport configuré.
-    pub fn new(store: NotificationStore, transport: Option<Arc<dyn EmailTransport>>) -> Self {
+    /// Sonde sur le store de la session système de l'hôte ; `delivery` : worker d'envoi
+    /// enregistré (clé applicative et clé maîtresse du coffre-fort présentes).
+    pub fn new(store: NotificationStore, delivery: bool) -> Self {
         Self {
             module_id: ModuleId::new(MODULE_ID),
             store,
-            transport,
+            delivery,
         }
     }
 }
@@ -126,32 +127,44 @@ impl ModuleHealthCheck for NotificationHealthCheck {
 
     async fn check(&self, _ctx: &ModuleContext) -> Result<HealthCheckResult, RuntimeError> {
         let started = Instant::now();
-        let settings = self.store.settings_get(SettingsGetParams::default()).await;
         let elapsed = || u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
-        if let Err(error) = settings {
+        if let Err(error) = self.store.settings_get(SettingsGetParams::default()).await {
             return Ok(HealthCheckResult::unhealthy(
                 self.module_id.clone(),
                 Some(elapsed()),
                 Some(format!("réglages illisibles : {error}")),
             ));
         }
-        let Some(transport) = &self.transport else {
+        if !self.delivery {
             return Ok(HealthCheckResult::degraded(
                 self.module_id.clone(),
                 elapsed(),
-                Some("NOTIFICATION_SMTP_NOT_CONFIGURED : aucun e-mail n'est envoyé".to_string()),
+                Some("NOTIFICATION_CONFIGURATION_INVALID : clé applicative ou clé maîtresse du coffre-fort absente, aucun e-mail n'est envoyé".to_string()),
             ));
-        };
-        Ok(match transport.check().await {
-            Ok(()) => HealthCheckResult::healthy(
+        }
+        let integrations = self
+            .store
+            .integration_list(IntegrationListParams {
+                tenant: None,
+                channel: Some("email".to_string()),
+                active: Some(true),
+            })
+            .await;
+        Ok(match integrations {
+            Err(error) => HealthCheckResult::unhealthy(
                 self.module_id.clone(),
-                elapsed(),
-                Some("relais SMTP joignable".to_string()),
+                Some(elapsed()),
+                Some(format!("intégrations illisibles : {error}")),
             ),
-            Err(detail) => HealthCheckResult::degraded(
+            Ok(list) if list.is_empty() => HealthCheckResult::degraded(
                 self.module_id.clone(),
                 elapsed(),
-                Some(format!("relais SMTP injoignable : {detail}")),
+                Some("NOTIFICATION_INTEGRATION_UNAVAILABLE : aucune intégration e-mail active pour l'installation, les e-mails sans intégration d'organisation attendent en file".to_string()),
+            ),
+            Ok(list) => HealthCheckResult::healthy(
+                self.module_id.clone(),
+                elapsed(),
+                Some(format!("{} intégration(s) e-mail active(s) pour l'installation", list.len())),
             ),
         })
     }

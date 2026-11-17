@@ -5,6 +5,7 @@
 
 -- préparation: organisation, parcours et déclenchement réservé
 {
+    CREATE notification_integration:relais CONTENT { key: "relais", channel: "email", provider: "smtp", name: "Relais", primary: true, settings: { from_address: "noreply@lyxal.test", host: "127.0.0.1", port: 2525, security: "local_plain" }, credentials_path: "notification/smtp/relais" };
     CREATE auth_organization:alpha CONTENT { slug: "alpha", name: "Alpha BTP" };
     CREATE notification_workflow:w CONTENT { tenant: auth_organization:alpha, key: "w", name: "W", status: "active", steps: [{ key: "email", type: "email" }, { key: "rappel", type: "email" }] };
     UPDATE auth_organization:alpha SET locale = "en";
@@ -24,7 +25,7 @@ RETURN fn::notification_has_content_slot({ text: "a {{ content }} b" }) AND !fn:
 
 -- test: réglages effectifs sans réglages de l'organisation : ceux de l'installation
 RETURN fn::notification_settings_effective({ tenant: auth_organization:alpha }).max_attempts == 8
-    AND fn::notification_settings_effective({}) == { from_name: NONE, reply_to: NONE, timezone: NONE, max_attempts: 8, retention_days_runs: 90, retention_days_log: 30, max_wait_days: 30 };
+    AND fn::notification_settings_effective({}) == { timezone: NONE, max_attempts: 8, retention_days_runs: 90, retention_days_log: 30, max_wait_days: 30 };
 
 -- test: étapes sans gabarit
 RETURN fn::notification_workflow_missing_templates({ workflow: notification_workflow:w, steps: [{ key: "email", type: "email" }, { key: "pause", type: "delay" }, { key: "rappel", type: "email" }] }) == ["rappel"];

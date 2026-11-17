@@ -271,8 +271,4 @@ pub struct StepPreviewResult {
     pub payload: serde_json::Value,
     /// Regroupement d'exemple.
     pub digest: Option<DigestVars>,
-    /// Nom d'expéditeur des réglages.
-    pub from_name: Option<String>,
-    /// Adresse de réponse des réglages.
-    pub reply_to: Option<String>,
 }

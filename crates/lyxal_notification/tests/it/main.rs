@@ -4,10 +4,15 @@
 //! tentatives, destinataire refusé, sonde de santé ; e-mails du système rendus en français et en
 //! anglais avec les textes de `lyxal_i18n` ; abonnés, désabonnement en un clic, heures calmes et
 //! diffusion par paquets ; parcours à étapes avec le moteur de lyxal_scheduler (attente reprise,
-//! regroupement, annulation, planification de la purge, aperçu).
+//! regroupement, annulation, planification de la purge, aperçu) ; fournisseurs HTTP contre de
+//! faux fournisseurs locaux, intégrations (choix, bascule, identifiants lus du coffre-fort) et
+//! retours des fournisseurs vérifiés.
 
 mod audience;
+mod fake_provider;
 mod flow;
+mod integrations;
+mod providers;
 mod smtp_server;
 mod steps;
 mod support;

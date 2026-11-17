@@ -4,6 +4,7 @@
 use lyxal_i18n::ResolvedText;
 use lyxal_surreal::SurrealValue;
 
+use super::integration::ClaimedIntegration;
 use super::preference::QuietHoursRule;
 use super::trigger::Recipient;
 use super::types::{NotificationDatetime, NotificationRecordId};
@@ -66,16 +67,14 @@ pub struct ClaimedJob {
     pub sensitive: bool,
     /// Parcours critique : ni heures calmes ni lien de désabonnement.
     pub critical: bool,
-    /// Nom d'expéditeur des réglages.
-    pub from_name: Option<String>,
-    /// Adresse de réponse des réglages.
-    pub reply_to: Option<String>,
     /// Heures calmes de l'abonné (absentes pour un parcours critique).
     pub quiet_hours: Option<QuietHoursRule>,
     /// Regroupement porté par le déclenchement : nombre et données des événements.
     pub digest: Option<DigestVars>,
     /// Cible du lien de désabonnement (absente pour un parcours critique).
     pub unsubscribe: Option<UnsubscribeTarget>,
+    /// Intégration de l'envoi (D1, bascule D3) : fournisseur, réglages, chemin des identifiants.
+    pub integration: ClaimedIntegration,
 }
 
 /// Cible du lien de désabonnement d'un message : la catégorie du parcours, sinon le parcours.
@@ -104,6 +103,7 @@ impl std::fmt::Debug for ClaimedJob {
             .field("sensitive", &self.sensitive)
             .field("critical", &self.critical)
             .field("quiet_hours", &self.quiet_hours)
+            .field("integration", &self.integration.id)
             .field("secret", &self.secret.as_ref().map(|_| "[REDACTED]"))
             .finish_non_exhaustive()
     }
@@ -154,10 +154,12 @@ pub struct JobCompleteParams {
     pub job_id: String,
     /// Jeton de réservation.
     pub claim_token: String,
-    /// Identifiant du message chez le fournisseur (`Message-ID`).
+    /// Intégration qui a envoyé le message.
+    pub integration: String,
+    /// Identifiant du message chez le fournisseur.
     pub provider_message_id: Option<String>,
-    /// Code de réponse SMTP.
-    pub smtp_code: Option<i64>,
+    /// Code de réponse du fournisseur (SMTP ou HTTP).
+    pub response_code: Option<i64>,
     /// Objet rendu (ignoré pour un parcours sensible).
     pub subject: Option<String>,
 }
@@ -202,6 +204,9 @@ pub struct JobFailParams {
     pub job_id: String,
     /// Jeton de réservation.
     pub claim_token: String,
+    /// Intégration de cette tentative (la suivante passe à la prochaine éligible après un échec
+    /// temporaire).
+    pub integration: String,
     /// Classe (`FailureClass::as_str`).
     pub class: String,
     /// Code (SMTP ou `NOTIFICATION_*`).
@@ -253,6 +258,8 @@ pub struct PurgeResult {
     pub digests: i64,
     /// Compteurs de limitation expirés supprimés.
     pub rate_limits: i64,
+    /// Retours des fournisseurs supprimés.
+    pub provider_events: i64,
 }
 
 /// Paramètres de `fn::notification_settings_get`.
@@ -265,10 +272,6 @@ pub struct SettingsGetParams {
 /// Réglages effectifs.
 #[derive(Debug, Clone, PartialEq, SurrealValue)]
 pub struct EffectiveSettings {
-    /// Nom d'expéditeur.
-    pub from_name: Option<String>,
-    /// Adresse de réponse.
-    pub reply_to: Option<String>,
     /// Fuseau horaire par défaut des abonnés.
     pub timezone: Option<String>,
     /// Tentatives au plus.

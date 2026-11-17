@@ -515,11 +515,18 @@ mod tests {
             secret: None,
             sensitive: false,
             critical: false,
-            from_name: None,
-            reply_to: None,
             quiet_hours: None,
             digest: None,
             unsubscribe: None,
+            integration: crate::models::ClaimedIntegration {
+                id: lyxal_surreal::RecordId::new("notification_integration", "i"),
+                tenant: None,
+                key: "relais".into(),
+                provider: "smtp".into(),
+                settings: Default::default(),
+                credentials_path: "notification/smtp/relais".into(),
+                webhook_path: None,
+            },
         }
     }
 

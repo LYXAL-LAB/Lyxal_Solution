@@ -200,3 +200,48 @@ THEN {
     });
     IF !$published.ok { THROW $published.error.code; };
 };
+
+-- ----------------------------------------------------------------------------
+-- Intégrations (identifiants seulement, jamais de chemin de secret ni de réglage)
+-- ----------------------------------------------------------------------------
+
+DEFINE EVENT OVERWRITE notification_integration_changed_event ON TABLE notification_integration
+THEN {
+    LET $record = IF $event = "DELETE" { $before } ELSE { $after };
+    LET $published = fn::event_publish({
+        event_id: rand::uuid::v7(),
+        event_type: IF $event = "CREATE" { "notification.integration.created" } ELSE IF $event = "DELETE" { "notification.integration.deleted" } ELSE { "notification.integration.updated" },
+        producer: "lyxal_notification",
+        source: $record.id,
+        payload: {
+            integration_id: <string> $record.id,
+            tenant: IF $record.tenant IS NONE { NONE } ELSE { <string> $record.tenant },
+            channel: $record.channel
+        },
+        metadata: {}
+    });
+    IF !$published.ok { THROW $published.error.code; };
+};
+
+-- ----------------------------------------------------------------------------
+-- Retours des fournisseurs : message délivré, rejeté, plainte (identifiants seulement, jamais
+-- l'adresse)
+-- ----------------------------------------------------------------------------
+
+DEFINE EVENT OVERWRITE notification_message_status_event ON TABLE notification_message
+WHEN $event = "UPDATE" AND $before.status != $after.status AND $after.status IN ["delivered", "bounced", "complained"]
+THEN {
+    LET $published = fn::event_publish({
+        event_id: rand::uuid::v7(),
+        event_type: string::concat("notification.message.", $after.status),
+        producer: "lyxal_notification",
+        source: $after.id,
+        payload: {
+            message_id: <string> $after.id,
+            run_id: <string> $after.run,
+            integration_id: IF $after.integration IS NONE { NONE } ELSE { <string> $after.integration }
+        },
+        metadata: {}
+    });
+    IF !$published.ok { THROW $published.error.code; };
+};
