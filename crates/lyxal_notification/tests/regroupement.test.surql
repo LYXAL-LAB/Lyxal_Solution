@@ -32,7 +32,7 @@
         { key: "email", type: "email" }
     ] };
     CREATE notification_workflow:limite_courte CONTENT { tenant: auth_organization:alpha, key: "limite_courte", name: "Limite courte", status: "active", steps: [
-        { key: "limite", type: "throttle", limit: 1, window: { amount: 2, unit: "seconds" } },
+        { key: "limite", type: "throttle", limit: 1, window: { amount: 4, unit: "seconds" } },
         { key: "email", type: "email" }
     ] };
     CREATE notification_workflow:alerte CONTENT { tenant: auth_organization:alpha, key: "alerte", name: "Alerte", status: "active", critical: true, steps: [
@@ -158,11 +158,13 @@ RETURN fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_ke
 -- en tant que: envoyeur
 {
     LET $call = |$key| fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "limite_courte", idempotency_key: $key, to: { subscriber_id: "client-2", email: "client2@exemple.fr" } }).data;
-    -- Début d'une fenêtre de deux secondes
-    sleep(2s);
+    -- Les fenêtres sont alignées sur l'horloge (time::floor) : on se place juste après le début
+    -- d'une fenêtre, pour que les deux premiers appels tombent dans la même, quelle que soit la
+    -- vitesse de la machine, puis on attend une fenêtre entière pour le troisième
+    sleep(time::ceil(time::now(), 4s) - time::now() + 100ms);
     LET $first = $call("court-1");
     LET $second = $call("court-2");
-    sleep(2s);
+    sleep(4s);
     LET $third = $call("court-3");
     RETURN $first.status == "created" AND $second.skip_reason == "throttled" AND $third.status == "created";
 };
