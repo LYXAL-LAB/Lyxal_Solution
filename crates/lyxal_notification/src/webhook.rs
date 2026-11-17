@@ -14,16 +14,14 @@
 //! rejoué est dédoublonné en base par l'identifiant de l'événement chez le fournisseur.
 //! Retenus : délivré, rejet définitif, rejet temporaire, plainte ; ouvertures et clics ignorés.
 //!
-//! Clé HMAC d'une longueur quelconque : HMAC (RFC 2104) complète une clé de 64 octets au plus par
-//! des zéros, et remplace une clé plus longue par son SHA-256. Une clé de 32 octets au plus est
-//! donc complétée par des zéros jusqu'aux 32 octets de `HmacKey` (même HMAC), une clé de plus de
-//! 64 octets remplacée par `lyxal_crypto::sha256` ; une clé de 33 à 64 octets n'est pas
-//! représentable par l'API figée de `lyxal_crypto` et est refusée (`NOTIFICATION_INTEGRATION_SECRET_INVALID`).
+//! Clé de signature du fournisseur, de longueur quelconque : `lyxal_crypto::ExternalHmacKey`,
+//! utilisée telle quelle (extension de `lyxal_crypto` validée par le CTO), vérifiée en temps
+//! constant par `verify_external_hmac_sha256`.
 
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
-use lyxal_crypto::{sha256, sign_hmac_sha256, verify_hmac_sha256, verify_hmac_sha256_hex};
-use lyxal_crypto::{HmacKey, SecretBytes, SecretString};
+use lyxal_crypto::{sign_hmac_sha256, verify_external_hmac_sha256, verify_hmac_sha256};
+use lyxal_crypto::{ExternalHmacKey, HmacKey, SecretBytes, SecretString};
 use serde::Deserialize;
 use serde_json::Value;
 use std::fmt;
@@ -151,22 +149,25 @@ struct BasicSecret {
     password: String,
 }
 
-/// Clé HMAC-SHA256 d'une clé brute de longueur quelconque, équivalente selon RFC 2104 (voir
-/// l'en-tête du module).
-fn hmac_key(raw: &[u8]) -> Result<HmacKey, WebhookError> {
-    let material = match raw.len() {
-        0 => return Err(WebhookError::Secret),
-        1..=32 => {
-            let mut padded = vec![0u8; 32];
-            padded[..raw.len()].copy_from_slice(raw);
-            padded
-        }
-        33..=64 => return Err(WebhookError::Secret),
-        _ => sha256(raw).to_vec(),
-    };
-    SecretBytes::new(material)
-        .and_then(HmacKey::import)
+/// Clé de signature du fournisseur, telle quelle (`ExternalHmacKey`, 1 à 1024 octets).
+fn hmac_key(raw: &[u8]) -> Result<ExternalHmacKey, WebhookError> {
+    SecretBytes::new(raw.to_vec())
+        .and_then(ExternalHmacKey::import)
         .map_err(|_| WebhookError::Secret)
+}
+
+/// Étiquette hexadécimale de 64 caractères (minuscules ou majuscules), sinon `None`.
+fn hex_tag(encoded: &str) -> Option<[u8; 32]> {
+    if encoded.len() != 64 {
+        return None;
+    }
+    let mut tag = [0u8; 32];
+    for (index, pair) in encoded.as_bytes().chunks(2).enumerate() {
+        let high = char::from(pair[0]).to_digit(16)?;
+        let low = char::from(pair[1]).to_digit(16)?;
+        tag[index] = u8::try_from(high * 16 + low).ok()?;
+    }
+    Some(tag)
 }
 
 /// Égalité en temps constant : étiquettes HMAC-SHA256 sous une clé éphémère tirée par
@@ -276,7 +277,8 @@ fn mailgun(
     let token = text(&body, &["signature", "token"]).ok_or(WebhookError::Unauthorized)?;
     let signature = text(&body, &["signature", "signature"]).ok_or(WebhookError::Unauthorized)?;
     let signed = format!("{timestamp}{token}");
-    if !verify_hmac_sha256_hex(&key, signed.as_bytes(), signature).unwrap_or(false) {
+    let tag = hex_tag(signature).ok_or(WebhookError::Unauthorized)?;
+    if !verify_external_hmac_sha256(&key, signed.as_bytes(), &tag).unwrap_or(false) {
         return Err(WebhookError::Unauthorized);
     }
     if !within_window(timestamp, now) {
@@ -341,7 +343,7 @@ fn resend(
         .filter_map(|tag| STANDARD.decode(tag).ok())
         .filter(|tag| tag.len() == 32)
         .fold(false, |found, tag| {
-            verify_hmac_sha256(&key, &signed, &tag).unwrap_or(false) | found
+            verify_external_hmac_sha256(&key, &signed, &tag).unwrap_or(false) | found
         });
     if !valid || !within_window(timestamp, now) {
         return Err(WebhookError::Unauthorized);
@@ -474,29 +476,25 @@ mod tests {
     }
 
     #[test]
-    fn short_and_long_hmac_keys_match_rfc_2104() {
+    fn provider_keys_of_any_length_are_used_as_given() {
         // RFC 4231, cas 2 : clé "Jefe" (4 octets)
         let key = hmac_key(b"Jefe").expect("clé");
-        let tag = sign_hmac_sha256(&key, b"what do ya want for nothing?").expect("étiquette");
-        let hex: String = tag.iter().map(|b| format!("{b:02x}")).collect();
+        let tag = lyxal_crypto::sign_external_hmac_sha256(&key, b"what do ya want for nothing?")
+            .expect("étiquette");
         assert_eq!(
-            hex,
-            "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843"
+            hex_tag("5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843"),
+            Some(tag)
         );
-        // RFC 4231, cas 6 : clé de 131 octets 0xaa (plus longue qu'un bloc)
-        let key = hmac_key(&[0xaa; 131]).expect("clé");
-        let tag = sign_hmac_sha256(
-            &key,
-            b"Test Using Larger Than Block-Size Key - Hash Key First",
-        )
-        .expect("étiquette");
-        let hex: String = tag.iter().map(|b| format!("{b:02x}")).collect();
-        assert_eq!(
-            hex,
-            "60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54"
-        );
-        assert_eq!(hmac_key(&[1; 40]).err(), Some(WebhookError::Secret));
+        // Clé de 36 octets (de 33 à 64 octets, comme certaines clés Mailgun) : acceptée
+        let key = hmac_key(b"essai_signature_retours_36_octets_xy").expect("clé");
+        let tag =
+            lyxal_crypto::sign_external_hmac_sha256(&key, b"1700000000token").expect("étiquette");
+        assert!(verify_external_hmac_sha256(&key, b"1700000000token", &tag).expect("vérification"));
         assert_eq!(hmac_key(&[]).err(), Some(WebhookError::Secret));
+        // Étiquette hexadécimale : 64 caractères, majuscules admises
+        assert_eq!(hex_tag(&"AB".repeat(32)), Some([0xab; 32]));
+        assert_eq!(hex_tag(&"ab".repeat(31)), None);
+        assert_eq!(hex_tag(&"zz".repeat(32)), None);
     }
 
     #[test]

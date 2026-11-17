@@ -110,6 +110,35 @@ impl fmt::Debug for HmacKey {
 }
 impl ZeroizeOnDrop for HmacKey {}
 
+/// Largest external HMAC key accepted, in bytes.
+pub const MAX_EXTERNAL_HMAC_KEY_BYTES: usize = 1024;
+
+/// HMAC key imposed by a third-party protocol (webhook signing secret of a provider), used
+/// exactly as given, whatever its length (1 to 1024 bytes; RFC 2104 applies the padding or
+/// hashing itself). Distinct from `HmacKey`: it is only imported, never generated, and never
+/// mixed with the platform's own 256-bit keys.
+pub struct ExternalHmacKey {
+    bytes: SecretBytes,
+}
+impl ExternalHmacKey {
+    /// Import 1 to `MAX_EXTERNAL_HMAC_KEY_BYTES` owned bytes, without padding or derivation.
+    pub fn import(secret: SecretBytes) -> Result<Self, CryptoError> {
+        if secret.is_empty() || secret.len() > MAX_EXTERNAL_HMAC_KEY_BYTES {
+            return Err(CryptoError::InvalidKeyLength);
+        }
+        Ok(Self { bytes: secret })
+    }
+    pub(crate) fn expose(&self) -> &[u8] {
+        self.bytes.expose_secret()
+    }
+}
+impl fmt::Debug for ExternalHmacKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("ExternalHmacKey([REDACTED])")
+    }
+}
+impl ZeroizeOnDrop for ExternalHmacKey {}
+
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;

@@ -7,7 +7,9 @@
 
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
-use lyxal_crypto::{sign_hmac_sha256, sign_hmac_sha256_hex, HmacKey, SecretBytes};
+use lyxal_crypto::{
+    sign_external_hmac_sha256, sign_hmac_sha256, ExternalHmacKey, HmacKey, SecretBytes,
+};
 use lyxal_notification::models::{FailureClass, IntegrationSaveParams, IntegrationSettings};
 use lyxal_notification::{
     EmailWorkerSettings, JobOutcome, NotificationEmailWorker, NotificationStore, ProviderEventKind,
@@ -381,7 +383,8 @@ async fn mailgun_and_resend_webhooks_are_verified() {
     let fake = FakeProviders::start().await;
     let dispatcher = dispatcher(&vault, Some(&fake.base));
     // Clés de 32 octets : signatures calculées ici sans aucune transformation de la clé
-    let mailgun_key = "0123456789abcdef0123456789abcdef";
+    // Clé de 36 octets (de 33 à 64 octets) : elle passe par ExternalHmacKey
+    let mailgun_key = "essai_signature_retours_36_octets_xy";
     let svix_raw: Vec<u8> = (0u8..32).collect();
     put_secret(
         &client,
@@ -443,12 +446,17 @@ async fn mailgun_and_resend_webhooks_are_verified() {
 
     // Mailgun : HMAC-SHA256(clé, horodatage + jeton) en hexadécimal
     let mailgun = claimed(&client, "mailgun").await;
-    let key = HmacKey::import(SecretBytes::new(mailgun_key.as_bytes().to_vec()).expect("clé"))
-        .expect("clé");
+    let key =
+        ExternalHmacKey::import(SecretBytes::new(mailgun_key.as_bytes().to_vec()).expect("clé"))
+            .expect("clé");
     let mailgun_body = |timestamp: i64, signature: Option<&str>| {
         let token = "jeton-aleatoire-50";
-        let signed = sign_hmac_sha256_hex(&key, format!("{timestamp}{token}").as_bytes())
-            .expect("signature");
+        let signed: String =
+            sign_external_hmac_sha256(&key, format!("{timestamp}{token}").as_bytes())
+                .expect("signature")
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect();
         serde_json::json!({
             "signature": { "timestamp": timestamp.to_string(), "token": token, "signature": signature.unwrap_or(&signed) },
             "event-data": { "event": "failed", "severity": "permanent", "id": "mg-event-1", "timestamp": timestamp as f64, "message": { "headers": { "message-id": "mg-1@mg.lyxal.test" } } }

@@ -407,9 +407,9 @@ jamais l'adresse, le téléphone, le nom, un chemin de secret ni un réglage.
   Svix (HMAC-SHA256 de `<svix-id>.<svix-timestamp>.<corps>`, signatures `v1,<base64>`, secret
   `whsec_<base64>`), Postmark et Brevo (identifiants Basic comparés en temps constant : étiquettes
   HMAC-SHA256 sous une clé éphémère, `verify_hmac_sha256`) ; horodatage signé à 5 minutes, corps
-  de 256 Kio au plus ; `lyxal_crypto` seulement. Une clé de signature de 32 octets au plus est
-  complétée par des zéros, une clé de plus de 64 octets remplacée par son SHA-256 (même HMAC,
-  RFC 2104) ; une clé de 33 à 64 octets est refusée (feuille de route).
+  de 256 Kio au plus ; `lyxal_crypto` seulement. Clé de signature du fournisseur de longueur
+  quelconque (1 à 1024 octets), utilisée telle quelle : `ExternalHmacKey` et
+  `verify_external_hmac_sha256` de `lyxal_crypto`.
 * `UnsubscribeLinks` : lien `{public_url}/api/v1/notification/unsubscribe?t=<jeton>` ; jeton
   JSON en Base64url (portée, abonné, catégorie ou parcours, canal) suivi de sa signature
   HMAC-SHA256 ; clé dérivée de la clé applicative par `lyxal_crypto::hkdf_sha256` (domaine

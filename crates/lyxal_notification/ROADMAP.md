@@ -13,11 +13,6 @@ ordre du CTO avec un `implementation_plan.md` validé.
 
 ## Limites connues du lot 3 (intégrations)
 
-* **Clés de signature des retours de 33 à 64 octets** : l'API figée de `lyxal_crypto` n'accepte
-  qu'une clé HMAC de 32 octets ; une clé plus courte (complétée par des zéros) ou plus longue que
-  64 octets (remplacée par son SHA-256) donne le même HMAC (RFC 2104), mais une clé de 33 à 64
-  octets est refusée. Une primitive HMAC-SHA256 à clé de longueur quelconque dans `lyxal_crypto`
-  est à soumettre au CTO si un fournisseur en délivre (point 7).
 * **Relais SMTP d'une organisation** : hôte contrôlé à l'enregistrement (ni adresse IP, ni hôte
   local, ni relais en clair) mais pas après résolution DNS ; le contrôle après résolution de K7
   (lot 4) pourra s'y appliquer.
@@ -26,12 +21,7 @@ ordre du CTO avec un `implementation_plan.md` validé.
 
 ## Points à décider par le CTO
 
-1. **Temps réel du fil in-app** : `LIVE SELECT` SurrealDB exposé par `lyxal-server`, ou flux SSE /
-   WebSocket de l'hôte.
-2. **Webhooks sortants** : dans ce module, ou dans un module commun à tous les producteurs.
-3. **Environnements** : remplacés par brouillon / publication avec révisions (à confirmer).
-4. **Cryptographie hors `lyxal_crypto`** (§11.3) : push web (VAPID, ECDSA P-256), APNs (ES256).
-5. **Courrier entrant** : serveur SMTP entrant, relais par un fournisseur, ou abandon.
-6. **Étape HTTP** : hôtes autorisés par locataire (protection SSRF) avant toute activation.
-7. **HMAC à clé de longueur quelconque** dans `lyxal_crypto` (clés de signature des retours de
-   33 à 64 octets, ci-dessus).
+1. **Webhooks sortants** : dans ce module, ou dans un module commun à tous les producteurs.
+2. **Environnements** : remplacés par brouillon / publication avec révisions (à confirmer).
+3. **Courrier entrant** : serveur SMTP entrant, relais par un fournisseur, ou abandon.
+4. **Étape HTTP** : hôtes autorisés par locataire (protection SSRF) avant toute activation.
