@@ -8,6 +8,9 @@
 -- (fournisseur, réglages, chemins) exige le droit de lire ce secret : contrôlé par les fonctions
 -- (fn::notification_integration_secret_check) et, pour une écriture directe dans la table, par la
 -- garde notification_integration_guard. Un retour de fournisseur ne garde aucun corps.
+-- Canaux : email, sms (Brevo, Twilio, Vonage), chat (un service de messagerie par intégration ;
+-- seul Telegram a un secret : le jeton du robot) et webhook (adresse web : aucune valeur secrète,
+-- une intégration par portée active le canal).
 
 DEFINE TABLE OVERWRITE notification_integration
     TYPE NORMAL
@@ -32,8 +35,15 @@ DEFINE FIELD OVERWRITE scope_key ON TABLE notification_integration
     COMMENT "Portée d'unicité : installation ou clé de l'organisation";
 
 DEFINE FIELD OVERWRITE key ON TABLE notification_integration TYPE string ASSERT string::len($value) >= 1 AND string::len($value) <= 64 READONLY COMMENT "Clé unique dans la portée";
-DEFINE FIELD OVERWRITE channel ON TABLE notification_integration TYPE string ASSERT $value IN ["email"] READONLY COMMENT "Canal (les canaux du lot 4 s'ajoutent)";
-DEFINE FIELD OVERWRITE provider ON TABLE notification_integration TYPE string ASSERT $value IN ["smtp", "brevo", "mailgun", "postmark", "resend"] READONLY COMMENT "Fournisseur";
+DEFINE FIELD OVERWRITE channel ON TABLE notification_integration TYPE string ASSERT $value IN ["email", "sms", "chat", "webhook"] READONLY COMMENT "Canal";
+DEFINE FIELD OVERWRITE provider ON TABLE notification_integration
+    TYPE string
+    ASSERT ($this.channel = "email" AND $value IN ["smtp", "brevo", "mailgun", "postmark", "resend"])
+        OR ($this.channel = "sms" AND $value IN ["brevo", "twilio", "vonage"])
+        OR ($this.channel = "chat" AND $value IN ["slack", "teams", "discord", "mattermost", "google_chat", "telegram"])
+        OR ($this.channel = "webhook" AND $value = "webhook")
+    READONLY
+    COMMENT "Fournisseur, propre au canal (e-mail : smtp, brevo, mailgun, postmark, resend ; SMS : brevo, twilio, vonage ; messagerie : slack, teams, discord, mattermost, google_chat, telegram ; adresse web : webhook)";
 DEFINE FIELD OVERWRITE name ON TABLE notification_integration TYPE string ASSERT string::len($value) >= 1 AND string::len($value) <= 128 COMMENT "Nom affiché";
 DEFINE FIELD OVERWRITE active ON TABLE notification_integration TYPE bool DEFAULT true COMMENT "Active : éligible aux envois";
 DEFINE FIELD OVERWRITE primary ON TABLE notification_integration TYPE bool DEFAULT false COMMENT "Principale de la portée pour son canal (une au plus)";
@@ -45,7 +55,7 @@ DEFINE FIELD OVERWRITE priority ON TABLE notification_integration TYPE int DEFAU
 DEFINE FIELD OVERWRITE condition ON TABLE notification_integration TYPE option<object> FLEXIBLE COMMENT "Condition lyxal_core facultative sur { workflow, subscriber, payload }";
 
 DEFINE FIELD OVERWRITE settings ON TABLE notification_integration TYPE object DEFAULT {} COMMENT "Réglages non secrets";
-DEFINE FIELD OVERWRITE settings.from_address ON TABLE notification_integration TYPE string COMMENT "Adresse d'expédition";
+DEFINE FIELD OVERWRITE settings.from_address ON TABLE notification_integration TYPE option<string> COMMENT "E-mail : adresse d'expédition";
 DEFINE FIELD OVERWRITE settings.from_name ON TABLE notification_integration TYPE option<string> COMMENT "Nom d'expéditeur";
 DEFINE FIELD OVERWRITE settings.reply_to ON TABLE notification_integration TYPE option<string> COMMENT "Adresse de réponse";
 DEFINE FIELD OVERWRITE settings.host ON TABLE notification_integration TYPE option<string> COMMENT "SMTP : hôte du relais";
@@ -53,8 +63,9 @@ DEFINE FIELD OVERWRITE settings.port ON TABLE notification_integration TYPE opti
 DEFINE FIELD OVERWRITE settings.security ON TABLE notification_integration TYPE option<string> ASSERT $value IS NONE OR $value IN ["tls", "starttls", "local_plain"] COMMENT "SMTP : tls, starttls, local_plain (installation seulement, boucle locale)";
 DEFINE FIELD OVERWRITE settings.domain ON TABLE notification_integration TYPE option<string> COMMENT "Mailgun : domaine d'envoi";
 DEFINE FIELD OVERWRITE settings.region ON TABLE notification_integration TYPE option<string> ASSERT $value IS NONE OR $value IN ["us", "eu"] COMMENT "Mailgun : région de l'API";
+DEFINE FIELD OVERWRITE settings.sender ON TABLE notification_integration TYPE option<string> COMMENT "SMS : expéditeur (numéro E.164 ou nom court de 11 caractères au plus)";
 
-DEFINE FIELD OVERWRITE credentials_path ON TABLE notification_integration TYPE string ASSERT string::starts_with($value, "notification/") COMMENT "Chemin du secret des identifiants (lyxal_secrets, même portée)";
+DEFINE FIELD OVERWRITE credentials_path ON TABLE notification_integration TYPE option<string> ASSERT $value IS NONE OR string::starts_with($value, "notification/") COMMENT "Chemin du secret des identifiants (lyxal_secrets, même portée) : e-mail, SMS et Telegram ; absent pour les autres messageries et l'adresse web";
 DEFINE FIELD OVERWRITE webhook_path ON TABLE notification_integration TYPE option<string> ASSERT $value IS NONE OR string::starts_with($value, "notification/") COMMENT "Chemin facultatif du secret des retours (lyxal_secrets, même portée)";
 
 DEFINE FIELD OVERWRITE last_test ON TABLE notification_integration TYPE option<object> COMMENT "Dernier essai (D6) : { at, ok, code }";

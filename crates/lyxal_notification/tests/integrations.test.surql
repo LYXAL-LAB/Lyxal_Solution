@@ -46,7 +46,7 @@
 -- en tant que: worker
 {
     fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "attente-1", to: { subscriber_id: "c0", email: "c0@exemple.fr" } });
-    LET $claimed = fn::notification_job_claim({ worker_id: "w1", limit: 10 }).data;
+    LET $claimed = fn::notification_job_claim({ channel: "email", worker_id: "w1", limit: 10 }).data;
     LET $job = (SELECT * FROM ONLY notification_job WHERE run.idempotency_key = "attente-1" LIMIT 1);
     RETURN $claimed == []
         AND $job.{ status, attempts, locked_until, claim_token } == { status: "queued", attempts: 0, locked_until: NONE, claim_token: NONE }
@@ -184,7 +184,7 @@ RETURN fn::notification_integration_create({ key: "z", provider: "postmark", nam
 -- test: réservation : chaque étape porte l'intégration retenue (fournisseur, réglages, chemins), jamais un secret
 -- en tant que: worker
 {
-    LET $jobs = fn::notification_job_claim({ worker_id: "w1", limit: 10 }).data;
+    LET $jobs = fn::notification_job_claim({ channel: "email", worker_id: "w1", limit: 10 }).data;
     LET $d1 = $jobs.find(|$j| $j.idempotency_key = "d1");
     LET $b1 = $jobs.find(|$j| $j.idempotency_key = "b1");
     CREATE test_ref:d1 CONTENT { job: $d1.job_id, token: $d1.claim_token, integration: $d1.integration.id };
@@ -201,7 +201,7 @@ RETURN fn::notification_integration_create({ key: "z", provider: "postmark", nam
 {
     LET $failed = fn::notification_job_fail({ job_id: <string> test_ref:d1.job, claim_token: test_ref:d1.token, integration: <string> test_ref:d1.integration, class: "transient", code: "NOTIFICATION_PROVIDER_UNAVAILABLE", detail: "HTTP 503", retry_delay_seconds: 0 }).data;
     LET $after = fn::notification_integration_select({ job_id: <string> test_ref:d1.job }).data.key;
-    LET $claimed = fn::notification_job_claim({ worker_id: "w2", limit: 10 }).data.find(|$j| $j.idempotency_key = "d1");
+    LET $claimed = fn::notification_job_claim({ channel: "email", worker_id: "w2", limit: 10 }).data.find(|$j| $j.idempotency_key = "d1");
     CREATE test_ref:d1b CONTENT { job: $claimed.job_id, token: $claimed.claim_token, integration: $claimed.integration.id };
     RETURN $failed.status == "queued"
         AND (SELECT VALUE integration.key FROM ONLY test_ref:d1.job) == "principale"
@@ -213,9 +213,9 @@ RETURN fn::notification_integration_create({ key: "z", provider: "postmark", nam
 -- en tant que: worker
 {
     LET $done = fn::notification_job_complete({ job_id: <string> test_ref:d1b.job, claim_token: test_ref:d1b.token, integration: <string> test_ref:d1b.integration, provider_message_id: "pm-1", response_code: 200, subject: "Devis" }).data;
-    LET $message = (SELECT * FROM ONLY $done.message);
+    LET $message = (SELECT * FROM ONLY $done.messages[0]);
     LET $failed = fn::notification_job_fail({ job_id: <string> test_ref:d2.job, claim_token: test_ref:d2.token, integration: <string> test_ref:principale.id_, class: "permanent", code: "NOTIFICATION_PROVIDER_REJECTED", detail: "HTTP 400" }).data;
-    CREATE test_ref:pm1 CONTENT { message: $done.message };
+    CREATE test_ref:pm1 CONTENT { message: $done.messages[0] };
     RETURN $message.{ provider, provider_message_id, status } == { provider: "postmark", provider_message_id: "pm-1", status: "sent" }
         AND (SELECT VALUE integration.key FROM ONLY $message.id) == "secours"
         AND $failed.status == "failed";
@@ -323,8 +323,8 @@ RETURN (SELECT VALUE event_type FROM event_outbox WHERE event_type IN ["notifica
 -- test: fonctions internes : refus des réglages, vue, normalisation, contrôle du secret, éligibilité, champs, garde
 {
     LET $i = (SELECT * FROM ONLY notification_integration WHERE key = "mailgun" LIMIT 1);
-    RETURN fn::notification_integration_settings_refusal({ provider: "brevo", tenant: NONE, settings: { from_address: "a@b.test", region: "eu" } }) == { field: "region", code: "CORE_VALIDATION_NOT_ALLOWED" }
-        AND fn::notification_integration_settings_refusal({ provider: "smtp", tenant: NONE, settings: { from_address: "a@b.test", host: "127.0.0.1", port: 25, security: "local_plain" } }) == NONE
+    RETURN fn::notification_integration_settings_refusal({ channel: "email", provider: "brevo", tenant: NONE, settings: { from_address: "a@b.test", region: "eu" } }) == { field: "region", code: "CORE_VALIDATION_NOT_ALLOWED" }
+        AND fn::notification_integration_settings_refusal({ channel: "email", provider: "smtp", tenant: NONE, settings: { from_address: "a@b.test", host: "127.0.0.1", port: 25, security: "local_plain" } }) == NONE
         AND fn::notification_integration_view($i).credentials_path == "notification/mailgun/api"
         AND fn::notification_integration_payload($i).provider == "mailgun"
         AND fn::notification_integration_payload(NONE) == NONE
@@ -337,7 +337,7 @@ RETURN (SELECT VALUE event_type FROM event_outbox WHERE event_type IN ["notifica
         AND fn::notification_integration_for_job({ job: (SELECT * FROM ONLY notification_job WHERE run.idempotency_key = "d3" LIMIT 1) }).key == ["mailgun"]
         AND fn::notification_integration_fields(true).key.required == true
         AND fn::notification_integration_refusal($i) == NONE
-        AND fn::notification_integration_checked({ p: { tenant: NONE }, provider: "postmark", settings: { from_address: "a@b.test" }, credentials_path: "notification/absent" }).code == "NOTIFICATION_INTEGRATION_SECRET_INVALID"
+        AND fn::notification_integration_checked({ p: { tenant: NONE }, channel: "email", provider: "postmark", settings: { from_address: "a@b.test" }, credentials_path: "notification/absent" }).code == "NOTIFICATION_INTEGRATION_SECRET_INVALID"
         AND fn::notification_integration_unset_primary({ tenant: NONE, channel: "email", except: NONE }) == true
         AND count(SELECT id FROM notification_integration WHERE primary = true) == 0;
 };
@@ -357,17 +357,17 @@ RETURN (SELECT VALUE event_type FROM event_outbox WHERE event_type IN ["notifica
 -- test: retour du fournisseur arrivé avant l'enregistrement de l'envoi : gardé, puis appliqué à la création du message (état, suppression)
 {
     fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "rapide-1", to: { subscriber_id: "rapide", email: "rapide@exemple.fr" } });
-    LET $job = fn::notification_job_claim({ worker_id: "w9", limit: 50 }).data.find(|$j| $j.idempotency_key = "rapide-1");
+    LET $job = fn::notification_job_claim({ channel: "email", worker_id: "w9", limit: 50 }).data.find(|$j| $j.idempotency_key = "rapide-1");
     LET $early = fn::notification_provider_event_record({ integration: <string> $job.integration.id, event_id: "Bounce:rapide", type: "bounced", provider_message_id: "pm-rapide" }).data;
     LET $done = fn::notification_job_complete({ job_id: <string> $job.job_id, claim_token: $job.claim_token, integration: <string> $job.integration.id, provider_message_id: "pm-rapide", response_code: 200, subject: "Devis" }).data;
     RETURN $early.{ status, message } == { status: "unmatched", message: NONE }
-        AND (SELECT VALUE status FROM ONLY $done.message) == "bounced"
-        AND (SELECT VALUE [message, address] FROM ONLY notification_provider_event WHERE provider_event_id = "Bounce:rapide" LIMIT 1) == [$done.message, "rapide@exemple.fr"]
+        AND (SELECT VALUE status FROM ONLY $done.messages[0]) == "bounced"
+        AND (SELECT VALUE [message, address] FROM ONLY notification_provider_event WHERE provider_event_id = "Bounce:rapide" LIMIT 1) == [$done.messages[0], "rapide@exemple.fr"]
         AND count(SELECT id FROM notification_suppression WHERE address = "rapide@exemple.fr" AND reason = "hard_bounce") == 1
         -- Fonctions internes : rien à rapprocher sans identifiant ; un rejet temporaire ne change pas l'état
-        AND fn::notification_provider_event_reconcile({ integration: $job.integration.id, provider_message_id: NONE, message: $done.message, tenant: auth_organization:alpha }) == NONE
-        AND fn::notification_provider_event_apply({ type: "soft_bounced", message: (SELECT id, to, status FROM ONLY $done.message), tenant: auth_organization:alpha, event_id: "x" }) == NONE
-        AND (SELECT VALUE status FROM ONLY $done.message) == "bounced";
+        AND fn::notification_provider_event_reconcile({ integration: $job.integration.id, provider_message_id: NONE, message: $done.messages[0], tenant: auth_organization:alpha }) == NONE
+        AND fn::notification_provider_event_apply({ type: "soft_bounced", message: (SELECT id, channel, to, status FROM ONLY $done.messages[0]), tenant: auth_organization:alpha, event_id: "x" }) == NONE
+        AND (SELECT VALUE status FROM ONLY $done.messages[0]) == "bounced";
 };
 
 -- préparation: les permissions de table refusent désormais toute écriture des intégrations et des retours (fin du fichier)

@@ -54,6 +54,20 @@ pub struct RenderedEmail {
     pub text: String,
 }
 
+/// Message texte rendu (SMS, messagerie, adresse web : décision E5).
+pub struct RenderedText {
+    /// Titre (objet du gabarit), sur une ligne ; absent si le gabarit n'en a pas.
+    pub title: Option<String>,
+    /// Texte.
+    pub text: String,
+}
+
+impl std::fmt::Debug for RenderedText {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("RenderedText([REDACTED])")
+    }
+}
+
 impl std::fmt::Debug for RenderedEmail {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("RenderedEmail([REDACTED])")
@@ -100,7 +114,7 @@ impl MessageSource for ClaimedJob {
     }
     fn recipient(&self) -> (Option<&str>, Option<&str>, Option<&str>) {
         (
-            Some(self.recipient.email.as_str()),
+            self.recipient.email.as_deref(),
             self.recipient.locale.as_deref(),
             self.recipient.name.as_deref(),
         )
@@ -191,6 +205,81 @@ impl Renderer {
         let (Some(subject), Some(html_body), Some(text_body)) = message.template() else {
             return Err(NotificationError::Render("étape sans gabarit".to_string()));
         };
+        let (env, context) = self.prepare(message, secret, unsubscribe_url)?;
+        let (layout_html, layout_text) = message.layout();
+        let subject = render(&env, "subject.txt", subject, context.clone())?;
+        let html = render(&env, "body.html", html_body, context.clone())?;
+        let text = render(&env, "body.txt", text_body, context.clone())?;
+        let html = match layout_html {
+            Some(layout) => render(
+                &env,
+                "layout.html",
+                layout,
+                with_content(&context, Value::from_safe_string(html)),
+            )?,
+            None => html,
+        };
+        let text = match layout_text {
+            Some(layout) => render(
+                &env,
+                "layout.txt",
+                layout,
+                with_content(&context, Value::from(text)),
+            )?,
+            None => text,
+        };
+        if html.len() > MAX_RENDERED_BYTES || text.len() > MAX_RENDERED_BYTES {
+            return Err(NotificationError::Render(
+                "message rendu trop volumineux".to_string(),
+            ));
+        }
+        Ok(RenderedEmail {
+            subject: single_line(&subject),
+            html,
+            text,
+        })
+    }
+
+    /// Rend le titre facultatif et le texte d'un message SMS, de messagerie ou d'adresse web
+    /// (gabarit texte seul, décision E5), sans échappement HTML.
+    pub fn render_text<S: MessageSource>(
+        &self,
+        message: &S,
+        secret: Option<&serde_json::Map<String, serde_json::Value>>,
+        unsubscribe_url: Option<&str>,
+    ) -> NotificationResult<RenderedText> {
+        let (subject, _, Some(text_body)) = message.template() else {
+            return Err(NotificationError::Render("étape sans gabarit".to_string()));
+        };
+        let (env, context) = self.prepare(message, secret, unsubscribe_url)?;
+        let title = match subject {
+            Some(subject) => Some(single_line(&render(
+                &env,
+                "subject.txt",
+                subject,
+                context.clone(),
+            )?)),
+            None => None,
+        };
+        let text = render(&env, "body.txt", text_body, context)?;
+        if text.len() > MAX_RENDERED_BYTES {
+            return Err(NotificationError::Render(
+                "message rendu trop volumineux".to_string(),
+            ));
+        }
+        Ok(RenderedText {
+            title: title.filter(|title| !title.is_empty()),
+            text,
+        })
+    }
+
+    /// Moteur et variables d'un message : langue, textes des clés, destinataire, données.
+    fn prepare<S: MessageSource>(
+        &self,
+        message: &S,
+        secret: Option<&serde_json::Map<String, serde_json::Value>>,
+        unsubscribe_url: Option<&str>,
+    ) -> NotificationResult<(Environment<'static>, Value)> {
         let (texts, texts_error) = message.texts();
         if let Some(code) = texts_error {
             return Err(NotificationError::Render(format!(
@@ -243,38 +332,7 @@ impl Renderer {
                 unsubscribe_url.map_or(Value::from(()), Value::from),
             ),
         ]);
-        let (layout_html, layout_text) = message.layout();
-        let subject = render(&env, "subject.txt", subject, context.clone())?;
-        let html = render(&env, "body.html", html_body, context.clone())?;
-        let text = render(&env, "body.txt", text_body, context.clone())?;
-        let html = match layout_html {
-            Some(layout) => render(
-                &env,
-                "layout.html",
-                layout,
-                with_content(&context, Value::from_safe_string(html)),
-            )?,
-            None => html,
-        };
-        let text = match layout_text {
-            Some(layout) => render(
-                &env,
-                "layout.txt",
-                layout,
-                with_content(&context, Value::from(text)),
-            )?,
-            None => text,
-        };
-        if html.len() > MAX_RENDERED_BYTES || text.len() > MAX_RENDERED_BYTES {
-            return Err(NotificationError::Render(
-                "message rendu trop volumineux".to_string(),
-            ));
-        }
-        Ok(RenderedEmail {
-            subject: single_line(&subject),
-            html,
-            text,
-        })
+        Ok((env, context))
     }
 
     fn environment(&self, formatter: Arc<Formatter>, texts: Arc<Texts>) -> Environment<'static> {
@@ -498,11 +556,18 @@ mod tests {
             organization_name: Some("Alpha & Fils".into()),
             idempotency_key: "k".into(),
             attempt: 1,
+            channel: "email".into(),
+            step_key: "email".into(),
+            workflow_key: "devis".into(),
+            subscriber_id: Some("claire".into()),
             recipient: Recipient {
-                email: "claire@exemple.fr".into(),
+                email: Some("claire@exemple.fr".into()),
+                phone: None,
                 locale: Some("fr".into()),
                 name: Some("Claire".into()),
             },
+            allowed_hosts: Vec::new(),
+            endpoints: Vec::new(),
             locale: Some("fr".into()),
             subject: Some(subject.into()),
             html_body: Some(html.into()),
@@ -522,12 +587,41 @@ mod tests {
                 id: lyxal_surreal::RecordId::new("notification_integration", "i"),
                 tenant: None,
                 key: "relais".into(),
+                channel: "email".into(),
                 provider: "smtp".into(),
                 settings: Default::default(),
-                credentials_path: "notification/smtp/relais".into(),
+                credentials_path: Some("notification/smtp/relais".into()),
                 webhook_path: None,
             },
         }
+    }
+
+    #[test]
+    fn text_channels_render_text_only_with_an_optional_title() {
+        let mut sms = job(
+            "ignoré",
+            "ignoré",
+            "Devis {{ payload.n }} pour {{ organization.name }}",
+        );
+        sms.subject = None;
+        sms.html_body = None;
+        let rendered = Renderer::default()
+            .render_text(&sms, None, None)
+            .expect("rendu");
+        // Texte : jamais d'échappement HTML
+        assert_eq!(rendered.text, "Devis <b>D-1</b> pour Alpha & Fils");
+        assert_eq!(rendered.title, None);
+        let mut chat = job("Devis\r\n{{ payload.n }}", "x", "*Prêt*");
+        chat.html_body = None;
+        let rendered = Renderer::default()
+            .render_text(&chat, None, None)
+            .expect("rendu");
+        assert_eq!(rendered.title.as_deref(), Some("Devis  <b>D-1</b>"));
+        assert_eq!(rendered.text, "*Prêt*");
+        assert!(!format!("{rendered:?}").contains("Prêt"));
+        let mut empty = job("x", "x", "x");
+        empty.text_body = None;
+        assert!(Renderer::default().render_text(&empty, None, None).is_err());
     }
 
     #[test]

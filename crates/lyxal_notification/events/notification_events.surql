@@ -115,7 +115,8 @@ THEN {
             suppression_id: <string> $after.id,
             tenant: IF $after.tenant IS NONE { NONE } ELSE { <string> $after.tenant },
             channel: $after.channel,
-            address: $after.address,
+            -- Un numéro de téléphone ne voyage jamais dans un événement (canal sms : identifiants seulement)
+            address: IF $after.channel = "email" { $after.address } ELSE { NONE },
             reason: $after.reason
         },
         metadata: {}
@@ -215,6 +216,33 @@ THEN {
         source: $record.id,
         payload: {
             integration_id: <string> $record.id,
+            tenant: IF $record.tenant IS NONE { NONE } ELSE { <string> $record.tenant },
+            channel: $record.channel
+        },
+        metadata: {}
+    });
+    IF !$published.ok { THROW $published.error.code; };
+};
+
+-- ----------------------------------------------------------------------------
+-- Adresses de messagerie et web (identifiants seulement : jamais l'adresse, l'hôte ni la clé ;
+-- le résultat du dernier appel noté par le worker n'est pas une modification)
+-- ----------------------------------------------------------------------------
+
+DEFINE EVENT OVERWRITE notification_endpoint_changed_event ON TABLE notification_endpoint
+WHEN $event = "CREATE" OR $event = "DELETE"
+    OR ($event = "UPDATE" AND ($before.name != $after.name OR $before.active != $after.active
+        OR $before.chat_id != $after.chat_id OR $before.secret_rotated_at != $after.secret_rotated_at))
+THEN {
+    LET $record = IF $event = "DELETE" { $before } ELSE { $after };
+    LET $published = fn::event_publish({
+        event_id: rand::uuid::v7(),
+        event_type: IF $event = "CREATE" { "notification.endpoint.created" } ELSE IF $event = "DELETE" { "notification.endpoint.deleted" } ELSE { "notification.endpoint.updated" },
+        producer: "lyxal_notification",
+        source: $record.id,
+        payload: {
+            endpoint_id: <string> $record.id,
+            subscriber_id: <string> $record.subscriber,
             tenant: IF $record.tenant IS NONE { NONE } ELSE { <string> $record.tenant },
             channel: $record.channel
         },

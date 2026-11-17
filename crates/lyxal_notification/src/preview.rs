@@ -27,9 +27,18 @@ impl NotificationPreview {
     /// la langue `locale` (sinon celle de l'organisation, sinon celle de l'installation). Une
     /// variable absente des données d'exemple s'affiche vide ; une clé de traduction inconnue,
     /// un argument manquant ou un filtre mal employé font échouer le rendu
-    /// (`NOTIFICATION_RENDER_FAILED`).
+    /// (`NOTIFICATION_RENDER_FAILED`). Étape SMS, de messagerie ou d'adresse web (texte seul) :
+    /// objet = titre facultatif (vide sans titre), HTML vide.
     pub async fn render(&self, params: StepPreviewParams) -> NotificationResult<RenderedEmail> {
         let data = self.store.step_preview(params).await?;
-        self.renderer.render(&data, None, None)
+        if data.channel == "email" {
+            return self.renderer.render(&data, None, None);
+        }
+        let rendered = self.renderer.render_text(&data, None, None)?;
+        Ok(RenderedEmail {
+            subject: rendered.title.unwrap_or_default(),
+            html: String::new(),
+            text: rendered.text,
+        })
     }
 }

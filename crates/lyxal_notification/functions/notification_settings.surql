@@ -40,18 +40,24 @@ DEFINE FUNCTION OVERWRITE fn::notification_settings_set($params: object) {
             retention_days_runs: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 3650 } }] },
             retention_days_log: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 3650 } }] },
             max_wait_days: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 366 } }] },
+            allowed_hosts: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: true } }, { rule: "array_length", options: { max_length: 100 } }, { rule: "each", options: { pipeline: [{ rule: "hostname", options: { allow_single_label: false } }] } }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
-    }, 40);
-    IF !$report.valid {
-        RETURN fn::error_result("NOTIFICATION_INVALID_INPUT", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
+    }, 60);
+    IF !$report.valid OR ($params.tenant IS NOT NONE AND $params.allowed_hosts IS NOT NONE) {
+        RETURN fn::error_result("NOTIFICATION_INVALID_INPUT", IF type::is_string($params.language) { $params.language } ELSE { NONE }, {
+            fields: object::extend($report.by_field ?? {}, IF $params.tenant IS NOT NONE AND $params.allowed_hosts IS NOT NONE { { allowed_hosts: ["CORE_VALIDATION_NOT_ALLOWED"] } } ELSE { {} })
+        });
     };
-    LET $p = $report.value;
+    -- Hôtes autorisés (installation) : en minuscules, sans doublon
+    LET $p = IF $report.value.allowed_hosts IS NONE { $report.value } ELSE {
+        object::extend($report.value, { allowed_hosts: array::distinct(array::map($report.value.allowed_hosts, |$h| string::lowercase($h))) })
+    };
     IF !fn::notification_can({ action: "manage", tenant: $p.tenant }) { RETURN fn::error_result("NOTIFICATION_PERMISSION_DENIED", $p.language, {}); };
     LET $scope = IF $p.tenant IS NONE { "installation" } ELSE { <string> record::id($p.tenant) };
     LET $changes = object::from_entries(array::filter(
-        array::map(["timezone", "max_attempts", "retention_days_runs", "retention_days_log", "max_wait_days"], |$f| [$f, $p[$f]]),
+        array::map(["timezone", "max_attempts", "retention_days_runs", "retention_days_log", "max_wait_days", "allowed_hosts"], |$f| [$f, $p[$f]]),
         |$e| $e[1] IS NOT NONE
     ));
     LET $existing = (SELECT VALUE id FROM ONLY notification_settings WHERE scope_key = $scope LIMIT 1);
@@ -62,7 +68,34 @@ DEFINE FUNCTION OVERWRITE fn::notification_settings_set($params: object) {
     };
     IF $saved == NONE { RETURN fn::error_result("NOTIFICATION_WRITE_FORBIDDEN", $p.language, { table: "notification_settings" }); };
     RETURN fn::result_ok($saved);
-} COMMENT "Enregistre les réglages d'une portée ({ tenant, timezone, max_attempts, retention_days_runs, retention_days_log, max_wait_days : durée maximale des attentes, 1 à 366 jours }) ; seuls les champs fournis changent. Permission notification.manage";
+} COMMENT "Enregistre les réglages d'une portée ({ tenant, timezone, max_attempts, retention_days_runs, retention_days_log, max_wait_days : durée maximale des attentes, 1 à 366 jours ; allowed_hosts : installation seulement, hôtes autorisés des adresses web et Mattermost, vide : tout hôte public }) ; seuls les champs fournis changent. Permission notification.manage";
+
+-- ----------------------------------------------------------------------------
+-- fn::notification_suppression_address (interne) : adresse contrôlée selon le canal
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::notification_suppression_address($params: object) -> option<string> {
+    IF $params.channel = "sms" {
+        RETURN IF fn::validation_phone($params.address).valid { string::trim($params.address) } ELSE { NONE };
+    };
+    IF !fn::validation_pipeline_execute($params.address, [{ rule: "email", options: { max_length: 254 } }], 5).valid { RETURN NONE; };
+    RETURN fn::sanitize_pipeline_execute($params.address, [{ rule: "email" }], 5);
+} COMMENT "Interne : adresse d'une liste de suppression ({ channel, address }) contrôlée par lyxal_core : e-mail normalisé, ou numéro E.164 pour le canal sms ; NONE si invalide";
+
+-- ----------------------------------------------------------------------------
+-- fn::notification_suppression_reason (interne) : motif de suppression d'une adresse
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::notification_suppression_reason($params: object) -> option<string> {
+    IF $params.channel NOT IN ["email", "sms"] OR $params.address IS NONE { RETURN NONE; };
+    LET $address = IF $params.channel = "email" { string::lowercase($params.address) } ELSE { $params.address };
+    LET $reasons = (SELECT VALUE reason FROM notification_suppression
+        WHERE scope_key IN [$params.scope, "installation"] AND channel = $params.channel AND address = $address
+            AND (keep_until IS NONE OR keep_until > time::now()));
+    -- Un parcours critique n'est arrêté que par un rejet définitif ou un blocage manuel
+    LET $blocking = IF $params.critical { array::filter($reasons, |$r| $r IN ["hard_bounce", "manual"]) } ELSE { $reasons };
+    RETURN IF array::len($blocking) = 0 { NONE } ELSE { array::sort($blocking)[0] };
+} COMMENT "Interne : motif qui bloque une adresse ({ scope, channel : email ou sms, address, critical }) dans la liste de l'organisation ou de l'installation (parcours critique : rejet définitif ou blocage manuel seulement), sinon NONE";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_suppression_add
@@ -72,7 +105,8 @@ DEFINE FUNCTION OVERWRITE fn::notification_suppression_add($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
             tenant: { pipeline: [{ rule: "record", options: { expected_table: "auth_organization" } }] },
-            address: { pipeline: [{ rule: "email", options: { max_length: 254 } }], required: true },
+            channel: { pipeline: [{ rule: "enum", options: { allowed: ["email", "sms"], case_sensitive: true } }], default: "email" },
+            address: { pipeline: [{ rule: "required_string", options: { min_length: 3, max_length: 254 } }], required: true },
             reason: { pipeline: [{ rule: "enum", options: { allowed: ["hard_bounce", "complaint", "manual"], case_sensitive: true } }], default: "manual" },
             source: { pipeline: [{ rule: "optional_string", options: { max_length: 256 } }] },
             keep_until: { pipeline: [{ rule: "future_datetime", options: { allow_equal: false } }] },
@@ -86,18 +120,19 @@ DEFINE FUNCTION OVERWRITE fn::notification_suppression_add($params: object) {
     LET $p = $report.value;
     IF !fn::notification_can({ action: "manage", tenant: $p.tenant }) { RETURN fn::error_result("NOTIFICATION_PERMISSION_DENIED", $p.language, {}); };
     LET $scope = IF $p.tenant IS NONE { "installation" } ELSE { <string> record::id($p.tenant) };
-    LET $address = fn::sanitize_pipeline_execute($p.address, [{ rule: "email" }], 5);
-    LET $existing = (SELECT VALUE id FROM ONLY notification_suppression WHERE scope_key = $scope AND channel = "email" AND address = $address LIMIT 1);
+    LET $address = fn::notification_suppression_address({ channel: $p.channel, address: $p.address });
+    IF $address IS NONE { RETURN fn::error_result("NOTIFICATION_INVALID_INPUT", $p.language, { fields: { address: ["CORE_VALIDATION_FORMAT"] } }); };
+    LET $existing = (SELECT VALUE id FROM ONLY notification_suppression WHERE scope_key = $scope AND channel = $p.channel AND address = $address LIMIT 1);
     LET $saved = IF $existing IS NONE {
         (CREATE ONLY notification_suppression CONTENT {
-            tenant: $p.tenant, channel: "email", address: $address, reason: $p.reason, source: $p.source, keep_until: $p.keep_until
+            tenant: $p.tenant, channel: $p.channel, address: $address, reason: $p.reason, source: $p.source, keep_until: $p.keep_until
         })
     } ELSE {
         (UPDATE ONLY $existing SET reason = $p.reason, source = $p.source, keep_until = $p.keep_until)
     };
     IF $saved == NONE { RETURN fn::error_result("NOTIFICATION_WRITE_FORBIDDEN", $p.language, { table: "notification_suppression" }); };
     RETURN fn::result_ok($saved);
-} COMMENT "Ajoute ou remplace une adresse de la liste de suppression ({ tenant, address, reason, source, keep_until }). Permission notification.manage";
+} COMMENT "Ajoute ou remplace une adresse de la liste de suppression ({ tenant, channel : email (défaut) ou sms ; address : e-mail, ou numéro E.164 pour sms ; reason, source, keep_until }). Permission notification.manage";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_suppression_remove
@@ -107,7 +142,8 @@ DEFINE FUNCTION OVERWRITE fn::notification_suppression_remove($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
             tenant: { pipeline: [{ rule: "record", options: { expected_table: "auth_organization" } }] },
-            address: { pipeline: [{ rule: "email", options: { max_length: 254 } }], required: true },
+            channel: { pipeline: [{ rule: "enum", options: { allowed: ["email", "sms"], case_sensitive: true } }], default: "email" },
+            address: { pipeline: [{ rule: "required_string", options: { min_length: 3, max_length: 254 } }], required: true },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -118,13 +154,14 @@ DEFINE FUNCTION OVERWRITE fn::notification_suppression_remove($params: object) {
     LET $p = $report.value;
     IF !fn::notification_can({ action: "manage", tenant: $p.tenant }) { RETURN fn::error_result("NOTIFICATION_PERMISSION_DENIED", $p.language, {}); };
     LET $scope = IF $p.tenant IS NONE { "installation" } ELSE { <string> record::id($p.tenant) };
-    LET $address = fn::sanitize_pipeline_execute($p.address, [{ rule: "email" }], 5);
-    LET $existing = (SELECT VALUE id FROM ONLY notification_suppression WHERE scope_key = $scope AND channel = "email" AND address = $address LIMIT 1);
+    LET $address = fn::notification_suppression_address({ channel: $p.channel, address: $p.address });
+    IF $address IS NONE { RETURN fn::error_result("NOTIFICATION_INVALID_INPUT", $p.language, { fields: { address: ["CORE_VALIDATION_FORMAT"] } }); };
+    LET $existing = (SELECT VALUE id FROM ONLY notification_suppression WHERE scope_key = $scope AND channel = $p.channel AND address = $address LIMIT 1);
     IF $existing IS NONE { RETURN fn::error_result("NOTIFICATION_NOT_FOUND", $p.language, { resource: "suppression" }); };
     LET $deleted = (DELETE $existing RETURN BEFORE);
     IF array::len($deleted) = 0 { RETURN fn::error_result("NOTIFICATION_WRITE_FORBIDDEN", $p.language, { table: "notification_suppression" }); };
     RETURN fn::result_ok({ deleted: $existing });
-} COMMENT "Retire une adresse de la liste de suppression ({ tenant, address }). Permission notification.manage";
+} COMMENT "Retire une adresse de la liste de suppression ({ tenant, channel : email (défaut) ou sms ; address }). Permission notification.manage";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_suppression_list
@@ -135,6 +172,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_suppression_list($params: object) {
         fields: {
             tenant: { pipeline: [{ rule: "record", options: { expected_table: "auth_organization" } }] },
             reason: { pipeline: [{ rule: "enum", options: { allowed: ["hard_bounce", "complaint", "manual"], case_sensitive: true } }] },
+            channel: { pipeline: [{ rule: "enum", options: { allowed: ["email", "sms"], case_sensitive: true } }] },
             limit: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 1000 } }], default: 100 },
             start: { pipeline: [{ rule: "integer", options: { min_value: 0 } }], default: 0 },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
@@ -147,13 +185,11 @@ DEFINE FUNCTION OVERWRITE fn::notification_suppression_list($params: object) {
     LET $p = $report.value;
     IF !fn::notification_can({ action: "read", tenant: $p.tenant }) { RETURN fn::error_result("NOTIFICATION_PERMISSION_DENIED", $p.language, {}); };
     LET $scope = IF $p.tenant IS NONE { "installation" } ELSE { <string> record::id($p.tenant) };
-    LET $rows = IF $p.reason IS NONE {
-        (SELECT * FROM notification_suppression WHERE scope_key = $scope ORDER BY address LIMIT $p.limit START $p.start)
-    } ELSE {
-        (SELECT * FROM notification_suppression WHERE scope_key = $scope AND reason = $p.reason ORDER BY address LIMIT $p.limit START $p.start)
-    };
+    LET $rows = (SELECT * FROM notification_suppression
+        WHERE scope_key = $scope AND ($p.reason IS NONE OR reason = $p.reason) AND ($p.channel IS NONE OR channel = $p.channel)
+        ORDER BY address LIMIT $p.limit START $p.start);
     RETURN fn::result_ok($rows);
-} COMMENT "Adresses supprimées d'une portée ({ tenant, reason, limit, start }), triées par adresse. Permission notification.read";
+} COMMENT "Adresses et numéros supprimés d'une portée ({ tenant, reason, channel, limit, start }), triés par adresse. Permission notification.read";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_run_get

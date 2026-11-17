@@ -11,8 +11,8 @@ use std::net::IpAddr;
 use std::time::Duration;
 
 use super::{
-    header_address, mailbox, missing, normalize_message_id, unsubscribe_header, Credentials,
-    EmailMessage, ProviderError, ProviderReceipt,
+    from_address, header_address, mailbox, missing, normalize_message_id, unsubscribe_header,
+    Credentials, EmailMessage, ProviderError, ProviderReceipt,
 };
 use crate::error::{NotificationError, NotificationResult};
 use crate::models::IntegrationSettings;
@@ -119,7 +119,7 @@ impl HttpApi {
         let mut sender = Map::new();
         sender.insert(
             "email".into(),
-            json!(header_address(&settings.from_address)?),
+            json!(header_address(from_address(settings)?)?),
         );
         if let Some(name) = clean_name(settings.from_name.as_deref()) {
             sender.insert("name".into(), json!(name));
@@ -179,7 +179,7 @@ impl HttpApi {
         let mut form: Vec<(&str, String)> = vec![
             (
                 "from",
-                mailbox(settings.from_name.as_deref(), &settings.from_address)?,
+                mailbox(settings.from_name.as_deref(), from_address(settings)?)?,
             ),
             ("to", mailbox(message.to_name.as_deref(), &message.to)?),
             ("subject", message.content.subject.clone()),
@@ -219,7 +219,7 @@ impl HttpApi {
             "From".into(),
             json!(mailbox(
                 settings.from_name.as_deref(),
-                &settings.from_address
+                from_address(settings)?
             )?),
         );
         body.insert(
@@ -262,7 +262,7 @@ impl HttpApi {
             "from".into(),
             json!(mailbox(
                 settings.from_name.as_deref(),
-                &settings.from_address
+                from_address(settings)?
             )?),
         );
         body.insert(
@@ -380,7 +380,7 @@ async fn post(request: RequestBuilder, id_field: &str) -> Result<ProviderReceipt
 }
 
 /// Corps d'une réponse, 64 Kio au plus (`None` au-delà ou en cas d'erreur de lecture).
-async fn read_bounded(mut response: reqwest::Response) -> Option<Vec<u8>> {
+pub(crate) async fn read_bounded(mut response: reqwest::Response) -> Option<Vec<u8>> {
     if response
         .content_length()
         .is_some_and(|length| length > MAX_RESPONSE_BYTES as u64)

@@ -142,7 +142,7 @@ Le contrat complet est documenté dans `crates/lyxal_crypto/API_CONTRACT.md`.
 | **BLAKE3** | `hash` | `blake3()`, `blake3_hex()`, `Blake3Hasher` |
 | **Argon2id** | `password` | `hash_password()`, `verify_password()`, `PasswordHash::parse`, `PasswordHash::needs_rehash` |
 | **TOTP (RFC 6238)** | `totp` | `TotpSecret`, `TotpConfig`, `totp_generate()`, `totp_verify()`, `totp_uri()` |
-| **HMAC-SHA256** | `hmac` | `HmacKey`, `sign_hmac_sha256()`, `verify_hmac_sha256()` ; clé d'un protocole externe (webhooks) : `ExternalHmacKey`, `sign_external_hmac_sha256()`, `verify_external_hmac_sha256()` |
+| **HMAC-SHA256** | `hmac` | `HmacKey`, `sign_hmac_sha256()`, `verify_hmac_sha256()` ; clé d'un protocole externe (webhooks) : `ExternalHmacKey`, `sign_external_hmac_sha256()`, `verify_external_hmac_sha256()` ; HMAC-SHA1 d'un protocole externe, **vérification seulement** (retours Twilio, K8) : `verify_external_hmac_sha1()` |
 | **HKDF-SHA256** | `kdf` | `hkdf_sha256()` (retourne `SecretBytes`) |
 | **Gestion de clés & Trousseaux** | `key`, `key_resolver`, `providers` | `EncryptionKey`, `KeyId`, `KeyRingBuilder`, `KeyRing`, `KeyUse`, `KeyResolver`, `StaticKeyResolver`, `EnvironmentKeyProvider`, `FileKeyProvider` |
 

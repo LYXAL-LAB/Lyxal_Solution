@@ -250,7 +250,7 @@ RETURN fn::notification_unsubscribe({ subscriber: "notification_subscriber:x", c
     LET $r = fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "facture", idempotency_key: "pref-2", to: { subscriber_id: "s" } }).data;
     LET $s = fn::notification_subscriber_find({ tenant: auth_organization:alpha, subscriber_id: "s" });
     CREATE notification_preference CONTENT { tenant: auth_organization:alpha, level: "tenant_workflow", workflow: notification_workflow:facture, channels: { email: false } };
-    LET $claimed = fn::notification_job_claim({ worker_id: "w", limit: 10 }).data;
+    LET $claimed = fn::notification_job_claim({ channel: "email", worker_id: "w", limit: 10 }).data;
     RETURN $r.status == "created" AND $claimed == []
         AND (SELECT VALUE [status, skip_reason, attempts] FROM notification_job WHERE run = $r.run_id) == [["skipped", "preference:tenant_workflow", 0]]
         AND (SELECT VALUE status FROM ONLY $r.run_id) == "skipped";
@@ -263,7 +263,7 @@ RETURN fn::notification_unsubscribe({ subscriber: "notification_subscriber:x", c
     UPDATE notification_preference SET channels = { email: true } WHERE level = "subscriber_global" AND subscriber = $s.id;
     LET $a = fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "lettre", idempotency_key: "calme-1", to: { subscriber_id: "s" } }).data;
     LET $b = fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "alerte", idempotency_key: "calme-2", to: { subscriber_id: "s" } }).data;
-    LET $claimed = fn::notification_job_claim({ worker_id: "w", limit: 10 }).data;
+    LET $claimed = fn::notification_job_claim({ channel: "email", worker_id: "w", limit: 10 }).data;
     LET $lettre = array::find($claimed, |$j| $j.run_id = $a.run_id);
     LET $alerte = array::find($claimed, |$j| $j.run_id = $b.run_id);
     RETURN $lettre.quiet_hours.timezone == "America/Montreal" AND array::len($lettre.quiet_hours.ranges) == 2
@@ -279,5 +279,5 @@ RETURN fn::notification_unsubscribe({ subscriber: "notification_subscriber:x", c
     LET $r = fn::notification_job_release({ job_id: <string> $job.id, claim_token: $job.claim_token, not_before: $later }).data;
     RETURN $r == { status: "queued", next_retry_at: $later }
         AND (SELECT VALUE [status, attempts, next_retry_at] FROM ONLY $job.id) == ["queued", 0, $later]
-        AND array::len(fn::notification_job_claim({ worker_id: "w", limit: 10 }).data) == 0;
+        AND array::len(fn::notification_job_claim({ channel: "email", worker_id: "w", limit: 10 }).data) == 0;
 };

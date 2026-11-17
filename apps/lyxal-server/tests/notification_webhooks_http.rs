@@ -335,7 +335,7 @@ async fn provider_webhooks_and_integration_tests_go_through_the_host() {
     }
     let store = NotificationStore::new(client.clone());
     let settings = |domain: Option<&str>| IntegrationSettings {
-        from_address: "noreply@lyxal.test".into(),
+        from_address: Some("noreply@lyxal.test".into()),
         domain: domain.map(str::to_string),
         ..IntegrationSettings::default()
     };
@@ -390,7 +390,7 @@ async fn provider_webhooks_and_integration_tests_go_through_the_host() {
         .query(
             r#"
             fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "d-1", to: { subscriber_id: "c1", email: "client@exemple.fr" } });
-            LET $job = fn::notification_job_claim({ worker_id: "w" }).data[0];
+            LET $job = fn::notification_job_claim({ channel: "email", worker_id: "w" }).data[0];
             fn::notification_job_complete({ job_id: <string> $job.job_id, claim_token: $job.claim_token, integration: <string> $job.integration.id, provider_message_id: "pm-1", response_code: 200 });
             "#,
         )

@@ -119,6 +119,14 @@ libération. `sign_external_hmac_sha256(&ExternalHmacKey,data)->Result<[u8;32]>`
 exactement 32, format invalide => InvalidTagEncoding). Réservée à la vérification ou à la
 signature imposée par un service extérieur ; les clés de la plateforme restent des `HmacKey`.
 
+Vérification HMAC-SHA1 d'un protocole externe (signature `X-Twilio-Signature` des retours
+Twilio, décision K8 validée par le CTO le 17 novembre 2026) :
+`verify_external_hmac_sha1(&ExternalHmacKey,data,tag)->Result<bool>`, calculée par `ring`
+(`HMAC_SHA1_FOR_LEGACY_USE_ONLY`) et comparée en temps constant ; tag exactement 20 octets,
+format invalide => InvalidTagEncoding, mismatch => false. **Vérification seulement** : aucune
+fonction de signature HMAC-SHA1 n'est offerte, et SHA-1 n'est jamais utilisé pour une donnée de
+la plateforme.
+
 hkdf_sha256(&SecretBytes,salt,info,len)->Result<SecretBytes> : sortie1..8160,
 info non vide<=1024 ; IKM de bonne entropie et admission du salt emprunté à l'hôte.
 Pas une KDF de mot de passe, pas de sortie brute par défaut.
@@ -146,6 +154,7 @@ Codes à usage unique des applications d'authentification, pour le double facteu
   réservés RFC 3986) ; chacun 1..=256 bytes, sans `:` ni caractère de contrôle.
 - Paramètre hors bornes => `CryptoError::InvalidTotpParameter`, sans valeur reflétée.
 
-HMAC-SHA1 n'est utilisé que dans ce module (exigé par la RFC 6238 et les applications) ; il
-n'est pas exposé comme primitive. Le rythme des essais, l'anti-rejeu par pas, le stockage chiffré
+HMAC-SHA1 est utilisé dans ce module (exigé par la RFC 6238 et les applications) sans y être
+exposé comme primitive ; la seule autre utilisation est la vérification
+`verify_external_hmac_sha1` ci-dessus. Le rythme des essais, l'anti-rejeu par pas, le stockage chiffré
 du secret et les codes de secours appartiennent à l'hôte.

@@ -12,7 +12,10 @@
 //! jusqu'à ce qu'un administrateur de la plateforme crée celle de l'installation. Les diffusions
 //! sont toujours découpées en déclenchements. Les liens de désabonnement en un clic demandent la
 //! clé applicative (clé de signature dérivée par HKDF) et l'adresse publique de l'hôte
-//! (`LYXAL__NOTIFICATION__PUBLIC_URL`).
+//! (`LYXAL__NOTIFICATION__PUBLIC_URL`). SMS, messageries d'équipe et adresses web (lot 4) : un
+//! worker par canal, sous les mêmes conditions que l'e-mail ; les adresses de messagerie et web
+//! sont scellées par les routes de l'hôte avec la clé applicative ; les retours de livraison des
+//! SMS sont demandés à l'adresse publique de l'hôte.
 
 use crate::config::AppConfig;
 use crate::error::ServerError;
@@ -20,11 +23,12 @@ use crate::modules::secrets::SecretsHost;
 use lyxal_crypto::{CryptoEngine, StaticKeyResolver};
 use lyxal_event::EventSubscription;
 use lyxal_notification::{
-    BroadcastWorkerSettings, EmailDispatcher, EmailProviders, EmailWorkerSettings,
-    NotificationBroadcastWorker, NotificationConsumer, NotificationEmailWorker,
-    NotificationHealthCheck, NotificationModule, NotificationStepWorker, NotificationStore,
-    SecretCodec, StepWorkerSettings, UnsubscribeLinks, AUTH_HANDLER, AUTH_SUBSCRIPTIONS,
-    CONSUMER_MODULE, SECRETS_CONSUMER,
+    BroadcastWorkerSettings, ChannelDispatcher, ChatSender, EmailDispatcher, EmailProviders,
+    NotificationBroadcastWorker, NotificationChannelWorker, NotificationConsumer,
+    NotificationEmailWorker, NotificationHealthCheck, NotificationModule, NotificationStepWorker,
+    NotificationStore, OutboundClient, SecretCodec, SendWorkerSettings, SmsApi, StepWorkerSettings,
+    TextChannel, UnsubscribeLinks, AUTH_HANDLER, AUTH_SUBSCRIPTIONS, CONSUMER_MODULE,
+    SECRETS_CONSUMER,
 };
 use lyxal_runtime::{LyxalModule, LyxalRuntime};
 use std::sync::Arc;
@@ -37,13 +41,18 @@ pub const MODULE_ID: &str = lyxal_notification::MODULE_ID;
 const AUTH_EVENT_MAX_ATTEMPTS: u32 = 10;
 
 /// Ce que les routes `/notification/*` reçoivent de l'hôte : la session système, les liens de
-/// désabonnement s'ils sont configurés, et l'envoi par les intégrations (retours des
-/// fournisseurs, essai) si le coffre-fort a sa clé maîtresse.
+/// désabonnement s'ils sont configurés, l'envoi par les intégrations (retours des fournisseurs,
+/// essai) si le coffre-fort a sa clé maîtresse, le scellement des adresses de messagerie et web
+/// si la clé applicative est configurée, et l'adresse publique de l'hôte (signature des retours
+/// Twilio).
 #[derive(Clone)]
 pub struct NotificationHost {
     pub store: NotificationStore,
     pub links: Option<Arc<UnsubscribeLinks>>,
     pub dispatcher: Option<EmailDispatcher>,
+    pub channels: Option<ChannelDispatcher>,
+    pub codec: Option<SecretCodec<StaticKeyResolver>>,
+    pub public_url: Option<String>,
 }
 
 /// Services du module enregistrés auprès du runtime.
@@ -111,9 +120,23 @@ pub async fn register_services(
     let dispatcher = secrets
         .has_master_key()
         .then(|| EmailDispatcher::new(providers, secrets.client(SECRETS_CONSUMER)));
-    let delivery = match (crypto, dispatcher.clone()) {
-        (Some(crypto), Some(dispatcher)) => {
-            let codec = SecretCodec::new(crypto);
+    let public_url = config.notification.public_url.clone();
+    let sms = Arc::new(SmsApi::new().map_err(|e| configuration_error("fournisseurs de SMS", e))?);
+    let chat = Arc::new(
+        ChatSender::new(OutboundClient::new())
+            .map_err(|e| configuration_error("messageries", e.detail))?,
+    );
+    let channels = secrets.has_master_key().then(|| {
+        ChannelDispatcher::new(
+            sms,
+            chat,
+            secrets.client(SECRETS_CONSUMER),
+            public_url.as_deref(),
+        )
+    });
+    let codec = crypto.map(SecretCodec::new);
+    let delivery = match (codec.clone(), dispatcher.clone(), channels.clone()) {
+        (Some(codec), Some(dispatcher), Some(channels)) => {
             runtime
                 .register_event_consumer(Arc::new(NotificationConsumer::new(
                     store.clone(),
@@ -122,20 +145,35 @@ pub async fn register_services(
                 .await;
             let worker = NotificationEmailWorker::new(
                 store.clone(),
-                codec,
+                codec.clone(),
                 dispatcher,
-                EmailWorkerSettings::default(),
+                SendWorkerSettings::default(),
             )?;
             let worker = match &links {
                 Some(links) => worker.with_unsubscribe_links(links.clone()),
                 None => worker,
             };
             runtime.register_worker(Arc::new(worker))?;
+            // Un worker par canal de texte : SMS, messagerie, adresse web
+            for channel in [TextChannel::Sms, TextChannel::Chat, TextChannel::Webhook] {
+                let worker = NotificationChannelWorker::new(
+                    channel,
+                    store.clone(),
+                    codec.clone(),
+                    channels.clone(),
+                    SendWorkerSettings::default(),
+                )?;
+                let worker = match &links {
+                    Some(links) => worker.with_unsubscribe_links(links.clone()),
+                    None => worker,
+                };
+                runtime.register_worker(Arc::new(worker))?;
+            }
             true
         }
-        (crypto, dispatcher) => {
+        (codec, dispatcher, _) => {
             tracing::warn!(
-                application_key = crypto.is_some(),
+                application_key = codec.is_some(),
                 secrets_master_key = dispatcher.is_some(),
                 "envoi des notifications désactivé : LYXAL__CRYPTO__APPLICATION_KEY et LYXAL__SECRETS__MASTER_KEY requis"
             );
@@ -154,6 +192,9 @@ pub async fn register_services(
             store,
             links,
             dispatcher,
+            channels,
+            codec,
+            public_url,
         },
     })
 }

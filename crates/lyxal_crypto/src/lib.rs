@@ -103,8 +103,8 @@ pub mod kdf;
 pub mod password;
 pub mod totp;
 pub use hmac::{
-    sign_external_hmac_sha256, sign_hmac_sha256, sign_hmac_sha256_hex, verify_external_hmac_sha256,
-    verify_hmac_sha256, verify_hmac_sha256_hex,
+    sign_external_hmac_sha256, sign_hmac_sha256, sign_hmac_sha256_hex, verify_external_hmac_sha1,
+    verify_external_hmac_sha256, verify_hmac_sha256, verify_hmac_sha256_hex,
 };
 pub use kdf::hkdf_sha256;
 pub use password::{

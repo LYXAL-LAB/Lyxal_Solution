@@ -10,8 +10,10 @@ use super::workflow::TriggerOverrides;
 /// copiée de l'abonné au déclenchement.
 #[derive(Clone, PartialEq, SurrealValue)]
 pub struct Recipient {
-    /// Adresse e-mail (normalisée par la base).
-    pub email: String,
+    /// Adresse e-mail (normalisée par la base), absente pour un abonné sans e-mail.
+    pub email: Option<String>,
+    /// Téléphone (E.164), absent pour un abonné sans téléphone.
+    pub phone: Option<String>,
     /// Langue préférée (BCP 47).
     pub locale: Option<String>,
     /// Prénom affiché.

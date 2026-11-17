@@ -23,7 +23,7 @@ RETURN (SELECT VALUE ->auth_role_grants->auth_permission.code FROM ONLY auth_rol
 
 -- test: réglages effectifs de l'installation
 -- en tant que: plateforme
-RETURN fn::notification_settings_get({}).data.effective == { timezone: NONE, max_attempts: 8, retention_days_runs: 90, retention_days_log: 30, max_wait_days: 30 };
+RETURN fn::notification_settings_get({}).data.effective == { timezone: NONE, max_attempts: 8, retention_days_runs: 90, retention_days_log: 30, max_wait_days: 30, allowed_hosts: [] };
 
 -- test: quatre parcours actifs et critiques pour lyxal_auth : trois messages sensibles déclenchés par leur événement, l'alerte de sécurité déclenchée par sa clé
 -- en tant que: plateforme

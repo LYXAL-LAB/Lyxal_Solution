@@ -1,12 +1,16 @@
-//! Workers supervisés : envoi des e-mails, diffusions et attentes des parcours.
+//! Workers supervisés : envoi par canal (e-mail, SMS, messagerie, adresse web), diffusions et
+//! attentes des parcours.
 //!
-//! Le worker d'envoi réserve les étapes dues (`fn::notification_job_claim`, chacune avec
-//! l'intégration retenue : D1, bascule D3), reporte celles qui tombent dans les heures calmes de
-//! l'abonné, ouvre le secret, rend le message (lien de désabonnement compris), lit les
-//! identifiants de l'intégration dans `lyxal_secrets` et l'envoie par son fournisseur, puis
-//! termine l'étape ou enregistre l'échec (avec l'intégration utilisée). Délai avant une
-//! nouvelle tentative : attente exponentielle plafonnée avec gigue complète (comme `lyxal_event`).
-//! Une erreur de base n'interrompt pas le worker : la réservation expire et l'étape est reprise.
+//! Un worker d'envoi par canal réserve les étapes dues de son canal
+//! (`fn::notification_job_claim`, chacune avec l'intégration retenue : D1, bascule D3), reporte
+//! celles qui tombent dans les heures calmes de l'abonné (jamais pour l'adresse web), ouvre le
+//! secret, rend le message (lien de désabonnement compris), lit les identifiants de
+//! l'intégration dans `lyxal_secrets` et l'envoie par son fournisseur, puis termine l'étape ou
+//! enregistre l'échec (avec l'intégration utilisée). Messagerie et adresse web : chaque adresse
+//! de l'abonné est ouverte en mémoire (`SecretString`, jamais journalisée) le temps de son appel ;
+//! une adresse servie n'est pas rappelée par la tentative suivante. Délai avant une nouvelle
+//! tentative : attente exponentielle plafonnée avec gigue complète (comme `lyxal_event`). Une
+//! erreur de base n'interrompt pas le worker : la réservation expire et l'étape est reprise.
 //!
 //! Le worker des diffusions réserve une diffusion (`fn::notification_broadcast_claim`) et la
 //! traite par paquets de 500 abonnés (`fn::notification_broadcast_step`) ; arrêté en cours de
@@ -19,7 +23,7 @@
 //! (tâche `notification.purge`), créée à l'installation du module.
 
 use async_trait::async_trait;
-use lyxal_crypto::KeyResolver;
+use lyxal_crypto::{HmacKey, KeyResolver, SecretString};
 use lyxal_runtime::types::ModuleId;
 use lyxal_runtime::worker::{
     CancellationToken, LyxalWorker, WorkerContext, WorkerCriticality, WorkerDescriptor, WorkerId,
@@ -31,14 +35,18 @@ use std::time::Duration;
 
 use crate::error::NotificationError;
 use crate::models::{
-    BroadcastClaimParams, BroadcastCompleteParams, BroadcastStepParams, ClaimedJob, FailureClass,
-    JobClaimParams, JobCompleteParams, JobFailParams, JobReleaseParams, JobRenewParams,
-    NotificationDatetime, WaitScheduleParams, WaitScheduleResult,
+    BroadcastClaimParams, BroadcastCompleteParams, BroadcastStepParams, ClaimedEndpoint,
+    ClaimedJob, EndpointOutcome, FailureClass, JobClaimParams, JobCompleteParams, JobFailParams,
+    JobReleaseParams, JobRenewParams, NotificationDatetime, NotificationRecordId,
+    WaitScheduleParams, WaitScheduleResult,
 };
-use crate::provider::{EmailDispatcher, EmailMessage, ProviderError};
+use crate::provider::{
+    ChannelDispatcher, ChatService, EmailDispatcher, EmailMessage, ProviderError, ProviderReceipt,
+};
 use crate::quiet::quiet_until;
-use crate::render::Renderer;
-use crate::secret::SecretCodec;
+use crate::render::{RenderedText, Renderer};
+use crate::secret::{EndpointField, SecretCodec};
+use crate::segments::SmsSegments;
 use crate::store::NotificationStore;
 use crate::unsubscribe::UnsubscribeLinks;
 
@@ -78,9 +86,9 @@ impl RetryPolicy {
     }
 }
 
-/// Réglages du worker d'envoi.
+/// Réglages d'un worker d'envoi (tous les canaux).
 #[derive(Debug, Clone)]
-pub struct EmailWorkerSettings {
+pub struct SendWorkerSettings {
     /// Attente entre deux réservations quand la file est vide.
     pub poll_interval: Duration,
     /// Étapes réservées par tour.
@@ -93,7 +101,7 @@ pub struct EmailWorkerSettings {
     pub retry: RetryPolicy,
 }
 
-impl Default for EmailWorkerSettings {
+impl Default for SendWorkerSettings {
     fn default() -> Self {
         Self {
             poll_interval: Duration::from_secs(5),
@@ -120,66 +128,43 @@ pub enum JobOutcome {
     Deferred,
 }
 
-/// Worker d'envoi des e-mails.
-pub struct NotificationEmailWorker<R: KeyResolver> {
-    descriptor: WorkerDescriptor,
-    store: NotificationStore,
-    codec: SecretCodec<R>,
-    dispatcher: EmailDispatcher,
-    renderer: Renderer,
-    settings: EmailWorkerSettings,
-    links: Option<Arc<UnsubscribeLinks>>,
+/// Envoi d'une étape réservée, propre au canal.
+#[async_trait]
+trait JobProcessor: Send + Sync {
+    async fn process(&self, job: ClaimedJob) -> JobOutcome;
 }
 
-impl<R: KeyResolver> NotificationEmailWorker<R> {
-    /// Worker sur la session système de l'hôte, le trousseau applicatif et l'envoi par les
-    /// intégrations (fournisseurs et coffre-fort).
-    pub fn new(
-        store: NotificationStore,
-        codec: SecretCodec<R>,
-        dispatcher: EmailDispatcher,
-        settings: EmailWorkerSettings,
-    ) -> Result<Self, RuntimeError> {
-        let module_id = ModuleId::new(MODULE);
-        let mut descriptor = WorkerDescriptor::new(
-            WorkerId::new(&module_id, "email_sender")?,
-            module_id,
-            "Lyxal Notification Email Sender",
-        );
-        descriptor.description = Some("Envoi des e-mails de la file de notifications".to_string());
-        descriptor.criticality = WorkerCriticality::Optional;
-        // L'étape en cours se termine avant l'arrêt (traitement borné par `job_budget`)
-        descriptor.shutdown_timeout = settings.job_budget + Duration::from_secs(30);
-        Ok(Self {
-            descriptor,
-            store,
-            codec,
-            dispatcher,
-            renderer: Renderer::default(),
-            settings,
-            links: None,
-        })
-    }
+/// Envoi accepté : de quoi terminer l'étape.
+struct Delivery {
+    receipt: Option<ProviderReceipt>,
+    subject: Option<String>,
+    parts: Option<i64>,
+    endpoints: Vec<EndpointOutcome>,
+}
 
-    /// Liens de désabonnement en un clic dans chaque e-mail non critique (sans eux : aucun lien
-    /// ni en-tête `List-Unsubscribe`).
-    pub fn with_unsubscribe_links(mut self, links: Arc<UnsubscribeLinks>) -> Self {
-        self.links = Some(links);
-        self
-    }
+/// File d'un canal : réservation, heures calmes, renouvellement, issue enregistrée.
+struct JobQueue {
+    store: NotificationStore,
+    settings: SendWorkerSettings,
+    worker_id: String,
+    channel: &'static str,
+}
 
+impl JobQueue {
     /// Un tour : réserve et traite les étapes dues, une à la fois. Avant chaque envoi, la
     /// réservation est renouvelée (une étape reprise entre-temps par un autre worker n'est pas
     /// envoyée) ; après l'annulation, aucun envoi ne commence et les étapes restantes sont
     /// rendues à la file.
-    pub async fn run_once(
+    async fn run_once(
         &self,
         cancellation: &CancellationToken,
+        processor: &dyn JobProcessor,
     ) -> Result<Vec<JobOutcome>, NotificationError> {
         let jobs = self
             .store
             .job_claim(JobClaimParams {
-                worker_id: self.descriptor.id.to_string(),
+                worker_id: self.worker_id.clone(),
+                channel: self.channel.to_string(),
                 limit: i64::from(self.settings.batch_size),
                 lease_seconds: self.lease_seconds(),
             })
@@ -212,7 +197,7 @@ impl<R: KeyResolver> NotificationEmailWorker<R> {
                 continue;
             }
             let job_id = job.job_id.to_sql();
-            match tokio::time::timeout(self.settings.job_budget, self.process(job)).await {
+            match tokio::time::timeout(self.settings.job_budget, processor.process(job)).await {
                 Ok(outcome) => outcomes.push(outcome),
                 Err(_) => {
                     tracing::warn!(job = %job_id, "traitement de l'étape trop long : reprise à l'expiration de la réservation");
@@ -265,33 +250,35 @@ impl<R: KeyResolver> NotificationEmailWorker<R> {
         }
     }
 
-    async fn process(&self, job: ClaimedJob) -> JobOutcome {
+    /// Enregistre l'issue d'un envoi : étape terminée, ou échec (nouvelle tentative selon la
+    /// classe), avec l'intégration utilisée et l'issue de chaque adresse servie.
+    async fn finish(
+        &self,
+        job: &ClaimedJob,
+        result: Result<Delivery, (ProviderError, Vec<EndpointOutcome>)>,
+    ) -> JobOutcome {
         let attempt = u32::try_from(job.attempt).unwrap_or(1);
-        let prepared = self.prepare(&job);
-        let result = match prepared {
-            Ok(email) => self.dispatcher.send(&job.integration, &email).await,
-            Err(error) => Err(ProviderError {
-                class: FailureClass::Permanent,
-                code: error.code(),
-                detail: error.to_string(),
-            }),
-        };
         let job_id = job.job_id.to_sql();
         let integration = job.integration.id.to_sql();
         let recorded = match result {
-            Ok(receipt) => self
+            Ok(delivery) => self
                 .store
                 .job_complete(JobCompleteParams {
                     job_id: job_id.clone(),
                     claim_token: job.claim_token.clone(),
                     integration,
-                    provider_message_id: receipt.message_id,
-                    response_code: Some(i64::from(receipt.code)),
-                    subject: self.rendered_subject(&job),
+                    provider_message_id: delivery
+                        .receipt
+                        .as_ref()
+                        .and_then(|r| r.message_id.clone()),
+                    response_code: delivery.receipt.as_ref().map(|r| i64::from(r.code)),
+                    subject: delivery.subject,
+                    parts: delivery.parts,
+                    endpoints: delivery.endpoints,
                 })
                 .await
                 .map(|_| JobOutcome::Sent),
-            Err(failure) => {
+            Err((failure, endpoints)) => {
                 let class = failure.class;
                 self.store
                     .job_fail(JobFailParams {
@@ -305,6 +292,7 @@ impl<R: KeyResolver> NotificationEmailWorker<R> {
                             self.settings.retry.delay(attempt).as_secs(),
                         )
                         .unwrap_or(30),
+                        endpoints,
                     })
                     .await
                     .map(|_| JobOutcome::Failed(class))
@@ -318,35 +306,155 @@ impl<R: KeyResolver> NotificationEmailWorker<R> {
             }
         }
     }
+}
+
+/// Descripteur d'un worker d'envoi.
+fn send_descriptor(
+    name: &str,
+    label: &str,
+    description: &str,
+    settings: &SendWorkerSettings,
+) -> Result<WorkerDescriptor, RuntimeError> {
+    let module_id = ModuleId::new(MODULE);
+    let mut descriptor = WorkerDescriptor::new(WorkerId::new(&module_id, name)?, module_id, label);
+    descriptor.description = Some(description.to_string());
+    descriptor.criticality = WorkerCriticality::Optional;
+    // L'étape en cours se termine avant l'arrêt (traitement borné par `job_budget`)
+    descriptor.shutdown_timeout = settings.job_budget + Duration::from_secs(30);
+    Ok(descriptor)
+}
+
+/// Échec avant l'envoi (secret, rendu, réglage) : définitif.
+fn permanent(error: &NotificationError) -> ProviderError {
+    ProviderError {
+        class: FailureClass::Permanent,
+        code: error.code(),
+        detail: error.to_string(),
+    }
+}
+
+/// Boucle supervisée d'un worker d'envoi.
+async fn run_send_loop(
+    ctx: WorkerContext,
+    queue: &JobQueue,
+    processor: &dyn JobProcessor,
+) -> Result<(), RuntimeError> {
+    while !ctx.is_cancelled() {
+        let busy = match queue.run_once(&ctx.cancellation, processor).await {
+            Ok(outcomes) => outcomes.len() >= queue.settings.batch_size as usize,
+            Err(error) => {
+                tracing::warn!(channel = queue.channel, code = %error.code(), "réservation des envois impossible");
+                false
+            }
+        };
+        if busy {
+            continue;
+        }
+        tokio::select! {
+            _ = ctx.cancellation.cancelled() => break,
+            _ = tokio::time::sleep(queue.settings.poll_interval) => {}
+        }
+    }
+    Ok(())
+}
+
+/// Ouvre le secret d'une étape (variables sensibles du gabarit).
+fn open_secret<R: KeyResolver>(
+    codec: &SecretCodec<R>,
+    job: &ClaimedJob,
+) -> Result<Option<serde_json::Map<String, serde_json::Value>>, NotificationError> {
+    match &job.secret {
+        Some(envelope) => Ok(Some(
+            codec
+                .open_queue_secret(envelope, job.tenant_key.as_deref(), &job.idempotency_key)?
+                .to_json()?,
+        )),
+        None => Ok(None),
+    }
+}
+
+/// Lien de désabonnement d'un message non critique (liens configurés).
+fn unsubscribe_url(
+    links: Option<&UnsubscribeLinks>,
+    job: &ClaimedJob,
+) -> Result<Option<String>, NotificationError> {
+    match (links, &job.unsubscribe) {
+        (Some(links), Some(target)) if !job.critical => links.url(target).map(Some),
+        _ => Ok(None),
+    }
+}
+
+/// Worker d'envoi des e-mails.
+pub struct NotificationEmailWorker<R: KeyResolver> {
+    descriptor: WorkerDescriptor,
+    queue: JobQueue,
+    codec: SecretCodec<R>,
+    dispatcher: EmailDispatcher,
+    renderer: Renderer,
+    links: Option<Arc<UnsubscribeLinks>>,
+}
+
+impl<R: KeyResolver + 'static> NotificationEmailWorker<R> {
+    /// Worker sur la session système de l'hôte, le trousseau applicatif et l'envoi par les
+    /// intégrations (fournisseurs et coffre-fort).
+    pub fn new(
+        store: NotificationStore,
+        codec: SecretCodec<R>,
+        dispatcher: EmailDispatcher,
+        settings: SendWorkerSettings,
+    ) -> Result<Self, RuntimeError> {
+        let descriptor = send_descriptor(
+            "email_sender",
+            "Lyxal Notification Email Sender",
+            "Envoi des e-mails de la file de notifications",
+            &settings,
+        )?;
+        Ok(Self {
+            queue: JobQueue {
+                store,
+                settings,
+                worker_id: descriptor.id.to_string(),
+                channel: "email",
+            },
+            descriptor,
+            codec,
+            dispatcher,
+            renderer: Renderer::default(),
+            links: None,
+        })
+    }
+
+    /// Liens de désabonnement en un clic dans chaque e-mail non critique (sans eux : aucun lien
+    /// ni en-tête `List-Unsubscribe`).
+    pub fn with_unsubscribe_links(mut self, links: Arc<UnsubscribeLinks>) -> Self {
+        self.links = Some(links);
+        self
+    }
+
+    /// Un tour : réserve et traite les étapes e-mail dues (voir le module).
+    pub async fn run_once(
+        &self,
+        cancellation: &CancellationToken,
+    ) -> Result<Vec<JobOutcome>, NotificationError> {
+        self.queue.run_once(cancellation, self).await
+    }
 
     /// Ouvre le secret et rend le message.
     fn prepare(&self, job: &ClaimedJob) -> Result<EmailMessage, NotificationError> {
-        let secret = match &job.secret {
-            Some(envelope) => Some(
-                self.codec
-                    .open_queue_secret(envelope, job.tenant_key.as_deref(), &job.idempotency_key)?
-                    .to_json()?,
-            ),
-            None => None,
-        };
-        let unsubscribe = self.unsubscribe_url(job)?;
+        let secret = open_secret(&self.codec, job)?;
+        let unsubscribe = unsubscribe_url(self.links.as_deref(), job)?;
         let content = self
             .renderer
             .render(job, secret.as_ref(), unsubscribe.as_deref())?;
+        let to = job.recipient.email.clone().ok_or_else(|| {
+            NotificationError::Render("destinataire sans adresse e-mail".to_string())
+        })?;
         Ok(EmailMessage {
-            to: job.recipient.email.clone(),
+            to,
             to_name: job.recipient.name.clone(),
             list_unsubscribe: unsubscribe,
             content,
         })
-    }
-
-    /// Lien de désabonnement d'un message non critique (liens configurés).
-    fn unsubscribe_url(&self, job: &ClaimedJob) -> Result<Option<String>, NotificationError> {
-        match (&self.links, &job.unsubscribe) {
-            (Some(links), Some(target)) if !job.critical => links.url(target).map(Some),
-            _ => Ok(None),
-        }
     }
 
     /// Objet conservé dans le message : rendu sans secret, jamais pour un parcours sensible.
@@ -354,11 +462,32 @@ impl<R: KeyResolver> NotificationEmailWorker<R> {
         if job.sensitive {
             return None;
         }
-        let unsubscribe = self.unsubscribe_url(job).ok().flatten();
+        let unsubscribe = unsubscribe_url(self.links.as_deref(), job).ok().flatten();
         self.renderer
             .render(job, None, unsubscribe.as_deref())
             .ok()
             .map(|email| email.subject)
+    }
+}
+
+#[async_trait]
+impl<R: KeyResolver + 'static> JobProcessor for NotificationEmailWorker<R> {
+    async fn process(&self, job: ClaimedJob) -> JobOutcome {
+        let result = match self.prepare(&job) {
+            Ok(email) => self
+                .dispatcher
+                .send(&job.integration, &email)
+                .await
+                .map(|receipt| Delivery {
+                    receipt: Some(receipt),
+                    subject: self.rendered_subject(&job),
+                    parts: None,
+                    endpoints: Vec::new(),
+                })
+                .map_err(|failure| (failure, Vec::new())),
+            Err(error) => Err((permanent(&error), Vec::new())),
+        };
+        self.queue.finish(&job, result).await
     }
 }
 
@@ -369,23 +498,369 @@ impl<R: KeyResolver + 'static> LyxalWorker for NotificationEmailWorker<R> {
     }
 
     async fn run(&self, ctx: WorkerContext) -> Result<(), RuntimeError> {
-        while !ctx.is_cancelled() {
-            let busy = match self.run_once(&ctx.cancellation).await {
-                Ok(outcomes) => outcomes.len() >= self.settings.batch_size as usize,
-                Err(error) => {
-                    tracing::warn!(code = %error.code(), "réservation des envois impossible");
-                    false
-                }
+        run_send_loop(ctx, &self.queue, self).await
+    }
+}
+
+/// Canal d'un worker d'envoi de texte.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TextChannel {
+    /// SMS au téléphone de l'abonné.
+    Sms,
+    /// Messageries d'équipe (adresses de l'abonné).
+    Chat,
+    /// Appel signé des adresses web de l'abonné.
+    Webhook,
+}
+
+impl TextChannel {
+    /// Valeur du canal en base.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Sms => "sms",
+            Self::Chat => "chat",
+            Self::Webhook => "webhook",
+        }
+    }
+}
+
+/// Worker d'envoi des SMS, des messages de messagerie ou des appels d'adresse web (un par canal).
+pub struct NotificationChannelWorker<R: KeyResolver> {
+    descriptor: WorkerDescriptor,
+    queue: JobQueue,
+    channel: TextChannel,
+    codec: SecretCodec<R>,
+    dispatcher: ChannelDispatcher,
+    renderer: Renderer,
+    links: Option<Arc<UnsubscribeLinks>>,
+}
+
+impl<R: KeyResolver + 'static> NotificationChannelWorker<R> {
+    /// Worker du canal `channel` sur la session système de l'hôte, le trousseau applicatif
+    /// (secrets des messages, adresses scellées) et l'envoi par les intégrations.
+    pub fn new(
+        channel: TextChannel,
+        store: NotificationStore,
+        codec: SecretCodec<R>,
+        dispatcher: ChannelDispatcher,
+        settings: SendWorkerSettings,
+    ) -> Result<Self, RuntimeError> {
+        let (name, label, description) = match channel {
+            TextChannel::Sms => (
+                "sms_sender",
+                "Lyxal Notification SMS Sender",
+                "Envoi des SMS de la file de notifications",
+            ),
+            TextChannel::Chat => (
+                "chat_sender",
+                "Lyxal Notification Chat Sender",
+                "Envoi des messages de messagerie d'équipe de la file de notifications",
+            ),
+            TextChannel::Webhook => (
+                "webhook_sender",
+                "Lyxal Notification Webhook Caller",
+                "Appels signés des adresses web de la file de notifications",
+            ),
+        };
+        let descriptor = send_descriptor(name, label, description, &settings)?;
+        Ok(Self {
+            queue: JobQueue {
+                store,
+                settings,
+                worker_id: descriptor.id.to_string(),
+                channel: channel.as_str(),
+            },
+            descriptor,
+            channel,
+            codec,
+            dispatcher,
+            renderer: Renderer::default(),
+            links: None,
+        })
+    }
+
+    /// Lien de désabonnement (variable `unsubscribe_url` des gabarits) dans chaque message non
+    /// critique ; jamais pour l'adresse web (appel de machine à machine).
+    pub fn with_unsubscribe_links(mut self, links: Arc<UnsubscribeLinks>) -> Self {
+        if self.channel != TextChannel::Webhook {
+            self.links = Some(links);
+        }
+        self
+    }
+
+    /// Un tour : réserve et traite les étapes dues du canal (voir le module).
+    pub async fn run_once(
+        &self,
+        cancellation: &CancellationToken,
+    ) -> Result<Vec<JobOutcome>, NotificationError> {
+        self.queue.run_once(cancellation, self).await
+    }
+
+    /// Ouvre le secret et rend le titre et le texte.
+    fn prepare(&self, job: &ClaimedJob) -> Result<RenderedText, NotificationError> {
+        let secret = open_secret(&self.codec, job)?;
+        let unsubscribe = unsubscribe_url(self.links.as_deref(), job)?;
+        self.renderer
+            .render_text(job, secret.as_ref(), unsubscribe.as_deref())
+    }
+
+    /// Titre conservé dans le message : rendu sans secret, jamais pour un parcours sensible.
+    fn rendered_title(&self, job: &ClaimedJob) -> Option<String> {
+        if job.sensitive {
+            return None;
+        }
+        let unsubscribe = unsubscribe_url(self.links.as_deref(), job).ok().flatten();
+        self.renderer
+            .render_text(job, None, unsubscribe.as_deref())
+            .ok()
+            .and_then(|text| text.title)
+    }
+
+    /// SMS : 10 parties au plus (E5), Unicode hors de l'alphabet GSM.
+    async fn send_sms(
+        &self,
+        job: &ClaimedJob,
+        text: &RenderedText,
+    ) -> Result<Delivery, (ProviderError, Vec<EndpointOutcome>)> {
+        let segments = SmsSegments::count(&text.text);
+        if !segments.fits() {
+            let error = ProviderError {
+                class: FailureClass::Permanent,
+                code: "NOTIFICATION_SMS_TOO_LONG".to_string(),
+                detail: format!("{} parties", segments.parts),
             };
-            if busy {
-                continue;
-            }
-            tokio::select! {
-                _ = ctx.cancellation.cancelled() => break,
-                _ = tokio::time::sleep(self.settings.poll_interval) => {}
+            return Err((error, Vec::new()));
+        }
+        let Some(to) = job.recipient.phone.as_deref() else {
+            return Err((
+                ProviderError::configuration("abonné sans téléphone"),
+                Vec::new(),
+            ));
+        };
+        let receipt = self
+            .dispatcher
+            .send_sms(&job.integration, to, &text.text, segments.unicode())
+            .await
+            .map_err(|failure| (failure, Vec::new()))?;
+        Ok(Delivery {
+            receipt: Some(receipt),
+            subject: None,
+            parts: Some(i64::from(segments.parts)),
+            endpoints: Vec::new(),
+        })
+    }
+
+    /// Appel d'une adresse de messagerie ou web pour une étape.
+    async fn call_endpoint(
+        &self,
+        job: &ClaimedJob,
+        endpoint: &ClaimedEndpoint,
+        text: &RenderedText,
+    ) -> Result<ProviderReceipt, ProviderError> {
+        let delivery_id = format!(
+            "{}.{}",
+            record_key(&job.job_id).unwrap_or_default(),
+            record_key(&endpoint.id).unwrap_or_default()
+        );
+        let now = jiff::Timestamp::now();
+        let body = serde_json::json!({
+            "id": delivery_id,
+            "type": "notification.message",
+            "workflow": job.workflow_key,
+            "step": job.step_key,
+            "run": job.run_id.to_sql(),
+            "subscriber_id": job.subscriber_id,
+            "payload": job.payload,
+            "text": text.text,
+            "sent_at": now.to_string(),
+        });
+        deliver_to_endpoint(
+            &self.codec,
+            &self.dispatcher,
+            endpoint,
+            &EndpointMessage {
+                title: text.title.as_deref(),
+                text: &text.text,
+                delivery_id: &delivery_id,
+                body: &body,
+            },
+            &job.allowed_hosts,
+            now.as_second(),
+        )
+        .await
+    }
+
+    /// Messagerie, adresse web : chaque adresse servie à son tour. Toutes servies (ou refusées
+    /// définitivement après au moins une servie) : étape terminée ; un échec temporaire : nouvel
+    /// essai des seules adresses non servies ; aucune servie : échec de la première.
+    async fn send_endpoints(
+        &self,
+        job: &ClaimedJob,
+        text: &RenderedText,
+    ) -> Result<Delivery, (ProviderError, Vec<EndpointOutcome>)> {
+        let mut outcomes = Vec::with_capacity(job.endpoints.len());
+        let mut first_failure: Option<ProviderError> = None;
+        let mut transient: Option<ProviderError> = None;
+        for endpoint in &job.endpoints {
+            let result = self.call_endpoint(job, endpoint, text).await;
+            let (ok, code, message_id, response) = match &result {
+                Ok(receipt) => (
+                    true,
+                    None,
+                    receipt.message_id.clone(),
+                    Some(i64::from(receipt.code)),
+                ),
+                Err(error) => (false, Some(error.code.clone()), None, None),
+            };
+            outcomes.push(EndpointOutcome {
+                endpoint: endpoint.id.to_sql(),
+                integration: endpoint.integration.id.to_sql(),
+                ok,
+                code,
+                provider_message_id: message_id,
+                response_code: response,
+            });
+            if let Err(error) = result {
+                tracing::warn!(job = %job.job_id.to_sql(), endpoint = %endpoint.id.to_sql(), host = %endpoint.host, code = %error.code, "appel d'une adresse refusé");
+                if error.class == FailureClass::Transient && transient.is_none() {
+                    transient = Some(error.clone());
+                }
+                first_failure.get_or_insert(error);
             }
         }
-        Ok(())
+        if let Some(error) = transient {
+            return Err((error, outcomes));
+        }
+        if !outcomes.iter().any(|o| o.ok) {
+            let error = first_failure
+                .unwrap_or_else(|| ProviderError::configuration("aucune adresse à servir"));
+            return Err((error, outcomes));
+        }
+        Ok(Delivery {
+            receipt: None,
+            subject: self.rendered_title(job),
+            parts: None,
+            endpoints: outcomes,
+        })
+    }
+}
+
+#[async_trait]
+impl<R: KeyResolver + 'static> JobProcessor for NotificationChannelWorker<R> {
+    async fn process(&self, job: ClaimedJob) -> JobOutcome {
+        let result = match self.prepare(&job) {
+            Ok(text) => match self.channel {
+                TextChannel::Sms => self.send_sms(&job, &text).await,
+                TextChannel::Chat | TextChannel::Webhook => self.send_endpoints(&job, &text).await,
+            },
+            Err(error) => Err((permanent(&error), Vec::new())),
+        };
+        self.queue.finish(&job, result).await
+    }
+}
+
+#[async_trait]
+impl<R: KeyResolver + 'static> LyxalWorker for NotificationChannelWorker<R> {
+    fn descriptor(&self) -> &WorkerDescriptor {
+        &self.descriptor
+    }
+
+    async fn run(&self, ctx: WorkerContext) -> Result<(), RuntimeError> {
+        run_send_loop(ctx, &self.queue, self).await
+    }
+}
+
+/// Message d'une adresse de messagerie ou web.
+pub struct EndpointMessage<'a> {
+    /// Titre facultatif (messagerie).
+    pub title: Option<&'a str>,
+    /// Texte.
+    pub text: &'a str,
+    /// Identifiant de livraison (en-tête `Lyxal-Delivery` d'une adresse web).
+    pub delivery_id: &'a str,
+    /// Corps JSON d'un appel d'adresse web.
+    pub body: &'a serde_json::Value,
+}
+
+/// Ouvre en mémoire une valeur scellée d'une adresse (contexte lié à l'organisation et à
+/// l'adresse).
+fn open_endpoint<R: KeyResolver>(
+    codec: &SecretCodec<R>,
+    endpoint: &ClaimedEndpoint,
+    envelope: &str,
+    field: EndpointField,
+) -> Result<lyxal_crypto::SecretBytes, ProviderError> {
+    let key =
+        record_key(&endpoint.id).ok_or_else(|| ProviderError::configuration("adresse sans clé"))?;
+    codec
+        .open_endpoint_value(envelope, endpoint.tenant_key.as_deref(), &key, field)
+        .map_err(|error| permanent(&error))
+}
+
+/// Appel d'une adresse de messagerie (service de l'adresse) ou d'une adresse web (corps signé) :
+/// adresse et clé de signature ouvertes en mémoire le temps de l'appel, jamais journalisées.
+/// Sert aux workers et à l'essai d'une intégration par l'hôte ; `now` : secondes Unix.
+pub async fn deliver_to_endpoint<R: KeyResolver>(
+    codec: &SecretCodec<R>,
+    dispatcher: &ChannelDispatcher,
+    endpoint: &ClaimedEndpoint,
+    message: &EndpointMessage<'_>,
+    allowed_hosts: &[String],
+    now: i64,
+) -> Result<ProviderReceipt, ProviderError> {
+    let url = match &endpoint.url {
+        Some(envelope) => Some(
+            open_endpoint(codec, endpoint, envelope, EndpointField::Url)?
+                .into_utf8()
+                .map_err(|_| ProviderError::configuration("adresse illisible"))?,
+        ),
+        None => None,
+    };
+    if endpoint.provider != "webhook" {
+        let service = ChatService::parse(&endpoint.provider)
+            .ok_or_else(|| ProviderError::configuration("service de messagerie inconnu"))?;
+        return dispatcher
+            .send_chat(
+                &endpoint.integration,
+                service,
+                url.as_ref(),
+                endpoint.chat_id.as_deref(),
+                message.title,
+                message.text,
+                allowed_hosts,
+            )
+            .await;
+    }
+    let url: SecretString = url.ok_or_else(|| ProviderError::configuration("adresse absente"))?;
+    let envelope = endpoint
+        .signing_secret
+        .as_deref()
+        .ok_or_else(|| ProviderError::configuration("clé de signature absente"))?;
+    let key = HmacKey::import(open_endpoint(
+        codec,
+        endpoint,
+        envelope,
+        EndpointField::SigningSecret,
+    )?)
+    .map_err(|_| ProviderError::configuration("clé de signature illisible"))?;
+    dispatcher
+        .call_webhook(
+            &url,
+            &key,
+            message.delivery_id,
+            message.body,
+            allowed_hosts,
+            now,
+        )
+        .await
+}
+
+/// Clé d'un enregistrement (contexte de scellement, identifiant de livraison).
+fn record_key(id: &NotificationRecordId) -> Option<String> {
+    match &id.key {
+        surrealdb::types::RecordIdKey::String(key) => Some(key.clone()),
+        surrealdb::types::RecordIdKey::Number(key) => Some(key.to_string()),
+        _ => None,
     }
 }
 
@@ -654,7 +1129,7 @@ mod tests {
 
     #[test]
     fn lease_outlasts_the_job_budget() {
-        let settings = EmailWorkerSettings::default();
+        let settings = SendWorkerSettings::default();
         assert!(settings.lease > settings.job_budget);
     }
 

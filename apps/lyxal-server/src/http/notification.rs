@@ -30,17 +30,38 @@
 //! ou horodatage refusés), 404 (intégration inconnue ou sans secret des retours), 413 (plus de
 //! 256 Kio), 503 (secret illisible, coffre-fort ou base indisponible : le fournisseur réessaie).
 //!
+//! Retours des SMS (décision E6) : Twilio (`X-Twilio-Signature`, HMAC-SHA1 de l'adresse publique
+//! appelée — `notification.public_url` suivie du chemin et de la requête — et des paramètres du
+//! formulaire), Vonage (paramètre `sig`, HMAC-SHA256, horodatage à moins de 5 minutes), Brevo
+//! (Basic) ; mêmes réponses que pour l'e-mail.
+//!
 //! `POST /api/v1/notification/integrations/{integration}/test` : essai d'une intégration
-//! (`{ to }`), au nom de l'appelant (`fn::notification_integration_test` : droit de gestion de
-//! sa portée), envoyé avec le vrai fournisseur ; réponse `{ accepted, code }` (code
-//! `NOTIFICATION_*` d'un refus), jamais de secret ; l'issue est notée sur l'intégration.
+//! (`{ to }` : e-mail, numéro E.164 pour un SMS, identifiant d'une adresse du même service pour
+//! la messagerie et l'adresse web), au nom de l'appelant (`fn::notification_integration_test` :
+//! droit de gestion de sa portée), envoyé avec le vrai fournisseur ; réponse `{ accepted, code }`
+//! (code `NOTIFICATION_*` d'un refus), jamais de secret ; l'issue est notée sur l'intégration.
+//!
+//! Adresses de messagerie et web (décision E2) : `POST /api/v1/notification/endpoints`
+//! (`{ tenant, subscriber_id, channel, provider, name, url, chat_id, active }`, droit de gestion)
+//! et `POST /api/v1/notification/my/endpoints` (mêmes champs sans `subscriber_id` : la personne
+//! connectée) : l'hôte tire la clé de l'adresse, **scelle l'adresse** (`enc:v2`, clé applicative,
+//! contexte lié à l'organisation et à l'adresse) et, pour une adresse web, **tire une clé de
+//! signature** (32 octets, générateur du système) qu'il scelle aussi, puis appelle
+//! `fn::notification_endpoint_create` au nom de l'appelant (l'adresse en clair n'y est que
+//! contrôlée par `lyxal_core`, jamais enregistrée). Réponse 201 `{ endpoint, signing_secret }` :
+//! la clé de signature (hexadécimal) n'est montrée **qu'une fois** ; l'adresse ne l'est jamais.
+//! `POST /api/v1/notification/endpoints/{adresse}/rotate` et
+//! `/api/v1/notification/my/endpoints/{adresse}/rotate` (`{ tenant }`) : nouvelle clé de
+//! signature d'une adresse web, montrée une fois. Sans clé applicative : 503
+//! (`NOTIFICATION_CONFIGURATION_INVALID`).
 
 use super::auth::{self, no_store, ApiError};
 use crate::context::AppContext;
 use crate::error::ServerError;
+use crate::modules::notification::NotificationHost;
 use axum::body::Bytes;
 use axum::extract::rejection::BytesRejection;
-use axum::extract::{DefaultBodyLimit, Path, Query, State};
+use axum::extract::{DefaultBodyLimit, OriginalUri, Path, Query, State};
 use axum::http::header::{
     ACCEPT, CONTENT_SECURITY_POLICY, CONTENT_TYPE, REFERRER_POLICY, X_FRAME_OPTIONS,
 };
@@ -48,16 +69,20 @@ use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Router;
+use lyxal_crypto::{SecretBytes, StaticKeyResolver};
 use lyxal_notification::models::{
-    DigestVars, IntegrationGetParams, IntegrationTestParams, IntegrationTestRecordParams,
-    StepPreviewParams,
+    ClaimedIntegration, DigestVars, Endpoint, EndpointCreateParams, EndpointResolveParams,
+    EndpointRotateParams, IntegrationGetParams, IntegrationTestParams, IntegrationTestRecordParams,
+    MyEndpointCreateParams, SettingsGetParams, StepPreviewParams,
 };
 use lyxal_notification::{
-    NotificationError, NotificationPreview, NotificationStore, UnsubscribeLinks, WebhookError,
-    WebhookRequest, MAX_WEBHOOK_BYTES,
+    deliver_to_endpoint, generate_signing_key, EndpointField, EndpointMessage, NotificationError,
+    NotificationPreview, NotificationStore, ProviderError, ProviderReceipt, SecretCodec,
+    UnsubscribeLinks, WebhookError, WebhookRequest, MAX_WEBHOOK_BYTES,
 };
+use lyxal_surreal::{RecordId, ToSql};
 use serde::Deserialize;
-use serde_json::json;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -65,6 +90,8 @@ use std::sync::Arc;
 const PREVIEW_BODY_LIMIT: usize = 64 * 1024;
 /// Taille maximale du corps d'une demande d'essai.
 const TEST_BODY_LIMIT: usize = 4 * 1024;
+/// Taille maximale du corps d'une création d'adresse.
+const ENDPOINT_BODY_LIMIT: usize = 8 * 1024;
 
 /// Routes `/notification/*`.
 pub fn routes() -> Router<AppContext> {
@@ -84,6 +111,22 @@ pub fn routes() -> Router<AppContext> {
         .route(
             "/integrations/:integration/test",
             post(integration_test).layer(DefaultBodyLimit::max(TEST_BODY_LIMIT)),
+        )
+        .route(
+            "/endpoints",
+            post(endpoint_create).layer(DefaultBodyLimit::max(ENDPOINT_BODY_LIMIT)),
+        )
+        .route(
+            "/my/endpoints",
+            post(my_endpoint_create).layer(DefaultBodyLimit::max(ENDPOINT_BODY_LIMIT)),
+        )
+        .route(
+            "/endpoints/:endpoint/rotate",
+            post(endpoint_rotate).layer(DefaultBodyLimit::max(TEST_BODY_LIMIT)),
+        )
+        .route(
+            "/my/endpoints/:endpoint/rotate",
+            post(my_endpoint_rotate).layer(DefaultBodyLimit::max(TEST_BODY_LIMIT)),
         )
         .layer(axum::middleware::map_response(no_store))
 }
@@ -273,6 +316,7 @@ fn bare(status: StatusCode) -> Response {
 async fn webhook(
     State(context): State<AppContext>,
     Path(key): Path<String>,
+    OriginalUri(uri): OriginalUri,
     headers: HeaderMap,
     body: Result<Bytes, BytesRejection>,
 ) -> Response {
@@ -289,9 +333,9 @@ async fn webhook(
         }
         Err(_) => return bare(StatusCode::BAD_REQUEST),
     };
-    let Some(dispatcher) = host.dispatcher.as_ref() else {
+    if host.dispatcher.is_none() || host.channels.is_none() {
         return bare(StatusCode::SERVICE_UNAVAILABLE);
-    };
+    }
     let integration = match host
         .store
         .integration_get(IntegrationGetParams { integration: id })
@@ -312,18 +356,36 @@ async fn webhook(
         }
     };
     let header = |name: &str| headers.get(name).and_then(|value| value.to_str().ok());
+    // Adresse publique appelée (signée par Twilio) : adresse de l'hôte, chemin et requête
+    let called = host.public_url.as_deref().map(|base| {
+        format!(
+            "{}{}",
+            base.trim().trim_end_matches('/'),
+            uri.path_and_query()
+                .map(|p| p.as_str())
+                .unwrap_or(uri.path())
+        )
+    });
     let request = WebhookRequest {
         authorization: header("authorization"),
         svix_id: header("svix-id"),
         svix_timestamp: header("svix-timestamp"),
         svix_signature: header("svix-signature"),
+        twilio_signature: header("x-twilio-signature"),
+        url: called.as_deref(),
         body: &body,
     };
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|elapsed| i64::try_from(elapsed.as_secs()).unwrap_or(i64::MAX))
-        .unwrap_or_default();
-    let events = match dispatcher.verify_webhook(&integration, &request, now).await {
+    let now = now_seconds();
+    let verified = match (
+        integration.channel.as_str(),
+        &host.dispatcher,
+        &host.channels,
+    ) {
+        ("sms", _, Some(channels)) => channels.verify_webhook(&integration, &request, now).await,
+        (_, Some(dispatcher), _) => dispatcher.verify_webhook(&integration, &request, now).await,
+        _ => Err(WebhookError::Secret),
+    };
+    let events = match verified {
         Ok(events) => events,
         Err(error) => {
             tracing::warn!(integration = %key, code = error.code(), "retour d'un fournisseur refusé");
@@ -379,7 +441,6 @@ async fn integration_test(
             ))
         };
         let host = context.notification.as_ref().ok_or_else(unavailable)?;
-        let dispatcher = host.dispatcher.as_ref().ok_or_else(unavailable)?;
         let integration = integration_id(&key).ok_or_else(|| {
             ApiError::Server(ServerError::InvalidRequest {
                 message: "intégration : identifiant invalide".to_string(),
@@ -393,7 +454,7 @@ async fn integration_test(
             })
             .await
             .map_err(NotificationError::from)?;
-        let code = match dispatcher.send_test(&target.integration, &target.to).await {
+        let code = match send_test(host, &target.integration, &target.to).await? {
             Ok(_) => None,
             Err(error) => Some(error.code),
         };
@@ -414,10 +475,361 @@ async fn integration_test(
     auth::respond(&context, &headers, result).await
 }
 
+/// Heure du serveur en secondes Unix.
+fn now_seconds() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|elapsed| i64::try_from(elapsed.as_secs()).unwrap_or(i64::MAX))
+        .unwrap_or_default()
+}
+
+fn unavailable(what: &str) -> ApiError {
+    ApiError::Notification(NotificationError::Configuration(format!(
+        "{what} indisponible (clé applicative ou clé maîtresse du coffre-fort absente)"
+    )))
+}
+
+/// Message d'essai par l'intégration (D6) selon son canal ; l'erreur externe est celle de l'hôte
+/// (configuration, base), l'erreur interne celle du fournisseur (notée sur l'intégration).
+async fn send_test(
+    host: &NotificationHost,
+    integration: &ClaimedIntegration,
+    to: &str,
+) -> Result<Result<ProviderReceipt, ProviderError>, ApiError> {
+    const TEXT: &str =
+        "Lyxal : message d'essai, l'integration fonctionne. / Test message: the integration works.";
+    match integration.channel.as_str() {
+        "email" => {
+            let dispatcher = host
+                .dispatcher
+                .as_ref()
+                .ok_or_else(|| unavailable("envoi par les intégrations"))?;
+            Ok(dispatcher.send_test(integration, to).await)
+        }
+        "sms" => {
+            let channels = host
+                .channels
+                .as_ref()
+                .ok_or_else(|| unavailable("envoi par les intégrations"))?;
+            Ok(channels.send_sms(integration, to, TEXT, false).await)
+        }
+        _ => {
+            let channels = host
+                .channels
+                .as_ref()
+                .ok_or_else(|| unavailable("envoi par les intégrations"))?;
+            let codec = host
+                .codec
+                .as_ref()
+                .ok_or_else(|| unavailable("ouverture des adresses"))?;
+            // Adresse scellée lue par la session système, après le contrôle au nom de l'appelant
+            let endpoint = host
+                .store
+                .endpoint_resolve(EndpointResolveParams {
+                    integration: integration.id.to_sql(),
+                    endpoint: to.to_string(),
+                })
+                .await
+                .map_err(NotificationError::from)?;
+            let allowed = host
+                .store
+                .settings_get(SettingsGetParams::default())
+                .await
+                .map_err(NotificationError::from)?
+                .effective
+                .allowed_hosts;
+            let delivery_id = format!("test.{}", uuid::Uuid::now_v7().simple());
+            let now = now_seconds();
+            let body = json!({ "id": delivery_id, "type": "notification.test", "text": TEXT, "sent_at": chrono::Utc::now().to_rfc3339() });
+            Ok(deliver_to_endpoint(
+                codec,
+                channels,
+                &endpoint,
+                &EndpointMessage {
+                    title: Some("Lyxal"),
+                    text: TEXT,
+                    delivery_id: &delivery_id,
+                    body: &body,
+                },
+                &allowed,
+                now,
+            )
+            .await)
+        }
+    }
+}
+
+/// Corps d'une création d'adresse (gestion : `subscriber_id` requis ; personne connectée : absent).
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct EndpointBody {
+    tenant: Option<String>,
+    subscriber_id: Option<String>,
+    channel: String,
+    provider: String,
+    name: String,
+    url: Option<String>,
+    chat_id: Option<String>,
+    active: Option<bool>,
+}
+
+/// Corps d'une nouvelle clé de signature.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RotateBody {
+    tenant: Option<String>,
+}
+
+/// Clé de l'organisation (`auth_organization:<clé>`) : contexte de scellement.
+fn tenant_key(tenant: Option<&str>) -> Result<Option<String>, ApiError> {
+    let Some(tenant) = tenant else {
+        return Ok(None);
+    };
+    let invalid = || {
+        ApiError::Server(ServerError::InvalidRequest {
+            message: "tenant : auth_organization:<clé> attendu".to_string(),
+        })
+    };
+    let id = RecordId::parse_simple(tenant).map_err(|_| invalid())?;
+    if id.table.as_str() != "auth_organization" {
+        return Err(invalid());
+    }
+    match &id.key {
+        surrealdb::types::RecordIdKey::String(key) if !key.is_empty() => Ok(Some(key.clone())),
+        surrealdb::types::RecordIdKey::Number(key) => Ok(Some(key.to_string())),
+        _ => Err(invalid()),
+    }
+}
+
+/// Clé d'enregistrement d'une adresse dans le chemin : lettres, chiffres et `_` seulement.
+fn endpoint_key(key: &str) -> Option<&str> {
+    (!key.is_empty()
+        && key.len() <= 64
+        && key.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_'))
+    .then_some(key)
+}
+
+/// Clé de signature d'une adresse web : tirée, montrée une fois (hexadécimal), scellée.
+fn signing_secret(
+    codec: &SecretCodec<StaticKeyResolver>,
+    tenant: Option<&str>,
+    key: &str,
+) -> Result<(String, String), ApiError> {
+    let raw = generate_signing_key()?;
+    let shown = raw
+        .expose_secret()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    let sealed = codec.seal_endpoint_value(tenant, key, EndpointField::SigningSecret, &raw)?;
+    Ok((shown, sealed))
+}
+
+/// Vue d'une adresse dans une réponse : hôte, jamais l'adresse complète.
+fn endpoint_json(endpoint: &Endpoint) -> Value {
+    json!({
+        "id": endpoint.id.to_sql(),
+        "subscriber": endpoint.subscriber.to_sql(),
+        "channel": endpoint.channel,
+        "provider": endpoint.provider,
+        "name": endpoint.name,
+        "host": endpoint.host,
+        "chat_id": endpoint.chat_id,
+        "active": endpoint.active,
+        "signed": endpoint.signed,
+    })
+}
+
+/// Création d'une adresse (gestion ou personne connectée) : adresse et clé scellées par l'hôte.
+async fn create_endpoint(
+    context: &AppContext,
+    headers: &HeaderMap,
+    body: &Bytes,
+    mine: bool,
+) -> Result<Response, ApiError> {
+    let (_, session) = auth::caller_session(context, headers).await?;
+    let body: EndpointBody = serde_json::from_slice(body).map_err(|_| {
+        ApiError::Server(ServerError::InvalidRequest {
+            message: "corps de l'adresse : { tenant, subscriber_id, channel, provider, name, url, chat_id, active } attendu".to_string(),
+        })
+    })?;
+    if mine == body.subscriber_id.is_some() {
+        return Err(ApiError::Server(ServerError::InvalidRequest {
+            message: "subscriber_id : requis pour une adresse gérée, absent pour la sienne"
+                .to_string(),
+        }));
+    }
+    let codec = context
+        .notification
+        .as_ref()
+        .and_then(|host| host.codec.as_ref())
+        .ok_or_else(|| unavailable("scellement des adresses"))?;
+    let tenant = tenant_key(body.tenant.as_deref())?;
+    let uuid = uuid::Uuid::now_v7();
+    let key = uuid.simple().to_string();
+    let sealed_url = match &body.url {
+        Some(url) => Some(codec.seal_endpoint_value(
+            tenant.as_deref(),
+            &key,
+            EndpointField::Url,
+            &SecretBytes::new(url.as_bytes().to_vec()).map_err(NotificationError::from)?,
+        )?),
+        None => None,
+    };
+    let signing = if body.channel == "webhook" {
+        Some(signing_secret(codec, tenant.as_deref(), &key)?)
+    } else {
+        None
+    };
+    let store = NotificationStore::new(session);
+    let endpoint = if mine {
+        store
+            .my_endpoint_create(MyEndpointCreateParams {
+                tenant: body.tenant,
+                endpoint: Some(uuid.to_string()),
+                channel: body.channel,
+                provider: body.provider,
+                name: body.name,
+                url: body.url,
+                sealed_url,
+                signing_secret: signing.as_ref().map(|(_, sealed)| sealed.clone()),
+                chat_id: body.chat_id,
+                active: body.active,
+            })
+            .await
+    } else {
+        store
+            .endpoint_create(EndpointCreateParams {
+                tenant: body.tenant,
+                subscriber_id: body.subscriber_id.unwrap_or_default(),
+                endpoint: Some(uuid.to_string()),
+                channel: body.channel,
+                provider: body.provider,
+                name: body.name,
+                url: body.url,
+                sealed_url,
+                signing_secret: signing.as_ref().map(|(_, sealed)| sealed.clone()),
+                chat_id: body.chat_id,
+                active: body.active,
+            })
+            .await
+    }
+    .map_err(NotificationError::from)?;
+    auth::ok(
+        StatusCode::CREATED,
+        json!({ "endpoint": endpoint_json(&endpoint), "signing_secret": signing.map(|(shown, _)| shown) }),
+    )
+}
+
+/// `POST /endpoints` : adresse d'un abonné (droit de gestion).
+async fn endpoint_create(
+    State(context): State<AppContext>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Response {
+    let result = create_endpoint(&context, &headers, &body, false).await;
+    auth::respond(&context, &headers, result).await
+}
+
+/// `POST /my/endpoints` : adresse de la personne connectée.
+async fn my_endpoint_create(
+    State(context): State<AppContext>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Response {
+    let result = create_endpoint(&context, &headers, &body, true).await;
+    auth::respond(&context, &headers, result).await
+}
+
+/// Nouvelle clé de signature d'une adresse web (gestion ou personne connectée).
+async fn rotate_endpoint(
+    context: &AppContext,
+    headers: &HeaderMap,
+    key: &str,
+    body: &Bytes,
+    mine: bool,
+) -> Result<Response, ApiError> {
+    let (_, session) = auth::caller_session(context, headers).await?;
+    let body: RotateBody = serde_json::from_slice(body).map_err(|_| {
+        ApiError::Server(ServerError::InvalidRequest {
+            message: "corps : { tenant } attendu".to_string(),
+        })
+    })?;
+    let key = endpoint_key(key).ok_or_else(|| {
+        ApiError::Server(ServerError::InvalidRequest {
+            message: "adresse : identifiant invalide".to_string(),
+        })
+    })?;
+    let codec = context
+        .notification
+        .as_ref()
+        .and_then(|host| host.codec.as_ref())
+        .ok_or_else(|| unavailable("scellement des adresses"))?;
+    let (shown, sealed) =
+        signing_secret(codec, tenant_key(body.tenant.as_deref())?.as_deref(), key)?;
+    let params = EndpointRotateParams {
+        tenant: body.tenant,
+        endpoint: format!("notification_endpoint:{key}"),
+        signing_secret: sealed,
+    };
+    let store = NotificationStore::new(session);
+    let endpoint = if mine {
+        store.my_endpoint_rotate_secret(params).await
+    } else {
+        store.endpoint_rotate_secret(params).await
+    }
+    .map_err(NotificationError::from)?;
+    auth::ok(
+        StatusCode::OK,
+        json!({ "endpoint": endpoint_json(&endpoint), "signing_secret": shown }),
+    )
+}
+
+/// `POST /endpoints/{adresse}/rotate`.
+async fn endpoint_rotate(
+    State(context): State<AppContext>,
+    Path(key): Path<String>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Response {
+    let result = rotate_endpoint(&context, &headers, &key, &body, false).await;
+    auth::respond(&context, &headers, result).await
+}
+
+/// `POST /my/endpoints/{adresse}/rotate`.
+async fn my_endpoint_rotate(
+    State(context): State<AppContext>,
+    Path(key): Path<String>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Response {
+    let result = rotate_endpoint(&context, &headers, &key, &body, true).await;
+    auth::respond(&context, &headers, result).await
+}
+
 #[cfg(test)]
 #[allow(clippy::expect_used)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tenants_and_endpoint_keys_are_checked() {
+        assert_eq!(
+            tenant_key(Some("auth_organization:alpha"))
+                .ok()
+                .flatten()
+                .as_deref(),
+            Some("alpha")
+        );
+        assert!(matches!(tenant_key(None), Ok(None)));
+        for bad in ["alpha", "auth_identity:x", "auth_organization:"] {
+            assert!(tenant_key(Some(bad)).is_err(), "{bad}");
+        }
+        assert_eq!(endpoint_key("0190abc_d"), Some("0190abc_d"));
+        for bad in ["", "a:b", "a/b", "a b"] {
+            assert_eq!(endpoint_key(bad), None, "{bad}");
+        }
+    }
 
     #[test]
     fn only_simple_integration_keys_are_read() {

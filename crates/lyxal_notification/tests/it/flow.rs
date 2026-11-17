@@ -8,8 +8,8 @@ use lyxal_notification::consumer::AuthMessagePayload;
 use lyxal_notification::models::FailureClass;
 use lyxal_notification::secret::event_context;
 use lyxal_notification::{
-    AuthMessageHandler, EmailWorkerSettings, InvitationCreated, JobOutcome,
-    NotificationEmailWorker, NotificationStore, SecretCodec, VerificationRequested,
+    AuthMessageHandler, InvitationCreated, JobOutcome, NotificationEmailWorker, NotificationStore,
+    SecretCodec, SendWorkerSettings, VerificationRequested,
 };
 use lyxal_runtime::worker::CancellationToken;
 use lyxal_surreal::{SurrealValue, ToSql};
@@ -46,7 +46,7 @@ pub(crate) async fn worker(
         NotificationStore::new(client.clone()),
         SecretCodec::new(engine.clone()),
         dispatcher(&vault, None),
-        EmailWorkerSettings::default(),
+        SendWorkerSettings::default(),
     )
     .expect("worker")
 }

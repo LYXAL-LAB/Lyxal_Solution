@@ -50,6 +50,27 @@ pub enum WorkflowStep {
         /// Condition d'exécution.
         condition: Option<serde_json::Value>,
     },
+    /// Envoi d'un SMS au téléphone de l'abonné.
+    Sms {
+        /// Clé de l'étape, unique dans le parcours.
+        key: String,
+        /// Condition d'exécution.
+        condition: Option<serde_json::Value>,
+    },
+    /// Message aux adresses de messagerie d'équipe de l'abonné.
+    Chat {
+        /// Clé de l'étape, unique dans le parcours.
+        key: String,
+        /// Condition d'exécution.
+        condition: Option<serde_json::Value>,
+    },
+    /// Appel signé des adresses web de l'abonné.
+    Webhook {
+        /// Clé de l'étape, unique dans le parcours.
+        key: String,
+        /// Condition d'exécution.
+        condition: Option<serde_json::Value>,
+    },
     /// Attente : une durée (`amount` + `unit`), ou une date lue dans les données (`until`),
     /// décalée de `offset`.
     Delay {
@@ -99,6 +120,9 @@ impl WorkflowStep {
     pub fn key(&self) -> &str {
         match self {
             Self::Email { key, .. }
+            | Self::Sms { key, .. }
+            | Self::Chat { key, .. }
+            | Self::Webhook { key, .. }
             | Self::Delay { key, .. }
             | Self::Digest { key, .. }
             | Self::Throttle { key, .. } => key,
@@ -247,6 +271,8 @@ pub struct StepPreviewResult {
     pub workflow: NotificationRecordId,
     /// Étape.
     pub step_key: String,
+    /// Canal de l'étape (`email`, `sms`, `chat`, `webhook`).
+    pub channel: String,
     /// Langue retenue.
     pub locale: Option<String>,
     /// Langue demandée (région gardée pour les nombres et les dates).

@@ -16,11 +16,13 @@ DEFINE TABLE OVERWRITE notification_message
 
 DEFINE FIELD OVERWRITE run ON TABLE notification_message TYPE record<notification_run> REFERENCE ON DELETE CASCADE READONLY COMMENT "Déclenchement";
 DEFINE FIELD OVERWRITE job ON TABLE notification_message TYPE record<notification_job> REFERENCE ON DELETE CASCADE READONLY COMMENT "Étape";
-DEFINE FIELD OVERWRITE channel ON TABLE notification_message TYPE string ASSERT $value IN ["email"] READONLY COMMENT "Canal";
-DEFINE FIELD OVERWRITE to ON TABLE notification_message TYPE string READONLY COMMENT "Destinataire";
+DEFINE FIELD OVERWRITE channel ON TABLE notification_message TYPE string ASSERT $value IN ["email", "sms", "chat", "webhook"] READONLY COMMENT "Canal";
+DEFINE FIELD OVERWRITE to ON TABLE notification_message TYPE string READONLY COMMENT "Destinataire : adresse e-mail, téléphone (E.164), ou hôte de l'adresse de messagerie ou web (jamais l'adresse complète)";
+DEFINE FIELD OVERWRITE endpoint ON TABLE notification_message TYPE option<record<notification_endpoint>> REFERENCE ON DELETE UNSET READONLY COMMENT "Adresse de messagerie ou web servie (retirée si elle est supprimée)";
+DEFINE FIELD OVERWRITE parts ON TABLE notification_message TYPE option<int> ASSERT $value IS NONE OR ($value >= 1 AND $value <= 10) READONLY COMMENT "SMS : nombre de parties (décision E5)";
 DEFINE FIELD OVERWRITE subject ON TABLE notification_message TYPE option<string> COMMENT "Objet (absent pour un parcours sensible)";
 DEFINE FIELD OVERWRITE integration ON TABLE notification_message TYPE option<record<notification_integration>> REFERENCE ON DELETE UNSET COMMENT "Intégration qui a envoyé le message (retirée si elle est supprimée)";
-DEFINE FIELD OVERWRITE provider ON TABLE notification_message TYPE option<string> ASSERT $value IS NONE OR $value IN ["smtp", "brevo", "mailgun", "postmark", "resend"] READONLY COMMENT "Fournisseur de l'envoi";
+DEFINE FIELD OVERWRITE provider ON TABLE notification_message TYPE option<string> ASSERT $value IS NONE OR $value IN ["smtp", "brevo", "mailgun", "postmark", "resend", "twilio", "vonage", "slack", "teams", "discord", "mattermost", "google_chat", "telegram", "webhook"] READONLY COMMENT "Fournisseur de l'envoi (service de l'adresse pour la messagerie)";
 DEFINE FIELD OVERWRITE provider_message_id ON TABLE notification_message TYPE option<string> ASSERT $value IS NONE OR string::len($value) <= 512 READONLY COMMENT "Identifiant du message chez le fournisseur (unique par intégration)";
 DEFINE FIELD OVERWRITE status ON TABLE notification_message TYPE string ASSERT $value IN ["sent", "delivered", "bounced", "complained"] COMMENT "État : envoyé, puis d'après les retours du fournisseur";
 DEFINE FIELD OVERWRITE sent_at ON TABLE notification_message TYPE datetime DEFAULT time::now() COMMENT "Envoi";
@@ -59,12 +61,12 @@ DEFINE TABLE OVERWRITE notification_suppression
         FOR select WHERE fn::notification_can({ action: "read_config", tenant: tenant })
         FOR create WHERE fn::notification_can({ action: "manage", tenant: tenant }) OR fn::notification_can({ action: "worker", tenant: tenant })
         FOR update, delete WHERE fn::notification_can({ action: "manage", tenant: tenant })
-    COMMENT "Adresses à ne plus contacter (rejet définitif, plainte, blocage manuel)";
+    COMMENT "Adresses et numéros à ne plus contacter (rejet définitif, plainte ou désinscription chez l'opérateur, blocage manuel)";
 
 DEFINE FIELD OVERWRITE tenant ON TABLE notification_suppression TYPE option<record<auth_organization>> REFERENCE ON DELETE CASCADE READONLY COMMENT "Organisation (NONE : installation)";
 DEFINE FIELD OVERWRITE scope_key ON TABLE notification_suppression TYPE string VALUE IF $this.tenant IS NONE { "installation" } ELSE { <string> record::id($this.tenant) } COMMENT "Portée d'unicité";
-DEFINE FIELD OVERWRITE channel ON TABLE notification_suppression TYPE string ASSERT $value IN ["email"] READONLY COMMENT "Canal";
-DEFINE FIELD OVERWRITE address ON TABLE notification_suppression TYPE string ASSERT string::len($value) >= 3 AND string::len($value) <= 254 AND $value == string::lowercase($value) READONLY COMMENT "Adresse normalisée";
+DEFINE FIELD OVERWRITE channel ON TABLE notification_suppression TYPE string ASSERT $value IN ["email", "sms"] READONLY COMMENT "Canal : email (adresse) ou sms (numéro E.164)";
+DEFINE FIELD OVERWRITE address ON TABLE notification_suppression TYPE string ASSERT string::len($value) >= 3 AND string::len($value) <= 254 AND $value == string::lowercase($value) READONLY COMMENT "Adresse normalisée (e-mail en minuscules, ou numéro E.164)";
 DEFINE FIELD OVERWRITE reason ON TABLE notification_suppression TYPE string ASSERT $value IN ["hard_bounce", "complaint", "manual"] COMMENT "Motif";
 DEFINE FIELD OVERWRITE source ON TABLE notification_suppression TYPE option<string> ASSERT $value IS NONE OR string::len($value) <= 256 COMMENT "Origine (code SMTP, administrateur…)";
 DEFINE FIELD OVERWRITE created_at ON TABLE notification_suppression TYPE datetime DEFAULT time::now() READONLY COMMENT "Création";

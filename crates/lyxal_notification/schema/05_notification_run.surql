@@ -172,7 +172,7 @@ DEFINE FIELD OVERWRITE run ON TABLE notification_job
     COMMENT "Déclenchement";
 
 DEFINE FIELD OVERWRITE step_key ON TABLE notification_job TYPE string READONLY COMMENT "Étape";
-DEFINE FIELD OVERWRITE type ON TABLE notification_job TYPE string ASSERT $value IN ["email", "delay", "digest", "throttle"] READONLY COMMENT "Type de l'étape";
+DEFINE FIELD OVERWRITE type ON TABLE notification_job TYPE string ASSERT $value IN ["email", "sms", "chat", "webhook", "delay", "digest", "throttle"] READONLY COMMENT "Type de l'étape";
 
 DEFINE FIELD OVERWRITE status ON TABLE notification_job
     TYPE string

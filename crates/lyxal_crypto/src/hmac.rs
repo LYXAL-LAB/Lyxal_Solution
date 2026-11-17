@@ -57,6 +57,21 @@ pub fn verify_external_hmac_sha256(
 ) -> Result<bool, CryptoError> {
     verify_bytes(key.expose(), data, tag)
 }
+/// Verify exactly 20 tag bytes of HMAC-SHA1 under a third-party protocol key, in constant time
+/// (`ring`). Verification only, for a provider that still signs with SHA-1 (Twilio's
+/// `X-Twilio-Signature`, CTO decision K8): no signing function is offered. Mismatch is false;
+/// malformed length is an error.
+pub fn verify_external_hmac_sha1(
+    key: &ExternalHmacKey,
+    data: &[u8],
+    tag: &[u8],
+) -> Result<bool, CryptoError> {
+    if tag.len() != 20 {
+        return Err(CryptoError::InvalidTagEncoding);
+    }
+    let key = ring::hmac::Key::new(ring::hmac::HMAC_SHA1_FOR_LEGACY_USE_ONLY, key.expose());
+    Ok(ring::hmac::verify(&key, data, tag).is_ok())
+}
 #[cfg(test)]
 mod vectors {
     include!("hmac_vectors.rs");
@@ -103,6 +118,76 @@ mod external {
             verify_external_hmac_sha256(&middle, b"data", &tag[..31]),
             Err(CryptoError::InvalidTagEncoding)
         ));
+    }
+
+    #[test]
+    fn external_sha1_verification_follows_rfc_2202() {
+        // RFC 2202, cas 1 à 7 : (clé, données, étiquette attendue)
+        let block_key = vec![0xaa; 80];
+        let cases: [(Vec<u8>, Vec<u8>, &str); 7] = [
+            (
+                vec![0x0b; 20],
+                b"Hi There".to_vec(),
+                "b617318655057264e28bc0b6fb378c8ef146be00",
+            ),
+            (
+                b"Jefe".to_vec(),
+                b"what do ya want for nothing?".to_vec(),
+                "effcdf6ae5eb2fa2d27416d5f184df9c259a7c79",
+            ),
+            (
+                vec![0xaa; 20],
+                vec![0xdd; 50],
+                "125d7342b9ac11cd91a39af48aa17b4f63f175d3",
+            ),
+            (
+                (1u8..=25).collect(),
+                vec![0xcd; 50],
+                "4c9007f4026250c6bc8414f9bf50c86c2d7235da",
+            ),
+            (
+                vec![0x0c; 20],
+                b"Test With Truncation".to_vec(),
+                "4c1a03424b55e07fe7f27be1d58bb9324a9a5a04",
+            ),
+            (
+                block_key.clone(),
+                b"Test Using Larger Than Block-Size Key - Hash Key First".to_vec(),
+                "aa4ae5e15272d00e95705637ce8a3b55ed402112",
+            ),
+            (
+                block_key,
+                b"Test Using Larger Than Block-Size Key and Larger Than One Block-Size Data"
+                    .to_vec(),
+                "e8e99d0f45237d786d6bbaa7965c7808bbff1a91",
+            ),
+        ];
+        for (index, (raw, data, expected)) in cases.iter().enumerate() {
+            let case = index + 1;
+            let key = key(raw).expect("clé");
+            let tag = hex::decode(expected).expect("hex");
+            assert!(
+                verify_external_hmac_sha1(&key, data, &tag).expect("verify"),
+                "cas {case}"
+            );
+            let mut altered = tag.clone();
+            altered[19] ^= 1;
+            assert!(
+                !verify_external_hmac_sha1(&key, data, &altered).expect("verify"),
+                "cas {case}"
+            );
+            assert!(
+                !verify_external_hmac_sha1(&key, b"autre", &tag).expect("verify"),
+                "cas {case}"
+            );
+        }
+        let key = key(b"Jefe").expect("clé");
+        for length in [0, 19, 21, 32] {
+            assert!(matches!(
+                verify_external_hmac_sha1(&key, b"data", &vec![0; length]),
+                Err(CryptoError::InvalidTagEncoding)
+            ));
+        }
     }
 
     #[test]

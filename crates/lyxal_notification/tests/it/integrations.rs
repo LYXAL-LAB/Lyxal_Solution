@@ -12,8 +12,8 @@ use lyxal_crypto::{
 };
 use lyxal_notification::models::{FailureClass, IntegrationSaveParams, IntegrationSettings};
 use lyxal_notification::{
-    EmailWorkerSettings, JobOutcome, NotificationEmailWorker, NotificationStore, ProviderEventKind,
-    SecretCodec, WebhookError, WebhookRequest,
+    JobOutcome, NotificationEmailWorker, NotificationStore, ProviderEventKind, SecretCodec,
+    SendWorkerSettings, WebhookError, WebhookRequest,
 };
 use lyxal_runtime::worker::CancellationToken;
 use lyxal_surreal::ToSql;
@@ -62,7 +62,7 @@ async fn trigger(client: &Surreal<Any>, key: &str, email: &str) {
 
 fn settings(from: &str) -> IntegrationSettings {
     IntegrationSettings {
-        from_address: from.into(),
+        from_address: Some(from.into()),
         from_name: Some("Alpha BTP".into()),
         ..IntegrationSettings::default()
     }
@@ -144,7 +144,7 @@ async fn organization_integration_then_bounce_webhook_suppresses_the_address() {
         NotificationStore::new(client.clone()),
         SecretCodec::new(crypto()),
         dispatcher.clone(),
-        EmailWorkerSettings::default(),
+        SendWorkerSettings::default(),
     )
     .expect("worker");
     assert_eq!(
@@ -282,7 +282,7 @@ async fn a_failing_provider_fails_over_to_the_next_integration() {
         NotificationStore::new(client.clone()),
         SecretCodec::new(crypto()),
         dispatcher(&vault, Some(&fake.base)),
-        EmailWorkerSettings::default(),
+        SendWorkerSettings::default(),
     )
     .expect("worker");
     let due_now = || async {

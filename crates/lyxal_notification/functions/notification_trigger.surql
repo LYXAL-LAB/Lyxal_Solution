@@ -23,9 +23,25 @@ DEFINE FUNCTION OVERWRITE fn::notification_settings_effective($params: object) -
         max_attempts: $own.max_attempts ?? $base.max_attempts ?? 8,
         retention_days_runs: $own.retention_days_runs ?? $base.retention_days_runs ?? 90,
         retention_days_log: $own.retention_days_log ?? $base.retention_days_log ?? 30,
-        max_wait_days: $own.max_wait_days ?? $base.max_wait_days ?? 30
+        max_wait_days: $own.max_wait_days ?? $base.max_wait_days ?? 30,
+        -- Installation seulement (décision E3)
+        allowed_hosts: $base.allowed_hosts ?? []
     };
-} COMMENT "Réglages effectifs ({ tenant }) : organisation sur installation, valeurs par défaut sinon";
+} COMMENT "Réglages effectifs ({ tenant }) : organisation sur installation, valeurs par défaut sinon ; allowed_hosts : réglage de l'installation (vide : tout hôte public)";
+
+-- ----------------------------------------------------------------------------
+-- fn::notification_channel_address : adresse d'un abonné pour un canal
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::notification_channel_address($params: object) -> option<string> {
+    IF $params.type = "email" { RETURN $params.address.email; };
+    IF $params.type = "sms" { RETURN $params.address.phone; };
+    IF $params.type IN ["chat", "webhook"] AND $params.subscriber IS NOT NONE {
+        LET $active = count(SELECT VALUE id FROM notification_endpoint WHERE subscriber = $params.subscriber AND channel = $params.type AND active = true);
+        RETURN IF $active > 0 { $params.type } ELSE { NONE };
+    };
+    RETURN NONE;
+} COMMENT "Interne : adresse d'un abonné pour un canal ({ type, address : { email, phone }, subscriber }) : e-mail, téléphone E.164, ou le nom du canal si l'abonné a une adresse de messagerie ou web active ; NONE sans adresse";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_run_create : déclenchement pour un abonné
@@ -41,15 +57,20 @@ DEFINE FUNCTION OVERWRITE fn::notification_run_create($params: object) -> object
     LET $workflow = $params.workflow;
     LET $subscriber = $params.subscriber;
     LET $scope = IF $params.tenant IS NONE { "installation" } ELSE { <string> record::id($params.tenant) };
-    LET $channels = array::filter($workflow.steps, |$step| $step.type IN fn::notification_channels({}));
-    IF !array::any($channels, |$step| $step.type = "email" AND $subscriber.email IS NOT NONE) {
+    -- Étapes de canal que l'abonné peut recevoir (adresse e-mail, téléphone, adresses de messagerie ou web)
+    LET $reachable = array::filter(
+        array::map(array::filter($workflow.steps, |$step| $step.type IN fn::notification_channels({})), |$step| {
+            type: $step.type, address: fn::notification_channel_address({ type: $step.type, address: $subscriber, subscriber: $subscriber.id })
+        }),
+        |$entry| $entry.address IS NOT NONE);
+    IF array::len($reachable) = 0 {
         RETURN { status: "no_address", run_id: NONE, skip_reason: "no_address", job_ids: [] };
     };
-    LET $reasons = (SELECT VALUE reason FROM notification_suppression
-        WHERE scope_key IN [$scope, "installation"] AND channel = "email" AND address = $subscriber.email
-            AND (keep_until IS NONE OR keep_until > time::now()));
-    LET $blocking = IF $workflow.critical { array::filter($reasons, |$r| $r IN ["hard_bounce", "manual"]) } ELSE { $reasons };
-    LET $skip = IF array::len($blocking) > 0 { string::concat("suppressed:", array::sort($blocking)[0]) } ELSE { NONE };
+    -- Liste de suppression : le déclenchement n'est arrêté que si toutes ses adresses sont
+    -- supprimées ; une étape dont seule l'adresse est supprimée est écartée à son tour
+    -- (motif suppressed:<motif>)
+    LET $blocking = array::map($reachable, |$entry| fn::notification_suppression_reason({ scope: $scope, channel: $entry.type, address: $entry.address, critical: $workflow.critical }));
+    LET $skip = IF array::all($blocking, |$reason| $reason IS NOT NONE) { string::concat("suppressed:", $blocking[0]) } ELSE { NONE };
     LET $rid = type::record("notification_run", string::replace(<string> rand::uuid::v7(), "-", ""));
     -- Idempotence par l'index unique (portée, clé) : un rejeu n'insère rien
     LET $inserted = (INSERT IGNORE INTO notification_run {
@@ -158,7 +179,10 @@ DEFINE FUNCTION OVERWRITE fn::notification_trigger_one($params: object) -> objec
 DEFINE FUNCTION OVERWRITE fn::notification_trigger_single($params: object) -> object {
     LET $result = $params.result;
     IF $result.status = "rejected" { RETURN fn::error_result($result.code, $params.language, $result.details ?? {}); };
-    IF $result.status = "no_address" { RETURN fn::error_result("NOTIFICATION_SUBSCRIBER_NO_ADDRESS", $params.language, { channels: array::distinct(array::filter($params.workflow.steps.type, |$type| $type IN fn::notification_channels({}))) }); };
+    LET $channels = array::distinct(array::filter($params.workflow.steps.type, |$type| $type IN fn::notification_channels({})));
+    -- Parcours qui n'envoie que des SMS : l'abonné n'a pas de téléphone
+    IF $result.status = "no_address" AND $channels == ["sms"] { RETURN fn::error_result("NOTIFICATION_SUBSCRIBER_NO_PHONE", $params.language, { channels: $channels }); };
+    IF $result.status = "no_address" { RETURN fn::error_result("NOTIFICATION_SUBSCRIBER_NO_ADDRESS", $params.language, { channels: $channels }); };
     IF $result.status = "forbidden" { RETURN fn::error_result("NOTIFICATION_WRITE_FORBIDDEN", $params.language, { table: "notification_run" }); };
     RETURN fn::result_ok(object::extend(object::remove($result, ["subscriber_id"]), { kind: "subscriber" }));
 } COMMENT "Interne : résultat LyxalResult du déclenchement d'un abonné ({ result, workflow, language })";

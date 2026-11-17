@@ -51,6 +51,11 @@ DEFINE FIELD OVERWRITE max_wait_days ON TABLE notification_settings
     ASSERT $value IS NONE OR ($value >= 1 AND $value <= 366)
     COMMENT "Durée maximale d'une attente, d'une fenêtre de regroupement ou de limitation (jours, 30 par défaut)";
 
+DEFINE FIELD OVERWRITE allowed_hosts ON TABLE notification_settings
+    TYPE option<array<string>>
+    ASSERT $value IS NONE OR ($this.tenant IS NONE AND array::len($value) <= 100)
+    COMMENT "Installation seulement (décision E3) : hôtes autorisés pour les adresses web et Mattermost (vide ou absent : tout hôte public)";
+
 DEFINE FIELD OVERWRITE updated_at ON TABLE notification_settings
     TYPE datetime
     VALUE time::now()

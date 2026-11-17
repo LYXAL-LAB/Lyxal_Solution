@@ -98,7 +98,7 @@ fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "rel
 -- test: envoi déjà en cours : il n'est pas rappelé, mais le parcours s'arrête
 -- en tant que: worker
 {
-    LET $job = fn::notification_job_claim({ worker_id: "w1" }).data.find(|$j| $j.idempotency_key = "parti-1");
+    LET $job = fn::notification_job_claim({ channel: "email", worker_id: "w1" }).data.find(|$j| $j.idempotency_key = "parti-1");
     LET $c = fn::notification_cancel({ tenant: "auth_organization:alpha", idempotency_key: "parti-1" }).data;
     LET $done = fn::notification_job_complete({ job_id: <string> $job.job_id, claim_token: $job.claim_token, integration: "notification_integration:relais" }).data;
     RETURN $c.canceled == 1 AND $done.status == "completed" AND $done.run_status == "canceled"
@@ -113,14 +113,14 @@ fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "rel
 
 -- test: annulé pendant l'envoi : un échec temporaire ne remet pas l'étape en file, une réservation expirée n'est pas reprise
 {
-    LET $jobs = fn::notification_job_claim({ worker_id: "w1" }).data;
+    LET $jobs = fn::notification_job_claim({ channel: "email", worker_id: "w1" }).data;
     LET $a = $jobs.find(|$j| $j.idempotency_key = "encours-1");
     LET $b = $jobs.find(|$j| $j.idempotency_key = "encours-2");
     LET $c1 = fn::notification_cancel({ tenant: "auth_organization:alpha", idempotency_key: "encours-1" }).data.canceled;
     LET $c2 = fn::notification_cancel({ tenant: "auth_organization:alpha", idempotency_key: "encours-2" }).data.canceled;
     LET $failed = fn::notification_job_fail({ job_id: <string> $a.job_id, claim_token: $a.claim_token, integration: "notification_integration:relais", class: "transient", code: "SMTP_421" }).data;
     UPDATE notification_job SET locked_until = time::now() - 1s WHERE run.idempotency_key = "encours-2";
-    LET $again = fn::notification_job_claim({ worker_id: "w2" }).data;
+    LET $again = fn::notification_job_claim({ channel: "email", worker_id: "w2" }).data;
     RETURN $c1 == 1 AND $c2 == 1 AND $b IS NOT NONE AND $failed.status == "canceled" AND $failed.next_retry_at IS NONE
         AND $again.filter(|$j| $j.idempotency_key IN ["encours-1", "encours-2"]) == []
         AND (SELECT VALUE status FROM notification_job WHERE run.idempotency_key IN ["encours-1", "encours-2"]) == ["canceled", "canceled"];

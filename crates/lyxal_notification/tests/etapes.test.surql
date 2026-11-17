@@ -47,7 +47,7 @@
 {
     LET $a = fn::notification_workflow_create({ tenant: "auth_organization:alpha", key: "a", name: "A", steps: [{ key: "email", type: "email", amount: 1 }] }).error;
     LET $b = fn::notification_workflow_create({ tenant: "auth_organization:alpha", key: "b", name: "B", steps: [{ key: "lot", type: "digest" }, { key: "email", type: "email" }] }).error;
-    LET $c = fn::notification_workflow_create({ tenant: "auth_organization:alpha", key: "c", name: "C", steps: [{ key: "email", type: "sms" }] }).error;
+    LET $c = fn::notification_workflow_create({ tenant: "auth_organization:alpha", key: "c", name: "C", steps: [{ key: "email", type: "push" }] }).error;
     LET $d = fn::notification_workflow_create({ tenant: "auth_organization:alpha", key: "d", name: "D", steps: [{ key: "email", type: "email" }, { key: "limite", type: "throttle", limit: 0, window: { amount: 1, unit: "hours" } }] }).error;
     LET $e = fn::notification_workflow_create({ tenant: "auth_organization:alpha", key: "e", name: "E", steps: [{ key: "pause", type: "delay", amount: 1, unit: "siecles" }, { key: "email", type: "email" }] }).error;
     LET $f = fn::notification_workflow_create({ tenant: "auth_organization:alpha", key: "f", name: "F", steps: [{ key: "pause", type: "delay", until: "payload.[*]" }, { key: "email", type: "email" }] }).error;
@@ -194,7 +194,7 @@ RETURN fn::notification_step_preview({ workflow: (SELECT VALUE w FROM ONLY test_
     LET $workflow = { steps: [{ key: "pause", type: "delay", amount: 1, unit: "hours" }, { key: "lot", type: "digest", window: { amount: 1, unit: "hours" } }, { key: "email", type: "email" }] };
     RETURN fn::notification_duration_seconds({ amount: 2, unit: "weeks" }) == 1209600
         AND fn::notification_duration_seconds({ amount: -1, unit: "days" }) == -86400
-        AND object::keys(fn::notification_step_fields({})) == ["common", "delay", "digest", "email", "span", "throttle"]
+        AND object::keys(fn::notification_step_fields({})) == ["chat", "common", "delay", "digest", "email", "sms", "span", "throttle", "webhook"]
         AND fn::notification_step_check({ steps: $workflow.steps }).code IS NONE
         AND fn::notification_step_check({ steps: [{ key: "email", type: "email", condition: { field: "payload.a", op: "exists" } }] }).steps[0].condition == { field: "payload.a", op: "exists" }
         AND fn::notification_override_check({ overrides: { steps: { lot: { window: { amount: 2, unit: "hours" } }, email: { skip: true } } }, workflow: $workflow, max_wait_days: 30 }).overrides

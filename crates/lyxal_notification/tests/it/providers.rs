@@ -27,7 +27,7 @@ fn message(unsubscribe: bool) -> EmailMessage {
 
 fn settings() -> IntegrationSettings {
     IntegrationSettings {
-        from_address: "devis@alpha.test".into(),
+        from_address: Some("devis@alpha.test".into()),
         from_name: Some("Alpha BTP".into()),
         reply_to: Some("contact@alpha.test".into()),
         ..IntegrationSettings::default()

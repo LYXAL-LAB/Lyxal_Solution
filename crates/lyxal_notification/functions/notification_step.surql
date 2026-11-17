@@ -2,7 +2,7 @@
 -- FONCTIONS : forme des étapes d'un parcours et surcharges d'un déclenchement
 -- MODULE    : lyxal_notification
 -- ============================================================================
--- Une étape a un type : un canal (`email` ; les autres canaux viennent aux lots suivants), une
+-- Une étape a un type : un canal (`email`, `sms`, `chat`, `webhook`), une
 -- attente (`delay` : amount + unit, ou until : chemin d'une date dans les données, avec un
 -- décalage offset facultatif), un regroupement (`digest` : window, group_by, lookback) ou une
 -- limitation (`throttle` : limit, window, group_by). Champs communs : `key` (unique dans le
@@ -36,10 +36,13 @@ DEFINE FUNCTION OVERWRITE fn::notification_step_fields($params: object) -> objec
         span: $span,
         common: {
             key: { pipeline: [{ rule: "snake_case_name", options: { min_length: 1, max_length: 64 } }], required: true },
-            type: { pipeline: [{ rule: "enum", options: { allowed: ["email", "delay", "digest", "throttle"], case_sensitive: true } }], required: true },
+            type: { pipeline: [{ rule: "enum", options: { allowed: ["email", "sms", "chat", "webhook", "delay", "digest", "throttle"], case_sensitive: true } }], required: true },
             condition: { pipeline: [{ rule: "is_object" }] }
         },
         email: {},
+        sms: {},
+        chat: {},
+        webhook: {},
         delay: {
             amount: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 1000000 } }] },
             unit: { pipeline: [{ rule: "enum", options: { allowed: $units, case_sensitive: true } }] },
@@ -59,7 +62,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_step_fields($params: object) -> objec
             group_by: $path
         }
     };
-} COMMENT "Schémas lyxal_core des champs d'une étape : { span (durée amount + unit), common, email, delay, digest, throttle }";
+} COMMENT "Schémas lyxal_core des champs d'une étape : { span (durée amount + unit), common, email, sms, chat, webhook, delay, digest, throttle }";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_step_check : contrôle des étapes d'un parcours
@@ -67,7 +70,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_step_fields($params: object) -> objec
 
 DEFINE FUNCTION OVERWRITE fn::notification_step_check($params: object) -> object {
     LET $fields = fn::notification_step_fields({});
-    LET $types = ["email", "delay", "digest", "throttle"];
+    LET $types = ["email", "sms", "chat", "webhook", "delay", "digest", "throttle"];
     LET $reports = array::map($params.steps, |$step| fn::validation_object_execute($step, {
         fields: object::extend($fields.common, IF $step.type IN $types { $fields[$step.type] } ELSE { {} }),
         unknown_keys: "reject"

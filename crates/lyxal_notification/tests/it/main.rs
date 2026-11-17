@@ -9,6 +9,7 @@
 //! retours des fournisseurs vérifiés.
 
 mod audience;
+mod channels;
 mod fake_provider;
 mod flow;
 mod integrations;

@@ -64,6 +64,15 @@ pub struct Reply {
 }
 
 impl Reply {
+    /// Redirection vers `location`.
+    pub fn redirect(location: &str) -> Self {
+        Self {
+            status: 302,
+            headers: vec![("location", location.to_string())],
+            body: String::new(),
+        }
+    }
+
     pub fn json(status: u16, body: serde_json::Value) -> Self {
         Self {
             status,
@@ -158,6 +167,24 @@ impl FakeProviders {
             base: format!("http://127.0.0.1:{port}"),
             state,
         }
+    }
+
+    /// Réponse servie par défaut sous un préfixe de chemin (premier segment).
+    pub fn set_default(&self, prefix: &str, reply: Reply) {
+        self.state
+            .lock()
+            .expect("verrou")
+            .defaults
+            .insert(prefix.to_string(), reply);
+    }
+
+    /// Port d'écoute.
+    pub fn port(&self) -> u16 {
+        self.base
+            .rsplit(':')
+            .next()
+            .and_then(|port| port.parse().ok())
+            .expect("port")
     }
 
     /// Réponses à servir, dans l'ordre, pour un fournisseur (`brevo`, `postmark`…).

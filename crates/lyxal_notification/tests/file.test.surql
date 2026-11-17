@@ -29,7 +29,7 @@ fn::i18n_translation_set({ key: "notification.auth_invitation.action", locale: "
 -- test: réservation des deux étapes : langue de l'envoi, textes des clés (surcharge de l'organisation), mise en page, réglages et secret scellé
 -- en tant que: worker
 {
-    LET $jobs = fn::notification_job_claim({ worker_id: "w1", limit: 10, lease_seconds: 60 }).data;
+    LET $jobs = fn::notification_job_claim({ channel: "email", worker_id: "w1", limit: 10, lease_seconds: 60 }).data;
     LET $devis = $jobs.find(|$j| $j.idempotency_key = "devis-1");
     LET $invit = $jobs.find(|$j| $j.idempotency_key = "invit-1");
     CREATE test_ref:devis CONTENT { job: $devis.job_id, token: $devis.claim_token };
@@ -38,7 +38,7 @@ fn::i18n_translation_set({ key: "notification.auth_invitation.action", locale: "
         AND $devis.{ locale, subject, sensitive, attempt, layout_html, secret, texts_error }
             == { locale: "en", subject: "Devis {{ payload.n }}", sensitive: false, attempt: 1, layout_html: NONE, secret: "enc:v2:cle-2026:AAAAAAAAAAAAAAAAAAAAAAAA", texts_error: NONE }
         -- Intégration de l'envoi : celle de l'installation (repli), sans aucun secret
-        AND $devis.integration == { id: notification_integration:relais, tenant: NONE, key: "relais", provider: "smtp", settings: { from_address: "noreply@lyxal.test", host: "127.0.0.1", port: 2525, security: "local_plain" }, credentials_path: "notification/smtp/relais", webhook_path: NONE }
+        AND $devis.integration == { id: notification_integration:relais, tenant: NONE, key: "relais", channel: "email", provider: "smtp", settings: { from_address: "noreply@lyxal.test", host: "127.0.0.1", port: 2525, security: "local_plain" }, credentials_path: "notification/smtp/relais", webhook_path: NONE }
         AND $devis.texts == [{ key: "notification.common.greeting", text: "Hello,", syntax: "plain", locale: "en", overridden: false, missing: false }]
         -- Langue du destinataire inactive (de) : langue par défaut de l'installation
         AND $invit.{ locale, sensitive, tenant, texts_error } == { locale: "fr", sensitive: true, tenant: auth_organization:alpha, texts_error: NONE }
@@ -49,11 +49,11 @@ fn::i18n_translation_set({ key: "notification.auth_invitation.action", locale: "
 
 -- test: une étape réservée ne l'est pas une seconde fois
 -- en tant que: worker
-RETURN fn::notification_job_claim({ worker_id: "w2" }).data == [];
+RETURN fn::notification_job_claim({ channel: "email", worker_id: "w2" }).data == [];
 
 -- test: la file est réservée au worker
 -- en tant que: admin
-RETURN fn::notification_job_claim({ worker_id: "w1" }).error.code == "NOTIFICATION_PERMISSION_DENIED"
+RETURN fn::notification_job_claim({ channel: "email", worker_id: "w1" }).error.code == "NOTIFICATION_PERMISSION_DENIED"
     AND fn::notification_purge({}).error.code == "NOTIFICATION_PERMISSION_DENIED";
 
 -- test: un jeton de réservation périmé est refusé
@@ -65,7 +65,7 @@ RETURN fn::notification_job_complete({ job_id: <string> test_ref:devis.job, clai
 {
     LET $r = fn::notification_job_complete({ job_id: <string> test_ref:devis.job, claim_token: test_ref:devis.token, integration: "notification_integration:relais", provider_message_id: "<abc@smtp>", response_code: 250, subject: "Quote D-1" }).data;
     RETURN $r.status == "completed" AND $r.run_status == "completed"
-        AND (SELECT VALUE [to, subject, status, provider_message_id] FROM ONLY $r.message) == ["client@exemple.fr", "Quote D-1", "sent", "<abc@smtp>"];
+        AND (SELECT VALUE [to, subject, status, provider_message_id] FROM ONLY $r.messages[0]) == ["client@exemple.fr", "Quote D-1", "sent", "<abc@smtp>"];
 };
 
 -- test: secret effacé, journal et événement notification.message.sent sans contenu
@@ -86,7 +86,7 @@ RETURN fn::notification_job_complete({ job_id: <string> test_ref:devis.job, clai
 -- en tant que: worker
 {
     LET $r = fn::notification_job_complete({ job_id: <string> test_ref:invit.job, claim_token: test_ref:invit.token, integration: "notification_integration:relais", subject: "Invitation à rejoindre Alpha BTP" }).data;
-    RETURN (SELECT VALUE subject FROM ONLY $r.message) IS NONE;
+    RETURN (SELECT VALUE subject FROM ONLY $r.messages[0]) IS NONE;
 };
 
 -- préparation: déclenchement pour l'échec temporaire
@@ -95,7 +95,7 @@ fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "dev
 -- test: échec temporaire : nouvelle tentative programmée
 -- en tant que: worker
 {
-    LET $job = fn::notification_job_claim({ worker_id: "w1" }).data[0];
+    LET $job = fn::notification_job_claim({ channel: "email", worker_id: "w1" }).data[0];
     LET $r = fn::notification_job_fail({ job_id: <string> $job.job_id, claim_token: $job.claim_token, integration: "notification_integration:relais", class: "transient", code: "NOTIFICATION_SMTP_TRANSIENT", detail: "421 service indisponible", retry_delay_seconds: 0 }).data;
     RETURN $r.status == "queued" AND $r.next_retry_at IS NOT NONE AND $r.run_status IS NONE;
 };
@@ -103,7 +103,7 @@ fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "dev
 -- test: dernière tentative échouée : échec définitif, secret effacé, événement notification.message.failed
 -- en tant que: worker
 {
-    LET $job = fn::notification_job_claim({ worker_id: "w1" }).data[0];
+    LET $job = fn::notification_job_claim({ channel: "email", worker_id: "w1" }).data[0];
     LET $r = fn::notification_job_fail({ job_id: <string> $job.job_id, claim_token: $job.claim_token, integration: "notification_integration:relais", class: "transient", code: "NOTIFICATION_SMTP_TRANSIENT", detail: "421", retry_delay_seconds: 0 }).data;
     RETURN $job.attempt == 2 AND $r.status == "failed" AND $r.run_status == "failed";
 };
@@ -125,7 +125,7 @@ fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "dev
 -- test: destinataire refusé : échec définitif dès la première tentative, adresse supprimée
 -- en tant que: worker
 {
-    LET $jobs = fn::notification_job_claim({ worker_id: "w1" }).data;
+    LET $jobs = fn::notification_job_claim({ channel: "email", worker_id: "w1" }).data;
     LET $rejet = $jobs.find(|$j| $j.idempotency_key = "rejet-1");
     LET $perm = $jobs.find(|$j| $j.idempotency_key = "permanent-1");
     LET $a = fn::notification_job_fail({ job_id: <string> $rejet.job_id, claim_token: $rejet.claim_token, integration: "notification_integration:relais", class: "recipient_rejected", code: "550", detail: "5.1.1 utilisateur inconnu" }).data;
@@ -140,7 +140,7 @@ RETURN fn::notification_suppression_list({ tenant: "auth_organization:alpha" }).
 -- test: entrées invalides refusées
 -- en tant que: worker
 RETURN fn::notification_job_fail({ job_id: <string> test_ref:devis.job, claim_token: test_ref:devis.token, integration: "notification_integration:relais", class: "inconnue", code: "X" }).error.code == "NOTIFICATION_INVALID_INPUT"
-    AND fn::notification_job_claim({ worker_id: "", limit: 1000 }).error.code == "NOTIFICATION_INVALID_INPUT";
+    AND fn::notification_job_claim({ channel: "email", worker_id: "", limit: 1000 }).error.code == "NOTIFICATION_INVALID_INPUT";
 
 -- préparation: déclenchement dont le secret expire avant l'envoi
 {
@@ -151,7 +151,7 @@ RETURN fn::notification_job_fail({ job_id: <string> test_ref:devis.job, claim_to
 -- test: secret expiré : étape annulée sans envoi en retard, déclenchement abandonné, secret effacé
 -- en tant que: worker
 {
-    LET $jobs = fn::notification_job_claim({ worker_id: "w1" }).data;
+    LET $jobs = fn::notification_job_claim({ channel: "email", worker_id: "w1" }).data;
     LET $run = (SELECT * FROM ONLY notification_run WHERE idempotency_key = "expire-1" LIMIT 1);
     LET $job = (SELECT * FROM ONLY notification_job WHERE run = $run.id LIMIT 1);
     RETURN $jobs == [] AND $job.status == "canceled" AND $job.last_error.code == "NOTIFICATION_RUN_EXPIRED"
@@ -167,7 +167,7 @@ RETURN fn::notification_job_fail({ job_id: <string> test_ref:devis.job, claim_to
 -- test: réservation des deux étapes
 -- en tant que: worker
 {
-    LET $jobs = fn::notification_job_claim({ worker_id: "w1" }).data;
+    LET $jobs = fn::notification_job_claim({ channel: "email", worker_id: "w1" }).data;
     CREATE test_ref:bail1 CONTENT { job: $jobs.find(|$j| $j.idempotency_key = "bail-1").job_id, token: $jobs.find(|$j| $j.idempotency_key = "bail-1").claim_token };
     RETURN array::len($jobs) == 2;
 };
@@ -181,7 +181,7 @@ RETURN fn::notification_job_fail({ job_id: <string> test_ref:devis.job, claim_to
 -- test: réservation expirée reprise par un autre worker ; après la dernière tentative : échec définitif
 -- en tant que: worker
 {
-    LET $jobs = fn::notification_job_claim({ worker_id: "w2" }).data;
+    LET $jobs = fn::notification_job_claim({ channel: "email", worker_id: "w2" }).data;
     LET $lost = (SELECT * FROM ONLY notification_job WHERE run.idempotency_key = "bail-2" LIMIT 1);
     RETURN $jobs.idempotency_key == ["bail-1"] AND $jobs[0].attempt == 2
         AND $lost.status == "failed" AND $lost.last_error.code == "NOTIFICATION_JOB_LEASE_EXPIRED";
@@ -195,7 +195,7 @@ RETURN fn::notification_job_complete({ job_id: <string> test_ref:bail1.job, clai
 -- en tant que: worker
 {
     LET $r = fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "renouv-1", to: { subscriber_id: "email:r@exemple.fr", email: "r@exemple.fr" }, payload: { n: "D-8" } }).data;
-    LET $job = fn::notification_job_claim({ worker_id: "w3", lease_seconds: 10 }).data[0];
+    LET $job = fn::notification_job_claim({ channel: "email", worker_id: "w3", lease_seconds: 10 }).data[0];
     LET $renewed = fn::notification_job_renew({ job_id: <string> $job.job_id, claim_token: $job.claim_token, lease_seconds: 600 }).data;
     LET $stale = fn::notification_job_renew({ job_id: <string> $job.job_id, claim_token: "01a1bca0-0000-7000-8000-000000000000" });
     LET $released = fn::notification_job_release({ job_id: <string> $job.job_id, claim_token: $job.claim_token }).data;
@@ -235,7 +235,7 @@ fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "dev
 -- test: le worker (compte de service, sans droit de lire l'organisation) envoie dans la langue de l'organisation
 -- en tant que: worker
 {
-    LET $job = fn::notification_job_claim({ worker_id: "w1", limit: 10, lease_seconds: 60 }).data.find(|$j| $j.idempotency_key = "devis-sans-langue");
+    LET $job = fn::notification_job_claim({ channel: "email", worker_id: "w1", limit: 10, lease_seconds: 60 }).data.find(|$j| $j.idempotency_key = "devis-sans-langue");
     RETURN array::len(SELECT VALUE id FROM auth_organization) == 0
         AND $job.{ locale, texts_error } == { locale: "en", texts_error: NONE }
         AND $job.texts.text == ["Hello,"];
