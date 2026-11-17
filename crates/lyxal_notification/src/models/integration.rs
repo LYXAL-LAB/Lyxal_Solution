@@ -126,6 +126,10 @@ pub struct IntegrationSaveParams {
     pub credentials_path: Option<String>,
     /// Chemin du secret des retours.
     pub webhook_path: Option<String>,
+    /// Modification : retire la condition (`condition` est alors ignorée).
+    pub clear_condition: Option<bool>,
+    /// Modification : retire le secret des retours (`webhook_path` est alors ignoré).
+    pub clear_webhook: Option<bool>,
 }
 
 /// Paramètres de `fn::notification_integration_get` (par identifiant).

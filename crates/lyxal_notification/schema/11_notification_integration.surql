@@ -83,7 +83,8 @@ DEFINE TABLE OVERWRITE notification_provider_event
     PERMISSIONS
         FOR select WHERE fn::notification_can({ action: "read", tenant: tenant })
         FOR create, delete WHERE fn::notification_can({ action: "worker", tenant: tenant })
-        FOR update NONE
+        -- Rattachement d'un retour arrivé avant l'enregistrement de son message
+        FOR update WHERE fn::notification_can({ action: "worker", tenant: tenant })
     COMMENT "Retour normalisé d'un fournisseur (délivré, rejeté, plainte), dédoublonné ; aucun corps";
 
 DEFINE FIELD OVERWRITE integration ON TABLE notification_provider_event TYPE record<notification_integration> REFERENCE ON DELETE CASCADE READONLY COMMENT "Intégration qui a reçu le retour";
@@ -91,10 +92,12 @@ DEFINE FIELD OVERWRITE tenant ON TABLE notification_provider_event TYPE option<r
 DEFINE FIELD OVERWRITE provider_event_id ON TABLE notification_provider_event TYPE string ASSERT string::len($value) >= 1 AND string::len($value) <= 256 READONLY COMMENT "Identifiant de l'événement chez le fournisseur";
 DEFINE FIELD OVERWRITE type ON TABLE notification_provider_event TYPE string ASSERT $value IN ["delivered", "bounced", "soft_bounced", "complained"] READONLY COMMENT "Type normalisé";
 DEFINE FIELD OVERWRITE message ON TABLE notification_provider_event TYPE option<record<notification_message>> REFERENCE ON DELETE UNSET COMMENT "Message lié (NONE : message inconnu)";
-DEFINE FIELD OVERWRITE address ON TABLE notification_provider_event TYPE option<string> READONLY COMMENT "Adresse du message (suppression)";
+DEFINE FIELD OVERWRITE provider_message_id ON TABLE notification_provider_event TYPE option<string> ASSERT $value IS NONE OR string::len($value) <= 512 READONLY COMMENT "Identifiant du message chez le fournisseur : un retour arrivé avant l'enregistrement de l'envoi est rapproché du message à sa création";
+DEFINE FIELD OVERWRITE address ON TABLE notification_provider_event TYPE option<string> COMMENT "Adresse du message (suppression)";
 DEFINE FIELD OVERWRITE occurred_at ON TABLE notification_provider_event TYPE datetime READONLY COMMENT "Date de l'événement chez le fournisseur";
 DEFINE FIELD OVERWRITE received_at ON TABLE notification_provider_event TYPE datetime DEFAULT time::now() READONLY COMMENT "Réception";
 DEFINE FIELD OVERWRITE purge_after ON TABLE notification_provider_event TYPE datetime READONLY COMMENT "Date de purge (réglage retention_days_log)";
 
 DEFINE INDEX OVERWRITE notification_provider_event_unique ON TABLE notification_provider_event FIELDS integration, provider_event_id UNIQUE;
+DEFINE INDEX OVERWRITE notification_provider_event_pending ON TABLE notification_provider_event FIELDS integration, provider_message_id;
 DEFINE INDEX OVERWRITE notification_provider_event_purge ON TABLE notification_provider_event FIELDS purge_after;

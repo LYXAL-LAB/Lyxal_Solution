@@ -477,6 +477,49 @@ DEFINE FUNCTION OVERWRITE fn::notification_integration_test_record($params: obje
 } COMMENT "Enregistre l'issue d'un essai d'intégration ({ integration, ok, code }), appelée par l'hôte après l'envoi ; jamais de secret. Session système de l'hôte (notification.worker)";
 
 -- ----------------------------------------------------------------------------
+-- fn::notification_provider_event_apply (interne) : effets d'un retour sur son message
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::notification_provider_event_apply($params: object) -> option<string> {
+    LET $message = $params.message;
+    -- État du message : délivré seulement depuis envoyé ; un rejet ou une plainte prime ; un
+    -- rejet temporaire ne change rien
+    LET $status = IF $params.type = "delivered" { IF $message.status = "sent" { "delivered" } ELSE { NONE } }
+        ELSE IF $params.type = "bounced" { "bounced" } ELSE IF $params.type = "complained" { "complained" } ELSE { NONE };
+    IF $status IS NOT NONE AND $status != $message.status {
+        LET $updated = (UPDATE ONLY $message.id SET status = $status, status_at = time::now());
+        IF $updated == NONE { RETURN "NOTIFICATION_WRITE_FORBIDDEN"; };
+    };
+    -- Rejet définitif et plainte : adresse ajoutée à la liste de suppression de l'organisation du message
+    IF $params.type IN ["bounced", "complained"] {
+        INSERT IGNORE INTO notification_suppression {
+            tenant: $params.tenant, channel: "email", address: string::lowercase($message.to),
+            reason: IF $params.type = "bounced" { "hard_bounce" } ELSE { "complaint" },
+            source: string::slice(string::concat("provider:", $params.event_id), 0, 256)
+        };
+    };
+    RETURN NONE;
+} COMMENT "Interne : applique un retour ({ type, message : { id, to, status }, tenant, event_id }) à son message : état mis à jour, adresse supprimée sur rejet définitif ou plainte. NONE, ou NOTIFICATION_WRITE_FORBIDDEN";
+
+-- ----------------------------------------------------------------------------
+-- fn::notification_provider_event_reconcile (interne) : retours arrivés avant le message
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::notification_provider_event_reconcile($params: object) -> option<string> {
+    IF $params.provider_message_id IS NONE { RETURN NONE; };
+    LET $pending = (SELECT id, type, provider_event_id, occurred_at FROM notification_provider_event
+        WHERE integration = $params.integration AND provider_message_id = $params.provider_message_id AND message IS NONE
+        ORDER BY occurred_at);
+    FOR $event IN $pending {
+        LET $message = (SELECT id, to, status FROM ONLY $params.message);
+        LET $applied = fn::notification_provider_event_apply({ type: $event.type, message: $message, tenant: $params.tenant, event_id: $event.provider_event_id });
+        IF $applied IS NOT NONE { RETURN $applied; };
+        LET $linked = (UPDATE ONLY $event.id SET message = $params.message, address = $message.to);
+        IF $linked == NONE { RETURN "NOTIFICATION_WRITE_FORBIDDEN"; };
+    };
+    RETURN NONE;
+} COMMENT "Interne : à la création d'un message ({ integration, provider_message_id, message, tenant }), applique dans l'ordre les retours du fournisseur déjà reçus pour ce message et les lui rattache. NONE, ou NOTIFICATION_WRITE_FORBIDDEN";
+
 -- fn::notification_provider_event_record (hôte)
 -- ----------------------------------------------------------------------------
 
@@ -509,7 +552,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_provider_event_record($params: object
     LET $settings = fn::notification_settings_effective({ tenant: $tenant });
     LET $created = (INSERT IGNORE INTO notification_provider_event {
         integration: $integration.id, tenant: $tenant, provider_event_id: $p.event_id, type: $p.type,
-        message: $message.id, address: $message.to, occurred_at: $p.occurred_at ?? time::now(),
+        message: $message.id, provider_message_id: $p.provider_message_id, address: $message.to, occurred_at: $p.occurred_at ?? time::now(),
         purge_after: time::now() + duration::from_days($settings.retention_days_log)
     });
     IF array::len($created) = 0 {
@@ -517,23 +560,10 @@ DEFINE FUNCTION OVERWRITE fn::notification_provider_event_record($params: object
         IF $raced IS NONE { RETURN fn::error_result("NOTIFICATION_WRITE_FORBIDDEN", $p.language, { table: "notification_provider_event" }); };
         RETURN fn::result_ok({ event: $raced, status: "duplicate", message: NONE });
     };
-    -- Retour sans message connu : gardé pour le suivi, sans autre effet
+    -- Retour sans message connu (envoi pas encore enregistré, ou inconnu) : gardé avec
+    -- l'identifiant du message, rapproché à la création du message
     IF $message IS NONE { RETURN fn::result_ok({ event: $created[0].id, status: "unmatched", message: NONE }); };
-    -- État du message : délivré seulement depuis envoyé ; un rejet ou une plainte prime ; un
-    -- rejet temporaire ne change rien
-    LET $status = IF $p.type = "delivered" { IF $message.status = "sent" { "delivered" } ELSE { NONE } }
-        ELSE IF $p.type = "bounced" { "bounced" } ELSE IF $p.type = "complained" { "complained" } ELSE { NONE };
-    IF $status IS NOT NONE AND $status != $message.status {
-        LET $updated = (UPDATE ONLY $message.id SET status = $status, status_at = time::now());
-        IF $updated == NONE { RETURN fn::error_result("NOTIFICATION_WRITE_FORBIDDEN", $p.language, { table: "notification_message" }); };
-    };
-    -- Rejet définitif et plainte : adresse ajoutée à la liste de suppression de l'organisation du message
-    IF $p.type IN ["bounced", "complained"] {
-        INSERT IGNORE INTO notification_suppression {
-            tenant: $tenant, channel: "email", address: string::lowercase($message.to),
-            reason: IF $p.type = "bounced" { "hard_bounce" } ELSE { "complaint" },
-            source: string::slice(string::concat("provider:", $p.event_id), 0, 256)
-        };
-    };
+    LET $applied = fn::notification_provider_event_apply({ type: $p.type, message: $message, tenant: $tenant, event_id: $p.event_id });
+    IF $applied IS NOT NONE { RETURN fn::error_result($applied, $p.language, { table: "notification_message" }); };
     RETURN fn::result_ok({ event: $created[0].id, status: "recorded", message: $message.id });
-} COMMENT "Enregistre un retour de fournisseur vérifié par l'hôte ({ integration, event_id, type : delivered, bounced, soft_bounced, complained ; provider_message_id, occurred_at }) : dédoublonné par (intégration, identifiant de l'événement) ; message de l'intégration retrouvé par son identifiant chez le fournisseur et son état mis à jour ; rejet définitif ou plainte : adresse du message ajoutée à la liste de suppression de son organisation. Renvoie { event, status : recorded, duplicate, unmatched ; message }. Session système de l'hôte (notification.worker)";
+} COMMENT "Enregistre un retour de fournisseur vérifié par l'hôte ({ integration, event_id, type : delivered, bounced, soft_bounced, complained ; provider_message_id, occurred_at }) : dédoublonné par (intégration, identifiant de l'événement) ; message de l'intégration retrouvé par son identifiant chez le fournisseur et son état mis à jour ; rejet définitif ou plainte : adresse du message ajoutée à la liste de suppression de son organisation. Retour arrivé avant l'enregistrement de l'envoi : gardé (unmatched) avec l'identifiant du message, puis appliqué à la création du message. Renvoie { event, status : recorded, duplicate, unmatched ; message }. Session système de l'hôte (notification.worker)";

@@ -574,3 +574,42 @@ async fn mailgun_and_resend_webhooks_are_verified() {
         Err(WebhookError::Unauthorized)
     );
 }
+
+#[tokio::test]
+async fn a_condition_and_a_webhook_secret_are_cleared_through_the_typed_update() {
+    let client = installed_client().await;
+    let vault = vault(&client);
+    alpha(&client).await;
+    for path in ["notification/postmark/api", "notification/postmark/webhook"] {
+        put_secret(
+            &client,
+            &vault,
+            Some("auth_organization:alpha"),
+            path,
+            r#"{"api_key":"x"}"#,
+        )
+        .await;
+    }
+    let created = integration(
+        &client,
+        IntegrationSaveParams {
+            condition: Some(serde_json::json!({ "field": "payload.n", "op": "exists" })),
+            webhook_path: Some("notification/postmark/webhook".into()),
+            ..org_integration("postmark", "postmark", 100)
+        },
+    )
+    .await;
+    assert!(created.condition.is_some() && created.webhook_path.is_some());
+    let updated = NotificationStore::new(client.clone())
+        .integration_update(IntegrationSaveParams {
+            tenant: Some("auth_organization:alpha".into()),
+            key: "postmark".into(),
+            clear_condition: Some(true),
+            clear_webhook: Some(true),
+            ..IntegrationSaveParams::default()
+        })
+        .await
+        .expect("modification");
+    assert_eq!(updated.condition, None);
+    assert_eq!(updated.webhook_path, None);
+}

@@ -354,6 +354,22 @@ RETURN (SELECT VALUE event_type FROM event_outbox WHERE event_type IN ["notifica
         AND $moved.error.code == "NOTIFICATION_INTEGRATION_SECRET_INVALID";
 };
 
+-- test: retour du fournisseur arrivé avant l'enregistrement de l'envoi : gardé, puis appliqué à la création du message (état, suppression)
+{
+    fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "rapide-1", to: { subscriber_id: "rapide", email: "rapide@exemple.fr" } });
+    LET $job = fn::notification_job_claim({ worker_id: "w9", limit: 50 }).data.find(|$j| $j.idempotency_key = "rapide-1");
+    LET $early = fn::notification_provider_event_record({ integration: <string> $job.integration.id, event_id: "Bounce:rapide", type: "bounced", provider_message_id: "pm-rapide" }).data;
+    LET $done = fn::notification_job_complete({ job_id: <string> $job.job_id, claim_token: $job.claim_token, integration: <string> $job.integration.id, provider_message_id: "pm-rapide", response_code: 200, subject: "Devis" }).data;
+    RETURN $early.{ status, message } == { status: "unmatched", message: NONE }
+        AND (SELECT VALUE status FROM ONLY $done.message) == "bounced"
+        AND (SELECT VALUE [message, address] FROM ONLY notification_provider_event WHERE provider_event_id = "Bounce:rapide" LIMIT 1) == [$done.message, "rapide@exemple.fr"]
+        AND count(SELECT id FROM notification_suppression WHERE address = "rapide@exemple.fr" AND reason = "hard_bounce") == 1
+        -- Fonctions internes : rien à rapprocher sans identifiant ; un rejet temporaire ne change pas l'état
+        AND fn::notification_provider_event_reconcile({ integration: $job.integration.id, provider_message_id: NONE, message: $done.message, tenant: auth_organization:alpha }) == NONE
+        AND fn::notification_provider_event_apply({ type: "soft_bounced", message: (SELECT id, to, status FROM ONLY $done.message), tenant: auth_organization:alpha, event_id: "x" }) == NONE
+        AND (SELECT VALUE status FROM ONLY $done.message) == "bounced";
+};
+
 -- préparation: les permissions de table refusent désormais toute écriture des intégrations et des retours (fin du fichier)
 {
     DEFINE TABLE OVERWRITE notification_integration TYPE NORMAL SCHEMAFULL PERMISSIONS

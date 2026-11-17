@@ -201,6 +201,9 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_complete($params: object) {
         status: "sent"
     });
     IF $message == NONE { RETURN fn::error_result("NOTIFICATION_WRITE_FORBIDDEN", $p.language, { table: "notification_message" }); };
+    -- Retours du fournisseur reçus avant cet enregistrement (webhook plus rapide que le worker)
+    LET $reconciled = fn::notification_provider_event_reconcile({ integration: $integration.id, provider_message_id: $p.provider_message_id, message: $message.id, tenant: $run.tenant });
+    IF $reconciled IS NOT NONE { RETURN fn::error_result($reconciled, $p.language, { table: "notification_provider_event" }); };
     CREATE notification_delivery_log CONTENT {
         run: $run.id, job: $job.id, attempt: $job.attempts, status: "sent",
         code: IF $p.response_code IS NONE { NONE } ELSE { <string> $p.response_code },
