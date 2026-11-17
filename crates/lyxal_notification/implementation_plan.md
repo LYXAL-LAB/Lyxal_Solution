@@ -8,7 +8,9 @@ par un flux de `lyxal-server` (K6). Il fournit aussi aux conditions d'étape la 
 d'un message du fil (« sauter si déjà lu », décision C6). Les écrans eux-mêmes relèvent de la
 console (V2). Aucune ligne de code avant la validation du CTO (`.agents/AGENTS.md` §3).
 
-## 1. Questions soumises au CTO
+## 1. Décisions du CTO
+
+Décisions F1 à F8 **validées par le CTO** le 17 novembre 2026, telles que proposées ci-dessous.
 
 | N° | Question | Proposition |
 | :- | :--- | :--- |
