@@ -90,15 +90,15 @@ impl SmtpProvider {
         self
     }
 
-    /// Adresse vérifiée du relais : `host` résolu (une adresse IP littérale est prise telle
-    /// quelle) et chaque adresse obtenue contrôlée ; la boucle locale n'est permise qu'au relais
-    /// de l'installation.
-    async fn relay_address(
+    /// Adresses vérifiées du relais, dans l'ordre de la résolution : `host` résolu (une adresse
+    /// IP littérale est prise telle quelle) et chaque adresse obtenue contrôlée ; la boucle
+    /// locale n'est permise qu'au relais de l'installation.
+    async fn relay_addresses(
         &self,
         scope: IntegrationScope,
         host: &str,
         port: u16,
-    ) -> Result<SocketAddr, ProviderError> {
+    ) -> Result<Vec<SocketAddr>, ProviderError> {
         let addresses = match host.parse::<IpAddr>() {
             Ok(ip) => vec![SocketAddr::new(ip, port)],
             Err(_) => tokio::time::timeout(self.timeout, self.resolver.lookup(host, port))
@@ -120,19 +120,20 @@ impl SmtpProvider {
                 detail: "adresse du relais privée, locale ou réservée".to_string(),
             });
         }
-        addresses
-            .first()
-            .copied()
-            .ok_or_else(|| ProviderError::unavailable("nom du relais introuvable"))
+        if addresses.is_empty() {
+            return Err(ProviderError::unavailable("nom du relais introuvable"));
+        }
+        Ok(addresses)
     }
 
-    async fn transport(
+    /// Un transport par adresse vérifiée, dans l'ordre de la résolution.
+    async fn transports(
         &self,
         scope: IntegrationScope,
         settings: &IntegrationSettings,
         credentials: &Credentials,
         domain: &str,
-    ) -> Result<AsyncSmtpTransport<Tokio1Executor>, ProviderError> {
+    ) -> Result<Vec<AsyncSmtpTransport<Tokio1Executor>>, ProviderError> {
         let host = settings
             .host
             .as_deref()
@@ -156,7 +157,7 @@ impl SmtpProvider {
                 ));
             }
         }
-        let address = self.relay_address(scope, &host, port).await?;
+        let addresses = self.relay_addresses(scope, &host, port).await?;
         let tls = |host: &str| {
             TlsParameters::new(host.to_string())
                 .map_err(|_| ProviderError::configuration("hôte SMTP invalide"))
@@ -166,28 +167,61 @@ impl SmtpProvider {
             SmtpSecurity::StartTls => Tls::Required(tls(&host)?),
             SmtpSecurity::LocalPlain => Tls::None,
         };
-        // Connexion à l'adresse vérifiée ; le nom reste celui que le certificat doit porter
-        let mut builder =
-            AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(address.ip().to_string())
-                .port(port)
-                .tls(tls)
-                .timeout(Some(self.timeout))
-                .hello_name(ClientId::Domain(domain.to_string()));
-        match credentials {
-            Credentials::Login { username, password } => {
-                builder = builder.credentials(SmtpCredentials::new(
-                    username.expose_secret().to_string(),
-                    password.expose_secret().to_string(),
-                ));
-            }
-            Credentials::None => {}
+        let credentials = match credentials {
+            Credentials::Login { username, password } => Some(SmtpCredentials::new(
+                username.expose_secret().to_string(),
+                password.expose_secret().to_string(),
+            )),
+            Credentials::None => None,
             Credentials::ApiKey(_) => {
                 return Err(ProviderError::secret(
                     "identifiant et mot de passe SMTP attendus",
                 ))
             }
+        };
+        // Connexion à une adresse vérifiée ; le nom reste celui que le certificat doit porter
+        Ok(addresses
+            .iter()
+            .map(|address| {
+                let builder = AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(
+                    address.ip().to_string(),
+                )
+                .port(port)
+                .tls(tls.clone())
+                .timeout(Some(self.timeout))
+                .hello_name(ClientId::Domain(domain.to_string()));
+                match &credentials {
+                    Some(credentials) => builder.credentials(credentials.clone()).build(),
+                    None => builder.build(),
+                }
+            })
+            .collect())
+    }
+
+    /// Premier transport qui joint le relais, dans l'ordre de la résolution (adresse IPv6
+    /// injoignable, serveur arrêté : adresse suivante, sans nouvelle résolution). Une seule
+    /// adresse : prise sans essai préalable.
+    async fn reachable(
+        mut transports: Vec<AsyncSmtpTransport<Tokio1Executor>>,
+    ) -> Result<AsyncSmtpTransport<Tokio1Executor>, ProviderError> {
+        if transports.len() == 1 {
+            if let Some(transport) = transports.pop() {
+                return Ok(transport);
+            }
         }
-        Ok(builder.build())
+        let mut last = None;
+        for transport in transports {
+            match transport.test_connection().await {
+                Ok(true) => return Ok(transport),
+                Ok(false) => last = None,
+                Err(error) => last = Some(classify_error(&error)),
+            }
+        }
+        Err(last.unwrap_or_else(|| ProviderError {
+            class: FailureClass::Transient,
+            code: "NOTIFICATION_SMTP_TRANSIENT".to_string(),
+            detail: "connexion au relais SMTP impossible".to_string(),
+        }))
     }
 
     fn message(
@@ -247,9 +281,11 @@ impl EmailProvider for SmtpProvider {
             .ok_or_else(|| ProviderError::configuration("adresse d'expédition invalide"))?;
         let message_id = format!("<{}@{domain}>", uuid::Uuid::now_v7().simple());
         let message = Self::message(settings, email, &message_id)?;
-        let transport = self
-            .transport(scope, settings, credentials, &domain)
-            .await?;
+        let transport = Self::reachable(
+            self.transports(scope, settings, credentials, &domain)
+                .await?,
+        )
+        .await?;
         match transport.send(message).await {
             Ok(response) => Ok(ProviderReceipt {
                 message_id: normalize_message_id(&message_id),
@@ -351,7 +387,7 @@ mod tests {
         let provider = provider();
         for host in ["127.0.0.1", "localhost"] {
             assert!(provider
-                .transport(
+                .transports(
                     IntegrationScope::Installation,
                     &settings(host, "local_plain"),
                     &Credentials::None,
@@ -408,7 +444,7 @@ mod tests {
             .expect_err("réseau privé refusé");
         assert_eq!(refused.code, "NOTIFICATION_DESTINATION_FORBIDDEN");
         assert!(provider
-            .transport(
+            .transports(
                 IntegrationScope::Installation,
                 &settings("relais.local.test", "starttls"),
                 &Credentials::None,
@@ -427,5 +463,67 @@ mod tests {
             .await
             .expect_err("nom inconnu");
         assert_eq!(unknown.class, FailureClass::Transient);
+    }
+
+    /// Relais SMTP minimal sur la boucle locale : accepte chaque connexion et chaque message.
+    async fn fake_relay() -> u16 {
+        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("écoute");
+        let port = listener.local_addr().expect("adresse").port();
+        tokio::spawn(async move {
+            while let Ok((stream, _)) = listener.accept().await {
+                tokio::spawn(async move {
+                    let (read, mut write) = stream.into_split();
+                    let mut lines = BufReader::new(read).lines();
+                    let _ = write.write_all(b"220 essai ESMTP\r\n").await;
+                    let mut data = false;
+                    while let Ok(Some(line)) = lines.next_line().await {
+                        let reply: &[u8] = if data {
+                            if line != "." {
+                                continue;
+                            }
+                            data = false;
+                            b"250 recu\r\n"
+                        } else if line.to_ascii_uppercase().starts_with("DATA") {
+                            data = true;
+                            b"354 suite\r\n"
+                        } else if line.to_ascii_uppercase().starts_with("QUIT") {
+                            let _ = write.write_all(b"221 fin\r\n").await;
+                            break;
+                        } else {
+                            b"250 ok\r\n"
+                        };
+                        if write.write_all(reply).await.is_err() {
+                            break;
+                        }
+                    }
+                });
+            }
+        });
+        port
+    }
+
+    #[tokio::test]
+    async fn next_vetted_address_is_tried_when_the_first_is_unreachable() {
+        let port = fake_relay().await;
+        // 127.0.0.2 : rien n'y écoute (connexion refusée) ; 127.0.0.1 : le relais
+        let resolver = crate::StaticResolver::new()
+            .with("localhost", SocketAddr::from(([127, 0, 0, 2], port)))
+            .with("localhost", SocketAddr::from(([127, 0, 0, 1], port)));
+        let provider = SmtpProvider::new(Duration::from_secs(5)).with_resolver(Arc::new(resolver));
+        let mut relay = settings("localhost", "local_plain");
+        relay.port = Some(i64::from(port));
+        let receipt = provider
+            .send(
+                IntegrationScope::Installation,
+                &relay,
+                &email(),
+                &Credentials::None,
+            )
+            .await
+            .expect("envoi par la seconde adresse");
+        assert_eq!(receipt.code, 250);
     }
 }
