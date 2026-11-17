@@ -7,7 +7,9 @@ notifications qui apparaissent sur l'écran d'un navigateur (**Web Push**), d'un
 `lyxal_crypto` comme le CTO l'a validé (K8) : signatures ES256 et RS256, chiffrement Web Push.
 Aucune ligne de code avant la validation du CTO (`.agents/AGENTS.md` §3).
 
-## 1. Questions soumises au CTO
+## 1. Décisions du CTO
+
+Décisions G1 à G6 **validées par le CTO** le 17 novembre 2026, telles que proposées ci-dessous.
 
 | N° | Question | Proposition |
 | :- | :--- | :--- |
