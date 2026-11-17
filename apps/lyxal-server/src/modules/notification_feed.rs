@@ -516,6 +516,15 @@ impl FeedHubWorker {
         }
     }
 
+    /// Travail sur la base mis en course avec l'annulation : `None` si le worker est annulé
+    /// avant la fin (une base bloquée ne retarde jamais l'arrêt).
+    async fn until_cancelled<F: std::future::Future>(
+        ctx: &WorkerContext,
+        work: F,
+    ) -> Option<F::Output> {
+        race_cancellation(&ctx.cancellation, work).await
+    }
+
     /// Attente avant une reprise ; vrai si le worker est annulé entre-temps.
     async fn pause(&self, ctx: &WorkerContext) -> bool {
         tokio::select! {
@@ -532,11 +541,16 @@ impl LyxalWorker for FeedHubWorker {
     }
 
     async fn run(&self, ctx: WorkerContext) -> Result<(), RuntimeError> {
+        // Flux fermés à la sortie, même si la tâche est interrompue de force par le superviseur
+        let _close = CloseOnDrop(&self.hub);
         let period = self.hub.settings().counts_interval;
         let mut counts = tokio::time::interval_at(tokio::time::Instant::now() + period, period);
         counts.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
         'live: while !ctx.is_cancelled() {
-            let (mut stream, id) = match self.open().await {
+            let Some(opened) = Self::until_cancelled(&ctx, self.open()).await else {
+                break;
+            };
+            let (mut stream, id) = match opened {
                 Ok((stream, id)) => {
                     self.hub.set_live_query(id.clone());
                     (stream, id)
@@ -551,25 +565,38 @@ impl LyxalWorker for FeedHubWorker {
             };
             self.hub.inner.generation.fetch_add(1, Ordering::SeqCst);
             // Changements perdus pendant la coupure : compteurs relus pour tous
-            self.hub.push_counts_all().await;
+            if Self::until_cancelled(&ctx, self.hub.push_counts_all())
+                .await
+                .is_none()
+            {
+                break;
+            }
             loop {
                 tokio::select! {
                     _ = ctx.cancellation.cancelled() => break 'live,
                     _ = counts.tick() => {
-                        if !self.keep(id.as_deref()).await {
-                            break;
+                        match Self::until_cancelled(&ctx, self.keep(id.as_deref())).await {
+                            None => break 'live,
+                            Some(false) => break,
+                            Some(true) => {}
                         }
-                        self.hub.push_counts_all().await;
+                        if Self::until_cancelled(&ctx, self.hub.push_counts_all()).await.is_none() {
+                            break 'live;
+                        }
                     }
                     _ = self.hub.inner.probe.notified() => {
-                        if !self.keep(id.as_deref()).await {
-                            break;
+                        match Self::until_cancelled(&ctx, self.keep(id.as_deref())).await {
+                            None => break 'live,
+                            Some(false) => break,
+                            Some(true) => {}
                         }
                     }
                     next = stream.next() => match next {
                         Some(Ok(notification)) => {
                             let created = matches!(notification.action, surrealdb::types::Action::Create);
-                            self.hub.dispatch(notification.data, created).await;
+                            if Self::until_cancelled(&ctx, self.hub.dispatch(notification.data, created)).await.is_none() {
+                                break 'live;
+                            }
                         }
                         Some(Err(error)) => {
                             tracing::warn!(error = %error, "requête LIVE du fil en erreur : reprise");
@@ -588,7 +615,60 @@ impl LyxalWorker for FeedHubWorker {
                 break;
             }
         }
-        self.hub.close_all();
+        self.hub.set_live_query(None);
         Ok(())
+    }
+}
+
+/// `work` mis en course avec `cancellation` : `None` si l'annulation arrive d'abord.
+async fn race_cancellation<F: std::future::Future>(
+    cancellation: &CancellationToken,
+    work: F,
+) -> Option<F::Output> {
+    tokio::select! {
+        _ = cancellation.cancelled() => None,
+        output = work => Some(output),
+    }
+}
+
+/// Ferme tous les flux du fil quand le worker s'arrête, normalement ou interrompu de force
+/// (la tâche abandonnée par le superviseur libère ce garde).
+struct CloseOnDrop<'a>(&'a FeedHub);
+
+impl Drop for CloseOnDrop<'_> {
+    fn drop(&mut self) {
+        self.0.close_all();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn a_stalled_database_wait_gives_way_to_cancellation() {
+        let cancellation = CancellationToken::new();
+        cancellation.cancel();
+        // Une attente qui ne finit jamais (base bloquée) ne retarde pas l'arrêt
+        let outcome = race_cancellation(&cancellation, std::future::pending::<()>()).await;
+        assert!(outcome.is_none());
+        let live = CancellationToken::new();
+        assert_eq!(race_cancellation(&live, async { 7 }).await, Some(7));
+    }
+
+    #[tokio::test]
+    async fn a_forcibly_aborted_worker_still_closes_the_hub() {
+        let hub = FeedHub::new(FeedSettings::default());
+        let held = hub.clone();
+        let task = tokio::spawn(async move {
+            let _close = CloseOnDrop(&held);
+            std::future::pending::<()>().await;
+        });
+        tokio::task::yield_now().await;
+        assert!(!hub.is_closed());
+        // Le superviseur abandonne la tâche après son délai d'arrêt : le garde ferme le hub
+        task.abort();
+        assert!(task.await.is_err());
+        assert!(hub.is_closed());
     }
 }
