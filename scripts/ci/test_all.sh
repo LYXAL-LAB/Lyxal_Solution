@@ -10,7 +10,9 @@ cd "$(dirname "$0")/../.."
 SURREAL="${LYXAL_SURREAL_BIN:-$(command -v surreal)}"
 export LYXAL_SURREAL_BIN="${SURREAL}"
 
-random_secret() { python3 -I -c 'import secrets; print(secrets.token_urlsafe(24))'; }
+# Préfixe « ci » : un secret tiré au hasard peut commencer par « - » et serait alors lu par
+# `surreal start` comme une option (même règle que scripts/ci/test_lyxal_core.py).
+random_secret() { python3 -I -c 'import secrets; print("ci" + secrets.token_urlsafe(24))'; }
 
 STAGING_PORT=8001
 WS_PORT="${LYXAL_TEST_WS_PORT:-8765}"

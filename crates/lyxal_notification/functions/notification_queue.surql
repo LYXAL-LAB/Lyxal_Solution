@@ -11,10 +11,10 @@
 -- (fn::notification_wait_schedule). Permission notification.worker (ou session système).
 -- Fil (`in_app`) : ni fournisseur, ni intégration, ni heures calmes (décision F8) ; l'étape est
 -- terminée par fn::notification_inbox_deliver.
--- Un worker par canal (`channel` : email, sms, chat, webhook, in_app). Une étape de messagerie ou
--- d'adresse web sert toutes les adresses actives de l'abonné pour son canal (décision E1) :
--- chacune avec l'intégration éligible de son service ; une adresse déjà servie par une tentative
--- précédente n'est pas rappelée.
+-- Un worker par canal (`channel` : email, sms, chat, webhook, in_app, push). Une étape de
+-- messagerie, d'adresse web ou push sert toutes les adresses (appareils) actives de l'abonné pour
+-- son canal (décisions E1, G1) : chacune avec l'intégration éligible de son service ; une adresse
+-- déjà servie par une tentative précédente n'est pas rappelée.
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_job_claim
@@ -24,7 +24,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_claim($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
             worker_id: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 128 } }], required: true },
-            channel: { pipeline: [{ rule: "enum", options: { allowed: ["email", "sms", "chat", "webhook", "in_app"], case_sensitive: true } }], required: true },
+            channel: { pipeline: [{ rule: "enum", options: { allowed: ["email", "sms", "chat", "webhook", "in_app", "push"], case_sensitive: true } }], required: true },
             limit: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 100 } }], default: 10 },
             lease_seconds: { pipeline: [{ rule: "integer", options: { min_value: 10, max_value: 3600 } }], default: 120 },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
@@ -90,14 +90,15 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_claim($params: object) {
         };
         -- Intégration de l'envoi (D1, bascule D3) ; aucune : l'étape attend en file, sans tentative comptée
         LET $integrations = fn::notification_integration_for_job({ job: $job });
-        -- Messagerie, adresse web : adresses actives de l'abonné pas encore servies, chacune avec
-        -- l'intégration éligible de son service
-        LET $endpoints = IF $job.type IN ["chat", "webhook"] AND array::len($integrations) > 0 {
+        -- Messagerie, adresse web, push : adresses (appareils) actives de l'abonné pas encore
+        -- servies, chacune avec l'intégration éligible de son service
+        LET $multi = $job.type IN ["chat", "webhook", "push"];
+        LET $endpoints = IF $multi AND array::len($integrations) > 0 {
             fn::notification_job_endpoints({ job: $job, subscriber: $run.subscriber, tenant: $run.tenant, integrations: $integrations })
         } ELSE { { served: 0, pending: 0, ready: [] } };
         -- Plus aucune adresse à servir : terminée si une adresse a été servie (reprise), sinon
         -- écartée ; une adresse restante sans intégration de son service fait attendre l'étape
-        IF $job.type IN ["chat", "webhook"] AND array::len($integrations) > 0 AND array::len($endpoints.ready) = 0
+        IF $multi AND array::len($integrations) > 0 AND array::len($endpoints.ready) = 0
             AND $endpoints.pending = 0 {
             UPDATE $job.id SET status = IF $endpoints.served > 0 { "completed" } ELSE { "skipped" },
                 skip_reason = IF $endpoints.served > 0 { NONE } ELSE { string::concat("no_address:", $job.type) },
@@ -106,20 +107,20 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_claim($params: object) {
             RETURN NONE;
         };
         -- Aucune intégration (ou aucune pour le service des adresses restantes) : l'étape attend
-        IF array::len($integrations) = 0 OR ($job.type IN ["chat", "webhook"] AND array::len($endpoints.ready) = 0) {
+        IF array::len($integrations) = 0 OR ($multi AND array::len($endpoints.ready) = 0) {
             UPDATE $job.id SET status = "queued", locked_until = NONE, claim_token = NONE, attempts -= 1,
                 next_retry_at = time::now() + 1m,
                 last_error = { class: "transient", code: "NOTIFICATION_INTEGRATION_UNAVAILABLE", detail: "aucune intégration éligible pour ce canal" };
             RETURN NONE;
         };
-        LET $integration = IF $job.type IN ["chat", "webhook"] { array::find($integrations, |$i| $i.id = $endpoints.ready[0].integration.id) } ELSE { $integrations[0] };
+        LET $integration = IF $multi { array::find($integrations, |$i| $i.id = $endpoints.ready[0].integration.id) } ELSE { $integrations[0] };
         -- Pas d'heures calmes pour l'adresse web (appel de machine à machine, décision E7)
         RETURN object::extend(
             fn::notification_job_payload({ job: $job, workflow: $workflow, quiet_hours: IF $job.type = "webhook" { NONE } ELSE { $decision.quiet_hours }, integration: $integration }),
             { endpoints: $endpoints.ready ?? [], served_endpoints: $endpoints.served ?? 0 });
     }), |$payload| $payload IS NOT NONE);
     RETURN fn::result_ok($ready);
-} COMMENT "Réserve jusqu'à limit étapes dues d'un canal ({ worker_id, channel : email, sms, chat, webhook, in_app ; limit, lease_seconds }) et renvoie tout le nécessaire au rendu (heures calmes, sauf pour l'adresse web et le fil ; fil : sans intégration ni secret ; cible du désabonnement ; intégration de l'envoi ; adresses scellées de messagerie ou web, chacune avec l'intégration de son service ; hôtes autorisés de l'installation) ; les étapes dont le secret a expiré sont annulées, celles qu'une préférence refuse désormais sont écartées ; une étape sans intégration éligible reste en file (nouvel essai dans une minute, sans tentative comptée) ; une étape dont toutes les adresses sont déjà servies est terminée. Permission notification.worker";
+} COMMENT "Réserve jusqu'à limit étapes dues d'un canal ({ worker_id, channel : email, sms, chat, webhook, in_app, push ; limit, lease_seconds }) et renvoie tout le nécessaire au rendu (heures calmes, sauf pour l'adresse web et le fil ; fil : sans intégration ni secret ; cible du désabonnement ; intégration de l'envoi ; adresses scellées de messagerie ou web et appareils push (jeton et clés scellés), chacun avec l'intégration de son service ; hôtes autorisés de l'installation) ; les étapes dont le secret a expiré sont annulées, celles qu'une préférence refuse désormais sont écartées ; une étape sans intégration éligible reste en file (nouvel essai dans une minute, sans tentative comptée) ; une étape dont toutes les adresses sont déjà servies est terminée. Permission notification.worker";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_job_endpoints (interne) : adresses d'une étape de messagerie ou web
@@ -141,7 +142,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_endpoints($params: object) -> obj
         pending: array::len($pending),
         ready: array::map($paired, |$x| fn::notification_endpoint_payload({ endpoint: $x.endpoint, integration: $x.integration }))
     };
-} COMMENT "Interne : adresses actives d'une étape de messagerie ou web ({ job, subscriber, tenant : organisation du déclenchement, integrations }) pas encore servies (10 au plus), chacune avec la première intégration éligible de son service : { served, pending, ready }";
+} COMMENT "Interne : adresses actives d'une étape de messagerie, web ou push ({ job, subscriber, tenant : organisation du déclenchement, integrations }) pas encore servies (10 au plus), chacune avec la première intégration éligible de son service : { served, pending, ready }";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_job_payload : données de rendu d'une étape réservée (langue résolue)
@@ -191,9 +192,12 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_payload($params: object) -> objec
         redirect: $template.redirect,
         actions: $template.actions ?? [],
         data_templates: $template.data ?? {},
+        -- Push : icône (gabarit)
+        icon: $template.icon,
         payload: $run.payload,
-        -- Le fil ne porte jamais le secret du déclenchement (F3)
-        secret: IF $job.type = "in_app" { NONE } ELSE { $run.secret },
+        -- Le fil (F3) et le push (G4 : contenu remis à Google ou Apple) ne portent jamais le
+        -- secret du déclenchement
+        secret: IF $job.type IN ["in_app", "push"] { NONE } ELSE { $run.secret },
         sensitive: $workflow.sensitive,
         critical: $workflow.critical,
         quiet_hours: $params.quiet_hours,
@@ -212,7 +216,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_payload($params: object) -> objec
             }
         }
     };
-} COMMENT "Données de rendu d'une étape réservée ({ job, workflow, quiet_hours, integration : absente pour le fil }) : canal, étape, parcours, abonné, destinataire (e-mail, téléphone), hôtes autorisés de l'installation, intégration de l'envoi, gabarit (fil : avatar, lien, boutons, données ; jamais le secret), regroupement porté ({ count, events }), langue de l'envoi (destinataire, organisation, installation), textes des clés du gabarit dans cette langue (texts ; texts_error : code I18N_* si leur lecture a échoué), mise en page, secret scellé, heures calmes, cible du lien de désabonnement (NONE pour un parcours critique)";
+} COMMENT "Données de rendu d'une étape réservée ({ job, workflow, quiet_hours, integration : absente pour le fil }) : canal, étape, parcours, abonné, destinataire (e-mail, téléphone), hôtes autorisés de l'installation, intégration de l'envoi, gabarit (fil : avatar, lien, boutons, données ; jamais le secret ; push : lien, icône, données), regroupement porté ({ count, events }), langue de l'envoi (destinataire, organisation, installation), textes des clés du gabarit dans cette langue (texts ; texts_error : code I18N_* si leur lecture a échoué), mise en page, secret scellé, heures calmes, cible du lien de désabonnement (NONE pour un parcours critique)";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_job_check : réservation encore détenue ?
@@ -250,21 +254,23 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_endpoint_fields($params: object) 
 
 DEFINE FUNCTION OVERWRITE fn::notification_job_endpoint_record($params: object) -> option<string> {
     LET $outcomes = array::map($params.results, |$r| {
-        LET $endpoint = (SELECT id, host, provider FROM ONLY $r.endpoint);
+        LET $endpoint = (SELECT id, host, provider, channel, platform FROM ONLY $r.endpoint);
         IF $endpoint == NONE { RETURN "skipped"; };
         LET $noted = (UPDATE ONLY $endpoint.id SET last_result = { at: time::now(), ok: $r.ok, code: $r.code ?? IF $r.response_code IS NONE { NONE } ELSE { <string> $r.response_code } });
         IF $noted == NONE { RETURN "NOTIFICATION_WRITE_FORBIDDEN"; };
         IF !$r.ok { RETURN "noted"; };
-        -- Message de l'adresse servie : son hôte, jamais l'adresse complète
+        -- Message de l'adresse servie : son hôte, jamais l'adresse complète ; appareil push : son
+        -- type (service et plateforme), jamais le jeton
+        LET $to = IF $endpoint.channel = "push" { string::concat($endpoint.provider, ":", $endpoint.platform) } ELSE { $endpoint.host };
         LET $message = (CREATE ONLY notification_message CONTENT {
-            run: $params.run.id, job: $params.job.id, channel: $params.job.type, to: $endpoint.host, endpoint: $endpoint.id,
+            run: $params.run.id, job: $params.job.id, channel: $params.job.type, to: $to, endpoint: $endpoint.id,
             subject: $params.subject, integration: $r.integration, provider: $endpoint.provider,
             provider_message_id: $r.provider_message_id, status: "sent"
         });
         RETURN IF $message == NONE { "NOTIFICATION_WRITE_FORBIDDEN" } ELSE { "sent" };
     });
     RETURN array::find($outcomes, |$o| $o NOT IN ["skipped", "noted", "sent"]);
-} COMMENT "Interne : pour chaque adresse servie ({ job, run, subject, results }) : dernier résultat noté sur l'adresse, message (hôte de l'adresse, intégration, identifiant chez le service) pour un appel réussi. NONE, ou NOTIFICATION_WRITE_FORBIDDEN";
+} COMMENT "Interne : pour chaque adresse servie ({ job, run, subject, results }) : dernier résultat noté sur l'adresse, message (hôte de l'adresse, ou type d'un appareil push ; intégration, identifiant chez le service) pour un appel réussi ; une adresse supprimée entre-temps (appareil retiré) est ignorée. NONE, ou NOTIFICATION_WRITE_FORBIDDEN";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_job_complete
@@ -298,8 +304,8 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_complete($params: object) {
     LET $settings = fn::notification_settings_effective({ tenant: $run.tenant });
     LET $integration = (SELECT id, provider FROM ONLY $p.integration);
     LET $subject = IF $sensitive { NONE } ELSE { $p.subject };
-    -- Messagerie, adresse web : un message par adresse servie ; e-mail, SMS : un message
-    IF $job.type IN ["chat", "webhook"] {
+    -- Messagerie, adresse web, push : un message par adresse servie ; e-mail, SMS : un message
+    IF $job.type IN ["chat", "webhook", "push"] {
         IF !array::any($p.endpoints, |$r| $r.ok) AND count(SELECT VALUE id FROM notification_message WHERE job = $job.id) = 0 {
             RETURN fn::error_result("NOTIFICATION_INVALID_INPUT", $p.language, { fields: { endpoints: ["CORE_VALIDATION_REQUIRED"] } });
         };
@@ -331,7 +337,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_complete($params: object) {
     UPDATE $job.id SET status = "completed", locked_until = NONE, claim_token = NONE, last_error = NONE, integration = $integration.id;
     LET $next = fn::notification_run_advance({ run: $run.id });
     RETURN fn::result_ok({ messages: (SELECT VALUE id FROM notification_message WHERE job = $job.id ORDER BY sent_at), status: "completed", run_status: IF $next.status IN ["completed", "failed", "skipped", "canceled", "merged"] { $next.status } ELSE { NONE } });
-} COMMENT "Termine une étape envoyée ({ job_id, claim_token, integration, provider_message_id, response_code : code SMTP ou HTTP, subject, parts : SMS, endpoints : messagerie et adresse web, issue de chaque adresse servie }) : message (destinataire : e-mail, téléphone, ou hôte de chaque adresse servie ; intégration, fournisseur, identifiant chez le fournisseur ; objet omis si sensible), dernier résultat des adresses, journal, puis étape suivante du déclenchement ; déclenchement terminé et secret effacé si c'était la dernière étape (run_status). Renvoie { messages, status, run_status }. Permission notification.worker";
+} COMMENT "Termine une étape envoyée ({ job_id, claim_token, integration, provider_message_id, response_code : code SMTP ou HTTP, subject, parts : SMS, endpoints : messagerie, adresse web et push, issue de chaque adresse servie }) : message (destinataire : e-mail, téléphone, hôte de chaque adresse servie ou type de chaque appareil push ; intégration, fournisseur, identifiant chez le fournisseur ; objet omis si sensible), dernier résultat des adresses, journal, puis étape suivante du déclenchement ; déclenchement terminé et secret effacé si c'était la dernière étape (run_status). Renvoie { messages, status, run_status }. Permission notification.worker";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_job_fail

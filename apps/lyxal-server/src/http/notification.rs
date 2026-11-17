@@ -54,6 +54,10 @@
 //! `/api/v1/notification/my/endpoints/{adresse}/rotate` (`{ tenant }`) : nouvelle clé de
 //! signature d'une adresse web, montrée une fois. Sans clé applicative : 503
 //! (`NOTIFICATION_CONFIGURATION_INVALID`).
+//!
+//! Notifications push (lot 6) : routes de `notification_push.rs` (inscription des appareils,
+//! clé publique VAPID, paire VAPID neuve) ; l'essai d'une intégration push envoie une
+//! notification d'essai à un appareil du même service (`{ to }` : `notification_endpoint:<clé>`).
 
 use super::auth::{self, no_store, ApiError};
 use crate::context::AppContext;
@@ -77,8 +81,8 @@ use lyxal_notification::models::{
 };
 use lyxal_notification::{
     deliver_to_endpoint, generate_signing_key, EndpointField, EndpointMessage, NotificationError,
-    NotificationPreview, NotificationStore, ProviderError, ProviderReceipt, SecretCodec,
-    UnsubscribeLinks, WebhookError, WebhookRequest, MAX_WEBHOOK_BYTES,
+    NotificationPreview, NotificationStore, ProviderError, ProviderReceipt, PushMessage,
+    SecretCodec, UnsubscribeLinks, WebhookError, WebhookRequest, MAX_WEBHOOK_BYTES,
 };
 use lyxal_surreal::{RecordId, ToSql};
 use serde::Deserialize;
@@ -129,6 +133,7 @@ pub fn routes() -> Router<AppContext> {
             post(my_endpoint_rotate).layer(DefaultBodyLimit::max(TEST_BODY_LIMIT)),
         )
         .merge(super::notification_feed::routes())
+        .merge(super::notification_push::routes())
         .layer(axum::middleware::map_response(no_store))
 }
 
@@ -301,7 +306,7 @@ async fn preview(State(context): State<AppContext>, headers: HeaderMap, body: By
 }
 
 /// Clé d'enregistrement d'une intégration dans le chemin : lettres, chiffres et `_` seulement.
-fn integration_id(key: &str) -> Option<String> {
+pub(super) fn integration_id(key: &str) -> Option<String> {
     (!key.is_empty()
         && key.len() <= 64
         && key.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_'))
@@ -514,6 +519,34 @@ async fn send_test(
                 .ok_or_else(|| unavailable("envoi par les intégrations"))?;
             Ok(channels.send_sms(integration, to, TEXT, false).await)
         }
+        "push" => {
+            let push = host
+                .push
+                .as_ref()
+                .ok_or_else(|| unavailable("envoi par les intégrations"))?;
+            let codec = host
+                .codec
+                .as_ref()
+                .ok_or_else(|| unavailable("ouverture des appareils"))?;
+            // Appareil scellé lu par la session système, après le contrôle au nom de l'appelant
+            let device = host
+                .store
+                .endpoint_resolve(EndpointResolveParams {
+                    integration: integration.id.to_sql(),
+                    endpoint: to.to_string(),
+                })
+                .await
+                .map_err(NotificationError::from)?;
+            let message = PushMessage {
+                title: "Lyxal".to_string(),
+                body: TEXT.to_string(),
+                link: None,
+                icon: None,
+                data: serde_json::Map::new(),
+                urgent: false,
+            };
+            Ok(lyxal_notification::push_to_device(codec, push, &device, &message).await)
+        }
         _ => {
             let channels = host
                 .channels
@@ -582,7 +615,7 @@ struct RotateBody {
 }
 
 /// Clé de l'organisation (`auth_organization:<clé>`) : contexte de scellement.
-fn tenant_key(tenant: Option<&str>) -> Result<Option<String>, ApiError> {
+pub(super) fn tenant_key(tenant: Option<&str>) -> Result<Option<String>, ApiError> {
     let Some(tenant) = tenant else {
         return Ok(None);
     };

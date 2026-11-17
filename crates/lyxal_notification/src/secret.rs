@@ -8,7 +8,11 @@
 //! `with_tenant(tenant ?? "lyxal_installation", "lyxal_notification", "notification_run",
 //! <idempotency_key>, "secret")`. Contexte d'une adresse de messagerie ou web (décision E2) :
 //! `with_tenant(tenant ?? "lyxal_installation", "lyxal_notification", "notification_endpoint",
-//! <clé de l'adresse>, "url" | "signing_secret")`.
+//! <clé de l'adresse>, "url" | "signing_secret")`. Contexte d'un appareil push (décision G1) :
+//! `with_tenant(tenant ?? "lyxal_installation", "lyxal_notification", "notification_endpoint",
+//! <empreinte du jeton>, "token" | "p256dh" | "auth")` : l'empreinte (SHA-256 du jeton,
+//! `lyxal_crypto::sha256_hex`) est connue avant l'inscription, si bien qu'une inscription
+//! renvoyée scelle ses valeurs pour l'appareil déjà enregistré.
 
 use lyxal_crypto::{
     CryptoEngine, EncryptedEnvelope, HmacKey, KeyResolver, SecretBytes, SecretContext,
@@ -46,6 +50,34 @@ impl EndpointField {
             Self::SigningSecret => "signing_secret",
         }
     }
+}
+
+/// Valeur scellée d'un appareil push.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DeviceField {
+    /// Jeton de l'appareil (Web Push : adresse du service push).
+    Token,
+    /// Web Push : clé publique du navigateur.
+    P256dh,
+    /// Web Push : secret d'authentification du navigateur.
+    Auth,
+}
+
+impl DeviceField {
+    /// Nom du champ (contexte de scellement et colonne).
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Token => "token",
+            Self::P256dh => "p256dh",
+            Self::Auth => "auth",
+        }
+    }
+}
+
+/// Empreinte d'un jeton d'appareil : SHA-256 hexadécimal (`lyxal_crypto`), jamais le jeton. Elle
+/// retrouve une inscription renvoyée et lie le scellement à l'appareil.
+pub fn device_fingerprint(token: &str) -> String {
+    lyxal_crypto::sha256_hex(token.as_bytes())
 }
 
 /// Clé de signature d'une adresse web (décision E4) : 32 octets tirés par le générateur du
@@ -184,6 +216,32 @@ impl<R: KeyResolver> SecretCodec<R> {
         Ok(self.crypto.open(&parsed, &context)?)
     }
 
+    /// Scelle une valeur d'un appareil push (jeton, clés du navigateur) avant son entrée en base
+    /// (route de l'hôte).
+    pub fn seal_device_value(
+        &self,
+        tenant_key: Option<&str>,
+        fingerprint: &str,
+        field: DeviceField,
+        value: &SecretBytes,
+    ) -> NotificationResult<String> {
+        let context = device_context(tenant_key, fingerprint, field)?;
+        Ok(self.crypto.seal(value, &context)?.encode())
+    }
+
+    /// Ouvre une valeur d'un appareil push (worker, en mémoire le temps de l'envoi).
+    pub fn open_device_value(
+        &self,
+        envelope: &str,
+        tenant_key: Option<&str>,
+        fingerprint: &str,
+        field: DeviceField,
+    ) -> NotificationResult<SecretBytes> {
+        let context = device_context(tenant_key, fingerprint, field)?;
+        let parsed = EncryptedEnvelope::parse(envelope)?;
+        Ok(self.crypto.open(&parsed, &context)?)
+    }
+
     fn open(&self, envelope: &str, context: &SecretContext) -> NotificationResult<OpenedSecret> {
         let parsed = EncryptedEnvelope::parse(envelope)?;
         Ok(OpenedSecret {
@@ -219,6 +277,22 @@ pub fn endpoint_context(
         QUEUE_MODULE,
         ENDPOINT_RESOURCE,
         endpoint_key,
+        field.as_str(),
+    )?)
+}
+
+/// Contexte de scellement d'une valeur d'un appareil push (lié à l'organisation et à l'empreinte
+/// du jeton).
+pub fn device_context(
+    tenant_key: Option<&str>,
+    fingerprint: &str,
+    field: DeviceField,
+) -> NotificationResult<SecretContext> {
+    Ok(SecretContext::with_tenant(
+        tenant_key.unwrap_or(INSTALLATION_TENANT),
+        QUEUE_MODULE,
+        ENDPOINT_RESOURCE,
+        fingerprint,
         field.as_str(),
     )?)
 }

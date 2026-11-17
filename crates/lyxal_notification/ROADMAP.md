@@ -6,7 +6,8 @@ ordre du CTO avec un `implementation_plan.md` validé.
 
 | Lot | Contenu | Prérequis |
 | :--- | :--- | :--- |
-| **V1-e — Autres canaux** | SMS, messageries d'équipe et adresse web livrés (lot 4, README) ; restent : push (lot 6, point 4) ; choix de l'intégration dans les surcharges d'un déclenchement (décision C5) ; fournisseurs e-mail Amazon SES, SendGrid et OVHcloud (signatures RSA ou SHA-1 à vérifier, K5) ; retours des SMS de toutes les parties d'un message Vonage (seule la première est rattachée) ; Vonage par l'API Messages (webhooks signés JWT) | `lyxal_crypto` (K8) pour le push |
+| **V1-e — Autres canaux** | **Terminée** : SMS, messageries d'équipe, adresse web (lot 4) et notifications push Web Push, FCM, APNs (lot 6) livrés (README) | — |
+| **Après V1-e** | Choix de l'intégration dans les surcharges d'un déclenchement (décision C5) ; fournisseurs e-mail Amazon SES, SendGrid et OVHcloud (signatures RSA ou SHA-1 à vérifier, K5) ; retours des SMS de toutes les parties d'un message Vonage (seule la première est rattachée) ; Vonage par l'API Messages (webhooks signés JWT) ; push : routes de l'hôte pour lister et retirer ses appareils, clé VAPID choisie par appareil quand une portée a plusieurs intégrations Web Push, boutons d'action et regroupement (`collapse`) des notifications push | — |
 | **V2 — Observabilité et console** | Écrans de la console (dont l'aperçu des étapes et les composants du fil dans l'application : cloche, onglets, boutons, sommeil, branchés sur les routes et le flux SSE du fil), regroupement à heure fixe (ex. chaque jour à 9 h), statistiques horaires, suivi des ouvertures et clics (désactivé par défaut, décision N7), webhooks sortants signés (point 2), révisions publiées, contrôle des domaines d'envoi, étape HTTP (point 6) | `lyxal_secrets` |
 | **V3 — Événementiel avancé** | Interactions humaines (approuver / choisir par message), courrier entrant (point 5), connexions chat OAuth, outils IA | `lyxal_connect` |
 
@@ -40,6 +41,12 @@ en service »), une adresse de réception à soi.
 | **Google Chat** | webhook d'un espace d'essai | — | message reçu ; identifiant `spaces/…/messages/…` noté sur le message |
 | **Telegram** | robot d'essai (secret `{ bot_token }`), salon de groupe (`chat_id` négatif) et canal public (`@nom`) | — | message reçu ; robot bloqué ou salon introuvable : refus définitif (403, 400) ; `retry_after` d'un 429 : nouvel essai |
 | **Fil dans l'application (flux SSE)** | aucun fournisseur : un navigateur réel (Chrome, Firefox, Safari) ouvert sur `GET /api/v1/notification/feed/stream` par `fetch` avec l'en-tête `Authorization: Bearer` (un `EventSource` natif n'envoie pas d'en-tête), derrière le mandataire inverse réel de l'hôte ; puis un parcours avec une étape `in_app` déclenché pour la personne connectée | — | premier événement `counts`, puis `notification` et `counts` sans attendre (aucun tampon du mandataire : `X-Accel-Buffering: no`) ; signe de vie toutes les 25 s, flux gardé ouvert plus de 10 minutes ; « lu » dans un autre onglet : compteurs mis à jour dans le premier ; sixième onglet refusé (429) ; déconnexion ou expiration de la session : flux fermé et reconnexion du client avec un jeton frais ; redémarrage de l'hôte : reconnexion du client sans perte (liste relue) |
+| **Web Push — Chrome** (Android et ordinateur) | paire VAPID générée (`POST /api/v1/notification/integrations/{intégration}/vapid`), page de test servie en HTTPS avec un service worker qui affiche `{ title, body, icon }` et ouvre `link` ; abonnement envoyé à `POST /api/v1/notification/my/devices` ; essai d'intégration puis un parcours avec une étape `push` | — | notification affichée (adresse `fcm.googleapis.com`), lien ouvert au clic ; abonnement retiré dans le navigateur (`unsubscribe()`) puis envoi : 404 ou 410, appareil retiré, événement `notification.endpoint.removed` ; texte de plus de 4 Kio tronqué ; `Urgency: high` d'un parcours critique |
+| **Web Push — Firefox** | même page | — | notification affichée (adresse `updates.push.services.mozilla.com`) ; jeton VAPID accepté (`aud`, `exp` à 12 h) ; corps `aes128gcm` déchiffré par le navigateur |
+| **Web Push — Safari** (macOS et iPhone, application web ajoutée à l'écran d'accueil) | même page, `vapid_subject` en `mailto:` d'une adresse réelle | — | notification affichée (adresse `web.push.apple.com`) ; contact VAPID accepté par Apple ; permission refusée puis accordée : nouvelle inscription mise à jour sans doublon |
+| **FCM — téléphone Android** | fichier du compte de service d'un projet Firebase d'essai dans le coffre-fort ; application d'essai qui envoie son jeton d'enregistrement | — | notification affichée (titre, texte), `data.link` reçu par l'application ; jeton d'accès renouvelé au bout d'une heure sans erreur ; application désinstallée puis envoi : `UNREGISTERED`, appareil retiré ; clé du compte de service révoquée : refus définitif sans envoi |
+| **APNs — iPhone (bac à sable)** | clé `.p8` d'essai, intégration `environment: "sandbox"`, application de développement qui envoie son jeton hexadécimal | — | notification affichée ; HTTP/2 vers `api.sandbox.push.apple.com` ; jeton du fournisseur réutilisé puis renouvelé à 50 minutes (jamais `TooManyProviderTokenUpdates`) ; jeton d'un autre environnement : `BadDeviceToken`, appareil retiré |
+| **APNs — iPhone (production)** | même clé, intégration `environment: "production"`, application distribuée (TestFlight) | — | notification affichée ; `apns-id` noté sur le message ; application supprimée puis envoi : 410 `Unregistered`, appareil retiré |
 | **Adresse web** | adresse d'essai publique en HTTPS (ex. service de capture de requêtes) ; puis une adresse qui redirige et une adresse qui répond 410 | — | corps et en-têtes `Lyxal-Signature`, `Lyxal-Delivery` reçus et signature vérifiée par un script du destinataire avec la clé montrée ; redirection non suivie (nouvel essai) ; 410 : refus définitif ; nom résolu en adresse privée (enregistrement DNS d'essai) : refusé sans appel |
 
 ## Limites connues
@@ -63,6 +70,14 @@ en service »), une adresse de réception à soi.
   `fetch`).
 * **Modifier l'adresse** d'une messagerie ou d'une adresse web : en créer une autre (seuls le
   nom, l'état et le salon Telegram se modifient).
+* **Clé VAPID** : la clé donnée aux navigateurs est celle de l'intégration Web Push principale (puis
+  par priorité) de la portée, sans condition ; une portée a une seule intégration Web Push utile.
+  Changer de paire rend les abonnements existants inutilisables (retirés au premier envoi refusé).
+* **Appareils de la personne** : inscription par une route de l'hôte ; la liste et le retrait
+  (`fn::notification_my_device_list`, `_delete`) n'ont pas encore de route (comme les adresses du
+  lot 4).
+* **Jetons gardés en mémoire** : jeton d'accès FCM et jeton du fournisseur APNs gardés par chaque
+  instance de l'hôte (aucun partage entre instances).
 
 ## Points à décider par le CTO
 

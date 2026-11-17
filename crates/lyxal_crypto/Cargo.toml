@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 rust-version = "1.85"
 license.workspace = true
-description = "Moteur de chiffrement AES-256-GCM, hachage, HMAC, HKDF, Argon2id et gestion des clés du Noyau Technique Lyxal OS"
+description = "Moteur de chiffrement AES-256-GCM, hachage, HMAC, HKDF, Argon2id, signatures ES256 et RS256, chiffrement Web Push et gestion des clés du Noyau Technique Lyxal OS"
 
 [dependencies]
 aes-gcm = { version = "=0.10.3", features = ["zeroize"] }
@@ -24,8 +24,9 @@ hmac = "0.12"
 # HMAC-SHA1 du TOTP seulement (RFC 6238, applications d'authentification), dans src/totp.rs.
 sha1 = "0.10"
 hkdf = "0.12"
-# Vérification HMAC-SHA1 des retours Twilio seulement (décision K8 du CTO, src/hmac.rs) ; déjà
-# présent dans le dépôt par rustls.
+# Extension K8 du CTO, déjà présent dans le dépôt par rustls : vérification HMAC-SHA1 des retours
+# Twilio (src/hmac.rs), signatures ES256 et RS256 des jetons push (src/signing.rs), chiffrement
+# Web Push RFC 8291 (src/webpush.rs).
 ring = "0.17"
 
 [dev-dependencies]

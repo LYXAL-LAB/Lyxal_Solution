@@ -78,6 +78,27 @@ pub struct RenderedInApp {
     pub data: serde_json::Map<String, serde_json::Value>,
 }
 
+/// Notification push rendue (décision G4) : texte simple, sans échappement HTML ; liens et
+/// données rendus tels quels, puis contrôlés (`fn::notification_push_links_check`).
+pub struct RenderedPush {
+    /// Titre, sur une ligne.
+    pub title: String,
+    /// Texte.
+    pub text: String,
+    /// Lien ouvert au clic.
+    pub link: Option<String>,
+    /// Icône.
+    pub icon: Option<String>,
+    /// Données rendues (textes).
+    pub data: serde_json::Map<String, serde_json::Value>,
+}
+
+impl std::fmt::Debug for RenderedPush {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("RenderedPush([REDACTED])")
+    }
+}
+
 impl std::fmt::Debug for RenderedInApp {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("RenderedInApp([REDACTED])")
@@ -343,6 +364,48 @@ impl Renderer {
             avatar,
             redirect,
             actions,
+            data,
+        })
+    }
+
+    /// Rend une notification push (décision G4) : titre (une ligne), texte, lien, icône et
+    /// données, sans échappement HTML (texte affiché tel quel par le système de l'appareil).
+    /// Jamais de secret (une étape push d'un parcours sensible est refusée) ni de lien de
+    /// désabonnement ; les liens rendus sont contrôlés par le worker avant l'envoi.
+    pub fn render_push(&self, job: &ClaimedJob) -> NotificationResult<RenderedPush> {
+        let (Some(subject), _, Some(text_body)) = job.template() else {
+            return Err(NotificationError::Render("étape sans gabarit".to_string()));
+        };
+        let (env, context) = self.prepare(job, None, None)?;
+        let title = single_line(&render(&env, "title.txt", subject, context.clone())?);
+        let text = render(&env, "text.txt", text_body, context.clone())?;
+        let link = |source: &str| {
+            render(&env, "link.txt", source, context.clone()).map(|url| url.trim().to_string())
+        };
+        let link_value = job.redirect.as_deref().map(link).transpose()?;
+        let icon = job.icon.as_deref().map(link).transpose()?;
+        let mut data = serde_json::Map::new();
+        if let serde_json::Value::Object(templates) = &job.data_templates {
+            for (key, source) in templates {
+                let source = source.as_str().ok_or_else(|| {
+                    NotificationError::Render("donnée push : gabarit textuel attendu".to_string())
+                })?;
+                data.insert(
+                    key.clone(),
+                    serde_json::Value::String(render(&env, "data.txt", source, context.clone())?),
+                );
+            }
+        }
+        if text.len() > MAX_RENDERED_BYTES {
+            return Err(NotificationError::Render(
+                "message rendu trop volumineux".to_string(),
+            ));
+        }
+        Ok(RenderedPush {
+            title,
+            text,
+            link: link_value.filter(|link| !link.is_empty()),
+            icon: icon.filter(|icon| !icon.is_empty()),
             data,
         })
     }
@@ -662,6 +725,7 @@ mod tests {
             redirect: None,
             actions: Vec::new(),
             data_templates: serde_json::Value::Null,
+            icon: None,
             integration: Some(crate::models::ClaimedIntegration {
                 id: lyxal_surreal::RecordId::new("notification_integration", "i"),
                 tenant: None,

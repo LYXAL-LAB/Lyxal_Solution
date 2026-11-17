@@ -4,6 +4,7 @@ mod handlers;
 mod middleware;
 mod notification;
 mod notification_feed;
+mod notification_push;
 pub mod request_id;
 mod router;
 mod scheduler;

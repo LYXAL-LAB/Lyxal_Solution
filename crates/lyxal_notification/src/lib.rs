@@ -1,7 +1,8 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 //! `lyxal_notification` : notifications sortantes de Lyxal OS (e-mail, SMS, messageries
-//! d'équipe, appel signé d'une adresse web, fil dans l'application ; abonnés et leurs adresses, sujets, préférences,
+//! d'équipe, appel signé d'une adresse web, fil dans l'application, notifications push : Web Push,
+//! FCM, APNs ; abonnés, leurs adresses et appareils, sujets, préférences,
 //! diffusions, parcours à étapes : attente, regroupement, limitation, conditions ; intégrations
 //! par fournisseur et retours des fournisseurs).
 //!
@@ -12,7 +13,8 @@
 //! fournisseurs (SMTP par `lettre`, API Brevo, Mailgun, Postmark, Resend par `reqwest`, identifiants
 //! lus dans `lyxal_secrets`), les SMS (Brevo, Twilio, Vonage) et leurs parties, les messageries
 //! (Slack, Teams, Discord, Mattermost, Google Chat, Telegram) et les adresses web par un client
-//! sortant contrôlé (SSRF), la vérification des retours des fournisseurs (`lyxal_crypto`),
+//! sortant contrôlé (SSRF), les notifications push (jetons ES256 et RS256, chiffrement Web Push :
+//! `lyxal_crypto`), la vérification des retours des fournisseurs (`lyxal_crypto`),
 //! les heures calmes (`jiff`), les liens de désabonnement signés (`lyxal_crypto`), l'aperçu d'une
 //! étape, les workers supervisés (envoi, diffusions, attentes confiées à `lyxal_scheduler`), le
 //! module `LyxalModule` (planification de la purge à l'installation) et sa sonde de santé.
@@ -24,6 +26,7 @@ pub mod module;
 pub mod outbound;
 pub mod preview;
 pub mod provider;
+pub mod push_worker;
 pub mod quiet;
 pub mod render;
 pub mod secret;
@@ -51,14 +54,21 @@ pub use outbound::{
 };
 pub use preview::NotificationPreview;
 pub use provider::{
-    classify_smtp_code, ApiEndpoints, ChannelDispatcher, ChatSender, ChatService, ChatTarget,
-    Credentials, EmailDispatcher, EmailMessage, EmailProvider, EmailProviders, Provider,
-    ProviderError, ProviderReceipt, SmsApi, SmsCredentials, SmsEndpoints, SmsMessage, SmsProvider,
-    SmtpProvider, SmtpSecurity, DELIVERY_HEADER, SECRETS_CONSUMER, SIGNATURE_HEADER,
+    classify_smtp_code, system_clock, ApiEndpoints, ChannelDispatcher, ChatSender, ChatService,
+    ChatTarget, Credentials, DeviceRemoval, EmailDispatcher, EmailMessage, EmailProvider,
+    EmailProviders, Provider, ProviderError, ProviderReceipt, PushApi, PushClock, PushCredentials,
+    PushDispatcher, PushEndpoints, PushFailure, PushMessage, PushService, PushTarget, SmsApi,
+    SmsCredentials, SmsEndpoints, SmsMessage, SmsProvider, SmtpProvider, SmtpSecurity,
+    DELIVERY_HEADER, MAX_PUSH_PAYLOAD_BYTES, SECRETS_CONSUMER, SIGNATURE_HEADER,
 };
+pub use push_worker::{push_to_device, NotificationPushWorker, PUSH_CLEANUP_BUDGET};
 pub use quiet::quiet_until;
-pub use render::{MessageSource, RenderedEmail, RenderedInApp, RenderedText, Renderer};
-pub use secret::{generate_signing_key, EndpointField, OpenedSecret, SecretCodec};
+pub use render::{
+    MessageSource, RenderedEmail, RenderedInApp, RenderedPush, RenderedText, Renderer,
+};
+pub use secret::{
+    device_fingerprint, generate_signing_key, DeviceField, EndpointField, OpenedSecret, SecretCodec,
+};
 pub use segments::{SmsEncoding, SmsSegments, MAX_SMS_PARTS};
 pub use store::NotificationStore;
 pub use unsubscribe::{UnsubscribeLinks, UNSUBSCRIBE_PATH};

@@ -84,15 +84,18 @@ pub struct ClaimedJob {
     /// Fil : avatar (gabarit d'un lien).
     #[surreal(default)]
     pub avatar: Option<String>,
-    /// Fil : lien de redirection (gabarit).
+    /// Fil et push : lien de redirection (gabarit).
     #[surreal(default)]
     pub redirect: Option<String>,
     /// Fil : boutons (gabarits du libellé et du lien), deux au plus.
     #[surreal(default)]
     pub actions: Vec<TemplateAction>,
-    /// Fil : données libres `{ clé : gabarit }`.
+    /// Fil et push : données libres `{ clé : gabarit }`.
     #[surreal(default)]
     pub data_templates: serde_json::Value,
+    /// Push : icône (gabarit d'un lien).
+    #[surreal(default)]
+    pub icon: Option<String>,
     /// Variables non sensibles.
     pub payload: serde_json::Value,
     /// Variables sensibles scellées (`enc:v2`, contexte du module) ; jamais pour le fil.

@@ -19,9 +19,11 @@ pub use broadcast::{
     BroadcastStep, BroadcastStepParams,
 };
 pub use endpoint::{
-    ClaimedEndpoint, Endpoint, EndpointCreateParams, EndpointListParams, EndpointOutcome,
-    EndpointRefParams, EndpointResolveParams, EndpointResult, EndpointRotateParams,
-    EndpointUpdateParams, MyEndpointCreateParams, MyEndpointListParams,
+    ClaimedEndpoint, Device, DeviceListParams, DeviceRegisterParams, DeviceRegistered,
+    DeviceRemoveParams, DeviceRemoved, DeviceSummary, Endpoint, EndpointCreateParams,
+    EndpointListParams, EndpointOutcome, EndpointRefParams, EndpointResolveParams, EndpointResult,
+    EndpointRotateParams, EndpointUpdateParams, MyDeviceListParams, MyEndpointCreateParams,
+    MyEndpointListParams, PushLinksChecked, PushLinksParams, VapidKey, VapidKeyParams,
 };
 pub use feed::{
     FeedActionParams, FeedCounts, FeedCountsParams, FeedDeleteParams, FeedDeleted, FeedFilter,

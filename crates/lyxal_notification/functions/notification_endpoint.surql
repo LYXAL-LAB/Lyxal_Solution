@@ -12,7 +12,9 @@
 -- Mattermost et adresse web sur tout hôte public (ni adresse IP, ni nom local), dans la liste
 -- allowed_hosts de l'installation si elle est réglée. L'hôte est revérifié après résolution à
 -- chaque envoi (worker). Droits : notification.manage (gestion) ou la personne connectée pour ses
--- propres adresses (notification_my_endpoint_*, comme ses préférences).
+-- propres adresses (notification_my_endpoint_*, comme ses préférences). Les appareils push
+-- (canal push) ont leurs propres fonctions (notification_device.surql) : les fonctions des
+-- adresses ne les voient pas.
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_endpoint_official_hosts (interne)
@@ -26,8 +28,13 @@ DEFINE FUNCTION OVERWRITE fn::notification_endpoint_official_hosts($provider: st
         ELSE IF $provider = "discord" { { exact: ["discord.com", "discordapp.com"], suffixes: [] } }
         ELSE IF $provider = "google_chat" { { exact: ["chat.googleapis.com"], suffixes: [] } }
         ELSE IF $provider = "telegram" { { exact: ["api.telegram.org"], suffixes: [] } }
+        -- Web Push (décision G6) : services push de Google (Chrome, Edge sous Android), Mozilla,
+        -- Microsoft (Edge sous Windows) et Apple (Safari)
+        ELSE IF $provider = "webpush" {
+            { exact: ["fcm.googleapis.com", "updates.push.services.mozilla.com", "web.push.apple.com"], suffixes: [".push.services.mozilla.com", ".notify.windows.com"] }
+        }
         ELSE { NONE };
-} COMMENT "Interne : hôtes officiels d'un service ({ exact, suffixes }) ; NONE : tout hôte public (mattermost, webhook)";
+} COMMENT "Interne : hôtes officiels d'un service ({ exact, suffixes }) ; webpush : services push connus (fcm.googleapis.com, updates.push.services.mozilla.com, *.push.services.mozilla.com, *.notify.windows.com, web.push.apple.com) ; NONE : tout hôte public (mattermost, webhook)";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_endpoint_host_refusal (interne)
@@ -138,10 +145,12 @@ DEFINE FUNCTION OVERWRITE fn::notification_endpoint_write($params: object) -> ob
 DEFINE FUNCTION OVERWRITE fn::notification_endpoint_find($params: object) -> any {
     LET $endpoint = (SELECT * FROM ONLY $params.endpoint);
     IF $endpoint == NONE { RETURN NONE; };
+    -- Appareils push : seulement pour les fonctions des appareils (et l'inverse)
+    IF ($endpoint.channel = "push") != ($params.push ?? false) { RETURN NONE; };
     -- Gestion : adresse de la portée demandée ; personne connectée : adresse de son abonné
     IF $params.subscriber IS NOT NONE { RETURN IF $endpoint.subscriber = $params.subscriber { $endpoint } ELSE { NONE }; };
     RETURN IF $endpoint.tenant = $params.tenant { $endpoint } ELSE { NONE };
-} COMMENT "Interne : adresse ({ endpoint, tenant } ou { endpoint, subscriber }) de cette portée ou de cet abonné, sinon NONE";
+} COMMENT "Interne : adresse ({ endpoint, tenant } ou { endpoint, subscriber } ; push : vrai pour un appareil push) de cette portée ou de cet abonné, sinon NONE";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_endpoint_change (interne) : modification, suppression, nouvelle clé
@@ -274,10 +283,10 @@ DEFINE FUNCTION OVERWRITE fn::notification_endpoint_list($params: object) {
     LET $subscriber = IF $p.subscriber_id IS NONE { NONE } ELSE { fn::notification_subscriber_find({ tenant: $p.tenant, subscriber_id: $p.subscriber_id }) };
     IF $p.subscriber_id IS NOT NONE AND $subscriber IS NONE { RETURN fn::error_result("NOTIFICATION_SUBSCRIBER_NOT_FOUND", $p.language, { subscriber_id: $p.subscriber_id }); };
     LET $rows = (SELECT * FROM notification_endpoint
-        WHERE scope_key = $scope AND ($subscriber IS NONE OR subscriber = $subscriber.id) AND ($p.channel IS NONE OR channel = $p.channel)
+        WHERE scope_key = $scope AND channel != "push" AND ($subscriber IS NONE OR subscriber = $subscriber.id) AND ($p.channel IS NONE OR channel = $p.channel)
         ORDER BY created_at ASC);
     RETURN fn::result_ok(array::map($rows, |$e| fn::notification_endpoint_view($e)));
-} COMMENT "Adresses d'une portée ({ tenant, subscriber_id, channel }), sans l'adresse complète ni la clé de signature (hôte seulement). Permission notification.read";
+} COMMENT "Adresses de messagerie et web d'une portée ({ tenant, subscriber_id, channel }), sans l'adresse complète ni la clé de signature (hôte seulement) ; les appareils push : fn::notification_device_list. Permission notification.read";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_my_endpoint_* : la personne connectée gère ses propres adresses
@@ -317,17 +326,18 @@ DEFINE FUNCTION OVERWRITE fn::notification_my_endpoint_list($params: object) {
     LET $mine = fn::notification_my_subscriber({ tenant: $p.tenant, create: false });
     IF $mine.code IS NOT NONE { RETURN fn::error_result($mine.code, $p.language, {}); };
     IF $mine.subscriber IS NONE { RETURN fn::result_ok([]); };
-    LET $rows = (SELECT * FROM notification_endpoint WHERE subscriber = $mine.subscriber.id AND ($p.channel IS NONE OR channel = $p.channel) ORDER BY created_at ASC);
+    LET $rows = (SELECT * FROM notification_endpoint WHERE subscriber = $mine.subscriber.id AND channel != "push" AND ($p.channel IS NONE OR channel = $p.channel) ORDER BY created_at ASC);
     RETURN fn::result_ok(array::map($rows, |$e| fn::notification_endpoint_view($e)));
-} COMMENT "Adresses de la personne connectée ({ tenant, channel }), hôte seulement. Sans permission (session lyxal_auth d'une personne)";
+} COMMENT "Adresses de messagerie et web de la personne connectée ({ tenant, channel }), hôte seulement ; ses appareils push : fn::notification_my_device_list. Sans permission (session lyxal_auth d'une personne)";
 
 DEFINE FUNCTION OVERWRITE fn::notification_my_endpoint_change($params: object) -> object {
     LET $mine = fn::notification_my_subscriber({ tenant: $params.p.tenant, create: false });
     IF $mine.code IS NOT NONE { RETURN { code: $mine.code, details: {} }; };
-    LET $current = IF $mine.subscriber IS NONE { NONE } ELSE { fn::notification_endpoint_find({ endpoint: $params.p.endpoint, subscriber: $mine.subscriber.id }) };
-    IF $current IS NONE { RETURN { code: "NOTIFICATION_ENDPOINT_NOT_FOUND", details: {} }; };
+    LET $push = $params.push ?? false;
+    LET $current = IF $mine.subscriber IS NONE { NONE } ELSE { fn::notification_endpoint_find({ endpoint: $params.p.endpoint, subscriber: $mine.subscriber.id, push: $push }) };
+    IF $current IS NONE { RETURN { code: IF $push { "NOTIFICATION_DEVICE_NOT_FOUND" } ELSE { "NOTIFICATION_ENDPOINT_NOT_FOUND" }, details: {} }; };
     RETURN fn::notification_endpoint_change({ action: $params.action, endpoint: $current, p: $params.p });
-} COMMENT "Interne : modification, suppression ou nouvelle clé ({ action, p }) d'une adresse de la personne connectée ; une adresse d'un autre abonné est introuvable";
+} COMMENT "Interne : modification, suppression ou nouvelle clé ({ action, p, push : vrai pour un appareil push }) d'une adresse ou d'un appareil de la personne connectée ; ceux d'un autre abonné sont introuvables";
 
 DEFINE FUNCTION OVERWRITE fn::notification_my_endpoint_update($params: object) {
     LET $report = fn::validation_object_execute($params, {
@@ -419,6 +429,12 @@ DEFINE FUNCTION OVERWRITE fn::notification_endpoint_payload($params: object) -> 
         url: $e.url,
         chat_id: $e.chat_id,
         signing_secret: $e.signing_secret,
+        -- Appareil push : plateforme, empreinte (contexte de scellement), jeton et clés scellés
+        platform: $e.platform,
+        fingerprint: $e.fingerprint,
+        token: $e.token,
+        p256dh: $e.p256dh,
+        auth: $e.auth,
         integration: fn::notification_integration_payload($params.integration)
     };
-} COMMENT "Interne : adresse remise au worker ({ endpoint, integration }) : service, hôte, adresse et clé de signature scellées (ouvertes en mémoire par le worker seulement), identifiant du salon Telegram, intégration de l'envoi";
+} COMMENT "Interne : adresse ou appareil remis au worker ({ endpoint, integration }) : service, hôte, adresse et clé de signature scellées (ouvertes en mémoire par le worker seulement), identifiant du salon Telegram ; appareil push : plateforme, empreinte du jeton, jeton et clés du navigateur scellés ; intégration de l'envoi";

@@ -2,14 +2,15 @@
 -- FONCTIONS : forme des étapes d'un parcours et surcharges d'un déclenchement
 -- MODULE    : lyxal_notification
 -- ============================================================================
--- Une étape a un type : un canal (`email`, `sms`, `chat`, `webhook`, `in_app`), une
+-- Une étape a un type : un canal (`email`, `sms`, `chat`, `webhook`, `in_app`, `push`), une
 -- attente (`delay` : amount + unit, ou until : chemin d'une date dans les données, avec un
 -- décalage offset facultatif), un regroupement (`digest` : window, group_by, lookback) ou une
 -- limitation (`throttle` : limit, window, group_by). Champs communs : `key` (unique dans le
 -- parcours) et `condition` facultative (forme K2 de lyxal_core). Toutes les durées sont bornées
 -- par le réglage max_wait_days. Les entrées sont contrôlées par le moteur de lyxal_core. Une
 -- étape in_app est refusée dans un parcours sensible (décision F3 : le fil ne porte jamais de
--- secret).
+-- secret), une étape push aussi (décision G4 : le contenu traverse les serveurs de Google ou
+-- d'Apple).
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_duration_seconds : durée { amount, unit } en secondes
@@ -38,7 +39,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_step_fields($params: object) -> objec
         span: $span,
         common: {
             key: { pipeline: [{ rule: "snake_case_name", options: { min_length: 1, max_length: 64 } }], required: true },
-            type: { pipeline: [{ rule: "enum", options: { allowed: ["email", "sms", "chat", "webhook", "in_app", "delay", "digest", "throttle"], case_sensitive: true } }], required: true },
+            type: { pipeline: [{ rule: "enum", options: { allowed: ["email", "sms", "chat", "webhook", "in_app", "push", "delay", "digest", "throttle"], case_sensitive: true } }], required: true },
             condition: { pipeline: [{ rule: "is_object" }] }
         },
         email: {},
@@ -46,6 +47,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_step_fields($params: object) -> objec
         chat: {},
         webhook: {},
         in_app: {},
+        push: {},
         delay: {
             amount: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 1000000 } }] },
             unit: { pipeline: [{ rule: "enum", options: { allowed: $units, case_sensitive: true } }] },
@@ -65,7 +67,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_step_fields($params: object) -> objec
             group_by: $path
         }
     };
-} COMMENT "Schémas lyxal_core des champs d'une étape : { span (durée amount + unit), common, email, sms, chat, webhook, in_app, delay, digest, throttle }";
+} COMMENT "Schémas lyxal_core des champs d'une étape : { span (durée amount + unit), common, email, sms, chat, webhook, in_app, push, delay, digest, throttle }";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_step_check : contrôle des étapes d'un parcours
@@ -73,7 +75,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_step_fields($params: object) -> objec
 
 DEFINE FUNCTION OVERWRITE fn::notification_step_check($params: object) -> object {
     LET $fields = fn::notification_step_fields({});
-    LET $types = ["email", "sms", "chat", "webhook", "in_app", "delay", "digest", "throttle"];
+    LET $types = ["email", "sms", "chat", "webhook", "in_app", "push", "delay", "digest", "throttle"];
     LET $reports = array::map($params.steps, |$step| fn::validation_object_execute($step, {
         fields: object::extend($fields.common, IF $step.type IN $types { $fields[$step.type] } ELSE { {} }),
         unknown_keys: "reject"
@@ -91,10 +93,11 @@ DEFINE FUNCTION OVERWRITE fn::notification_step_check($params: object) -> object
         ($step.amount IS NOT NONE AND $step.unit IS NOT NONE AND $step.until IS NONE AND $step.offset IS NONE)
         OR ($step.until IS NOT NONE AND $step.amount IS NONE AND $step.unit IS NONE)));
     IF $bad_delay IS NOT NONE { RETURN { code: "NOTIFICATION_STEP_INVALID", details: { step: $bad_delay.key, reason: "delay_form" } }; };
-    -- Le fil ne porte jamais de secret : pas d'étape in_app dans un parcours sensible (F3)
-    LET $in_app = array::find($steps, |$step| $step.type = "in_app");
-    IF $params.sensitive = true AND $in_app IS NOT NONE {
-        RETURN { code: "NOTIFICATION_STEP_INVALID", details: { step: $in_app.key, reason: "in_app_sensitive" } };
+    -- Le fil ne porte jamais de secret (F3) et le contenu d'une notification push traverse les
+    -- serveurs de Google ou d'Apple (G4) : ni étape in_app ni étape push dans un parcours sensible
+    LET $exposed = array::find($steps, |$step| $step.type IN ["in_app", "push"]);
+    IF $params.sensitive = true AND $exposed IS NOT NONE {
+        RETURN { code: "NOTIFICATION_STEP_INVALID", details: { step: $exposed.key, reason: string::concat($exposed.type, "_sensitive") } };
     };
     LET $channels = fn::notification_channels({});
     IF !array::any($steps, |$step| $step.type IN $channels) {
@@ -121,7 +124,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_step_check($params: object) -> object
     LET $too_long = array::find($spans, |$span| $span.seconds > $max * 86400);
     IF $too_long IS NOT NONE { RETURN { code: "NOTIFICATION_WAIT_TOO_LONG", details: { step: $too_long.step, max_days: $max } }; };
     RETURN { code: NONE, details: {}, steps: $steps };
-} COMMENT "Contrôle les étapes d'un parcours ({ steps, tenant, sensitive }) : forme de chaque type (NOTIFICATION_STEP_INVALID, détail par étape et par champ), clés uniques, pas d'étape in_app dans un parcours sensible (raison in_app_sensitive), attente par durée ou par date des données, au moins une étape de canal, regroupement et limitation suivis d'une étape de canal, conditions (NOTIFICATION_CONDITION_INVALID), durées bornées par max_wait_days (NOTIFICATION_WAIT_TOO_LONG). { code, details, steps (normalisées) }";
+} COMMENT "Contrôle les étapes d'un parcours ({ steps, tenant, sensitive }) : forme de chaque type (NOTIFICATION_STEP_INVALID, détail par étape et par champ), clés uniques, ni étape in_app ni étape push dans un parcours sensible (raisons in_app_sensitive, push_sensitive), attente par durée ou par date des données, au moins une étape de canal, regroupement et limitation suivis d'une étape de canal, conditions (NOTIFICATION_CONDITION_INVALID), durées bornées par max_wait_days (NOTIFICATION_WAIT_TOO_LONG). { code, details, steps (normalisées) }";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_override_check : surcharges d'un déclenchement

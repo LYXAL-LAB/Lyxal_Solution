@@ -9,7 +9,9 @@
 -- un objet (titre) facultatif ; ni HTML ni mise en page. Fil dans l'application (décision F3) :
 -- titre (objet) et texte requis, avatar, lien de redirection, deux boutons au plus et données
 -- (gabarits MiniJinja) ; liens contrôlés à l'enregistrement et au rendu (chemin de l'application
--- ou adresse HTTPS).
+-- ou adresse HTTPS). Push (décision G4) : titre (objet) et texte requis, lien, icône et données
+-- (gabarits MiniJinja), mêmes règles de liens ; 4 Kio au plus une fois chiffré, texte tronqué au
+-- rendu.
 
 DEFINE TABLE OVERWRITE notification_template
     TYPE NORMAL
@@ -60,7 +62,12 @@ DEFINE FIELD OVERWRITE avatar ON TABLE notification_template
 DEFINE FIELD OVERWRITE redirect ON TABLE notification_template
     TYPE option<string>
     ASSERT $value IS NONE OR (string::len($value) >= 1 AND string::len($value) <= 2048)
-    COMMENT "Fil : lien de redirection (gabarit d'un chemin de l'application ou d'une adresse HTTPS)";
+    COMMENT "Fil et push : lien de redirection (gabarit d'un chemin de l'application ou d'une adresse HTTPS)";
+
+DEFINE FIELD OVERWRITE icon ON TABLE notification_template
+    TYPE option<string>
+    ASSERT $value IS NONE OR (string::len($value) >= 1 AND string::len($value) <= 2048)
+    COMMENT "Push : icône (gabarit d'un chemin de l'application ou d'une adresse HTTPS)";
 
 DEFINE FIELD OVERWRITE actions ON TABLE notification_template
     TYPE option<array<object>>
@@ -75,7 +82,7 @@ DEFINE FIELD OVERWRITE actions[*].url ON TABLE notification_template TYPE option
 DEFINE FIELD OVERWRITE data ON TABLE notification_template
     TYPE option<object>
     FLEXIBLE
-    COMMENT "Fil : données libres { clé : gabarit } rendues à l'envoi (8 Kio au plus)";
+    COMMENT "Fil et push : données libres { clé : gabarit } rendues à l'envoi (fil : 8 Kio au plus ; push : 2 Kio au plus)";
 
 DEFINE FIELD OVERWRITE keys ON TABLE notification_template
     TYPE array<string>

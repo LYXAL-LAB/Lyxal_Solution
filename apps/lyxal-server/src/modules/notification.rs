@@ -17,7 +17,10 @@
 //! sont scellées par les routes de l'hôte avec la clé applicative ; les retours de livraison des
 //! SMS sont demandés à l'adresse publique de l'hôte. Fil dans l'application (lot 5) : le worker
 //! du canal `in_app` (sans fournisseur, sans clé) et le temps réel (`FeedHub`, requête
-//! `LIVE SELECT` tenue par un worker supervisé) tournent toujours.
+//! `LIVE SELECT` tenue par un worker supervisé) tournent toujours. Notifications push (lot 6) :
+//! un worker du canal `push` (Web Push, FCM, APNs) sous les mêmes conditions que l'e-mail ; les
+//! appareils sont inscrits par les routes de l'hôte, qui scellent leur jeton avec la clé
+//! applicative.
 
 use crate::config::AppConfig;
 use crate::error::ServerError;
@@ -28,10 +31,10 @@ use lyxal_event::EventSubscription;
 use lyxal_notification::{
     BroadcastWorkerSettings, ChannelDispatcher, ChatSender, EmailDispatcher, EmailProviders,
     NotificationBroadcastWorker, NotificationChannelWorker, NotificationConsumer,
-    NotificationEmailWorker, NotificationHealthCheck, NotificationModule, NotificationStepWorker,
-    NotificationStore, OutboundClient, SecretCodec, SendWorkerSettings, SmsApi, StepWorkerSettings,
-    TextChannel, UnsubscribeLinks, AUTH_HANDLER, AUTH_SUBSCRIPTIONS, CONSUMER_MODULE,
-    SECRETS_CONSUMER,
+    NotificationEmailWorker, NotificationHealthCheck, NotificationModule, NotificationPushWorker,
+    NotificationStepWorker, NotificationStore, OutboundClient, PushApi, PushDispatcher,
+    SecretCodec, SendWorkerSettings, SmsApi, StepWorkerSettings, TextChannel, UnsubscribeLinks,
+    AUTH_HANDLER, AUTH_SUBSCRIPTIONS, CONSUMER_MODULE, SECRETS_CONSUMER,
 };
 use lyxal_runtime::{LyxalModule, LyxalRuntime};
 use std::sync::Arc;
@@ -47,13 +50,16 @@ const AUTH_EVENT_MAX_ATTEMPTS: u32 = 10;
 /// désabonnement s'ils sont configurés, l'envoi par les intégrations (retours des fournisseurs,
 /// essai) si le coffre-fort a sa clé maîtresse, le scellement des adresses de messagerie et web
 /// si la clé applicative est configurée, et l'adresse publique de l'hôte (signature des retours
-/// Twilio), et le temps réel du fil dans l'application.
+/// Twilio), et le temps réel du fil dans l'application ; l'envoi push (essai d'une intégration
+/// push) si le coffre-fort a sa clé maîtresse.
 #[derive(Clone)]
 pub struct NotificationHost {
     pub store: NotificationStore,
     pub links: Option<Arc<UnsubscribeLinks>>,
     pub dispatcher: Option<EmailDispatcher>,
     pub channels: Option<ChannelDispatcher>,
+    /// Envoi des notifications push (Web Push, FCM, APNs).
+    pub push: Option<PushDispatcher>,
     pub codec: Option<SecretCodec<StaticKeyResolver>>,
     pub public_url: Option<String>,
     /// Répartition des changements du fil vers les flux SSE (route `/notification/feed/stream`).
@@ -148,9 +154,21 @@ pub async fn register_services(
             public_url.as_deref(),
         )
     });
+    let push_api = Arc::new(
+        PushApi::new(Arc::new(OutboundClient::new()))
+            .map_err(|e| configuration_error("services push", e))?,
+    );
+    let push = secrets
+        .has_master_key()
+        .then(|| PushDispatcher::new(push_api, secrets.client(SECRETS_CONSUMER)));
     let codec = crypto.map(SecretCodec::new);
-    let delivery = match (codec.clone(), dispatcher.clone(), channels.clone()) {
-        (Some(codec), Some(dispatcher), Some(channels)) => {
+    let delivery = match (
+        codec.clone(),
+        dispatcher.clone(),
+        channels.clone(),
+        push.clone(),
+    ) {
+        (Some(codec), Some(dispatcher), Some(channels), Some(push)) => {
             runtime
                 .register_event_consumer(Arc::new(NotificationConsumer::new(
                     store.clone(),
@@ -183,9 +201,16 @@ pub async fn register_services(
                 };
                 runtime.register_worker(Arc::new(worker))?;
             }
+            // Notifications push : un worker pour Web Push, FCM et APNs
+            runtime.register_worker(Arc::new(NotificationPushWorker::new(
+                store.clone(),
+                codec.clone(),
+                push,
+                SendWorkerSettings::default(),
+            )?))?;
             true
         }
-        (codec, dispatcher, _) => {
+        (codec, dispatcher, _, _) => {
             tracing::warn!(
                 application_key = codec.is_some(),
                 secrets_master_key = dispatcher.is_some(),
@@ -207,6 +232,7 @@ pub async fn register_services(
             links,
             dispatcher,
             channels,
+            push,
             codec,
             public_url,
             feed: Some(feed),

@@ -15,6 +15,8 @@ Toutes les erreurs retournent `CryptoError`, sans entrée, PHC, clé ni chemin r
 | ExternalHmacKey | import(SecretBytes) 1 à 1024 bytes, tels quels ; jamais générée | clé d'un protocole externe (webhooks), type distinct de HmacKey, aucun export brut |
 | PasswordHash | parse(&str) valide PHC et budgets ; hash_password construit un hash | expose_phc -> &str, needs_rehash -> bool |
 | TotpSecret | generate(&TotpConfig) -> Result via OsRng (20 bytes SHA-1, 32 SHA-256) ; import(SecretBytes) exige 16..=64 bytes | expose_secret -> &[u8] (stockage chiffré), to_base32 -> SecretString |
+| EcdsaP256SigningKey | import_pkcs8(SecretBytes) : PKCS#8 P-256 en DER ou PEM `PRIVATE KEY`, clé publique incluse ; generate -> Result (`ring::rand::SystemRandom`, aléa du système) | public_key_uncompressed -> [u8;65], sign_es256 -> Result<[u8;64]>, export_pkcs8 -> SecretBytes (rangement d'une clé VAPID générée dans le coffre-fort seulement) |
+| RsaSigningKey | import_pkcs8(SecretBytes) : PKCS#8 RSA 2048 à 4096 bits en DER ou PEM `PRIVATE KEY` ; jamais générée | sign_rs256 -> Result<Vec<u8>> ; aucun export |
 
 `Debug` donne exactement `<Type>([REDACTED])`. Ces types ne proposent ni Clone/Copy,
 Default, Display, Deref, comparaisons Eq/PartialEq/Ord, Hash, sérialisation implicite,
@@ -134,6 +136,41 @@ Pas une KDF de mot de passe, pas de sortie brute par défaut.
 SHA-256/BLAKE3 one-shot/hex/streaming sont conservés ; entrées ordinaires, pas de garantie
 de traitement comme conteneur secret et jamais de remplacement d'Argon2 pour un mot de passe.
 Les fonctions AES bas niveau, nonces choisis et helpers de HMAC à clés courtes sont privés.
+
+## Notifications push : ES256, RS256 et Web Push (décision K8)
+
+Extension validée par le CTO le 17 novembre 2026 (programme `lyxal_notification`, décisions K8 et
+G3), calculée par `ring` ; rien d'autre (aucune vérification de ces signatures, aucune autre
+courbe). Les clés sont gardées en octets PKCS#8 effacés à la libération et relues par `ring` à
+chaque signature (l'état transitoire de `ring` n'est pas effacé) ; aucun scalaire privé exposé.
+Entrée de clé de 16 Kio au plus (`InputTooLarge`) ; clé illisible, d'une autre courbe ou d'un
+autre algorithme, PKCS#1 ou SEC1 nu, PEM d'une autre étiquette ou chiffré : `InvalidKeyEncoding`.
+
+- `EcdsaP256SigningKey::sign_es256(data) -> Result<[u8;64]>` : JWS ES256 (RFC 7518 §3.4),
+  SHA-256 puis ECDSA P-256 à nonce aléatoire, signature `r || s` de taille fixe ; jetons VAPID de
+  Web Push et jetons du fournisseur APNs. `public_key_uncompressed` : point non compressé
+  `0x04 || x || y` (paramètre `k` de VAPID, `applicationServerKey` des navigateurs).
+  `export_pkcs8` existe seulement pour ranger dans le coffre-fort une paire VAPID générée par
+  l'hôte ; la copie appartient à l'appelant.
+- `RsaSigningKey::sign_rs256(data) -> Result<Vec<u8>>` : JWS RS256 (RFC 7518 §3.3),
+  RSASSA-PKCS1-v1_5 SHA-256, déterministe, longueur du module ; jeton du compte de service Google
+  échangé contre un jeton d'accès FCM.
+- `webpush_encrypt(ua_public: &[u8;65], auth_secret: &[u8;16], plaintext) -> Result<Vec<u8>>` :
+  RFC 8291, codage `aes128gcm` de la RFC 8188 ; paire ECDH P-256 éphémère (`ring::agreement`) et
+  sel de 16 octets (`OsRng`) neufs par message, HKDF-SHA256 (RFC 8291 §3.3–3.4 :
+  `"WebPush: info" 0x00 || ua_public || as_public` sous `auth_secret`, puis
+  `"Content-Encoding: aes128gcm" 0x00` et `"Content-Encoding: nonce" 0x00` sous le sel),
+  AES-128-GCM ; en-tête `sel || rs || idlen || as_public` avec `rs` = `WEBPUSH_RECORD_SIZE`
+  (4096), un seul enregistrement terminé par le délimiteur `0x02`, sans bourrage. Corps =
+  texte + `WEBPUSH_OVERHEAD_BYTES` (103) ; texte de `WEBPUSH_MAX_PLAINTEXT_BYTES` (4079) au plus
+  (`InputTooLarge`) ; clé du navigateur hors courbe ou compressée : `InvalidKeyEncoding`. La
+  limite de 4096 octets du corps entier imposée par les services push appartient à l'appelant.
+
+Tests : vecteur de la RFC 8291 annexe A (valeurs intermédiaires et message final, clé
+éphémère et sel injectés) ; déchiffrement par un navigateur simulé ; signatures ES256 et RS256
+vérifiées par la vérification de `ring` (tests seulement) ; import de la paire connue de la
+RFC 8291 ; signature RS256 égale à celle calculée par OpenSSL sur une clé RSA-2048 réservée aux
+tests (`tests/fixtures/`).
 
 ## TOTP (RFC 6238)
 

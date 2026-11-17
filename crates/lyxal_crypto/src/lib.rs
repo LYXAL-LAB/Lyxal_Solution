@@ -101,7 +101,9 @@ pub use providers::{EnvironmentKeyProvider, FileKeyProvider, KeyGenerationPolicy
 pub mod hmac;
 pub mod kdf;
 pub mod password;
+pub mod signing;
 pub mod totp;
+pub mod webpush;
 pub use hmac::{
     sign_external_hmac_sha256, sign_hmac_sha256, sign_hmac_sha256_hex, verify_external_hmac_sha1,
     verify_external_hmac_sha256, verify_hmac_sha256, verify_hmac_sha256_hex,
@@ -111,7 +113,11 @@ pub use password::{
     hash_password, verify_password, PasswordHash, PasswordVerification, MAX_PASSWORD_BYTES,
     MAX_PHC_BYTES,
 };
+pub use signing::{EcdsaP256SigningKey, RsaSigningKey};
 pub use totp::{
     totp_generate, totp_uri, totp_verify, TotpAlgorithm, TotpConfig, TotpSecret,
     MAX_TOTP_LABEL_BYTES, MAX_TOTP_SECRET_BYTES, MAX_TOTP_WINDOW, MIN_TOTP_SECRET_BYTES,
+};
+pub use webpush::{
+    webpush_encrypt, WEBPUSH_MAX_PLAINTEXT_BYTES, WEBPUSH_OVERHEAD_BYTES, WEBPUSH_RECORD_SIZE,
 };

@@ -73,7 +73,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_workflow_create($params: object) {
     });
     IF array::len($inserted) = 0 { RETURN fn::error_result("NOTIFICATION_WORKFLOW_KEY_TAKEN", $p.language, { key: $p.key }); };
     RETURN fn::result_ok($inserted[0]);
-} COMMENT "Crée un parcours à l'état brouillon ({ tenant, key, name, trigger_event, critical, sensitive (sans étape in_app), severity : high, medium, low, none (gravité copiée sur les messages du fil), category (clé, de la portée ou de l'installation), preferences : { channels : défaut par canal, enforced : canaux imposés }, payload_schema, steps : [{ key, type, condition, … }] (fn::notification_step_check), tags }) ; clé unique dans sa portée. Permission notification.manage (notification.installation.manage sans tenant)";
+} COMMENT "Crée un parcours à l'état brouillon ({ tenant, key, name, trigger_event, critical, sensitive (sans étape in_app ni push), severity : high, medium, low, none (gravité copiée sur les messages du fil), category (clé, de la portée ou de l'installation), preferences : { channels : défaut par canal, enforced : canaux imposés }, payload_schema, steps : [{ key, type, condition, … }] (fn::notification_step_check), tags }) ; clé unique dans sa portée. Permission notification.manage (notification.installation.manage sans tenant)";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_workflow_update
@@ -110,12 +110,13 @@ DEFINE FUNCTION OVERWRITE fn::notification_workflow_update($params: object) {
     LET $workflow = (SELECT * FROM ONLY $report.value.workflow);
     IF $workflow == NONE { RETURN fn::error_result("NOTIFICATION_WORKFLOW_NOT_FOUND", $report.value.language, {}); };
     IF !fn::notification_can({ action: "manage", tenant: $workflow.tenant }) { RETURN fn::error_result("NOTIFICATION_PERMISSION_DENIED", $report.value.language, {}); };
-    -- Étapes contrôlées : les nouvelles, ou les actuelles si le parcours devient sensible (pas
-    -- d'étape in_app dans un parcours sensible)
+    -- Étapes contrôlées : les nouvelles, ou les actuelles si le parcours devient sensible (ni
+    -- étape in_app ni étape push dans un parcours sensible)
     LET $sensitive = $report.value.sensitive ?? $workflow.sensitive;
+    LET $exposed = array::find($workflow.steps, |$s| $s.type IN ["in_app", "push"]);
     LET $steps = IF $report.value.steps IS NONE {
-        IF $sensitive AND array::any($workflow.steps, |$s| $s.type = "in_app") {
-            { code: "NOTIFICATION_STEP_INVALID", details: { step: array::find($workflow.steps, |$s| $s.type = "in_app").key, reason: "in_app_sensitive" } }
+        IF $sensitive AND $exposed IS NOT NONE {
+            { code: "NOTIFICATION_STEP_INVALID", details: { step: $exposed.key, reason: string::concat($exposed.type, "_sensitive") } }
         } ELSE { NONE }
     } ELSE { fn::notification_step_check({ steps: $report.value.steps, tenant: $workflow.tenant, sensitive: $sensitive }) };
     IF $steps.code IS NOT NONE { RETURN fn::error_result($steps.code, $report.value.language, $steps.details); };
@@ -137,7 +138,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_workflow_update($params: object) {
     LET $updated = (UPDATE ONLY $workflow.id MERGE $changes);
     IF $updated == NONE { RETURN fn::error_result("NOTIFICATION_WRITE_FORBIDDEN", $p.language, { table: "notification_workflow" }); };
     RETURN fn::result_ok($updated);
-} COMMENT "Modifie un parcours ({ workflow, name, trigger_event, critical, sensitive (refusé si le parcours a une étape in_app), severity, category (clé), clear_category, preferences, payload_schema, steps (fn::notification_step_check), tags }) ; seuls les champs fournis changent ; un parcours actif garde un gabarit prêt par étape de canal. Permission notification.manage";
+} COMMENT "Modifie un parcours ({ workflow, name, trigger_event, critical, sensitive (refusé si le parcours a une étape in_app ou push), severity, category (clé), clear_category, preferences, payload_schema, steps (fn::notification_step_check), tags }) ; seuls les champs fournis changent ; un parcours actif garde un gabarit prêt par étape de canal. Permission notification.manage";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_workflow_get

@@ -37,7 +37,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_settings_effective($params: object) -
 DEFINE FUNCTION OVERWRITE fn::notification_channel_address($params: object) -> option<string> {
     IF $params.type = "email" { RETURN $params.address.email; };
     IF $params.type = "sms" { RETURN $params.address.phone; };
-    IF $params.type IN ["chat", "webhook"] AND $params.subscriber IS NOT NONE {
+    IF $params.type IN ["chat", "webhook", "push"] AND $params.subscriber IS NOT NONE {
         LET $active = count(SELECT VALUE id FROM notification_endpoint WHERE subscriber = $params.subscriber AND channel = $params.type AND active = true);
         RETURN IF $active > 0 { $params.type } ELSE { NONE };
     };
@@ -46,7 +46,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_channel_address($params: object) -> o
         RETURN IF (SELECT VALUE identity FROM ONLY $params.subscriber) IS NONE { NONE } ELSE { "in_app" };
     };
     RETURN NONE;
-} COMMENT "Interne : adresse d'un abonné pour un canal ({ type, address : { email, phone }, subscriber }) : e-mail, téléphone E.164, le nom du canal si l'abonné a une adresse de messagerie ou web active, in_app si l'abonné est lié à un compte (fil) ; NONE sans adresse";
+} COMMENT "Interne : adresse d'un abonné pour un canal ({ type, address : { email, phone }, subscriber }) : e-mail, téléphone E.164, le nom du canal si l'abonné a une adresse de messagerie ou web ou un appareil push actif, in_app si l'abonné est lié à un compte (fil) ; NONE sans adresse";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_run_create : déclenchement pour un abonné
