@@ -7,7 +7,9 @@ intégrations du lot 3 : le **SMS** (Brevo, Twilio, Vonage — K5), les **messag
 adresse web** (K7). Les retours de livraison des SMS sont reçus comme ceux de l'e-mail. Aucune
 ligne de code avant la validation du CTO (`.agents/AGENTS.md` §3).
 
-## 1. Questions soumises au CTO
+## 1. Décisions du CTO
+
+Décisions E1 à E7 **validées par le CTO** le 17 novembre 2026, telles que proposées ci-dessous.
 
 | N° | Question | Proposition |
 | :- | :--- | :--- |
