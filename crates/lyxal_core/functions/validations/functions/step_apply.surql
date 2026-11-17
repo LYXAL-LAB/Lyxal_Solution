@@ -126,6 +126,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_step_apply(
         ELSE IF $step.rule = "lyxal_storage_path" { fn::validation_lyxal_storage_path($value, $options.required_root, $options.allow_file_extension, $options.max_length) }
         ELSE IF $step.rule = "mac_address" { fn::validation_mac_address($value, $options.allow_hyphen, $options.allow_colon) }
         ELSE IF $step.rule = "max_length" { fn::validation_max_length($value, $options.max_length) }
+        ELSE IF $step.rule = "max_serialized_length" { fn::validation_max_serialized_length($value, $options.max_length) }
         ELSE IF $step.rule = "mime_type" { fn::validation_mime_type($value, $options.allowed_types) }
         ELSE IF $step.rule = "min_length" { fn::validation_min_length($value, $options.min_length) }
         ELSE IF $step.rule = "money" { fn::validation_money($value, $options.min_value, $options.max_value, $options.max_scale) }

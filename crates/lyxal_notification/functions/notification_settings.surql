@@ -51,9 +51,9 @@ DEFINE FUNCTION OVERWRITE fn::notification_settings_set($params: object) {
             fields: object::extend($report.by_field ?? {}, IF $params.tenant IS NOT NONE AND $params.allowed_hosts IS NOT NONE { { allowed_hosts: ["CORE_VALIDATION_NOT_ALLOWED"] } } ELSE { {} })
         });
     };
-    -- Hôtes autorisés (installation) : en minuscules, sans doublon
+    -- Hôtes autorisés (installation) : rendus en minuscules par la règle hostname, sans doublon
     LET $p = IF $report.value.allowed_hosts IS NONE { $report.value } ELSE {
-        object::extend($report.value, { allowed_hosts: array::distinct(array::map($report.value.allowed_hosts, |$h| string::lowercase($h))) })
+        object::extend($report.value, { allowed_hosts: fn::sanitize_pipeline_execute($report.value.allowed_hosts, [{ rule: "array_unique" }], 5) })
     };
     IF !fn::notification_can({ action: "manage", tenant: $p.tenant }) { RETURN fn::error_result("NOTIFICATION_PERMISSION_DENIED", $p.language, {}); };
     LET $scope = IF $p.tenant IS NONE { "installation" } ELSE { <string> record::id($p.tenant) };
@@ -77,7 +77,8 @@ DEFINE FUNCTION OVERWRITE fn::notification_settings_set($params: object) {
 
 DEFINE FUNCTION OVERWRITE fn::notification_suppression_address($params: object) -> option<string> {
     IF $params.channel = "sms" {
-        RETURN IF fn::validation_phone($params.address).valid { string::trim($params.address) } ELSE { NONE };
+        IF !fn::validation_pipeline_execute($params.address, [{ rule: "phone" }], 5).valid { RETURN NONE; };
+        RETURN fn::sanitize_pipeline_execute($params.address, [{ rule: "e164" }], 5);
     };
     IF !fn::validation_pipeline_execute($params.address, [{ rule: "email", options: { max_length: 254 } }], 5).valid { RETURN NONE; };
     RETURN fn::sanitize_pipeline_execute($params.address, [{ rule: "email" }], 5);
@@ -89,9 +90,8 @@ DEFINE FUNCTION OVERWRITE fn::notification_suppression_address($params: object) 
 
 DEFINE FUNCTION OVERWRITE fn::notification_suppression_reason($params: object) -> option<string> {
     IF $params.channel NOT IN ["email", "sms"] OR $params.address IS NONE { RETURN NONE; };
-    LET $address = IF $params.channel = "email" { string::lowercase($params.address) } ELSE { $params.address };
     LET $reasons = (SELECT VALUE reason FROM notification_suppression
-        WHERE scope_key IN [$params.scope, "installation"] AND channel = $params.channel AND address = $address
+        WHERE scope_key IN [$params.scope, "installation"] AND channel = $params.channel AND address = $params.address
             AND (keep_until IS NONE OR keep_until > time::now()));
     -- Un parcours critique n'est arrêté que par un rejet définitif ou un blocage manuel
     LET $blocking = IF $params.critical { array::filter($reasons, |$r| $r IN ["hard_bounce", "manual"]) } ELSE { $reasons };

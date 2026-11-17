@@ -43,7 +43,7 @@ use tokio::sync::{broadcast, mpsc};
 /// message, projetée par la base (`fn::notification_feed_view`, même vue que
 /// `fn::notification_feed_list`).
 const LIVE_QUERY: &str =
-    "LIVE SELECT id, identity, tenant, fn::notification_feed_view($this) AS view FROM notification_inbox";
+    "LIVE SELECT id, identity, tenant, fn::notification_feed_view({ item: $this }) AS view FROM notification_inbox";
 
 /// Réglages du temps réel du fil.
 #[derive(Debug, Clone)]

@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Fil dans l'application (lot 5, décisions F1 à F8) : liens du fil (chemin de l'application ou
+-- Fil dans l'application (décisions F1 à F8) : liens du fil (chemin de l'application ou
 -- adresse HTTPS, à l'enregistrement et au rendu) ; parcours (gravité, étape in_app refusée dans
 -- un parcours sensible) ; gabarits du fil ; livraison par le worker (abonné avec compte, invité
 -- écarté, rejeu, liens rendus contrôlés, trace d'envoi sans contenu, événement) ; lecture par la
@@ -618,7 +618,7 @@ CREATE notification_inbox CONTENT { tenant: auth_organization:alpha, subscriber:
         AND fn::notification_feed_match({ item: $item, filter: {}, now: $now })
         AND !fn::notification_feed_match({ item: object::extend($item, { snoozed_until: $now + 1h }), filter: {}, now: $now })
         AND !fn::notification_feed_match({ item: $item, filter: { archived: true }, now: $now })
-        AND fn::notification_feed_view($item).id == $item.id
+        AND fn::notification_feed_view({ item: $item }).id == $item.id
         AND $mine == [$item.id] AND array::len($all) >= 1
         AND $targets.code IS NONE AND $targets.ids == [$item.id]
         AND fn::notification_feed_targets({}).code == "NOTIFICATION_INVALID_INPUT";
@@ -629,3 +629,40 @@ RETURN fn::validation_object_execute({ actions: [{ kind: "primary", label: "A", 
     AND fn::notification_template_feed_refusal({ subject: "T", text_body: "x", redirect: "/a" }) IS NONE
     AND fn::notification_template_feed_refusal({ subject: "T", text_body: "x", layout: notification_layout:x }).details.fields == { layout: ["CORE_VALIDATION_NOT_ALLOWED"] }
     AND fn::notification_template_channel_refusal({ channel: "sms", template: { text_body: "x", data: { a: "b" } } }).details.fields == { data: ["CORE_VALIDATION_NOT_ALLOWED"] };
+
+-- préparation: un message du fil dont l'étape sera close sous un droit d'écriture retiré
+fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "info", idempotency_key: "info-refus", to: { subscriber_id: "auth:collegue" }, payload: {} });
+
+-- préparation: réservation de son étape
+-- en tant que: worker
+fn::notification_job_claim({ channel: "in_app", worker_id: "fil-1", limit: 10 });
+
+-- préparation: écriture des étapes refusée (droit retiré entre la réservation et la livraison)
+DEFINE TABLE OVERWRITE notification_job
+    TYPE NORMAL
+    SCHEMAFULL
+    PERMISSIONS
+        FOR select WHERE fn::notification_can({ action: "read", tenant: run.tenant }) OR fn::notification_can({ action: "send", tenant: run.tenant })
+        FOR create, update WHERE false
+        FOR delete WHERE fn::notification_can({ action: "worker", tenant: run.tenant })
+    COMMENT "Étapes engagées d'un déclenchement (file d'envoi, attentes)";
+
+-- test: écriture filtrée par les permissions : clôture de l'étape du fil refusée (NOTIFICATION_WRITE_FORBIDDEN)
+-- en tant que: worker
+{
+    LET $job = (SELECT * FROM ONLY notification_job WHERE run.idempotency_key = "info-refus" LIMIT 1);
+    RETURN fn::notification_inbox_deliver({ job_id: <string> $job.id, claim_token: $job.claim_token, title: "Info", text: "Information" }).error.code == "NOTIFICATION_WRITE_FORBIDDEN";
+};
+
+-- préparation: droits des étapes rétablis
+DEFINE TABLE OVERWRITE notification_job
+    TYPE NORMAL
+    SCHEMAFULL
+    PERMISSIONS
+        FOR select WHERE fn::notification_can({ action: "read", tenant: run.tenant }) OR fn::notification_can({ action: "send", tenant: run.tenant })
+        FOR create, update WHERE fn::notification_can({ action: "send", tenant: run.tenant }) OR fn::notification_can({ action: "manage", tenant: run.tenant })
+        FOR delete WHERE fn::notification_can({ action: "worker", tenant: run.tenant })
+    COMMENT "Étapes engagées d'un déclenchement (file d'envoi, attentes)";
+
+-- test: l'étape refusée est restée réservée
+RETURN (SELECT VALUE status FROM ONLY notification_job WHERE run.idempotency_key = "info-refus" LIMIT 1) == "running";

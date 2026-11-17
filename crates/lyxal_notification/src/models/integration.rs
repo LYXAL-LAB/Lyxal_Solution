@@ -194,8 +194,9 @@ pub struct IntegrationSelectParams {
     pub job_id: String,
 }
 
-/// Paramètres de `fn::notification_integration_test` (D6, au nom de l'appelant).
-#[derive(Debug, Clone, SurrealValue)]
+/// Paramètres de `fn::notification_integration_test` (D6, au nom de l'appelant) ; leur `Debug`
+/// ne montre pas le destinataire.
+#[derive(Clone, SurrealValue)]
 pub struct IntegrationTestParams {
     /// Intégration (texte `notification_integration:<clé>`).
     pub integration: String,
@@ -204,14 +205,33 @@ pub struct IntegrationTestParams {
     pub to: String,
 }
 
-/// Résultat de `fn::notification_integration_test` : de quoi envoyer l'essai.
-#[derive(Debug, Clone, PartialEq, SurrealValue)]
+impl std::fmt::Debug for IntegrationTestParams {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("IntegrationTestParams")
+            .field("integration", &self.integration)
+            .field("to", &"[REDACTED]")
+            .finish()
+    }
+}
+
+/// Résultat de `fn::notification_integration_test` : de quoi envoyer l'essai ; son `Debug` ne
+/// montre pas le destinataire.
+#[derive(Clone, PartialEq, SurrealValue)]
 pub struct IntegrationTestTarget {
     /// Intégration.
     pub integration: ClaimedIntegration,
     /// Destinataire normalisé : e-mail, numéro E.164 (SMS), ou identifiant d'une adresse de
     /// messagerie ou web (`notification_endpoint:<clé>`).
     pub to: String,
+}
+
+impl std::fmt::Debug for IntegrationTestTarget {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("IntegrationTestTarget")
+            .field("integration", &self.integration)
+            .field("to", &"[REDACTED]")
+            .finish()
+    }
 }
 
 /// Paramètres de `fn::notification_integration_test_record` (hôte).

@@ -28,7 +28,7 @@ Licences vérifiées sur le fichier `LICENSE` de chaque dépôt cloné (8 novemb
 | Envoi SMTP | `lettre` 0.11 | MIT | **Dépendance** (V1-a) : `tokio1-rustls`, `ring`, `webpki-roots`, `pool`, `builder`, `smtp-transport`, sans les options par défaut. Option `dkim` exclue (signature par le relais, décision N4) |
 | Gabarits | `minijinja` 3 | Apache-2.0 | **Dépendance** (V1-a) : sans chargeur, variable affichée inconnue = erreur, échappement HTML automatique, budget `fuel` |
 | Mise en page e-mail | `mrml` 6 (MJML) | MIT | **Option** |
-| Push web, APNs, FCM | `web-push`, `a2`, `fcm` | Apache-2.0 / MIT | Plus tard ; leur cryptographie asymétrique est **soumise au CTO** (§11.3) |
+| Push web, APNs, FCM | `web-push`, `a2`, `fcm` | Apache-2.0 / MIT | **Écartées** : le push est livré sans elles (décision K8) ; jetons ES256 et RS256 et chiffrement Web Push par `lyxal_crypto`, appels HTTP (HTTP/2 pour APNs) par `reqwest` |
 
 Alternative SMTP : `mail-send` / `mail-builder` (Stalwart, Apache-2.0 ou MIT).
 
@@ -115,7 +115,7 @@ plafonnées selon le plan (n° 12, 25, 44, 83, 86, 104).
 | 27 | Étape limitation (throttle) | Plafond d'envois par fenêtre fixe ou dynamique, par groupe | Gratuit | `.../throttle.mdx` | V1 | Anti-spam |
 | 28 | Respect des horaires de l'abonné | Un délai ou digest attend la prochaine plage autorisée | Gratuit | `delay.mdx` (§ Extend to subscriber's schedule) | V1 | Lié aux heures calmes (#55) |
 | 29 | Étape requête HTTP | Appel d'une API externe, réponse réutilisable par les étapes suivantes, signature | Gratuit | `.../http-step.mdx` | V2 | Risque SSRF : liste d'hôtes autorisés à décider |
-| 30 | Conditions d'étape | Règles (subscriber, payload, contexte, résultat d'étape précédente, variables) | Gratuit | `.../step-conditions.mdx` | V1 | Moteur de conditions à fournir (`ROADMAP.md`, points à décider) |
+| 30 | Conditions d'étape | Règles (subscriber, payload, contexte, résultat d'étape précédente, variables) | Gratuit | `.../step-conditions.mdx` | V1 | Livrées : condition d'étape contrôlée par `fn::utils_condition_check` et évaluée par `fn::utils_condition_evaluate` (`lyxal_core`) |
 | 31 | Arrêt sur échec | Une étape canal en échec n'arrête pas le parcours ; une étape d'action, si | Gratuit | `docs/platform/developer/delivery-retries.mdx` | V1 | Comportement repris et rendu configurable |
 | 32 | « Sauter » si déjà lu | Ex. e-mail 6 h plus tard seulement si l'in-app n'est pas lu | Gratuit | `docs/framework/skip.mdx` | V1 | Exprimé par une condition sur l'étape précédente |
 | 33 | Étapes en code (step resolver) | Code TypeScript de l'utilisateur publié en fonction serverless qui produit le contenu | Gratuit (Cloud pour l'exécution hébergée) | `docs/platform/workflow/add-and-configure-steps/code-steps.mdx`, `enterprise/workers/step-resolver/README.md` | Non | Lyxal n'exécute pas de code utilisateur ; remplacé par des gabarits et des handlers Rust enregistrés |
@@ -249,8 +249,9 @@ intégration Vercel (`docs/community/`, `docs/platform/account/billing.mdx`,
 
 ## 2. Correspondance table par table : Novu → SurrealDB
 
-Préfixe `notification_`. Entités : `TYPE NORMAL SCHEMAFULL`. Associations : `TYPE RELATION ...
-ENFORCED`. Tous les documents portent `tenant` (organisation `lyxal_auth`), contrôlé par les
+Préfixe `notification_`. Toutes les tables, associations comprises, sont des documents
+`TYPE NORMAL SCHEMAFULL` (aucune table `TYPE RELATION`) : une association porte ses deux liens en
+champs `record<…>`. Tous les documents portent `tenant` (organisation `lyxal_auth`), contrôlé par les
 `PERMISSIONS`. Novu sépare organisation **et** environnement : Lyxal n'a que le locataire.
 
 ### 2.1. Tables reprises
@@ -258,29 +259,30 @@ ENFORCED`. Tous les documents portent `tenant` (organisation `lyxal_auth`), cont
 | Novu (entité ou table) | Table Lyxal | Type | Contenu et différences | Lot |
 | :--- | :--- | :--- | :--- | :--- |
 | `subscriber` | `notification_subscriber` | document | profil, `locale` (BCP 47), `timezone`, `data` ; préférence globale et heures calmes en objet imbriqué ; `external_id` unique par locataire | V1-b |
-| `channel-endpoint` | `notification_endpoint` (abonné → intégration) | relation | type (`device_token`, `webhook_url`, `slack_user`…), valeur, contextes | V1-b |
+| `channel-endpoint` | `notification_endpoint` (adresse ou appareil d'un abonné) | document | canal (`chat`, `webhook`, `push`), service, hôte, adresse ou jeton **scellés** (`enc:v2`), empreinte d'un appareil, dernier résultat | V1-e |
 | `topic` | `notification_topic` | document | clé unique par locataire, nom, `data` | V1-b |
-| `topic-subscribers` | `notification_topic_member` (abonné → sujet) | relation | `identifier` unique par (sujet, abonné, identifiant), condition, contextes ; jusqu'à 10 par abonné | V1-b |
+| `topic-subscribers` | `notification_topic_member` (abonné → sujet) | document | `identifier` unique par (sujet, abonné, identifiant), condition, contextes ; jusqu'à 10 par abonné | V1-b |
 | `notification-group` | `notification_category` | document | catégorie de désabonnement | V1-b |
 | `notification-template` | `notification_workflow` | document | étapes en **tableau d'objets imbriqués ordonnés** (type, conditions, contrôles, surcharges fournisseur) ; type d'événement déclencheur ; `critical`, `severity`, `tags`, schéma du `payload`, état `draft` / `active` / `inactive` | V1-a |
 | `message-template` | `notification_template` | document | contenu d'une étape par canal ; lien vers mise en page | V1-a |
 | `localization`, `localization-group`, `translation-group`, `translations` | clés de `lyxal_i18n` (espace de noms `notification`), déclarées dans `notification_template.keys` et appelées par `t("clé")` | document (`lyxal_i18n`) | un seul gabarit par étape ; textes par langue, surcharges par organisation et état « obsolète » portés par `lyxal_i18n` | V1-a |
 | `layout` | `notification_layout` | document | HTML commun, variables d'image de marque, `is_default` par locataire et canal | V1-a |
 | `control-values` | objet imbriqué `controls` dans l'étape ou la mise en page | objet | les niveaux `step_provider` et `step_integration` deviennent `provider_overrides` | V1-c |
-| `integration` | `notification_integration` | document | fournisseur, canal, `priority`, `primary`, `condition` ; `credentials_path` / `webhook_path` = **chemins** dans `lyxal_secrets`, jamais une valeur ; le relais SMTP est le fournisseur `smtp` d'une intégration | V1-e (lot 3) |
-| `preferences` | `notification_preference` (abonné → parcours, catégorie ou sujet) | relation | niveaux `global`, `workflow`, `topic_subscription`, `tenant_workflow` ; canaux en objet | V1-b |
-| `workflow-override` | `notification_preference` niveau `tenant_workflow` | relation | surcharge décidée par une organisation cliente | V1-b |
+| `integration` | `notification_integration` | document | fournisseur, canal, `priority`, `primary`, `condition` ; `credentials_path` / `webhook_path` = **chemins** dans `lyxal_secrets`, jamais une valeur ; le relais SMTP est le fournisseur `smtp` d'une intégration | V1-e |
+| `preferences` | `notification_preference` (abonné ou organisation → parcours ou catégorie) | document | niveaux `tenant_workflow`, `subscriber_global` (heures calmes), `subscriber_category`, `subscriber_workflow` ; canaux en objet | V1-b |
+| `workflow-override` | `notification_preference` niveau `tenant_workflow` | document | surcharge décidée par une organisation cliente | V1-b |
 | `context` | `notification_context` | document | `type`, `key`, `data` ; unique (locataire, type, clé) ; référencé par `context_keys` | V2 |
 | `notification` + ClickHouse `workflow_runs` | `notification_run` | document | un déclenchement pour un abonné ; `idempotency_key` **UNIQUE** ; `event_id` `lyxal_event` ; `expires_at` | V1-a |
 | `job` + ClickHouse `step_runs` | `notification_job` | document | une étape : statut, tentatives, `next_retry_at`, `locked_until`, clé de digest | V1-a |
-| `message` | `notification_message` | document | envoi par canal ; fil in-app : `seen_at`, `read_at`, `archived_at`, `snoozed_until`, actions ; `expires_at` | V1-a / V1-d |
+| `message` | `notification_message` | document | envoi par canal : destinataire, intégration, identifiant chez le fournisseur, état d'après les retours ; aucun corps | V1-a |
+| `message` (canal `in_app`) | `notification_inbox` | document | message du fil d'une personne : contenu en lecture seule, `seen_at`, `read_at`, `archived_at`, `snoozed_until`, état des boutons, `purge_after` | V1-d |
 | `execution-details` + ClickHouse `traces` | `notification_delivery_log` | document | journal en ajout seul ; jamais de code ni de lien sensible en clair | V1-a |
-| retours fournisseurs (activity tracking) | `notification_provider_event` | document | délivré, rejeté, rejet temporaire, plainte (lot 3) ; ouvert, cliqué (V2) ; dédoublonné par identifiant fournisseur | V1-e (lot 3) / V2 |
+| retours fournisseurs (activity tracking) | `notification_provider_event` | document | délivré, rejeté, rejet temporaire, plainte ; ouvert, cliqué (V2) ; dédoublonné par identifiant fournisseur | V1-e / V2 |
 | Postal `suppressions` | `notification_suppression` | document | rejet définitif, plainte, désabonnement ; unique (locataire, canal, adresse) | V1-a |
 | étape `throttle` | `notification_rate_limit` | document | compteur par (parcours, clé, fenêtre) | V1-c |
 | digest (`_mergedDigestId`) | `notification_digest` | document | fenêtre ouverte : clé, échéance, événements regroupés | V1-c |
 | `human-interaction` | `notification_interaction` | document | question `ask` / `approve` / `choose`, destinataires, expiration, réponse | V3 |
-| `domain`, `domain-route` | `notification_inbound_domain`, `notification_inbound_route` (route → domaine) | document / relation | statut MX, métadonnées de route | V3 |
+| `domain`, `domain-route` | `notification_inbound_domain`, `notification_inbound_route` (route → domaine) | document | statut MX, métadonnées de route | V3 |
 | (absent de Novu) | `notification_sender_domain` | document | domaine d'envoi, résultats SPF / DKIM / DMARC, date de contrôle | V2 |
 | (Svix, `environment.webhookAppId`) | `notification_webhook_endpoint`, `notification_webhook_delivery` | document | URL, types d'événements, secret de signature dans `lyxal_secrets` ; tentatives | V2 |
 | `environment-variable` | `notification_variable` | document | clé, valeur **non secrète** ; les secrets restent dans `lyxal_secrets` | V2 |

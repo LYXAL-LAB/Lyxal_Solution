@@ -54,7 +54,7 @@ impl NotificationModule {
         let descriptor = ModuleDescriptorBuilder::new(ModuleId::new(MODULE_ID), "0.1.0")
             .name("Lyxal Notification")
             .description(
-                "Notifications sortantes de Lyxal OS : abonnés, sujets, préférences, parcours à étapes (attente, regroupement, limitation, conditions), gabarits, intégrations (e-mail par SMTP, Brevo, Mailgun, Postmark, Resend ; SMS par Brevo, Twilio, Vonage ; messageries d'équipe ; appel signé d'une adresse web) et retours des fournisseurs, file d'envoi, diffusions, journal et liste de suppression",
+                "Notifications sortantes de Lyxal OS : abonnés, sujets, préférences, parcours à étapes (attente, regroupement, limitation, conditions), gabarits, intégrations (e-mail par SMTP, Brevo, Mailgun, Postmark, Resend ; SMS par Brevo, Twilio, Vonage ; messageries d'équipe ; appel signé d'une adresse web) et retours des fournisseurs, fil dans l'application en temps réel, notifications push (Web Push, Firebase Cloud Messaging, Apple Push Notification service), file d'envoi, diffusions, journal et liste de suppression",
             )
             .capability("database")
             .capability("events")
@@ -63,6 +63,7 @@ impl NotificationModule {
             .capability("chat")
             .capability("webhook")
             .capability("in_app")
+            .capability("push")
             .dependency(ModuleId::new("lyxal_core"))
             .dependency(ModuleId::new("lyxal_error"))
             .dependency(ModuleId::new("lyxal_event"))
@@ -171,5 +172,21 @@ impl ModuleHealthCheck for NotificationHealthCheck {
                 Some(format!("{} intégration(s) e-mail active(s) pour l'installation", list.len())),
             ),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use lyxal_runtime::manifest::ManifestParser;
+
+    /// Le descripteur Rust est celui que le runtime tire de `manifest.toml` (identifiant, nom,
+    /// version, description, capacités et dépendances, dans le même ordre).
+    #[test]
+    fn descriptor_matches_manifest() {
+        let from_manifest = ManifestParser::parse_to_descriptor(include_str!("../manifest.toml"))
+            .expect("manifeste");
+        let module = NotificationModule::new(Surreal::init());
+        assert_eq!(module.descriptor(), &from_manifest);
     }
 }

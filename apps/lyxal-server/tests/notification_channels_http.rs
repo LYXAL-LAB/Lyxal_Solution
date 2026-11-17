@@ -1,4 +1,4 @@
-//! Lot 4 de `lyxal_notification` sur l'hôte (base embarquée, runtime démarré, coffre-fort à clé
+//! Canaux de texte de `lyxal_notification` sur l'hôte (base embarquée, runtime démarré, coffre-fort à clé
 //! maîtresse éphémère) : routes des adresses de messagerie et web (`/api/v1/notification/
 //! endpoints`) — adresse scellée par l'hôte avant d'entrer en base, jamais relue ni renvoyée,
 //! clé de signature montrée une seule fois puis renouvelée, droits (gestion, sans droit, autre

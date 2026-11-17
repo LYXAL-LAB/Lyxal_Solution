@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Notifications push (lot 6) : intégrations push (Web Push, FCM, APNs : réglages et secrets) ;
+-- Notifications push : intégrations push (Web Push, FCM, APNs : réglages et secrets) ;
 -- inscription des appareils par la personne elle-même (valeurs scellées exigées, service push
 -- inconnu refusé, mise à jour d'une inscription renvoyée, limite de 10, écriture filtrée) ;
 -- lecture sans jeton (personne, autre personne, gestionnaire : type et date seulement) ; étape

@@ -56,10 +56,10 @@ pub use preview::NotificationPreview;
 pub use provider::{
     classify_smtp_code, system_clock, ApiEndpoints, ChannelDispatcher, ChatSender, ChatService,
     ChatTarget, Credentials, DeviceRemoval, EmailDispatcher, EmailMessage, EmailProvider,
-    EmailProviders, Provider, ProviderError, ProviderReceipt, PushApi, PushClock, PushCredentials,
-    PushDispatcher, PushEndpoints, PushFailure, PushMessage, PushService, PushTarget, SmsApi,
-    SmsCredentials, SmsEndpoints, SmsMessage, SmsProvider, SmtpProvider, SmtpSecurity,
-    DELIVERY_HEADER, MAX_PUSH_PAYLOAD_BYTES, SECRETS_CONSUMER, SIGNATURE_HEADER,
+    EmailProviders, IntegrationScope, Provider, ProviderError, ProviderReceipt, PushApi, PushClock,
+    PushCredentials, PushDispatcher, PushEndpoints, PushFailure, PushMessage, PushService,
+    PushTarget, SmsApi, SmsCredentials, SmsEndpoints, SmsMessage, SmsProvider, SmtpProvider,
+    SmtpSecurity, DELIVERY_HEADER, MAX_PUSH_PAYLOAD_BYTES, SECRETS_CONSUMER, SIGNATURE_HEADER,
 };
 pub use push_worker::{push_to_device, NotificationPushWorker, PUSH_CLEANUP_BUDGET};
 pub use quiet::quiet_until;

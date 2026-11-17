@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Intégrations (lot 3) : création et contrôles des réglages, chemin du secret et droit de le lire
+-- Intégrations : création et contrôles des réglages, chemin du secret et droit de le lire
 -- (D2), principale unique, modification, suppression ; choix d'une intégration pour un envoi
 -- (D1 : organisation, repli sur l'installation, condition, priorité), bascule après un échec
 -- temporaire (D3), envoi qui attend faute d'intégration ; retours des fournisseurs

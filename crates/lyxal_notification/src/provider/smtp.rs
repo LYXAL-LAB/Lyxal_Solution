@@ -3,23 +3,33 @@
 //!
 //! Classement : connexion, délai dépassé ou réponse 4xx → `transient` ; 550, 551 ou 553 →
 //! `recipient_rejected` (adresse supprimée) ; autre 5xx ou message refusé avant l'envoi →
-//! `permanent`. La signature DKIM est faite par le relais (décision N4). Le relais en clair
-//! (`local_plain`) n'est permis que sur la boucle locale (et, en base, pour l'installation).
+//! `permanent`. La signature DKIM est faite par le relais (décision N4).
+//!
+//! Appel sortant contrôlé (décision H1, mêmes plages que [`crate::outbound`]) : le nom du relais
+//! est **résolu à chaque envoi** et **toutes** les adresses obtenues sont vérifiées par
+//! [`forbidden_ip`] ; une seule adresse interdite refuse le relais
+//! (`NOTIFICATION_DESTINATION_FORBIDDEN`). La connexion se fait à l'adresse vérifiée (aucune
+//! seconde résolution), le nom servant au TLS. Seul le relais de l'**installation** peut être sur
+//! la boucle locale ; le relais en clair (`local_plain`) n'est permis que là (nom `localhost` ou
+//! adresse de boucle locale).
 
 use async_trait::async_trait;
 use lettre::message::header::{HeaderName, HeaderValue};
 use lettre::message::{Mailbox, MultiPart};
 use lettre::transport::smtp::authentication::Credentials as SmtpCredentials;
+use lettre::transport::smtp::client::{Tls, TlsParameters};
 use lettre::transport::smtp::extension::ClientId;
 use lettre::{Address, AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
-use std::net::IpAddr;
+use std::net::{IpAddr, SocketAddr};
+use std::sync::Arc;
 use std::time::Duration;
 
 use super::{
     missing, normalize_message_id, unsubscribe_header, Credentials, EmailMessage, EmailProvider,
-    ProviderError, ProviderReceipt,
+    IntegrationScope, ProviderError, ProviderReceipt,
 };
 use crate::models::{FailureClass, IntegrationSettings};
+use crate::outbound::{forbidden_ip, HostResolver, SystemResolver};
 
 /// En-tête du lien de désabonnement (RFC 2369).
 const LIST_UNSUBSCRIBE: HeaderName = HeaderName::new_from_ascii_str("List-Unsubscribe");
@@ -58,24 +68,76 @@ pub fn classify_smtp_code(code: u16) -> FailureClass {
     }
 }
 
-/// Relais SMTP d'une intégration : une connexion par envoi, délai par commande borné.
+/// Relais SMTP d'une intégration : une connexion par envoi à l'adresse vérifiée, délai par
+/// commande borné.
 pub struct SmtpProvider {
     timeout: Duration,
+    resolver: Arc<dyn HostResolver>,
 }
 
 impl SmtpProvider {
-    /// Fournisseur SMTP avec un délai par commande.
+    /// Fournisseur SMTP avec un délai par commande ; noms résolus par le système.
     pub fn new(timeout: Duration) -> Self {
-        Self { timeout }
+        Self {
+            timeout,
+            resolver: Arc::new(SystemResolver),
+        }
     }
 
-    fn transport(
+    /// Même fournisseur, noms résolus par `resolver` (tests : [`crate::StaticResolver`]).
+    pub fn with_resolver(mut self, resolver: Arc<dyn HostResolver>) -> Self {
+        self.resolver = resolver;
+        self
+    }
+
+    /// Adresse vérifiée du relais : `host` résolu (une adresse IP littérale est prise telle
+    /// quelle) et chaque adresse obtenue contrôlée ; la boucle locale n'est permise qu'au relais
+    /// de l'installation.
+    async fn relay_address(
         &self,
+        scope: IntegrationScope,
+        host: &str,
+        port: u16,
+    ) -> Result<SocketAddr, ProviderError> {
+        let addresses = match host.parse::<IpAddr>() {
+            Ok(ip) => vec![SocketAddr::new(ip, port)],
+            Err(_) => tokio::time::timeout(self.timeout, self.resolver.lookup(host, port))
+                .await
+                .map_err(|_| ProviderError::unavailable("résolution du relais trop longue"))?
+                .map_err(|_| ProviderError::unavailable("nom du relais introuvable"))?
+                .into_iter()
+                .map(|address| SocketAddr::new(address.ip(), port))
+                .collect(),
+        };
+        let allowed = |address: &SocketAddr| {
+            let ip = address.ip();
+            !forbidden_ip(ip) || (scope == IntegrationScope::Installation && ip.is_loopback())
+        };
+        if !addresses.iter().all(allowed) {
+            return Err(ProviderError {
+                class: FailureClass::Permanent,
+                code: "NOTIFICATION_DESTINATION_FORBIDDEN".to_string(),
+                detail: "adresse du relais privée, locale ou réservée".to_string(),
+            });
+        }
+        addresses
+            .first()
+            .copied()
+            .ok_or_else(|| ProviderError::unavailable("nom du relais introuvable"))
+    }
+
+    async fn transport(
+        &self,
+        scope: IntegrationScope,
         settings: &IntegrationSettings,
         credentials: &Credentials,
         domain: &str,
     ) -> Result<AsyncSmtpTransport<Tokio1Executor>, ProviderError> {
-        let host = settings.host.as_deref().ok_or_else(|| missing("host"))?;
+        let host = settings
+            .host
+            .as_deref()
+            .ok_or_else(|| missing("host"))?
+            .to_ascii_lowercase();
         let port = settings
             .port
             .and_then(|port| u16::try_from(port).ok())
@@ -85,28 +147,32 @@ impl SmtpProvider {
             .as_deref()
             .and_then(SmtpSecurity::parse)
             .ok_or_else(|| missing("security"))?;
-        let invalid_host = || ProviderError::configuration("hôte SMTP invalide");
-        let builder = match security {
-            SmtpSecurity::Tls => {
-                AsyncSmtpTransport::<Tokio1Executor>::relay(host).map_err(|_| invalid_host())?
+        if security == SmtpSecurity::LocalPlain {
+            let loopback =
+                host == "localhost" || host.parse::<IpAddr>().is_ok_and(|ip| ip.is_loopback());
+            if !loopback || scope != IntegrationScope::Installation {
+                return Err(ProviderError::configuration(
+                    "local_plain : réservé au relais de l'installation sur la boucle locale",
+                ));
             }
-            SmtpSecurity::StartTls => AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(host)
-                .map_err(|_| invalid_host())?,
-            SmtpSecurity::LocalPlain => {
-                let loopback =
-                    host == "localhost" || host.parse::<IpAddr>().is_ok_and(|ip| ip.is_loopback());
-                if !loopback {
-                    return Err(ProviderError::configuration(
-                        "local_plain : réservé à un relais de la boucle locale",
-                    ));
-                }
-                AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(host)
-            }
+        }
+        let address = self.relay_address(scope, &host, port).await?;
+        let tls = |host: &str| {
+            TlsParameters::new(host.to_string())
+                .map_err(|_| ProviderError::configuration("hôte SMTP invalide"))
         };
-        let mut builder = builder
-            .port(port)
-            .timeout(Some(self.timeout))
-            .hello_name(ClientId::Domain(domain.to_string()));
+        let tls = match security {
+            SmtpSecurity::Tls => Tls::Wrapper(tls(&host)?),
+            SmtpSecurity::StartTls => Tls::Required(tls(&host)?),
+            SmtpSecurity::LocalPlain => Tls::None,
+        };
+        // Connexion à l'adresse vérifiée ; le nom reste celui que le certificat doit porter
+        let mut builder =
+            AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(address.ip().to_string())
+                .port(port)
+                .tls(tls)
+                .timeout(Some(self.timeout))
+                .hello_name(ClientId::Domain(domain.to_string()));
         match credentials {
             Credentials::Login { username, password } => {
                 builder = builder.credentials(SmtpCredentials::new(
@@ -170,6 +236,7 @@ impl SmtpProvider {
 impl EmailProvider for SmtpProvider {
     async fn send(
         &self,
+        scope: IntegrationScope,
         settings: &IntegrationSettings,
         email: &EmailMessage,
         credentials: &Credentials,
@@ -180,7 +247,9 @@ impl EmailProvider for SmtpProvider {
             .ok_or_else(|| ProviderError::configuration("adresse d'expédition invalide"))?;
         let message_id = format!("<{}@{domain}>", uuid::Uuid::now_v7().simple());
         let message = Self::message(settings, email, &message_id)?;
-        let transport = self.transport(settings, credentials, &domain)?;
+        let transport = self
+            .transport(scope, settings, credentials, &domain)
+            .await?;
         match transport.send(message).await {
             Ok(response) => Ok(ProviderReceipt {
                 message_id: normalize_message_id(&message_id),
@@ -235,39 +304,128 @@ mod tests {
         assert_eq!(classify_smtp_code(554), FailureClass::Permanent);
     }
 
-    #[tokio::test]
-    async fn plain_smtp_is_limited_to_loopback() {
-        let settings = |host: &str| IntegrationSettings {
+    fn settings(host: &str, security: &str) -> IntegrationSettings {
+        IntegrationSettings {
             from_address: Some("noreply@lyxal.test".to_string()),
             host: Some(host.to_string()),
-            port: Some(25),
-            security: Some("local_plain".to_string()),
+            port: Some(587),
+            security: Some(security.to_string()),
             ..IntegrationSettings::default()
-        };
-        let provider = SmtpProvider::new(Duration::from_secs(5));
-        assert!(provider
-            .transport(&settings("127.0.0.1"), &Credentials::None, "lyxal.test")
-            .is_ok());
-        assert!(provider
-            .transport(&settings("localhost"), &Credentials::None, "lyxal.test")
-            .is_ok());
+        }
+    }
+
+    fn email() -> EmailMessage {
+        EmailMessage {
+            to: "a@exemple.fr".into(),
+            to_name: None,
+            list_unsubscribe: None,
+            content: RenderedEmail {
+                subject: "s".into(),
+                html: "h".into(),
+                text: "t".into(),
+            },
+        }
+    }
+
+    fn provider() -> SmtpProvider {
+        let resolver = crate::StaticResolver::new()
+            .with("localhost", "127.0.0.1:25".parse().expect("adresse"))
+            .with(
+                "smtp.interne.test",
+                "10.0.0.1:587".parse().expect("adresse"),
+            )
+            .with("smtp.mixte.test", "1.1.1.1:587".parse().expect("adresse"))
+            .with(
+                "smtp.mixte.test",
+                "192.168.1.10:587".parse().expect("adresse"),
+            )
+            .with(
+                "relais.local.test",
+                "127.0.0.1:587".parse().expect("adresse"),
+            );
+        SmtpProvider::new(Duration::from_secs(5)).with_resolver(Arc::new(resolver))
+    }
+
+    #[tokio::test]
+    async fn plain_smtp_is_limited_to_the_installation_on_loopback() {
+        let provider = provider();
+        for host in ["127.0.0.1", "localhost"] {
+            assert!(provider
+                .transport(
+                    IntegrationScope::Installation,
+                    &settings(host, "local_plain"),
+                    &Credentials::None,
+                    "lyxal.test"
+                )
+                .await
+                .is_ok());
+        }
+        for (scope, host) in [
+            (IntegrationScope::Installation, "smtp.exemple.fr"),
+            (IntegrationScope::Organization, "127.0.0.1"),
+        ] {
+            let refused = provider
+                .send(
+                    scope,
+                    &settings(host, "local_plain"),
+                    &email(),
+                    &Credentials::None,
+                )
+                .await
+                .expect_err("relais en clair refusé");
+            assert_eq!(refused.code, "NOTIFICATION_CONFIGURATION_INVALID");
+        }
+    }
+
+    #[tokio::test]
+    async fn relay_resolving_to_a_forbidden_address_is_refused() {
+        let provider = provider();
+        // Organisation : nom résolu en adresse privée, adresse mêlée, boucle locale
+        for host in ["smtp.interne.test", "smtp.mixte.test", "relais.local.test"] {
+            for security in ["tls", "starttls"] {
+                let refused = provider
+                    .send(
+                        IntegrationScope::Organization,
+                        &settings(host, security),
+                        &email(),
+                        &Credentials::None,
+                    )
+                    .await
+                    .expect_err("relais interne refusé");
+                assert_eq!(refused.code, "NOTIFICATION_DESTINATION_FORBIDDEN", "{host}");
+                assert_eq!(refused.class, FailureClass::Permanent);
+            }
+        }
+        // Installation : la boucle locale seule est permise, jamais un réseau privé
         let refused = provider
             .send(
-                &settings("smtp.exemple.fr"),
-                &EmailMessage {
-                    to: "a@exemple.fr".into(),
-                    to_name: None,
-                    list_unsubscribe: None,
-                    content: RenderedEmail {
-                        subject: "s".into(),
-                        html: "h".into(),
-                        text: "t".into(),
-                    },
-                },
+                IntegrationScope::Installation,
+                &settings("smtp.interne.test", "starttls"),
+                &email(),
                 &Credentials::None,
             )
             .await
-            .expect_err("relais en clair hors de la boucle locale");
-        assert_eq!(refused.code, "NOTIFICATION_CONFIGURATION_INVALID");
+            .expect_err("réseau privé refusé");
+        assert_eq!(refused.code, "NOTIFICATION_DESTINATION_FORBIDDEN");
+        assert!(provider
+            .transport(
+                IntegrationScope::Installation,
+                &settings("relais.local.test", "starttls"),
+                &Credentials::None,
+                "lyxal.test"
+            )
+            .await
+            .is_ok());
+        // Nom inconnu : temporaire
+        let unknown = provider
+            .send(
+                IntegrationScope::Organization,
+                &settings("inconnu.test", "tls"),
+                &email(),
+                &Credentials::None,
+            )
+            .await
+            .expect_err("nom inconnu");
+        assert_eq!(unknown.class, FailureClass::Transient);
     }
 }

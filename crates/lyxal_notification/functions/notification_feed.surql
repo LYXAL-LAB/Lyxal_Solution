@@ -73,10 +73,11 @@ DEFINE FUNCTION OVERWRITE fn::notification_feed_match($params: object) -> bool {
 } COMMENT "Interne : vrai si le message ({ item, filter, now }) est visible (pas en sommeil à now) et remplit le filtre d'onglet (archivé ou non, lu, étiquettes, gravité, données)";
 
 -- ----------------------------------------------------------------------------
--- fn::notification_feed_view (interne) : message tel que la personne le voit
+-- fn::notification_feed_view : message tel que la personne le voit (projection publique)
 -- ----------------------------------------------------------------------------
 
-DEFINE FUNCTION OVERWRITE fn::notification_feed_view($item: object) -> object {
+DEFINE FUNCTION OVERWRITE fn::notification_feed_view($params: object) -> object {
+    LET $item = $params.item;
     RETURN {
         id: $item.id,
         workflow: $item.workflow_key,
@@ -98,7 +99,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_feed_view($item: object) -> object {
         snoozed_until: $item.snoozed_until,
         created_at: $item.created_at
     };
-} COMMENT "Interne : vue d'un message du fil : { id, workflow, step_key, title, text, avatar, redirect, actions : [{ kind, label, url, status }], data, tags, severity, seen, read, archived, seen_at, read_at, archived_at, snoozed_until, created_at } (ni abonné, ni compte, ni déclenchement)";
+} COMMENT "Projection publique (retour brut, pour une projection SELECT : requête LIVE SELECT de l'hôte et fonctions du fil) : vue du message { item } du fil : { id, workflow, step_key, title, text, avatar, redirect, actions : [{ kind, label, url, status }], data, tags, severity, seen, read, archived, seen_at, read_at, archived_at, snoozed_until, created_at } (ni abonné, ni compte, ni déclenchement)";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_feed_mine (interne) : messages désignés de la personne
@@ -165,7 +166,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_feed_list($params: object) {
     };
     LET $page = array::slice($rows, 0, $p.limit);
     RETURN fn::result_ok({
-        items: array::map($page, |$item| fn::notification_feed_view($item)),
+        items: array::map($page, |$item| fn::notification_feed_view({ item: $item })),
         next_cursor: IF array::len($rows) > $p.limit { $page[array::len($page) - 1].id } ELSE { NONE }
     });
 } COMMENT "Fil de la personne connectée ({ filter : onglet { tags, severity, data, archived, read }, cursor : dernier message reçu, limit : 1 à 100, 20 par défaut }), du plus récent au plus ancien, sans les messages en sommeil : { items, next_cursor }. Session lyxal_auth de la personne (NOTIFICATION_FEED_NO_ACCOUNT sans compte ou sans abonné)";
@@ -256,7 +257,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_feed_snooze($params: object) {
     -- À son réveil, le message réapparaît comme non vu et non lu
     LET $updated = (UPDATE ONLY $p.id SET snoozed_until = $p.until, seen_at = NONE, read_at = NONE);
     IF $updated == NONE { RETURN fn::error_result("NOTIFICATION_WRITE_FORBIDDEN", $p.language, { table: "notification_inbox" }); };
-    RETURN fn::result_ok(fn::notification_feed_view($updated));
+    RETURN fn::result_ok(fn::notification_feed_view({ item: $updated }));
 } COMMENT "Met en sommeil un message du fil de la personne connectée ({ id, until : 3 minutes à 90 jours, sinon NOTIFICATION_SNOOZE_INVALID }) : caché jusqu'à until, puis de nouveau visible, non vu et non lu (calculé à la lecture). Session lyxal_auth de la personne";
 
 -- ----------------------------------------------------------------------------
@@ -279,7 +280,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_feed_unsnooze($params: object) {
     IF $targets.code IS NOT NONE { RETURN fn::error_result($targets.code, $p.language, $targets.details); };
     LET $updated = (UPDATE ONLY $p.id SET snoozed_until = NONE);
     IF $updated == NONE { RETURN fn::error_result("NOTIFICATION_WRITE_FORBIDDEN", $p.language, { table: "notification_inbox" }); };
-    RETURN fn::result_ok(fn::notification_feed_view($updated));
+    RETURN fn::result_ok(fn::notification_feed_view({ item: $updated }));
 } COMMENT "Réveille tout de suite un message en sommeil du fil de la personne connectée ({ id }) ; il reste non lu. Session lyxal_auth de la personne";
 
 -- ----------------------------------------------------------------------------
@@ -331,7 +332,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_feed_action($params: object) {
     IF !array::any($item.actions ?? [], |$a| $a.kind = $p.action) { RETURN fn::error_result("NOTIFICATION_FEED_ACTION_INVALID", $p.language, { action: $p.action }); };
     LET $updated = (UPDATE ONLY $p.id SET action_status = object::extend(action_status ?? {}, object::from_entries([[$p.action, $p.status]])));
     IF $updated == NONE { RETURN fn::error_result("NOTIFICATION_WRITE_FORBIDDEN", $p.language, { table: "notification_inbox" }); };
-    RETURN fn::result_ok(fn::notification_feed_view($updated));
+    RETURN fn::result_ok(fn::notification_feed_view({ item: $updated }));
 } COMMENT "Enregistre l'état d'un bouton d'un message du fil de la personne connectée ({ id, action : primary ou secondary, status : done ou reverted }) ; bouton absent : NOTIFICATION_FEED_ACTION_INVALID ; publie notification.inbox.action (identifiants seulement). Session lyxal_auth de la personne";
 
 -- ----------------------------------------------------------------------------
@@ -386,7 +387,8 @@ DEFINE FUNCTION OVERWRITE fn::notification_inbox_deliver($params: object) {
     LET $subscriber = IF $run.subscriber IS NONE { NONE } ELSE { (SELECT id, identity, subscriber_id FROM ONLY $run.subscriber) };
     -- Abonné supprimé ou délié de son compte depuis le déclenchement : plus de fil, étape écartée
     IF $subscriber.identity IS NONE {
-        UPDATE $job.id SET status = "skipped", skip_reason = "no_address:in_app", locked_until = NONE, claim_token = NONE;
+        LET $skipped = (UPDATE ONLY $job.id SET status = "skipped", skip_reason = "no_address:in_app", locked_until = NONE, claim_token = NONE);
+        IF $skipped == NONE { RETURN fn::error_result("NOTIFICATION_WRITE_FORBIDDEN", $p.language, { table: "notification_job" }); };
         CREATE notification_delivery_log CONTENT {
             run: $run.id, job: $job.id, attempt: $job.attempts, status: "skipped", code: "no_address:in_app",
             purge_after: time::now() + duration::from_days($settings.retention_days_log)
@@ -431,7 +433,8 @@ DEFINE FUNCTION OVERWRITE fn::notification_inbox_deliver($params: object) {
         run: $run.id, job: $job.id, attempt: $job.attempts, status: "sent",
         purge_after: time::now() + duration::from_days($settings.retention_days_log)
     };
-    UPDATE $job.id SET status = "completed", locked_until = NONE, claim_token = NONE, last_error = NONE;
+    LET $closed = (UPDATE ONLY $job.id SET status = "completed", locked_until = NONE, claim_token = NONE, last_error = NONE);
+    IF $closed == NONE { RETURN fn::error_result("NOTIFICATION_WRITE_FORBIDDEN", $p.language, { table: "notification_job" }); };
     LET $next = fn::notification_run_advance({ run: $run.id });
     RETURN fn::result_ok({
         item: $item,

@@ -1,4 +1,4 @@
-//! Notifications push (lot 6) contre de faux services locaux : Web Push (client contrôlé, jeton
+//! Notifications push contre de faux services locaux : Web Push (client contrôlé, jeton
 //! VAPID, corps chiffré, en-têtes), FCM (jeton du compte de service échangé, jeton d'accès gardé
 //! puis renouvelé, API HTTP v1), APNs (HTTP/2, jeton du fournisseur gardé 50 minutes) ; appareils
 //! invalides ; de bout en bout : déclenchement → trois appareils (navigateur, Android, iPhone),

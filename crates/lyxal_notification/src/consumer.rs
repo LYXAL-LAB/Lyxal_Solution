@@ -1,5 +1,5 @@
 //! Consommateur des événements de `lyxal_auth` : `auth.verification.requested`,
-//! `auth.recovery.requested`, `auth.invitation.created` (contrat du plan V1-a, §2.1), et les
+//! `auth.recovery.requested`, `auth.invitation.created` (contrat décrit au `README.md`), et les
 //! alertes de sécurité du double facteur (`auth.mfa.*`, `auth.passkey.clone_detected`,
 //! `auth.password.changed`), sans secret, envoyées par le parcours `auth_security_alert`.
 //!
@@ -175,8 +175,9 @@ impl AuthMessage for InvitationCreated {
     }
 }
 
-/// Champs d'une alerte de sécurité (aucun secret).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Champs d'une alerte de sécurité (aucun secret) ; leur `Debug` ne montre ni l'adresse ni le
+/// nom du destinataire.
+#[derive(Clone, Serialize, Deserialize)]
 pub struct SecurityAlertPayload {
     /// Identité concernée.
     pub identity_id: String,
@@ -201,6 +202,28 @@ pub struct SecurityAlertPayload {
     /// Premier mot de passe (création du compte) : aucune alerte.
     #[serde(default)]
     pub first: Option<bool>,
+}
+
+impl std::fmt::Debug for SecurityAlertPayload {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SecurityAlertPayload")
+            .field("identity_id", &self.identity_id)
+            .field(
+                "recipient_email",
+                &self.recipient_email.as_ref().map(|_| "[REDACTED]"),
+            )
+            .field("recipient_locale", &self.recipient_locale)
+            .field(
+                "recipient_name",
+                &self.recipient_name.as_ref().map(|_| "[REDACTED]"),
+            )
+            .field("method", &self.method)
+            .field("label", &self.label)
+            .field("reason", &self.reason)
+            .field("remaining", &self.remaining)
+            .field("first", &self.first)
+            .finish()
+    }
 }
 
 /// Alerte de sécurité : nature transmise au gabarit (`payload.alert`).

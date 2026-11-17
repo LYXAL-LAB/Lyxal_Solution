@@ -95,8 +95,9 @@ impl std::fmt::Debug for Subscriber {
     }
 }
 
-/// Paramètres de `fn::notification_subscriber_upsert`.
-#[derive(Debug, Clone, SurrealValue)]
+/// Paramètres de `fn::notification_subscriber_upsert` ; leur `Debug` ne montre aucune donnée
+/// personnelle.
+#[derive(Clone, SurrealValue)]
 pub struct SubscriberUpsertParams {
     /// Organisation (`auth_organization:<clé>`), absente pour l'installation.
     pub tenant: Option<String>,
@@ -118,6 +119,18 @@ pub struct SubscriberUpsertParams {
     pub data: Option<serde_json::Value>,
     /// Compte lié.
     pub identity: Option<String>,
+}
+
+impl std::fmt::Debug for SubscriberUpsertParams {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SubscriberUpsertParams")
+            .field("tenant", &self.tenant)
+            .field("subscriber_id", &self.subscriber_id)
+            .field("locale", &self.locale)
+            .field("timezone", &self.timezone)
+            .field("identity", &self.identity)
+            .finish_non_exhaustive()
+    }
 }
 
 /// Résultat de `fn::notification_subscriber_upsert`.

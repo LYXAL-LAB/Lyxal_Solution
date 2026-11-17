@@ -1,4 +1,4 @@
-//! Worker du canal `push` (lot 6) : réserve les étapes push dues (`fn::notification_job_claim`,
+//! Worker du canal `push` : réserve les étapes push dues (`fn::notification_job_claim`,
 //! canal `push` : appareils scellés de l'abonné, chacun avec l'intégration de son service), les
 //! reporte dans les heures calmes de l'abonné, rend la notification (`Renderer::render_push`,
 //! jamais le secret), contrôle ses liens (`fn::notification_push_links_check`, règles du fil),

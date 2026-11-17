@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Canaux du lot 4 : SMS, messageries d'équipe, adresse web. Parties d'un SMS (GSM-7, UCS-2) ;
+-- Canaux de texte : SMS, messageries d'équipe, adresse web. Parties d'un SMS (GSM-7, UCS-2) ;
 -- intégrations par canal (fournisseur du canal, réglages, secrets attendus) ; adresses des
 -- abonnés (création, hôtes officiels, adresse scellée exigée, jamais relue, liste d'hôtes de
 -- l'installation, limite, droits, adresses de la personne connectée, nouvelle clé de signature,
@@ -474,6 +474,7 @@ RETURN (SELECT VALUE payload.endpoint_id FROM event_outbox WHERE event_type = "n
         AND fn::notification_channel_address({ type: "webhook", address: {}, subscriber: NONE }) IS NONE
         AND fn::notification_suppression_address({ channel: "email", address: "A@B.test" }) == "a@b.test"
         AND fn::notification_suppression_address({ channel: "sms", address: "0612" }) IS NONE
+        AND fn::notification_suppression_address({ channel: "sms", address: " +33612345678 " }) == "+33612345678"
         AND fn::notification_suppression_reason({ scope: "alpha", channel: "sms", address: "+33600000003", critical: false }) == "complaint"
         AND fn::notification_suppression_reason({ scope: "alpha", channel: "sms", address: "+33600000003", critical: true }) IS NONE
         AND fn::notification_suppression_reason({ scope: "alpha", channel: "chat", address: "chat", critical: false }) IS NONE

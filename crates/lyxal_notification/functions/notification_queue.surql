@@ -334,7 +334,8 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_complete($params: object) {
         code: IF $p.response_code IS NONE { NONE } ELSE { <string> $p.response_code },
         purge_after: time::now() + duration::from_days($settings.retention_days_log)
     };
-    UPDATE $job.id SET status = "completed", locked_until = NONE, claim_token = NONE, last_error = NONE, integration = $integration.id;
+    LET $closed = (UPDATE ONLY $job.id SET status = "completed", locked_until = NONE, claim_token = NONE, last_error = NONE, integration = $integration.id);
+    IF $closed == NONE { RETURN fn::error_result("NOTIFICATION_WRITE_FORBIDDEN", $p.language, { table: "notification_job" }); };
     LET $next = fn::notification_run_advance({ run: $run.id });
     RETURN fn::result_ok({ messages: (SELECT VALUE id FROM notification_message WHERE job = $job.id ORDER BY sent_at), status: "completed", run_status: IF $next.status IN ["completed", "failed", "skipped", "canceled", "merged"] { $next.status } ELSE { NONE } });
 } COMMENT "Termine une étape envoyée ({ job_id, claim_token, integration, provider_message_id, response_code : code SMTP ou HTTP, subject, parts : SMS, endpoints : messagerie, adresse web et push, issue de chaque adresse servie }) : message (destinataire : e-mail, téléphone, hôte de chaque adresse servie ou type de chaque appareil push ; intégration, fournisseur, identifiant chez le fournisseur ; objet omis si sensible), dernier résultat des adresses, journal, puis étape suivante du déclenchement ; déclenchement terminé et secret effacé si c'était la dernière étape (run_status). Renvoie { messages, status, run_status }. Permission notification.worker";
@@ -382,11 +383,12 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_fail($params: object) {
     LET $status = IF $retry { "queued" } ELSE IF $canceled { "canceled" } ELSE { "failed" };
     -- Intégration de cette tentative : la suivante passe à la prochaine éligible (bascule D3)
     LET $integration = IF $p.integration IS NOT NONE AND record::exists($p.integration) { $p.integration } ELSE { NONE };
-    IF $retry {
-        UPDATE $job.id SET status = "queued", next_retry_at = $next, locked_until = NONE, claim_token = NONE, last_error = $error, integration = $integration;
+    LET $closed = IF $retry {
+        (UPDATE ONLY $job.id SET status = "queued", next_retry_at = $next, locked_until = NONE, claim_token = NONE, last_error = $error, integration = $integration)
     } ELSE {
-        UPDATE $job.id SET status = $status, locked_until = NONE, claim_token = NONE, last_error = $error, integration = $integration;
+        (UPDATE ONLY $job.id SET status = $status, locked_until = NONE, claim_token = NONE, last_error = $error, integration = $integration)
     };
+    IF $closed == NONE { RETURN fn::error_result("NOTIFICATION_WRITE_FORBIDDEN", $p.language, { table: "notification_job" }); };
     CREATE notification_delivery_log CONTENT {
         run: $run.id, job: $job.id, attempt: $job.attempts, status: IF $retry { "retry" } ELSE { "failed" },
         code: $p.code, detail: $p.detail,
@@ -397,7 +399,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_fail($params: object) {
     LET $address = IF $job.type = "sms" { $run.address.phone } ELSE IF $job.type = "email" { $run.address.email } ELSE { NONE };
     IF $p.class IN ["recipient_rejected", "recipient_opted_out"] AND $address IS NOT NONE {
         INSERT IGNORE INTO notification_suppression {
-            tenant: $run.tenant, channel: $job.type, address: string::lowercase($address),
+            tenant: $run.tenant, channel: $job.type, address: $address,
             reason: IF $p.class = "recipient_opted_out" { "complaint" } ELSE { "hard_bounce" }, source: $p.code
         };
     };

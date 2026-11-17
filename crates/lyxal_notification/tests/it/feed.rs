@@ -1,4 +1,4 @@
-//! Lot 5 : fil dans l'application sur le moteur embarqué. Déclenchement → worker du canal
+//! Fil dans l'application sur le moteur embarqué. Déclenchement → worker du canal
 //! `in_app` (sans fournisseur ni clé) → message du fil rendu (variables échappées, liens et
 //! boutons), trace d'envoi sans contenu ; lien rendu dangereux (variable qui fait d'un chemin
 //! un « // ») refusé à la livraison : échec définitif, aucun message ; contenu du message en

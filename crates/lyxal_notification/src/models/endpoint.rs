@@ -22,11 +22,11 @@ pub struct ClaimedEndpoint {
     /// Hôte de l'adresse.
     pub host: String,
     /// Adresse complète scellée (`enc:v2`), absente pour Telegram.
-    pub url: Option<String>,
+    pub(crate) url: Option<String>,
     /// Telegram : identifiant du salon.
     pub chat_id: Option<String>,
     /// Adresse web : clé de signature scellée (`enc:v2`).
-    pub signing_secret: Option<String>,
+    pub(crate) signing_secret: Option<String>,
     /// Appareil push : plateforme (`web`, `android`, `ios`).
     #[surreal(default)]
     pub platform: Option<String>,
@@ -35,13 +35,13 @@ pub struct ClaimedEndpoint {
     pub fingerprint: Option<String>,
     /// Appareil push : jeton scellé (Web Push : adresse du service push).
     #[surreal(default)]
-    pub token: Option<String>,
+    pub(crate) token: Option<String>,
     /// Web Push : clé publique du navigateur scellée.
     #[surreal(default)]
-    pub p256dh: Option<String>,
+    pub(crate) p256dh: Option<String>,
     /// Web Push : secret d'authentification du navigateur scellé.
     #[surreal(default)]
-    pub auth: Option<String>,
+    pub(crate) auth: Option<String>,
     /// Intégration de l'envoi pour ce service.
     pub integration: ClaimedIntegration,
 }
@@ -124,8 +124,9 @@ pub struct Endpoint {
     pub last_result: Option<EndpointResult>,
 }
 
-/// Paramètres de `fn::notification_endpoint_create` (hôte, après scellement).
-#[derive(Debug, Clone, SurrealValue)]
+/// Paramètres de `fn::notification_endpoint_create` (hôte, après scellement). Leur `Debug` ne
+/// montre ni l'adresse (secret porteur) ni ses formes scellées.
+#[derive(Clone, SurrealValue)]
 pub struct EndpointCreateParams {
     /// Organisation (texte), installation si absente.
     pub tenant: Option<String>,
@@ -151,8 +152,9 @@ pub struct EndpointCreateParams {
     pub active: Option<bool>,
 }
 
-/// Paramètres de `fn::notification_my_endpoint_create` (personne connectée, hôte).
-#[derive(Debug, Clone, SurrealValue)]
+/// Paramètres de `fn::notification_my_endpoint_create` (personne connectée, hôte). Leur `Debug`
+/// ne montre ni l'adresse (secret porteur) ni ses formes scellées.
+#[derive(Clone, SurrealValue)]
 pub struct MyEndpointCreateParams {
     /// Organisation active de la personne, installation si absente.
     pub tenant: Option<String>,
@@ -174,6 +176,53 @@ pub struct MyEndpointCreateParams {
     pub chat_id: Option<String>,
     /// Active.
     pub active: Option<bool>,
+}
+
+impl std::fmt::Debug for EndpointCreateParams {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("EndpointCreateParams")
+            .field("tenant", &self.tenant)
+            .field("subscriber_id", &self.subscriber_id)
+            .field("endpoint", &self.endpoint)
+            .field("channel", &self.channel)
+            .field("provider", &self.provider)
+            .field("name", &self.name)
+            .field("url", &self.url.as_ref().map(|_| "[REDACTED]"))
+            .field(
+                "sealed_url",
+                &self.sealed_url.as_ref().map(|_| "[REDACTED]"),
+            )
+            .field(
+                "signing_secret",
+                &self.signing_secret.as_ref().map(|_| "[REDACTED]"),
+            )
+            .field("chat_id", &self.chat_id.as_ref().map(|_| "[REDACTED]"))
+            .field("active", &self.active)
+            .finish()
+    }
+}
+
+impl std::fmt::Debug for MyEndpointCreateParams {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MyEndpointCreateParams")
+            .field("tenant", &self.tenant)
+            .field("endpoint", &self.endpoint)
+            .field("channel", &self.channel)
+            .field("provider", &self.provider)
+            .field("name", &self.name)
+            .field("url", &self.url.as_ref().map(|_| "[REDACTED]"))
+            .field(
+                "sealed_url",
+                &self.sealed_url.as_ref().map(|_| "[REDACTED]"),
+            )
+            .field(
+                "signing_secret",
+                &self.signing_secret.as_ref().map(|_| "[REDACTED]"),
+            )
+            .field("chat_id", &self.chat_id.as_ref().map(|_| "[REDACTED]"))
+            .field("active", &self.active)
+            .finish()
+    }
 }
 
 /// Paramètres de `fn::notification_endpoint_update` et `fn::notification_my_endpoint_update`.
@@ -201,7 +250,7 @@ pub struct EndpointRefParams {
 }
 
 /// Paramètres de `fn::notification_endpoint_rotate_secret` et `_my_endpoint_rotate_secret`.
-#[derive(Debug, Clone, SurrealValue)]
+#[derive(Clone, SurrealValue)]
 pub struct EndpointRotateParams {
     /// Organisation (texte), installation si absente.
     pub tenant: Option<String>,
@@ -209,6 +258,16 @@ pub struct EndpointRotateParams {
     pub endpoint: String,
     /// Nouvelle clé de signature scellée par l'hôte.
     pub signing_secret: String,
+}
+
+impl std::fmt::Debug for EndpointRotateParams {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("EndpointRotateParams")
+            .field("tenant", &self.tenant)
+            .field("endpoint", &self.endpoint)
+            .field("signing_secret", &"[REDACTED]")
+            .finish()
+    }
 }
 
 /// Paramètres de `fn::notification_endpoint_list`.

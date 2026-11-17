@@ -12,12 +12,12 @@
 //! jusqu'à ce qu'un administrateur de la plateforme crée celle de l'installation. Les diffusions
 //! sont toujours découpées en déclenchements. Les liens de désabonnement en un clic demandent la
 //! clé applicative (clé de signature dérivée par HKDF) et l'adresse publique de l'hôte
-//! (`LYXAL__NOTIFICATION__PUBLIC_URL`). SMS, messageries d'équipe et adresses web (lot 4) : un
+//! (`LYXAL__NOTIFICATION__PUBLIC_URL`). SMS, messageries d'équipe et adresses web : un
 //! worker par canal, sous les mêmes conditions que l'e-mail ; les adresses de messagerie et web
 //! sont scellées par les routes de l'hôte avec la clé applicative ; les retours de livraison des
-//! SMS sont demandés à l'adresse publique de l'hôte. Fil dans l'application (lot 5) : le worker
+//! SMS sont demandés à l'adresse publique de l'hôte. Fil dans l'application : le worker
 //! du canal `in_app` (sans fournisseur, sans clé) et le temps réel (`FeedHub`, requête
-//! `LIVE SELECT` tenue par un worker supervisé) tournent toujours. Notifications push (lot 6) :
+//! `LIVE SELECT` tenue par un worker supervisé) tournent toujours. Notifications push :
 //! un worker du canal `push` (Web Push, FCM, APNs) sous les mêmes conditions que l'e-mail ; les
 //! appareils sont inscrits par les routes de l'hôte, qui scellent leur jeton avec la clé
 //! applicative.

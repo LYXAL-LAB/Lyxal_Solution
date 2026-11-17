@@ -54,8 +54,13 @@
 //! `/api/v1/notification/my/endpoints/{adresse}/rotate` (`{ tenant }`) : nouvelle clé de
 //! signature d'une adresse web, montrée une fois. Sans clé applicative : 503
 //! (`NOTIFICATION_CONFIGURATION_INVALID`).
+//! `GET /api/v1/notification/my/endpoints?tenant=<organisation>&channel=<chat|webhook>` : adresses
+//! de la personne connectée (hôte, jamais l'adresse complète) ;
+//! `DELETE /api/v1/notification/my/endpoints/{adresse}?tenant=<organisation>` : retrait d'une de
+//! ses adresses (`fn::notification_my_endpoint_list`, `_delete`, au nom de la personne ; l'adresse
+//! d'une autre personne est introuvable). Réponses `{ endpoints }` et `{ deleted }`.
 //!
-//! Notifications push (lot 6) : routes de `notification_push.rs` (inscription des appareils,
+//! Notifications push : routes de `notification_push.rs` (inscription des appareils,
 //! clé publique VAPID, paire VAPID neuve) ; l'essai d'une intégration push envoie une
 //! notification d'essai à un appareil du même service (`{ to }` : `notification_endpoint:<clé>`).
 
@@ -71,13 +76,14 @@ use axum::http::header::{
 };
 use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
-use axum::routing::{get, post};
+use axum::routing::{delete, get, post};
 use axum::Router;
 use lyxal_crypto::{SecretBytes, StaticKeyResolver};
 use lyxal_notification::models::{
-    ClaimedIntegration, DigestVars, Endpoint, EndpointCreateParams, EndpointResolveParams,
-    EndpointRotateParams, IntegrationGetParams, IntegrationTestParams, IntegrationTestRecordParams,
-    MyEndpointCreateParams, SettingsGetParams, StepPreviewParams,
+    ClaimedIntegration, DigestVars, Endpoint, EndpointCreateParams, EndpointRefParams,
+    EndpointResolveParams, EndpointRotateParams, IntegrationGetParams, IntegrationTestParams,
+    IntegrationTestRecordParams, MyEndpointCreateParams, MyEndpointListParams, SettingsGetParams,
+    StepPreviewParams,
 };
 use lyxal_notification::{
     deliver_to_endpoint, generate_signing_key, EndpointField, EndpointMessage, NotificationError,
@@ -122,8 +128,11 @@ pub fn routes() -> Router<AppContext> {
         )
         .route(
             "/my/endpoints",
-            post(my_endpoint_create).layer(DefaultBodyLimit::max(ENDPOINT_BODY_LIMIT)),
+            post(my_endpoint_create)
+                .layer(DefaultBodyLimit::max(ENDPOINT_BODY_LIMIT))
+                .get(my_endpoint_list),
         )
+        .route("/my/endpoints/:endpoint", delete(my_endpoint_delete))
         .route(
             "/endpoints/:endpoint/rotate",
             post(endpoint_rotate).layer(DefaultBodyLimit::max(TEST_BODY_LIMIT)),
@@ -635,8 +644,9 @@ pub(super) fn tenant_key(tenant: Option<&str>) -> Result<Option<String>, ApiErro
     }
 }
 
-/// Clé d'enregistrement d'une adresse dans le chemin : lettres, chiffres et `_` seulement.
-fn endpoint_key(key: &str) -> Option<&str> {
+/// Clé d'enregistrement d'une adresse ou d'un appareil dans le chemin : lettres, chiffres et `_`
+/// seulement.
+pub(super) fn endpoint_key(key: &str) -> Option<&str> {
     (!key.is_empty()
         && key.len() <= 64
         && key.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_'))
@@ -827,6 +837,64 @@ async fn endpoint_rotate(
     body: Bytes,
 ) -> Response {
     let result = rotate_endpoint(&context, &headers, &key, &body, false).await;
+    auth::respond(&context, &headers, result).await
+}
+
+/// `GET /my/endpoints?tenant=&channel=` : adresses de la personne connectée.
+async fn my_endpoint_list(
+    State(context): State<AppContext>,
+    Query(query): Query<HashMap<String, String>>,
+    headers: HeaderMap,
+) -> Response {
+    let result = async {
+        let (_, session) = auth::caller_session(&context, &headers).await?;
+        let tenant = query.get("tenant").cloned();
+        tenant_key(tenant.as_deref())?;
+        let endpoints = NotificationStore::new(session)
+            .my_endpoint_list(MyEndpointListParams {
+                tenant,
+                channel: query.get("channel").cloned(),
+            })
+            .await
+            .map_err(NotificationError::from)?;
+        auth::ok(
+            StatusCode::OK,
+            json!({ "endpoints": endpoints.iter().map(endpoint_json).collect::<Vec<_>>() }),
+        )
+    }
+    .await;
+    auth::respond(&context, &headers, result).await
+}
+
+/// `DELETE /my/endpoints/{adresse}?tenant=` : adresse retirée par la personne connectée.
+async fn my_endpoint_delete(
+    State(context): State<AppContext>,
+    Path(key): Path<String>,
+    Query(query): Query<HashMap<String, String>>,
+    headers: HeaderMap,
+) -> Response {
+    let result = async {
+        let (_, session) = auth::caller_session(&context, &headers).await?;
+        let tenant = query.get("tenant").cloned();
+        tenant_key(tenant.as_deref())?;
+        let key = endpoint_key(&key).ok_or_else(|| {
+            ApiError::Server(ServerError::InvalidRequest {
+                message: "adresse : identifiant invalide".to_string(),
+            })
+        })?;
+        let deleted = NotificationStore::new(session)
+            .my_endpoint_delete(EndpointRefParams {
+                tenant,
+                endpoint: format!("notification_endpoint:{key}"),
+            })
+            .await
+            .map_err(NotificationError::from)?;
+        auth::ok(
+            StatusCode::OK,
+            json!({ "deleted": deleted.deleted.to_sql() }),
+        )
+    }
+    .await;
     auth::respond(&context, &headers, result).await
 }
 

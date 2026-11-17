@@ -240,3 +240,42 @@ fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "dev
         AND $job.{ locale, texts_error } == { locale: "en", texts_error: NONE }
         AND $job.texts.text == ["Hello,"];
 };
+
+-- préparation: déclenchement dont l'étape sera close sous un droit d'écriture retiré
+fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "devis-refus", to: { subscriber_id: "email:refus@exemple.fr", email: "refus@exemple.fr" }, payload: { n: "D-10" }, secret: "enc:v2:cle-2026:AAAAAAAAAAAAAAAAAAAAAAAA" });
+
+-- test: le worker réserve l'étape
+-- en tant que: worker
+{
+    LET $job = fn::notification_job_claim({ channel: "email", worker_id: "w1", limit: 10, lease_seconds: 60 }).data.find(|$j| $j.idempotency_key = "devis-refus");
+    CREATE test_ref:refus CONTENT { job: $job.job_id, token: $job.claim_token };
+    RETURN $job.job_id IS NOT NONE;
+};
+
+-- préparation: écriture des étapes refusée (droit retiré entre la réservation et la clôture)
+DEFINE TABLE OVERWRITE notification_job
+    TYPE NORMAL
+    SCHEMAFULL
+    PERMISSIONS
+        FOR select WHERE fn::notification_can({ action: "read", tenant: run.tenant }) OR fn::notification_can({ action: "send", tenant: run.tenant })
+        FOR create, update WHERE false
+        FOR delete WHERE fn::notification_can({ action: "worker", tenant: run.tenant })
+    COMMENT "Étapes engagées d'un déclenchement (file d'envoi, attentes)";
+
+-- test: écriture filtrée par les permissions : clôture de l'étape refusée, à l'échec comme au succès (NOTIFICATION_WRITE_FORBIDDEN)
+-- en tant que: worker
+RETURN fn::notification_job_fail({ job_id: <string> test_ref:refus.job, claim_token: test_ref:refus.token, integration: "notification_integration:relais", class: "permanent", code: "X" }).error.code == "NOTIFICATION_WRITE_FORBIDDEN"
+    AND fn::notification_job_complete({ job_id: <string> test_ref:refus.job, claim_token: test_ref:refus.token, integration: "notification_integration:relais" }).error.code == "NOTIFICATION_WRITE_FORBIDDEN";
+
+-- préparation: droits des étapes rétablis
+DEFINE TABLE OVERWRITE notification_job
+    TYPE NORMAL
+    SCHEMAFULL
+    PERMISSIONS
+        FOR select WHERE fn::notification_can({ action: "read", tenant: run.tenant }) OR fn::notification_can({ action: "send", tenant: run.tenant })
+        FOR create, update WHERE fn::notification_can({ action: "send", tenant: run.tenant }) OR fn::notification_can({ action: "manage", tenant: run.tenant })
+        FOR delete WHERE fn::notification_can({ action: "worker", tenant: run.tenant })
+    COMMENT "Étapes engagées d'un déclenchement (file d'envoi, attentes)";
+
+-- test: l'étape refusée est restée réservée
+RETURN (SELECT VALUE status FROM ONLY test_ref:refus.job) == "running";
