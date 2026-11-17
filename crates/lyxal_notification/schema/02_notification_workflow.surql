@@ -106,8 +106,8 @@ DEFINE FIELD OVERWRITE steps.*.key ON TABLE notification_workflow
 
 DEFINE FIELD OVERWRITE steps.*.type ON TABLE notification_workflow
     TYPE string
-    ASSERT $value IN ["email", "sms", "chat", "webhook", "in_app", "delay", "digest", "throttle"]
-    COMMENT "Type : canal (email, sms, chat, webhook, in_app) ou étape d'enchaînement (delay, digest, throttle)";
+    ASSERT $value IN ["email", "sms", "chat", "webhook", "in_app", "push", "delay", "digest", "throttle"]
+    COMMENT "Type : canal (email, sms, chat, webhook, in_app, push) ou étape d'enchaînement (delay, digest, throttle)";
 
 DEFINE FIELD OVERWRITE steps.*.condition ON TABLE notification_workflow
     TYPE option<object>

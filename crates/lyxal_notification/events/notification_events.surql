@@ -239,15 +239,22 @@ THEN {
     IF $owner == NONE OR $owner.tenant != $after.tenant { THROW "NOTIFICATION_ENDPOINT_INVALID"; };
 };
 
+-- Adresse ou appareil push créé, modifié (nom, état, salon, clé de signature, nouvelle
+-- inscription d'un appareil), supprimé, ou appareil retiré par le worker sur réponse du service
+-- (décision G5 : removed_reason posé juste avant la suppression). Identifiants seulement : jamais
+-- l'adresse, le jeton, les clés ni l'empreinte.
 DEFINE EVENT OVERWRITE notification_endpoint_changed_event ON TABLE notification_endpoint
 WHEN $event = "CREATE" OR $event = "DELETE"
     OR ($event = "UPDATE" AND ($before.name != $after.name OR $before.active != $after.active
-        OR $before.chat_id != $after.chat_id OR $before.secret_rotated_at != $after.secret_rotated_at))
+        OR $before.chat_id != $after.chat_id OR $before.secret_rotated_at != $after.secret_rotated_at
+        OR $before.registered_at != $after.registered_at))
 THEN {
     LET $record = IF $event = "DELETE" { $before } ELSE { $after };
     LET $published = fn::event_publish({
         event_id: rand::uuid::v7(),
-        event_type: IF $event = "CREATE" { "notification.endpoint.created" } ELSE IF $event = "DELETE" { "notification.endpoint.deleted" } ELSE { "notification.endpoint.updated" },
+        event_type: IF $event = "CREATE" { "notification.endpoint.created" }
+            ELSE IF $event = "DELETE" { IF $before.removed_reason IS NONE { "notification.endpoint.deleted" } ELSE { "notification.endpoint.removed" } }
+            ELSE { "notification.endpoint.updated" },
         producer: "lyxal_notification",
         source: $record.id,
         payload: {

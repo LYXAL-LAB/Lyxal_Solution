@@ -144,6 +144,8 @@ Le contrat complet est documenté dans `crates/lyxal_crypto/API_CONTRACT.md`.
 | **TOTP (RFC 6238)** | `totp` | `TotpSecret`, `TotpConfig`, `totp_generate()`, `totp_verify()`, `totp_uri()` |
 | **HMAC-SHA256** | `hmac` | `HmacKey`, `sign_hmac_sha256()`, `verify_hmac_sha256()` ; clé d'un protocole externe (webhooks) : `ExternalHmacKey`, `sign_external_hmac_sha256()`, `verify_external_hmac_sha256()` ; HMAC-SHA1 d'un protocole externe, **vérification seulement** (retours Twilio, K8) : `verify_external_hmac_sha1()` |
 | **HKDF-SHA256** | `kdf` | `hkdf_sha256()` (retourne `SecretBytes`) |
+| **ES256 / RS256** (jetons des services push, K8) | `signing` | `EcdsaP256SigningKey` (`import_pkcs8`, `generate`, `public_key_uncompressed`, `sign_es256`, `export_pkcs8` pour ranger une clé VAPID générée), `RsaSigningKey` (`import_pkcs8`, `sign_rs256`) ; **signature seulement** (aucune vérification offerte) |
+| **Chiffrement Web Push** (RFC 8291, K8) | `webpush` | `webpush_encrypt()` (`aes128gcm` : ECDH P-256 éphémère, HKDF-SHA256, AES-128-GCM), `WEBPUSH_MAX_PLAINTEXT_BYTES`, `WEBPUSH_OVERHEAD_BYTES` |
 | **Gestion de clés & Trousseaux** | `key`, `key_resolver`, `providers` | `EncryptionKey`, `KeyId`, `KeyRingBuilder`, `KeyRing`, `KeyUse`, `KeyResolver`, `StaticKeyResolver`, `EnvironmentKeyProvider`, `FileKeyProvider` |
 
 ### Chiffrement des Secrets
@@ -178,6 +180,8 @@ lyxal_crypto
 7. **CSPRNG** : utiliser `rand_core::OsRng`. Il est interdit d'utiliser `rand::thread_rng()` ou tout PRNG déterministe pour la génération de matériel cryptographique.
 
 8. **Codes TOTP (double facteur)** : utiliser `lyxal_crypto::totp::{TotpSecret, totp_generate, totp_verify, totp_uri}`. Il est interdit d'importer directement `sha1`, `totp-rs` ou toute autre crate TOTP/HOTP dans un module métier.
+
+9. **Notifications push** (décision K8) : jetons VAPID et APNs signés par `lyxal_crypto::EcdsaP256SigningKey::sign_es256`, jeton du compte de service Google par `lyxal_crypto::RsaSigningKey::sign_rs256`, messages Web Push chiffrés par `lyxal_crypto::webpush_encrypt`. Il est interdit d'importer directement `ring`, `p256`, `rsa`, `jsonwebtoken`, `ece` ou toute autre crate de signature ou de chiffrement Web Push dans un module métier.
 
 ### Contextes AAD Déterministes
 

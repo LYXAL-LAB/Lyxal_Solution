@@ -141,10 +141,11 @@ DEFINE FUNCTION OVERWRITE fn::notification_template_content($params: object) -> 
         IF $params.avatar IS NONE { NONE } ELSE { ["avatar", $params.avatar] },
         IF $params.redirect IS NONE { NONE } ELSE { ["redirect", $params.redirect] },
         IF $params.actions IS NONE { NONE } ELSE { ["actions", $params.actions] },
-        IF $params.data IS NONE { NONE } ELSE { ["data", $params.data] }
+        IF $params.data IS NONE { NONE } ELSE { ["data", $params.data] },
+        IF $params.icon IS NONE { NONE } ELSE { ["icon", $params.icon] }
     ], |$e| $e IS NOT NONE);
     RETURN object::from_entries($fields);
-} COMMENT "Champs de contenu fournis ({ subject, html_body, text_body, keys, avatar, redirect, actions, data }), nettoyés : objet sans caractère de contrôle, HTML nettoyé, clés sans doublon ; champs du fil repris tels quels (contrôlés par fn::notification_template_channel_refusal)";
+} COMMENT "Champs de contenu fournis ({ subject, html_body, text_body, keys, avatar, redirect, actions, data, icon }), nettoyés : objet sans caractère de contrôle, HTML nettoyé, clés sans doublon ; champs du fil et du push repris tels quels (contrôlés par fn::notification_template_channel_refusal)";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_template_action_fields (interne) : boutons d'un gabarit du fil
@@ -208,14 +209,15 @@ DEFINE FUNCTION OVERWRITE fn::notification_sms_segments($text: string) -> object
 
 DEFINE FUNCTION OVERWRITE fn::notification_template_channel_refusal($params: object) -> option<object> {
     LET $t = $params.template;
-    -- Avatar, lien, boutons et données : fil seulement
-    IF $params.channel != "in_app" {
-        LET $feed_only = array::filter(["avatar", "redirect", "actions", "data"], |$f| $t[$f] IS NOT NONE);
-        IF array::len($feed_only) > 0 {
-            RETURN { code: "NOTIFICATION_INVALID_INPUT", details: { fields: object::from_entries(array::map($feed_only, |$f| [$f, ["CORE_VALIDATION_NOT_ALLOWED"]])) } };
-        };
+    -- Avatar et boutons : fil seulement ; icône : push seulement ; lien et données : fil et push
+    LET $allowed = IF $params.channel = "in_app" { ["avatar", "redirect", "actions", "data"] }
+        ELSE IF $params.channel = "push" { ["redirect", "icon", "data"] } ELSE { [] };
+    LET $refused = array::filter(["avatar", "redirect", "actions", "data", "icon"], |$f| $t[$f] IS NOT NONE AND $f NOT IN $allowed);
+    IF array::len($refused) > 0 {
+        RETURN { code: "NOTIFICATION_INVALID_INPUT", details: { fields: object::from_entries(array::map($refused, |$f| [$f, ["CORE_VALIDATION_NOT_ALLOWED"]])) } };
     };
     IF $params.channel = "in_app" { RETURN fn::notification_template_feed_refusal($t); };
+    IF $params.channel = "push" { RETURN fn::notification_template_push_refusal($t); };
     IF $params.channel = "email" {
         LET $missing = array::filter(["subject", "html_body", "text_body"], |$f| $t[$f] IS NONE);
         RETURN IF array::len($missing) = 0 { NONE } ELSE {
@@ -234,7 +236,32 @@ DEFINE FUNCTION OVERWRITE fn::notification_template_channel_refusal($params: obj
         IF $segments.parts > 10 { RETURN { code: "NOTIFICATION_SMS_TOO_LONG", details: $segments }; };
     };
     RETURN NONE;
-} COMMENT "Interne : refus du contenu d'un gabarit selon le canal de son étape ({ channel, template : subject, html_body, text_body, layout, avatar, redirect, actions, data }) : e-mail : objet, HTML et texte requis ; SMS, messagerie, adresse web : texte requis, ni HTML ni mise en page ; SMS : 10 parties au plus (NOTIFICATION_SMS_TOO_LONG) ; fil : fn::notification_template_feed_refusal ; avatar, lien, boutons et données : fil seulement. { code, details } ou NONE";
+} COMMENT "Interne : refus du contenu d'un gabarit selon le canal de son étape ({ channel, template : subject, html_body, text_body, layout, avatar, redirect, actions, data, icon }) : e-mail : objet, HTML et texte requis ; SMS, messagerie, adresse web : texte requis, ni HTML ni mise en page ; SMS : 10 parties au plus (NOTIFICATION_SMS_TOO_LONG) ; fil : fn::notification_template_feed_refusal ; push : fn::notification_template_push_refusal ; avatar et boutons : fil seulement ; icône : push seulement ; lien et données : fil et push. { code, details } ou NONE";
+
+-- ----------------------------------------------------------------------------
+-- fn::notification_template_push_refusal (interne) : contenu d'un gabarit push (G4)
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::notification_template_push_refusal($t: object) -> option<object> {
+    LET $extra = array::filter(["html_body", "layout"], |$f| $t[$f] IS NOT NONE);
+    IF array::len($extra) > 0 {
+        RETURN { code: "NOTIFICATION_INVALID_INPUT", details: { fields: object::from_entries(array::map($extra, |$f| [$f, ["CORE_VALIDATION_NOT_ALLOWED"]])) } };
+    };
+    LET $missing = array::filter(["subject", "text_body"], |$f| $t[$f] IS NONE);
+    IF array::len($missing) > 0 {
+        RETURN { code: "NOTIFICATION_INVALID_INPUT", details: { fields: object::from_entries(array::map($missing, |$f| [$f, ["CORE_VALIDATION_REQUIRED"]])) } };
+    };
+    -- Lien et icône : règles du fil (partie fixe du gabarit valide ; lien rendu contrôlé à l'envoi)
+    LET $bad = array::filter([["redirect", $t.redirect], ["icon", $t.icon]], |$l| $l[1] IS NOT NONE AND !fn::notification_link_valid({ value: $l[1], template: true }));
+    IF array::len($bad) > 0 {
+        RETURN { code: "NOTIFICATION_INVALID_INPUT", details: { fields: object::from_entries(array::map($bad, |$l| [$l[0], ["CORE_VALIDATION_FORMAT"]])) } };
+    };
+    -- Données : gabarits textuels, 2 Kio au plus (le message entier tient en 4 Kio une fois chiffré)
+    IF $t.data IS NOT NONE AND (!fn::validation_object_values_type($t.data, "string", true, NONE).valid OR !fn::validation_max_length(<string> $t.data, 2048).valid) {
+        RETURN { code: "NOTIFICATION_INVALID_INPUT", details: { fields: { data: ["CORE_VALIDATION_FORMAT"] } } };
+    };
+    RETURN NONE;
+} COMMENT "Interne : refus du contenu d'un gabarit push (décision G4) : titre (subject) et texte requis, ni HTML ni mise en page ; lien et icône : partie fixe du gabarit déjà valide (fn::notification_link_valid : chemin de l'application ou adresse HTTPS) ; données : textes (gabarits), 2 Kio au plus. Le message rendu est borné à 4 Kio une fois chiffré par le worker (texte tronqué ; NOTIFICATION_PUSH_TOO_LARGE si le reste n'y tient pas). { code, details } ou NONE";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_template_feed_refusal (interne) : contenu d'un gabarit du fil (F3)
@@ -287,6 +314,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_template_create($params: object) {
             redirect: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 2048 } }] },
             actions: fn::notification_template_action_fields({}),
             data: { pipeline: [{ rule: "is_object" }] },
+            icon: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 2048 } }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -310,7 +338,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_template_create($params: object) {
         RETURN fn::error_result("NOTIFICATION_NOT_FOUND", $p.language, { resource: "layout" });
     };
     LET $content = fn::notification_template_content({ subject: $p.subject, html_body: $p.html_body, text_body: $p.text_body, keys: $p.keys,
-        avatar: $p.avatar, redirect: $p.redirect, actions: $p.actions, data: $p.data });
+        avatar: $p.avatar, redirect: $p.redirect, actions: $p.actions, data: $p.data, icon: $p.icon });
     LET $check = fn::notification_template_unknown_keys({ keys: $content.keys });
     IF $check.error IS NOT NONE OR array::len($check.unknown) > 0 {
         RETURN fn::error_result("NOTIFICATION_TEMPLATE_KEY_UNKNOWN", $p.language, { keys: $check.unknown, cause: $check.error });
@@ -320,7 +348,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_template_create($params: object) {
     }));
     IF array::len($inserted) = 0 { RETURN fn::error_result("NOTIFICATION_TEMPLATE_EXISTS", $p.language, { step_key: $p.step_key }); };
     RETURN fn::result_ok($inserted[0]);
-} COMMENT "Crée le gabarit d'une étape ({ workflow, step_key, subject, html_body, text_body, keys, layout, avatar, redirect, actions, data }) ; un seul par étape ; e-mail : objet, HTML et texte ; SMS, messagerie, adresse web : texte seul (objet facultatif, ni HTML ni mise en page), SMS de 10 parties au plus (NOTIFICATION_SMS_TOO_LONG) ; fil : titre (subject) et texte, avatar, lien, deux boutons et données, liens contrôlés (chemin de l'application ou adresse HTTPS) ; objet sans caractère de contrôle, HTML nettoyé ; keys : clés lyxal_i18n appelées par t(\"clé\"), toutes déclarées (NOTIFICATION_TEMPLATE_KEY_UNKNOWN) ; mise en page de la portée du parcours ou de l'installation. Permission notification.manage";
+} COMMENT "Crée le gabarit d'une étape ({ workflow, step_key, subject, html_body, text_body, keys, layout, avatar, redirect, actions, data, icon }) ; un seul par étape ; e-mail : objet, HTML et texte ; SMS, messagerie, adresse web : texte seul (objet facultatif, ni HTML ni mise en page), SMS de 10 parties au plus (NOTIFICATION_SMS_TOO_LONG) ; fil : titre (subject) et texte, avatar, lien, deux boutons et données, liens contrôlés (chemin de l'application ou adresse HTTPS) ; push : titre et texte, lien, icône et données (2 Kio), mêmes liens ; objet sans caractère de contrôle, HTML nettoyé ; keys : clés lyxal_i18n appelées par t(\"clé\"), toutes déclarées (NOTIFICATION_TEMPLATE_KEY_UNKNOWN) ; mise en page de la portée du parcours ou de l'installation. Permission notification.manage";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_template_update
@@ -340,6 +368,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_template_update($params: object) {
             redirect: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 2048 } }], nullable: true },
             actions: object::extend(fn::notification_template_action_fields({}), { nullable: true }),
             data: { pipeline: [{ rule: "is_object" }], nullable: true },
+            icon: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 2048 } }], nullable: true },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -356,8 +385,8 @@ DEFINE FUNCTION OVERWRITE fn::notification_template_update($params: object) {
     };
     -- Contenu après modification, contrôlé selon le canal de l'étape (E5)
     LET $channel = array::find((SELECT VALUE steps FROM ONLY $template.workflow) ?? [], |$s| $s.key = $template.step_key).type;
-    -- Champs du fil : valeur fournie, null efface, absente garde la valeur actuelle
-    LET $feed = object::from_entries(array::map(["avatar", "redirect", "actions", "data"], |$f| [$f,
+    -- Champs du fil et du push : valeur fournie, null efface, absente garde la valeur actuelle
+    LET $feed = object::from_entries(array::map(["avatar", "redirect", "actions", "data", "icon"], |$f| [$f,
         IF $p[$f] IS NONE { $template[$f] } ELSE IF type::is_null($p[$f]) { NONE } ELSE { $p[$f] }]));
     LET $shape = fn::notification_template_channel_refusal({ channel: $channel, template: object::extend({
         subject: $p.subject ?? $template.subject, html_body: $p.html_body ?? $template.html_body, text_body: $p.text_body ?? $template.text_body,
@@ -372,13 +401,13 @@ DEFINE FUNCTION OVERWRITE fn::notification_template_update($params: object) {
     LET $updated = (UPDATE ONLY $template.id MERGE object::extend($content, {
         layout: IF $p.clear_layout { NONE } ELSE { $p.layout ?? $template.layout }
     }));
-    -- Champs du fil remplacés en entier (null efface, absent garde la valeur actuelle)
+    -- Champs du fil et du push remplacés en entier (null efface, absent garde la valeur actuelle)
     LET $updated = IF $updated == NONE { NONE } ELSE {
-        (UPDATE ONLY $template.id SET avatar = $feed.avatar, redirect = $feed.redirect, actions = $feed.actions, data = $feed.data)
+        (UPDATE ONLY $template.id SET avatar = $feed.avatar, redirect = $feed.redirect, actions = $feed.actions, data = $feed.data, icon = $feed.icon)
     };
     IF $updated == NONE { RETURN fn::error_result("NOTIFICATION_WRITE_FORBIDDEN", $p.language, { table: "notification_template" }); };
     RETURN fn::result_ok($updated);
-} COMMENT "Modifie un gabarit ({ template, subject, html_body, text_body, keys, layout, clear_layout, avatar, redirect, actions, data : null efface un champ du fil }) ; seuls les champs fournis changent ; mêmes contrôles qu'à la création, forme propre au canal de l'étape et longueur d'un SMS comprises. Permission notification.manage";
+} COMMENT "Modifie un gabarit ({ template, subject, html_body, text_body, keys, layout, clear_layout, avatar, redirect, actions, data, icon : null efface un champ du fil ou du push }) ; seuls les champs fournis changent ; mêmes contrôles qu'à la création, forme propre au canal de l'étape et longueur d'un SMS comprises. Permission notification.manage";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_template_get

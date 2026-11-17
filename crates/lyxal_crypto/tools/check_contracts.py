@@ -32,7 +32,8 @@ def compile_source(source):
     return subprocess.run(arguments, input=source, capture_output=True, text=True)
 
 
-types = ["SecretBytes", "SecretString", "EncryptionKey", "HmacKey", "PasswordHash", "TotpSecret"]
+types = ["SecretBytes", "SecretString", "EncryptionKey", "HmacKey", "PasswordHash", "TotpSecret",
+         "EcdsaP256SigningKey", "RsaSigningKey"]
 for name in types:
     # Positive controls stop a missing dependency/name from masquerading as security.
     positive = f"""

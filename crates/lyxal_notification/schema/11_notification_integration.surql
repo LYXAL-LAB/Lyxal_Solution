@@ -10,7 +10,8 @@
 -- garde notification_integration_guard. Un retour de fournisseur ne garde aucun corps.
 -- Canaux : email, sms (Brevo, Twilio, Vonage), chat (un service de messagerie par intégration ;
 -- seul Telegram a un secret : le jeton du robot) et webhook (adresse web : aucune valeur secrète,
--- une intégration par portée active le canal).
+-- une intégration par portée active le canal) et push (décisions G2, G6 : Web Push, Firebase
+-- Cloud Messaging, Apple Push Notification service ; identifiants dans lyxal_secrets).
 
 DEFINE TABLE OVERWRITE notification_integration
     TYPE NORMAL
@@ -35,15 +36,16 @@ DEFINE FIELD OVERWRITE scope_key ON TABLE notification_integration
     COMMENT "Portée d'unicité : installation ou clé de l'organisation";
 
 DEFINE FIELD OVERWRITE key ON TABLE notification_integration TYPE string ASSERT string::len($value) >= 1 AND string::len($value) <= 64 READONLY COMMENT "Clé unique dans la portée";
-DEFINE FIELD OVERWRITE channel ON TABLE notification_integration TYPE string ASSERT $value IN ["email", "sms", "chat", "webhook"] READONLY COMMENT "Canal";
+DEFINE FIELD OVERWRITE channel ON TABLE notification_integration TYPE string ASSERT $value IN ["email", "sms", "chat", "webhook", "push"] READONLY COMMENT "Canal";
 DEFINE FIELD OVERWRITE provider ON TABLE notification_integration
     TYPE string
     ASSERT ($this.channel = "email" AND $value IN ["smtp", "brevo", "mailgun", "postmark", "resend"])
         OR ($this.channel = "sms" AND $value IN ["brevo", "twilio", "vonage"])
         OR ($this.channel = "chat" AND $value IN ["slack", "teams", "discord", "mattermost", "google_chat", "telegram"])
         OR ($this.channel = "webhook" AND $value = "webhook")
+        OR ($this.channel = "push" AND $value IN ["webpush", "fcm", "apns"])
     READONLY
-    COMMENT "Fournisseur, propre au canal (e-mail : smtp, brevo, mailgun, postmark, resend ; SMS : brevo, twilio, vonage ; messagerie : slack, teams, discord, mattermost, google_chat, telegram ; adresse web : webhook)";
+    COMMENT "Fournisseur, propre au canal (e-mail : smtp, brevo, mailgun, postmark, resend ; SMS : brevo, twilio, vonage ; messagerie : slack, teams, discord, mattermost, google_chat, telegram ; adresse web : webhook ; push : webpush, fcm, apns)";
 DEFINE FIELD OVERWRITE name ON TABLE notification_integration TYPE string ASSERT string::len($value) >= 1 AND string::len($value) <= 128 COMMENT "Nom affiché";
 DEFINE FIELD OVERWRITE active ON TABLE notification_integration TYPE bool DEFAULT true COMMENT "Active : éligible aux envois";
 DEFINE FIELD OVERWRITE primary ON TABLE notification_integration TYPE bool DEFAULT false COMMENT "Principale de la portée pour son canal (une au plus)";
@@ -64,8 +66,14 @@ DEFINE FIELD OVERWRITE settings.security ON TABLE notification_integration TYPE 
 DEFINE FIELD OVERWRITE settings.domain ON TABLE notification_integration TYPE option<string> COMMENT "Mailgun : domaine d'envoi";
 DEFINE FIELD OVERWRITE settings.region ON TABLE notification_integration TYPE option<string> ASSERT $value IS NONE OR $value IN ["us", "eu"] COMMENT "Mailgun : région de l'API";
 DEFINE FIELD OVERWRITE settings.sender ON TABLE notification_integration TYPE option<string> COMMENT "SMS : expéditeur (numéro E.164 ou nom court de 11 caractères au plus)";
+DEFINE FIELD OVERWRITE settings.vapid_subject ON TABLE notification_integration TYPE option<string> COMMENT "Web Push : contact VAPID (mailto: ou https:)";
+DEFINE FIELD OVERWRITE settings.vapid_public_key ON TABLE notification_integration TYPE option<string> COMMENT "Web Push : clé publique VAPID (Base64url, point P-256 non compressé), donnée aux navigateurs ; posée par l'hôte avec une paire neuve";
+DEFINE FIELD OVERWRITE settings.project_id ON TABLE notification_integration TYPE option<string> COMMENT "FCM : identifiant du projet Firebase";
+DEFINE FIELD OVERWRITE settings.team_id ON TABLE notification_integration TYPE option<string> COMMENT "APNs : identifiant de l'équipe Apple (10 caractères)";
+DEFINE FIELD OVERWRITE settings.bundle_id ON TABLE notification_integration TYPE option<string> COMMENT "APNs : identifiant de l'application (en-tête apns-topic)";
+DEFINE FIELD OVERWRITE settings.environment ON TABLE notification_integration TYPE option<string> ASSERT $value IS NONE OR $value IN ["production", "sandbox"] COMMENT "APNs : production ou bac à sable";
 
-DEFINE FIELD OVERWRITE credentials_path ON TABLE notification_integration TYPE option<string> ASSERT $value IS NONE OR string::starts_with($value, "notification/") COMMENT "Chemin du secret des identifiants (lyxal_secrets, même portée) : e-mail, SMS et Telegram ; absent pour les autres messageries et l'adresse web";
+DEFINE FIELD OVERWRITE credentials_path ON TABLE notification_integration TYPE option<string> ASSERT $value IS NONE OR string::starts_with($value, "notification/") COMMENT "Chemin du secret des identifiants (lyxal_secrets, même portée) : e-mail, SMS, Telegram et push (clé VAPID, compte de service Google, clé APNs) ; absent pour les autres messageries et l'adresse web";
 DEFINE FIELD OVERWRITE webhook_path ON TABLE notification_integration TYPE option<string> ASSERT $value IS NONE OR string::starts_with($value, "notification/") COMMENT "Chemin facultatif du secret des retours (lyxal_secrets, même portée)";
 
 DEFINE FIELD OVERWRITE last_test ON TABLE notification_integration TYPE option<object> COMMENT "Dernier essai (D6) : { at, ok, code }";

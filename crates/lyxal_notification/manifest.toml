@@ -2,8 +2,8 @@ manifest_version = 1
 id = "lyxal_notification"
 name = "Lyxal Notification"
 version = "0.1.0"
-description = "Notifications sortantes de Lyxal OS : abonnés, sujets, préférences, parcours à étapes (attente, regroupement, limitation, conditions), gabarits, intégrations (e-mail par SMTP, Brevo, Mailgun, Postmark, Resend ; SMS par Brevo, Twilio, Vonage ; messageries d'équipe ; appel signé d'une adresse web) et retours des fournisseurs, fil dans l'application en temps réel, file d'envoi, diffusions, journal et liste de suppression"
-capabilities = ["database", "events", "email", "sms", "chat", "webhook", "in_app"]
+description = "Notifications sortantes de Lyxal OS : abonnés, sujets, préférences, parcours à étapes (attente, regroupement, limitation, conditions), gabarits, intégrations (e-mail par SMTP, Brevo, Mailgun, Postmark, Resend ; SMS par Brevo, Twilio, Vonage ; messageries d'équipe ; appel signé d'une adresse web) et retours des fournisseurs, fil dans l'application en temps réel, notifications push (Web Push, Firebase Cloud Messaging, Apple Push Notification service), file d'envoi, diffusions, journal et liste de suppression"
+capabilities = ["database", "events", "email", "sms", "chat", "webhook", "in_app", "push"]
 
 [runtime]
 min_version = ">=0.1.0"
@@ -67,6 +67,7 @@ functions = [
     "functions/notification_settings.surql",
     "functions/notification_integration.surql",
     "functions/notification_endpoint.surql",
+    "functions/notification_device.surql",
     "functions/notification_queue.surql",
     "functions/notification_feed.surql"
 ]
@@ -77,7 +78,8 @@ error_definitions = [
     "error/destinataires/error_destinataires.surql",
     "error/integrations/error_integrations.surql",
     "error/canaux/error_canaux.surql",
-    "error/fil/error_fil.surql"
+    "error/fil/error_fil.surql",
+    "error/push/error_push.surql"
 ]
 events = ["events/notification_events.surql"]
 seeds = ["seeds/notification_texts.surql", "seeds/notification_initial.surql"]

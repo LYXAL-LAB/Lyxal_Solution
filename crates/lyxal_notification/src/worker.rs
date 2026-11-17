@@ -138,19 +138,19 @@ trait JobProcessor: Send + Sync {
 }
 
 /// Envoi accepté : de quoi terminer l'étape.
-struct Delivery {
-    receipt: Option<ProviderReceipt>,
-    subject: Option<String>,
-    parts: Option<i64>,
-    endpoints: Vec<EndpointOutcome>,
+pub(crate) struct Delivery {
+    pub(crate) receipt: Option<ProviderReceipt>,
+    pub(crate) subject: Option<String>,
+    pub(crate) parts: Option<i64>,
+    pub(crate) endpoints: Vec<EndpointOutcome>,
 }
 
 /// File d'un canal : réservation, heures calmes, renouvellement, issue enregistrée.
-struct JobQueue {
-    store: NotificationStore,
-    settings: SendWorkerSettings,
-    worker_id: String,
-    channel: &'static str,
+pub(crate) struct JobQueue {
+    pub(crate) store: NotificationStore,
+    pub(crate) settings: SendWorkerSettings,
+    pub(crate) worker_id: String,
+    pub(crate) channel: &'static str,
 }
 
 impl JobQueue {
@@ -163,15 +163,7 @@ impl JobQueue {
         cancellation: &CancellationToken,
         processor: &dyn JobProcessor,
     ) -> Result<Vec<JobOutcome>, NotificationError> {
-        let jobs = self
-            .store
-            .job_claim(JobClaimParams {
-                worker_id: self.worker_id.clone(),
-                channel: self.channel.to_string(),
-                limit: i64::from(self.settings.batch_size),
-                lease_seconds: self.lease_seconds(),
-            })
-            .await?;
+        let jobs = self.claim().await?;
         let mut outcomes = Vec::with_capacity(jobs.len());
         for job in jobs {
             if cancellation.is_cancelled() {
@@ -211,14 +203,39 @@ impl JobQueue {
         Ok(outcomes)
     }
 
-    fn lease_seconds(&self) -> i64 {
+    /// Réserve les étapes dues du canal.
+    pub(crate) async fn claim(&self) -> Result<Vec<ClaimedJob>, NotificationError> {
+        Ok(self
+            .store
+            .job_claim(JobClaimParams {
+                worker_id: self.worker_id.clone(),
+                channel: self.channel.to_string(),
+                limit: i64::from(self.settings.batch_size),
+                lease_seconds: self.lease_seconds(),
+            })
+            .await?)
+    }
+
+    /// Renouvelle la réservation d'une étape juste avant son envoi.
+    pub(crate) async fn renew(&self, job: &ClaimedJob) -> Result<(), NotificationError> {
+        self.store
+            .job_renew(JobRenewParams {
+                job_id: job.job_id.to_sql(),
+                claim_token: job.claim_token.clone(),
+                lease_seconds: self.lease_seconds(),
+            })
+            .await?;
+        Ok(())
+    }
+
+    pub(crate) fn lease_seconds(&self) -> i64 {
         i64::try_from(self.settings.lease.as_secs())
             .unwrap_or(300)
             .clamp(10, 3600)
     }
 
     /// Étape reportée à la fin des heures calmes de l'abonné.
-    async fn defer(&self, job: &ClaimedJob, end: jiff::Timestamp) -> JobOutcome {
+    pub(crate) async fn defer(&self, job: &ClaimedJob, end: jiff::Timestamp) -> JobOutcome {
         match end.to_string().parse::<NotificationDatetime>() {
             Ok(not_before) => match self.release(job, Some(not_before)).await {
                 JobOutcome::Released => JobOutcome::Deferred,
@@ -231,7 +248,7 @@ impl JobQueue {
         }
     }
 
-    async fn release(
+    pub(crate) async fn release(
         &self,
         job: &ClaimedJob,
         not_before: Option<NotificationDatetime>,
@@ -255,7 +272,7 @@ impl JobQueue {
 
     /// Enregistre l'issue d'un envoi : étape terminée, ou échec (nouvelle tentative selon la
     /// classe), avec l'intégration utilisée et l'issue de chaque adresse servie.
-    async fn finish(
+    pub(crate) async fn finish(
         &self,
         job: &ClaimedJob,
         result: Result<Delivery, (ProviderError, Vec<EndpointOutcome>)>,
@@ -321,7 +338,7 @@ impl JobQueue {
 }
 
 /// Descripteur d'un worker d'envoi.
-fn send_descriptor(
+pub(crate) fn send_descriptor(
     name: &str,
     label: &str,
     description: &str,
@@ -337,7 +354,7 @@ fn send_descriptor(
 }
 
 /// Échec avant l'envoi (secret, rendu, réglage) : définitif.
-fn permanent(error: &NotificationError) -> ProviderError {
+pub(crate) fn permanent(error: &NotificationError) -> ProviderError {
     ProviderError {
         class: FailureClass::Permanent,
         code: error.code(),
@@ -913,7 +930,7 @@ impl<R: KeyResolver + 'static> LyxalWorker for NotificationChannelWorker<R> {
 /// Aucune adresse servie, ni dans cette tentative ni dans une précédente : l'étape échoue. Une
 /// adresse servie plus tôt suffit (les adresses refusées définitivement ensuite n'annulent pas
 /// ce qui est déjà parti).
-fn nothing_delivered(served_before: i64, outcomes: &[EndpointOutcome]) -> bool {
+pub(crate) fn nothing_delivered(served_before: i64, outcomes: &[EndpointOutcome]) -> bool {
     served_before == 0 && !outcomes.iter().any(|outcome| outcome.ok)
 }
 
@@ -1003,7 +1020,7 @@ pub async fn deliver_to_endpoint<R: KeyResolver>(
 }
 
 /// Clé d'un enregistrement (contexte de scellement, identifiant de livraison).
-fn record_key(id: &NotificationRecordId) -> Option<String> {
+pub(crate) fn record_key(id: &NotificationRecordId) -> Option<String> {
     match &id.key {
         surrealdb::types::RecordIdKey::String(key) => Some(key.clone()),
         surrealdb::types::RecordIdKey::Number(key) => Some(key.to_string()),
@@ -1266,7 +1283,7 @@ impl LyxalWorker for NotificationStepWorker {
     }
 }
 
-fn truncate(text: &str, max: usize) -> String {
+pub(crate) fn truncate(text: &str, max: usize) -> String {
     text.chars().take(max).collect()
 }
 

@@ -12,9 +12,14 @@
 //! Autres canaux (lot 4) : SMS par Brevo, Twilio et Vonage ([`SmsApi`]) ; messageries d'équipe
 //! et adresse web par le client contrôlé ([`ChatSender`]) ; [`ChannelDispatcher`] lit les
 //! identifiants dans `lyxal_secrets` (jeton du robot Telegram compris).
+//!
+//! Notifications push (lot 6) : Web Push, FCM et APNs ([`PushApi`]) ; [`PushDispatcher`] lit les
+//! identifiants de l'intégration dans `lyxal_secrets` (clé VAPID, compte de service Google, clé
+//! APNs) avant l'envoi.
 
 mod chat;
 mod http;
+mod push;
 mod sms;
 mod smtp;
 
@@ -38,6 +43,13 @@ pub use self::chat::{
 };
 pub(crate) use self::http::{classify_status, read_bounded};
 pub use self::http::{ApiEndpoints, MAX_RESPONSE_BYTES, REQUEST_TIMEOUT};
+pub use self::push::{
+    apns_body, apns_refusal, apns_token, fcm_assertion, fcm_body, fcm_refusal, system_clock,
+    vapid_token, DeviceRemoval, PushApi, PushClock, PushCredentials, PushEndpoints, PushFailure,
+    PushMessage, PushService, PushTarget, APNS_PRODUCTION_URL, APNS_SANDBOX_URL,
+    APNS_TOKEN_RENEWAL_SECONDS, FCM_SCOPE, FCM_SEND_URL, FCM_TOKEN_URL, MAX_PUSH_PAYLOAD_BYTES,
+    PUSH_TTL_SECONDS, VAPID_LIFETIME_SECONDS, WEBPUSH_HOSTS,
+};
 pub use self::sms::{SmsApi, SmsCredentials, SmsEndpoints, SmsMessage, SmsProvider};
 pub use self::smtp::{classify_smtp_code, SmtpProvider, SmtpSecurity};
 
@@ -571,6 +583,58 @@ impl ChannelDispatcher {
             .await
             .map_err(|_| WebhookError::Secret)?;
         ProviderWebhook::verify_sms(provider, &secret, request, now)
+    }
+}
+
+/// Envoi des notifications push : identifiants lus dans `lyxal_secrets` (session système de
+/// l'hôte, `lyxal_notification` annoncé comme consommateur), puis service push de l'intégration.
+#[derive(Clone)]
+pub struct PushDispatcher {
+    api: Arc<PushApi>,
+    secrets: SecretsClient,
+}
+
+impl fmt::Debug for PushDispatcher {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PushDispatcher")
+            .field("secrets", &self.secrets)
+            .finish_non_exhaustive()
+    }
+}
+
+impl PushDispatcher {
+    /// Envoi par les services push `api` et le coffre-fort `secrets`.
+    pub fn new(api: Arc<PushApi>, secrets: SecretsClient) -> Self {
+        Self { api, secrets }
+    }
+
+    /// Identifiants de l'intégration lus dans le coffre-fort (chemin tracé).
+    pub async fn credentials(
+        &self,
+        integration: &ClaimedIntegration,
+    ) -> Result<PushCredentials, ProviderError> {
+        let service = PushService::parse(&integration.provider)
+            .ok_or_else(|| ProviderError::configuration("service push inconnu"))?;
+        let path = integration
+            .credentials_path
+            .as_deref()
+            .ok_or_else(|| ProviderError::secret("chemin des identifiants absent"))?;
+        let value = read_integration_secret(&self.secrets, integration, path).await?;
+        PushCredentials::parse(service, &value)
+    }
+
+    /// Envoie une notification à un appareil avec les identifiants `credentials` de
+    /// l'intégration (lus une fois par étape et par intégration).
+    pub async fn send(
+        &self,
+        integration: &ClaimedIntegration,
+        credentials: &PushCredentials,
+        target: &PushTarget<'_>,
+        message: &PushMessage,
+    ) -> Result<ProviderReceipt, PushFailure> {
+        self.api
+            .send(integration, credentials, target, message)
+            .await
     }
 }
 

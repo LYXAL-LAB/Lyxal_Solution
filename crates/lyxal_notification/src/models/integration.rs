@@ -36,6 +36,25 @@ pub struct IntegrationSettings {
     /// SMS : expéditeur (numéro E.164 ou nom court de 11 caractères au plus).
     #[surreal(default)]
     pub sender: Option<String>,
+    /// Web Push : contact VAPID (`mailto:` ou `https:`), revendication `sub` du jeton.
+    #[surreal(default)]
+    pub vapid_subject: Option<String>,
+    /// Web Push : clé publique VAPID (Base64url du point P-256 non compressé), donnée aux
+    /// navigateurs ; doit correspondre à la clé privée du coffre-fort.
+    #[surreal(default)]
+    pub vapid_public_key: Option<String>,
+    /// FCM : identifiant du projet Firebase.
+    #[surreal(default)]
+    pub project_id: Option<String>,
+    /// APNs : identifiant de l'équipe Apple (revendication `iss`).
+    #[surreal(default)]
+    pub team_id: Option<String>,
+    /// APNs : identifiant de l'application (en-tête `apns-topic`).
+    #[surreal(default)]
+    pub bundle_id: Option<String>,
+    /// APNs : `production` ou `sandbox`.
+    #[surreal(default)]
+    pub environment: Option<String>,
 }
 
 /// Intégration remise au worker (étape réservée) ou à l'hôte (essai, retours) : fournisseur,

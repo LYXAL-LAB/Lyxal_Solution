@@ -4,7 +4,9 @@ Module du Noyau Technique de Lyxal OS : **notifications sortantes**. Canaux **e-
 complet pour les messages de `lyxal_auth` : vérification d'adresse, récupération, invitation,
 alertes de sécurité), **SMS** (Brevo, Twilio, Vonage), **messageries d'équipe** (Slack,
 Microsoft Teams, Discord, Mattermost, Google Chat, Telegram), **appel signé d'une adresse
-web** et **fil dans l'application** (la « cloche », en temps réel par un flux de l'hôte), pour
+web**, **fil dans l'application** (la « cloche », en temps réel par un flux de l'hôte) et
+**notifications push** (navigateurs par Web Push, Android par Firebase Cloud Messaging, iPhone
+par Apple Push Notification service), pour
 les parcours des modules métiers ; destinataires (**abonnés**, leurs **adresses**
 de messagerie et web, **sujets**),
 **catégories**, **préférences** à tous les niveaux, **heures calmes**, **désabonnement en un
@@ -19,8 +21,9 @@ SurrealDB (fonctions `fn::notification_*`) ; les attentes et la purge passent pa
 (MiniJinja), calcule les heures calmes dans le fuseau de l'abonné (`jiff`), signe les liens de
 désabonnement (`lyxal_crypto`), lit les identifiants des intégrations dans `lyxal_secrets`, envoie
 par SMTP (`lettre`) ou par les API des fournisseurs (`reqwest`), appelle les messageries et les
-adresses web par un client sortant contrôlé (SSRF), scelle les adresses (`lyxal_crypto`) et
-vérifie les retours (`lyxal_crypto`). Modèle repris de Novu et
+adresses web par un client sortant contrôlé (SSRF), scelle les adresses et les jetons des
+appareils (`lyxal_crypto`), signe les jetons des services push et chiffre les messages Web Push
+(`lyxal_crypto`, décision K8) et vérifie les retours (`lyxal_crypto`). Modèle repris de Novu et
 Postal ([`MODELE_SOURCES.md`](MODELE_SOURCES.md)) ; lots suivants dans [`ROADMAP.md`](ROADMAP.md).
 
 ## 1. Modèle
@@ -30,21 +33,21 @@ Postal ([`MODELE_SOURCES.md`](MODELE_SOURCES.md)) ; lots suivants dans [`ROADMAP
 | `notification_settings` | réglages de l'installation, surchargés par organisation : fuseau horaire par défaut des abonnés, tentatives au plus, durées de conservation, `retention_days_inbox` (conservation des messages du fil, 90 jours par défaut, 1 à 365),
 `max_wait_days` (durée maximale d'une attente ou d'une fenêtre, 30 jours par défaut, 1 à 366) ; `allowed_hosts` (installation seulement : hôtes autorisés des adresses web et de Mattermost, 100 au plus ; vide : tout hôte public) |
 | `notification_subscriber` | abonné : `subscriber_id` stable choisi par l'application (unique par portée), compte `lyxal_auth` lié facultatif (`identity`, supprimé avec lui), e-mail, téléphone (E.164), prénom, nom, langue, fuseau, `data` (8 Kio) ; clé d'enregistrement aléatoire |
-| `notification_endpoint` | adresse d'un abonné pour la messagerie (`chat` : `slack`, `teams`, `discord`, `mattermost`, `google_chat`, `telegram`) ou l'adresse web (`webhook`) : nom, **hôte** (lisible), adresse **scellée** (`url`, `enc:v2`, lisible par le worker seulement), identifiant du salon Telegram (`chat_id`), clé de signature scellée d'une adresse web (`signing_secret`, worker seulement) et sa date, active, dernier résultat (`last_result`) ; 10 au plus par abonné et par canal ; supprimée avec l'abonné et l'organisation |
+| `notification_endpoint` | adresse d'un abonné pour la messagerie (`chat` : `slack`, `teams`, `discord`, `mattermost`, `google_chat`, `telegram`), l'adresse web (`webhook`) ou appareil push (`push` : `webpush`, `fcm`, `apns`, §1.7 : plateforme `web` / `android` / `ios`, empreinte SHA-256 du jeton (`fingerprint`, unique par abonné), jeton scellé (`token`) et clés du navigateur scellées (`p256dh`, `auth`), lus par le worker seulement, date d'inscription `registered_at` ; 10 appareils au plus ; nom invisible d'un gestionnaire) : nom, **hôte** (lisible), adresse **scellée** (`url`, `enc:v2`, lisible par le worker seulement), identifiant du salon Telegram (`chat_id`), clé de signature scellée d'une adresse web (`signing_secret`, worker seulement) et sa date, active, dernier résultat (`last_result`) ; 10 au plus par abonné et par canal ; supprimée avec l'abonné et l'organisation |
 | `notification_topic`, `notification_topic_member` | sujets (clé unique par portée) et abonnements, avec condition `lyxal_core` facultative ; supprimés avec le sujet ou l'abonné |
 | `notification_category` | catégorie de désabonnement des parcours ; celles de l'installation servent à toutes les organisations |
 | `notification_preference` | choix par canal (`email`, `sms`, `chat`, `push`, `in_app`, `webhook` : vrai, faux ou absent) d'un niveau : `tenant_workflow`, `subscriber_global` (avec les heures calmes), `subscriber_category`, `subscriber_workflow` ; unique par cible |
-| `notification_workflow` | parcours : clé unique dans sa portée, événement déclencheur (`lyxal_event`), état `draft` / `active` / `inactive` (jamais supprimé), `critical`, `sensitive` (sans étape `in_app`), `severity` (`high`, `medium`, `low`, `none` : gravité copiée sur les messages du fil), `category`, `preferences` (`{ channels, enforced }` : défauts et canaux imposés), schéma des variables (`lyxal_core`), étapes typées exécutées dans l'ordre (§1.3, 20 au plus) |
+| `notification_workflow` | parcours : clé unique dans sa portée, événement déclencheur (`lyxal_event`), état `draft` / `active` / `inactive` (jamais supprimé), `critical`, `sensitive` (sans étape `in_app` ni `push`), `severity` (`high`, `medium`, `low`, `none` : gravité copiée sur les messages du fil), `category`, `preferences` (`{ channels, enforced }` : défauts et canaux imposés), schéma des variables (`lyxal_core`), étapes typées exécutées dans l'ordre (§1.3, 20 au plus) |
 | `notification_layout` | mise en page HTML et texte contenant `{{ content }}` |
-| `notification_template` | gabarit d'une étape, en une seule version : e-mail : objet, HTML, texte, mise en page ; SMS, messagerie, adresse web : texte seul et objet (titre) facultatif (décision E5) ; fil (`in_app`) : titre (objet) et texte requis, `avatar`, `redirect`, `actions` (deux boutons au plus `{ kind, label, url }`), `data` (`{ clé : gabarit }`) ; `keys`, les clés `lyxal_i18n` de ses phrases |
+| `notification_template` | gabarit d'une étape, en une seule version : e-mail : objet, HTML, texte, mise en page ; SMS, messagerie, adresse web : texte seul et objet (titre) facultatif (décision E5) ; fil (`in_app`) : titre (objet) et texte requis, `avatar`, `redirect`, `actions` (deux boutons au plus `{ kind, label, url }`), `data` (`{ clé : gabarit }`) ; push : titre (objet) et texte requis, `redirect` (lien), `icon`, `data` (2 Kio au plus) ; `keys`, les clés `lyxal_i18n` de ses phrases |
 | `notification_broadcast` | diffusion d'un parcours à un sujet ou à tous les abonnés d'une portée, idempotente par (portée, clé) : auteur exclu, curseur, compteurs, réservation du worker |
 | `notification_run` | déclenchement pour un abonné, **idempotent** par (portée, clé) : abonné (retiré s'il est supprimé), adresse copiée au déclenchement (`address`), diffusion d'origine, auteur, étape courante (`cursor`), surcharges (`overrides`), envoi de test (`test`), regroupement porté ou rejoint (`digest`) ; états `pending`, `waiting`, `completed`, `failed`, `skipped`, `canceled`, `merged` ; secret scellé effacé dès la fin de ses étapes, à l'annulation ou à son expiration |
 | `notification_job` | étape engagée (une par étape et par déclenchement, index unique) : type de l'étape, file d'envoi réservée par `locked_until` et `claim_token` (canaux), intégration de la dernière tentative (`integration`, bascule D3), fin d'une attente (`wait_until`) et exécution différée du planificateur (`scheduler_run`), tentatives, dernière erreur, motif d'une étape écartée (`preference:<niveau>`, `no_address:<canal>`, `condition`, `override`, `throttled`, `test`, `canceled`) ; états `queued`, `running`, `waiting`, `completed`, `failed`, `skipped`, `canceled`, `merged` |
 | `notification_digest` | regroupement : portée, parcours, abonné, étape, clé de regroupement, déclenchement porteur, fin de la fenêtre, nombre et données des événements (100 premiers), état `open` / `closed` ; un seul ouvert par clé (index unique sur `open_slot`) |
 | `notification_rate_limit` | compteur de limitation d'une fenêtre fixe (identifiant : portée, parcours, abonné, étape, clé, début de la fenêtre), date de purge |
 | `notification_inbox` | message du fil d'une personne (§1.6) : portée, abonné `auth:<identité>`, compte (`identity`, base des droits), déclenchement, étape et parcours d'origine, étiquettes et gravité copiées du parcours, titre, texte, avatar, lien, boutons, `data` (**contenu en lecture seule**) ; états `seen_at`, `read_at`, `archived_at`, `snoozed_until`, état des boutons (`action_status`) ; `purge_after` (`retention_days_inbox`) ; un message au plus par étape (index unique) ; supprimé avec l'abonné, son compte et son organisation |
-| `notification_message` | message envoyé : canal, destinataire (adresse e-mail, téléphone E.164, **hôte** de l'adresse de messagerie ou web, jamais l'adresse complète, ou identifiant de l'abonné pour le fil : trace sans contenu), adresse servie (`endpoint`), nombre de parties d'un SMS (`parts`), intégration, fournisseur, identifiant chez le fournisseur (`provider_message_id`, unique par intégration), état `sent` puis, d'après les retours, `delivered`, `bounced`, `complained` ; **aucun corps**, objet absent pour un parcours sensible |
-| `notification_integration` | intégration : portée (organisation ou installation), clé unique dans la portée, canal (`email`, `sms`, `chat`, `webhook`), fournisseur propre au canal (e-mail : `smtp`, `brevo`, `mailgun`, `postmark`, `resend` ; SMS : `brevo`, `twilio`, `vonage` ; messagerie : `slack`, `teams`, `discord`, `mattermost`, `google_chat`, `telegram` ; adresse web : `webhook`), nom, active, principale (une au plus par portée et canal, index unique sur `primary_slot`), priorité (plus petite d'abord), condition `lyxal_core` facultative, réglages non secrets (e-mail : `from_address`, `from_name`, `reply_to` ; SMTP : `host`, `port`, `security` ; Mailgun : `domain`, `region` `us` / `eu` ; SMS : `sender`, numéro E.164 ou nom court de 11 caractères), **chemin** du secret des identifiants (`credentials_path` : e-mail, SMS, Telegram) et du secret des retours (`webhook_path` : e-mail par API, SMS) dans `lyxal_secrets`, dernier essai (`last_test`) ; jamais une valeur secrète |
+| `notification_message` | message envoyé : canal, destinataire (adresse e-mail, téléphone E.164, **hôte** de l'adresse de messagerie ou web, jamais l'adresse complète, **type** d'un appareil push `<service>:<plateforme>`, jamais le jeton, ou identifiant de l'abonné pour le fil : trace sans contenu), appareil ou adresse servi (`endpoint`, effacé quand il est retiré), adresse servie (`endpoint`), nombre de parties d'un SMS (`parts`), intégration, fournisseur, identifiant chez le fournisseur (`provider_message_id`, unique par intégration), état `sent` puis, d'après les retours, `delivered`, `bounced`, `complained` ; **aucun corps**, objet absent pour un parcours sensible |
+| `notification_integration` | intégration : portée (organisation ou installation), clé unique dans la portée, canal (`email`, `sms`, `chat`, `webhook`, `push`), fournisseur propre au canal (e-mail : `smtp`, `brevo`, `mailgun`, `postmark`, `resend` ; SMS : `brevo`, `twilio`, `vonage` ; messagerie : `slack`, `teams`, `discord`, `mattermost`, `google_chat`, `telegram` ; adresse web : `webhook` ; push : `webpush`, `fcm`, `apns`), nom, active, principale (une au plus par portée et canal, index unique sur `primary_slot`), priorité (plus petite d'abord), condition `lyxal_core` facultative, réglages non secrets (e-mail : `from_address`, `from_name`, `reply_to` ; SMTP : `host`, `port`, `security` ; Mailgun : `domain`, `region` `us` / `eu` ; SMS : `sender`, numéro E.164 ou nom court de 11 caractères ; Web Push : `vapid_subject` (`mailto:` ou `https:`), `vapid_public_key` ; FCM : `project_id` ; APNs : `team_id`, `bundle_id`, `environment` `production` / `sandbox`), **chemin** du secret des identifiants (`credentials_path` : e-mail, SMS, Telegram) et du secret des retours (`webhook_path` : e-mail par API, SMS) dans `lyxal_secrets`, dernier essai (`last_test`) ; jamais une valeur secrète |
 | `notification_provider_event` | retour normalisé d'un fournisseur : intégration, identifiant de l'événement chez le fournisseur (unique par intégration), type (`delivered`, `bounced`, `soft_bounced`, `complained`), message lié, adresse du message, date ; purgé selon `retention_days_log` ; aucun corps |
 | `notification_delivery_log` | journal en ajout seul (tentative, issue, code), jamais de secret |
 | `notification_suppression` | adresses (canal `email`) et numéros E.164 (canal `sms`) à ne plus contacter : `hard_bounce`, `complaint`, `manual` (le désabonnement est une préférence, pas une suppression de l'adresse) |
@@ -369,6 +372,50 @@ secrète).
   appliquée ; conservation `retention_days_inbox` (90 jours par défaut, 1 à 365), purge par la
   planification `notification-purge`.
 
+### 1.7. Notifications push (lot 6)
+
+* **Appareils** (G1) : adresses `push` de l'abonné, inscrites **par la personne elle-même**
+  (`fn::notification_my_device_register`, route `POST /api/v1/notification/my/devices` de l'hôte,
+  abonné `auth:<identité>` de son organisation active créé au besoin), 10 au plus. Web Push :
+  l'abonnement du navigateur (adresse du service push, clés `p256dh` et `auth`) ; FCM et APNs : le
+  jeton de l'appareil. L'hôte calcule l'**empreinte** du jeton (SHA-256, `lyxal_crypto`) et
+  **scelle** jeton et clés (`enc:v2`, `with_tenant(<organisation> ?? "lyxal_installation",
+  "lyxal_notification", "notification_endpoint", <empreinte>, "token" | "p256dh" | "auth")`) ;
+  la fonction reçoit les valeurs en clair pour les **contrôler** seulement (`lyxal_core` : adresse
+  HTTPS d'un service push connu, forme du jeton et des clés) et n'enregistre que les valeurs
+  scellées. Une inscription renvoyée (même empreinte) **met à jour** l'appareil (valeurs scellées,
+  plateforme, nom, actif, date) au lieu d'en créer un autre. La personne voit ses appareils (type,
+  nom, hôte du service, date, dernier résultat), jamais le jeton ; un gestionnaire voit le type
+  (service et plateforme) et la date d'inscription seulement (`fn::notification_device_list`).
+  Plateforme : `web` (Web Push), `android` (FCM, par défaut) ou `ios` (FCM ou APNs).
+* **Services** (G2, G6) : une intégration `channel: "push"` par service. Web Push : services push
+  connus seulement (`fcm.googleapis.com`, `updates.push.services.mozilla.com`,
+  `*.push.services.mozilla.com`, `*.notify.windows.com`, `web.push.apple.com`), en HTTPS, par le
+  client contrôlé du lot 4 (adresses résolues vérifiées, aucune redirection) ; jeton VAPID ES256
+  (`aud` : origine de l'adresse, `exp` 12 h, `sub` : contact) dans `Authorization: vapid t=…,
+  k=…`, corps chiffré `aes128gcm` (RFC 8291), en-têtes `TTL` (1 jour) et `Urgency` (`high` pour un
+  parcours critique). FCM : jeton RS256 du compte de service échangé à
+  `oauth2.googleapis.com/token` contre un jeton d'accès gardé en mémoire jusqu'à son échéance,
+  puis `POST fcm.googleapis.com/v1/projects/{projet}/messages:send`. APNs : HTTP/2 vers
+  `api.push.apple.com` (ou `api.sandbox.push.apple.com`), jeton ES256 du fournisseur (`kid`,
+  `iss` : équipe, `iat`) renouvelé toutes les 50 minutes, en-têtes `apns-topic`,
+  `apns-push-type: alert`, `apns-priority`, `apns-expiration`.
+* **Contenu** (G4) : titre, texte, lien (règles du lot 5 : chemin de l'application ou HTTPS,
+  contrôlé à l'enregistrement du gabarit et après le rendu, `fn::notification_push_links_check`),
+  icône, données ; jamais le secret du déclenchement ni de lien de désabonnement ; **4 Kio au
+  plus** une fois chiffré : texte tronqué proprement (`…`), sinon `NOTIFICATION_PUSH_TOO_LARGE`
+  sans envoi. Web Push reçoit `{ title, body, link, icon, data }` (à lire par le service worker du
+  navigateur) ; FCM `notification { title, body }` et `data` (textes, `link`, `icon` compris) ;
+  APNs `aps.alert { title, body }` puis `link`, `icon` et les données. Une étape `push` d'un parcours
+  `sensitive` est refusée (`push_sensitive`). Préférence du canal `push` et heures calmes
+  appliquées.
+* **Appareils invalides** (G5) : Web Push 404 / 410, FCM `UNREGISTERED` / `NOT_FOUND` (motif
+  `expired`) ou `INVALID_ARGUMENT` sur le jeton, APNs 410 (`expired`) ou 400 `BadDeviceToken`
+  (`invalid`) : appareil retiré par le worker (`fn::notification_device_remove`, événement
+  `notification.endpoint.removed`, identifiants seulement) ; l'étape réussit si un autre appareil
+  a reçu la notification (dans cette tentative ou une précédente), sinon elle échoue
+  (`NOTIFICATION_DEVICE_INVALID`). Un appareil servi n'est pas rappelé à la tentative suivante.
+
 ## 2. Droits
 
 | Permission | Portée | Accès |
@@ -422,10 +469,11 @@ conditions, F7) et le purge.
 | Fil (personne connectée) | `notification_feed_list` (`filter`, `cursor`, `limit`), `_counts` (`filter`), `_mark` (`ids` ou `all` + `filter`, `state` : `seen`, `read`, `unread`, `archived`, `unarchived`), `_snooze` (`id`, `until`), `_unsnooze`, `_delete` (`id`, ou `all` + `filter`), `_action` (`id`, `action`, `status`) ; `notification_inbox_deliver` (worker : message rendu d'une étape `in_app`) |
 | Réglages | `notification_settings_get`, `_set` (`max_wait_days`, `retention_days_inbox` compris ; expéditeur et adresse de réponse : réglages de l'intégration) |
 | Intégrations | `notification_integration_create`, `_update` (champs fournis, réglages remplacés en entier, `clear_condition`, `clear_webhook`), `_get` (par clé ou identifiant), `_list`, `_delete`, `_set_primary`, `_test` (essai : contrôle au nom de l'appelant, D6) ; `_select` (worker : ordre D1 / D3 d'une étape), `_test_record` et `notification_provider_event_record` (hôte) |
+| Appareils push | `notification_my_device_register` (valeurs scellées par l'hôte, contrôlées en clair ; inscription renvoyée mise à jour), `notification_my_device_list`, `_delete` (personne connectée) ; `notification_device_list` (`notification.read` : type et date) ; `notification_device_remove` (worker, G5) ; `notification_push_links_check` (worker : liens rendus) ; `notification_push_vapid_key` (hôte : clé publique VAPID d'une portée) |
 | Adresses de messagerie et web | `notification_endpoint_create` (adresse scellée par l'hôte, contrôlée en clair), `_update` (nom, active, salon Telegram), `_delete`, `_list` (hôte seulement), `_rotate_secret` (nouvelle clé scellée par l'hôte) ; `notification_my_endpoint_create`, `_update`, `_delete`, `_list`, `_rotate_secret` (personne connectée) ; `notification_endpoint_resolve` (hôte : adresse scellée d'un essai) |
 | Liste de suppression | `notification_suppression_add`, `_remove` (`channel` : `email` par défaut ou `sms`), `_list` |
 | Activité | `notification_run_get`, `_list` |
-| File d'envoi (worker) | `notification_job_claim` (`channel` : un worker par canal, `in_app` compris (sans intégration ni secret) ; avec l'intégration de l'envoi et, pour la messagerie et l'adresse web, les adresses scellées non encore servies), `_renew`, `_release` (`not_before` : fin des heures calmes), `_complete` (`integration`, `provider_message_id`, `response_code`, `parts`, `endpoints` : issue de chaque adresse servie ; renvoie `messages`), `_fail` (`integration`, classe `recipient_opted_out` en plus, `endpoints`) |
+| File d'envoi (worker) | `notification_job_claim` (`channel` : un worker par canal, `in_app` compris (sans intégration ni secret) ; avec l'intégration de l'envoi et, pour la messagerie, l'adresse web et le push, les adresses ou appareils scellés non encore servis ; jamais le secret pour le fil et le push), `_renew`, `_release` (`not_before` : fin des heures calmes), `_complete` (`integration`, `provider_message_id`, `response_code`, `parts`, `endpoints` : issue de chaque adresse servie ; renvoie `messages`), `_fail` (`integration`, classe `recipient_opted_out` en plus, `endpoints`) |
 | Attentes (worker, planificateur) | `notification_wait_schedule` (paquet de 500 au plus), `notification_run_resume` et `notification_purge` (forme d'appel du planificateur `{ args, run, tenant, scheduled_for, attempt }`) |
 
 Entrées validées et nettoyées par `lyxal_core` ; erreurs `NOTIFICATION_*` (master data
@@ -448,7 +496,8 @@ Fonctions internes (appelées par les précédentes) : `notification_subscriber_
 `_change`, `_payload`, `notification_my_endpoint_change`, `notification_job_endpoints`,
 `notification_job_endpoint_fields`, `notification_job_endpoint_record` ; fil :
 `notification_link_valid`, `notification_feed_scope`, `_filter_fields`, `_match`, `_view`,
-`_mine`, `_targets`, `notification_template_action_fields`, `_feed_refusal`.
+`_mine`, `_targets`, `notification_template_action_fields`, `_feed_refusal` ; push :
+`notification_device_fields`, `_shape`, `_view`, `_write`, `notification_template_push_refusal`.
 
 File d'envoi (étapes de canal seulement) : réservation conditionnelle (une étape n'est réservée qu'une fois ; une
 réservation expirée est reprise, sauf après la dernière tentative : échec définitif),
@@ -490,7 +539,9 @@ désabonnement : catégorie ou parcours, canal), `notification.preference.update
 `notification.topic.subscribed`, `.unsubscribed` ; `notification.integration.created`,
 `.updated`, `.deleted` (`integration_id`, `tenant`, `channel`) ; `notification.endpoint.created`,
 `.updated`, `.deleted` (`endpoint_id`, `subscriber_id`, `tenant`, `channel` ; le dernier résultat
-noté par le worker n'est pas une modification) ; `notification.message.delivered`, `.bounced`,
+noté par le worker n'est pas une modification ; une nouvelle inscription d'un appareil push en
+est une) et `notification.endpoint.removed` (appareil push retiré par le worker sur réponse de son
+service, mêmes identifiants : jamais le jeton, l'empreinte ni l'hôte) ; `notification.message.delivered`, `.bounced`,
 `.complained` (`message_id`, `run_id`, `integration_id`) : identifiants seulement, jamais
 l'adresse, le téléphone, l'hôte ou l'adresse web, le nom, un chemin de secret ni un réglage.
 `notification.address.suppressed` d'un numéro (canal `sms`) ne porte pas le numéro. Fil :
@@ -531,6 +582,19 @@ données.
   de la base (lien rendu refusé) est un échec définitif, une base indisponible laisse expirer la
   réservation. Appels du fil au nom de la personne : `feed_list`, `feed_counts`, `feed_mark`,
   `feed_snooze`, `feed_unsnooze`, `feed_delete`, `feed_action` (`models::Feed*`).
+* Push (lot 6) : `PushApi` (Web Push par `OutboundClient`, FCM, APNs en HTTP/2 ; adresses fixes,
+  `PushEndpoints::local` et `PushApi::for_local_tests` réservés aux faux services ; horloge
+  injectée `PushClock`), `PushCredentials` (clé VAPID `{ private_key }`, fichier du compte de
+  service Google, clé APNs `{ key_id, private_key }`, `Debug` masqué), jetons `vapid_token`,
+  `fcm_assertion`, `apns_token` (`lyxal_crypto::EcdsaP256SigningKey`, `RsaSigningKey`), jeton
+  d'accès FCM et jeton du fournisseur APNs gardés en mémoire (`SecretString`), `PushMessage`
+  (`fitted` : 4 Kio, texte tronqué), `PushFailure` et `DeviceRemoval` (appareil à retirer) ;
+  `PushDispatcher` (identifiants lus dans `lyxal_secrets`) ; `NotificationPushWorker` (canal
+  `push`, heures calmes, `Renderer::render_push`, liens contrôlés, chaque appareil ouvert en
+  mémoire et servi, appareil invalide retiré ; réservation, renouvellement, contrôle des liens,
+  lecture des identifiants et chaque envoi en course avec l'arrêt, écritures de clôture bornées
+  par `PUSH_CLEANUP_BUDGET`) ; `push_to_device` (essai d'une intégration par l'hôte) ;
+  `SecretCodec::seal_device_value` / `open_device_value` (`DeviceField`), `device_fingerprint`.
 * `NotificationConsumer` (`EventConsumerModule`) et `AuthMessageHandler` : secret illisible,
   charge utile invalide ou parcours absent → lettre morte ; base indisponible → rejoué.
   `SecurityAlertHandler` : alertes de sécurité vers `auth_security_alert`. `auth_subscriber` :
@@ -677,6 +741,33 @@ planificateur, qui exécute les reprises et la purge.
   `allowed_hosts` (`fn::notification_settings_set` sans `tenant`) limite les hôtes des adresses
   web et de Mattermost.
 
+* **Notifications push** (G2) : une intégration `channel: "push"` par service, son secret sous
+  `notification/` de la même portée :
+  * **Web Push** : créer le secret (ex. `notification/push/vapid`, valeur provisoire `{}`), puis
+    l'intégration `provider: "webpush"`, `settings: { vapid_subject: "mailto:…" }`,
+    `credentials_path` ; puis `POST /api/v1/notification/integrations/{intégration}/vapid` (droit
+    de gestion et d'écriture du secret) : l'hôte tire une paire P-256, range la clé privée dans le
+    secret (`{ "private_key": "<PKCS#8 PEM>" }`) sans la montrer et note la clé publique
+    (`vapid_public_key`). Une paire existante peut être rangée à la main (même forme, PEM PKCS#8
+    avec sa clé publique) avec sa clé publique dans les réglages. L'application web lit la clé par
+    `GET /api/v1/notification/push/vapid-key?tenant=…`, s'abonne (`pushManager.subscribe({
+    userVisibleOnly: true, applicationServerKey })`) et envoie `subscription.toJSON()` à
+    `POST /api/v1/notification/my/devices` ; son service worker affiche `{ title, body, icon }` et
+    ouvre `link` au clic. Changer de paire rend les abonnements existants inutilisables (ils sont
+    retirés au premier envoi refusé) ;
+  * **FCM** : dans la console Firebase, *Paramètres du projet → Comptes de service → Générer une
+    nouvelle clé privée* ; ranger le fichier JSON tel quel dans le secret ; intégration
+    `provider: "fcm"`, `settings: { project_id }` ; l'application Android envoie son jeton
+    d'enregistrement (`{ provider: "fcm", token }`) ;
+  * **APNs** : dans le compte développeur Apple, *Certificates, Identifiers & Profiles → Keys*,
+    clé avec le service APNs (fichier `.p8`, identifiant de la clé) ; secret `{ "key_id": "…",
+    "private_key": "<contenu du .p8>" }` ; intégration `provider: "apns"`, `settings: { team_id,
+    bundle_id, environment: "sandbox" | "production" }` (une application en développement reçoit
+    ses notifications du bac à sable) ; l'application iOS envoie son jeton d'appareil en
+    hexadécimal (`{ provider: "apns", token }`).
+  L'essai d'une intégration push (`POST /api/v1/notification/integrations/{intégration}/test`,
+  `{ "to": "notification_endpoint:<clé>" }`) envoie une notification à un appareil du même
+  service et de la même organisation.
 * **Réglages** : `max_wait_days` (`fn::notification_settings_set`, organisation ou
   installation) borne toute attente, fenêtre de regroupement ou de limitation, à
   l'enregistrement d'un parcours comme au déclenchement.
@@ -775,4 +866,20 @@ planificateur, qui exécute les reprises et la purge.
   SSE de la seule personne concernée, compteurs poussés après « lu », routes du fil (404 pour
   une autre personne), limite de 5 flux, session sans compte, fermeture à l'expiration de la
   session, reprise de la requête `LIVE SELECT` après `KILL`, fermeture à l'arrêt du worker.
+* Lot 6 : banc `tests/push.test.surql` (intégrations push : réglages et secrets ; inscription par
+  la personne seule, valeurs scellées exigées, service push inconnu, HTTP, jeton et clés mal
+  formés, plateforme, autre organisation, inscription renvoyée mise à jour, limite de 10, écriture
+  filtrée ; lecture sans jeton par la personne, une autre personne, un gestionnaire (type et date) ;
+  fonctions des adresses aveugles aux appareils ; étape push refusée dans un parcours sensible ;
+  gabarits push ; préférence et heures calmes ; file du canal push ; appareil invalide retiré,
+  étape réussie par les autres, événement `notification.endpoint.removed` ; appareil déjà servi
+  retiré ; clé VAPID ; liens rendus ; essai ; suppression avec l'abonné ; fonctions internes) ;
+  tests Rust : cryptographie dans `lyxal_crypto` (vecteur RFC 8291, ES256 et RS256 vérifiés par
+  `ring` en test, signature RS256 égale à celle d'OpenSSL) ; Web Push, FCM et APNs contre de faux
+  services locaux (`tests/it/push.rs` : jeton VAPID, corps chiffré et en-têtes, refus d'un service
+  inconnu, jeton d'accès FCM échangé, gardé puis renouvelé par l'horloge injectée, 401, APNs en
+  HTTP/2 et jeton du fournisseur renouvelé à 50 minutes, appareils invalides) ; de bout en bout :
+  déclenchement → navigateur, Android et iPhone, l'iPhone désinscrit retiré, aucun jeton en clair ;
+  hôte (`apps/lyxal-server/tests/notification_push_http.rs`) : paire VAPID rangée dans le
+  coffre-fort, clé publique, inscription scellée, inscription renvoyée, refus.
 * `scripts/ci/ci_local.sh`.

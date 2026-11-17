@@ -14,6 +14,10 @@
 -- d'abord, puis par priorité croissante ; aucune : celles de l'installation, dans le même ordre ;
 -- aucune : l'envoi attend en file. Bascule (D3) : après un échec temporaire, la tentative
 -- suivante passe à l'intégration éligible suivante.
+-- Push (décisions G2, G6) : une intégration par service (webpush, fcm, apns), identifiants dans
+-- lyxal_secrets (clé VAPID, compte de service Google, clé APNs) ; réglages non secrets : contact
+-- et clé publique VAPID, identifiant du projet Firebase, équipe, application et environnement
+-- APNs.
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_integration_find (interne)
@@ -62,18 +66,28 @@ DEFINE FUNCTION OVERWRITE fn::notification_integration_settings_refusal($params:
     LET $s = $params.settings ?? {};
     LET $smtp_fields = ["host", "port", "security"];
     LET $mailgun_fields = ["domain", "region"];
-    -- SMS : expéditeur seul ; messagerie et adresse web : aucun réglage
+    -- SMS : expéditeur seul ; push : réglages du service ; messagerie et adresse web : aucun réglage
     LET $email = $params.channel = "email";
-    LET $required = IF !$email { IF $params.channel = "sms" { ["sender"] } ELSE { [] } }
+    LET $push = { webpush: ["vapid_subject"], fcm: ["project_id"], apns: ["team_id", "bundle_id", "environment"] };
+    LET $required = IF $params.channel = "push" { $push[$params.provider] ?? [] }
+        ELSE IF !$email { IF $params.channel = "sms" { ["sender"] } ELSE { [] } }
         ELSE IF $params.provider = "smtp" { array::concat(["from_address"], $smtp_fields) }
         ELSE IF $params.provider = "mailgun" { ["from_address", "domain"] } ELSE { ["from_address"] };
-    LET $allowed = IF !$email { $required } ELSE {
+    LET $allowed = IF $params.channel = "push" AND $params.provider = "webpush" { ["vapid_subject", "vapid_public_key"] }
+        ELSE IF !$email { $required } ELSE {
         array::concat(["from_address", "from_name", "reply_to"], IF $params.provider = "smtp" { $smtp_fields } ELSE IF $params.provider = "mailgun" { $mailgun_fields } ELSE { [] })
     };
     LET $missing = array::filter($required, |$f| $s[$f] IS NONE);
     IF array::len($missing) > 0 { RETURN { field: $missing[0], code: "CORE_VALIDATION_REQUIRED" }; };
     LET $extra = array::filter(object::keys($s), |$f| $f NOTINSIDE $allowed AND $s[$f] IS NOT NONE);
     IF array::len($extra) > 0 { RETURN { field: $extra[0], code: "CORE_VALIDATION_NOT_ALLOWED" }; };
+    -- Contact VAPID : adresse e-mail (mailto:) ou adresse HTTPS (RFC 8292 §2.1)
+    IF $s.vapid_subject IS NOT NONE {
+        LET $mail = fn::validation_starts_with($s.vapid_subject, ["mailto:"], true, false).valid;
+        LET $valid = IF $mail { fn::validation_email(string::slice($s.vapid_subject, 7), NONE).valid }
+            ELSE { fn::validation_pipeline_execute($s.vapid_subject, [{ rule: "http_url", options: { allow_http: false, allow_https: true } }], 5).valid };
+        IF !$valid { RETURN { field: "vapid_subject", code: "CORE_VALIDATION_FORMAT" }; };
+    };
     -- Organisation : ni relais en clair, ni adresse IP ou hôte local (réservés à l'installation)
     IF $params.tenant IS NOT NONE AND $params.provider = "smtp" {
         IF $s.security = "local_plain" { RETURN { field: "security", code: "CORE_VALIDATION_NOT_ALLOWED" }; };
@@ -82,21 +96,21 @@ DEFINE FUNCTION OVERWRITE fn::notification_integration_settings_refusal($params:
         };
     };
     RETURN NONE;
-} COMMENT "Interne : NONE si les réglages ({ channel, provider, tenant, settings }) conviennent au fournisseur (e-mail : expéditeur ; SMTP : host, port, security ; Mailgun : domain, region facultative ; SMS : sender ; messagerie et adresse web : aucun) ; sinon { field, code }. Une organisation n'a ni relais SMTP en clair ni hôte IP ou local";
+} COMMENT "Interne : NONE si les réglages ({ channel, provider, tenant, settings }) conviennent au fournisseur (e-mail : expéditeur ; SMTP : host, port, security ; Mailgun : domain, region facultative ; SMS : sender ; Web Push : vapid_subject (mailto: ou https:), vapid_public_key facultative ; FCM : project_id ; APNs : team_id, bundle_id, environment ; messagerie et adresse web : aucun) ; sinon { field, code }. Une organisation n'a ni relais SMTP en clair ni hôte IP ou local";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_integration_secrets_refusal (interne) : secrets attendus selon le canal
 -- ----------------------------------------------------------------------------
 
 DEFINE FUNCTION OVERWRITE fn::notification_integration_secrets_refusal($params: object) -> option<string> {
-    -- Identifiants : e-mail, SMS et Telegram (jeton du robot) ; aucun pour les autres messageries
-    -- et l'adresse web. Secret des retours : e-mail par API et SMS seulement
-    LET $needs_credentials = $params.channel IN ["email", "sms"] OR $params.provider = "telegram";
+    -- Identifiants : e-mail, SMS, push et Telegram (jeton du robot) ; aucun pour les autres
+    -- messageries et l'adresse web. Secret des retours : e-mail par API et SMS seulement
+    LET $needs_credentials = $params.channel IN ["email", "sms", "push"] OR $params.provider = "telegram";
     IF $needs_credentials AND $params.credentials_path IS NONE { RETURN "credentials_path"; };
     IF !$needs_credentials AND $params.credentials_path IS NOT NONE { RETURN "credentials_path"; };
     IF $params.webhook_path IS NOT NONE AND ($params.channel NOT IN ["email", "sms"] OR $params.provider = "smtp") { RETURN "webhook_path"; };
     RETURN NONE;
-} COMMENT "Interne : champ refusé ({ channel, provider, credentials_path, webhook_path }) : identifiants requis pour l'e-mail, le SMS et Telegram, interdits pour les autres messageries et l'adresse web ; secret des retours pour l'e-mail par API et le SMS seulement ; NONE sinon";
+} COMMENT "Interne : champ refusé ({ channel, provider, credentials_path, webhook_path }) : identifiants requis pour l'e-mail, le SMS, le push et Telegram, interdits pour les autres messageries et l'adresse web ; secret des retours pour l'e-mail par API et le SMS seulement ; NONE sinon";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_integration_refusal (garde d'une écriture directe)
@@ -128,7 +142,16 @@ DEFINE FUNCTION OVERWRITE fn::notification_integration_fields($create: bool) -> 
             domain: { pipeline: [{ rule: "domain", options: { allow_subdomains: true } }] },
             region: { pipeline: [{ rule: "enum", options: { allowed: ["us", "eu"], case_sensitive: true } }] },
             -- SMS : numéro E.164 ou nom court alphanumérique (11 caractères au plus)
-            sender: { pipeline: [{ rule: "regex", options: { pattern: "^(\\+[1-9][0-9]{7,14}|[A-Za-z0-9][A-Za-z0-9 ]{0,10})$" } }] }
+            sender: { pipeline: [{ rule: "regex", options: { pattern: "^(\\+[1-9][0-9]{7,14}|[A-Za-z0-9][A-Za-z0-9 ]{0,10})$" } }] },
+            -- Push : contact VAPID (forme contrôlée par fn::notification_integration_settings_refusal),
+            -- clé publique VAPID (point P-256 non compressé en Base64url : 87 caractères),
+            -- identifiant Firebase, équipe Apple (10 caractères), application, environnement APNs
+            vapid_subject: { pipeline: [{ rule: "required_string", options: { min_length: 8, max_length: 512 } }] },
+            vapid_public_key: { pipeline: [{ rule: "regex", options: { pattern: "^B[A-Za-z0-9_-]{86}$" } }] },
+            project_id: { pipeline: [{ rule: "regex", options: { pattern: "^[a-z][a-z0-9-]{4,28}[a-z0-9]$" } }] },
+            team_id: { pipeline: [{ rule: "regex", options: { pattern: "^[A-Z0-9]{10}$" } }] },
+            bundle_id: { pipeline: [{ rule: "max_length", options: { max_length: 155 } }, { rule: "domain", options: { allow_subdomains: true } }] },
+            environment: { pipeline: [{ rule: "enum", options: { allowed: ["production", "sandbox"], case_sensitive: true } }] }
         },
         unknown_keys: "reject"
     };
@@ -136,8 +159,8 @@ DEFINE FUNCTION OVERWRITE fn::notification_integration_fields($create: bool) -> 
     RETURN {
         tenant: { pipeline: [{ rule: "record", options: { expected_table: "auth_organization" } }] },
         key: { pipeline: [{ rule: "snake_case_name", options: { min_length: 1, max_length: 64 } }], required: true },
-        provider: { pipeline: [{ rule: "enum", options: { allowed: ["smtp", "brevo", "mailgun", "postmark", "resend", "twilio", "vonage", "slack", "teams", "discord", "mattermost", "google_chat", "telegram", "webhook"], case_sensitive: true } }], required: $create },
-        channel: { pipeline: [{ rule: "enum", options: { allowed: ["email", "sms", "chat", "webhook"], case_sensitive: true } }], default: "email" },
+        provider: { pipeline: [{ rule: "enum", options: { allowed: ["smtp", "brevo", "mailgun", "postmark", "resend", "twilio", "vonage", "slack", "teams", "discord", "mattermost", "google_chat", "telegram", "webhook", "webpush", "fcm", "apns"], case_sensitive: true } }], required: $create },
+        channel: { pipeline: [{ rule: "enum", options: { allowed: ["email", "sms", "chat", "webhook", "push"], case_sensitive: true } }], default: "email" },
         name: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 128 } }], required: $create },
         active: { pipeline: [{ rule: "boolean" }] },
         primary: { pipeline: [{ rule: "boolean" }] },
@@ -169,7 +192,8 @@ DEFINE FUNCTION OVERWRITE fn::notification_integration_checked($params: object) 
     LET $p = $params.p;
     LET $providers = {
         email: ["smtp", "brevo", "mailgun", "postmark", "resend"], sms: ["brevo", "twilio", "vonage"],
-        chat: ["slack", "teams", "discord", "mattermost", "google_chat", "telegram"], webhook: ["webhook"]
+        chat: ["slack", "teams", "discord", "mattermost", "google_chat", "telegram"], webhook: ["webhook"],
+        push: ["webpush", "fcm", "apns"]
     };
     IF $params.provider NOT IN $providers[$params.channel] {
         RETURN { code: "NOTIFICATION_INVALID_INPUT", details: { fields: { provider: { code: "CORE_VALIDATION_NOT_ALLOWED", details: { channel: $params.channel } } } } };
@@ -250,7 +274,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_integration_create($params: object) {
         RETURN fn::error_result(IF fn::notification_integration_find({ tenant: $p.tenant, key: $p.key }) IS NONE { "NOTIFICATION_WRITE_FORBIDDEN" } ELSE { "NOTIFICATION_INTEGRATION_KEY_TAKEN" }, $p.language, { key: $p.key });
     };
     RETURN fn::result_ok(fn::notification_integration_view($created[0]));
-} COMMENT "Crée une intégration ({ tenant, key, channel : email (défaut), sms, chat, webhook ; provider : e-mail smtp, brevo, mailgun, postmark, resend ; SMS brevo, twilio, vonage ; messagerie slack, teams, discord, mattermost, google_chat, telegram ; adresse web webhook ; name, active, primary, priority, condition, settings : { e-mail : from_address, from_name, reply_to ; SMTP : host, port, security ; Mailgun : domain, region ; SMS : sender }, credentials_path (e-mail, SMS, Telegram), webhook_path (e-mail par API, SMS) }) : réglages contrôlés par lyxal_core, chemins sous notification/ de la même portée, secrets existants et lisibles par l'appelant (D2), une seule principale par portée et canal. Permission notification.manage (installation : notification.installation.manage) et lecture du secret (secrets.value.read ; installation : secrets.installation.manage)";
+} COMMENT "Crée une intégration ({ tenant, key, channel : email (défaut), sms, chat, webhook, push ; provider : e-mail smtp, brevo, mailgun, postmark, resend ; SMS brevo, twilio, vonage ; messagerie slack, teams, discord, mattermost, google_chat, telegram ; adresse web webhook ; push webpush, fcm, apns ; name, active, primary, priority, condition, settings : { e-mail : from_address, from_name, reply_to ; SMTP : host, port, security ; Mailgun : domain, region ; SMS : sender ; Web Push : vapid_subject, vapid_public_key ; FCM : project_id ; APNs : team_id, bundle_id, environment }, credentials_path (e-mail, SMS, Telegram, push), webhook_path (e-mail par API, SMS) }) : réglages contrôlés par lyxal_core, chemins sous notification/ de la même portée, secrets existants et lisibles par l'appelant (D2), une seule principale par portée et canal. Permission notification.manage (installation : notification.installation.manage) et lecture du secret (secrets.value.read ; installation : secrets.installation.manage)";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_integration_update
@@ -316,7 +340,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_integration_list($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
             tenant: { pipeline: [{ rule: "record", options: { expected_table: "auth_organization" } }] },
-            channel: { pipeline: [{ rule: "enum", options: { allowed: ["email", "sms", "chat", "webhook"], case_sensitive: true } }] },
+            channel: { pipeline: [{ rule: "enum", options: { allowed: ["email", "sms", "chat", "webhook", "push"], case_sensitive: true } }] },
             active: { pipeline: [{ rule: "boolean" }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },

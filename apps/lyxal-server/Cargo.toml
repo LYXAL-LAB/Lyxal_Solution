@@ -53,6 +53,8 @@ futures = { version = "0.3", default-features = false, features = ["std"] }
 percent-encoding = "2"
 # Valeurs de l'en-tête Upload-Metadata de l'envoi reprenable (tus)
 base64 = "0.22"
+# Jeton d'un appareil push et clé VAPID générée effacés de la mémoire (routes push)
+zeroize = "1.8"
 # Service des connexions avec délai d'écriture (client qui ne lit plus)
 hyper = { version = "1", features = ["http1", "http2", "server"] }
 hyper-util = { version = "0.1", features = ["server-auto", "server-graceful", "tokio", "service"] }

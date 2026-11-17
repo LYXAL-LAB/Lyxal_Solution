@@ -23,9 +23,11 @@ use crate::models::{
     TriggerResult, UnsubscribeParams, Unsubscribed, WaitScheduleParams, WaitScheduleResult,
 };
 use crate::models::{
-    ClaimedEndpoint, Endpoint, EndpointCreateParams, EndpointListParams, EndpointRefParams,
-    EndpointResolveParams, EndpointRotateParams, EndpointUpdateParams, MyEndpointCreateParams,
-    MyEndpointListParams,
+    ClaimedEndpoint, Device, DeviceListParams, DeviceRegisterParams, DeviceRegistered,
+    DeviceRemoveParams, DeviceRemoved, DeviceSummary, Endpoint, EndpointCreateParams,
+    EndpointListParams, EndpointRefParams, EndpointResolveParams, EndpointRotateParams,
+    EndpointUpdateParams, MyDeviceListParams, MyEndpointCreateParams, MyEndpointListParams,
+    PushLinksChecked, PushLinksParams, VapidKey, VapidKeyParams,
 };
 use crate::models::{
     ClaimedIntegration, Integration, IntegrationGetParams, IntegrationListParams,
@@ -579,6 +581,69 @@ impl NotificationStore {
         params: EndpointResolveParams,
     ) -> Result<ClaimedEndpoint, LyxalSurrealError> {
         self.call_fn("notification_endpoint_resolve", params).await
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Appareils push (personne connectée ; gestion ; worker ; hôte)
+    // ------------------------------------------------------------------------------------------
+
+    /// `fn::notification_my_device_register` : inscription d'un appareil de la personne
+    /// connectée (valeurs scellées par l'hôte) ; une inscription renvoyée met l'appareil à jour.
+    pub async fn my_device_register(
+        &self,
+        params: DeviceRegisterParams,
+    ) -> Result<DeviceRegistered, LyxalSurrealError> {
+        self.call_fn("notification_my_device_register", params)
+            .await
+    }
+
+    /// `fn::notification_my_device_list` : appareils de la personne connectée.
+    pub async fn my_device_list(
+        &self,
+        params: MyDeviceListParams,
+    ) -> Result<Vec<Device>, LyxalSurrealError> {
+        self.call_fn("notification_my_device_list", params).await
+    }
+
+    /// `fn::notification_my_device_delete` : appareil retiré par la personne.
+    pub async fn my_device_delete(
+        &self,
+        params: EndpointRefParams,
+    ) -> Result<Deleted, LyxalSurrealError> {
+        self.call_fn("notification_my_device_delete", params).await
+    }
+
+    /// `fn::notification_device_list` : appareils d'un abonné (type et date seulement).
+    pub async fn device_list(
+        &self,
+        params: DeviceListParams,
+    ) -> Result<Vec<DeviceSummary>, LyxalSurrealError> {
+        self.call_fn("notification_device_list", params).await
+    }
+
+    /// `fn::notification_device_remove` : appareil déclaré invalide par son service (worker,
+    /// rejoué après un conflit d'écriture transitoire).
+    pub async fn device_remove(
+        &self,
+        params: DeviceRemoveParams,
+    ) -> Result<DeviceRemoved, LyxalSurrealError> {
+        self.worker_call("notification_device_remove", params).await
+    }
+
+    /// `fn::notification_push_links_check` : liens rendus d'un message push (worker).
+    pub async fn push_links_check(
+        &self,
+        params: PushLinksParams,
+    ) -> Result<PushLinksChecked, LyxalSurrealError> {
+        self.call_fn("notification_push_links_check", params).await
+    }
+
+    /// `fn::notification_push_vapid_key` : clé publique VAPID d'une portée (hôte).
+    pub async fn push_vapid_key(
+        &self,
+        params: VapidKeyParams,
+    ) -> Result<VapidKey, LyxalSurrealError> {
+        self.call_fn("notification_push_vapid_key", params).await
     }
 
     /// `fn::notification_settings_get` : réglages effectifs.

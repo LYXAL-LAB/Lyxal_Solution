@@ -1,5 +1,6 @@
-//! Appels sortants vers une adresse choisie par une personne (messageries d'équipe, adresse web) :
-//! protection contre la falsification de requêtes côté serveur (SSRF, décisions E3 et K7).
+//! Appels sortants vers une adresse choisie par une personne (messageries d'équipe, adresse web,
+//! service Web Push donné par un navigateur) : protection contre la falsification de requêtes
+//! côté serveur (SSRF, décisions E3, K7 et G6).
 //!
 //! À chaque envoi :
 //! * **HTTPS seulement**, sans identifiants dans l'adresse ni adresse IP littérale ;
@@ -240,6 +241,28 @@ impl OutboundClient {
         headers: HeaderMap,
         body: Vec<u8>,
     ) -> Result<OutboundResponse, ProviderError> {
+        self.post(
+            url,
+            rule,
+            allowed_hosts,
+            headers,
+            HeaderValue::from_static("application/json"),
+            body,
+        )
+        .await
+    }
+
+    /// Comme [`OutboundClient::post_json`], avec le type du corps `content_type` (Web Push :
+    /// `application/octet-stream`, corps chiffré).
+    pub async fn post(
+        &self,
+        url: &str,
+        rule: HostRule,
+        allowed_hosts: &[String],
+        headers: HeaderMap,
+        content_type: HeaderValue,
+        body: Vec<u8>,
+    ) -> Result<OutboundResponse, ProviderError> {
         let (mut target, host, port) = self.vet_url(url, rule, allowed_hosts)?;
         let addresses = self.resolve(&host, port).await?;
         if self.local_tests {
@@ -262,7 +285,7 @@ impl OutboundClient {
         let response = client
             .post(target)
             .headers(headers)
-            .header(CONTENT_TYPE, HeaderValue::from_static("application/json"))
+            .header(CONTENT_TYPE, content_type)
             .header(ACCEPT, HeaderValue::from_static("application/json"))
             .body(body)
             .send()
