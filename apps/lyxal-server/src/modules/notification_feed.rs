@@ -125,8 +125,9 @@ struct HubInner {
     generation: AtomicU64,
     /// Identifiant de la requête `LIVE SELECT` en cours (observation, tests).
     live_query: Mutex<Option<String>>,
-    /// Annulé à l'arrêt du worker : tous les flux se ferment.
-    closed: CancellationToken,
+    /// Génération des connexions : annulée à l'arrêt du worker (tous les flux se ferment),
+    /// remplacée par une neuve à son redémarrage.
+    closed: Mutex<CancellationToken>,
     /// Demande de contrôle immédiat de la requête `LIVE SELECT`.
     probe: tokio::sync::Notify,
 }
@@ -186,7 +187,7 @@ impl FeedHub {
                 next_id: AtomicU64::new(1),
                 generation: AtomicU64::new(0),
                 live_query: Mutex::new(None),
-                closed: CancellationToken::new(),
+                closed: Mutex::new(CancellationToken::new()),
                 probe: tokio::sync::Notify::new(),
             }),
         }
@@ -226,7 +227,7 @@ impl FeedHub {
 
     /// Vrai une fois le hub fermé (arrêt du worker).
     pub fn is_closed(&self) -> bool {
-        self.inner.closed.is_cancelled()
+        self.closed_token().is_cancelled()
     }
 
     fn lock(&self) -> std::sync::MutexGuard<'_, HashMap<String, Vec<Connection>>> {
@@ -271,7 +272,7 @@ impl FeedHub {
             identity,
             id,
             receiver,
-            closed: self.inner.closed.child_token(),
+            closed: self.closed_token().child_token(),
         })
     }
 
@@ -321,10 +322,32 @@ impl FeedHub {
         self.inner.probe.notify_one();
     }
 
+    /// Génération en cours des connexions.
+    fn closed_token(&self) -> CancellationToken {
+        self.inner
+            .closed
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone()
+    }
+
     /// Ferme toutes les connexions (arrêt du worker).
     pub fn close_all(&self) {
-        self.inner.closed.cancel();
+        self.closed_token().cancel();
         self.lock().clear();
+    }
+
+    /// Rouvre le hub au (re)démarrage du worker : nouvelle génération de connexions, les
+    /// anciennes restent fermées.
+    pub fn reopen(&self) {
+        let mut closed = self
+            .inner
+            .closed
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if closed.is_cancelled() {
+            *closed = CancellationToken::new();
+        }
     }
 
     /// Connexions d'une personne dans une organisation (copies : aucun verrou tenu pendant les
@@ -541,6 +564,8 @@ impl LyxalWorker for FeedHubWorker {
     }
 
     async fn run(&self, ctx: WorkerContext) -> Result<(), RuntimeError> {
+        // Module redémarré dans le même processus : le hub accepte de nouveau des connexions
+        self.hub.reopen();
         // Flux fermés à la sortie, même si la tâche est interrompue de force par le superviseur
         let _close = CloseOnDrop(&self.hub);
         let period = self.hub.settings().counts_interval;
@@ -670,5 +695,27 @@ mod tests {
         task.abort();
         assert!(task.await.is_err());
         assert!(hub.is_closed());
+    }
+
+    #[tokio::test]
+    async fn a_restarted_worker_accepts_new_connections_again() {
+        let hub = FeedHub::new(FeedSettings::default());
+        let store =
+            || NotificationStore::new(surrealdb::Surreal::<surrealdb::engine::any::Any>::init());
+        let mut old = hub
+            .register("auth_identity:a".into(), None, store())
+            .expect("connexion");
+        hub.close_all();
+        assert!(hub
+            .register("auth_identity:a".into(), None, store())
+            .is_err());
+        assert_eq!(old.recv().await, None);
+        // Redémarrage du module : nouvelle génération ; l'ancienne connexion reste fermée
+        hub.reopen();
+        assert!(!hub.is_closed());
+        let _new = hub
+            .register("auth_identity:a".into(), None, store())
+            .expect("connexion après redémarrage");
+        assert_eq!(old.recv().await, None);
     }
 }
