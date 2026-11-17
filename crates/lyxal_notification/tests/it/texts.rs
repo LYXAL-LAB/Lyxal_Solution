@@ -131,6 +131,7 @@ async fn system_emails_render_in_french_and_english() {
     let jobs = NotificationStore::new(client)
         .job_claim(JobClaimParams {
             worker_id: "test".to_string(),
+            channel: "email".to_string(),
             limit: 100,
             lease_seconds: 60,
         })

@@ -200,12 +200,15 @@ DEFINE FUNCTION OVERWRITE fn::notification_step_enter($params: object) -> object
     IF $step.condition IS NOT NONE AND !fn::utils_condition_evaluate($context, $step.condition, NONE).matched {
         RETURN $job({ status: "skipped", skip_reason: "condition" });
     };
-    -- Canal : adresse et préférences de l'abonné (relues à la réservation)
+    -- Canal : adresse, préférences de l'abonné (relues à la réservation) et liste de suppression
     IF $step.type IN fn::notification_channels({}) {
         LET $subscriber = IF $run.subscriber IS NONE { NONE } ELSE { (SELECT * FROM ONLY $run.subscriber) };
         LET $choice = fn::notification_preference_resolve({ tenant: $run.tenant, workflow: $params.workflow, subscriber: $subscriber }).channels[$step.type];
-        RETURN IF $step.type = "email" AND $run.address.email IS NONE { $job({ status: "skipped", skip_reason: "no_address:email" }) }
+        LET $address = fn::notification_channel_address({ type: $step.type, address: $run.address, subscriber: $run.subscriber });
+        LET $suppressed = fn::notification_suppression_reason({ scope: $run.scope_key, channel: $step.type, address: $address, critical: $params.workflow.critical });
+        RETURN IF $address IS NONE { $job({ status: "skipped", skip_reason: string::concat("no_address:", $step.type) }) }
             ELSE IF !$choice.allowed { $job({ status: "skipped", skip_reason: string::concat("preference:", $choice.level) }) }
+            ELSE IF $suppressed IS NOT NONE { $job({ status: "skipped", skip_reason: string::concat("suppressed:", $suppressed) }) }
             ELSE { $job({ status: "queued", max_attempts: fn::notification_settings_effective({ tenant: $run.tenant }).max_attempts }) };
     };
     -- Envoi de test : ni attente, ni regroupement, ni limitation
@@ -215,7 +218,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_step_enter($params: object) -> object
     IF $due.code IS NOT NONE { RETURN $job({ status: "failed", last_error: { class: "permanent", code: $due.code, detail: $due.detail } }); };
     IF $step.type = "digest" { RETURN fn::notification_digest_join({ run: $run, step: $step, context: $context, until: $due.until }); };
     RETURN IF $due.until <= time::now() { $job({ status: "completed" }) } ELSE { $job({ status: "queued", wait_until: $due.until }) };
-} COMMENT "Interne : engage l'étape ({ run, workflow, step, index }) : surcharge skip ou condition fausse : skipped ; canal : en file, ou skipped (no_address:<canal>, preference:<niveau>) ; attente : en file jusqu'à sa fin (date passée : terminée) ; regroupement ; limitation ; envoi de test : skipped (test). Date d'attente illisible ou trop lointaine : étape failed";
+} COMMENT "Interne : engage l'étape ({ run, workflow, step, index }) : surcharge skip ou condition fausse : skipped ; canal : en file, ou skipped (no_address:<canal>, preference:<niveau>, suppressed:<motif> pour un e-mail ou un numéro supprimé) ; attente : en file jusqu'à sa fin (date passée : terminée) ; regroupement ; limitation ; envoi de test : skipped (test). Date d'attente illisible ou trop lointaine : étape failed";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_run_finalize : état final d'un déclenchement

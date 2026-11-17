@@ -107,7 +107,7 @@ FOR $i IN <array>(3..106) {
 -- test: le message regroupé reçoit le nombre et les données des événements
 -- en tant que: worker
 {
-    LET $job = fn::notification_job_claim({ worker_id: "w1" }).data[0];
+    LET $job = fn::notification_job_claim({ channel: "email", worker_id: "w1" }).data[0];
     CREATE test_ref:envoi CONTENT { job: $job.job_id, token: $job.claim_token };
     RETURN $job.run_id == test_ref:lot.carrier AND $job.digest.count == 105 AND array::len($job.digest.events) == 100
         AND $job.digest.events[0].payload == { projet: "A", n: 1 } AND $job.digest.events[0].at IS NOT NONE;

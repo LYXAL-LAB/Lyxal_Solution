@@ -54,11 +54,14 @@ impl NotificationModule {
         let descriptor = ModuleDescriptorBuilder::new(ModuleId::new(MODULE_ID), "0.1.0")
             .name("Lyxal Notification")
             .description(
-                "Notifications sortantes de Lyxal OS : abonnés, sujets, préférences, parcours à étapes (attente, regroupement, limitation, conditions), gabarits, intégrations (e-mail par SMTP, Brevo, Mailgun, Postmark, Resend) et retours des fournisseurs, file d'envoi, diffusions, journal et liste de suppression",
+                "Notifications sortantes de Lyxal OS : abonnés, sujets, préférences, parcours à étapes (attente, regroupement, limitation, conditions), gabarits, intégrations (e-mail par SMTP, Brevo, Mailgun, Postmark, Resend ; SMS par Brevo, Twilio, Vonage ; messageries d'équipe ; appel signé d'une adresse web) et retours des fournisseurs, file d'envoi, diffusions, journal et liste de suppression",
             )
             .capability("database")
             .capability("events")
             .capability("email")
+            .capability("sms")
+            .capability("chat")
+            .capability("webhook")
             .dependency(ModuleId::new("lyxal_core"))
             .dependency(ModuleId::new("lyxal_error"))
             .dependency(ModuleId::new("lyxal_event"))

@@ -1,45 +1,50 @@
 # Lyxal Notification
 
-Module du Noyau Technique de Lyxal OS : **notifications sortantes**. Canal e-mail, assez complet
-pour les messages de `lyxal_auth` (vérification d'adresse, récupération, invitation, alertes de
-sécurité) et pour les parcours des modules métiers ; destinataires (**abonnés**, **sujets**),
+Module du Noyau Technique de Lyxal OS : **notifications sortantes**. Canaux **e-mail** (assez
+complet pour les messages de `lyxal_auth` : vérification d'adresse, récupération, invitation,
+alertes de sécurité), **SMS** (Brevo, Twilio, Vonage), **messageries d'équipe** (Slack,
+Microsoft Teams, Discord, Mattermost, Google Chat, Telegram) et **appel signé d'une adresse
+web**, pour les parcours des modules métiers ; destinataires (**abonnés**, leurs **adresses**
+de messagerie et web, **sujets**),
 **catégories**, **préférences** à tous les niveaux, **heures calmes**, **désabonnement en un
 clic**, **diffusion** à un sujet ou à tous, et **parcours à étapes** : attente, regroupement
 (digest), limitation (throttle), conditions d'étape, surcharges au déclenchement, envoi groupé,
 annulation, aperçu et envoi de test ; **intégrations** (fournisseur d'un canal par organisation,
-avec repli sur l'installation : SMTP, Brevo, Mailgun, Postmark, Resend), identifiants dans
-`lyxal_secrets`, bascule après une panne et **retours des fournisseurs** (délivré, rejeté,
-plainte) avec suppression automatique des adresses rejetées. Toutes les règles vivent dans
+avec repli sur l'installation), identifiants dans `lyxal_secrets`, bascule après une panne et
+**retours des fournisseurs** (délivré, rejeté, plainte) avec suppression automatique des adresses
+et numéros rejetés. Toutes les règles vivent dans
 SurrealDB (fonctions `fn::notification_*`) ; les attentes et la purge passent par
 `lyxal_scheduler` ; le crate Rust ouvre et scelle les secrets (`lyxal_crypto`), rend les gabarits
 (MiniJinja), calcule les heures calmes dans le fuseau de l'abonné (`jiff`), signe les liens de
 désabonnement (`lyxal_crypto`), lit les identifiants des intégrations dans `lyxal_secrets`, envoie
-par SMTP (`lettre`) ou par les API des fournisseurs (`reqwest`) et vérifie leurs retours
-(`lyxal_crypto`). Modèle repris de Novu et
+par SMTP (`lettre`) ou par les API des fournisseurs (`reqwest`), appelle les messageries et les
+adresses web par un client sortant contrôlé (SSRF), scelle les adresses (`lyxal_crypto`) et
+vérifie les retours (`lyxal_crypto`). Modèle repris de Novu et
 Postal ([`MODELE_SOURCES.md`](MODELE_SOURCES.md)) ; lots suivants dans [`ROADMAP.md`](ROADMAP.md).
 
 ## 1. Modèle
 
 | Table | Contenu |
 | :--- | :--- |
-| `notification_settings` | réglages de l'installation, surchargés par organisation : fuseau horaire par défaut des abonnés, tentatives au plus, durées de conservation, `max_wait_days` (durée maximale d'une attente ou d'une fenêtre, 30 jours par défaut, 1 à 366) |
+| `notification_settings` | réglages de l'installation, surchargés par organisation : fuseau horaire par défaut des abonnés, tentatives au plus, durées de conservation, `max_wait_days` (durée maximale d'une attente ou d'une fenêtre, 30 jours par défaut, 1 à 366) ; `allowed_hosts` (installation seulement : hôtes autorisés des adresses web et de Mattermost, 100 au plus ; vide : tout hôte public) |
 | `notification_subscriber` | abonné : `subscriber_id` stable choisi par l'application (unique par portée), compte `lyxal_auth` lié facultatif (`identity`, supprimé avec lui), e-mail, téléphone (E.164), prénom, nom, langue, fuseau, `data` (8 Kio) ; clé d'enregistrement aléatoire |
+| `notification_endpoint` | adresse d'un abonné pour la messagerie (`chat` : `slack`, `teams`, `discord`, `mattermost`, `google_chat`, `telegram`) ou l'adresse web (`webhook`) : nom, **hôte** (lisible), adresse **scellée** (`url`, `enc:v2`, lisible par le worker seulement), identifiant du salon Telegram (`chat_id`), clé de signature scellée d'une adresse web (`signing_secret`, worker seulement) et sa date, active, dernier résultat (`last_result`) ; 10 au plus par abonné et par canal ; supprimée avec l'abonné et l'organisation |
 | `notification_topic`, `notification_topic_member` | sujets (clé unique par portée) et abonnements, avec condition `lyxal_core` facultative ; supprimés avec le sujet ou l'abonné |
 | `notification_category` | catégorie de désabonnement des parcours ; celles de l'installation servent à toutes les organisations |
 | `notification_preference` | choix par canal (`email`, `sms`, `chat`, `push`, `in_app`, `webhook` : vrai, faux ou absent) d'un niveau : `tenant_workflow`, `subscriber_global` (avec les heures calmes), `subscriber_category`, `subscriber_workflow` ; unique par cible |
 | `notification_workflow` | parcours : clé unique dans sa portée, événement déclencheur (`lyxal_event`), état `draft` / `active` / `inactive` (jamais supprimé), `critical`, `sensitive`, `category`, `preferences` (`{ channels, enforced }` : défauts et canaux imposés), schéma des variables (`lyxal_core`), étapes typées exécutées dans l'ordre (§1.3, 20 au plus) |
 | `notification_layout` | mise en page HTML et texte contenant `{{ content }}` |
-| `notification_template` | gabarit d'une étape, en une seule version : objet, HTML, texte, mise en page, et `keys`, les clés `lyxal_i18n` de ses phrases |
+| `notification_template` | gabarit d'une étape, en une seule version : e-mail : objet, HTML, texte, mise en page ; SMS, messagerie, adresse web : texte seul et objet (titre) facultatif (décision E5) ; `keys`, les clés `lyxal_i18n` de ses phrases |
 | `notification_broadcast` | diffusion d'un parcours à un sujet ou à tous les abonnés d'une portée, idempotente par (portée, clé) : auteur exclu, curseur, compteurs, réservation du worker |
 | `notification_run` | déclenchement pour un abonné, **idempotent** par (portée, clé) : abonné (retiré s'il est supprimé), adresse copiée au déclenchement (`address`), diffusion d'origine, auteur, étape courante (`cursor`), surcharges (`overrides`), envoi de test (`test`), regroupement porté ou rejoint (`digest`) ; états `pending`, `waiting`, `completed`, `failed`, `skipped`, `canceled`, `merged` ; secret scellé effacé dès la fin de ses étapes, à l'annulation ou à son expiration |
 | `notification_job` | étape engagée (une par étape et par déclenchement, index unique) : type de l'étape, file d'envoi réservée par `locked_until` et `claim_token` (canaux), intégration de la dernière tentative (`integration`, bascule D3), fin d'une attente (`wait_until`) et exécution différée du planificateur (`scheduler_run`), tentatives, dernière erreur, motif d'une étape écartée (`preference:<niveau>`, `no_address:<canal>`, `condition`, `override`, `throttled`, `test`, `canceled`) ; états `queued`, `running`, `waiting`, `completed`, `failed`, `skipped`, `canceled`, `merged` |
 | `notification_digest` | regroupement : portée, parcours, abonné, étape, clé de regroupement, déclenchement porteur, fin de la fenêtre, nombre et données des événements (100 premiers), état `open` / `closed` ; un seul ouvert par clé (index unique sur `open_slot`) |
 | `notification_rate_limit` | compteur de limitation d'une fenêtre fixe (identifiant : portée, parcours, abonné, étape, clé, début de la fenêtre), date de purge |
-| `notification_message` | message envoyé : destinataire, intégration, fournisseur, identifiant chez le fournisseur (`provider_message_id`, unique par intégration), état `sent` puis, d'après les retours, `delivered`, `bounced`, `complained` ; **aucun corps**, objet absent pour un parcours sensible |
-| `notification_integration` | intégration : portée (organisation ou installation), clé unique dans la portée, canal (`email`), fournisseur (`smtp`, `brevo`, `mailgun`, `postmark`, `resend`), nom, active, principale (une au plus par portée et canal, index unique sur `primary_slot`), priorité (plus petite d'abord), condition `lyxal_core` facultative, réglages non secrets (`from_address`, `from_name`, `reply_to` ; SMTP : `host`, `port`, `security` ; Mailgun : `domain`, `region` `us` / `eu`), **chemin** du secret des identifiants (`credentials_path`) et du secret des retours (`webhook_path`) dans `lyxal_secrets`, dernier essai (`last_test`) ; jamais une valeur secrète |
+| `notification_message` | message envoyé : canal, destinataire (adresse e-mail, téléphone E.164, ou **hôte** de l'adresse de messagerie ou web, jamais l'adresse complète), adresse servie (`endpoint`), nombre de parties d'un SMS (`parts`), intégration, fournisseur, identifiant chez le fournisseur (`provider_message_id`, unique par intégration), état `sent` puis, d'après les retours, `delivered`, `bounced`, `complained` ; **aucun corps**, objet absent pour un parcours sensible |
+| `notification_integration` | intégration : portée (organisation ou installation), clé unique dans la portée, canal (`email`, `sms`, `chat`, `webhook`), fournisseur propre au canal (e-mail : `smtp`, `brevo`, `mailgun`, `postmark`, `resend` ; SMS : `brevo`, `twilio`, `vonage` ; messagerie : `slack`, `teams`, `discord`, `mattermost`, `google_chat`, `telegram` ; adresse web : `webhook`), nom, active, principale (une au plus par portée et canal, index unique sur `primary_slot`), priorité (plus petite d'abord), condition `lyxal_core` facultative, réglages non secrets (e-mail : `from_address`, `from_name`, `reply_to` ; SMTP : `host`, `port`, `security` ; Mailgun : `domain`, `region` `us` / `eu` ; SMS : `sender`, numéro E.164 ou nom court de 11 caractères), **chemin** du secret des identifiants (`credentials_path` : e-mail, SMS, Telegram) et du secret des retours (`webhook_path` : e-mail par API, SMS) dans `lyxal_secrets`, dernier essai (`last_test`) ; jamais une valeur secrète |
 | `notification_provider_event` | retour normalisé d'un fournisseur : intégration, identifiant de l'événement chez le fournisseur (unique par intégration), type (`delivered`, `bounced`, `soft_bounced`, `complained`), message lié, adresse du message, date ; purgé selon `retention_days_log` ; aucun corps |
 | `notification_delivery_log` | journal en ajout seul (tentative, issue, code), jamais de secret |
-| `notification_suppression` | adresses à ne plus contacter : `hard_bounce`, `complaint`, `manual` (le désabonnement est une préférence, pas une suppression de l'adresse) |
+| `notification_suppression` | adresses (canal `email`) et numéros E.164 (canal `sms`) à ne plus contacter : `hard_bounce`, `complaint`, `manual` (le désabonnement est une préférence, pas une suppression de l'adresse) |
 
 Portée : champ `tenant` (organisation `lyxal_auth`, absent pour l'installation) et clé
 `scope_key` (`installation` ou clé de l'organisation) pour les index uniques. Un parcours, une
@@ -142,7 +147,7 @@ par `fn::notification_step_check` (moteur de `lyxal_core`, détail par étape et
 
 | Type | Champs |
 | :--- | :--- |
-| `email` | canal (les autres canaux s'ajoutent aux lots suivants) |
+| `email`, `sms`, `chat`, `webhook` | canal (e-mail ; SMS au téléphone de l'abonné ; toutes ses adresses de messagerie actives ; toutes ses adresses web actives) |
 | `delay` | `amount` + `unit` (`seconds` … `weeks`), ou `until` : chemin d'une date RFC 3339 dans les données (ex. `payload.rendez_vous`), avec `offset` facultatif (`{ amount: -1, unit: "days" }`) |
 | `digest` | `window` (`{ amount, unit }`), `group_by` (chemin facultatif de la clé de regroupement), `lookback` facultatif |
 | `throttle` | `limit` (1 à 1000), `window`, `group_by` (chemin facultatif) |
@@ -200,8 +205,11 @@ Tâches de `lyxal_scheduler` déclarées par le seed du module (exécuteur `func
 
 ### 1.4. Intégrations et fournisseurs
 
-Une **intégration** dit par quel fournisseur part un canal (`email` ; les canaux du lot 4
-s'ajoutent) pour une organisation, ou pour l'installation (repli de toutes les organisations).
+Une **intégration** dit par quel fournisseur part un canal (`email`, `sms`, `chat`, `webhook`)
+pour une organisation, ou pour l'installation (repli de toutes les organisations). Messagerie :
+une intégration par service (`slack`…) l'active ; seule Telegram a un secret (le jeton du
+robot). Adresse web : une intégration `webhook` par portée active le canal (aucune valeur
+secrète).
 
 * **Choix pour un envoi** (D1, à la réservation de l'étape) : intégrations actives de
   l'organisation pour le canal dont la condition (forme `lyxal_core`, évaluée sur
@@ -217,9 +225,12 @@ s'ajoutent) pour une organisation, ou pour l'installation (repli de toutes les o
   l'étape et sur le message.
 * **Identifiants** (D2) : rangés dans `lyxal_secrets` (routes `/api/v1/secrets/*`), sous le
   dossier `notification/` de la **même portée**, en JSON : SMTP `{ username, password }` (ou `{}`
-  pour un relais sans authentification) ; Brevo, Mailgun, Postmark, Resend `{ api_key }`. Secret
-  des retours : Mailgun `{ signing_key }`, Resend `{ signing_secret }` (`whsec_…`), Postmark et
-  Brevo `{ username, password }` (authentification Basic réglée chez le fournisseur).
+  pour un relais sans authentification) ; Brevo (e-mail et SMS), Mailgun, Postmark, Resend
+  `{ api_key }` ; Twilio `{ account_sid, auth_token }` ; Vonage `{ api_key, api_secret }` ;
+  Telegram `{ bot_token }`. Secret des retours : Mailgun `{ signing_key }`, Resend
+  `{ signing_secret }` (`whsec_…`), Postmark et Brevo `{ username, password }` (authentification
+  Basic réglée chez le fournisseur), Twilio `{ auth_token }` (ou le secret des identifiants),
+  Vonage `{ signature_secret }` (méthode « HMAC SHA-256 » du compte).
   L'intégration ne garde que les chemins ; le worker lit la valeur par le chemin tracé
   (`SecretsClient`, session système, `lyxal_notification` annoncé comme consommateur : une fiche
   qui liste ses consommateurs doit le nommer). Créer ou modifier une intégration exige, en plus
@@ -245,9 +256,78 @@ s'ajoutent) pour une organisation, ou pour l'installation (repli de toutes les o
   ajoutée à la liste de suppression de l'organisation du message, motif `hard_bounce`), rejet
   temporaire (gardé, sans effet), plainte (`complained`, motif `complaint`). Ouvertures et clics
   ignorés (V2). Un retour dont le message est inconnu est gardé sans effet (`unmatched`).
-* **Essai** (D6) : `POST /api/v1/notification/integrations/{intégration}/test` (`{ to }`, droit de
-  gestion) envoie un e-mail d'essai par le vrai fournisseur ; réponse `{ accepted, code }`, sans
-  secret ; issue notée sur l'intégration (`last_test`).
+* **Essai** (D6) : `POST /api/v1/notification/integrations/{intégration}/test` (`{ to }` : e-mail,
+  numéro E.164 pour un SMS, identifiant d'une adresse du même service pour la messagerie et
+  l'adresse web ; droit de gestion) envoie un message d'essai par le vrai fournisseur ; réponse
+  `{ accepted, code }`, sans secret ; issue notée sur l'intégration (`last_test`).
+
+### 1.5. SMS, messageries d'équipe et adresse web (lot 4)
+
+* **Destinataires** (E1) : SMS au téléphone de l'abonné (E.164) ; messagerie et adresse web à
+  **toutes** les adresses actives de l'abonné pour le canal (`notification_endpoint`, 10 au plus),
+  chacune servie par l'intégration éligible de son service (ordre D1, bascule D3). Une adresse
+  servie par une tentative n'est pas rappelée par la suivante ; toutes servies (ou refusées
+  définitivement après au moins une servie) : étape terminée ; une adresse en échec temporaire :
+  nouvel essai des seules adresses restantes. Sans adresse : étape écartée (`no_address:<canal>`) ;
+  un déclenchement n'a d'adresse pour aucun canal du parcours : `NOTIFICATION_SUBSCRIBER_NO_ADDRESS`
+  (`NOTIFICATION_SUBSCRIBER_NO_PHONE` pour un parcours de SMS seulement).
+* **Adresses scellées** (E2) : une adresse de webhook donne à elle seule le droit d'écrire ;
+  elle n'entre en base que **scellée** par l'hôte (`enc:v2`, contexte
+  `with_tenant(<organisation> ?? "lyxal_installation", "lyxal_notification",
+  "notification_endpoint", <clé de l'adresse>, "url")`), lue par le worker seulement (permission
+  de champ) et ouverte en mémoire (`SecretString`) le temps de l'appel ; la personne ne voit que
+  l'hôte. La fonction reçoit l'adresse en clair **pour la contrôler seulement** par `lyxal_core`
+  (`http_url` HTTPS, `hostname`, liste des hôtes officiels) et n'enregistre que la valeur
+  scellée. Telegram : l'adresse ne porte que l'identifiant du salon (`-100…` ou `@nom`).
+  Modifier l'adresse : en créer une autre.
+* **Sécurité des appels sortants** (E3, K7) : messageries et adresses web passent par
+  `OutboundClient` : HTTPS seulement, ni identifiants dans l'adresse ni adresse IP ; hôtes
+  officiels pour Slack (`hooks.slack.com`), Teams (`*.webhook.office.com`, flux Power Automate
+  `*.logic.azure.com` et `*.environment.api.powerplatform.com`), Discord (`discord.com`,
+  `discordapp.com`), Google Chat (`chat.googleapis.com`), Telegram (`api.telegram.org`, fixe) ;
+  Mattermost et adresse web : tout hôte public, dans `allowed_hosts` de l'installation si réglée
+  (contrôlé à la création et à chaque envoi). Le nom est **résolu à chaque envoi** et chaque
+  adresse obtenue vérifiée (refus : non spécifiée, boucle locale, privée, lien local dont
+  métadonnées des plateformes, partagée 100.64/10, multidiffusion, diffusion, réservée,
+  documentation, IPv6 locale unique fc00::/7 et de lien local fe80::/10, adresses IPv4 portées par
+  IPv6 : mappées, compatibles, NAT64, 6to4) ; la connexion est faite **à l'adresse vérifiée**
+  (aucune seconde résolution), sans mandataire ; **aucune redirection**, délai de 10 s, réponse
+  lue sur 64 Kio au plus. Refus : `NOTIFICATION_DESTINATION_FORBIDDEN` (définitif, sans appel).
+* **SMS** (K5) : Brevo (`api.brevo.com/v3/transactionalSMS/sms`, en-tête `api-key`, JSON),
+  Twilio (`api.twilio.com/2010-04-01/Accounts/{compte}/Messages.json`, formulaire, Basic), Vonage
+  (`rest.nexmo.com/sms/json`, formulaire) ; numéro sans « + » pour Brevo et Vonage ; adresse des
+  retours demandée par message (`{public_url}/api/v1/notification/webhooks/{intégration}`) quand
+  l'intégration a un secret des retours. **Parties** (E5) : GSM-7 (160, puis 153 par partie ;
+  `^ { } \ [ ~ ] | €` comptent double) ou UCS-2 dès un caractère hors alphabet GSM (70, puis 67 ;
+  emoji compté double), **10 parties au plus**, refus à l'enregistrement du gabarit (texte tel
+  qu'écrit, `fn::notification_sms_segments`) et au rendu (`SmsSegments`, sans envoi :
+  `NOTIFICATION_SMS_TOO_LONG`). Refus à l'envoi : numéro invalide (Twilio 21211, 21614…) →
+  destinataire refusé, numéro supprimé (rejet définitif) ; désinscrit (Twilio 21610, Vonage 7)
+  → numéro supprimé (plainte).
+* **Retours des SMS** (E6) : Twilio (`X-Twilio-Signature`, HMAC-SHA1 vérifié par
+  `verify_external_hmac_sha1`, extension K8) ; Vonage (paramètre `sig`, HMAC-SHA256 des
+  paramètres triés sous le secret de signature, `ExternalHmacKey`, horodatage à 5 minutes) ;
+  Brevo (Basic). Numéro inexistant (Twilio 30005, 30006 ; Vonage 3, 9) : `bounced`, numéro
+  supprimé ; STOP (Twilio 21610, 30004 ; Vonage 4) : `complained`, numéro supprimé ; autres
+  échecs : rejet temporaire. Messageries et adresse web : pas de retours (issue connue à l'appel,
+  notée sur l'adresse : `last_result`).
+* **Messageries** : texte simple (Markdown du service laissé tel quel), titre en gras ; Slack,
+  Mattermost, Google Chat `{ text }` ; Teams : carte adaptative ; Discord `{ content,
+  allowed_mentions: { parse: [] } }` (2 000 caractères) ; Telegram `sendMessage` (`chat_id`,
+  4 096 caractères). 2xx accepté ; 429 et 5xx temporaires ; autres refus définitifs.
+* **Adresse web** (E4) : `POST` JSON `{ id, type: "notification.message", workflow, step, run,
+  subscriber_id, payload, text, sent_at }` (jamais le secret du déclenchement), en-têtes
+  `Lyxal-Signature: t=<secondes>,v1=<hex>` (HMAC-SHA256 de `<t>.<corps>`) et `Lyxal-Delivery:
+  <id>` (stable d'une tentative à l'autre : dédoublonnage chez le destinataire). Clé de signature :
+  32 octets tirés par le générateur du système à la création, montrés **une seule fois** en
+  hexadécimal, puis scellés ; renouvelable. Le destinataire décode la clé (hexadécimal) et vérifie
+  `HMAC-SHA256(clé, t + "." + corps)` en temps constant, en refusant un `t` trop ancien. Réponse
+  2xx : livré ; 4xx sauf 408 et 429 : refus définitif ; sinon (3xx compris) nouvel essai.
+* **Préférences et heures calmes** (E7) : choix par canal (`sms`, `chat`, `webhook`) ; heures
+  calmes pour le SMS et la messagerie, jamais pour l'adresse web.
+* **Liste de suppression** : le déclenchement n'est arrêté que si toutes ses adresses sont
+  supprimées ; sinon l'étape dont l'adresse (e-mail ou numéro) est supprimée est écartée
+  (`suppressed:<motif>`).
 
 ## 2. Droits
 
@@ -289,9 +369,10 @@ d'un essai : worker ou session système de l'hôte.
 | Gabarits | `notification_template_create` (**workflow**, **step_key**, **subject**, **html_body**, **text_body**, `keys`, `layout`), `_update` (champs fournis seulement, `clear_layout`), `_get` |
 | Réglages | `notification_settings_get`, `_set` (`max_wait_days` compris ; expéditeur et adresse de réponse : réglages de l'intégration) |
 | Intégrations | `notification_integration_create`, `_update` (champs fournis, réglages remplacés en entier, `clear_condition`, `clear_webhook`), `_get` (par clé ou identifiant), `_list`, `_delete`, `_set_primary`, `_test` (essai : contrôle au nom de l'appelant, D6) ; `_select` (worker : ordre D1 / D3 d'une étape), `_test_record` et `notification_provider_event_record` (hôte) |
-| Liste de suppression | `notification_suppression_add`, `_remove`, `_list` |
+| Adresses de messagerie et web | `notification_endpoint_create` (adresse scellée par l'hôte, contrôlée en clair), `_update` (nom, active, salon Telegram), `_delete`, `_list` (hôte seulement), `_rotate_secret` (nouvelle clé scellée par l'hôte) ; `notification_my_endpoint_create`, `_update`, `_delete`, `_list`, `_rotate_secret` (personne connectée) ; `notification_endpoint_resolve` (hôte : adresse scellée d'un essai) |
+| Liste de suppression | `notification_suppression_add`, `_remove` (`channel` : `email` par défaut ou `sms`), `_list` |
 | Activité | `notification_run_get`, `_list` |
-| File d'envoi (worker) | `notification_job_claim` (avec l'intégration de l'envoi), `_renew`, `_release` (`not_before` : fin des heures calmes), `_complete` (`integration`, `provider_message_id`, `response_code`), `_fail` (`integration`) |
+| File d'envoi (worker) | `notification_job_claim` (`channel` : un worker par canal ; avec l'intégration de l'envoi et, pour la messagerie et l'adresse web, les adresses scellées non encore servies), `_renew`, `_release` (`not_before` : fin des heures calmes), `_complete` (`integration`, `provider_message_id`, `response_code`, `parts`, `endpoints` : issue de chaque adresse servie ; renvoie `messages`), `_fail` (`integration`, classe `recipient_opted_out` en plus, `endpoints`) |
 | Attentes (worker, planificateur) | `notification_wait_schedule` (paquet de 500 au plus), `notification_run_resume` et `notification_purge` (forme d'appel du planificateur `{ args, run, tenant, scheduled_for, attempt }`) |
 
 Entrées validées et nettoyées par `lyxal_core` ; erreurs `NOTIFICATION_*` (master data
@@ -307,7 +388,12 @@ Fonctions internes (appelées par les précédentes) : `notification_subscriber_
 `notification_digest_join`, `_merge`, `notification_throttle_hit`, `notification_run_advance`,
 `_finalize` ; intégrations : `notification_integration_find`, `_secret_check`,
 `_settings_refusal`, `_refusal` (garde), `_fields`, `_view`, `_checked`, `_clean_settings`,
-`_unset_primary`, `_eligible`, `_for_job`, `_payload`.
+`_unset_primary`, `_eligible`, `_for_job`, `_payload`, `_secrets_refusal` ; canaux :
+`notification_channel_address`, `notification_suppression_address`, `_reason`,
+`notification_sms_segments`, `notification_template_channel_refusal`,
+`notification_endpoint_official_hosts`, `_host_refusal`, `_fields`, `_view`, `_write`, `_find`,
+`_change`, `_payload`, `notification_my_endpoint_change`, `notification_job_endpoints`,
+`notification_job_endpoint_fields`, `notification_job_endpoint_record`.
 
 File d'envoi (étapes de canal seulement) : réservation conditionnelle (une étape n'est réservée qu'une fois ; une
 réservation expirée est reprise, sauf après la dernière tentative : échec définitif),
@@ -347,9 +433,12 @@ jamais de contenu ni de secret) ; `notification.subscriber.created`, `.updated` 
 langue, fuseau ou données changés), `.deleted`, `notification.subscriber.unsubscribed` (lien de
 désabonnement : catégorie ou parcours, canal), `notification.preference.updated`,
 `notification.topic.subscribed`, `.unsubscribed` ; `notification.integration.created`,
-`.updated`, `.deleted` (`integration_id`, `tenant`, `channel`) ; `notification.message.delivered`,
-`.bounced`, `.complained` (`message_id`, `run_id`, `integration_id`) : identifiants seulement,
-jamais l'adresse, le téléphone, le nom, un chemin de secret ni un réglage.
+`.updated`, `.deleted` (`integration_id`, `tenant`, `channel`) ; `notification.endpoint.created`,
+`.updated`, `.deleted` (`endpoint_id`, `subscriber_id`, `tenant`, `channel` ; le dernier résultat
+noté par le worker n'est pas une modification) ; `notification.message.delivered`, `.bounced`,
+`.complained` (`message_id`, `run_id`, `integration_id`) : identifiants seulement, jamais
+l'adresse, le téléphone, l'hôte ou l'adresse web, le nom, un chemin de secret ni un réglage.
+`notification.address.suppressed` d'un numéro (canal `sms`) ne porte pas le numéro.
 
 ## 5. Rust
 
@@ -362,7 +451,22 @@ jamais l'adresse, le téléphone, le nom, un chemin de secret ni un réglage.
   après un conflit d'écriture transitoire de SurrealDB (transaction non validée) : un envoi fait
   n'est jamais refait faute d'avoir pu l'enregistrer. Adresses, téléphones et noms masqués dans
   `Debug`.
-* `SecretCodec` : ouverture et rescellement (`CryptoEngine`, contextes non vides).
+* `SecretCodec` : ouverture et rescellement (`CryptoEngine`, contextes non vides) ; scellement et
+  ouverture des adresses (`seal_endpoint_value`, `open_endpoint_value`, `EndpointField`) ;
+  `generate_signing_key` (clé de signature d'une adresse web : `rand_core::OsRng`, vérifiée comme
+  `HmacKey`).
+* `OutboundClient` (E3) : contrôles SSRF, résolution par `HostResolver` (`SystemResolver` ;
+  `StaticResolver` et `OutboundClient::for_local_tests` réservés aux tests : seule la boucle
+  locale s'ajoute aux adresses publiques), `forbidden_ip`, `HostRule`.
+* `SmsApi` (Brevo, Twilio, Vonage ; `SmsEndpoints` fixes, `for_local_tests`), `SmsCredentials`,
+  `SmsSegments` ; `ChatSender` (`ChatService`, `ChatTarget`, `chat_body`, appel signé
+  `call_webhook`, `signature`) ; `ChannelDispatcher` : identifiants lus dans `lyxal_secrets`,
+  adresse des retours des SMS, vérification des retours des SMS (`ProviderWebhook::verify_sms`) ;
+  `deliver_to_endpoint` : appel d'une adresse (worker et essai de l'hôte).
+* `NotificationChannelWorker` (`TextChannel` : `Sms`, `Chat`, `Webhook`) : même file, mêmes
+  réservations, heures calmes (sauf adresse web) et nouvelles tentatives que l'e-mail
+  (`SendWorkerSettings`) ; `Renderer::render_text` (titre facultatif et texte, sans échappement
+  HTML).
 * `NotificationConsumer` (`EventConsumerModule`) et `AuthMessageHandler` : secret illisible,
   charge utile invalide ou parcours absent → lettre morte ; base indisponible → rejoué.
   `SecurityAlertHandler` : alertes de sécurité vers `auth_security_alert`. `auth_subscriber` :
@@ -482,6 +586,21 @@ planificateur, qui exécute les reprises et la purge.
   Une intégration SMTP n'a pas de retours (rejets connus à l'envoi : 550, 551, 553).
 * **Panne d'un fournisseur** : une seconde intégration (priorité plus grande) prend le relais à
   la tentative suivante ; `notification_run_get` montre l'intégration de chaque tentative.
+* **SMS** : secret des identifiants (Twilio `{ account_sid, auth_token }`, Vonage `{ api_key,
+  api_secret }`, Brevo `{ api_key }`), intégration `channel: "sms"` avec `settings: { sender }`
+  (numéro de l'expéditeur, ou nom court là où l'opérateur l'accepte). Retours : `webhook_path`
+  (Twilio `{ auth_token }` ; Vonage `{ signature_secret }` et méthode « HMAC SHA-256 » dans le
+  tableau de bord ; Brevo `{ username, password }`) et `LYXAL__NOTIFICATION__PUBLIC_URL` : l'adresse
+  des retours est demandée message par message. Twilio signe l'adresse publique exacte : un
+  mandataire inverse ne doit pas la réécrire.
+* **Messageries** : une intégration `channel: "chat"` par service utilisé (Telegram : secret
+  `{ bot_token }`), puis les adresses des abonnés par `POST /api/v1/notification/endpoints`
+  (ou `/my/endpoints` pour la personne connectée) avec l'adresse fournie par le service.
+* **Adresses web** : une intégration `channel: "webhook", provider: "webhook"` par portée ; à la
+  création d'une adresse, l'hôte rend la clé de signature **une seule fois** (à transmettre au
+  destinataire) ; `POST /api/v1/notification/endpoints/{adresse}/rotate` en tire une nouvelle.
+  `allowed_hosts` (`fn::notification_settings_set` sans `tenant`) limite les hôtes des adresses
+  web et de Mattermost.
 
 * **Réglages** : `max_wait_days` (`fn::notification_settings_set`, organisation ou
   installation) borne toute attente, fenêtre de regroupement ou de limitation, à
@@ -545,4 +664,19 @@ planificateur, qui exécute les reprises et la purge.
   purge créée une seule fois, aperçu d'une étape. Unitaires : jeton
   (aller-retour, falsification, autre clé), heures calmes (fuseau, passage de minuit, jours,
   plages enchaînées, changement d'heure), lien dans le rendu.
+* Lot 4 : banc `tests/canaux.test.surql` (parties d'un SMS ; intégrations par canal et refus ;
+  adresses : création, hôtes officiels, HTTP, adresse IP, nom local, valeur non scellée, jamais
+  relue, liste d'hôtes de l'installation, limite, droits, écriture filtrée, adresses de la
+  personne connectée, nouvelle clé, événements ; gabarits par canal et longueur d'un SMS ; abonné
+  sans téléphone ; préférence par canal ; numéro supprimé, parcours critique ; file par canal,
+  heures calmes sauf adresse web, adresses servies une fois ; retour d'un SMS ; STOP ; essai par
+  canal ; fonctions internes) ; tests Rust : SSRF (adresses interdites, contrôles avant appel,
+  noms privés v4, v6 et mappés, métadonnées, nom mixte, HTTP, adresse IP, identifiants, liste
+  d'hôtes, redirection non suivie), chaque fournisseur de SMS et chaque messagerie contre un faux
+  service local, appel d'une adresse web vérifié par le destinataire, signatures Twilio (vecteur
+  calculé indépendamment, fausse, autre adresse, paramètre modifié) et Vonage (formulaire, JSON,
+  horodatage), parties d'un SMS, rendu texte ; de bout en bout : déclenchement → SMS (Twilio) +
+  Slack + adresse web, aucune adresse en clair en base ni dans un événement, retour Twilio →
+  numéro supprimé ; SMS rendu trop long refusé sans envoi ; hôte : routes des adresses et retour
+  Twilio (`apps/lyxal-server/tests/notification_channels_http.rs`).
 * `scripts/ci/ci_local.sh`.

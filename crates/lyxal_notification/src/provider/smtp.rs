@@ -129,8 +129,7 @@ impl SmtpProvider {
         email: &EmailMessage,
         message_id: &str,
     ) -> Result<Message, ProviderError> {
-        let from: Address = settings
-            .from_address
+        let from: Address = super::from_address(settings)?
             .parse()
             .map_err(|_| ProviderError::configuration("adresse d'expédition invalide"))?;
         let to: Address = email.to.parse().map_err(|_| ProviderError {
@@ -175,8 +174,7 @@ impl EmailProvider for SmtpProvider {
         email: &EmailMessage,
         credentials: &Credentials,
     ) -> Result<ProviderReceipt, ProviderError> {
-        let domain = settings
-            .from_address
+        let domain = super::from_address(settings)?
             .rsplit_once('@')
             .map(|(_, domain)| domain.to_string())
             .ok_or_else(|| ProviderError::configuration("adresse d'expédition invalide"))?;
@@ -240,7 +238,7 @@ mod tests {
     #[tokio::test]
     async fn plain_smtp_is_limited_to_loopback() {
         let settings = |host: &str| IntegrationSettings {
-            from_address: "noreply@lyxal.test".to_string(),
+            from_address: Some("noreply@lyxal.test".to_string()),
             host: Some(host.to_string()),
             port: Some(25),
             security: Some("local_plain".to_string()),

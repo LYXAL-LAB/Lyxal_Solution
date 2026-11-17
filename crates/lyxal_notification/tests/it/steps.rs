@@ -9,9 +9,9 @@ use lyxal_notification::models::{
     CancelParams, DigestVars, StepPreviewParams, SubscriberInput, TriggerParams, TriggerTarget,
 };
 use lyxal_notification::{
-    ensure_purge_schedule, EmailWorkerSettings, NotificationEmailWorker, NotificationModule,
-    NotificationPreview, NotificationStepWorker, NotificationStore, SecretCodec,
-    StepWorkerSettings, PURGE_SCHEDULE,
+    ensure_purge_schedule, NotificationEmailWorker, NotificationModule, NotificationPreview,
+    NotificationStepWorker, NotificationStore, SecretCodec, SendWorkerSettings, StepWorkerSettings,
+    PURGE_SCHEDULE,
 };
 use lyxal_runtime::lock::{NodeId, SurrealLeaderLeaseManager};
 use lyxal_runtime::worker::{CancellationToken, LyxalWorker, WorkerContext};
@@ -104,9 +104,9 @@ impl Engine {
             store,
             SecretCodec::new(crypto()),
             dispatcher(&vault, None),
-            EmailWorkerSettings {
+            SendWorkerSettings {
                 poll_interval: Duration::from_millis(100),
-                ..EmailWorkerSettings::default()
+                ..SendWorkerSettings::default()
             },
         )
         .expect("worker d'envoi");

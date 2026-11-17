@@ -4,6 +4,7 @@
 use lyxal_i18n::ResolvedText;
 use lyxal_surreal::SurrealValue;
 
+use super::endpoint::{ClaimedEndpoint, EndpointOutcome};
 use super::integration::ClaimedIntegration;
 use super::preference::QuietHoursRule;
 use super::trigger::Recipient;
@@ -15,6 +16,8 @@ use super::workflow::DigestVars;
 pub struct JobClaimParams {
     /// Identifiant du worker (journalisé sur l'étape).
     pub worker_id: String,
+    /// Canal servi par le worker (`email`, `sms`, `chat`, `webhook`).
+    pub channel: String,
     /// Étapes au plus (1 à 100).
     pub limit: i64,
     /// Durée de la réservation en secondes (10 à 3600).
@@ -40,8 +43,26 @@ pub struct ClaimedJob {
     pub idempotency_key: String,
     /// Tentative en cours (1 pour la première).
     pub attempt: i64,
+    /// Canal de l'étape (`email`, `sms`, `chat`, `webhook`).
+    pub channel: String,
+    /// Étape du parcours.
+    pub step_key: String,
+    /// Parcours (clé).
+    pub workflow_key: String,
+    /// Abonné (identifiant de l'application), absent s'il a été supprimé.
+    pub subscriber_id: Option<String>,
     /// Destinataire.
     pub recipient: Recipient,
+    /// Hôtes autorisés de l'installation pour les adresses web et Mattermost (vide : tout hôte
+    /// public, décision E3).
+    pub allowed_hosts: Vec<String>,
+    /// Messagerie, adresse web : adresses scellées de l'abonné pas encore servies, chacune avec
+    /// l'intégration de son service.
+    #[surreal(default)]
+    pub endpoints: Vec<ClaimedEndpoint>,
+    /// Messagerie, adresse web : adresses déjà servies par une tentative précédente.
+    #[surreal(default)]
+    pub served_endpoints: i64,
     /// Langue de l'envoi : celle du destinataire, sinon de son organisation, sinon de
     /// l'installation (absente si elle n'a pas pu être choisie, voir `texts_error`).
     pub locale: Option<String>,
@@ -104,6 +125,8 @@ impl std::fmt::Debug for ClaimedJob {
             .field("critical", &self.critical)
             .field("quiet_hours", &self.quiet_hours)
             .field("integration", &self.integration.id)
+            .field("channel", &self.channel)
+            .field("endpoints", &self.endpoints)
             .field("secret", &self.secret.as_ref().map(|_| "[REDACTED]"))
             .finish_non_exhaustive()
     }
@@ -162,13 +185,17 @@ pub struct JobCompleteParams {
     pub response_code: Option<i64>,
     /// Objet rendu (ignoré pour un parcours sensible).
     pub subject: Option<String>,
+    /// SMS : nombre de parties (1 à 10).
+    pub parts: Option<i64>,
+    /// Messagerie, adresse web : issue de chaque adresse servie.
+    pub endpoints: Vec<EndpointOutcome>,
 }
 
 /// Résultat de `fn::notification_job_complete`.
 #[derive(Debug, Clone, PartialEq, SurrealValue)]
 pub struct JobCompleted {
-    /// Message enregistré.
-    pub message: NotificationRecordId,
+    /// Messages de l'étape (un par adresse servie pour la messagerie et l'adresse web).
+    pub messages: Vec<NotificationRecordId>,
     /// État de l'étape (`completed`).
     pub status: String,
     /// État du déclenchement s'il est terminé.
@@ -182,8 +209,11 @@ pub enum FailureClass {
     Transient,
     /// Échec définitif.
     Permanent,
-    /// Destinataire refusé : échec définitif et adresse supprimée.
+    /// Destinataire refusé : échec définitif et adresse supprimée (rejet définitif).
     RecipientRejected,
+    /// Destinataire désinscrit chez l'opérateur (SMS : STOP) : échec définitif et numéro
+    /// supprimé (plainte).
+    RecipientOptedOut,
 }
 
 impl FailureClass {
@@ -193,6 +223,7 @@ impl FailureClass {
             Self::Transient => "transient",
             Self::Permanent => "permanent",
             Self::RecipientRejected => "recipient_rejected",
+            Self::RecipientOptedOut => "recipient_opted_out",
         }
     }
 }
@@ -215,6 +246,9 @@ pub struct JobFailParams {
     pub detail: Option<String>,
     /// Délai avant une nouvelle tentative.
     pub retry_delay_seconds: i64,
+    /// Messagerie, adresse web : issue de chaque adresse servie par cette tentative (les
+    /// adresses servies ne sont pas rappelées à la suivante).
+    pub endpoints: Vec<EndpointOutcome>,
 }
 
 /// Résultat de `fn::notification_job_fail`.
@@ -282,6 +316,8 @@ pub struct EffectiveSettings {
     pub retention_days_log: i64,
     /// Durée maximale d'une attente ou d'une fenêtre (jours).
     pub max_wait_days: i64,
+    /// Hôtes autorisés de l'installation (adresses web et Mattermost ; vide : tout hôte public).
+    pub allowed_hosts: Vec<String>,
 }
 
 /// Résultat de `fn::notification_settings_get`.

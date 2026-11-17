@@ -8,8 +8,14 @@
 //! Classement d'un échec (plan du lot 3, §6) : réponse 2xx acceptée ; 400, 401, 403, 422 et
 //! tout autre refus du client définitifs (aucune bascule) ; 429, 5xx, réseau ou délai dépassé
 //! temporaires (bascule vers l'intégration suivante, D3).
+//!
+//! Autres canaux (lot 4) : SMS par Brevo, Twilio et Vonage ([`SmsApi`]) ; messageries d'équipe
+//! et adresse web par le client contrôlé ([`ChatSender`]) ; [`ChannelDispatcher`] lit les
+//! identifiants dans `lyxal_secrets` (jeton du robot Telegram compris).
 
+mod chat;
 mod http;
+mod sms;
 mod smtp;
 
 use async_trait::async_trait;
@@ -26,7 +32,13 @@ use crate::models::{ClaimedIntegration, FailureClass, IntegrationSettings};
 use crate::render::RenderedEmail;
 use crate::webhook::{ProviderEvent, ProviderWebhook, WebhookError, WebhookRequest};
 
+pub use self::chat::{
+    chat_body, classify_webhook_status, signature, telegram_token, ChatSender, ChatService,
+    ChatTarget, DELIVERY_HEADER, SIGNATURE_HEADER, TELEGRAM_API,
+};
+pub(crate) use self::http::{classify_status, read_bounded};
 pub use self::http::{ApiEndpoints, MAX_RESPONSE_BYTES, REQUEST_TIMEOUT};
+pub use self::sms::{SmsApi, SmsCredentials, SmsEndpoints, SmsMessage, SmsProvider};
 pub use self::smtp::{classify_smtp_code, SmtpProvider, SmtpSecurity};
 
 /// Module annoncé à `lyxal_secrets` comme consommateur des identifiants.
@@ -314,15 +326,7 @@ impl EmailDispatcher {
         integration: &ClaimedIntegration,
         path: &str,
     ) -> Result<SecretBytes, ProviderError> {
-        self.secrets
-            .read(ClientRead {
-                tenant: integration.tenant.as_ref().map(ToSql::to_sql),
-                path: path.to_string(),
-                label: None,
-            })
-            .await
-            .map(|revealed| revealed.value)
-            .map_err(|error| ProviderError::secret(format!("lecture refusée ({})", error.code())))
+        read_integration_secret(&self.secrets, integration, path).await
     }
 
     /// Envoie un message par l'intégration.
@@ -333,9 +337,11 @@ impl EmailDispatcher {
     ) -> Result<ProviderReceipt, ProviderError> {
         let provider = Provider::parse(&integration.provider)
             .ok_or_else(|| ProviderError::configuration("fournisseur inconnu"))?;
-        let value = self
-            .read_secret(integration, &integration.credentials_path)
-            .await?;
+        let path = integration
+            .credentials_path
+            .as_deref()
+            .ok_or_else(|| ProviderError::secret("chemin des identifiants absent"))?;
+        let value = self.read_secret(integration, path).await?;
         let credentials = Credentials::parse(provider, &value)?;
         drop(value);
         self.providers
@@ -380,6 +386,191 @@ impl EmailDispatcher {
             },
         };
         self.send(integration, &message).await
+    }
+}
+
+/// Valeur d'un secret d'une intégration dans `lyxal_secrets` (portée de l'intégration, étiquette
+/// `current`, chemin tracé ; `lyxal_notification` annoncé comme consommateur).
+pub async fn read_integration_secret(
+    secrets: &SecretsClient,
+    integration: &ClaimedIntegration,
+    path: &str,
+) -> Result<SecretBytes, ProviderError> {
+    secrets
+        .read(ClientRead {
+            tenant: integration.tenant.as_ref().map(ToSql::to_sql),
+            path: path.to_string(),
+            label: None,
+        })
+        .await
+        .map(|revealed| revealed.value)
+        .map_err(|error| ProviderError::secret(format!("lecture refusée ({})", error.code())))
+}
+
+/// Clé d'enregistrement d'une intégration (segment de l'adresse des retours de l'hôte).
+pub fn integration_key(integration: &ClaimedIntegration) -> Option<String> {
+    match &integration.id.key {
+        surrealdb::types::RecordIdKey::String(key) => Some(key.clone()),
+        surrealdb::types::RecordIdKey::Number(key) => Some(key.to_string()),
+        _ => None,
+    }
+}
+
+/// Envoi des SMS, des messages de messagerie et des appels d'adresse web : identifiants lus dans
+/// `lyxal_secrets` (session système de l'hôte), adresses ouvertes en mémoire par le worker.
+#[derive(Clone)]
+pub struct ChannelDispatcher {
+    sms: Arc<SmsApi>,
+    chat: Arc<ChatSender>,
+    secrets: SecretsClient,
+    callback_base: Option<String>,
+}
+
+impl fmt::Debug for ChannelDispatcher {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ChannelDispatcher")
+            .field("secrets", &self.secrets)
+            .field("callback_base", &self.callback_base)
+            .finish_non_exhaustive()
+    }
+}
+
+impl ChannelDispatcher {
+    /// Envoi par les API de SMS `sms`, les messageries `chat` et le coffre-fort `secrets` ;
+    /// `public_url` : adresse publique de l'hôte (retours de livraison des SMS demandés message
+    /// par message à `{public_url}/api/v1/notification/webhooks/{intégration}`).
+    pub fn new(
+        sms: Arc<SmsApi>,
+        chat: Arc<ChatSender>,
+        secrets: SecretsClient,
+        public_url: Option<&str>,
+    ) -> Self {
+        Self {
+            sms,
+            chat,
+            secrets,
+            callback_base: public_url.map(|url| url.trim().trim_end_matches('/').to_string()),
+        }
+    }
+
+    /// Adresse des retours d'une intégration qui a un secret des retours.
+    pub fn callback_url(&self, integration: &ClaimedIntegration) -> Option<String> {
+        integration.webhook_path.as_ref()?;
+        Some(format!(
+            "{}/api/v1/notification/webhooks/{}",
+            self.callback_base.as_deref()?,
+            integration_key(integration)?
+        ))
+    }
+
+    /// Envoie un SMS à `to` (E.164) par l'intégration ; `unicode` : texte hors de l'alphabet GSM.
+    pub async fn send_sms(
+        &self,
+        integration: &ClaimedIntegration,
+        to: &str,
+        text: &str,
+        unicode: bool,
+    ) -> Result<ProviderReceipt, ProviderError> {
+        let provider = SmsProvider::parse(&integration.provider)
+            .ok_or_else(|| ProviderError::configuration("fournisseur de SMS inconnu"))?;
+        let path = integration
+            .credentials_path
+            .as_deref()
+            .ok_or_else(|| ProviderError::secret("chemin des identifiants absent"))?;
+        let value = read_integration_secret(&self.secrets, integration, path).await?;
+        let credentials = SmsCredentials::parse(provider, &value)?;
+        drop(value);
+        let message = SmsMessage {
+            to: to.to_string(),
+            text: text.to_string(),
+            unicode,
+            status_callback: self.callback_url(integration),
+        };
+        self.sms
+            .send(provider, &integration.settings, &message, &credentials)
+            .await
+    }
+
+    /// Message à une adresse de messagerie : adresse de webhook ouverte en mémoire, ou salon
+    /// Telegram (jeton du robot lu dans le coffre-fort).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn send_chat(
+        &self,
+        integration: &ClaimedIntegration,
+        service: ChatService,
+        url: Option<&SecretString>,
+        chat_id: Option<&str>,
+        title: Option<&str>,
+        text: &str,
+        allowed_hosts: &[String],
+    ) -> Result<ProviderReceipt, ProviderError> {
+        if service == ChatService::Telegram {
+            let path = integration
+                .credentials_path
+                .as_deref()
+                .ok_or_else(|| ProviderError::secret("chemin du jeton du robot absent"))?;
+            let value = read_integration_secret(&self.secrets, integration, path).await?;
+            let token = telegram_token(&value)?;
+            drop(value);
+            let chat_id = chat_id.ok_or_else(|| missing("chat_id"))?;
+            return self
+                .chat
+                .send_chat(
+                    service,
+                    ChatTarget::Telegram {
+                        bot_token: &token,
+                        chat_id,
+                    },
+                    title,
+                    text,
+                    allowed_hosts,
+                )
+                .await;
+        }
+        let url = url.ok_or_else(|| ProviderError::configuration("adresse absente"))?;
+        self.chat
+            .send_chat(
+                service,
+                ChatTarget::Webhook(url),
+                title,
+                text,
+                allowed_hosts,
+            )
+            .await
+    }
+
+    /// Appel signé d'une adresse web.
+    pub async fn call_webhook(
+        &self,
+        url: &SecretString,
+        key: &lyxal_crypto::HmacKey,
+        delivery_id: &str,
+        body: &serde_json::Value,
+        allowed_hosts: &[String],
+        now: i64,
+    ) -> Result<ProviderReceipt, ProviderError> {
+        self.chat
+            .call_webhook(url, key, delivery_id, body, allowed_hosts, now)
+            .await
+    }
+
+    /// Vérifie un retour de livraison d'un SMS avec le secret des retours de l'intégration ;
+    /// `now` : heure du serveur en secondes Unix.
+    pub async fn verify_webhook(
+        &self,
+        integration: &ClaimedIntegration,
+        request: &WebhookRequest<'_>,
+        now: i64,
+    ) -> Result<Vec<ProviderEvent>, WebhookError> {
+        let provider = SmsProvider::parse(&integration.provider).ok_or(WebhookError::Secret)?;
+        let path = integration
+            .webhook_path
+            .as_deref()
+            .ok_or(WebhookError::Secret)?;
+        let secret = read_integration_secret(&self.secrets, integration, path)
+            .await
+            .map_err(|_| WebhookError::Secret)?;
+        ProviderWebhook::verify_sms(provider, &secret, request, now)
     }
 }
 
@@ -449,6 +640,14 @@ pub(crate) fn unsubscribe_header(url: &str) -> Result<&str, ProviderError> {
 /// Valeur d'erreur de configuration pour un réglage absent.
 pub(crate) fn missing(field: &str) -> ProviderError {
     ProviderError::configuration(format!("réglage {field} absent"))
+}
+
+/// Adresse d'expédition d'une intégration e-mail.
+pub(crate) fn from_address(settings: &IntegrationSettings) -> Result<&str, ProviderError> {
+    settings
+        .from_address
+        .as_deref()
+        .ok_or_else(|| missing("from_address"))
 }
 
 #[cfg(test)]

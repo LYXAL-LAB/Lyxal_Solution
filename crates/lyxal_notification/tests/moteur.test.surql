@@ -57,7 +57,7 @@
 -- test: fin de l'envoi : l'attente est engagée (fin dans deux heures), le déclenchement attend
 -- en tant que: worker
 {
-    LET $job = fn::notification_job_claim({ worker_id: "w1" }).data[0];
+    LET $job = fn::notification_job_claim({ channel: "email", worker_id: "w1" }).data[0];
     LET $done = fn::notification_job_complete({ job_id: <string> $job.job_id, claim_token: $job.claim_token, integration: "notification_integration:relais", response_code: 250 }).data;
     LET $run = $job.run_id;
     LET $wait = (SELECT * FROM ONLY notification_job WHERE run = $run AND step_key = "pause" LIMIT 1);
@@ -68,7 +68,7 @@
 
 -- test: une attente n'est jamais réservée par le worker d'envoi
 -- en tant que: worker
-RETURN fn::notification_job_claim({ worker_id: "w1" }).data == [];
+RETURN fn::notification_job_claim({ channel: "email", worker_id: "w1" }).data == [];
 
 -- test: attente confiée au planificateur : exécution différée de notification.run_resume à sa fin, étape waiting
 {
@@ -105,7 +105,7 @@ RETURN fn::notification_wait_schedule({ limit: 10 }).data.scheduled == 0
 -- test: dernière étape envoyée : déclenchement terminé, secret effacé
 -- en tant que: worker
 {
-    LET $job = fn::notification_job_claim({ worker_id: "w1" }).data[0];
+    LET $job = fn::notification_job_claim({ channel: "email", worker_id: "w1" }).data[0];
     RETURN fn::notification_job_complete({ job_id: <string> $job.job_id, claim_token: $job.claim_token, integration: "notification_integration:relais" }).data.run_status == "completed";
 };
 

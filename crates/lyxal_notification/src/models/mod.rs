@@ -3,6 +3,7 @@
 //! directement par la console ; la forme de leurs étapes est décrite par `WorkflowStep`.
 
 mod broadcast;
+mod endpoint;
 mod integration;
 mod preference;
 mod queue;
@@ -15,6 +16,11 @@ mod workflow;
 pub use broadcast::{
     BroadcastClaim, BroadcastClaimParams, BroadcastCompleteParams, BroadcastCompleted,
     BroadcastStep, BroadcastStepParams,
+};
+pub use endpoint::{
+    ClaimedEndpoint, Endpoint, EndpointCreateParams, EndpointListParams, EndpointOutcome,
+    EndpointRefParams, EndpointResolveParams, EndpointResult, EndpointRotateParams,
+    EndpointUpdateParams, MyEndpointCreateParams, MyEndpointListParams,
 };
 pub use integration::{
     ClaimedIntegration, Integration, IntegrationGetParams, IntegrationListParams,

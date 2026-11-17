@@ -11,7 +11,7 @@
     UPDATE auth_organization:alpha SET locale = "en";
     CREATE notification_template:w_email CONTENT { tenant: auth_organization:alpha, workflow: notification_workflow:w, step_key: "email", subject: "S", html_body: "<p>H</p>", text_body: "T", keys: ["notification.common.greeting"] };
     fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "w", idempotency_key: "k-1", to: { subscriber_id: "email:c@exemple.fr", email: "c@exemple.fr", locale: "fr-CA" } });
-    fn::notification_job_claim({ worker_id: "w1", limit: 1 });
+    fn::notification_job_claim({ channel: "email", worker_id: "w1", limit: 1 });
 };
 
 -- préparation: texte canadien de la salutation
@@ -25,7 +25,7 @@ RETURN fn::notification_has_content_slot({ text: "a {{ content }} b" }) AND !fn:
 
 -- test: réglages effectifs sans réglages de l'organisation : ceux de l'installation
 RETURN fn::notification_settings_effective({ tenant: auth_organization:alpha }).max_attempts == 8
-    AND fn::notification_settings_effective({}) == { timezone: NONE, max_attempts: 8, retention_days_runs: 90, retention_days_log: 30, max_wait_days: 30 };
+    AND fn::notification_settings_effective({}) == { timezone: NONE, max_attempts: 8, retention_days_runs: 90, retention_days_log: 30, max_wait_days: 30, allowed_hosts: [] };
 
 -- test: étapes sans gabarit
 RETURN fn::notification_workflow_missing_templates({ workflow: notification_workflow:w, steps: [{ key: "email", type: "email" }, { key: "pause", type: "delay" }, { key: "rappel", type: "email" }] }) == ["rappel"];

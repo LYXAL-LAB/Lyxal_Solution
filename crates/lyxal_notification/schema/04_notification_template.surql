@@ -5,6 +5,8 @@
 -- ============================================================================
 -- Un seul gabarit par étape : il porte la structure (MiniJinja) ; ses phrases sont des clés
 -- lyxal_i18n appelées par t("clé"), déclarées dans keys et rendues dans la langue de l'envoi.
+-- E-mail : objet, HTML et texte. SMS, messagerie et adresse web (décision E5) : texte seul, avec
+-- un objet (titre) facultatif ; ni HTML ni mise en page.
 
 DEFINE TABLE OVERWRITE notification_template
     TYPE NORMAL
@@ -33,14 +35,14 @@ DEFINE FIELD OVERWRITE step_key ON TABLE notification_template
     COMMENT "Étape du parcours";
 
 DEFINE FIELD OVERWRITE subject ON TABLE notification_template
-    TYPE string
-    ASSERT string::len($value) >= 1 AND string::len($value) <= 998
-    COMMENT "Objet (gabarit MiniJinja)";
+    TYPE option<string>
+    ASSERT $value IS NONE OR (string::len($value) >= 1 AND string::len($value) <= 998)
+    COMMENT "Objet (gabarit MiniJinja) : requis pour un e-mail, titre facultatif pour les autres canaux";
 
 DEFINE FIELD OVERWRITE html_body ON TABLE notification_template
-    TYPE string
-    ASSERT string::len($value) >= 1 AND string::len($value) <= 200000
-    COMMENT "Corps HTML (gabarit MiniJinja, nettoyé à l'enregistrement)";
+    TYPE option<string>
+    ASSERT $value IS NONE OR (string::len($value) >= 1 AND string::len($value) <= 200000)
+    COMMENT "Corps HTML (gabarit MiniJinja, nettoyé à l'enregistrement) : e-mail seulement";
 
 DEFINE FIELD OVERWRITE text_body ON TABLE notification_template
     TYPE string

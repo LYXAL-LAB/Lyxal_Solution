@@ -62,8 +62,14 @@ DEFINE FUNCTION OVERWRITE fn::notification_integration_settings_refusal($params:
     LET $s = $params.settings ?? {};
     LET $smtp_fields = ["host", "port", "security"];
     LET $mailgun_fields = ["domain", "region"];
-    LET $required = IF $params.provider = "smtp" { $smtp_fields } ELSE IF $params.provider = "mailgun" { ["domain"] } ELSE { [] };
-    LET $allowed = array::concat(["from_address", "from_name", "reply_to"], IF $params.provider = "smtp" { $smtp_fields } ELSE IF $params.provider = "mailgun" { $mailgun_fields } ELSE { [] });
+    -- SMS : expéditeur seul ; messagerie et adresse web : aucun réglage
+    LET $email = $params.channel = "email";
+    LET $required = IF !$email { IF $params.channel = "sms" { ["sender"] } ELSE { [] } }
+        ELSE IF $params.provider = "smtp" { array::concat(["from_address"], $smtp_fields) }
+        ELSE IF $params.provider = "mailgun" { ["from_address", "domain"] } ELSE { ["from_address"] };
+    LET $allowed = IF !$email { $required } ELSE {
+        array::concat(["from_address", "from_name", "reply_to"], IF $params.provider = "smtp" { $smtp_fields } ELSE IF $params.provider = "mailgun" { $mailgun_fields } ELSE { [] })
+    };
     LET $missing = array::filter($required, |$f| $s[$f] IS NONE);
     IF array::len($missing) > 0 { RETURN { field: $missing[0], code: "CORE_VALIDATION_REQUIRED" }; };
     LET $extra = array::filter(object::keys($s), |$f| $f NOTINSIDE $allowed AND $s[$f] IS NOT NONE);
@@ -76,7 +82,21 @@ DEFINE FUNCTION OVERWRITE fn::notification_integration_settings_refusal($params:
         };
     };
     RETURN NONE;
-} COMMENT "Interne : NONE si les réglages ({ provider, tenant, settings }) conviennent au fournisseur (SMTP : host, port, security ; Mailgun : domain, region facultative ; autres : expéditeur seulement) ; sinon { field, code }. Une organisation n'a ni relais SMTP en clair ni hôte IP ou local";
+} COMMENT "Interne : NONE si les réglages ({ channel, provider, tenant, settings }) conviennent au fournisseur (e-mail : expéditeur ; SMTP : host, port, security ; Mailgun : domain, region facultative ; SMS : sender ; messagerie et adresse web : aucun) ; sinon { field, code }. Une organisation n'a ni relais SMTP en clair ni hôte IP ou local";
+
+-- ----------------------------------------------------------------------------
+-- fn::notification_integration_secrets_refusal (interne) : secrets attendus selon le canal
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::notification_integration_secrets_refusal($params: object) -> option<string> {
+    -- Identifiants : e-mail, SMS et Telegram (jeton du robot) ; aucun pour les autres messageries
+    -- et l'adresse web. Secret des retours : e-mail par API et SMS seulement
+    LET $needs_credentials = $params.channel IN ["email", "sms"] OR $params.provider = "telegram";
+    IF $needs_credentials AND $params.credentials_path IS NONE { RETURN "credentials_path"; };
+    IF !$needs_credentials AND $params.credentials_path IS NOT NONE { RETURN "credentials_path"; };
+    IF $params.webhook_path IS NOT NONE AND ($params.channel NOT IN ["email", "sms"] OR $params.provider = "smtp") { RETURN "webhook_path"; };
+    RETURN NONE;
+} COMMENT "Interne : champ refusé ({ channel, provider, credentials_path, webhook_path }) : identifiants requis pour l'e-mail, le SMS et Telegram, interdits pour les autres messageries et l'adresse web ; secret des retours pour l'e-mail par API et le SMS seulement ; NONE sinon";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_integration_refusal (garde d'une écriture directe)
@@ -84,8 +104,9 @@ DEFINE FUNCTION OVERWRITE fn::notification_integration_settings_refusal($params:
 
 DEFINE FUNCTION OVERWRITE fn::notification_integration_refusal($after: object) -> option<string> {
     IF fn::auth_session_valid({}).system { RETURN NONE; };
-    IF fn::notification_integration_settings_refusal({ provider: $after.provider, tenant: $after.tenant, settings: $after.settings }) IS NOT NONE { RETURN "NOTIFICATION_INVALID_INPUT"; };
-    LET $credentials = fn::notification_integration_secret_check({ tenant: $after.tenant, path: $after.credentials_path, provider: $after.provider });
+    IF fn::notification_integration_settings_refusal({ channel: $after.channel, provider: $after.provider, tenant: $after.tenant, settings: $after.settings }) IS NOT NONE { RETURN "NOTIFICATION_INVALID_INPUT"; };
+    IF fn::notification_integration_secrets_refusal({ channel: $after.channel, provider: $after.provider, credentials_path: $after.credentials_path, webhook_path: $after.webhook_path }) IS NOT NONE { RETURN "NOTIFICATION_INVALID_INPUT"; };
+    LET $credentials = IF $after.credentials_path IS NONE { NONE } ELSE { fn::notification_integration_secret_check({ tenant: $after.tenant, path: $after.credentials_path, provider: $after.provider }) };
     IF $credentials IS NOT NONE { RETURN $credentials; };
     IF $after.webhook_path IS NOT NONE { RETURN fn::notification_integration_secret_check({ tenant: $after.tenant, path: $after.webhook_path }); };
     RETURN NONE;
@@ -98,14 +119,16 @@ DEFINE FUNCTION OVERWRITE fn::notification_integration_refusal($after: object) -
 DEFINE FUNCTION OVERWRITE fn::notification_integration_fields($create: bool) -> object {
     LET $settings = {
         fields: {
-            from_address: { pipeline: [{ rule: "email", options: { max_length: 254 } }], required: true },
+            from_address: { pipeline: [{ rule: "email", options: { max_length: 254 } }] },
             from_name: { pipeline: [{ rule: "display_name", options: { min_length: 1, max_length: 128, allow_emoji: false } }] },
             reply_to: { pipeline: [{ rule: "email", options: { max_length: 254 } }] },
             host: { pipeline: [{ rule: "hostname", options: { allow_single_label: true } }] },
             port: { pipeline: [{ rule: "port", options: { min_port: 1, max_port: 65535 } }] },
             security: { pipeline: [{ rule: "enum", options: { allowed: ["tls", "starttls", "local_plain"], case_sensitive: true } }] },
             domain: { pipeline: [{ rule: "domain", options: { allow_subdomains: true } }] },
-            region: { pipeline: [{ rule: "enum", options: { allowed: ["us", "eu"], case_sensitive: true } }] }
+            region: { pipeline: [{ rule: "enum", options: { allowed: ["us", "eu"], case_sensitive: true } }] },
+            -- SMS : numéro E.164 ou nom court alphanumérique (11 caractères au plus)
+            sender: { pipeline: [{ rule: "regex", options: { pattern: "^(\\+[1-9][0-9]{7,14}|[A-Za-z0-9][A-Za-z0-9 ]{0,10})$" } }] }
         },
         unknown_keys: "reject"
     };
@@ -113,16 +136,17 @@ DEFINE FUNCTION OVERWRITE fn::notification_integration_fields($create: bool) -> 
     RETURN {
         tenant: { pipeline: [{ rule: "record", options: { expected_table: "auth_organization" } }] },
         key: { pipeline: [{ rule: "snake_case_name", options: { min_length: 1, max_length: 64 } }], required: true },
-        provider: { pipeline: [{ rule: "enum", options: { allowed: ["smtp", "brevo", "mailgun", "postmark", "resend"], case_sensitive: true } }], required: $create },
-        channel: { pipeline: [{ rule: "enum", options: { allowed: ["email"], case_sensitive: true } }], default: "email" },
+        provider: { pipeline: [{ rule: "enum", options: { allowed: ["smtp", "brevo", "mailgun", "postmark", "resend", "twilio", "vonage", "slack", "teams", "discord", "mattermost", "google_chat", "telegram", "webhook"], case_sensitive: true } }], required: $create },
+        channel: { pipeline: [{ rule: "enum", options: { allowed: ["email", "sms", "chat", "webhook"], case_sensitive: true } }], default: "email" },
         name: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 128 } }], required: $create },
         active: { pipeline: [{ rule: "boolean" }] },
         primary: { pipeline: [{ rule: "boolean" }] },
         priority: { pipeline: [{ rule: "integer", options: { min_value: 0, max_value: 1000 } }] },
         condition: { pipeline: [{ rule: "is_object" }] },
         clear_condition: { pipeline: [{ rule: "boolean" }], default: false },
-        settings: { pipeline: [{ rule: "is_object" }, { rule: "object", options: { schema: $settings } }], required: $create },
-        credentials_path: object::extend($path, { required: $create }),
+        -- Création : aucun réglage par défaut (messagerie, adresse web) ; modification : remplacés en entier s'ils sont fournis
+        settings: object::extend({ pipeline: [{ rule: "is_object" }, { rule: "object", options: { schema: $settings } }] }, IF $create { { default: {} } } ELSE { {} }),
+        credentials_path: $path,
         webhook_path: $path,
         clear_webhook: { pipeline: [{ rule: "boolean" }], default: false },
         language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
@@ -143,7 +167,18 @@ DEFINE FUNCTION OVERWRITE fn::notification_integration_view($integration: object
 
 DEFINE FUNCTION OVERWRITE fn::notification_integration_checked($params: object) -> option<object> {
     LET $p = $params.p;
-    LET $settings_refusal = fn::notification_integration_settings_refusal({ provider: $params.provider, tenant: $p.tenant, settings: $params.settings });
+    LET $providers = {
+        email: ["smtp", "brevo", "mailgun", "postmark", "resend"], sms: ["brevo", "twilio", "vonage"],
+        chat: ["slack", "teams", "discord", "mattermost", "google_chat", "telegram"], webhook: ["webhook"]
+    };
+    IF $params.provider NOT IN $providers[$params.channel] {
+        RETURN { code: "NOTIFICATION_INVALID_INPUT", details: { fields: { provider: { code: "CORE_VALIDATION_NOT_ALLOWED", details: { channel: $params.channel } } } } };
+    };
+    LET $secrets_refusal = fn::notification_integration_secrets_refusal({ channel: $params.channel, provider: $params.provider, credentials_path: $params.credentials_path, webhook_path: $params.webhook_path });
+    IF $secrets_refusal IS NOT NONE {
+        RETURN { code: "NOTIFICATION_INVALID_INPUT", details: { fields: object::from_entries([[$secrets_refusal, { code: "CORE_VALIDATION_NOT_ALLOWED", details: { channel: $params.channel, provider: $params.provider } }]]) } };
+    };
+    LET $settings_refusal = fn::notification_integration_settings_refusal({ channel: $params.channel, provider: $params.provider, tenant: $p.tenant, settings: $params.settings });
     IF $settings_refusal IS NOT NONE {
         RETURN { code: "NOTIFICATION_INVALID_INPUT", details: { fields: { settings: { code: $settings_refusal.code, details: { field: $settings_refusal.field } } } } };
     };
@@ -159,7 +194,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_integration_checked($params: object) 
         RETURN { code: "NOTIFICATION_INTEGRATION_SECRET_INVALID", details: { path: $params.webhook_path } };
     };
     RETURN NONE;
-} COMMENT "Interne : { code, details } si les réglages, la condition ou les secrets ({ p, provider, settings, credentials_path, webhook_path }) sont refusés ; NONE sinon";
+} COMMENT "Interne : { code, details } si le fournisseur ne convient pas au canal, si les réglages, la condition ou les secrets ({ p, channel, provider, settings, credentials_path, webhook_path }) sont refusés ; NONE sinon";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_integration_clean_settings (interne) : adresses normalisées, région Mailgun
@@ -168,7 +203,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_integration_checked($params: object) 
 DEFINE FUNCTION OVERWRITE fn::notification_integration_clean_settings($params: object) -> object {
     LET $s = $params.settings;
     RETURN object::from_entries(array::filter(object::entries(object::extend($s, {
-        from_address: fn::sanitize_pipeline_execute($s.from_address, [{ rule: "email" }], 5),
+        from_address: IF $s.from_address IS NONE { NONE } ELSE { fn::sanitize_pipeline_execute($s.from_address, [{ rule: "email" }], 5) },
         reply_to: IF $s.reply_to IS NONE { NONE } ELSE { fn::sanitize_pipeline_execute($s.reply_to, [{ rule: "email" }], 5) },
         region: IF $params.provider = "mailgun" { $s.region ?? "us" } ELSE { NONE }
     })), |$e| $e[1] IS NOT NONE));
@@ -196,7 +231,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_integration_create($params: object) {
     };
     LET $p = $report.value;
     IF !fn::notification_can({ action: "manage", tenant: $p.tenant }) { RETURN fn::error_result("NOTIFICATION_PERMISSION_DENIED", $p.language, {}); };
-    LET $refusal = fn::notification_integration_checked({ p: $p, provider: $p.provider, settings: $p.settings, credentials_path: $p.credentials_path, webhook_path: $p.webhook_path });
+    LET $refusal = fn::notification_integration_checked({ p: $p, channel: $p.channel, provider: $p.provider, settings: $p.settings, credentials_path: $p.credentials_path, webhook_path: $p.webhook_path });
     IF $refusal IS NOT NONE { RETURN fn::error_result($refusal.code, $p.language, $refusal.details); };
     IF fn::notification_integration_find({ tenant: $p.tenant, key: $p.key }) IS NOT NONE {
         RETURN fn::error_result("NOTIFICATION_INTEGRATION_KEY_TAKEN", $p.language, { key: $p.key });
@@ -215,7 +250,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_integration_create($params: object) {
         RETURN fn::error_result(IF fn::notification_integration_find({ tenant: $p.tenant, key: $p.key }) IS NONE { "NOTIFICATION_WRITE_FORBIDDEN" } ELSE { "NOTIFICATION_INTEGRATION_KEY_TAKEN" }, $p.language, { key: $p.key });
     };
     RETURN fn::result_ok(fn::notification_integration_view($created[0]));
-} COMMENT "Crée une intégration ({ tenant, key, provider : smtp, brevo, mailgun, postmark, resend ; channel : email ; name, active, primary, priority, condition, settings : { from_address, from_name, reply_to ; SMTP : host, port, security ; Mailgun : domain, region }, credentials_path, webhook_path }) : réglages contrôlés par lyxal_core, chemins sous notification/ de la même portée, secrets existants et lisibles par l'appelant (D2), une seule principale par portée et canal. Permission notification.manage (installation : notification.installation.manage) et lecture du secret (secrets.value.read ; installation : secrets.installation.manage)";
+} COMMENT "Crée une intégration ({ tenant, key, channel : email (défaut), sms, chat, webhook ; provider : e-mail smtp, brevo, mailgun, postmark, resend ; SMS brevo, twilio, vonage ; messagerie slack, teams, discord, mattermost, google_chat, telegram ; adresse web webhook ; name, active, primary, priority, condition, settings : { e-mail : from_address, from_name, reply_to ; SMTP : host, port, security ; Mailgun : domain, region ; SMS : sender }, credentials_path (e-mail, SMS, Telegram), webhook_path (e-mail par API, SMS) }) : réglages contrôlés par lyxal_core, chemins sous notification/ de la même portée, secrets existants et lisibles par l'appelant (D2), une seule principale par portée et canal. Permission notification.manage (installation : notification.installation.manage) et lecture du secret (secrets.value.read ; installation : secrets.installation.manage)";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_integration_update
@@ -234,7 +269,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_integration_update($params: object) {
     LET $credentials_path = $p.credentials_path ?? $current.credentials_path;
     LET $webhook_path = IF $p.clear_webhook { NONE } ELSE { $p.webhook_path ?? $current.webhook_path };
     -- Toute modification exige le droit de lire les secrets de l'intégration (D2)
-    LET $refusal = fn::notification_integration_checked({ p: $p, provider: $current.provider, settings: $settings, credentials_path: $credentials_path, webhook_path: $webhook_path });
+    LET $refusal = fn::notification_integration_checked({ p: $p, channel: $current.channel, provider: $current.provider, settings: $settings, credentials_path: $credentials_path, webhook_path: $webhook_path });
     IF $refusal IS NOT NONE { RETURN fn::error_result($refusal.code, $p.language, $refusal.details); };
     LET $updated = (UPDATE ONLY $current.id SET
         name = $p.name ?? name,
@@ -281,7 +316,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_integration_list($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
             tenant: { pipeline: [{ rule: "record", options: { expected_table: "auth_organization" } }] },
-            channel: { pipeline: [{ rule: "enum", options: { allowed: ["email"], case_sensitive: true } }] },
+            channel: { pipeline: [{ rule: "enum", options: { allowed: ["email", "sms", "chat", "webhook"], case_sensitive: true } }] },
             active: { pipeline: [{ rule: "boolean" }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
@@ -398,7 +433,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_integration_for_job($params: object) 
 
 DEFINE FUNCTION OVERWRITE fn::notification_integration_payload($integration: option<object>) -> option<object> {
     IF $integration IS NONE { RETURN NONE; };
-    RETURN $integration.{ id, tenant, key, provider, settings, credentials_path, webhook_path };
+    RETURN $integration.{ id, tenant, key, channel, provider, settings, credentials_path, webhook_path };
 } COMMENT "Interne : intégration remise au worker ou à l'hôte (fournisseur, réglages, chemins des secrets dans sa portée)";
 
 -- ----------------------------------------------------------------------------
@@ -431,7 +466,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_integration_test($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
             integration: { pipeline: [{ rule: "record", options: { expected_table: "notification_integration" } }], required: true },
-            to: { pipeline: [{ rule: "email", options: { max_length: 254 } }], required: true },
+            to: { pipeline: [{ rule: "required_string", options: { min_length: 3, max_length: 254 } }], required: true },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -445,11 +480,21 @@ DEFINE FUNCTION OVERWRITE fn::notification_integration_test($params: object) {
         RETURN fn::error_result("NOTIFICATION_INTEGRATION_NOT_FOUND", $p.language, {});
     };
     IF !fn::notification_can({ action: "manage", tenant: $integration.tenant }) { RETURN fn::error_result("NOTIFICATION_PERMISSION_DENIED", $p.language, {}); };
+    -- Destinataire selon le canal : e-mail, numéro E.164, ou adresse de messagerie ou web du même
+    -- service, lisible par l'appelant
+    LET $to = IF $integration.channel IN ["email", "sms"] {
+        fn::notification_suppression_address({ channel: $integration.channel, address: $p.to })
+    } ELSE IF fn::validation_record($p.to, "notification_endpoint").valid {
+        LET $endpoint = (SELECT id, channel, provider, tenant FROM ONLY <record> $p.to);
+        IF $endpoint IS NONE OR $endpoint.channel != $integration.channel OR $endpoint.provider != $integration.provider
+            OR ($integration.tenant IS NOT NONE AND $endpoint.tenant != $integration.tenant) { NONE } ELSE { <string> $endpoint.id }
+    } ELSE { NONE };
+    IF $to IS NONE { RETURN fn::error_result("NOTIFICATION_INVALID_INPUT", $p.language, { fields: { to: ["CORE_VALIDATION_FORMAT"] } }); };
     RETURN fn::result_ok({
         integration: fn::notification_integration_payload($integration),
-        to: fn::sanitize_pipeline_execute($p.to, [{ rule: "email" }], 5)
+        to: $to
     });
-} COMMENT "Essai d'une intégration (D6, { integration, to }) au nom de l'appelant : droit de gestion de sa portée et adresse contrôlée ; rend l'intégration (fournisseur, réglages, chemins) et l'adresse normalisée. L'hôte envoie l'e-mail d'essai avec le vrai fournisseur et enregistre l'issue (fn::notification_integration_test_record). Permission notification.manage";
+} COMMENT "Essai d'une intégration (D6, { integration, to }) au nom de l'appelant : droit de gestion de sa portée et destinataire contrôlé selon le canal (e-mail ; SMS : numéro E.164 ; messagerie et adresse web : identifiant d'une adresse du même service et de la même organisation) ; rend l'intégration (canal, fournisseur, réglages, chemins) et le destinataire normalisé. L'hôte envoie le message d'essai avec le vrai fournisseur et enregistre l'issue (fn::notification_integration_test_record). Permission notification.manage";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_integration_test_record (hôte)
@@ -490,16 +535,17 @@ DEFINE FUNCTION OVERWRITE fn::notification_provider_event_apply($params: object)
         LET $updated = (UPDATE ONLY $message.id SET status = $status, status_at = time::now());
         IF $updated == NONE { RETURN "NOTIFICATION_WRITE_FORBIDDEN"; };
     };
-    -- Rejet définitif et plainte : adresse ajoutée à la liste de suppression de l'organisation du message
-    IF $params.type IN ["bounced", "complained"] {
+    -- Rejet définitif et plainte (SMS : numéro invalide ou inexistant, désinscription chez
+    -- l'opérateur) : adresse ajoutée à la liste de suppression de l'organisation du message
+    IF $params.type IN ["bounced", "complained"] AND $message.channel IN ["email", "sms"] {
         INSERT IGNORE INTO notification_suppression {
-            tenant: $params.tenant, channel: "email", address: string::lowercase($message.to),
+            tenant: $params.tenant, channel: $message.channel, address: string::lowercase($message.to),
             reason: IF $params.type = "bounced" { "hard_bounce" } ELSE { "complaint" },
             source: string::slice(string::concat("provider:", $params.event_id), 0, 256)
         };
     };
     RETURN NONE;
-} COMMENT "Interne : applique un retour ({ type, message : { id, to, status }, tenant, event_id }) à son message : état mis à jour, adresse supprimée sur rejet définitif ou plainte. NONE, ou NOTIFICATION_WRITE_FORBIDDEN";
+} COMMENT "Interne : applique un retour ({ type, message : { id, channel, to, status }, tenant, event_id }) à son message : état mis à jour, adresse (e-mail ou numéro) supprimée sur rejet définitif ou plainte. NONE, ou NOTIFICATION_WRITE_FORBIDDEN";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_provider_event_reconcile (interne) : retours arrivés avant le message
@@ -511,7 +557,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_provider_event_reconcile($params: obj
         WHERE integration = $params.integration AND provider_message_id = $params.provider_message_id AND message IS NONE
         ORDER BY occurred_at);
     FOR $event IN $pending {
-        LET $message = (SELECT id, to, status FROM ONLY $params.message);
+        LET $message = (SELECT id, channel, to, status FROM ONLY $params.message);
         LET $applied = fn::notification_provider_event_apply({ type: $event.type, message: $message, tenant: $params.tenant, event_id: $event.provider_event_id });
         IF $applied IS NOT NONE { RETURN $applied; };
         LET $linked = (UPDATE ONLY $event.id SET message = $params.message, address = $message.to);
@@ -546,7 +592,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_provider_event_record($params: object
     LET $known = (SELECT VALUE id FROM ONLY notification_provider_event WHERE integration = $integration.id AND provider_event_id = $p.event_id LIMIT 1);
     IF $known IS NOT NONE { RETURN fn::result_ok({ event: $known, status: "duplicate", message: NONE }); };
     LET $message = IF $p.provider_message_id IS NONE { NONE } ELSE {
-        (SELECT id, run, to, status FROM ONLY notification_message WHERE integration = $integration.id AND provider_message_id = $p.provider_message_id LIMIT 1)
+        (SELECT id, run, channel, to, status FROM ONLY notification_message WHERE integration = $integration.id AND provider_message_id = $p.provider_message_id LIMIT 1)
     };
     LET $tenant = IF $message IS NONE { $integration.tenant } ELSE { (SELECT VALUE tenant FROM ONLY $message.run) };
     LET $settings = fn::notification_settings_effective({ tenant: $tenant });

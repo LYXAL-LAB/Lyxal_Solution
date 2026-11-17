@@ -151,6 +151,61 @@ DEFINE FUNCTION OVERWRITE fn::notification_template_unknown_keys($params: object
 } COMMENT "Clés ({ keys }) que lyxal_i18n ne connaît pas : { error (code I18N_* reçu), unknown }";
 
 -- ----------------------------------------------------------------------------
+-- fn::notification_sms_segments : parties d'un SMS (décision E5)
+-- ----------------------------------------------------------------------------
+-- Alphabet GSM 03.38 : jeu de base (1 unité) et extension (2 unités : échappement + caractère) ;
+-- un seul caractère hors de cet alphabet fait passer tout le texte en UCS-2 (unités UTF-16 : un
+-- caractère hors du plan de base, comme un emoji, en compte 2). Même calcul que SmsSegments (Rust),
+-- appliqué au texte rendu juste avant l'envoi.
+
+DEFINE FUNCTION OVERWRITE fn::notification_sms_segments($text: string) -> object {
+    -- Au-delà de 1 530 caractères, plus de 10 parties dans tous les cas
+    IF string::len($text) > 1530 { RETURN { encoding: "ucs2", units: string::len($text), parts: 11 }; };
+    LET $basic = "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà";
+    LET $extended = "^{}\\[~]|€";
+    LET $chars = array::filter(string::split($text, ""), |$c| $c != "");
+    LET $gsm = array::all($chars, |$c| string::contains($basic, $c) OR string::contains($extended, $c));
+    LET $units = IF $gsm {
+        array::fold($chars, 0, |$n, $c| $n + IF string::contains($extended, $c) { 2 } ELSE { 1 })
+    } ELSE {
+        array::fold($chars, 0, |$n, $c| $n + IF bytes::len(<bytes> $c) = 4 { 2 } ELSE { 1 })
+    };
+    LET $single = IF $gsm { 160 } ELSE { 70 };
+    LET $part = IF $gsm { 153 } ELSE { 67 };
+    RETURN {
+        encoding: IF $gsm { "gsm7" } ELSE { "ucs2" },
+        units: $units,
+        parts: IF $units <= $single { 1 } ELSE { <int> math::ceil(<float> $units / $part) }
+    };
+} COMMENT "Parties d'un SMS ($text) : { encoding : gsm7 ou ucs2, units, parts } (GSM-7 : 160 unités, 153 par partie au-delà ; UCS-2 : 70, 67 par partie)";
+
+-- ----------------------------------------------------------------------------
+-- fn::notification_template_channel_refusal (interne) : contenu propre au canal (E5)
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::notification_template_channel_refusal($params: object) -> option<object> {
+    LET $t = $params.template;
+    IF $params.channel = "email" {
+        LET $missing = array::filter(["subject", "html_body", "text_body"], |$f| $t[$f] IS NONE);
+        RETURN IF array::len($missing) = 0 { NONE } ELSE {
+            { code: "NOTIFICATION_INVALID_INPUT", details: { fields: object::from_entries(array::map($missing, |$f| [$f, ["CORE_VALIDATION_REQUIRED"]])) } }
+        };
+    };
+    -- SMS, messagerie, adresse web : texte seul, titre facultatif, ni HTML ni mise en page
+    LET $extra = array::filter(["html_body", "layout"], |$f| $t[$f] IS NOT NONE);
+    IF array::len($extra) > 0 {
+        RETURN { code: "NOTIFICATION_INVALID_INPUT", details: { fields: object::from_entries(array::map($extra, |$f| [$f, ["CORE_VALIDATION_NOT_ALLOWED"]])) } };
+    };
+    IF $t.text_body IS NONE { RETURN { code: "NOTIFICATION_INVALID_INPUT", details: { fields: { text_body: ["CORE_VALIDATION_REQUIRED"] } } }; };
+    IF $params.channel = "sms" {
+        -- Texte du gabarit tel qu'écrit (le texte rendu est recompté avant l'envoi)
+        LET $segments = fn::notification_sms_segments($t.text_body);
+        IF $segments.parts > 10 { RETURN { code: "NOTIFICATION_SMS_TOO_LONG", details: $segments }; };
+    };
+    RETURN NONE;
+} COMMENT "Interne : refus du contenu d'un gabarit selon le canal de son étape ({ channel, template : subject, html_body, text_body, layout }) : e-mail : objet, HTML et texte requis ; SMS, messagerie, adresse web : texte requis, ni HTML ni mise en page ; SMS : 10 parties au plus (NOTIFICATION_SMS_TOO_LONG). { code, details } ou NONE";
+
+-- ----------------------------------------------------------------------------
 -- fn::notification_template_create
 -- ----------------------------------------------------------------------------
 
@@ -159,9 +214,9 @@ DEFINE FUNCTION OVERWRITE fn::notification_template_create($params: object) {
         fields: {
             workflow: { pipeline: [{ rule: "record", options: { expected_table: "notification_workflow" } }], required: true },
             step_key: { pipeline: [{ rule: "snake_case_name", options: { min_length: 1, max_length: 64 } }], required: true },
-            subject: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 998 } }], required: true },
-            html_body: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 200000 } }], required: true },
-            text_body: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 100000 } }], required: true },
+            subject: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 998 } }] },
+            html_body: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 200000 } }] },
+            text_body: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 100000 } }] },
             keys: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: true } }, { rule: "array_length", options: { max_length: 100 } }, { rule: "each", options: { pipeline: [{ rule: "max_length", options: { max_length: 193 } }, { rule: "lyxal_event_name", options: { min_segments: 2, max_segments: 9 } }] } }], default: [] },
             layout: { pipeline: [{ rule: "record", options: { expected_table: "notification_layout" } }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
@@ -175,10 +230,13 @@ DEFINE FUNCTION OVERWRITE fn::notification_template_create($params: object) {
     LET $workflow = (SELECT * FROM ONLY $p.workflow);
     IF $workflow == NONE { RETURN fn::error_result("NOTIFICATION_WORKFLOW_NOT_FOUND", $p.language, {}); };
     IF !fn::notification_can({ action: "manage", tenant: $workflow.tenant }) { RETURN fn::error_result("NOTIFICATION_PERMISSION_DENIED", $p.language, {}); };
-    -- Un gabarit pour une étape de canal seulement
-    IF $p.step_key NOT IN array::filter($workflow.steps, |$step| $step.type IN fn::notification_channels({})).key {
+    -- Un gabarit pour une étape de canal seulement, de forme propre au canal (E5)
+    LET $step = array::find($workflow.steps, |$s| $s.key = $p.step_key AND $s.type IN fn::notification_channels({}));
+    IF $step IS NONE {
         RETURN fn::error_result("NOTIFICATION_INVALID_INPUT", $p.language, { fields: { step_key: "unknown channel step" } });
     };
+    LET $shape = fn::notification_template_channel_refusal({ channel: $step.type, template: $p });
+    IF $shape IS NOT NONE { RETURN fn::error_result($shape.code, $p.language, $shape.details); };
     -- Mise en page de la même portée que le parcours, ou de l'installation
     IF $p.layout IS NOT NONE AND (SELECT VALUE scope_key FROM ONLY $p.layout) NOT IN [$workflow.scope_key, "installation"] {
         RETURN fn::error_result("NOTIFICATION_NOT_FOUND", $p.language, { resource: "layout" });
@@ -193,7 +251,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_template_create($params: object) {
     }));
     IF array::len($inserted) = 0 { RETURN fn::error_result("NOTIFICATION_TEMPLATE_EXISTS", $p.language, { step_key: $p.step_key }); };
     RETURN fn::result_ok($inserted[0]);
-} COMMENT "Crée le gabarit d'une étape ({ workflow, step_key, subject, html_body, text_body, keys, layout }) ; un seul par étape ; objet sans caractère de contrôle, HTML nettoyé ; keys : clés lyxal_i18n appelées par t(\"clé\"), toutes déclarées (NOTIFICATION_TEMPLATE_KEY_UNKNOWN) ; mise en page de la portée du parcours ou de l'installation. Permission notification.manage";
+} COMMENT "Crée le gabarit d'une étape ({ workflow, step_key, subject, html_body, text_body, keys, layout }) ; un seul par étape ; e-mail : objet, HTML et texte ; SMS, messagerie, adresse web : texte seul (objet facultatif, ni HTML ni mise en page), SMS de 10 parties au plus (NOTIFICATION_SMS_TOO_LONG) ; objet sans caractère de contrôle, HTML nettoyé ; keys : clés lyxal_i18n appelées par t(\"clé\"), toutes déclarées (NOTIFICATION_TEMPLATE_KEY_UNKNOWN) ; mise en page de la portée du parcours ou de l'installation. Permission notification.manage";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_template_update
@@ -223,6 +281,13 @@ DEFINE FUNCTION OVERWRITE fn::notification_template_update($params: object) {
     IF $p.layout IS NOT NONE AND (SELECT VALUE scope_key FROM ONLY $p.layout) NOT IN [$template.scope_key, "installation"] {
         RETURN fn::error_result("NOTIFICATION_NOT_FOUND", $p.language, { resource: "layout" });
     };
+    -- Contenu après modification, contrôlé selon le canal de l'étape (E5)
+    LET $channel = array::find((SELECT VALUE steps FROM ONLY $template.workflow) ?? [], |$s| $s.key = $template.step_key).type;
+    LET $shape = fn::notification_template_channel_refusal({ channel: $channel, template: {
+        subject: $p.subject ?? $template.subject, html_body: $p.html_body ?? $template.html_body, text_body: $p.text_body ?? $template.text_body,
+        layout: IF $p.clear_layout { NONE } ELSE { $p.layout ?? $template.layout }
+    } });
+    IF $shape IS NOT NONE { RETURN fn::error_result($shape.code, $p.language, $shape.details); };
     LET $content = fn::notification_template_content({ subject: $p.subject, html_body: $p.html_body, text_body: $p.text_body, keys: $p.keys });
     LET $check = fn::notification_template_unknown_keys({ keys: $content.keys ?? [] });
     IF $check.error IS NOT NONE OR array::len($check.unknown) > 0 {
@@ -233,7 +298,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_template_update($params: object) {
     }));
     IF $updated == NONE { RETURN fn::error_result("NOTIFICATION_WRITE_FORBIDDEN", $p.language, { table: "notification_template" }); };
     RETURN fn::result_ok($updated);
-} COMMENT "Modifie un gabarit ({ template, subject, html_body, text_body, keys, layout, clear_layout }) ; seuls les champs fournis changent ; mêmes contrôles qu'à la création. Permission notification.manage";
+} COMMENT "Modifie un gabarit ({ template, subject, html_body, text_body, keys, layout, clear_layout }) ; seuls les champs fournis changent ; mêmes contrôles qu'à la création, forme propre au canal de l'étape et longueur d'un SMS comprises. Permission notification.manage";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_template_get
@@ -302,6 +367,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_step_preview($params: object) {
     RETURN fn::result_ok({
         workflow: $workflow.id,
         step_key: $p.step_key,
+        channel: $step.type,
         locale: $locale,
         recipient_locale: $p.locale,
         organization_name: $organization.name,

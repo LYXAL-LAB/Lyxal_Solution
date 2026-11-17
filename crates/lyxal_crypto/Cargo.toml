@@ -24,6 +24,9 @@ hmac = "0.12"
 # HMAC-SHA1 du TOTP seulement (RFC 6238, applications d'authentification), dans src/totp.rs.
 sha1 = "0.10"
 hkdf = "0.12"
+# Vérification HMAC-SHA1 des retours Twilio seulement (décision K8 du CTO, src/hmac.rs) ; déjà
+# présent dans le dépôt par rustls.
+ring = "0.17"
 
 [dev-dependencies]
 tempfile = { workspace = true }

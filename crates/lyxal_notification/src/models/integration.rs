@@ -9,8 +9,9 @@ use super::types::{NotificationDatetime, NotificationRecordId};
 /// Réglages non secrets d'une intégration.
 #[derive(Debug, Clone, Default, PartialEq, Eq, SurrealValue)]
 pub struct IntegrationSettings {
-    /// Adresse d'expédition.
-    pub from_address: String,
+    /// E-mail : adresse d'expédition.
+    #[surreal(default)]
+    pub from_address: Option<String>,
     /// Nom d'expéditeur.
     #[surreal(default)]
     pub from_name: Option<String>,
@@ -32,6 +33,9 @@ pub struct IntegrationSettings {
     /// Mailgun : région de l'API (`us` ou `eu`).
     #[surreal(default)]
     pub region: Option<String>,
+    /// SMS : expéditeur (numéro E.164 ou nom court de 11 caractères au plus).
+    #[surreal(default)]
+    pub sender: Option<String>,
 }
 
 /// Intégration remise au worker (étape réservée) ou à l'hôte (essai, retours) : fournisseur,
@@ -44,12 +48,17 @@ pub struct ClaimedIntegration {
     pub tenant: Option<NotificationRecordId>,
     /// Clé dans la portée.
     pub key: String,
-    /// Fournisseur (`smtp`, `brevo`, `mailgun`, `postmark`, `resend`).
+    /// Canal (`email`, `sms`, `chat`, `webhook`).
+    pub channel: String,
+    /// Fournisseur (e-mail : `smtp`, `brevo`, `mailgun`, `postmark`, `resend` ; SMS : `brevo`,
+    /// `twilio`, `vonage` ; messagerie : `slack`, `teams`, `discord`, `mattermost`,
+    /// `google_chat`, `telegram` ; adresse web : `webhook`).
     pub provider: String,
     /// Réglages non secrets.
     pub settings: IntegrationSettings,
-    /// Chemin du secret des identifiants.
-    pub credentials_path: String,
+    /// Chemin du secret des identifiants (absent pour une messagerie autre que Telegram et pour
+    /// l'adresse web).
+    pub credentials_path: Option<String>,
     /// Chemin du secret des retours.
     pub webhook_path: Option<String>,
 }
@@ -80,7 +89,7 @@ pub struct Integration {
     /// Réglages non secrets.
     pub settings: IntegrationSettings,
     /// Chemin du secret des identifiants.
-    pub credentials_path: String,
+    pub credentials_path: Option<String>,
     /// Chemin du secret des retours.
     pub webhook_path: Option<String>,
     /// Dernier essai.
@@ -108,7 +117,7 @@ pub struct IntegrationSaveParams {
     pub key: String,
     /// Fournisseur (création).
     pub provider: Option<String>,
-    /// Canal (création, `email` par défaut).
+    /// Canal (création, `email` par défaut ; `sms`, `chat`, `webhook`).
     pub channel: Option<String>,
     /// Nom.
     pub name: Option<String>,
@@ -171,7 +180,8 @@ pub struct IntegrationSelectParams {
 pub struct IntegrationTestParams {
     /// Intégration (texte `notification_integration:<clé>`).
     pub integration: String,
-    /// Adresse de l'essai.
+    /// Destinataire de l'essai : e-mail, numéro E.164 (SMS), ou identifiant d'une adresse de
+    /// messagerie ou web du même service.
     pub to: String,
 }
 
@@ -180,7 +190,8 @@ pub struct IntegrationTestParams {
 pub struct IntegrationTestTarget {
     /// Intégration.
     pub integration: ClaimedIntegration,
-    /// Adresse normalisée.
+    /// Destinataire normalisé : e-mail, numéro E.164 (SMS), ou identifiant d'une adresse de
+    /// messagerie ou web (`notification_endpoint:<clé>`).
     pub to: String,
 }
 

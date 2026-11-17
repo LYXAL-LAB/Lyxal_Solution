@@ -23,6 +23,11 @@ use crate::models::{
     TriggerResult, UnsubscribeParams, Unsubscribed, WaitScheduleParams, WaitScheduleResult,
 };
 use crate::models::{
+    ClaimedEndpoint, Endpoint, EndpointCreateParams, EndpointListParams, EndpointRefParams,
+    EndpointResolveParams, EndpointRotateParams, EndpointUpdateParams, MyEndpointCreateParams,
+    MyEndpointListParams,
+};
+use crate::models::{
     ClaimedIntegration, Integration, IntegrationGetParams, IntegrationListParams,
     IntegrationRefParams, IntegrationSaveParams, IntegrationSelectParams, IntegrationTestParams,
     IntegrationTestRecordParams, IntegrationTestResult, IntegrationTestTarget, ProviderEventParams,
@@ -472,6 +477,103 @@ impl NotificationStore {
     ) -> Result<ProviderEventRecorded, LyxalSurrealError> {
         self.worker_call("notification_provider_event_record", params)
             .await
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Adresses de messagerie et web
+    // ------------------------------------------------------------------------------------------
+
+    /// `fn::notification_endpoint_create` : adresse scellée par l'hôte (gestion).
+    pub async fn endpoint_create(
+        &self,
+        params: EndpointCreateParams,
+    ) -> Result<Endpoint, LyxalSurrealError> {
+        self.call_fn("notification_endpoint_create", params).await
+    }
+
+    /// `fn::notification_endpoint_update` : nom, active, salon Telegram.
+    pub async fn endpoint_update(
+        &self,
+        params: EndpointUpdateParams,
+    ) -> Result<Endpoint, LyxalSurrealError> {
+        self.call_fn("notification_endpoint_update", params).await
+    }
+
+    /// `fn::notification_endpoint_delete`.
+    pub async fn endpoint_delete(
+        &self,
+        params: EndpointRefParams,
+    ) -> Result<Deleted, LyxalSurrealError> {
+        self.call_fn("notification_endpoint_delete", params).await
+    }
+
+    /// `fn::notification_endpoint_list` : hôtes seulement.
+    pub async fn endpoint_list(
+        &self,
+        params: EndpointListParams,
+    ) -> Result<Vec<Endpoint>, LyxalSurrealError> {
+        self.call_fn("notification_endpoint_list", params).await
+    }
+
+    /// `fn::notification_endpoint_rotate_secret` : nouvelle clé scellée par l'hôte.
+    pub async fn endpoint_rotate_secret(
+        &self,
+        params: EndpointRotateParams,
+    ) -> Result<Endpoint, LyxalSurrealError> {
+        self.call_fn("notification_endpoint_rotate_secret", params)
+            .await
+    }
+
+    /// `fn::notification_my_endpoint_create` : adresse de la personne connectée.
+    pub async fn my_endpoint_create(
+        &self,
+        params: MyEndpointCreateParams,
+    ) -> Result<Endpoint, LyxalSurrealError> {
+        self.call_fn("notification_my_endpoint_create", params)
+            .await
+    }
+
+    /// `fn::notification_my_endpoint_update`.
+    pub async fn my_endpoint_update(
+        &self,
+        params: EndpointUpdateParams,
+    ) -> Result<Endpoint, LyxalSurrealError> {
+        self.call_fn("notification_my_endpoint_update", params)
+            .await
+    }
+
+    /// `fn::notification_my_endpoint_delete`.
+    pub async fn my_endpoint_delete(
+        &self,
+        params: EndpointRefParams,
+    ) -> Result<Deleted, LyxalSurrealError> {
+        self.call_fn("notification_my_endpoint_delete", params)
+            .await
+    }
+
+    /// `fn::notification_my_endpoint_list`.
+    pub async fn my_endpoint_list(
+        &self,
+        params: MyEndpointListParams,
+    ) -> Result<Vec<Endpoint>, LyxalSurrealError> {
+        self.call_fn("notification_my_endpoint_list", params).await
+    }
+
+    /// `fn::notification_my_endpoint_rotate_secret`.
+    pub async fn my_endpoint_rotate_secret(
+        &self,
+        params: EndpointRotateParams,
+    ) -> Result<Endpoint, LyxalSurrealError> {
+        self.call_fn("notification_my_endpoint_rotate_secret", params)
+            .await
+    }
+
+    /// `fn::notification_endpoint_resolve` : adresse scellée d'un essai (hôte).
+    pub async fn endpoint_resolve(
+        &self,
+        params: EndpointResolveParams,
+    ) -> Result<ClaimedEndpoint, LyxalSurrealError> {
+        self.call_fn("notification_endpoint_resolve", params).await
     }
 
     /// `fn::notification_settings_get` : réglages effectifs.

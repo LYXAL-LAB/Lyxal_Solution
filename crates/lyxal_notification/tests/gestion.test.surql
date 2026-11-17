@@ -215,7 +215,7 @@ RETURN fn::notification_workflow_list({ tenant: "auth_organization:alpha" }).err
 -- en tant que: admin
 RETURN fn::notification_settings_set({ tenant: "auth_organization:alpha", timezone: "Europe/Paris", max_attempts: 3 }).ok
     AND fn::notification_settings_get({ tenant: "auth_organization:alpha" }).data.effective
-        == { timezone: "Europe/Paris", max_attempts: 3, retention_days_runs: 90, retention_days_log: 30, max_wait_days: 30 };
+        == { timezone: "Europe/Paris", max_attempts: 3, retention_days_runs: 90, retention_days_log: 30, max_wait_days: 30, allowed_hosts: [] };
 
 -- test: réglages modifiés sans recréation ; valeurs hors bornes refusées
 -- en tant que: admin

@@ -49,7 +49,7 @@ déclaré manque.
 | `lyxal_error` | toujours | `ManifestModule` |
 | `lyxal_event` | toujours | `ManifestModule` ; moteur démarré par le runtime |
 | `lyxal_auth` | toujours | `AuthModule`, `AuthHealthCheck` |
-| `lyxal_notification` | toujours | `NotificationModule` (son installation crée la planification horaire `notification-purge` du planificateur), `NotificationConsumer` (événements `auth.*`), `NotificationEmailWorker` (envoi par les intégrations, identifiants lus dans `lyxal_secrets` ; avec les liens de désabonnement), `NotificationBroadcastWorker`, `NotificationStepWorker` (attentes des parcours confiées au planificateur), `NotificationHealthCheck` ; routes `/api/v1/notification/*` (désabonnement, aperçu, retours des fournisseurs, essai d'une intégration) |
+| `lyxal_notification` | toujours | `NotificationModule` (son installation crée la planification horaire `notification-purge` du planificateur), `NotificationConsumer` (événements `auth.*`), `NotificationEmailWorker` (envoi par les intégrations, identifiants lus dans `lyxal_secrets` ; avec les liens de désabonnement), trois `NotificationChannelWorker` (SMS, messagerie d'équipe, adresse web), `NotificationBroadcastWorker`, `NotificationStepWorker` (attentes des parcours confiées au planificateur), `NotificationHealthCheck` ; routes `/api/v1/notification/*` (désabonnement, aperçu, retours des fournisseurs, essai d'une intégration, adresses de messagerie et web) |
 | `lyxal_storage` | toujours | `StorageModule`, `StorageCleanupWorker` (si un support est configuré), `StorageHealthCheck` ; supports disque et S3 ; envoi reprenable |
 | `lyxal_secrets` | toujours | `SecretsModule`, `SecretsMaintenanceWorker` (purge, rescellement), `SecretsHealthCheck` ; trousseau maître du coffre-fort ; `SecretsClient` pour les modules hébergés |
 | `lyxal_scheduler` | toujours | `SchedulerModule`, `SchedulerLeaderWorker` (planificateur élu par le bail `leader` du runtime), un `SchedulerExecutorWorker` par file (enregistré après l'installation, une fois les files connues), `SchedulerHealthCheck` ; registre des handlers ouvert aux modules hébergés (`SchedulerHost::handlers`, aucun inscrit pour l'instant) |
@@ -80,7 +80,7 @@ du code Rust, déclarer son implémentation et ses services dans `src/modules/` 
 | `secrets` | `master_key` (facultative, variable d'environnement seulement), `master_key_id`, `previous_master_key` (pendant une rotation, variable d'environnement seulement), `previous_master_key_id` |
 | `scheduler` | `workers` (places de chaque exécuteur de file sur ce nœud, 1 à 64, 4 par défaut) |
 | `auth` | `public_url` (facultative : adresse publique de l'interface, pour les liens des messages et l'origine des passkeys), `passkey_rp_id` (facultatif : domaine des passkeys, défaut : hôte de `public_url`) |
-| `notification` | `public_url` (facultative : adresse publique de l'hôte, qui active les liens de désabonnement en un clic avec la clé applicative) |
+| `notification` | `public_url` (facultative : adresse publique de l'hôte, qui active les liens de désabonnement en un clic avec la clé applicative, et l'adresse des retours de livraison demandée message par message aux fournisseurs de SMS ; elle sert aussi à vérifier la signature des retours Twilio) |
 | `storage` | `disk.root` (facultatif : dossier du support de fichiers `default`), `s3.<nom>` (facultatif : `endpoint`, `region`, `bucket`, `access_key_id`, `secret_access_key` par variable d'environnement seulement, `path_style`, `allow_http`), `antivirus` (facultatif : `address` ou `socket`, `timeout_seconds`), `idle_timeout_seconds` (délai d'inactivité d'un envoi ou d'un téléchargement, 5 à 600, 60 par défaut) |
 
 Les identifiants Root ne figurent dans aucun fichier : `LYXAL__DATABASE__USERNAME` et
@@ -111,8 +111,13 @@ dégradée. Le test `tests/publication.rs` (exécutable séparé, il fournit la 
 variable d'environnement) la vérifie de bout en bout.
 
 Les notifications (`lyxal_notification`) envoient par des **intégrations** (fournisseur d'un
-canal pour une organisation, ou pour l'installation en repli : SMTP, Brevo, Mailgun, Postmark,
-Resend), dont les identifiants sont rangés dans le coffre-fort `lyxal_secrets`. L'hôte n'a aucun
+canal pour une organisation, ou pour l'installation en repli : e-mail par SMTP, Brevo, Mailgun,
+Postmark, Resend ; SMS par Brevo, Twilio, Vonage ; messageries Slack, Teams, Discord,
+Mattermost, Google Chat, Telegram ; appel signé d'une adresse web), dont les identifiants sont
+rangés dans le coffre-fort `lyxal_secrets`. Un worker par canal envoie les étapes de son canal ;
+les messageries et les adresses web sont appelées par un client sortant contrôlé (HTTPS seulement,
+hôtes officiels ou publics, nom résolu et vérifié à chaque envoi, connexion à l'adresse vérifiée,
+sans mandataire ni redirection : `crates/lyxal_notification/README.md`). L'hôte n'a aucun
 réglage d'envoi ; il demande la clé applicative (secrets scellés des messages) et la clé
 maîtresse du coffre-fort (lecture des identifiants). La clé applicative AES-256 (32 octets en
 Base64 canonique, 44 caractères) ne figure dans aucun fichier : `LYXAL__CRYPTO__APPLICATION_KEY`,
@@ -426,14 +431,26 @@ fournisseur, une par intégration ; réponses sans corps ni détail, `Cache-Cont
 
 | Route | Réponse |
 | :--- | :--- |
-| `POST /webhooks/{intégration}` | `{intégration}` : clé de l'enregistrement de l'intégration (`notification_integration:<clé>`). Corps de 256 Kio au plus. Vérification par le secret des retours de l'intégration, lu dans `lyxal_secrets` : Mailgun (HMAC-SHA256 de l'horodatage et du jeton), Resend (en-têtes `svix-*`, HMAC-SHA256), Postmark et Brevo (identifiants `Authorization: Basic` comparés en temps constant) ; horodatage signé à moins de 5 minutes. `200` : retour enregistré, déjà connu (dédoublonné) ou ignoré (ouverture, clic) ; `400` corps illisible ; `401` signature, identifiants ou horodatage refusés ; `404` intégration inconnue ou sans secret des retours ; `413` corps trop volumineux ; `503` secret illisible, coffre-fort sans clé maîtresse ou base indisponible (le fournisseur réessaie) |
+| `POST /webhooks/{intégration}` | `{intégration}` : clé de l'enregistrement de l'intégration (`notification_integration:<clé>`). Corps de 256 Kio au plus. Vérification par le secret des retours de l'intégration, lu dans `lyxal_secrets` : Mailgun (HMAC-SHA256 de l'horodatage et du jeton), Resend (en-têtes `svix-*`, HMAC-SHA256), Postmark et Brevo, e-mail et SMS (identifiants `Authorization: Basic` comparés en temps constant) ; horodatage signé à moins de 5 minutes ; SMS : Twilio (`X-Twilio-Signature`, HMAC-SHA1 de `{notification.public_url}` suivie du chemin et de la requête, puis des paramètres du formulaire triés), Vonage (paramètre `sig`, HMAC-SHA256 des paramètres triés, horodatage `timestamp` à moins de 5 minutes). `200` : retour enregistré, déjà connu (dédoublonné) ou ignoré (ouverture, clic) ; `400` corps illisible ; `401` signature, identifiants ou horodatage refusés ; `404` intégration inconnue ou sans secret des retours ; `413` corps trop volumineux ; `503` secret illisible, coffre-fort sans clé maîtresse ou base indisponible (le fournisseur réessaie) |
 
 Essai d'une intégration (`/api/v1/notification`, jeton d'accès `Authorization: Bearer` ; session
 au nom de l'appelant) :
 
 | Route | Réponse |
 | :--- | :--- |
-| `POST /integrations/{intégration}/test` | corps `{ to }` (4 Kio au plus) ; droit de gestion de la portée de l'intégration exigé par `fn::notification_integration_test` (autre organisation : `NOTIFICATION_INTEGRATION_NOT_FOUND`) ; un e-mail d'essai part par le vrai fournisseur ; `200` et `{ accepted, code }` (code `NOTIFICATION_*` d'un refus, jamais de secret), issue notée sur l'intégration (`last_test`) ; coffre-fort sans clé maîtresse : `503` (`NOTIFICATION_CONFIGURATION_INVALID`) ; sans jeton : `401` |
+| `POST /integrations/{intégration}/test` | corps `{ to }` (4 Kio au plus : e-mail ; SMS : numéro E.164 ; messagerie et adresse web : identifiant d'une adresse du même service, `notification_endpoint:<clé>`) ; droit de gestion de la portée de l'intégration exigé par `fn::notification_integration_test` (autre organisation : `NOTIFICATION_INTEGRATION_NOT_FOUND`) ; un message d'essai part par le vrai fournisseur (adresse scellée lue par la session système, `fn::notification_endpoint_resolve`) ; `200` et `{ accepted, code }` (code `NOTIFICATION_*` d'un refus, jamais de secret), issue notée sur l'intégration (`last_test`) ; coffre-fort sans clé maîtresse : `503` (`NOTIFICATION_CONFIGURATION_INVALID`) ; sans jeton : `401` |
+
+Adresses de messagerie et web des abonnés (`/api/v1/notification`, jeton d'accès
+`Authorization: Bearer` ; session au nom de l'appelant ; `Cache-Control: no-store`). L'hôte
+scelle l'adresse (`enc:v2`, clé applicative, contexte `with_tenant(<organisation>,
+"lyxal_notification", "notification_endpoint", <clé de l'adresse>, "url")`) **avant** l'appel de
+la fonction : elle n'entre en base que scellée et n'est jamais renvoyée (l'hôte seulement) :
+
+| Route | Réponse |
+| :--- | :--- |
+| `POST /endpoints` | corps `{ tenant, subscriber_id, channel : chat ou webhook, provider, name, url, chat_id (Telegram), active }` (8 Kio au plus) ; `fn::notification_endpoint_create` (droit de gestion) ; `201` et `{ endpoint : { id, subscriber, channel, provider, name, host, chat_id, active, signed }, signing_secret }` : pour une adresse web, la clé de signature (32 octets en hexadécimal, `rand_core::OsRng`) est montrée **une seule fois**, puis scellée (champ `signing_secret`) ; refus : `NOTIFICATION_ENDPOINT_INVALID` (`400` : HTTP, adresse IP, nom local, hôte non officiel ou hors `allowed_hosts`, limite de 10), `NOTIFICATION_PERMISSION_DENIED` (`403`) ; `subscriber_id` absent : `400` ; clé applicative absente : `503` (`NOTIFICATION_CONFIGURATION_INVALID`) ; sans jeton : `401` |
+| `POST /my/endpoints` | mêmes champs sans `subscriber_id` : adresse de la personne connectée (`fn::notification_my_endpoint_create`, abonné `auth:<identité>` créé au besoin ; une application sans identité : `NOTIFICATION_PERMISSION_DENIED`) |
+| `POST /endpoints/{adresse}/rotate`, `POST /my/endpoints/{adresse}/rotate` | corps `{ tenant }` ; `{adresse}` : clé de l'enregistrement ; nouvelle clé de signature d'une adresse web, montrée une fois (`{ endpoint, signing_secret }`) ; l'ancienne ne signe plus |
 
 Aperçu d'une étape de parcours (`/api/v1/notification`, jeton d'accès `Authorization: Bearer` ;
 session SurrealDB au nom de l'appelant ; réponses `Cache-Control: no-store`) :
@@ -507,6 +524,10 @@ purge créée par l'installation. `tests/notification_webhooks_http.rs` parcourt
 retours (signatures Mailgun et Resend, identifiants Postmark et Brevo, signature fausse,
 horodatage trop ancien, rejeu dédoublonné, corps trop grand, intégration inconnue ; rejet
 définitif qui supprime l'adresse) et d'essai (droits, faux fournisseur local, issue notée) ;
+`tests/notification_channels_http.rs` parcourt les routes des adresses (adresse scellée par
+l'hôte et ouverte par son seul contexte, jamais renvoyée, clé de signature montrée une fois puis
+renouvelée, droits, hôte refusé) et le retour Twilio signé (accepté, signature fausse refusée,
+rejeu dédoublonné) ;
 `tests/it/startup.rs` démarre l'hôte sans aucun réglage d'envoi (sonde des notifications
 dégradée).
 `scripts/ci/ci_local.sh` rejoue la CI complète.

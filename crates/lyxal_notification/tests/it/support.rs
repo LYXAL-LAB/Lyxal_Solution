@@ -156,7 +156,7 @@ pub async fn smtp_relay(client: &Surreal<Any>, vault: &SecretsClient, port: u16)
             name: Some("Relais de test".into()),
             primary: Some(true),
             settings: Some(IntegrationSettings {
-                from_address: "noreply@lyxal.test".into(),
+                from_address: Some("noreply@lyxal.test".into()),
                 from_name: Some("Lyxal".into()),
                 host: Some("127.0.0.1".into()),
                 port: Some(i64::from(port)),
