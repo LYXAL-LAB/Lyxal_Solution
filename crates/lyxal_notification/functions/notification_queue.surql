@@ -87,11 +87,12 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_claim($params: object) {
         -- Messagerie, adresse web : adresses actives de l'abonné pas encore servies, chacune avec
         -- l'intégration éligible de son service
         LET $endpoints = IF $job.type IN ["chat", "webhook"] AND array::len($integrations) > 0 {
-            fn::notification_job_endpoints({ job: $job, subscriber: $run.subscriber, integrations: $integrations })
+            fn::notification_job_endpoints({ job: $job, subscriber: $run.subscriber, tenant: $run.tenant, integrations: $integrations })
         } ELSE { { served: 0, pending: 0, ready: [] } };
-        -- Tout est déjà servi (reprise) : l'étape est terminée ; plus aucune adresse : écartée
+        -- Plus aucune adresse à servir : terminée si une adresse a été servie (reprise), sinon
+        -- écartée ; une adresse restante sans intégration de son service fait attendre l'étape
         IF $job.type IN ["chat", "webhook"] AND array::len($integrations) > 0 AND array::len($endpoints.ready) = 0
-            AND ($endpoints.served > 0 OR $endpoints.pending = 0) {
+            AND $endpoints.pending = 0 {
             UPDATE $job.id SET status = IF $endpoints.served > 0 { "completed" } ELSE { "skipped" },
                 skip_reason = IF $endpoints.served > 0 { NONE } ELSE { string::concat("no_address:", $job.type) },
                 locked_until = NONE, claim_token = NONE, attempts -= 1;
@@ -109,7 +110,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_claim($params: object) {
         -- Pas d'heures calmes pour l'adresse web (appel de machine à machine, décision E7)
         RETURN object::extend(
             fn::notification_job_payload({ job: $job, workflow: $workflow, quiet_hours: IF $job.type = "webhook" { NONE } ELSE { $decision.quiet_hours }, integration: $integration }),
-            { endpoints: $endpoints.ready ?? [] });
+            { endpoints: $endpoints.ready ?? [], served_endpoints: $endpoints.served ?? 0 });
     }), |$payload| $payload IS NOT NONE);
     RETURN fn::result_ok($ready);
 } COMMENT "Réserve jusqu'à limit étapes dues d'un canal ({ worker_id, channel : email, sms, chat, webhook ; limit, lease_seconds }) et renvoie tout le nécessaire au rendu (heures calmes, sauf pour l'adresse web ; cible du désabonnement ; intégration de l'envoi ; adresses scellées de messagerie ou web, chacune avec l'intégration de son service ; hôtes autorisés de l'installation) ; les étapes dont le secret a expiré sont annulées, celles qu'une préférence refuse désormais sont écartées ; une étape sans intégration éligible reste en file (nouvel essai dans une minute, sans tentative comptée) ; une étape dont toutes les adresses sont déjà servies est terminée. Permission notification.worker";
@@ -122,7 +123,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_endpoints($params: object) -> obj
     LET $served = (SELECT VALUE endpoint FROM notification_message WHERE job = $params.job.id AND endpoint IS NOT NONE);
     LET $pending = IF $params.subscriber IS NONE { [] } ELSE {
         (SELECT * FROM notification_endpoint
-            WHERE subscriber = $params.subscriber AND channel = $params.job.type AND active = true AND id NOTINSIDE $served
+            WHERE subscriber = $params.subscriber AND tenant = $params.tenant AND channel = $params.job.type AND active = true AND id NOTINSIDE $served
             ORDER BY created_at ASC LIMIT 10)
     };
     -- Intégration de chaque adresse : la première éligible de son service (ordre D1, bascule D3)
@@ -134,7 +135,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_endpoints($params: object) -> obj
         pending: array::len($pending),
         ready: array::map($paired, |$x| fn::notification_endpoint_payload({ endpoint: $x.endpoint, integration: $x.integration }))
     };
-} COMMENT "Interne : adresses actives d'une étape de messagerie ou web ({ job, subscriber, integrations }) pas encore servies (10 au plus), chacune avec la première intégration éligible de son service : { served, pending, ready }";
+} COMMENT "Interne : adresses actives d'une étape de messagerie ou web ({ job, subscriber, tenant : organisation du déclenchement, integrations }) pas encore servies (10 au plus), chacune avec la première intégration éligible de son service : { served, pending, ready }";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_job_payload : données de rendu d'une étape réservée (langue résolue)

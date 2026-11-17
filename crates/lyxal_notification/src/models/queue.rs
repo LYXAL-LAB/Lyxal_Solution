@@ -60,6 +60,9 @@ pub struct ClaimedJob {
     /// l'intégration de son service.
     #[surreal(default)]
     pub endpoints: Vec<ClaimedEndpoint>,
+    /// Messagerie, adresse web : adresses déjà servies par une tentative précédente.
+    #[surreal(default)]
+    pub served_endpoints: i64,
     /// Langue de l'envoi : celle du destinataire, sinon de son organisation, sinon de
     /// l'installation (absente si elle n'a pas pu être choisie, voir `texts_error`).
     pub locale: Option<String>,

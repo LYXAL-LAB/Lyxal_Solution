@@ -568,6 +568,7 @@ mod tests {
             },
             allowed_hosts: Vec::new(),
             endpoints: Vec::new(),
+            served_endpoints: 0,
             locale: Some("fr".into()),
             subject: Some(subject.into()),
             html_body: Some(html.into()),

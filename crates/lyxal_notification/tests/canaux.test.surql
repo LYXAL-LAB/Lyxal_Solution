@@ -46,6 +46,7 @@
     fn::notification_subscriber_save({ tenant: auth_organization:alpha, input: { subscriber_id: "s3", phone: "+33600000003" }, must_exist: false });
     fn::notification_subscriber_save({ tenant: auth_organization:beta, input: { subscriber_id: "b1", phone: "+33600000009" }, must_exist: false });
     DEFINE TABLE test_ref SCHEMALESS PERMISSIONS FULL;
+    CREATE test_ref:b1 CONTENT { id_: (SELECT VALUE id FROM ONLY notification_subscriber WHERE subscriber_id = "b1" LIMIT 1) };
 };
 
 -- test: parties d'un SMS : GSM-7 (160, puis 153 par partie ; extension comptée double), UCS-2 (70, puis 67 ; emoji compté double), 10 parties au plus
@@ -138,6 +139,11 @@ RETURN fn::notification_sms_segments("Bonjour, votre devis est prete.") == { enc
         AND fn::notification_endpoint_create({ tenant: "auth_organization:alpha", subscriber_id: "s1", channel: "chat", provider: "telegram", name: "T", chat_id: "salon; DROP" }).error.code == "NOTIFICATION_INVALID_INPUT"
         AND fn::notification_endpoint_create(object::extend($web, { subscriber_id: "inconnu", url: "https://crm.exemple.fr/x" })).error.code == "NOTIFICATION_SUBSCRIBER_NOT_FOUND";
 };
+
+-- test: une adresse appartient à l'organisation de son abonné : un gestionnaire d'Alpha ne l'attache pas à un abonné de Beta, même par écriture directe
+-- en tant que: admin
+-- attendu-erreur: NOTIFICATION_ENDPOINT_INVALID
+CREATE notification_endpoint CONTENT { tenant: auth_organization:alpha, subscriber: test_ref:b1.id_, channel: "chat", provider: "telegram", name: "Détourné", host: "api.telegram.org", chat_id: "-1009999999999", active: true };
 
 -- test: l'adresse complète et la clé de signature ne sont lisibles que par le worker
 -- en tant que: admin
@@ -342,9 +348,16 @@ RETURN fn::notification_my_endpoint_delete({ tenant: "auth_organization:alpha", 
             { endpoint: <string> test_ref:slack.id_, integration: <string> $slack, ok: true, response_code: 200 },
             { endpoint: <string> test_ref:telegram.id_, integration: <string> $telegram, ok: false, code: "NOTIFICATION_PROVIDER_UNAVAILABLE" }
         ] }).data;
+    -- Intégration de l'adresse restante désactivée : l'étape attend, elle n'est pas terminée
+    UPDATE $telegram SET active = false;
+    LET $waiting = fn::notification_job_claim({ channel: "chat", worker_id: "w-chat" }).data.find(|$j| $j.run_id = test_ref:multi.run);
+    LET $kept = (SELECT status, last_error FROM ONLY <record> test_ref:chat.job);
+    UPDATE $telegram SET active = true;
+    UPDATE <record> test_ref:chat.job SET next_retry_at = time::now();
     LET $again = fn::notification_job_claim({ channel: "chat", worker_id: "w-chat" }).data.find(|$j| $j.run_id = test_ref:multi.run);
     CREATE test_ref:chat2 CONTENT { job: $again.job_id, token: $again.claim_token, telegram: $telegram };
     RETURN $failed.status == "queued"
+        AND $waiting IS NONE AND $kept.status == "queued" AND $kept.last_error.code == "NOTIFICATION_INTEGRATION_UNAVAILABLE"
         AND (SELECT VALUE [channel, to, provider, endpoint] FROM notification_message WHERE job = test_ref:chat.job) == [["chat", "hooks.slack.com", "slack", test_ref:slack.id_]]
         AND (SELECT VALUE last_result.ok FROM ONLY test_ref:telegram.id_) == false
         AND (SELECT VALUE last_result.ok FROM ONLY test_ref:slack.id_) == true

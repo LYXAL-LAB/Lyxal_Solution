@@ -691,8 +691,9 @@ impl<R: KeyResolver + 'static> NotificationChannelWorker<R> {
     }
 
     /// Messagerie, adresse web : chaque adresse servie à son tour. Toutes servies (ou refusées
-    /// définitivement après au moins une servie) : étape terminée ; un échec temporaire : nouvel
-    /// essai des seules adresses non servies ; aucune servie : échec de la première.
+    /// définitivement après au moins une servie, dans cette tentative ou une précédente) : étape
+    /// terminée ; un échec temporaire : nouvel essai des seules adresses non servies ; aucune
+    /// servie : échec de la première.
     async fn send_endpoints(
         &self,
         job: &ClaimedJob,
@@ -731,7 +732,7 @@ impl<R: KeyResolver + 'static> NotificationChannelWorker<R> {
         if let Some(error) = transient {
             return Err((error, outcomes));
         }
-        if !outcomes.iter().any(|o| o.ok) {
+        if nothing_delivered(job.served_endpoints, &outcomes) {
             let error = first_failure
                 .unwrap_or_else(|| ProviderError::configuration("aucune adresse à servir"));
             return Err((error, outcomes));
@@ -768,6 +769,13 @@ impl<R: KeyResolver + 'static> LyxalWorker for NotificationChannelWorker<R> {
     async fn run(&self, ctx: WorkerContext) -> Result<(), RuntimeError> {
         run_send_loop(ctx, &self.queue, self).await
     }
+}
+
+/// Aucune adresse servie, ni dans cette tentative ni dans une précédente : l'étape échoue. Une
+/// adresse servie plus tôt suffit (les adresses refusées définitivement ensuite n'annulent pas
+/// ce qui est déjà parti).
+fn nothing_delivered(served_before: i64, outcomes: &[EndpointOutcome]) -> bool {
+    served_before == 0 && !outcomes.iter().any(|outcome| outcome.ok)
 }
 
 /// Message d'une adresse de messagerie ou web.
@@ -1126,6 +1134,32 @@ fn truncate(text: &str, max: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_endpoint_served_by_an_earlier_attempt_completes_the_step() {
+        let refused = |endpoint: &str| EndpointOutcome {
+            endpoint: endpoint.to_string(),
+            integration: "notification_integration:essai".to_string(),
+            ok: false,
+            code: Some("NOTIFICATION_PROVIDER_REJECTED".to_string()),
+            provider_message_id: None,
+            response_code: Some(404),
+        };
+        let served = EndpointOutcome {
+            ok: true,
+            code: None,
+            response_code: Some(200),
+            ..refused("notification_endpoint:a")
+        };
+        // Adresse A servie à la tentative précédente, B refusée définitivement maintenant
+        assert!(!nothing_delivered(1, &[refused("notification_endpoint:b")]));
+        assert!(nothing_delivered(0, &[refused("notification_endpoint:b")]));
+        assert!(!nothing_delivered(
+            0,
+            &[served, refused("notification_endpoint:b")]
+        ));
+        assert!(nothing_delivered(0, &[]));
+    }
 
     #[test]
     fn lease_outlasts_the_job_budget() {

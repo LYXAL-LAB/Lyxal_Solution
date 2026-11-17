@@ -229,6 +229,16 @@ THEN {
 -- le résultat du dernier appel noté par le worker n'est pas une modification)
 -- ----------------------------------------------------------------------------
 
+-- Garde : une adresse appartient à l'organisation de son abonné (aussi pour une écriture
+-- directe) ; sinon un gestionnaire d'une organisation pourrait faire servir les messages d'une
+-- autre organisation vers un salon de son choix. Abonné illisible : refus.
+DEFINE EVENT OVERWRITE notification_endpoint_tenant_guard ON TABLE notification_endpoint
+WHEN $event = "CREATE"
+THEN {
+    LET $owner = (SELECT tenant FROM ONLY $after.subscriber);
+    IF $owner == NONE OR $owner.tenant != $after.tenant { THROW "NOTIFICATION_ENDPOINT_INVALID"; };
+};
+
 DEFINE EVENT OVERWRITE notification_endpoint_changed_event ON TABLE notification_endpoint
 WHEN $event = "CREATE" OR $event = "DELETE"
     OR ($event = "UPDATE" AND ($before.name != $after.name OR $before.active != $after.active
