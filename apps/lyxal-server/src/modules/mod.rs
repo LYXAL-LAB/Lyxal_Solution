@@ -167,7 +167,7 @@ pub struct HostedServices {
     pub notification: notification::NotificationHost,
     #[cfg(feature = "module-ingestion")]
     publication: bool,
-    /// Envoi des notifications configuré (clé applicative et relais SMTP).
+    /// Envoi des notifications configuré (clé applicative et clé maîtresse du coffre-fort).
     notification_delivery: bool,
 }
 
@@ -184,7 +184,8 @@ pub async fn register_services(
     let storage = storage::register_services(runtime, client, config)?;
     let secrets = secrets::register_services(runtime, client, config)?;
     let scheduler = scheduler::register_services(runtime, client, config)?;
-    let notification = notification::register_services(runtime, client, config, crypto).await?;
+    let notification =
+        notification::register_services(runtime, client, config, crypto, &secrets).await?;
     #[cfg(feature = "module-ingestion")]
     {
         let publication =

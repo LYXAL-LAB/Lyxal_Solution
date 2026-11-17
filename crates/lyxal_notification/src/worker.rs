@@ -1,8 +1,10 @@
 //! Workers supervisés : envoi des e-mails, diffusions et attentes des parcours.
 //!
-//! Le worker d'envoi réserve les étapes dues (`fn::notification_job_claim`), reporte celles qui
-//! tombent dans les heures calmes de l'abonné, ouvre le secret, rend le message (lien de
-//! désabonnement compris), l'envoie, puis termine l'étape ou enregistre l'échec. Délai avant une
+//! Le worker d'envoi réserve les étapes dues (`fn::notification_job_claim`, chacune avec
+//! l'intégration retenue : D1, bascule D3), reporte celles qui tombent dans les heures calmes de
+//! l'abonné, ouvre le secret, rend le message (lien de désabonnement compris), lit les
+//! identifiants de l'intégration dans `lyxal_secrets` et l'envoie par son fournisseur, puis
+//! termine l'étape ou enregistre l'échec (avec l'intégration utilisée). Délai avant une
 //! nouvelle tentative : attente exponentielle plafonnée avec gigue complète (comme `lyxal_event`).
 //! Une erreur de base n'interrompt pas le worker : la réservation expire et l'étape est reprise.
 //!
@@ -33,10 +35,10 @@ use crate::models::{
     JobClaimParams, JobCompleteParams, JobFailParams, JobReleaseParams, JobRenewParams,
     NotificationDatetime, WaitScheduleParams, WaitScheduleResult,
 };
+use crate::provider::{EmailDispatcher, EmailMessage, ProviderError};
 use crate::quiet::quiet_until;
 use crate::render::Renderer;
 use crate::secret::SecretCodec;
-use crate::smtp::{EmailTransport, OutgoingEmail, SendFailure};
 use crate::store::NotificationStore;
 use crate::unsubscribe::UnsubscribeLinks;
 
@@ -123,18 +125,19 @@ pub struct NotificationEmailWorker<R: KeyResolver> {
     descriptor: WorkerDescriptor,
     store: NotificationStore,
     codec: SecretCodec<R>,
-    transport: Arc<dyn EmailTransport>,
+    dispatcher: EmailDispatcher,
     renderer: Renderer,
     settings: EmailWorkerSettings,
     links: Option<Arc<UnsubscribeLinks>>,
 }
 
 impl<R: KeyResolver> NotificationEmailWorker<R> {
-    /// Worker sur la session système de l'hôte, le trousseau applicatif et un transport.
+    /// Worker sur la session système de l'hôte, le trousseau applicatif et l'envoi par les
+    /// intégrations (fournisseurs et coffre-fort).
     pub fn new(
         store: NotificationStore,
         codec: SecretCodec<R>,
-        transport: Arc<dyn EmailTransport>,
+        dispatcher: EmailDispatcher,
         settings: EmailWorkerSettings,
     ) -> Result<Self, RuntimeError> {
         let module_id = ModuleId::new(MODULE);
@@ -151,7 +154,7 @@ impl<R: KeyResolver> NotificationEmailWorker<R> {
             descriptor,
             store,
             codec,
-            transport,
+            dispatcher,
             renderer: Renderer::default(),
             settings,
             links: None,
@@ -266,22 +269,24 @@ impl<R: KeyResolver> NotificationEmailWorker<R> {
         let attempt = u32::try_from(job.attempt).unwrap_or(1);
         let prepared = self.prepare(&job);
         let result = match prepared {
-            Ok(email) => self.transport.send(email).await,
-            Err(error) => Err(SendFailure {
+            Ok(email) => self.dispatcher.send(&job.integration, &email).await,
+            Err(error) => Err(ProviderError {
                 class: FailureClass::Permanent,
                 code: error.code(),
                 detail: error.to_string(),
             }),
         };
         let job_id = job.job_id.to_sql();
+        let integration = job.integration.id.to_sql();
         let recorded = match result {
-            Ok(delivered) => self
+            Ok(receipt) => self
                 .store
                 .job_complete(JobCompleteParams {
                     job_id: job_id.clone(),
                     claim_token: job.claim_token.clone(),
-                    provider_message_id: Some(delivered.message_id),
-                    smtp_code: Some(i64::from(delivered.code)),
+                    integration,
+                    provider_message_id: receipt.message_id,
+                    response_code: Some(i64::from(receipt.code)),
                     subject: self.rendered_subject(&job),
                 })
                 .await
@@ -292,6 +297,7 @@ impl<R: KeyResolver> NotificationEmailWorker<R> {
                     .job_fail(JobFailParams {
                         job_id: job_id.clone(),
                         claim_token: job.claim_token.clone(),
+                        integration,
                         class: class.as_str().to_string(),
                         code: failure.code,
                         detail: Some(truncate(&failure.detail, 512)),
@@ -314,7 +320,7 @@ impl<R: KeyResolver> NotificationEmailWorker<R> {
     }
 
     /// Ouvre le secret et rend le message.
-    fn prepare(&self, job: &ClaimedJob) -> Result<OutgoingEmail, NotificationError> {
+    fn prepare(&self, job: &ClaimedJob) -> Result<EmailMessage, NotificationError> {
         let secret = match &job.secret {
             Some(envelope) => Some(
                 self.codec
@@ -327,11 +333,9 @@ impl<R: KeyResolver> NotificationEmailWorker<R> {
         let content = self
             .renderer
             .render(job, secret.as_ref(), unsubscribe.as_deref())?;
-        Ok(OutgoingEmail {
+        Ok(EmailMessage {
             to: job.recipient.email.clone(),
             to_name: job.recipient.name.clone(),
-            from_name: job.from_name.clone(),
-            reply_to: job.reply_to.clone(),
             list_unsubscribe: unsubscribe,
             content,
         })

@@ -6,18 +6,23 @@ sécurité) et pour les parcours des modules métiers ; destinataires (**abonné
 **catégories**, **préférences** à tous les niveaux, **heures calmes**, **désabonnement en un
 clic**, **diffusion** à un sujet ou à tous, et **parcours à étapes** : attente, regroupement
 (digest), limitation (throttle), conditions d'étape, surcharges au déclenchement, envoi groupé,
-annulation, aperçu et envoi de test. Toutes les règles vivent dans SurrealDB (fonctions
-`fn::notification_*`) ; les attentes et la purge passent par `lyxal_scheduler` ; le crate Rust
-ouvre et scelle les secrets (`lyxal_crypto`), rend les gabarits (MiniJinja), calcule les heures
-calmes dans le fuseau de l'abonné (`jiff`), signe les liens de désabonnement (`lyxal_crypto`) et
-envoie par SMTP (`lettre`). Modèle repris de Novu et
+annulation, aperçu et envoi de test ; **intégrations** (fournisseur d'un canal par organisation,
+avec repli sur l'installation : SMTP, Brevo, Mailgun, Postmark, Resend), identifiants dans
+`lyxal_secrets`, bascule après une panne et **retours des fournisseurs** (délivré, rejeté,
+plainte) avec suppression automatique des adresses rejetées. Toutes les règles vivent dans
+SurrealDB (fonctions `fn::notification_*`) ; les attentes et la purge passent par
+`lyxal_scheduler` ; le crate Rust ouvre et scelle les secrets (`lyxal_crypto`), rend les gabarits
+(MiniJinja), calcule les heures calmes dans le fuseau de l'abonné (`jiff`), signe les liens de
+désabonnement (`lyxal_crypto`), lit les identifiants des intégrations dans `lyxal_secrets`, envoie
+par SMTP (`lettre`) ou par les API des fournisseurs (`reqwest`) et vérifie leurs retours
+(`lyxal_crypto`). Modèle repris de Novu et
 Postal ([`MODELE_SOURCES.md`](MODELE_SOURCES.md)) ; lots suivants dans [`ROADMAP.md`](ROADMAP.md).
 
 ## 1. Modèle
 
 | Table | Contenu |
 | :--- | :--- |
-| `notification_settings` | réglages de l'installation, surchargés par organisation : expéditeur, adresse de réponse, fuseau horaire par défaut des abonnés, tentatives au plus, durées de conservation, `max_wait_days` (durée maximale d'une attente ou d'une fenêtre, 30 jours par défaut, 1 à 366) |
+| `notification_settings` | réglages de l'installation, surchargés par organisation : fuseau horaire par défaut des abonnés, tentatives au plus, durées de conservation, `max_wait_days` (durée maximale d'une attente ou d'une fenêtre, 30 jours par défaut, 1 à 366) |
 | `notification_subscriber` | abonné : `subscriber_id` stable choisi par l'application (unique par portée), compte `lyxal_auth` lié facultatif (`identity`, supprimé avec lui), e-mail, téléphone (E.164), prénom, nom, langue, fuseau, `data` (8 Kio) ; clé d'enregistrement aléatoire |
 | `notification_topic`, `notification_topic_member` | sujets (clé unique par portée) et abonnements, avec condition `lyxal_core` facultative ; supprimés avec le sujet ou l'abonné |
 | `notification_category` | catégorie de désabonnement des parcours ; celles de l'installation servent à toutes les organisations |
@@ -27,10 +32,12 @@ Postal ([`MODELE_SOURCES.md`](MODELE_SOURCES.md)) ; lots suivants dans [`ROADMAP
 | `notification_template` | gabarit d'une étape, en une seule version : objet, HTML, texte, mise en page, et `keys`, les clés `lyxal_i18n` de ses phrases |
 | `notification_broadcast` | diffusion d'un parcours à un sujet ou à tous les abonnés d'une portée, idempotente par (portée, clé) : auteur exclu, curseur, compteurs, réservation du worker |
 | `notification_run` | déclenchement pour un abonné, **idempotent** par (portée, clé) : abonné (retiré s'il est supprimé), adresse copiée au déclenchement (`address`), diffusion d'origine, auteur, étape courante (`cursor`), surcharges (`overrides`), envoi de test (`test`), regroupement porté ou rejoint (`digest`) ; états `pending`, `waiting`, `completed`, `failed`, `skipped`, `canceled`, `merged` ; secret scellé effacé dès la fin de ses étapes, à l'annulation ou à son expiration |
-| `notification_job` | étape engagée (une par étape et par déclenchement, index unique) : type de l'étape, file d'envoi réservée par `locked_until` et `claim_token` (canaux), fin d'une attente (`wait_until`) et exécution différée du planificateur (`scheduler_run`), tentatives, dernière erreur, motif d'une étape écartée (`preference:<niveau>`, `no_address:<canal>`, `condition`, `override`, `throttled`, `test`, `canceled`) ; états `queued`, `running`, `waiting`, `completed`, `failed`, `skipped`, `canceled`, `merged` |
+| `notification_job` | étape engagée (une par étape et par déclenchement, index unique) : type de l'étape, file d'envoi réservée par `locked_until` et `claim_token` (canaux), intégration de la dernière tentative (`integration`, bascule D3), fin d'une attente (`wait_until`) et exécution différée du planificateur (`scheduler_run`), tentatives, dernière erreur, motif d'une étape écartée (`preference:<niveau>`, `no_address:<canal>`, `condition`, `override`, `throttled`, `test`, `canceled`) ; états `queued`, `running`, `waiting`, `completed`, `failed`, `skipped`, `canceled`, `merged` |
 | `notification_digest` | regroupement : portée, parcours, abonné, étape, clé de regroupement, déclenchement porteur, fin de la fenêtre, nombre et données des événements (100 premiers), état `open` / `closed` ; un seul ouvert par clé (index unique sur `open_slot`) |
 | `notification_rate_limit` | compteur de limitation d'une fenêtre fixe (identifiant : portée, parcours, abonné, étape, clé, début de la fenêtre), date de purge |
-| `notification_message` | message envoyé (destinataire, `Message-ID`) ; **aucun corps**, objet absent pour un parcours sensible |
+| `notification_message` | message envoyé : destinataire, intégration, fournisseur, identifiant chez le fournisseur (`provider_message_id`, unique par intégration), état `sent` puis, d'après les retours, `delivered`, `bounced`, `complained` ; **aucun corps**, objet absent pour un parcours sensible |
+| `notification_integration` | intégration : portée (organisation ou installation), clé unique dans la portée, canal (`email`), fournisseur (`smtp`, `brevo`, `mailgun`, `postmark`, `resend`), nom, active, principale (une au plus par portée et canal, index unique sur `primary_slot`), priorité (plus petite d'abord), condition `lyxal_core` facultative, réglages non secrets (`from_address`, `from_name`, `reply_to` ; SMTP : `host`, `port`, `security` ; Mailgun : `domain`, `region` `us` / `eu`), **chemin** du secret des identifiants (`credentials_path`) et du secret des retours (`webhook_path`) dans `lyxal_secrets`, dernier essai (`last_test`) ; jamais une valeur secrète |
+| `notification_provider_event` | retour normalisé d'un fournisseur : intégration, identifiant de l'événement chez le fournisseur (unique par intégration), type (`delivered`, `bounced`, `soft_bounced`, `complained`), message lié, adresse du message, date ; purgé selon `retention_days_log` ; aucun corps |
 | `notification_delivery_log` | journal en ajout seul (tentative, issue, code), jamais de secret |
 | `notification_suppression` | adresses à ne plus contacter : `hard_bounce`, `complaint`, `manual` (le désabonnement est une préférence, pas une suppression de l'adresse) |
 
@@ -39,7 +46,8 @@ Portée : champ `tenant` (organisation `lyxal_auth`, absent pour l'installation)
 mise en page ou une liste de suppression de l'installation sert de repli à toutes les
 organisations. Les données d'une organisation (réglages, abonnés, sujets, catégories,
 préférences, parcours, mises en page, gabarits, diffusions, déclenchements et leurs envois,
-regroupements et compteurs, liste de suppression) sont supprimées avec elle quand `lyxal_auth`
+regroupements et compteurs, intégrations et leurs retours, liste de suppression) sont supprimées
+avec elle quand `lyxal_auth`
 la purge (`REFERENCE ON DELETE CASCADE` sur `tenant`) ; les regroupements et compteurs d'un
 abonné partent avec lui.
 
@@ -190,6 +198,57 @@ Tâches de `lyxal_scheduler` déclarées par le seed du module (exécuteur `func
 | `notification.run_resume` | `fn::notification_run_resume` | fin d'une attente ou d'un regroupement (`unique_for` 1 j, arguments `{ run, step_key }`) |
 | `notification.purge` | `fn::notification_purge` | planification horaire `notification-purge` (cron `0 * * * *`, décalage de 5 min au plus), créée à l'installation du module si elle est absente |
 
+### 1.4. Intégrations et fournisseurs
+
+Une **intégration** dit par quel fournisseur part un canal (`email` ; les canaux du lot 4
+s'ajoutent) pour une organisation, ou pour l'installation (repli de toutes les organisations).
+
+* **Choix pour un envoi** (D1, à la réservation de l'étape) : intégrations actives de
+  l'organisation pour le canal dont la condition (forme `lyxal_core`, évaluée sur
+  `{ workflow: { key, critical, sensitive }, subscriber: { subscriber_id, locale, timezone,
+  data }, payload }`) est vraie, la **principale** d'abord, puis par priorité croissante ; aucune
+  éligible : celles de l'installation, dans le même ordre ; aucune : l'étape reste en file
+  (nouvel essai une minute plus tard, sans tentative comptée, `last_error`
+  `NOTIFICATION_INTEGRATION_UNAVAILABLE`) et la sonde est dégradée.
+* **Bascule** (D3) : un échec temporaire (réseau, délai, 429, 5xx, identifiants illisibles) fait
+  passer la tentative suivante à l'intégration éligible **suivante** (dans l'ordre D1, en
+  boucle) ; le message suivant repart de la principale. Un refus définitif (400, 401, 403, 422,
+  autre 4xx, adresse refusée par le relais) ne bascule pas. L'intégration utilisée est notée sur
+  l'étape et sur le message.
+* **Identifiants** (D2) : rangés dans `lyxal_secrets` (routes `/api/v1/secrets/*`), sous le
+  dossier `notification/` de la **même portée**, en JSON : SMTP `{ username, password }` (ou `{}`
+  pour un relais sans authentification) ; Brevo, Mailgun, Postmark, Resend `{ api_key }`. Secret
+  des retours : Mailgun `{ signing_key }`, Resend `{ signing_secret }` (`whsec_…`), Postmark et
+  Brevo `{ username, password }` (authentification Basic réglée chez le fournisseur).
+  L'intégration ne garde que les chemins ; le worker lit la valeur par le chemin tracé
+  (`SecretsClient`, session système, `lyxal_notification` annoncé comme consommateur : une fiche
+  qui liste ses consommateurs doit le nommer). Créer ou modifier une intégration exige, en plus
+  de la gestion des notifications, le **droit de lire ce secret** : `secrets.value.read` dans
+  l'organisation, `secrets.installation.manage` pour l'installation (sinon un gestionnaire des
+  notifications pourrait faire envoyer un secret vers un serveur de son choix) ; l'existence de
+  la fiche est vérifiée par `fn::secrets_secret_get` au nom de l'appelant. Une écriture directe
+  dans la table est gardée de même (`notification_integration_guard`). Supprimer une intégration
+  ne touche pas au secret.
+* **Organisation** : pas de relais SMTP en clair (`local_plain`), ni d'hôte IP ou local ; le
+  relais en clair est réservé à l'installation et à la boucle locale.
+* **Fournisseurs** : adresses des API fixées dans le code (Brevo `api.brevo.com/v3/smtp/email`,
+  en-tête `api-key` ; Mailgun `api.mailgun.net` ou `api.eu.mailgun.net` `/v3/{domaine}/messages`,
+  authentification `api:<clé>`, formulaire ; Postmark `api.postmarkapp.com/email`, en-tête
+  `X-Postmark-Server-Token` ; Resend `api.resend.com/emails`, `Authorization: Bearer`) ; le
+  domaine Mailgun n'est qu'un segment de chemin encodé. Chaque message non critique porte
+  `List-Unsubscribe` et `List-Unsubscribe-Post`.
+* **Retours** (D4) : une adresse de l'hôte par intégration
+  (`POST /api/v1/notification/webhooks/{intégration}`, sans session) ; vérification propre à
+  chaque fournisseur par `lyxal_crypto` (§5), horodatage signé à moins de 5 minutes (Mailgun,
+  Resend), corps de 256 Kio au plus ; événements dédoublonnés par (intégration, identifiant chez
+  le fournisseur). Retenus : délivré (`sent` → `delivered`), rejet définitif (`bounced`, adresse
+  ajoutée à la liste de suppression de l'organisation du message, motif `hard_bounce`), rejet
+  temporaire (gardé, sans effet), plainte (`complained`, motif `complaint`). Ouvertures et clics
+  ignorés (V2). Un retour dont le message est inconnu est gardé sans effet (`unmatched`).
+* **Essai** (D6) : `POST /api/v1/notification/integrations/{intégration}/test` (`{ to }`, droit de
+  gestion) envoie un e-mail d'essai par le vrai fournisseur ; réponse `{ accepted, code }`, sans
+  secret ; issue notée sur l'intégration (`last_test`).
+
 ## 2. Droits
 
 | Permission | Portée | Accès |
@@ -210,6 +269,10 @@ Contrôle unique : `fn::notification_can({ action, tenant, identity })` (actions
 `read_config`, `manage`, `send`, `worker`, `member`, `self`), utilisé par les fonctions et les
 `PERMISSIONS`. Le secret d'un déclenchement n'est lisible que par le worker (permission de champ).
 Le désabonnement par lien est appelé par l'hôte (session système) après vérification du jeton.
+Intégrations : lecture `notification.read` (jamais de secret), gestion `notification.manage`
+(installation : `notification.installation.manage`) **et** droit de lire le secret
+(`secrets.value.read` ; installation : `secrets.installation.manage`) ; choix, retours et issue
+d'un essai : worker ou session système de l'hôte.
 
 ## 3. Fonctions publiques
 
@@ -224,10 +287,11 @@ Le désabonnement par lien est appelé par l'hôte (session système) après vé
 | Parcours | `notification_workflow_create`, `_update` (`category` par clé, `clear_category`, `preferences`, étapes typées), `_get`, `_list`, `_set_status` ; `notification_step_preview` (données de l'aperçu d'une étape, `notification.read`) |
 | Mises en page | `notification_layout_create`, `_update`, `_get`, `_list` |
 | Gabarits | `notification_template_create` (**workflow**, **step_key**, **subject**, **html_body**, **text_body**, `keys`, `layout`), `_update` (champs fournis seulement, `clear_layout`), `_get` |
-| Réglages | `notification_settings_get`, `_set` (`max_wait_days` compris) |
+| Réglages | `notification_settings_get`, `_set` (`max_wait_days` compris ; expéditeur et adresse de réponse : réglages de l'intégration) |
+| Intégrations | `notification_integration_create`, `_update` (champs fournis, réglages remplacés en entier, `clear_condition`, `clear_webhook`), `_get` (par clé ou identifiant), `_list`, `_delete`, `_set_primary`, `_test` (essai : contrôle au nom de l'appelant, D6) ; `_select` (worker : ordre D1 / D3 d'une étape), `_test_record` et `notification_provider_event_record` (hôte) |
 | Liste de suppression | `notification_suppression_add`, `_remove`, `_list` |
 | Activité | `notification_run_get`, `_list` |
-| File d'envoi (worker) | `notification_job_claim`, `_renew`, `_release` (`not_before` : fin des heures calmes), `_complete`, `_fail` |
+| File d'envoi (worker) | `notification_job_claim` (avec l'intégration de l'envoi), `_renew`, `_release` (`not_before` : fin des heures calmes), `_complete` (`integration`, `provider_message_id`, `response_code`), `_fail` (`integration`) |
 | Attentes (worker, planificateur) | `notification_wait_schedule` (paquet de 500 au plus), `notification_run_resume` et `notification_purge` (forme d'appel du planificateur `{ args, run, tenant, scheduled_for, attempt }`) |
 
 Entrées validées et nettoyées par `lyxal_core` ; erreurs `NOTIFICATION_*` (master data
@@ -241,7 +305,9 @@ Fonctions internes (appelées par les précédentes) : `notification_subscriber_
 `notification_step_fields`, `_check`, `_context`, `_enter`, `notification_override_check`,
 `notification_job_add`, `notification_wait_due`, `_end`, `notification_group_key`,
 `notification_digest_join`, `_merge`, `notification_throttle_hit`, `notification_run_advance`,
-`_finalize`.
+`_finalize` ; intégrations : `notification_integration_find`, `_secret_check`,
+`_settings_refusal`, `_refusal` (garde), `_fields`, `_view`, `_checked`, `_clean_settings`,
+`_unset_primary`, `_eligible`, `_for_job`, `_payload`.
 
 File d'envoi (étapes de canal seulement) : réservation conditionnelle (une étape n'est réservée qu'une fois ; une
 réservation expirée est reprise, sauf après la dernière tentative : échec définitif),
@@ -252,7 +318,8 @@ dont le secret a expiré annulée, jamais envoyée en retard ; échec temporaire
 écartée) et l'étape porte les heures calmes de l'abonné, la cible de son lien de désabonnement
 et le regroupement porté. Une étape terminée (envoyée, écartée, en échec définitif) fait avancer
 son déclenchement. Purge (planificateur, toutes les heures) : secrets expirés, journal,
-déclenchements terminés, diffusions terminées, regroupements fermés et compteurs expirés.
+déclenchements terminés, diffusions terminées, regroupements fermés, compteurs expirés et
+retours des fournisseurs.
 
 ## 4. Événements
 
@@ -279,8 +346,10 @@ Publiés : `notification.run.canceled` (`run_id`, `tenant`, `workflow_id`),
 jamais de contenu ni de secret) ; `notification.subscriber.created`, `.updated` (adresse, nom,
 langue, fuseau ou données changés), `.deleted`, `notification.subscriber.unsubscribed` (lien de
 désabonnement : catégorie ou parcours, canal), `notification.preference.updated`,
-`notification.topic.subscribed`, `.unsubscribed` : identifiants seulement, jamais l'adresse, le
-téléphone ni le nom.
+`notification.topic.subscribed`, `.unsubscribed` ; `notification.integration.created`,
+`.updated`, `.deleted` (`integration_id`, `tenant`, `channel`) ; `notification.message.delivered`,
+`.bounced`, `.complained` (`message_id`, `run_id`, `integration_id`) : identifiants seulement,
+jamais l'adresse, le téléphone, le nom, un chemin de secret ni un réglage.
 
 ## 5. Rust
 
@@ -322,10 +391,25 @@ téléphone ni le nom.
   Une date est un texte RFC 3339 ; `style` vaut `short`, `medium` (défaut) ou `long` pour la
   date seule, `datetime_short`, `datetime_medium` ou `datetime_long`, ou `time` ; `zone` est un
   identifiant IANA (`UTC` par défaut). Un montant est un entier ou un texte décimal (`"1234.50"`).
-* `SmtpTransport` (`lettre`, TLS rustls, connexions réutilisées) et `EmailTransport` ;
-  classement : connexion ou 4xx → `transient`, 550 / 551 / 553 → `recipient_rejected`, autre 5xx →
-  `permanent`. Signature DKIM par le relais. En-têtes `List-Unsubscribe` et
-  `List-Unsubscribe-Post` quand le message a un lien de désabonnement.
+* `EmailProvider` (trait : `send(réglages, EmailMessage, Credentials) -> ProviderReceipt` ou
+  `ProviderError`) et `EmailProviders` : `SmtpProvider` (`lettre`, TLS rustls, une connexion par
+  envoi ; classement : connexion ou 4xx → `transient`, 550 / 551 / 553 → `recipient_rejected`,
+  autre 5xx → `permanent` ; DKIM par le relais) et les API de Brevo, Mailgun, Postmark et Resend
+  (`reqwest`, rustls seulement, délai de 10 s, **aucune redirection suivie**, réponse lue sur
+  64 Kio au plus ; adresses fixes dans le code, HTTPS seulement ; `EmailProviders::for_local_tests`
+  réservé aux faux fournisseurs de la boucle locale ; classement : 2xx accepté, 429 et 5xx
+  temporaires, autres refus définitifs ; une réponse acceptée illisible ou trop grande n'est pas
+  renvoyée). En-têtes `List-Unsubscribe` et `List-Unsubscribe-Post` quand le message a un lien.
+  `Credentials` (JSON du coffre-fort, en `SecretString`, `Debug` masqué) ; `EmailDispatcher` :
+  identifiants lus par `SecretsClient` (chemin tracé) puis envoi, essai (`send_test`) et
+  vérification des retours (`verify_webhook`).
+* `ProviderWebhook` (D4) : Mailgun (HMAC-SHA256 hexadécimal de `timestamp` + `token`), Resend /
+  Svix (HMAC-SHA256 de `<svix-id>.<svix-timestamp>.<corps>`, signatures `v1,<base64>`, secret
+  `whsec_<base64>`), Postmark et Brevo (identifiants Basic comparés en temps constant : étiquettes
+  HMAC-SHA256 sous une clé éphémère, `verify_hmac_sha256`) ; horodatage signé à 5 minutes, corps
+  de 256 Kio au plus ; `lyxal_crypto` seulement. Une clé de signature de 32 octets au plus est
+  complétée par des zéros, une clé de plus de 64 octets remplacée par son SHA-256 (même HMAC,
+  RFC 2104) ; une clé de 33 à 64 octets est refusée (feuille de route).
 * `UnsubscribeLinks` : lien `{public_url}/api/v1/notification/unsubscribe?t=<jeton>` ; jeton
   JSON en Base64url (portée, abonné, catégorie ou parcours, canal) suivi de sa signature
   HMAC-SHA256 ; clé dérivée de la clé applicative par `lyxal_crypto::hkdf_sha256` (domaine
@@ -337,7 +421,8 @@ téléphone ni le nom.
   comme UTC).
 * Le worker lit les textes de toutes les organisations : il tourne sous la session système
   de l'hôte ; un compte de service porte `notification.worker` et `i18n.translation.read`.
-* `NotificationEmailWorker` (une étape à la fois, réservation renouvelée avant l'envoi, traitement
+* `NotificationEmailWorker` (une étape à la fois, avec l'intégration retenue à la réservation,
+  identifiants lus du coffre-fort juste avant l'envoi, réservation renouvelée avant l'envoi, traitement
   borné, aucun envoi commencé après l'annulation ; étape dans les heures calmes de l'abonné rendue
   à la file jusqu'à leur fin, sans tentative ; lien de désabonnement avec
   `with_unsubscribe_links` ; attente exponentielle plafonnée avec gigue complète, base 30 s,
@@ -347,15 +432,19 @@ téléphone ni le nom.
   planificateur, toutes les secondes quand il y a du travail, sinon toutes les 5 s) ;
   `NotificationModule` (son installation crée la planification horaire de la purge par
   `SchedulerClient::schedule`, `ensure_purge_schedule`, si elle est absente),
-  `NotificationHealthCheck` (« dégradé » sans relais ou sans clé).
+  `NotificationHealthCheck` (« dégradé » sans clé applicative ou clé maîtresse du coffre-fort,
+  ou sans intégration e-mail active pour l'installation).
 * `NotificationPreview` (C7) : aperçu d'une étape (objet, HTML, texte) avec des données
   d'exemple, par le moteur de rendu du worker (`Renderer::preview` : une variable absente,
   secret compris, s'affiche vide), sans écriture ; données lues par
   `fn::notification_step_preview` au nom de l'appelant.
 
 Hébergé par `lyxal-server` (`build.rs`, `src/modules/notification.rs`) : clé applicative
-`LYXAL__CRYPTO__APPLICATION_KEY` et relais `LYXAL__NOTIFICATION__SMTP__*` ; sans l'un des deux,
-aucun e-mail n'est envoyé et les abonnements `auth.*` restent suspendus. Liens de désabonnement :
+`LYXAL__CRYPTO__APPLICATION_KEY` et clé maîtresse du coffre-fort `LYXAL__SECRETS__MASTER_KEY` ;
+sans l'une des deux, aucun e-mail n'est envoyé et les abonnements `auth.*` restent suspendus.
+L'hôte n'a aucun réglage d'envoi : les fournisseurs sont des intégrations. Retours :
+`POST /api/v1/notification/webhooks/{intégration}` ; essai :
+`POST /api/v1/notification/integrations/{intégration}/test`. Liens de désabonnement :
 clé applicative et `LYXAL__NOTIFICATION__PUBLIC_URL` ; routes de l'hôte
 `GET` / `POST /api/v1/notification/unsubscribe` ; aperçu : `POST /api/v1/notification/preview`
 (jeton d'accès, `notification.read`) (`apps/lyxal-server/README.md`). L'hôte installe
@@ -363,6 +452,36 @@ clé applicative et `LYXAL__NOTIFICATION__PUBLIC_URL` ; routes de l'hôte
 planificateur, qui exécute les reprises et la purge.
 
 ## 6. Exploitation
+
+* **Première mise en service** (D5) : une installation neuve n'envoie aucun e-mail tant qu'un
+  administrateur de la plateforme (`platform_admin` : `notification.installation.manage` et
+  `secrets.installation.manage`) n'a pas créé l'intégration e-mail de l'installation ; les
+  e-mails déclenchés entre-temps attendent en file (sonde dégradée). Marche à suivre :
+  1. créer le secret de l'installation sous `notification/` (`POST /api/v1/secrets/secrets`,
+     ex. `notification/smtp/relais`, consommateurs `["lyxal_notification"]`), puis sa valeur
+     JSON (`{ "username": "…", "password": "…" }` pour un relais SMTP, `{ "api_key": "…" }` pour
+     une API) ;
+  2. créer l'intégration (`fn::notification_integration_create`, sans `tenant`, `primary: true`,
+     `settings: { from_address, from_name, reply_to, host, port, security }` pour SMTP ou
+     `{ from_address, … , domain, region }` pour Mailgun, `credentials_path`) ;
+  3. l'essayer (`POST /api/v1/notification/integrations/{intégration}/test`, `{ "to": "…" }`) ;
+     la sonde redevient saine. Une organisation qui veut son propre fournisseur fait de même dans
+     sa portée (`secrets.value.read` requis).
+* **Retours des fournisseurs** : créer le secret des retours sous `notification/` de la même
+  portée, le noter dans `webhook_path`, puis régler chez le fournisseur l'adresse
+  `{adresse publique de l'hôte}/api/v1/notification/webhooks/{clé de l'intégration}` :
+  * **Mailgun** : *Sending → Webhooks*, événements *Delivered*, *Permanent failure*, *Temporary
+    failure*, *Spam complaints* ; secret `{ "signing_key": "<HTTP webhook signing key>" }` ;
+  * **Resend** : *Webhooks*, événements `email.delivered`, `email.bounced`,
+    `email.delivery_delayed`, `email.complained` ; secret `{ "signing_secret": "whsec_…" }` ;
+  * **Postmark** : *Servers → Webhooks*, *Delivery*, *Bounce*, *Spam complaint*, avec
+    l'authentification HTTP Basic ; secret `{ "username": "…", "password": "…" }` ;
+  * **Brevo** : *Transactional → Settings → Webhook*, événements *Delivered*, *Hard bounce*,
+    *Soft bounce*, *Spam*, avec l'authentification Basic ; secret `{ "username": "…",
+    "password": "…" }`.
+  Une intégration SMTP n'a pas de retours (rejets connus à l'envoi : 550, 551, 553).
+* **Panne d'un fournisseur** : une seconde intégration (priorité plus grande) prend le relais à
+  la tentative suivante ; `notification_run_get` montre l'intégration de chaque tentative.
 
 * **Réglages** : `max_wait_days` (`fn::notification_settings_set`, organisation ou
   installation) borne toute attente, fenêtre de regroupement ou de limitation, à
@@ -382,7 +501,13 @@ planificateur, qui exécute les reprises et la purge.
 
 ## 7. Vérification
 
-* Banc SurrealQL `tests/*.test.surql` (socle, gestion, déclenchement, file d'envoi, fonctions
+* Banc SurrealQL `tests/*.test.surql` (intégrations : création, contrôles des réglages, chemin du
+  secret et droit de le lire (D2) pour la création, la modification et une écriture directe,
+  principale unique, suppression ; choix D1 (organisation, repli, condition, priorité, inactive),
+  bascule D3, envoi qui attend faute d'intégration ; retours : dédoublonnage, état du message,
+  suppression sur rejet et plainte, rejet temporaire, retour inconnu, événements ; essai ;
+  droits : organisation, installation, autre organisation, sans droit ; socle, gestion,
+  déclenchement, file d'envoi, fonctions
   internes ; abonnés : portée, unicité, import avec erreurs par ligne, droits, données
   personnelles supprimées, reprise des préférences de l'invité ; sujets et conditions ;
   catégories ; préférences : chaque niveau, ordre B4, parcours critique, canal imposé, heures
@@ -397,8 +522,17 @@ planificateur, qui exécute les reprises et la purge.
   regroupement porté, envoi déjà parti, rien en cours ; envoi groupé ; envoi de test ; purge des
   regroupements et compteurs ; droits), exécuté par `scripts/ci/test_lyxal_modules.py`.
 * Tests Rust : rendu (textes traduits, pluriel d'un texte servi en repli, échappement, clés et
-  arguments refusés), classement SMTP, délais ; `tests/it/` de bout en bout sur le moteur
-  embarqué avec un serveur SMTP de test (invitation de `lyxal_auth` reçue, aucune trace du jeton
+  arguments refusés), classement SMTP et HTTP, délais, identifiants masqués, clés HMAC (vecteurs
+  RFC 4231), exemple de référence Svix, comparaison en temps constant, retours Postmark et
+  Brevo ; chaque fournisseur contre un faux fournisseur local (requête, en-têtes, réponse
+  acceptée, refus définitifs, 429 et 5xx, redirection non suivie, réponse trop grande,
+  fournisseur injoignable) ; de bout en bout : intégration de l'organisation → faux Postmark →
+  retour « rejeté » vérifié (rejeu dédoublonné, identifiants faux refusés) → adresse supprimée,
+  aucun identifiant en base ; bascule vers la seconde intégration après une panne, retour à la
+  principale, refus définitif sans bascule ; retours Mailgun et Resend (signature valide,
+  fausse, horodatage trop ancien, corps modifié, rejeu) ; `tests/it/` sur le moteur
+  embarqué avec un serveur SMTP de test (intégration SMTP de l'installation, secret dans le
+  coffre-fort) (invitation de `lyxal_auth` reçue, aucune trace du jeton
   en base ; enveloppe d'un autre événement refusée ; 4xx puis succès ; 550 → suppression) ;
   les quatre e-mails du système et chaque alerte de sécurité rendus en français et en anglais ;
   invitation reçue via l'abonné `email:`, alerte de sécurité via l'abonné `auth:` ; lien de

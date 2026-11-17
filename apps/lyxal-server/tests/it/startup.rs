@@ -177,6 +177,29 @@ async fn server_installs_and_starts_hosted_modules() {
         "{message}"
     );
 
+    // Aucun réglage d'envoi dans l'hôte (le relais SMTP est une intégration de
+    // lyxal_notification) : le module démarre, sa sonde est dégradée, rien n'est envoyé
+    let probe = runtime
+        .health_registry()
+        .get_check(&lyxal_runtime::ModuleId::new("lyxal_notification"))
+        .expect("sonde de lyxal_notification");
+    let result = probe
+        .check(&lyxal_runtime::ModuleContext::new("lyxal_notification"))
+        .await
+        .expect("sonde");
+    assert_eq!(
+        result.status,
+        lyxal_runtime::health::HealthStatus::Degraded,
+        "{result:?}"
+    );
+    assert!(
+        result
+            .message
+            .unwrap_or_default()
+            .starts_with("NOTIFICATION_"),
+        "code de la cause"
+    );
+
     // La fonction d'échec officielle de lyxal_error est intacte après installation.
     let mut res = client
         .query("RETURN fn::error_result('BASE_UNITE_TYPE_NOT_FOUND', 'fr', NONE).error.category;")

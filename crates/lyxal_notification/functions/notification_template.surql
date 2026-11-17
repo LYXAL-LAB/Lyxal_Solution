@@ -299,7 +299,6 @@ DEFINE FUNCTION OVERWRITE fn::notification_step_preview($params: object) {
         fn::i18n_resolve_many({ keys: $template.keys, locale: $locale, tenant: IF $workflow.tenant IS NONE { NONE } ELSE { <string> $workflow.tenant } })
     };
     LET $layout = IF $template.layout IS NONE { NONE } ELSE { (SELECT html, text FROM ONLY $template.layout) };
-    LET $settings = fn::notification_settings_effective({ tenant: $workflow.tenant });
     RETURN fn::result_ok({
         workflow: $workflow.id,
         step_key: $p.step_key,
@@ -314,8 +313,6 @@ DEFINE FUNCTION OVERWRITE fn::notification_step_preview($params: object) {
         layout_html: $layout.html,
         layout_text: $layout.text,
         payload: $p.payload,
-        digest: $p.digest,
-        from_name: $settings.from_name,
-        reply_to: $settings.reply_to
+        digest: $p.digest
     });
-} COMMENT "Données de l'aperçu d'une étape de canal ({ workflow, step_key, payload : données d'exemple, locale, digest : { count, events } d'exemple }) : gabarit, langue (demandée, sinon de l'organisation, sinon de l'installation), textes des clés dans cette langue, mise en page, réglages ; aucune écriture, aucun secret. Rendu par le moteur Rust (NotificationPreview). Permission notification.read (parcours de l'installation : lecture de sa configuration)";
+} COMMENT "Données de l'aperçu d'une étape de canal ({ workflow, step_key, payload : données d'exemple, locale, digest : { count, events } d'exemple }) : gabarit, langue (demandée, sinon de l'organisation, sinon de l'installation), textes des clés dans cette langue, mise en page ; aucune écriture, aucun secret. Rendu par le moteur Rust (NotificationPreview). Permission notification.read (parcours de l'installation : lecture de sa configuration)";

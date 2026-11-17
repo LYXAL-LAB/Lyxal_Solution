@@ -26,16 +26,6 @@ DEFINE FIELD OVERWRITE scope_key ON TABLE notification_settings
     VALUE IF $this.tenant IS NONE { "installation" } ELSE { <string> record::id($this.tenant) }
     COMMENT "Portée d'unicité : installation ou clé de l'organisation";
 
-DEFINE FIELD OVERWRITE from_name ON TABLE notification_settings
-    TYPE option<string>
-    ASSERT $value IS NONE OR string::len($value) <= 128
-    COMMENT "Nom d'expéditeur affiché";
-
-DEFINE FIELD OVERWRITE reply_to ON TABLE notification_settings
-    TYPE option<string>
-    ASSERT $value IS NONE OR string::len($value) <= 254
-    COMMENT "Adresse de réponse";
-
 DEFINE FIELD OVERWRITE timezone ON TABLE notification_settings
     TYPE option<string>
     ASSERT $value IS NONE OR string::len($value) <= 64

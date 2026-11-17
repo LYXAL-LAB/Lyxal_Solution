@@ -8,13 +8,14 @@
 
 -- préparation: organisation, sessions, réglages, parcours et deux déclenchements
 {
+    CREATE notification_integration:relais CONTENT { key: "relais", channel: "email", provider: "smtp", name: "Relais", primary: true, settings: { from_address: "noreply@lyxal.test", host: "127.0.0.1", port: 2525, security: "local_plain" }, credentials_path: "notification/smtp/relais" };
     CREATE auth_organization:alpha CONTENT { slug: "alpha", name: "Alpha BTP" };
     CREATE auth_identity:worker CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "worker@lyxal.test" } };
     CREATE auth_identity:admin CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "admin@alpha.test" } };
     RELATE auth_identity:admin->auth_member_of->auth_organization:alpha;
     CREATE auth_session:worker CONTENT { identity: auth_identity:worker, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
     CREATE auth_session:admin CONTENT { identity: auth_identity:admin, organization: auth_organization:alpha, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
-    fn::notification_settings_set({ tenant: "auth_organization:alpha", from_name: "Alpha BTP", reply_to: "contact@alpha.test", max_attempts: 2 });
+    fn::notification_settings_set({ tenant: "auth_organization:alpha", max_attempts: 2 });
     CREATE notification_workflow:devis CONTENT { tenant: auth_organization:alpha, key: "devis", name: "Devis", status: "active", steps: [{ key: "email", type: "email" }] };
     CREATE notification_template:devis_email CONTENT { tenant: auth_organization:alpha, workflow: notification_workflow:devis, step_key: "email", subject: "Devis {{ payload.n }}", html_body: "<p>{{ t(\"notification.common.greeting\") }}</p>", text_body: "Devis", keys: ["notification.common.greeting"] };
     fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "devis-1", to: { subscriber_id: "email:client@exemple.fr", email: "client@exemple.fr", locale: "en-GB" }, payload: { n: "D-1" }, secret: "enc:v2:cle-2026:AAAAAAAAAAAAAAAAAAAAAAAA" });
@@ -34,8 +35,10 @@ fn::i18n_translation_set({ key: "notification.auth_invitation.action", locale: "
     CREATE test_ref:devis CONTENT { job: $devis.job_id, token: $devis.claim_token };
     CREATE test_ref:invit CONTENT { job: $invit.job_id, token: $invit.claim_token };
     RETURN array::len($jobs) == 2
-        AND $devis.{ locale, subject, sensitive, from_name, reply_to, attempt, layout_html, secret, texts_error }
-            == { locale: "en", subject: "Devis {{ payload.n }}", sensitive: false, from_name: "Alpha BTP", reply_to: "contact@alpha.test", attempt: 1, layout_html: NONE, secret: "enc:v2:cle-2026:AAAAAAAAAAAAAAAAAAAAAAAA", texts_error: NONE }
+        AND $devis.{ locale, subject, sensitive, attempt, layout_html, secret, texts_error }
+            == { locale: "en", subject: "Devis {{ payload.n }}", sensitive: false, attempt: 1, layout_html: NONE, secret: "enc:v2:cle-2026:AAAAAAAAAAAAAAAAAAAAAAAA", texts_error: NONE }
+        -- Intégration de l'envoi : celle de l'installation (repli), sans aucun secret
+        AND $devis.integration == { id: notification_integration:relais, tenant: NONE, key: "relais", provider: "smtp", settings: { from_address: "noreply@lyxal.test", host: "127.0.0.1", port: 2525, security: "local_plain" }, credentials_path: "notification/smtp/relais", webhook_path: NONE }
         AND $devis.texts == [{ key: "notification.common.greeting", text: "Hello,", syntax: "plain", locale: "en", overridden: false, missing: false }]
         -- Langue du destinataire inactive (de) : langue par défaut de l'installation
         AND $invit.{ locale, sensitive, tenant, texts_error } == { locale: "fr", sensitive: true, tenant: auth_organization:alpha, texts_error: NONE }
@@ -55,12 +58,12 @@ RETURN fn::notification_job_claim({ worker_id: "w1" }).error.code == "NOTIFICATI
 
 -- test: un jeton de réservation périmé est refusé
 -- en tant que: worker
-RETURN fn::notification_job_complete({ job_id: <string> test_ref:devis.job, claim_token: "01a1bca0-0000-7000-8000-000000000000" }).error.code == "NOTIFICATION_JOB_CLAIM_LOST";
+RETURN fn::notification_job_complete({ job_id: <string> test_ref:devis.job, claim_token: "01a1bca0-0000-7000-8000-000000000000", integration: "notification_integration:relais" }).error.code == "NOTIFICATION_JOB_CLAIM_LOST";
 
 -- test: envoi réussi : message avec objet, étape et déclenchement terminés
 -- en tant que: worker
 {
-    LET $r = fn::notification_job_complete({ job_id: <string> test_ref:devis.job, claim_token: test_ref:devis.token, provider_message_id: "<abc@smtp>", smtp_code: 250, subject: "Quote D-1" }).data;
+    LET $r = fn::notification_job_complete({ job_id: <string> test_ref:devis.job, claim_token: test_ref:devis.token, integration: "notification_integration:relais", provider_message_id: "<abc@smtp>", response_code: 250, subject: "Quote D-1" }).data;
     RETURN $r.status == "completed" AND $r.run_status == "completed"
         AND (SELECT VALUE [to, subject, status, provider_message_id] FROM ONLY $r.message) == ["client@exemple.fr", "Quote D-1", "sent", "<abc@smtp>"];
 };
@@ -77,12 +80,12 @@ RETURN fn::notification_job_complete({ job_id: <string> test_ref:devis.job, clai
 
 -- test: étape terminée : un second achèvement est refusé
 -- en tant que: worker
-RETURN fn::notification_job_complete({ job_id: <string> test_ref:devis.job, claim_token: test_ref:devis.token }).error.code == "NOTIFICATION_JOB_CLAIM_LOST";
+RETURN fn::notification_job_complete({ job_id: <string> test_ref:devis.job, claim_token: test_ref:devis.token, integration: "notification_integration:relais" }).error.code == "NOTIFICATION_JOB_CLAIM_LOST";
 
 -- test: parcours sensible : aucun objet conservé
 -- en tant que: worker
 {
-    LET $r = fn::notification_job_complete({ job_id: <string> test_ref:invit.job, claim_token: test_ref:invit.token, subject: "Invitation à rejoindre Alpha BTP" }).data;
+    LET $r = fn::notification_job_complete({ job_id: <string> test_ref:invit.job, claim_token: test_ref:invit.token, integration: "notification_integration:relais", subject: "Invitation à rejoindre Alpha BTP" }).data;
     RETURN (SELECT VALUE subject FROM ONLY $r.message) IS NONE;
 };
 
@@ -93,7 +96,7 @@ fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "dev
 -- en tant que: worker
 {
     LET $job = fn::notification_job_claim({ worker_id: "w1" }).data[0];
-    LET $r = fn::notification_job_fail({ job_id: <string> $job.job_id, claim_token: $job.claim_token, class: "transient", code: "NOTIFICATION_SMTP_TRANSIENT", detail: "421 service indisponible", retry_delay_seconds: 0 }).data;
+    LET $r = fn::notification_job_fail({ job_id: <string> $job.job_id, claim_token: $job.claim_token, integration: "notification_integration:relais", class: "transient", code: "NOTIFICATION_SMTP_TRANSIENT", detail: "421 service indisponible", retry_delay_seconds: 0 }).data;
     RETURN $r.status == "queued" AND $r.next_retry_at IS NOT NONE AND $r.run_status IS NONE;
 };
 
@@ -101,7 +104,7 @@ fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "dev
 -- en tant que: worker
 {
     LET $job = fn::notification_job_claim({ worker_id: "w1" }).data[0];
-    LET $r = fn::notification_job_fail({ job_id: <string> $job.job_id, claim_token: $job.claim_token, class: "transient", code: "NOTIFICATION_SMTP_TRANSIENT", detail: "421", retry_delay_seconds: 0 }).data;
+    LET $r = fn::notification_job_fail({ job_id: <string> $job.job_id, claim_token: $job.claim_token, integration: "notification_integration:relais", class: "transient", code: "NOTIFICATION_SMTP_TRANSIENT", detail: "421", retry_delay_seconds: 0 }).data;
     RETURN $job.attempt == 2 AND $r.status == "failed" AND $r.run_status == "failed";
 };
 
@@ -125,8 +128,8 @@ fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "dev
     LET $jobs = fn::notification_job_claim({ worker_id: "w1" }).data;
     LET $rejet = $jobs.find(|$j| $j.idempotency_key = "rejet-1");
     LET $perm = $jobs.find(|$j| $j.idempotency_key = "permanent-1");
-    LET $a = fn::notification_job_fail({ job_id: <string> $rejet.job_id, claim_token: $rejet.claim_token, class: "recipient_rejected", code: "550", detail: "5.1.1 utilisateur inconnu" }).data;
-    LET $b = fn::notification_job_fail({ job_id: <string> $perm.job_id, claim_token: $perm.claim_token, class: "permanent", code: "NOTIFICATION_RENDER_FAILED", detail: "variable inconnue" }).data;
+    LET $a = fn::notification_job_fail({ job_id: <string> $rejet.job_id, claim_token: $rejet.claim_token, integration: "notification_integration:relais", class: "recipient_rejected", code: "550", detail: "5.1.1 utilisateur inconnu" }).data;
+    LET $b = fn::notification_job_fail({ job_id: <string> $perm.job_id, claim_token: $perm.claim_token, integration: "notification_integration:relais", class: "permanent", code: "NOTIFICATION_RENDER_FAILED", detail: "variable inconnue" }).data;
     RETURN $a.status == "failed" AND $b.status == "failed";
 };
 
@@ -136,7 +139,7 @@ RETURN fn::notification_suppression_list({ tenant: "auth_organization:alpha" }).
 
 -- test: entrées invalides refusées
 -- en tant que: worker
-RETURN fn::notification_job_fail({ job_id: <string> test_ref:devis.job, claim_token: test_ref:devis.token, class: "inconnue", code: "X" }).error.code == "NOTIFICATION_INVALID_INPUT"
+RETURN fn::notification_job_fail({ job_id: <string> test_ref:devis.job, claim_token: test_ref:devis.token, integration: "notification_integration:relais", class: "inconnue", code: "X" }).error.code == "NOTIFICATION_INVALID_INPUT"
     AND fn::notification_job_claim({ worker_id: "", limit: 1000 }).error.code == "NOTIFICATION_INVALID_INPUT";
 
 -- préparation: déclenchement dont le secret expire avant l'envoi
@@ -186,7 +189,7 @@ RETURN fn::notification_job_fail({ job_id: <string> test_ref:devis.job, claim_to
 
 -- test: l'ancien worker ne peut plus terminer l'étape reprise
 -- en tant que: worker
-RETURN fn::notification_job_complete({ job_id: <string> test_ref:bail1.job, claim_token: test_ref:bail1.token }).error.code == "NOTIFICATION_JOB_CLAIM_LOST";
+RETURN fn::notification_job_complete({ job_id: <string> test_ref:bail1.job, claim_token: test_ref:bail1.token, integration: "notification_integration:relais" }).error.code == "NOTIFICATION_JOB_CLAIM_LOST";
 
 -- test: réservation renouvelée avant l'envoi ; jeton périmé refusé ; étape rendue sans tentative comptée
 -- en tant que: worker

@@ -1,30 +1,33 @@
 //! Module `lyxal_notification` : implémentation `LyxalModule` (planification de la purge par
 //! `lyxal_scheduler` à l'installation), consommateur des événements `auth.*`, workers d'envoi, de
 //! diffusion et d'étapes (attentes confiées au planificateur), sonde de santé, liens de
-//! désabonnement et aperçu des étapes.
+//! désabonnement, aperçu des étapes, retours des fournisseurs et essai des intégrations.
 //!
-//! L'envoi demande la clé applicative (`LYXAL__CRYPTO__APPLICATION_KEY`, secrets scellés) et le
-//! relais SMTP (`LYXAL__NOTIFICATION__SMTP__*`). Sans l'un des deux : aucun e-mail n'est envoyé,
-//! les abonnements aux événements `auth.*` sont suspendus (les événements attendent en file et
-//! reprennent quand la configuration est complète) et la sonde le signale. Les diffusions sont
-//! toujours découpées en déclenchements (leurs e-mails attendent l'envoi). Les liens de
-//! désabonnement en un clic demandent la clé applicative (clé de signature dérivée par HKDF) et
-//! l'adresse publique de l'hôte (`LYXAL__NOTIFICATION__PUBLIC_URL`).
+//! L'envoi passe par les intégrations du module (fournisseur par canal et par portée), dont les
+//! identifiants sont lus dans `lyxal_secrets` : il demande la clé applicative
+//! (`LYXAL__CRYPTO__APPLICATION_KEY`, secrets scellés des messages) et la clé maîtresse du
+//! coffre-fort (`LYXAL__SECRETS__MASTER_KEY`). Sans l'une des deux : aucun e-mail n'est envoyé,
+//! les abonnements aux événements `auth.*` sont suspendus (les événements attendent en file) et la
+//! sonde le signale. Sans intégration e-mail, les e-mails attendent en file (sonde « dégradé »)
+//! jusqu'à ce qu'un administrateur de la plateforme crée celle de l'installation. Les diffusions
+//! sont toujours découpées en déclenchements. Les liens de désabonnement en un clic demandent la
+//! clé applicative (clé de signature dérivée par HKDF) et l'adresse publique de l'hôte
+//! (`LYXAL__NOTIFICATION__PUBLIC_URL`).
 
-use crate::config::{AppConfig, SmtpConfig};
+use crate::config::AppConfig;
 use crate::error::ServerError;
+use crate::modules::secrets::SecretsHost;
 use lyxal_crypto::{CryptoEngine, StaticKeyResolver};
 use lyxal_event::EventSubscription;
 use lyxal_notification::{
-    BroadcastWorkerSettings, EmailTransport, EmailWorkerSettings, NotificationBroadcastWorker,
-    NotificationConsumer, NotificationEmailWorker, NotificationHealthCheck, NotificationModule,
-    NotificationStepWorker, NotificationStore, SecretCodec, SmtpSecurity, SmtpSettings,
-    SmtpTransport, StepWorkerSettings, UnsubscribeLinks, AUTH_HANDLER, AUTH_SUBSCRIPTIONS,
-    CONSUMER_MODULE,
+    BroadcastWorkerSettings, EmailDispatcher, EmailProviders, EmailWorkerSettings,
+    NotificationBroadcastWorker, NotificationConsumer, NotificationEmailWorker,
+    NotificationHealthCheck, NotificationModule, NotificationStepWorker, NotificationStore,
+    SecretCodec, StepWorkerSettings, UnsubscribeLinks, AUTH_HANDLER, AUTH_SUBSCRIPTIONS,
+    CONSUMER_MODULE, SECRETS_CONSUMER,
 };
 use lyxal_runtime::{LyxalModule, LyxalRuntime};
 use std::sync::Arc;
-use std::time::Duration;
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
@@ -33,17 +36,19 @@ pub const MODULE_ID: &str = lyxal_notification::MODULE_ID;
 /// Tentatives de livraison d'un événement `auth.*` avant lettre morte.
 const AUTH_EVENT_MAX_ATTEMPTS: u32 = 10;
 
-/// Ce que les routes `/notification/*` reçoivent de l'hôte : la session système et, s'ils sont
-/// configurés, les liens de désabonnement.
+/// Ce que les routes `/notification/*` reçoivent de l'hôte : la session système, les liens de
+/// désabonnement s'ils sont configurés, et l'envoi par les intégrations (retours des
+/// fournisseurs, essai) si le coffre-fort a sa clé maîtresse.
 #[derive(Clone)]
 pub struct NotificationHost {
     pub store: NotificationStore,
     pub links: Option<Arc<UnsubscribeLinks>>,
+    pub dispatcher: Option<EmailDispatcher>,
 }
 
 /// Services du module enregistrés auprès du runtime.
 pub struct NotificationServices {
-    /// Envoi configuré (clé applicative et relais SMTP).
+    /// Envoi configuré (clé applicative et clé maîtresse du coffre-fort).
     pub delivery: bool,
     /// Routes de l'hôte.
     pub host: NotificationHost,
@@ -58,29 +63,6 @@ fn configuration_error(field: &str, error: impl std::fmt::Display) -> ServerErro
     ServerError::Configuration {
         message: format!("{field} : {error}"),
     }
-}
-
-fn smtp_transport(config: &SmtpConfig) -> Result<Arc<dyn EmailTransport>, ServerError> {
-    let security = SmtpSecurity::parse(&config.security)
-        .map_err(|e| configuration_error("notification.smtp.security", e))?;
-    let password = config
-        .password
-        .as_ref()
-        .map(|p| p.to_secret())
-        .transpose()?;
-    let transport = SmtpTransport::new(SmtpSettings {
-        host: config.host.clone(),
-        port: config.port,
-        security,
-        username: config.username.clone(),
-        password,
-        from_address: config.from_address.clone(),
-        from_name: config.from_name.clone(),
-        // Délai par commande SMTP, borné pour que l'envoi tienne dans le budget d'une étape
-        timeout: Duration::from_secs(config.timeout_seconds.clamp(1, 30)),
-    })
-    .map_err(|e| configuration_error("notification.smtp", e))?;
-    Ok(Arc::new(transport))
 }
 
 /// Liens de désabonnement : clé applicative et adresse publique requises ; une adresse invalide
@@ -102,14 +84,15 @@ pub fn unsubscribe_links(config: &AppConfig) -> Result<Option<Arc<UnsubscribeLin
     }
 }
 
-/// Attentes des parcours, diffusions, sonde et, si la clé applicative et le relais SMTP sont configurés,
-/// consommateur des événements `auth.*` et worker d'envoi (avec les liens de désabonnement s'ils
-/// sont configurés).
+/// Attentes des parcours, diffusions, sonde et, si la clé applicative et la clé maîtresse du
+/// coffre-fort sont configurées, consommateur des événements `auth.*` et worker d'envoi par les
+/// intégrations (avec les liens de désabonnement s'ils sont configurés).
 pub async fn register_services(
     runtime: &LyxalRuntime,
     client: &Surreal<Any>,
     config: &AppConfig,
     crypto: Option<Arc<CryptoEngine<StaticKeyResolver>>>,
+    secrets: &SecretsHost,
 ) -> Result<NotificationServices, ServerError> {
     let store = NotificationStore::new(client.clone());
     runtime.register_worker(Arc::new(NotificationStepWorker::new(
@@ -121,14 +104,15 @@ pub async fn register_services(
         BroadcastWorkerSettings::default(),
     )?))?;
     let links = unsubscribe_links(config)?;
-    let transport = config
-        .notification
-        .smtp
-        .as_ref()
-        .map(smtp_transport)
-        .transpose()?;
-    let delivery = match (crypto, transport.clone()) {
-        (Some(crypto), Some(transport)) => {
+    let providers = Arc::new(
+        EmailProviders::new().map_err(|e| configuration_error("fournisseurs d'e-mail", e))?,
+    );
+    // Identifiants lus par la session système, le module annoncé comme consommateur
+    let dispatcher = secrets
+        .has_master_key()
+        .then(|| EmailDispatcher::new(providers, secrets.client(SECRETS_CONSUMER)));
+    let delivery = match (crypto, dispatcher.clone()) {
+        (Some(crypto), Some(dispatcher)) => {
             let codec = SecretCodec::new(crypto);
             runtime
                 .register_event_consumer(Arc::new(NotificationConsumer::new(
@@ -139,7 +123,7 @@ pub async fn register_services(
             let worker = NotificationEmailWorker::new(
                 store.clone(),
                 codec,
-                transport,
+                dispatcher,
                 EmailWorkerSettings::default(),
             )?;
             let worker = match &links {
@@ -149,11 +133,11 @@ pub async fn register_services(
             runtime.register_worker(Arc::new(worker))?;
             true
         }
-        (crypto, transport) => {
+        (crypto, dispatcher) => {
             tracing::warn!(
                 application_key = crypto.is_some(),
-                smtp = transport.is_some(),
-                "envoi des notifications désactivé : LYXAL__CRYPTO__APPLICATION_KEY et LYXAL__NOTIFICATION__SMTP__* requis"
+                secrets_master_key = dispatcher.is_some(),
+                "envoi des notifications désactivé : LYXAL__CRYPTO__APPLICATION_KEY et LYXAL__SECRETS__MASTER_KEY requis"
             );
             false
         }
@@ -162,11 +146,15 @@ pub async fn register_services(
         .health_registry()
         .register_check(Arc::new(NotificationHealthCheck::new(
             store.clone(),
-            if delivery { transport } else { None },
+            delivery,
         )))?;
     Ok(NotificationServices {
         delivery,
-        host: NotificationHost { store, links },
+        host: NotificationHost {
+            store,
+            links,
+            dispatcher,
+        },
     })
 }
 

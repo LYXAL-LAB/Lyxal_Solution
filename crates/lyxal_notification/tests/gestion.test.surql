@@ -213,13 +213,15 @@ RETURN fn::notification_workflow_list({ tenant: "auth_organization:alpha" }).err
 
 -- test: réglages de l'organisation : surcharge partielle de ceux de l'installation
 -- en tant que: admin
-RETURN fn::notification_settings_set({ tenant: "auth_organization:alpha", from_name: "Alpha BTP", reply_to: "Contact@Alpha.test", max_attempts: 3 }).ok
+RETURN fn::notification_settings_set({ tenant: "auth_organization:alpha", timezone: "Europe/Paris", max_attempts: 3 }).ok
     AND fn::notification_settings_get({ tenant: "auth_organization:alpha" }).data.effective
-        == { from_name: "Alpha BTP", reply_to: "contact@alpha.test", timezone: NONE, max_attempts: 3, retention_days_runs: 90, retention_days_log: 30, max_wait_days: 30 };
+        == { timezone: "Europe/Paris", max_attempts: 3, retention_days_runs: 90, retention_days_log: 30, max_wait_days: 30 };
 
 -- test: réglages modifiés sans recréation ; valeurs hors bornes refusées
 -- en tant que: admin
-RETURN fn::notification_settings_set({ tenant: "auth_organization:alpha", reply_to: "devis@alpha.test" }).data.{ reply_to, max_attempts } == { reply_to: "devis@alpha.test", max_attempts: 3 }
+RETURN fn::notification_settings_set({ tenant: "auth_organization:alpha", retention_days_runs: 60 }).data.{ retention_days_runs, max_attempts } == { retention_days_runs: 60, max_attempts: 3 }
+    -- Expéditeur et adresse de réponse : réglages de l'intégration, plus des réglages
+    AND fn::notification_settings_set({ tenant: "auth_organization:alpha", from_name: "Alpha BTP" }).error.code == "NOTIFICATION_INVALID_INPUT"
     AND fn::notification_settings_set({ tenant: "auth_organization:alpha", default_locale: "en" }).error.code == "NOTIFICATION_INVALID_INPUT"
     AND fn::notification_settings_set({ tenant: "auth_organization:alpha", max_attempts: 50 }).error.code == "NOTIFICATION_INVALID_INPUT";
 
@@ -230,11 +232,11 @@ RETURN fn::notification_settings_get({ tenant: "auth_organization:alpha" }).erro
 
 -- test: l'administrateur de l'installation règle l'installation
 -- en tant que: plateforme
-RETURN fn::notification_settings_set({ from_name: "Lyxal", retention_days_log: 14 }).data.{ from_name, retention_days_log, max_attempts } == { from_name: "Lyxal", retention_days_log: 14, max_attempts: 8 };
+RETURN fn::notification_settings_set({ timezone: "UTC", retention_days_log: 14 }).data.{ timezone, retention_days_log, max_attempts } == { timezone: "UTC", retention_days_log: 14, max_attempts: 8 };
 
 -- test: réglages de l'installation visibles dans les réglages effectifs de l'organisation
 -- en tant que: admin
-RETURN fn::notification_settings_get({ tenant: "auth_organization:alpha" }).data.effective.{ from_name, retention_days_log } == { from_name: "Alpha BTP", retention_days_log: 14 };
+RETURN fn::notification_settings_get({ tenant: "auth_organization:alpha" }).data.effective.{ timezone, retention_days_log } == { timezone: "Europe/Paris", retention_days_log: 14 };
 
 -- test: l'administrateur de l'installation modifie la mise en page de l'installation
 -- en tant que: plateforme
@@ -251,4 +253,4 @@ RETURN fn::notification_layout_update({ layout: "notification_layout:default", n
 -- test: une écriture filtrée par les permissions de la table est signalée, jamais annoncée comme réussie
 -- en tant que: plateforme
 RETURN fn::notification_layout_update({ layout: "notification_layout:default", name: "Refusé" }).error.code == "NOTIFICATION_WRITE_FORBIDDEN"
-    AND fn::notification_settings_set({ from_name: "Refusé" }).error.code == "NOTIFICATION_WRITE_FORBIDDEN";
+    AND fn::notification_settings_set({ max_wait_days: 10 }).error.code == "NOTIFICATION_WRITE_FORBIDDEN";

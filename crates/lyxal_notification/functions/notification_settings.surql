@@ -35,8 +35,6 @@ DEFINE FUNCTION OVERWRITE fn::notification_settings_set($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
             tenant: { pipeline: [{ rule: "record", options: { expected_table: "auth_organization" } }] },
-            from_name: { pipeline: [{ rule: "display_name", options: { min_length: 1, max_length: 128, allow_emoji: false } }] },
-            reply_to: { pipeline: [{ rule: "email", options: { max_length: 254 } }] },
             timezone: { pipeline: [{ rule: "timezone", options: { allow_utc: true } }] },
             max_attempts: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 20 } }] },
             retention_days_runs: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 3650 } }] },
@@ -53,12 +51,9 @@ DEFINE FUNCTION OVERWRITE fn::notification_settings_set($params: object) {
     IF !fn::notification_can({ action: "manage", tenant: $p.tenant }) { RETURN fn::error_result("NOTIFICATION_PERMISSION_DENIED", $p.language, {}); };
     LET $scope = IF $p.tenant IS NONE { "installation" } ELSE { <string> record::id($p.tenant) };
     LET $changes = object::from_entries(array::filter(
-        array::map(["from_name", "reply_to", "timezone", "max_attempts", "retention_days_runs", "retention_days_log", "max_wait_days"], |$f| [$f, $p[$f]]),
+        array::map(["timezone", "max_attempts", "retention_days_runs", "retention_days_log", "max_wait_days"], |$f| [$f, $p[$f]]),
         |$e| $e[1] IS NOT NONE
     ));
-    LET $changes = IF $changes.reply_to IS NONE { $changes } ELSE {
-        object::extend($changes, { reply_to: fn::sanitize_pipeline_execute($changes.reply_to, [{ rule: "email" }], 5) })
-    };
     LET $existing = (SELECT VALUE id FROM ONLY notification_settings WHERE scope_key = $scope LIMIT 1);
     LET $saved = IF $existing IS NONE {
         (CREATE ONLY type::record("notification_settings", $scope) CONTENT object::extend($changes, { tenant: $p.tenant }))
@@ -67,7 +62,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_settings_set($params: object) {
     };
     IF $saved == NONE { RETURN fn::error_result("NOTIFICATION_WRITE_FORBIDDEN", $p.language, { table: "notification_settings" }); };
     RETURN fn::result_ok($saved);
-} COMMENT "Enregistre les réglages d'une portée ({ tenant, from_name, reply_to, timezone, max_attempts, retention_days_runs, retention_days_log, max_wait_days : durée maximale des attentes, 1 à 366 jours }) ; seuls les champs fournis changent. Permission notification.manage";
+} COMMENT "Enregistre les réglages d'une portée ({ tenant, timezone, max_attempts, retention_days_runs, retention_days_log, max_wait_days : durée maximale des attentes, 1 à 366 jours }) ; seuls les champs fournis changent. Permission notification.manage";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_suppression_add

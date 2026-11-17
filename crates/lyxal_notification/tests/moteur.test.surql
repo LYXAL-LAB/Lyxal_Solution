@@ -10,6 +10,7 @@
 
 -- préparation: organisation, sessions, parcours à étapes et gabarits
 {
+    CREATE notification_integration:relais CONTENT { key: "relais", channel: "email", provider: "smtp", name: "Relais", primary: true, settings: { from_address: "noreply@lyxal.test", host: "127.0.0.1", port: 2525, security: "local_plain" }, credentials_path: "notification/smtp/relais" };
     CREATE auth_organization:alpha CONTENT { slug: "alpha", name: "Alpha BTP" };
     CREATE auth_identity:envoyeur CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "envoyeur@lyxal.test" } };
     CREATE auth_identity:worker CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "worker@lyxal.test" } };
@@ -57,7 +58,7 @@
 -- en tant que: worker
 {
     LET $job = fn::notification_job_claim({ worker_id: "w1" }).data[0];
-    LET $done = fn::notification_job_complete({ job_id: <string> $job.job_id, claim_token: $job.claim_token, smtp_code: 250 }).data;
+    LET $done = fn::notification_job_complete({ job_id: <string> $job.job_id, claim_token: $job.claim_token, integration: "notification_integration:relais", response_code: 250 }).data;
     LET $run = $job.run_id;
     LET $wait = (SELECT * FROM ONLY notification_job WHERE run = $run AND step_key = "pause" LIMIT 1);
     RETURN $job.digest IS NONE AND $done.run_status IS NONE AND $wait.status == "queued" AND $wait.type == "delay"
@@ -105,7 +106,7 @@ RETURN fn::notification_wait_schedule({ limit: 10 }).data.scheduled == 0
 -- en tant que: worker
 {
     LET $job = fn::notification_job_claim({ worker_id: "w1" }).data[0];
-    RETURN fn::notification_job_complete({ job_id: <string> $job.job_id, claim_token: $job.claim_token }).data.run_status == "completed";
+    RETURN fn::notification_job_complete({ job_id: <string> $job.job_id, claim_token: $job.claim_token, integration: "notification_integration:relais" }).data.run_status == "completed";
 };
 
 -- test: condition fausse : étape sautée (motif condition), la suivante est engagée

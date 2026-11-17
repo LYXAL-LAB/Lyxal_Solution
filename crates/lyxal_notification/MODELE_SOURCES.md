@@ -267,7 +267,7 @@ ENFORCED`. Tous les documents portent `tenant` (organisation `lyxal_auth`), cont
 | `localization`, `localization-group`, `translation-group`, `translations` | clés de `lyxal_i18n` (espace de noms `notification`), déclarées dans `notification_template.keys` et appelées par `t("clé")` | document (`lyxal_i18n`) | un seul gabarit par étape ; textes par langue, surcharges par organisation et état « obsolète » portés par `lyxal_i18n` | V1-a |
 | `layout` | `notification_layout` | document | HTML commun, variables d'image de marque, `is_default` par locataire et canal | V1-a |
 | `control-values` | objet imbriqué `controls` dans l'étape ou la mise en page | objet | les niveaux `step_provider` et `step_integration` deviennent `provider_overrides` | V1-c |
-| `integration` | `notification_integration` | document | fournisseur, canal, `priority`, `primary`, `conditions` ; `credentials_ref` = **référence** `lyxal_secrets`, jamais une valeur ; en V1-a, relais SMTP unique dans la configuration de l'hôte | V1-e |
+| `integration` | `notification_integration` | document | fournisseur, canal, `priority`, `primary`, `condition` ; `credentials_path` / `webhook_path` = **chemins** dans `lyxal_secrets`, jamais une valeur ; le relais SMTP est le fournisseur `smtp` d'une intégration | V1-e (lot 3) |
 | `preferences` | `notification_preference` (abonné → parcours, catégorie ou sujet) | relation | niveaux `global`, `workflow`, `topic_subscription`, `tenant_workflow` ; canaux en objet | V1-b |
 | `workflow-override` | `notification_preference` niveau `tenant_workflow` | relation | surcharge décidée par une organisation cliente | V1-b |
 | `context` | `notification_context` | document | `type`, `key`, `data` ; unique (locataire, type, clé) ; référencé par `context_keys` | V2 |
@@ -275,7 +275,7 @@ ENFORCED`. Tous les documents portent `tenant` (organisation `lyxal_auth`), cont
 | `job` + ClickHouse `step_runs` | `notification_job` | document | une étape : statut, tentatives, `next_retry_at`, `locked_until`, clé de digest | V1-a |
 | `message` | `notification_message` | document | envoi par canal ; fil in-app : `seen_at`, `read_at`, `archived_at`, `snoozed_until`, actions ; `expires_at` | V1-a / V1-d |
 | `execution-details` + ClickHouse `traces` | `notification_delivery_log` | document | journal en ajout seul ; jamais de code ni de lien sensible en clair | V1-a |
-| retours fournisseurs (activity tracking) | `notification_provider_event` | document | délivré, ouvert, cliqué, rejeté, plainte ; dédoublonné par identifiant fournisseur ; en V1-a, rejets synchrones SMTP seulement | V1-e / V2 |
+| retours fournisseurs (activity tracking) | `notification_provider_event` | document | délivré, rejeté, rejet temporaire, plainte (lot 3) ; ouvert, cliqué (V2) ; dédoublonné par identifiant fournisseur | V1-e (lot 3) / V2 |
 | Postal `suppressions` | `notification_suppression` | document | rejet définitif, plainte, désabonnement ; unique (locataire, canal, adresse) | V1-a |
 | étape `throttle` | `notification_rate_limit` | document | compteur par (parcours, clé, fenêtre) | V1-c |
 | digest (`_mergedDigestId`) | `notification_digest` | document | fenêtre ouverte : clé, échéance, événements regroupés | V1-c |

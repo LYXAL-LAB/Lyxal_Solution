@@ -49,7 +49,7 @@ déclaré manque.
 | `lyxal_error` | toujours | `ManifestModule` |
 | `lyxal_event` | toujours | `ManifestModule` ; moteur démarré par le runtime |
 | `lyxal_auth` | toujours | `AuthModule`, `AuthHealthCheck` |
-| `lyxal_notification` | toujours | `NotificationModule` (son installation crée la planification horaire `notification-purge` du planificateur), `NotificationConsumer` (événements `auth.*`), `NotificationEmailWorker` (avec les liens de désabonnement), `NotificationBroadcastWorker`, `NotificationStepWorker` (attentes des parcours confiées au planificateur), `NotificationHealthCheck` ; routes `/api/v1/notification/*` |
+| `lyxal_notification` | toujours | `NotificationModule` (son installation crée la planification horaire `notification-purge` du planificateur), `NotificationConsumer` (événements `auth.*`), `NotificationEmailWorker` (envoi par les intégrations, identifiants lus dans `lyxal_secrets` ; avec les liens de désabonnement), `NotificationBroadcastWorker`, `NotificationStepWorker` (attentes des parcours confiées au planificateur), `NotificationHealthCheck` ; routes `/api/v1/notification/*` (désabonnement, aperçu, retours des fournisseurs, essai d'une intégration) |
 | `lyxal_storage` | toujours | `StorageModule`, `StorageCleanupWorker` (si un support est configuré), `StorageHealthCheck` ; supports disque et S3 ; envoi reprenable |
 | `lyxal_secrets` | toujours | `SecretsModule`, `SecretsMaintenanceWorker` (purge, rescellement), `SecretsHealthCheck` ; trousseau maître du coffre-fort ; `SecretsClient` pour les modules hébergés |
 | `lyxal_scheduler` | toujours | `SchedulerModule`, `SchedulerLeaderWorker` (planificateur élu par le bail `leader` du runtime), un `SchedulerExecutorWorker` par file (enregistré après l'installation, une fois les files connues), `SchedulerHealthCheck` ; registre des handlers ouvert aux modules hébergés (`SchedulerHost::handlers`, aucun inscrit pour l'instant) |
@@ -80,7 +80,6 @@ du code Rust, déclarer son implémentation et ses services dans `src/modules/` 
 | `secrets` | `master_key` (facultative, variable d'environnement seulement), `master_key_id`, `previous_master_key` (pendant une rotation, variable d'environnement seulement), `previous_master_key_id` |
 | `scheduler` | `workers` (places de chaque exécuteur de file sur ce nœud, 1 à 64, 4 par défaut) |
 | `auth` | `public_url` (facultative : adresse publique de l'interface, pour les liens des messages et l'origine des passkeys), `passkey_rp_id` (facultatif : domaine des passkeys, défaut : hôte de `public_url`) |
-| `notification.smtp` | `host`, `port`, `security` (`tls`, `starttls`, `local_plain`), `username`, `password`, `from_address`, `from_name`, `timeout_seconds` (section facultative) |
 | `notification` | `public_url` (facultative : adresse publique de l'hôte, qui active les liens de désabonnement en un clic avec la clé applicative) |
 | `storage` | `disk.root` (facultatif : dossier du support de fichiers `default`), `s3.<nom>` (facultatif : `endpoint`, `region`, `bucket`, `access_key_id`, `secret_access_key` par variable d'environnement seulement, `path_style`, `allow_http`), `antivirus` (facultatif : `address` ou `socket`, `timeout_seconds`), `idle_timeout_seconds` (délai d'inactivité d'un envoi ou d'un téléchargement, 5 à 600, 60 par défaut) |
 
@@ -111,21 +110,26 @@ est désactivée, les approbations attendent en file et la sonde de santé du pi
 dégradée. Le test `tests/publication.rs` (exécutable séparé, il fournit la clé applicative par
 variable d'environnement) la vérifie de bout en bout.
 
-Les notifications (`lyxal_notification`) demandent la clé applicative de l'hôte et un relais
-SMTP. La clé AES-256 (32 octets en Base64 canonique, 44 caractères) ne figure dans aucun
-fichier : `LYXAL__CRYPTO__APPLICATION_KEY`, lue par `lyxal_crypto::EnvironmentKeyProvider`, avec
-son identifiant `LYXAL__CRYPTO__APPLICATION_KEY_ID` (ex. `app-2026`, inscrit dans chaque
-enveloppe `enc:v2`). Le relais : `LYXAL__NOTIFICATION__SMTP__HOST`, `__PORT`, `__SECURITY`,
-`__FROM_ADDRESS`, et si besoin `__USERNAME` / `__PASSWORD` (variable d'environnement seulement).
-`local_plain` (sans chiffrement) n'est accepté que pour un relais de la boucle locale. Sans clé
-ou sans relais, aucun e-mail n'est envoyé : les abonnements aux événements `auth.*` restent
-suspendus (les événements attendent en file) et la sonde du module est dégradée. Les diffusions
-(sujet ou tous les abonnés) sont découpées en déclenchements par le worker des diffusions dans
-tous les cas. Les attentes et regroupements des parcours sont confiés à `lyxal_scheduler` par le
-worker d'étapes (exécutions différées de la tâche `notification.run_resume`, exécutées par
-l'exécuteur de la file `default`) ; la purge est la planification horaire `notification-purge`
-(tâche `notification.purge`), créée à l'installation du module : `lyxal_scheduler` est installé
-avant `lyxal_notification` (dépendance du manifeste).
+Les notifications (`lyxal_notification`) envoient par des **intégrations** (fournisseur d'un
+canal pour une organisation, ou pour l'installation en repli : SMTP, Brevo, Mailgun, Postmark,
+Resend), dont les identifiants sont rangés dans le coffre-fort `lyxal_secrets`. L'hôte n'a aucun
+réglage d'envoi ; il demande la clé applicative (secrets scellés des messages) et la clé
+maîtresse du coffre-fort (lecture des identifiants). La clé applicative AES-256 (32 octets en
+Base64 canonique, 44 caractères) ne figure dans aucun fichier : `LYXAL__CRYPTO__APPLICATION_KEY`,
+lue par `lyxal_crypto::EnvironmentKeyProvider`, avec son identifiant
+`LYXAL__CRYPTO__APPLICATION_KEY_ID` (ex. `app-2026`, inscrit dans chaque enveloppe `enc:v2`).
+Sans l'une des deux clés, aucun e-mail n'est envoyé : les abonnements aux événements `auth.*`
+restent suspendus (les événements attendent en file) et la sonde du module est dégradée. Une
+installation neuve n'envoie aucun e-mail tant qu'un administrateur de la plateforme n'a pas créé
+l'intégration e-mail de l'installation (marche à suivre : `crates/lyxal_notification/README.md`,
+§ Exploitation) : les e-mails déclenchés entre-temps attendent en file et la sonde est dégradée.
+Les diffusions (sujet ou tous les abonnés) sont découpées en déclenchements par le worker des
+diffusions dans tous les cas. Les attentes et regroupements des parcours sont confiés à
+`lyxal_scheduler` par le worker d'étapes (exécutions différées de la tâche
+`notification.run_resume`, exécutées par l'exécuteur de la file `default`) ; la purge est la
+planification horaire `notification-purge` (tâche `notification.purge`), créée à l'installation
+du module : `lyxal_secrets` et `lyxal_scheduler` sont installés avant `lyxal_notification`
+(dépendances du manifeste).
 
 Liens de désabonnement en un clic : avec la clé applicative et
 `LYXAL__NOTIFICATION__PUBLIC_URL` (adresse publique de l'hôte, `https://…`), chaque e-mail non
@@ -417,6 +421,20 @@ constant avant toute lecture de la base ; réponses `Cache-Control: no-store`) :
 Liens non configurés : `404`. Le débit de ces routes est borné par la limite de concurrence de
 l'hôte (aucune lecture de la base pour un jeton refusé).
 
+Retours des fournisseurs (`/api/v1/notification`, sans session ; adresse à régler chez le
+fournisseur, une par intégration ; réponses sans corps ni détail, `Cache-Control: no-store`) :
+
+| Route | Réponse |
+| :--- | :--- |
+| `POST /webhooks/{intégration}` | `{intégration}` : clé de l'enregistrement de l'intégration (`notification_integration:<clé>`). Corps de 256 Kio au plus. Vérification par le secret des retours de l'intégration, lu dans `lyxal_secrets` : Mailgun (HMAC-SHA256 de l'horodatage et du jeton), Resend (en-têtes `svix-*`, HMAC-SHA256), Postmark et Brevo (identifiants `Authorization: Basic` comparés en temps constant) ; horodatage signé à moins de 5 minutes. `200` : retour enregistré, déjà connu (dédoublonné) ou ignoré (ouverture, clic) ; `400` corps illisible ; `401` signature, identifiants ou horodatage refusés ; `404` intégration inconnue ou sans secret des retours ; `413` corps trop volumineux ; `503` secret illisible, coffre-fort sans clé maîtresse ou base indisponible (le fournisseur réessaie) |
+
+Essai d'une intégration (`/api/v1/notification`, jeton d'accès `Authorization: Bearer` ; session
+au nom de l'appelant) :
+
+| Route | Réponse |
+| :--- | :--- |
+| `POST /integrations/{intégration}/test` | corps `{ to }` (4 Kio au plus) ; droit de gestion de la portée de l'intégration exigé par `fn::notification_integration_test` (autre organisation : `NOTIFICATION_INTEGRATION_NOT_FOUND`) ; un e-mail d'essai part par le vrai fournisseur ; `200` et `{ accepted, code }` (code `NOTIFICATION_*` d'un refus, jamais de secret), issue notée sur l'intégration (`last_test`) ; coffre-fort sans clé maîtresse : `503` (`NOTIFICATION_CONFIGURATION_INVALID`) ; sans jeton : `401` |
+
 Aperçu d'une étape de parcours (`/api/v1/notification`, jeton d'accès `Authorization: Bearer` ;
 session SurrealDB au nom de l'appelant ; réponses `Cache-Control: no-store`) :
 
@@ -485,5 +503,10 @@ absence des routes du moteur. `tests/notification_http.rs` parcourt les routes d
 page pour un navigateur, jeton modifié ou absent (`400`), abonné supprimé (`400`), liens non
 configurés (`404`). `tests/notification_preview_http.rs` parcourt la route d'aperçu (rendu au nom
 de l'appelant sans écriture, droits, corps refusé, `no-store`) et vérifie la planification de la
-purge créée par l'installation.
+purge créée par l'installation. `tests/notification_webhooks_http.rs` parcourt les routes des
+retours (signatures Mailgun et Resend, identifiants Postmark et Brevo, signature fausse,
+horodatage trop ancien, rejeu dédoublonné, corps trop grand, intégration inconnue ; rejet
+définitif qui supprime l'adresse) et d'essai (droits, faux fournisseur local, issue notée) ;
+`tests/it/startup.rs` démarre l'hôte sans aucun réglage d'envoi (sonde des notifications
+dégradée).
 `scripts/ci/ci_local.sh` rejoue la CI complète.

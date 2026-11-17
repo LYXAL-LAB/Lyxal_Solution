@@ -488,3 +488,28 @@ fn scheduler_workers_are_read_and_bounded() {
         assert!(error.to_string().contains("scheduler.workers"), "{error}");
     }
 }
+
+#[test]
+fn the_host_smtp_relay_setting_no_longer_exists() {
+    // D5 : le relais SMTP est une intégration de lyxal_notification, identifiants dans
+    // lyxal_secrets ; l'ancien réglage de l'hôte est refusé comme toute clé inconnue
+    let directory = tempfile::tempdir().expect("tempdir");
+    write_config(
+        directory.path(),
+        "\n[notification]\npublic_url = \"https://lyxal.test/\"\n",
+    );
+    let refused = AppConfig::load_with_environment(
+        directory.path(),
+        variables(&[("LYXAL__NOTIFICATION__SMTP__HOST", "smtp.exemple.fr")]),
+    );
+    assert!(
+        refused.is_err(),
+        "variable LYXAL__NOTIFICATION__SMTP__* refusée"
+    );
+    let config = AppConfig::load_with_environment(directory.path(), variables(&[]))
+        .expect("configuration sans relais");
+    assert_eq!(
+        config.notification.public_url.as_deref(),
+        Some("https://lyxal.test/")
+    );
+}

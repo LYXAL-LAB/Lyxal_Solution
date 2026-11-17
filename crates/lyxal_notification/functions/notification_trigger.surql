@@ -19,8 +19,6 @@ DEFINE FUNCTION OVERWRITE fn::notification_settings_effective($params: object) -
         (SELECT * FROM ONLY notification_settings WHERE scope_key = <string> record::id($params.tenant) LIMIT 1) ?? {}
     };
     RETURN {
-        from_name: $own.from_name ?? $base.from_name,
-        reply_to: $own.reply_to ?? $base.reply_to,
         timezone: $own.timezone ?? $base.timezone,
         max_attempts: $own.max_attempts ?? $base.max_attempts ?? 8,
         retention_days_runs: $own.retention_days_runs ?? $base.retention_days_runs ?? 90,

@@ -189,6 +189,7 @@ DEFINE FIELD OVERWRITE next_retry_at ON TABLE notification_job TYPE datetime DEF
 DEFINE FIELD OVERWRITE locked_until ON TABLE notification_job TYPE option<datetime> COMMENT "Fin de réservation";
 DEFINE FIELD OVERWRITE claim_token ON TABLE notification_job TYPE option<string> COMMENT "Jeton de réservation (UUID v7)";
 DEFINE FIELD OVERWRITE worker_id ON TABLE notification_job TYPE option<string> COMMENT "Worker réservataire";
+DEFINE FIELD OVERWRITE integration ON TABLE notification_job TYPE option<record<notification_integration>> REFERENCE ON DELETE UNSET COMMENT "Intégration de la dernière tentative (bascule D3 : la suivante sert après un échec temporaire)";
 
 DEFINE FIELD OVERWRITE skip_reason ON TABLE notification_job TYPE option<string> COMMENT "Motif d'une étape écartée (preference:<niveau>, no_address:<canal>, condition, override, throttled, test, canceled)";
 

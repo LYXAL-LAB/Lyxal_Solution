@@ -182,43 +182,16 @@ impl Default for SchedulerConfig {
     }
 }
 
-/// Notifications sortantes : relais SMTP unique de l'installation (avant `lyxal_secrets`). Sans
-/// relais ou sans clé applicative, aucun e-mail n'est envoyé (abonnements suspendus, sonde
-/// « dégradé »). `public_url` (`LYXAL__NOTIFICATION__PUBLIC_URL`) : adresse publique de l'hôte,
-/// qui active les liens de désabonnement en un clic (avec la clé applicative) ; sans elle, aucun
-/// e-mail ne porte de lien ni d'en-tête `List-Unsubscribe`.
+/// Notifications sortantes. Les fournisseurs d'envoi sont des intégrations de `lyxal_notification`
+/// (identifiants dans `lyxal_secrets`), plus un réglage de l'hôte. `public_url`
+/// (`LYXAL__NOTIFICATION__PUBLIC_URL`) : adresse publique de l'hôte, qui active les liens de
+/// désabonnement en un clic (avec la clé applicative) ; sans elle, aucun e-mail ne porte de lien
+/// ni d'en-tête `List-Unsubscribe`.
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NotificationConfig {
     #[serde(default)]
-    pub smtp: Option<SmtpConfig>,
-    #[serde(default)]
     pub public_url: Option<String>,
-}
-
-/// Relais SMTP : `LYXAL__NOTIFICATION__SMTP__HOST`, `__PORT`, `__SECURITY` (`tls`, `starttls`,
-/// ou `local_plain` pour un relais de la boucle locale), `__USERNAME`, `__PASSWORD` (variable
-/// d'environnement seulement), `__FROM_ADDRESS`, `__FROM_NAME`, `__TIMEOUT_SECONDS` (délai par
-/// commande, 1 à 30 s).
-#[derive(Clone, Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct SmtpConfig {
-    pub host: String,
-    pub port: u16,
-    pub security: String,
-    #[serde(default)]
-    pub username: Option<String>,
-    #[serde(default)]
-    pub password: Option<SecretPassword>,
-    pub from_address: String,
-    #[serde(default)]
-    pub from_name: Option<String>,
-    #[serde(default = "default_smtp_timeout")]
-    pub timeout_seconds: u64,
-}
-
-fn default_smtp_timeout() -> u64 {
-    30
 }
 
 #[derive(Clone, Debug, Deserialize)]

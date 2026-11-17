@@ -10,8 +10,8 @@ use lyxal_notification::models::{
 };
 use lyxal_notification::{
     ensure_purge_schedule, EmailWorkerSettings, NotificationEmailWorker, NotificationModule,
-    NotificationPreview, NotificationStepWorker, NotificationStore, SecretCodec, SmtpSecurity,
-    SmtpSettings, SmtpTransport, StepWorkerSettings, PURGE_SCHEDULE,
+    NotificationPreview, NotificationStepWorker, NotificationStore, SecretCodec,
+    StepWorkerSettings, PURGE_SCHEDULE,
 };
 use lyxal_runtime::lock::{NodeId, SurrealLeaderLeaseManager};
 use lyxal_runtime::worker::{CancellationToken, LyxalWorker, WorkerContext};
@@ -29,7 +29,7 @@ use tokio::task::JoinHandle;
 
 use crate::flow::decoded;
 use crate::smtp_server::TestSmtpServer;
-use crate::support::{crypto, installed_client};
+use crate::support::{crypto, dispatcher, installed_client, smtp_relay, vault};
 
 /// Worker conduit comme par le runtime : son jeton d'annulation et sa tâche.
 struct Running {
@@ -58,7 +58,7 @@ struct Engine {
 }
 
 impl Engine {
-    fn start(client: &Surreal<Any>, server: &TestSmtpServer) -> Self {
+    async fn start(client: &Surreal<Any>, server: &TestSmtpServer) -> Self {
         let engine = SchedulerEngine::new(
             SchedulerStore::new(client.clone()),
             HandlerRegistry::new(),
@@ -98,21 +98,12 @@ impl Engine {
             },
         )
         .expect("worker d'étapes");
-        let transport = SmtpTransport::new(SmtpSettings {
-            host: "127.0.0.1".to_string(),
-            port: server.port,
-            security: SmtpSecurity::LocalPlain,
-            username: None,
-            password: None,
-            from_address: "noreply@lyxal.test".to_string(),
-            from_name: Some("Lyxal".to_string()),
-            timeout: Duration::from_secs(5),
-        })
-        .expect("transport");
+        let vault = vault(client);
+        smtp_relay(client, &vault, server.port).await;
         let email = NotificationEmailWorker::new(
             store,
             SecretCodec::new(crypto()),
-            Arc::new(transport),
+            dispatcher(&vault, None),
             EmailWorkerSettings {
                 poll_interval: Duration::from_millis(100),
                 ..EmailWorkerSettings::default()
@@ -279,7 +270,7 @@ async fn a_delay_is_really_resumed_by_the_scheduler_engine() {
     )
     .await;
     let server = TestSmtpServer::start().await;
-    let engine = Engine::start(&client, &server);
+    let engine = Engine::start(&client, &server).await;
     let store = NotificationStore::new(client.clone());
     trigger_now(&store, trigger("suite", "suite-1", "claire@exemple.fr")).await;
     wait_messages(&server, 1, Duration::from_secs(10)).await;
@@ -324,7 +315,7 @@ async fn three_triggers_are_digested_into_one_email() {
     )
     .await;
     let server = TestSmtpServer::start().await;
-    let engine = Engine::start(&client, &server);
+    let engine = Engine::start(&client, &server).await;
     let store = NotificationStore::new(client.clone());
     for n in 1..=3 {
         let mut params = trigger("lot", &format!("lot-{n}"), "claire@exemple.fr");
@@ -373,7 +364,7 @@ async fn a_run_canceled_during_its_wait_sends_nothing() {
     )
     .await;
     let server = TestSmtpServer::start().await;
-    let engine = Engine::start(&client, &server);
+    let engine = Engine::start(&client, &server).await;
     let store = NotificationStore::new(client.clone());
     trigger_now(&store, trigger("rappel", "rappel-1", "claire@exemple.fr")).await;
     // Attente confiée au planificateur, puis annulée
@@ -440,7 +431,7 @@ async fn the_purge_runs_through_the_scheduler_function_executor() {
         .await
         .expect("exécution immédiate");
     let server = TestSmtpServer::start().await;
-    let engine = Engine::start(&client, &server);
+    let engine = Engine::start(&client, &server).await;
     let deadline = tokio::time::Instant::now() + Duration::from_secs(10);
     let id: RecordId = run.id;
     loop {

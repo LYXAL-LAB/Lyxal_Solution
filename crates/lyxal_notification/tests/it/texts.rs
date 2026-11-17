@@ -121,6 +121,13 @@ async fn system_emails_render_in_french_and_english() {
         .check()
         .expect("déclenchements acceptés");
 
+    // Une intégration de l'installation : sans elle, rien n'est réservé (l'envoi attend en file)
+    client
+        .query(r#"CREATE notification_integration:relais CONTENT { key: "relais", channel: "email", provider: "smtp", name: "Relais", primary: true, settings: { from_address: "noreply@lyxal.test", host: "127.0.0.1", port: 2525, security: "local_plain" }, credentials_path: "notification/smtp/relais" }"#)
+        .await
+        .expect("intégration")
+        .check()
+        .expect("intégration acceptée");
     let jobs = NotificationStore::new(client)
         .job_claim(JobClaimParams {
             worker_id: "test".to_string(),

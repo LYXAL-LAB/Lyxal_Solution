@@ -11,6 +11,7 @@
 
 -- préparation: organisation, sessions, parcours et gabarits
 {
+    CREATE notification_integration:relais CONTENT { key: "relais", channel: "email", provider: "smtp", name: "Relais", primary: true, settings: { from_address: "noreply@lyxal.test", host: "127.0.0.1", port: 2525, security: "local_plain" }, credentials_path: "notification/smtp/relais" };
     CREATE auth_organization:alpha CONTENT { slug: "alpha", name: "Alpha BTP" };
     FOR $n IN ["envoyeur", "worker", "lecteur", "membre"] {
         LET $identity = type::record("auth_identity", $n);
