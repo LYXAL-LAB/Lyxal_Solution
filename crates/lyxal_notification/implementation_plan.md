@@ -8,7 +8,7 @@ ramène la feuille de route aux évolutions V2 / V3. Aucune ligne de code avant 
 
 ## 1. Décisions du CTO
 
-À valider par le CTO.
+Décisions H1 à H4 **validées par le CTO** le 17 novembre 2026, telles que proposées ci-dessous.
 
 | N° | Question | Proposition |
 | :- | :--- | :--- |
