@@ -25,6 +25,10 @@ pub enum NotificationError {
     /// Jeton de désabonnement illisible, altéré ou d'une autre clé.
     #[error("lien de désabonnement invalide")]
     Unsubscribe,
+    /// Refus décidé par un service Rust du module (code `NOTIFICATION_*` de la master data,
+    /// ex. `NOTIFICATION_FEED_STREAM_LIMIT`), sans détail.
+    #[error("refusé : {0}")]
+    Refused(&'static str),
 }
 
 impl NotificationError {
@@ -36,6 +40,7 @@ impl NotificationError {
             Self::Render(_) => "NOTIFICATION_RENDER_FAILED".to_string(),
             Self::Configuration(_) => "NOTIFICATION_CONFIGURATION_INVALID".to_string(),
             Self::Unsubscribe => "NOTIFICATION_UNSUBSCRIBE_INVALID".to_string(),
+            Self::Refused(code) => (*code).to_string(),
         }
     }
 

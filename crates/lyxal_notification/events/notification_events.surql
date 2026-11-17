@@ -283,3 +283,48 @@ THEN {
     });
     IF !$published.ok { THROW $published.error.code; };
 };
+
+-- ----------------------------------------------------------------------------
+-- Fil dans l'application (identifiants seulement, jamais le titre, le texte ni les données)
+-- ----------------------------------------------------------------------------
+
+DEFINE EVENT OVERWRITE notification_inbox_delivered_event ON TABLE notification_inbox
+WHEN $event = "CREATE"
+THEN {
+    LET $published = fn::event_publish({
+        event_id: rand::uuid::v7(),
+        event_type: "notification.inbox.delivered",
+        producer: "lyxal_notification",
+        source: $after.id,
+        payload: {
+            item_id: <string> $after.id,
+            subscriber_id: <string> $after.subscriber,
+            workflow_id: <string> $after.workflow
+        },
+        metadata: {}
+    });
+    IF !$published.ok { THROW $published.error.code; };
+};
+
+-- Bouton « fait » ou « annulé » : un module métier peut y réagir (ex. « Valider le devis »)
+DEFINE EVENT OVERWRITE notification_inbox_action_event ON TABLE notification_inbox
+WHEN $event = "UPDATE" AND $before.action_status != $after.action_status
+THEN {
+    FOR $kind IN ["primary", "secondary"] {
+        IF $after.action_status[$kind] != $before.action_status[$kind] AND $after.action_status[$kind] IN ["done", "reverted"] {
+            LET $published = fn::event_publish({
+                event_id: rand::uuid::v7(),
+                event_type: "notification.inbox.action",
+                producer: "lyxal_notification",
+                source: $after.id,
+                payload: {
+                    item_id: <string> $after.id,
+                    action: $kind,
+                    status: $after.action_status[$kind]
+                },
+                metadata: {}
+            });
+            IF !$published.ok { THROW $published.error.code; };
+        };
+    };
+};

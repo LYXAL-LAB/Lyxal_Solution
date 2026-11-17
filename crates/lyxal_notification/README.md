@@ -3,8 +3,9 @@
 Module du Noyau Technique de Lyxal OS : **notifications sortantes**. Canaux **e-mail** (assez
 complet pour les messages de `lyxal_auth` : vérification d'adresse, récupération, invitation,
 alertes de sécurité), **SMS** (Brevo, Twilio, Vonage), **messageries d'équipe** (Slack,
-Microsoft Teams, Discord, Mattermost, Google Chat, Telegram) et **appel signé d'une adresse
-web**, pour les parcours des modules métiers ; destinataires (**abonnés**, leurs **adresses**
+Microsoft Teams, Discord, Mattermost, Google Chat, Telegram), **appel signé d'une adresse
+web** et **fil dans l'application** (la « cloche », en temps réel par un flux de l'hôte), pour
+les parcours des modules métiers ; destinataires (**abonnés**, leurs **adresses**
 de messagerie et web, **sujets**),
 **catégories**, **préférences** à tous les niveaux, **heures calmes**, **désabonnement en un
 clic**, **diffusion** à un sujet ou à tous, et **parcours à étapes** : attente, regroupement
@@ -26,21 +27,23 @@ Postal ([`MODELE_SOURCES.md`](MODELE_SOURCES.md)) ; lots suivants dans [`ROADMAP
 
 | Table | Contenu |
 | :--- | :--- |
-| `notification_settings` | réglages de l'installation, surchargés par organisation : fuseau horaire par défaut des abonnés, tentatives au plus, durées de conservation, `max_wait_days` (durée maximale d'une attente ou d'une fenêtre, 30 jours par défaut, 1 à 366) ; `allowed_hosts` (installation seulement : hôtes autorisés des adresses web et de Mattermost, 100 au plus ; vide : tout hôte public) |
+| `notification_settings` | réglages de l'installation, surchargés par organisation : fuseau horaire par défaut des abonnés, tentatives au plus, durées de conservation, `retention_days_inbox` (conservation des messages du fil, 90 jours par défaut, 1 à 365),
+`max_wait_days` (durée maximale d'une attente ou d'une fenêtre, 30 jours par défaut, 1 à 366) ; `allowed_hosts` (installation seulement : hôtes autorisés des adresses web et de Mattermost, 100 au plus ; vide : tout hôte public) |
 | `notification_subscriber` | abonné : `subscriber_id` stable choisi par l'application (unique par portée), compte `lyxal_auth` lié facultatif (`identity`, supprimé avec lui), e-mail, téléphone (E.164), prénom, nom, langue, fuseau, `data` (8 Kio) ; clé d'enregistrement aléatoire |
 | `notification_endpoint` | adresse d'un abonné pour la messagerie (`chat` : `slack`, `teams`, `discord`, `mattermost`, `google_chat`, `telegram`) ou l'adresse web (`webhook`) : nom, **hôte** (lisible), adresse **scellée** (`url`, `enc:v2`, lisible par le worker seulement), identifiant du salon Telegram (`chat_id`), clé de signature scellée d'une adresse web (`signing_secret`, worker seulement) et sa date, active, dernier résultat (`last_result`) ; 10 au plus par abonné et par canal ; supprimée avec l'abonné et l'organisation |
 | `notification_topic`, `notification_topic_member` | sujets (clé unique par portée) et abonnements, avec condition `lyxal_core` facultative ; supprimés avec le sujet ou l'abonné |
 | `notification_category` | catégorie de désabonnement des parcours ; celles de l'installation servent à toutes les organisations |
 | `notification_preference` | choix par canal (`email`, `sms`, `chat`, `push`, `in_app`, `webhook` : vrai, faux ou absent) d'un niveau : `tenant_workflow`, `subscriber_global` (avec les heures calmes), `subscriber_category`, `subscriber_workflow` ; unique par cible |
-| `notification_workflow` | parcours : clé unique dans sa portée, événement déclencheur (`lyxal_event`), état `draft` / `active` / `inactive` (jamais supprimé), `critical`, `sensitive`, `category`, `preferences` (`{ channels, enforced }` : défauts et canaux imposés), schéma des variables (`lyxal_core`), étapes typées exécutées dans l'ordre (§1.3, 20 au plus) |
+| `notification_workflow` | parcours : clé unique dans sa portée, événement déclencheur (`lyxal_event`), état `draft` / `active` / `inactive` (jamais supprimé), `critical`, `sensitive` (sans étape `in_app`), `severity` (`high`, `medium`, `low`, `none` : gravité copiée sur les messages du fil), `category`, `preferences` (`{ channels, enforced }` : défauts et canaux imposés), schéma des variables (`lyxal_core`), étapes typées exécutées dans l'ordre (§1.3, 20 au plus) |
 | `notification_layout` | mise en page HTML et texte contenant `{{ content }}` |
-| `notification_template` | gabarit d'une étape, en une seule version : e-mail : objet, HTML, texte, mise en page ; SMS, messagerie, adresse web : texte seul et objet (titre) facultatif (décision E5) ; `keys`, les clés `lyxal_i18n` de ses phrases |
+| `notification_template` | gabarit d'une étape, en une seule version : e-mail : objet, HTML, texte, mise en page ; SMS, messagerie, adresse web : texte seul et objet (titre) facultatif (décision E5) ; fil (`in_app`) : titre (objet) et texte requis, `avatar`, `redirect`, `actions` (deux boutons au plus `{ kind, label, url }`), `data` (`{ clé : gabarit }`) ; `keys`, les clés `lyxal_i18n` de ses phrases |
 | `notification_broadcast` | diffusion d'un parcours à un sujet ou à tous les abonnés d'une portée, idempotente par (portée, clé) : auteur exclu, curseur, compteurs, réservation du worker |
 | `notification_run` | déclenchement pour un abonné, **idempotent** par (portée, clé) : abonné (retiré s'il est supprimé), adresse copiée au déclenchement (`address`), diffusion d'origine, auteur, étape courante (`cursor`), surcharges (`overrides`), envoi de test (`test`), regroupement porté ou rejoint (`digest`) ; états `pending`, `waiting`, `completed`, `failed`, `skipped`, `canceled`, `merged` ; secret scellé effacé dès la fin de ses étapes, à l'annulation ou à son expiration |
 | `notification_job` | étape engagée (une par étape et par déclenchement, index unique) : type de l'étape, file d'envoi réservée par `locked_until` et `claim_token` (canaux), intégration de la dernière tentative (`integration`, bascule D3), fin d'une attente (`wait_until`) et exécution différée du planificateur (`scheduler_run`), tentatives, dernière erreur, motif d'une étape écartée (`preference:<niveau>`, `no_address:<canal>`, `condition`, `override`, `throttled`, `test`, `canceled`) ; états `queued`, `running`, `waiting`, `completed`, `failed`, `skipped`, `canceled`, `merged` |
 | `notification_digest` | regroupement : portée, parcours, abonné, étape, clé de regroupement, déclenchement porteur, fin de la fenêtre, nombre et données des événements (100 premiers), état `open` / `closed` ; un seul ouvert par clé (index unique sur `open_slot`) |
 | `notification_rate_limit` | compteur de limitation d'une fenêtre fixe (identifiant : portée, parcours, abonné, étape, clé, début de la fenêtre), date de purge |
-| `notification_message` | message envoyé : canal, destinataire (adresse e-mail, téléphone E.164, ou **hôte** de l'adresse de messagerie ou web, jamais l'adresse complète), adresse servie (`endpoint`), nombre de parties d'un SMS (`parts`), intégration, fournisseur, identifiant chez le fournisseur (`provider_message_id`, unique par intégration), état `sent` puis, d'après les retours, `delivered`, `bounced`, `complained` ; **aucun corps**, objet absent pour un parcours sensible |
+| `notification_inbox` | message du fil d'une personne (§1.6) : portée, abonné `auth:<identité>`, compte (`identity`, base des droits), déclenchement, étape et parcours d'origine, étiquettes et gravité copiées du parcours, titre, texte, avatar, lien, boutons, `data` (**contenu en lecture seule**) ; états `seen_at`, `read_at`, `archived_at`, `snoozed_until`, état des boutons (`action_status`) ; `purge_after` (`retention_days_inbox`) ; un message au plus par étape (index unique) ; supprimé avec l'abonné, son compte et son organisation |
+| `notification_message` | message envoyé : canal, destinataire (adresse e-mail, téléphone E.164, **hôte** de l'adresse de messagerie ou web, jamais l'adresse complète, ou identifiant de l'abonné pour le fil : trace sans contenu), adresse servie (`endpoint`), nombre de parties d'un SMS (`parts`), intégration, fournisseur, identifiant chez le fournisseur (`provider_message_id`, unique par intégration), état `sent` puis, d'après les retours, `delivered`, `bounced`, `complained` ; **aucun corps**, objet absent pour un parcours sensible |
 | `notification_integration` | intégration : portée (organisation ou installation), clé unique dans la portée, canal (`email`, `sms`, `chat`, `webhook`), fournisseur propre au canal (e-mail : `smtp`, `brevo`, `mailgun`, `postmark`, `resend` ; SMS : `brevo`, `twilio`, `vonage` ; messagerie : `slack`, `teams`, `discord`, `mattermost`, `google_chat`, `telegram` ; adresse web : `webhook`), nom, active, principale (une au plus par portée et canal, index unique sur `primary_slot`), priorité (plus petite d'abord), condition `lyxal_core` facultative, réglages non secrets (e-mail : `from_address`, `from_name`, `reply_to` ; SMTP : `host`, `port`, `security` ; Mailgun : `domain`, `region` `us` / `eu` ; SMS : `sender`, numéro E.164 ou nom court de 11 caractères), **chemin** du secret des identifiants (`credentials_path` : e-mail, SMS, Telegram) et du secret des retours (`webhook_path` : e-mail par API, SMS) dans `lyxal_secrets`, dernier essai (`last_test`) ; jamais une valeur secrète |
 | `notification_provider_event` | retour normalisé d'un fournisseur : intégration, identifiant de l'événement chez le fournisseur (unique par intégration), type (`delivered`, `bounced`, `soft_bounced`, `complained`), message lié, adresse du message, date ; purgé selon `retention_days_log` ; aucun corps |
 | `notification_delivery_log` | journal en ajout seul (tentative, issue, code), jamais de secret |
@@ -147,7 +150,7 @@ par `fn::notification_step_check` (moteur de `lyxal_core`, détail par étape et
 
 | Type | Champs |
 | :--- | :--- |
-| `email`, `sms`, `chat`, `webhook` | canal (e-mail ; SMS au téléphone de l'abonné ; toutes ses adresses de messagerie actives ; toutes ses adresses web actives) |
+| `email`, `sms`, `chat`, `webhook`, `in_app` | canal (e-mail ; SMS au téléphone de l'abonné ; toutes ses adresses de messagerie actives ; toutes ses adresses web actives ; fil de l'abonné lié à un compte, §1.6) |
 | `delay` | `amount` + `unit` (`seconds` … `weeks`), ou `until` : chemin d'une date RFC 3339 dans les données (ex. `payload.rendez_vous`), avec `offset` facultatif (`{ amount: -1, unit: "days" }`) |
 | `digest` | `window` (`{ amount, unit }`), `group_by` (chemin facultatif de la clé de regroupement), `lookback` facultatif |
 | `throttle` | `limit` (1 à 1000), `window`, `group_by` (chemin facultatif) |
@@ -192,8 +195,12 @@ aussi, un regroupement porté est refermé sans envoi ; un envoi déjà parti n'
 l'exécution différée du planificateur se termine alors sans rien faire. Envoi de test (C7,
 `fn::notification_test_send`, `notification.manage`) : un abonné, parcours quel que soit son
 état, attentes, regroupements et limitations ignorés (`skipped`, motif `test`), liste de
-suppression et préférences appliquées. « Sauter si déjà lu » (C6) arrive avec le fil in-app :
-les conditions lisent déjà l'état des étapes précédentes.
+suppression et préférences appliquées. « Sauter si déjà lu » (C6, décision F7) : pour une étape
+`in_app` passée, le contexte des conditions porte `steps.<clé>.seen` et `steps.<clé>.read`
+(message du fil vu, lu ; faux sans message), lus quand l'étape suivante est engagée. Ex. : un
+e-mail 6 h plus tard seulement si le message du fil n'est pas lu : `[{ key: "fil", type:
+"in_app" }, { key: "pause", type: "delay", amount: 6, unit: "hours" }, { key: "mail", type:
+"email", condition: { field: "steps.fil.read", op: "eq", value: false } }]`.
 
 Tâches de `lyxal_scheduler` déclarées par le seed du module (exécuteur `function`, portée
 `installation`, file `default`, permission propre `notification.worker`) :
@@ -329,6 +336,39 @@ secrète).
   supprimées ; sinon l'étape dont l'adresse (e-mail ou numéro) est supprimée est écartée
   (`suppressed:<motif>`).
 
+### 1.6. Fil dans l'application (lot 5)
+
+* **Destinataire** (F2) : l'abonné `auth:<identité>` lié à un compte `lyxal_auth` ; un invité sans
+  compte (`email:…`) n'a pas de fil (étape écartée, `no_address:in_app`). Le fil d'une personne
+  est celui de son abonné dans son **organisation active** (l'installation sans organisation
+  active).
+* **Contenu** (F3) : rendu à l'envoi depuis le gabarit de l'étape (clés `lyxal_i18n`, langue de
+  la personne) : titre, texte (Markdown simple affiché tel quel par la console), avatar, lien de
+  redirection, deux boutons au plus (principal, secondaire : libellé et lien), `data` (textes,
+  8 Kio au plus). Variables échappées (HTML) dans le titre, le texte et les libellés ; jamais le
+  secret du déclenchement (une étape `in_app` d'un parcours `sensitive` est refusée à
+  l'enregistrement, `in_app_sensitive`). Liens : chemin de l'application (`/…`, jamais `//` ni
+  `/\`) ou adresse HTTPS, contrôlés par `lyxal_core` (`fn::notification_link_valid` :
+  `validation_http_url`, `sanitize_safe_redirect`, `security_detect_open_redirect`, sans
+  caractère de contrôle) à l'enregistrement du gabarit (sa partie fixe, avant la première
+  variable) et au rendu (lien rendu, `fn::notification_inbox_deliver`) : `javascript:`, `data:`
+  et tout autre schéma sont refusés ; un lien rendu refusé fait échouer l'étape sans rien
+  écrire.
+* **États** (F4) : vu (ouverture de la cloche), lu (vu aussi), non lu, archivé, supprimé
+  (définitivement), en sommeil de 3 minutes à 90 jours (`NOTIFICATION_SNOOZE_INVALID`) : caché
+  jusqu'à son échéance, puis de nouveau visible, non vu et non lu, **calculé à la lecture** (aucun
+  worker de réveil). Actions groupées par onglet : tout marquer vu, tout marquer lu, archiver
+  tous les lus (`filter: { read: true }`), tout supprimer. Boutons : état `done` ou `reverted`
+  enregistré sur le message (`NOTIFICATION_FEED_ACTION_INVALID` pour un bouton absent).
+* **Compteurs et onglets** (F5) : non vus, non lus, total, calculés à la demande ; onglet =
+  filtre `{ tags, severity, data : { clé : valeur }, archived, read }` ; liste du plus récent au
+  plus ancien, paginée par curseur (identifiants croissants dans le temps).
+* **Temps réel** (F6, K6) : flux SSE de l'hôte (`GET /api/v1/notification/feed/stream`, §5) ; le
+  navigateur ne parle jamais à SurrealDB.
+* **Pas d'heures calmes** pour le fil (F8, décision B5) ; préférence par canal `in_app`
+  appliquée ; conservation `retention_days_inbox` (90 jours par défaut, 1 à 365), purge par la
+  planification `notification-purge`.
+
 ## 2. Droits
 
 | Permission | Portée | Accès |
@@ -354,6 +394,18 @@ Intégrations : lecture `notification.read` (jamais de secret), gestion `notific
 (`secrets.value.read` ; installation : `secrets.installation.manage`) ; choix, retours et issue
 d'un essai : worker ou session système de l'hôte.
 
+Fil (F2) : un message de `notification_inbox` n'est lu et modifié que par **la personne
+elle-même** (`fn::notification_can({ action: "self", tenant, identity })` : compte de la session
+égal au compte de l'abonné, organisation active égale à celle du message), dans les fonctions
+comme dans les `PERMISSIONS` ; un gestionnaire (`notification.read`, `notification.manage`), une
+autre personne, la même personne dans une autre organisation ou une autre organisation n'y
+voient rien et n'y écrivent rien ; un gestionnaire voit l'envoi dans le journal
+(`notification_message`, canal `in_app`, sans titre ni texte). Seul le worker crée un message ;
+titre, texte, liens, boutons, données, abonné, compte et organisation sont en lecture seule
+(seuls les états et l'état des boutons changent) ; le compte de service du worker
+(`notification.worker`, attribué à aucun rôle) le lit aussi (valeurs « vu » et « lu » des
+conditions, F7) et le purge.
+
 ## 3. Fonctions publiques
 
 | Domaine | Fonctions |
@@ -367,12 +419,13 @@ d'un essai : worker ou session système de l'hôte.
 | Parcours | `notification_workflow_create`, `_update` (`category` par clé, `clear_category`, `preferences`, étapes typées), `_get`, `_list`, `_set_status` ; `notification_step_preview` (données de l'aperçu d'une étape, `notification.read`) |
 | Mises en page | `notification_layout_create`, `_update`, `_get`, `_list` |
 | Gabarits | `notification_template_create` (**workflow**, **step_key**, **subject**, **html_body**, **text_body**, `keys`, `layout`), `_update` (champs fournis seulement, `clear_layout`), `_get` |
-| Réglages | `notification_settings_get`, `_set` (`max_wait_days` compris ; expéditeur et adresse de réponse : réglages de l'intégration) |
+| Fil (personne connectée) | `notification_feed_list` (`filter`, `cursor`, `limit`), `_counts` (`filter`), `_mark` (`ids` ou `all` + `filter`, `state` : `seen`, `read`, `unread`, `archived`, `unarchived`), `_snooze` (`id`, `until`), `_unsnooze`, `_delete` (`id`, ou `all` + `filter`), `_action` (`id`, `action`, `status`) ; `notification_inbox_deliver` (worker : message rendu d'une étape `in_app`) |
+| Réglages | `notification_settings_get`, `_set` (`max_wait_days`, `retention_days_inbox` compris ; expéditeur et adresse de réponse : réglages de l'intégration) |
 | Intégrations | `notification_integration_create`, `_update` (champs fournis, réglages remplacés en entier, `clear_condition`, `clear_webhook`), `_get` (par clé ou identifiant), `_list`, `_delete`, `_set_primary`, `_test` (essai : contrôle au nom de l'appelant, D6) ; `_select` (worker : ordre D1 / D3 d'une étape), `_test_record` et `notification_provider_event_record` (hôte) |
 | Adresses de messagerie et web | `notification_endpoint_create` (adresse scellée par l'hôte, contrôlée en clair), `_update` (nom, active, salon Telegram), `_delete`, `_list` (hôte seulement), `_rotate_secret` (nouvelle clé scellée par l'hôte) ; `notification_my_endpoint_create`, `_update`, `_delete`, `_list`, `_rotate_secret` (personne connectée) ; `notification_endpoint_resolve` (hôte : adresse scellée d'un essai) |
 | Liste de suppression | `notification_suppression_add`, `_remove` (`channel` : `email` par défaut ou `sms`), `_list` |
 | Activité | `notification_run_get`, `_list` |
-| File d'envoi (worker) | `notification_job_claim` (`channel` : un worker par canal ; avec l'intégration de l'envoi et, pour la messagerie et l'adresse web, les adresses scellées non encore servies), `_renew`, `_release` (`not_before` : fin des heures calmes), `_complete` (`integration`, `provider_message_id`, `response_code`, `parts`, `endpoints` : issue de chaque adresse servie ; renvoie `messages`), `_fail` (`integration`, classe `recipient_opted_out` en plus, `endpoints`) |
+| File d'envoi (worker) | `notification_job_claim` (`channel` : un worker par canal, `in_app` compris (sans intégration ni secret) ; avec l'intégration de l'envoi et, pour la messagerie et l'adresse web, les adresses scellées non encore servies), `_renew`, `_release` (`not_before` : fin des heures calmes), `_complete` (`integration`, `provider_message_id`, `response_code`, `parts`, `endpoints` : issue de chaque adresse servie ; renvoie `messages`), `_fail` (`integration`, classe `recipient_opted_out` en plus, `endpoints`) |
 | Attentes (worker, planificateur) | `notification_wait_schedule` (paquet de 500 au plus), `notification_run_resume` et `notification_purge` (forme d'appel du planificateur `{ args, run, tenant, scheduled_for, attempt }`) |
 
 Entrées validées et nettoyées par `lyxal_core` ; erreurs `NOTIFICATION_*` (master data
@@ -393,7 +446,9 @@ Fonctions internes (appelées par les précédentes) : `notification_subscriber_
 `notification_sms_segments`, `notification_template_channel_refusal`,
 `notification_endpoint_official_hosts`, `_host_refusal`, `_fields`, `_view`, `_write`, `_find`,
 `_change`, `_payload`, `notification_my_endpoint_change`, `notification_job_endpoints`,
-`notification_job_endpoint_fields`, `notification_job_endpoint_record`.
+`notification_job_endpoint_fields`, `notification_job_endpoint_record` ; fil :
+`notification_link_valid`, `notification_feed_scope`, `_filter_fields`, `_match`, `_view`,
+`_mine`, `_targets`, `notification_template_action_fields`, `_feed_refusal`.
 
 File d'envoi (étapes de canal seulement) : réservation conditionnelle (une étape n'est réservée qu'une fois ; une
 réservation expirée est reprise, sauf après la dernière tentative : échec définitif),
@@ -438,7 +493,11 @@ désabonnement : catégorie ou parcours, canal), `notification.preference.update
 noté par le worker n'est pas une modification) ; `notification.message.delivered`, `.bounced`,
 `.complained` (`message_id`, `run_id`, `integration_id`) : identifiants seulement, jamais
 l'adresse, le téléphone, l'hôte ou l'adresse web, le nom, un chemin de secret ni un réglage.
-`notification.address.suppressed` d'un numéro (canal `sms`) ne porte pas le numéro.
+`notification.address.suppressed` d'un numéro (canal `sms`) ne porte pas le numéro. Fil :
+`notification.inbox.delivered` (`item_id`, `subscriber_id`, `workflow_id`) et
+`notification.inbox.action` (`item_id`, `action`, `status` : bouton « fait » ou « annulé »,
+utile à un module métier qui réagit à « Valider le devis ») ; jamais le titre, le texte ni les
+données.
 
 ## 5. Rust
 
@@ -463,10 +522,15 @@ l'adresse, le téléphone, l'hôte ou l'adresse web, le nom, un chemin de secret
   `call_webhook`, `signature`) ; `ChannelDispatcher` : identifiants lus dans `lyxal_secrets`,
   adresse des retours des SMS, vérification des retours des SMS (`ProviderWebhook::verify_sms`) ;
   `deliver_to_endpoint` : appel d'une adresse (worker et essai de l'hôte).
-* `NotificationChannelWorker` (`TextChannel` : `Sms`, `Chat`, `Webhook`) : même file, mêmes
-  réservations, heures calmes (sauf adresse web) et nouvelles tentatives que l'e-mail
-  (`SendWorkerSettings`) ; `Renderer::render_text` (titre facultatif et texte, sans échappement
-  HTML).
+* `NotificationChannelWorker` (`TextChannel` : `Sms`, `Chat`, `Webhook`, `InApp`) : même file,
+  mêmes réservations, heures calmes (sauf adresse web et fil) et nouvelles tentatives que
+  l'e-mail (`SendWorkerSettings`) ; `Renderer::render_text` (titre facultatif et texte, sans
+  échappement HTML). Fil : `NotificationChannelWorker::in_app` (sans clé ni coffre-fort),
+  `Renderer::render_in_app` (`RenderedInApp` : titre, texte et libellés échappés, liens et
+  données rendus tels quels, jamais de secret) puis `NotificationStore::inbox_deliver` ; un refus
+  de la base (lien rendu refusé) est un échec définitif, une base indisponible laisse expirer la
+  réservation. Appels du fil au nom de la personne : `feed_list`, `feed_counts`, `feed_mark`,
+  `feed_snooze`, `feed_unsnooze`, `feed_delete`, `feed_action` (`models::Feed*`).
 * `NotificationConsumer` (`EventConsumerModule`) et `AuthMessageHandler` : secret illisible,
   charge utile invalide ou parcours absent → lettre morte ; base indisponible → rejoué.
   `SecurityAlertHandler` : alertes de sécurité vers `auth_security_alert`. `auth_subscriber` :
@@ -551,7 +615,18 @@ L'hôte n'a aucun réglage d'envoi : les fournisseurs sont des intégrations. Re
 `POST /api/v1/notification/integrations/{intégration}/test`. Liens de désabonnement :
 clé applicative et `LYXAL__NOTIFICATION__PUBLIC_URL` ; routes de l'hôte
 `GET` / `POST /api/v1/notification/unsubscribe` ; aperçu : `POST /api/v1/notification/preview`
-(jeton d'accès, `notification.read`) (`apps/lyxal-server/README.md`). L'hôte installe
+(jeton d'accès, `notification.read`) ; fil : routes `/api/v1/notification/feed*` et flux SSE
+`GET /api/v1/notification/feed/stream` (`apps/lyxal-server/README.md`). Temps réel (K6, F6) :
+`FeedHub` de l'hôte, une requête `LIVE SELECT` sur `notification_inbox` (session système, vue
+projetée par `fn::notification_feed_view`) tenue par un worker supervisé (`FeedHubWorker`,
+annulation coopérative), rouverte après une erreur, la fin du flux ou sa disparition (contrôlée toutes les minutes par `INFO FOR TABLE` : la base ne signale pas un `KILL` au flux) ; chaque changement est
+réparti aux seules connexions de sa personne (compte et organisation du message) : événement
+`notification` (nouveau message), puis `counts`, relus par `fn::notification_feed_counts` dans
+la session de la personne ; compteurs de toutes les connexions relus toutes les minutes (fin des
+sommeils) et après chaque reprise ; 5 connexions au plus par personne
+(`NOTIFICATION_FEED_STREAM_LIMIT`), signe de vie toutes les 25 s avec contrôle de la session
+(expirée, révoquée, jeton expiré : flux fermé), connexion lente ou client parti retirés, tous les
+flux fermés à l'arrêt. L'hôte installe
 `lyxal_scheduler` avant ce module (dépendance du manifeste) et sert la file `default` du
 planificateur, qui exécute les reprises et la purge.
 
@@ -616,7 +691,14 @@ planificateur, qui exécute les reprises et la purge.
   worker d'étapes.
 * **Purge** : planification `notification-purge` (pause, déclenchement immédiat et historique par
   les routes `/api/v1/scheduler/*`) ; argument facultatif `limit` (1 000 par catégorie et par
-  passage).
+  passage) ; messages du fil au-delà de `retention_days_inbox` compris.
+* **Fil dans l'application** : aucun fournisseur ni clé ; une étape `in_app` dans un parcours,
+  son gabarit (titre, texte, liens, boutons), puis l'interface lit `GET /api/v1/notification/feed`
+  et écoute `GET /api/v1/notification/feed/stream` avec le jeton de la personne (lecture par
+  `fetch` : un `EventSource` natif n'envoie pas l'en-tête `Authorization`) ; à la fermeture du
+  flux (session expirée, arrêt de l'hôte, connexion lente), le client se reconnecte avec un
+  jeton frais et relit sa liste. Derrière un mandataire inverse : pas de tampon sur ce chemin
+  (l'hôte envoie `X-Accel-Buffering: no`) et un délai d'inactivité supérieur à 25 s.
 
 ## 7. Vérification
 
@@ -679,4 +761,18 @@ planificateur, qui exécute les reprises et la purge.
   Slack + adresse web, aucune adresse en clair en base ni dans un événement, retour Twilio →
   numéro supprimé ; SMS rendu trop long refusé sans envoi ; hôte : routes des adresses et retour
   Twilio (`apps/lyxal-server/tests/notification_channels_http.rs`).
+* Lot 5 : banc `tests/fil.test.surql` (liens du fil, gabarits du fil, gravité, étape in_app
+  refusée dans un parcours sensible ; livraison : abonné avec compte, invité écarté, liens rendus
+  refusés, rejeu, trace d'envoi sans contenu, événements ; lecture par la personne seule : autre
+  personne, même personne dans une autre organisation, autre organisation, gestionnaire, session
+  sans compte ; écritures directes refusées (modification, suppression, création forgée) ; états,
+  actions groupées, sommeil (bornes, réapparition non lue à l'échéance), onglets et compteurs,
+  pagination, boutons, suppression, préférence in_app, « sauter si déjà lu », abonné supprimé
+  avant la livraison, conservation et purge, fonctions internes) ; tests Rust : rendu du fil
+  (échappement, liens, boutons, données, secret absent), de bout en bout sur le moteur embarqué
+  (déclenchement → message du fil, lien rendu dangereux refusé, contenu en lecture seule même
+  pour la session système) ; hôte (`apps/lyxal-server/tests/notification_feed_http.rs`) : flux
+  SSE de la seule personne concernée, compteurs poussés après « lu », routes du fil (404 pour
+  une autre personne), limite de 5 flux, session sans compte, fermeture à l'expiration de la
+  session, reprise de la requête `LIVE SELECT` après `KILL`, fermeture à l'arrêt du worker.
 * `scripts/ci/ci_local.sh`.

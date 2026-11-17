@@ -9,7 +9,9 @@
 -- terminée fait avancer son déclenchement (fn::notification_run_advance). Seules les étapes de
 -- canal passent par cette file ; les attentes passent par lyxal_scheduler
 -- (fn::notification_wait_schedule). Permission notification.worker (ou session système).
--- Un worker par canal (`channel` : email, sms, chat, webhook). Une étape de messagerie ou
+-- Fil (`in_app`) : ni fournisseur, ni intégration, ni heures calmes (décision F8) ; l'étape est
+-- terminée par fn::notification_inbox_deliver.
+-- Un worker par canal (`channel` : email, sms, chat, webhook, in_app). Une étape de messagerie ou
 -- d'adresse web sert toutes les adresses actives de l'abonné pour son canal (décision E1) :
 -- chacune avec l'intégration éligible de son service ; une adresse déjà servie par une tentative
 -- précédente n'est pas rappelée.
@@ -22,7 +24,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_claim($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
             worker_id: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 128 } }], required: true },
-            channel: { pipeline: [{ rule: "enum", options: { allowed: ["email", "sms", "chat", "webhook"], case_sensitive: true } }], required: true },
+            channel: { pipeline: [{ rule: "enum", options: { allowed: ["email", "sms", "chat", "webhook", "in_app"], case_sensitive: true } }], required: true },
             limit: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 100 } }], default: 10 },
             lease_seconds: { pipeline: [{ rule: "integer", options: { min_value: 10, max_value: 3600 } }], default: 120 },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
@@ -82,6 +84,10 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_claim($params: object) {
             fn::notification_run_advance({ run: $job.run });
             RETURN NONE;
         };
+        -- Fil : ni intégration, ni adresse, ni heures calmes (F8)
+        IF $job.type = "in_app" {
+            RETURN fn::notification_job_payload({ job: $job, workflow: $workflow, quiet_hours: NONE, integration: NONE });
+        };
         -- Intégration de l'envoi (D1, bascule D3) ; aucune : l'étape attend en file, sans tentative comptée
         LET $integrations = fn::notification_integration_for_job({ job: $job });
         -- Messagerie, adresse web : adresses actives de l'abonné pas encore servies, chacune avec
@@ -113,7 +119,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_claim($params: object) {
             { endpoints: $endpoints.ready ?? [], served_endpoints: $endpoints.served ?? 0 });
     }), |$payload| $payload IS NOT NONE);
     RETURN fn::result_ok($ready);
-} COMMENT "Réserve jusqu'à limit étapes dues d'un canal ({ worker_id, channel : email, sms, chat, webhook ; limit, lease_seconds }) et renvoie tout le nécessaire au rendu (heures calmes, sauf pour l'adresse web ; cible du désabonnement ; intégration de l'envoi ; adresses scellées de messagerie ou web, chacune avec l'intégration de son service ; hôtes autorisés de l'installation) ; les étapes dont le secret a expiré sont annulées, celles qu'une préférence refuse désormais sont écartées ; une étape sans intégration éligible reste en file (nouvel essai dans une minute, sans tentative comptée) ; une étape dont toutes les adresses sont déjà servies est terminée. Permission notification.worker";
+} COMMENT "Réserve jusqu'à limit étapes dues d'un canal ({ worker_id, channel : email, sms, chat, webhook, in_app ; limit, lease_seconds }) et renvoie tout le nécessaire au rendu (heures calmes, sauf pour l'adresse web et le fil ; fil : sans intégration ni secret ; cible du désabonnement ; intégration de l'envoi ; adresses scellées de messagerie ou web, chacune avec l'intégration de son service ; hôtes autorisés de l'installation) ; les étapes dont le secret a expiré sont annulées, celles qu'une préférence refuse désormais sont écartées ; une étape sans intégration éligible reste en file (nouvel essai dans une minute, sans tentative comptée) ; une étape dont toutes les adresses sont déjà servies est terminée. Permission notification.worker";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_job_endpoints (interne) : adresses d'une étape de messagerie ou web
@@ -180,13 +186,19 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_payload($params: object) -> objec
         texts_error: IF $chosen.ok { IF $texts.ok { NONE } ELSE { $texts.error.code } } ELSE { $chosen.error.code },
         layout_html: $layout.html,
         layout_text: $layout.text,
+        -- Fil : avatar, lien de redirection, boutons et données (gabarits)
+        avatar: $template.avatar,
+        redirect: $template.redirect,
+        actions: $template.actions ?? [],
+        data_templates: $template.data ?? {},
         payload: $run.payload,
-        secret: $run.secret,
+        -- Le fil ne porte jamais le secret du déclenchement (F3)
+        secret: IF $job.type = "in_app" { NONE } ELSE { $run.secret },
         sensitive: $workflow.sensitive,
         critical: $workflow.critical,
         quiet_hours: $params.quiet_hours,
         -- Intégration de l'envoi : fournisseur, réglages (expéditeur), chemin du secret des identifiants
-        integration: fn::notification_integration_payload($params.integration),
+        integration: IF $params.integration IS NONE { NONE } ELSE { fn::notification_integration_payload($params.integration) },
         -- Regroupement porté par ce déclenchement : nombre et données des événements
         digest: IF $run.digest IS NONE { NONE } ELSE { (SELECT count, events.{ payload, at } AS events FROM ONLY $run.digest WHERE carrier = $run.id) },
         -- Désabonnement en un clic (hors parcours critique) : catégorie du parcours, sinon le parcours
@@ -200,7 +212,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_payload($params: object) -> objec
             }
         }
     };
-} COMMENT "Données de rendu d'une étape réservée ({ job, workflow, quiet_hours, integration }) : canal, étape, parcours, abonné, destinataire (e-mail, téléphone), hôtes autorisés de l'installation, intégration de l'envoi, gabarit, regroupement porté ({ count, events }), langue de l'envoi (destinataire, organisation, installation), textes des clés du gabarit dans cette langue (texts ; texts_error : code I18N_* si leur lecture a échoué), mise en page, secret scellé, heures calmes, cible du lien de désabonnement (NONE pour un parcours critique)";
+} COMMENT "Données de rendu d'une étape réservée ({ job, workflow, quiet_hours, integration : absente pour le fil }) : canal, étape, parcours, abonné, destinataire (e-mail, téléphone), hôtes autorisés de l'installation, intégration de l'envoi, gabarit (fil : avatar, lien, boutons, données ; jamais le secret), regroupement porté ({ count, events }), langue de l'envoi (destinataire, organisation, installation), textes des clés du gabarit dans cette langue (texts ; texts_error : code I18N_* si leur lecture a échoué), mise en page, secret scellé, heures calmes, cible du lien de désabonnement (NONE pour un parcours critique)";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_job_check : réservation encore détenue ?
@@ -330,7 +342,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_fail($params: object) {
         fields: {
             job_id: { pipeline: [{ rule: "record", options: { expected_table: "notification_job" } }], required: true },
             claim_token: { pipeline: [{ rule: "uuid_v7", options: { allow_string: true } }], required: true },
-            integration: { pipeline: [{ rule: "record", options: { expected_table: "notification_integration" } }], required: true },
+            integration: { pipeline: [{ rule: "record", options: { expected_table: "notification_integration" } }] },
             class: { pipeline: [{ rule: "enum", options: { allowed: ["transient", "permanent", "recipient_rejected", "recipient_opted_out"], case_sensitive: true } }], required: true },
             code: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 64 } }], required: true },
             detail: { pipeline: [{ rule: "optional_string", options: { max_length: 512 } }], default: "" },
@@ -363,7 +375,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_fail($params: object) {
     LET $error = { class: $p.class, code: $p.code, detail: $p.detail ?? "" };
     LET $status = IF $retry { "queued" } ELSE IF $canceled { "canceled" } ELSE { "failed" };
     -- Intégration de cette tentative : la suivante passe à la prochaine éligible (bascule D3)
-    LET $integration = IF record::exists($p.integration) { $p.integration } ELSE { NONE };
+    LET $integration = IF $p.integration IS NOT NONE AND record::exists($p.integration) { $p.integration } ELSE { NONE };
     IF $retry {
         UPDATE $job.id SET status = "queued", next_retry_at = $next, locked_until = NONE, claim_token = NONE, last_error = $error, integration = $integration;
     } ELSE {
@@ -389,7 +401,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_fail($params: object) {
         next_retry_at: IF $retry { $next } ELSE { NONE },
         run_status: $final.status
     });
-} COMMENT "Enregistre l'échec d'une étape ({ job_id, claim_token, integration, class : transient, permanent, recipient_rejected, recipient_opted_out ; code, detail, retry_delay_seconds, endpoints : issue de chaque adresse de messagerie ou web servie par cette tentative }) : intégration notée (après un échec temporaire, la tentative suivante passe à l'intégration éligible suivante, D3) ; adresses déjà servies enregistrées (non rappelées) ; nouvelle tentative tant que attempts < max_attempts pour un échec temporaire, sinon échec définitif ; déclenchement annulé entre-temps : étape annulée, sans nouvelle tentative ; destinataire refusé : adresse ou numéro supprimé (hard_bounce) ; désinscrit chez l'opérateur : numéro supprimé (complaint). Permission notification.worker";
+} COMMENT "Enregistre l'échec d'une étape ({ job_id, claim_token, integration (absente pour le fil), class : transient, permanent, recipient_rejected, recipient_opted_out ; code, detail, retry_delay_seconds, endpoints : issue de chaque adresse de messagerie ou web servie par cette tentative }) : intégration notée (après un échec temporaire, la tentative suivante passe à l'intégration éligible suivante, D3) ; adresses déjà servies enregistrées (non rappelées) ; nouvelle tentative tant que attempts < max_attempts pour un échec temporaire, sinon échec définitif ; déclenchement annulé entre-temps : étape annulée, sans nouvelle tentative ; destinataire refusé : adresse ou numéro supprimé (hard_bounce) ; désinscrit chez l'opérateur : numéro supprimé (complaint). Permission notification.worker";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_purge
@@ -430,12 +442,15 @@ DEFINE FUNCTION OVERWRITE fn::notification_purge($params: object) {
     LET $counters = IF array::len($counter_ids) = 0 { [] } ELSE { (DELETE $counter_ids RETURN BEFORE) };
     LET $event_ids = (SELECT VALUE id FROM notification_provider_event WHERE purge_after <= $now LIMIT $limit);
     LET $events = IF array::len($event_ids) = 0 { [] } ELSE { (DELETE $event_ids RETURN BEFORE) };
+    -- Fil : messages au-delà de leur conservation (retention_days_inbox, décision F8)
+    LET $inbox_ids = (SELECT VALUE id FROM notification_inbox WHERE purge_after <= $now LIMIT $limit);
+    LET $inbox = IF array::len($inbox_ids) = 0 { [] } ELSE { (DELETE $inbox_ids RETURN BEFORE) };
     RETURN fn::result_ok({
         secrets_cleared: array::len($secrets), log_entries: array::len($logs), runs: array::len($runs),
         broadcasts: array::len($broadcasts), digests: array::len($digests), rate_limits: array::len($counters),
-        provider_events: array::len($events)
+        provider_events: array::len($events), inbox_items: array::len($inbox)
     });
-} COMMENT "Purge par paquets, appelée par lyxal_scheduler (tâche notification.purge, planification horaire notification-purge) avec { args : { limit : 1000 par défaut }, run, tenant, scheduled_for, attempt } : secrets expirés effacés ; journal, déclenchements terminés (étapes, messages et regroupements portés avec eux), diffusions terminées, regroupements fermés, compteurs de limitation expirés et retours des fournisseurs supprimés au-delà de leur conservation. Permission notification.worker (session système du moteur)";
+} COMMENT "Purge par paquets, appelée par lyxal_scheduler (tâche notification.purge, planification horaire notification-purge) avec { args : { limit : 1000 par défaut }, run, tenant, scheduled_for, attempt } : secrets expirés effacés ; journal, déclenchements terminés (étapes, messages et regroupements portés avec eux), diffusions terminées, regroupements fermés, compteurs de limitation expirés, retours des fournisseurs et messages du fil (retention_days_inbox) supprimés au-delà de leur conservation. Permission notification.worker (session système du moteur)";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_job_renew : réservation renouvelée juste avant l'envoi

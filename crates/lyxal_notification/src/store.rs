@@ -33,6 +33,11 @@ use crate::models::{
     IntegrationTestRecordParams, IntegrationTestResult, IntegrationTestTarget, ProviderEventParams,
     ProviderEventRecorded,
 };
+use crate::models::{
+    FeedActionParams, FeedCounts, FeedCountsParams, FeedDeleteParams, FeedDeleted, FeedItem,
+    FeedItemRefParams, FeedListParams, FeedMarkParams, FeedMarked, FeedPage, FeedSnoozeParams,
+    InboxDeliverParams, InboxDelivered,
+};
 
 /// Store de `lyxal_notification` sur un client SurrealDB (`Surreal<Any>`).
 #[derive(Clone)]
@@ -582,5 +587,68 @@ impl NotificationStore {
         params: SettingsGetParams,
     ) -> Result<Settings, LyxalSurrealError> {
         self.call_fn("notification_settings_get", params).await
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Fil dans l'application (session de la personne ; livraison : worker)
+    // ------------------------------------------------------------------------------------------
+
+    /// `fn::notification_feed_list` : fil de la personne connectée, paginé.
+    pub async fn feed_list(&self, params: FeedListParams) -> Result<FeedPage, LyxalSurrealError> {
+        self.call_fn("notification_feed_list", params).await
+    }
+
+    /// `fn::notification_feed_counts` : non vus, non lus, total.
+    pub async fn feed_counts(
+        &self,
+        params: FeedCountsParams,
+    ) -> Result<FeedCounts, LyxalSurrealError> {
+        self.call_fn("notification_feed_counts", params).await
+    }
+
+    /// `fn::notification_feed_mark` : états d'un ou de plusieurs messages.
+    pub async fn feed_mark(&self, params: FeedMarkParams) -> Result<FeedMarked, LyxalSurrealError> {
+        self.call_fn("notification_feed_mark", params).await
+    }
+
+    /// `fn::notification_feed_snooze` : sommeil de 3 minutes à 90 jours.
+    pub async fn feed_snooze(
+        &self,
+        params: FeedSnoozeParams,
+    ) -> Result<FeedItem, LyxalSurrealError> {
+        self.call_fn("notification_feed_snooze", params).await
+    }
+
+    /// `fn::notification_feed_unsnooze` : réveil immédiat.
+    pub async fn feed_unsnooze(
+        &self,
+        params: FeedItemRefParams,
+    ) -> Result<FeedItem, LyxalSurrealError> {
+        self.call_fn("notification_feed_unsnooze", params).await
+    }
+
+    /// `fn::notification_feed_delete` : un message ou tous ceux d'un onglet.
+    pub async fn feed_delete(
+        &self,
+        params: FeedDeleteParams,
+    ) -> Result<FeedDeleted, LyxalSurrealError> {
+        self.call_fn("notification_feed_delete", params).await
+    }
+
+    /// `fn::notification_feed_action` : état d'un bouton.
+    pub async fn feed_action(
+        &self,
+        params: FeedActionParams,
+    ) -> Result<FeedItem, LyxalSurrealError> {
+        self.call_fn("notification_feed_action", params).await
+    }
+
+    /// `fn::notification_inbox_deliver` : message rendu d'une étape `in_app` (rejoué après un
+    /// conflit d'écriture transitoire).
+    pub async fn inbox_deliver(
+        &self,
+        params: InboxDeliverParams,
+    ) -> Result<InboxDelivered, LyxalSurrealError> {
+        self.worker_call("notification_inbox_deliver", params).await
     }
 }

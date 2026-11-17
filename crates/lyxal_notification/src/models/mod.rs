@@ -4,6 +4,7 @@
 
 mod broadcast;
 mod endpoint;
+mod feed;
 mod integration;
 mod preference;
 mod queue;
@@ -21,6 +22,11 @@ pub use endpoint::{
     ClaimedEndpoint, Endpoint, EndpointCreateParams, EndpointListParams, EndpointOutcome,
     EndpointRefParams, EndpointResolveParams, EndpointResult, EndpointRotateParams,
     EndpointUpdateParams, MyEndpointCreateParams, MyEndpointListParams,
+};
+pub use feed::{
+    FeedActionParams, FeedCounts, FeedCountsParams, FeedDeleteParams, FeedDeleted, FeedFilter,
+    FeedItem, FeedItemAction, FeedItemRefParams, FeedListParams, FeedMarkParams, FeedMarked,
+    FeedPage, FeedSnoozeParams, InboxAction, InboxDeliverParams, InboxDelivered, TemplateAction,
 };
 pub use integration::{
     ClaimedIntegration, Integration, IntegrationGetParams, IntegrationListParams,

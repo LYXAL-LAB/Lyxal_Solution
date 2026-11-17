@@ -6,6 +6,7 @@ mod i18n;
 #[cfg(feature = "module-ingestion")]
 mod ingestion;
 pub mod notification;
+pub mod notification_feed;
 pub mod scheduler;
 pub mod secrets;
 mod storage;

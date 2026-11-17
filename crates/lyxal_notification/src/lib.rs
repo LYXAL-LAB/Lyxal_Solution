@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 //! `lyxal_notification` : notifications sortantes de Lyxal OS (e-mail, SMS, messageries
-//! d'équipe, appel signé d'une adresse web ; abonnés et leurs adresses, sujets, préférences,
+//! d'équipe, appel signé d'une adresse web, fil dans l'application ; abonnés et leurs adresses, sujets, préférences,
 //! diffusions, parcours à étapes : attente, regroupement, limitation, conditions ; intégrations
 //! par fournisseur et retours des fournisseurs).
 //!
@@ -57,7 +57,7 @@ pub use provider::{
     SmtpProvider, SmtpSecurity, DELIVERY_HEADER, SECRETS_CONSUMER, SIGNATURE_HEADER,
 };
 pub use quiet::quiet_until;
-pub use render::{MessageSource, RenderedEmail, RenderedText, Renderer};
+pub use render::{MessageSource, RenderedEmail, RenderedInApp, RenderedText, Renderer};
 pub use secret::{generate_signing_key, EndpointField, OpenedSecret, SecretCodec};
 pub use segments::{SmsEncoding, SmsSegments, MAX_SMS_PARTS};
 pub use store::NotificationStore;

@@ -23,6 +23,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_settings_effective($params: object) -
         max_attempts: $own.max_attempts ?? $base.max_attempts ?? 8,
         retention_days_runs: $own.retention_days_runs ?? $base.retention_days_runs ?? 90,
         retention_days_log: $own.retention_days_log ?? $base.retention_days_log ?? 30,
+        retention_days_inbox: $own.retention_days_inbox ?? $base.retention_days_inbox ?? 90,
         max_wait_days: $own.max_wait_days ?? $base.max_wait_days ?? 30,
         -- Installation seulement (décision E3)
         allowed_hosts: $base.allowed_hosts ?? []
@@ -40,8 +41,12 @@ DEFINE FUNCTION OVERWRITE fn::notification_channel_address($params: object) -> o
         LET $active = count(SELECT VALUE id FROM notification_endpoint WHERE subscriber = $params.subscriber AND channel = $params.type AND active = true);
         RETURN IF $active > 0 { $params.type } ELSE { NONE };
     };
+    -- Fil : seulement pour un abonné lié à un compte lyxal_auth (un invité n'a pas de fil, F2)
+    IF $params.type = "in_app" AND $params.subscriber IS NOT NONE {
+        RETURN IF (SELECT VALUE identity FROM ONLY $params.subscriber) IS NONE { NONE } ELSE { "in_app" };
+    };
     RETURN NONE;
-} COMMENT "Interne : adresse d'un abonné pour un canal ({ type, address : { email, phone }, subscriber }) : e-mail, téléphone E.164, ou le nom du canal si l'abonné a une adresse de messagerie ou web active ; NONE sans adresse";
+} COMMENT "Interne : adresse d'un abonné pour un canal ({ type, address : { email, phone }, subscriber }) : e-mail, téléphone E.164, le nom du canal si l'abonné a une adresse de messagerie ou web active, in_app si l'abonné est lié à un compte (fil) ; NONE sans adresse";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_run_create : déclenchement pour un abonné

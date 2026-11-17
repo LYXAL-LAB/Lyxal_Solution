@@ -3,12 +3,14 @@
 -- MODULE : lyxal_notification
 -- RÔLE   : Parcours de notification (modèle Novu `notification-template`)
 -- ============================================================================
--- Les étapes sont un tableau d'objets exécutés dans l'ordre : canal (`email`), attente (`delay`),
+-- Les étapes sont un tableau d'objets exécutés dans l'ordre : canal (`email`, `sms`, `chat`,
+-- `webhook`, `in_app`), attente (`delay`),
 -- regroupement (`digest`), limitation (`throttle`). Le déclencheur est un
 -- type d'événement `lyxal_event`. `critical` : ignore les choix de l'abonné, sa liste de
 -- désabonnements et ses heures calmes (jamais les rejets définitifs). `sensitive` : aucun
--- contenu rendu n'est conservé. `category` : catégorie de désabonnement ; `preferences` :
--- canaux par défaut et canaux imposés (que l'abonné ne peut pas changer).
+-- contenu rendu n'est conservé (une étape in_app y est refusée). `category` : catégorie de
+-- désabonnement ; `preferences` : canaux par défaut et canaux imposés (que l'abonné ne peut pas
+-- changer). `severity` : gravité copiée sur les messages du fil (onglets, décision F5).
 
 DEFINE TABLE OVERWRITE notification_workflow
     TYPE NORMAL
@@ -104,8 +106,8 @@ DEFINE FIELD OVERWRITE steps.*.key ON TABLE notification_workflow
 
 DEFINE FIELD OVERWRITE steps.*.type ON TABLE notification_workflow
     TYPE string
-    ASSERT $value IN ["email", "sms", "chat", "webhook", "delay", "digest", "throttle"]
-    COMMENT "Type : canal (email, sms, chat, webhook) ou étape d'enchaînement (delay, digest, throttle)";
+    ASSERT $value IN ["email", "sms", "chat", "webhook", "in_app", "delay", "digest", "throttle"]
+    COMMENT "Type : canal (email, sms, chat, webhook, in_app) ou étape d'enchaînement (delay, digest, throttle)";
 
 DEFINE FIELD OVERWRITE steps.*.condition ON TABLE notification_workflow
     TYPE option<object>
@@ -129,6 +131,12 @@ DEFINE FIELD OVERWRITE steps.*.lookback ON TABLE notification_workflow TYPE opti
 DEFINE FIELD OVERWRITE steps.*.lookback.amount ON TABLE notification_workflow TYPE int;
 DEFINE FIELD OVERWRITE steps.*.lookback.unit ON TABLE notification_workflow TYPE string;
 DEFINE FIELD OVERWRITE steps.*.limit ON TABLE notification_workflow TYPE option<int>;
+
+DEFINE FIELD OVERWRITE severity ON TABLE notification_workflow
+    TYPE string
+    DEFAULT "none"
+    ASSERT $value IN ["high", "medium", "low", "none"]
+    COMMENT "Gravité (high, medium, low, none), copiée sur les messages du fil";
 
 DEFINE FIELD OVERWRITE tags ON TABLE notification_workflow
     TYPE array<string>

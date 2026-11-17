@@ -2,8 +2,8 @@ manifest_version = 1
 id = "lyxal_notification"
 name = "Lyxal Notification"
 version = "0.1.0"
-description = "Notifications sortantes de Lyxal OS : abonnés, sujets, préférences, parcours à étapes (attente, regroupement, limitation, conditions), gabarits, intégrations (e-mail par SMTP, Brevo, Mailgun, Postmark, Resend ; SMS par Brevo, Twilio, Vonage ; messageries d'équipe ; appel signé d'une adresse web) et retours des fournisseurs, file d'envoi, diffusions, journal et liste de suppression"
-capabilities = ["database", "events", "email", "sms", "chat", "webhook"]
+description = "Notifications sortantes de Lyxal OS : abonnés, sujets, préférences, parcours à étapes (attente, regroupement, limitation, conditions), gabarits, intégrations (e-mail par SMTP, Brevo, Mailgun, Postmark, Resend ; SMS par Brevo, Twilio, Vonage ; messageries d'équipe ; appel signé d'une adresse web) et retours des fournisseurs, fil dans l'application en temps réel, file d'envoi, diffusions, journal et liste de suppression"
+capabilities = ["database", "events", "email", "sms", "chat", "webhook", "in_app"]
 
 [runtime]
 min_version = ">=0.1.0"
@@ -49,7 +49,8 @@ schemas = [
     "schema/09_notification_broadcast.surql",
     "schema/10_notification_digest.surql",
     "schema/11_notification_integration.surql",
-    "schema/12_notification_endpoint.surql"
+    "schema/12_notification_endpoint.surql",
+    "schema/13_notification_inbox.surql"
 ]
 functions = [
     "functions/notification_access.surql",
@@ -66,7 +67,8 @@ functions = [
     "functions/notification_settings.surql",
     "functions/notification_integration.surql",
     "functions/notification_endpoint.surql",
-    "functions/notification_queue.surql"
+    "functions/notification_queue.surql",
+    "functions/notification_feed.surql"
 ]
 error_definitions = [
     "error/parametres/error_parametres.surql",
@@ -74,7 +76,8 @@ error_definitions = [
     "error/envoi/error_envoi.surql",
     "error/destinataires/error_destinataires.surql",
     "error/integrations/error_integrations.surql",
-    "error/canaux/error_canaux.surql"
+    "error/canaux/error_canaux.surql",
+    "error/fil/error_fil.surql"
 ]
 events = ["events/notification_events.surql"]
 seeds = ["seeds/notification_texts.surql", "seeds/notification_initial.surql"]
