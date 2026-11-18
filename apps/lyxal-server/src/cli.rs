@@ -6,7 +6,20 @@
 //! * `lyxal-server auth rotate-signing-key [--force]` : active une nouvelle clé de signature des
 //!   jetons d'accès dans l'emplacement inactif. Sans `--force`, refusé tant que des jetons signés
 //!   par l'ancienne clé de cet emplacement peuvent être valides ; `--force` (clé compromise)
-//!   l'écrase et invalide ces jetons.
+//!   l'écrase et invalide ces jetons ;
+//! * `lyxal-server i18n export|import|check` : échange et contrôle des textes de `lyxal_i18n` ;
+//! * `lyxal-server runtime migrations list [--module <module>]` : affiche les migrations
+//!   interrompues ou abandonnées ;
+//! * `lyxal-server runtime migrations resolve --module <module> --migration <id>
+//!   --action retry|abandon --reason <texte>` : décision sur une migration interrompue.
+//!
+//! Les commandes `runtime migrations` s'exécutent **serveur arrêté** : une migration interrompue
+//! empêche un serveur seul de démarrer, donc de servir les routes `/api/v1/system/migrations/*`.
+//! Elles réinstallent le socle (rejouable), sans installer ni démarrer aucun module hébergé, puis
+//! appellent `LyxalRuntime::interrupted_migrations` / `resolve_migration` : mêmes contrôles et
+//! même trace au journal du runtime que les routes. Il n'y a pas d'appelant authentifié : l'auteur
+//! tracé est `cli:<application.instance_id>`, et l'accès est celui de toutes ces commandes — qui
+//! peut lancer le binaire avec la configuration du serveur et les identifiants de la base.
 //!
 //! Sans argument, le binaire démarre le serveur.
 
@@ -17,8 +30,15 @@ use crate::{crypto, database};
 use lyxal_i18n::{
     CheckReport, Exchange, ExportOptions, FileFormat, I18nStore, ImportOptions, ImportReport,
 };
+use lyxal_runtime::migration::{
+    InterruptedMigration, MigrationInterruptedParams, MigrationResolveAction,
+    MigrationResolveParams, MigrationResolved,
+};
+use lyxal_runtime::RuntimeError;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+use surrealdb::engine::any::Any;
+use surrealdb::Surreal;
 
 /// Commande demandée sur la ligne de commande.
 #[derive(Debug, PartialEq, Eq)]
@@ -48,6 +68,15 @@ pub enum Command {
     },
     /// Contrôle de tous les textes par le rendu.
     I18nCheck,
+    /// Liste des migrations interrompues ou abandonnées.
+    MigrationsList { module: Option<String> },
+    /// Décision sur une migration interrompue.
+    MigrationsResolve {
+        module: String,
+        migration: String,
+        action: MigrationResolveAction,
+        reason: String,
+    },
     /// Aide.
     Help,
 }
@@ -63,6 +92,10 @@ Utilisation :
   lyxal-server i18n import --locale <langue> --file <fichier> [--format json|xliff] [--tenant <organisation>] [--overwrite-reviewed] [--dry-run]
                                                  importe un fichier de textes
   lyxal-server i18n check                        liste les textes que le rendu refuse
+  lyxal-server runtime migrations list [--module <module>]
+                                                 liste les migrations interrompues ou abandonnées (serveur arrêté)
+  lyxal-server runtime migrations resolve --module <module> --migration <id> --action retry|abandon --reason <texte>
+                                                 décide de rejouer ou d'abandonner une migration interrompue (serveur arrêté)
 ";
 
 /// Lit les arguments (sans le nom du programme).
@@ -110,6 +143,28 @@ pub fn parse(args: &[String]) -> Result<Command, ServerError> {
                 tenant: options.value("--tenant"),
                 overwrite_reviewed: options.switch("--overwrite-reviewed"),
                 dry_run: options.switch("--dry-run"),
+            })
+        }
+        ["runtime", "migrations", "list", rest @ ..] => {
+            let mut options = Options::read(rest, &["--module"], &[])?;
+            Ok(Command::MigrationsList {
+                module: options.value("--module"),
+            })
+        }
+        ["runtime", "migrations", "resolve", rest @ ..] => {
+            let mut options = Options::read(
+                rest,
+                &["--module", "--migration", "--action", "--reason"],
+                &[],
+            )?;
+            let action = options.required("--action")?;
+            Ok(Command::MigrationsResolve {
+                module: options.required("--module")?,
+                migration: options.required("--migration")?,
+                action: MigrationResolveAction::parse(&action).ok_or_else(|| {
+                    usage_error(&format!("action inconnue : {action} (retry ou abandon)"))
+                })?,
+                reason: options.required("--reason")?,
             })
         }
         _ => Err(ServerError::Configuration {
@@ -277,7 +332,142 @@ pub async fn execute(command: Command) -> Result<(), ServerError> {
                 })
             }
         }
+        Command::MigrationsList { module } => {
+            let config = AppConfig::load()?;
+            let client = database::connect_database(&config.database).await?;
+            print!("{}", migrations_list(&client, module).await?);
+            Ok(())
+        }
+        Command::MigrationsResolve {
+            module,
+            migration,
+            action,
+            reason,
+        } => {
+            let config = AppConfig::load()?;
+            let client = database::connect_database(&config.database).await?;
+            let decision = MigrationResolveParams {
+                module,
+                migration,
+                action,
+                reason,
+                actor: cli_actor(&config),
+            };
+            print!("{}", migrations_resolve(&client, decision).await?);
+            Ok(())
+        }
     }
+}
+
+/// Auteur tracé pour une décision prise en ligne de commande : il n'y a pas d'appelant
+/// authentifié, l'auteur est donc la ligne de commande de cette instance
+/// (`cli:<application.instance_id>`), jamais une personne. Le nœud et la date sont gardés à côté.
+pub fn cli_actor(config: &AppConfig) -> String {
+    match config.application.instance_id.trim() {
+        "" => "cli".to_string(),
+        instance => format!("cli:{instance}"),
+    }
+}
+
+/// `runtime migrations list` : texte affiché, sur le runtime de reprise de `client`.
+pub async fn migrations_list(
+    client: &Surreal<Any>,
+    module: Option<String>,
+) -> Result<String, ServerError> {
+    let migrations = crate::runtime::recovery(client)
+        .await?
+        .interrupted_migrations(MigrationInterruptedParams { module })
+        .await
+        .map_err(|error| runtime_refused(&error))?;
+    Ok(migrations_summary(&migrations))
+}
+
+/// `runtime migrations resolve` : applique la décision (bail d'installation pris sans attendre,
+/// trace au journal du runtime) et rend le texte affiché.
+pub async fn migrations_resolve(
+    client: &Surreal<Any>,
+    decision: MigrationResolveParams,
+) -> Result<String, ServerError> {
+    let actor = decision.actor.clone();
+    let resolved = crate::runtime::recovery(client)
+        .await?
+        .resolve_migration(decision)
+        .await
+        .map_err(|error| runtime_refused(&error))?;
+    Ok(resolution_summary(&resolved, &actor))
+}
+
+/// Refus ou échec du runtime : son code `RUNTIME_*` puis son message.
+fn runtime_refused(error: &RuntimeError) -> ServerError {
+    ServerError::CommandFailed {
+        message: format!("{} ({error})", error.info().code),
+    }
+}
+
+/// Liste des migrations interrompues ou abandonnées, un bloc par migration.
+fn migrations_summary(migrations: &[InterruptedMigration]) -> String {
+    if migrations.is_empty() {
+        return "Aucune migration interrompue ou abandonnée.\n".to_string();
+    }
+    let mut summary = format!(
+        "Migrations interrompues ou abandonnées : {}\n",
+        migrations.len()
+    );
+    for migration in migrations {
+        let state = match migration.state.as_str() {
+            "interrupted" => "interrompue",
+            "abandoned" => "abandonnée",
+            other => other,
+        };
+        summary.push_str(&format!(
+            "- module {}, migration {}, version {}\n",
+            migration.module, migration.migration, migration.version
+        ));
+        summary.push_str(&format!(
+            "  script : {}\n  nœud : {}\n  état : {state}\n  début : {}\n",
+            migration.script.as_deref().unwrap_or("inconnu"),
+            migration.node.as_deref().unwrap_or("inconnu"),
+            migration
+                .started_at
+                .as_ref()
+                .map_or_else(|| "inconnu".to_string(), ToString::to_string),
+        ));
+        match &migration.resolution {
+            None => summary.push_str("  dernière décision : aucune\n"),
+            Some(resolution) => summary.push_str(&format!(
+                "  dernière décision : {} par {} depuis le nœud {}, le {} — {}\n",
+                resolution.action,
+                resolution.actor,
+                resolution.node_id,
+                resolution.at,
+                resolution.reason
+            )),
+        }
+    }
+    summary
+}
+
+/// Compte rendu d'une décision.
+fn resolution_summary(resolved: &MigrationResolved, actor: &str) -> String {
+    let effect = match resolved.status.as_str() {
+        "RetryRequested" => "elle sera rejouée au prochain démarrage du serveur",
+        "Abandoned" => {
+            "elle est abandonnée ; l'installation du module reste refusée tant qu'une décision \
+             retry ne l'a pas remise à rejouer"
+        }
+        other => other,
+    };
+    format!(
+        "Migration {} du module {} (version {}) : {effect}.\n\
+         État précédent : {} ; nouvel état : {}.\n\
+         Décision tracée au journal du runtime (auteur {actor}, le {}).\n",
+        resolved.migration,
+        resolved.module,
+        resolved.version,
+        resolved.previous_status,
+        resolved.status,
+        resolved.resolved_at
+    )
 }
 
 /// Échange des textes sur la session système de l'hôte.
@@ -483,6 +673,191 @@ mod tests {
         ] {
             assert!(parse(&args(&refused)).is_err(), "{refused:?}");
         }
+    }
+
+    #[test]
+    fn runtime_migration_commands_are_parsed() {
+        assert_eq!(
+            parse(&args(&["runtime", "migrations", "list"])).ok(),
+            Some(Command::MigrationsList { module: None })
+        );
+        assert_eq!(
+            parse(&args(&[
+                "runtime",
+                "migrations",
+                "list",
+                "--module",
+                "lyxal_auth"
+            ]))
+            .ok(),
+            Some(Command::MigrationsList {
+                module: Some("lyxal_auth".into())
+            })
+        );
+        for (action, expected) in [
+            ("retry", MigrationResolveAction::Retry),
+            ("abandon", MigrationResolveAction::Abandon),
+        ] {
+            assert_eq!(
+                parse(&args(&[
+                    "runtime",
+                    "migrations",
+                    "resolve",
+                    "--reason",
+                    "base vérifiée",
+                    "--action",
+                    action,
+                    "--migration",
+                    "0001_initial",
+                    "--module",
+                    "lyxal_auth",
+                ]))
+                .ok(),
+                Some(Command::MigrationsResolve {
+                    module: "lyxal_auth".into(),
+                    migration: "0001_initial".into(),
+                    action: expected,
+                    reason: "base vérifiée".into(),
+                })
+            );
+        }
+        let resolve = |rest: &[&str]| {
+            let mut words = vec!["runtime", "migrations", "resolve"];
+            words.extend_from_slice(rest);
+            parse(&args(&words))
+        };
+        let complete = [
+            ("--module", "lyxal_auth"),
+            ("--migration", "0001_initial"),
+            ("--action", "retry"),
+            ("--reason", "x"),
+        ];
+        // Chaque option est obligatoire
+        for missing in complete {
+            let rest: Vec<&str> = complete
+                .iter()
+                .filter(|option| **option != missing)
+                .flat_map(|(name, value)| [*name, *value])
+                .collect();
+            assert!(resolve(&rest).is_err(), "sans {}", missing.0);
+        }
+        for refused in [
+            vec!["runtime"],
+            vec!["runtime", "migrations"],
+            vec!["runtime", "migrations", "list", "--module"],
+            vec!["runtime", "migrations", "list", "--tous"],
+            vec![
+                "runtime",
+                "migrations",
+                "list",
+                "--module",
+                "a",
+                "--module",
+                "b",
+            ],
+            vec![
+                "runtime",
+                "migrations",
+                "resolve",
+                "--module",
+                "lyxal_auth",
+                "--migration",
+                "0001_initial",
+                "--action",
+                "oublier",
+                "--reason",
+                "x",
+            ],
+            vec![
+                "runtime",
+                "migrations",
+                "resolve",
+                "--module",
+                "lyxal_auth",
+                "--migration",
+                "0001_initial",
+                "--action",
+                "retry",
+                "--reason",
+                "x",
+                "--actor",
+                "auth_identity:autre",
+            ],
+        ] {
+            assert!(parse(&args(&refused)).is_err(), "{refused:?}");
+        }
+    }
+
+    #[test]
+    fn migration_reports_are_readable() {
+        use lyxal_runtime::migration::MigrationResolution;
+        use lyxal_surreal::Datetime;
+        let date = |text: &str| -> Datetime {
+            match text.parse() {
+                Ok(date) => date,
+                Err(_) => panic!("date illisible : {text}"),
+            }
+        };
+        assert_eq!(
+            migrations_summary(&[]),
+            "Aucune migration interrompue ou abandonnée.\n"
+        );
+        let listed = [
+            InterruptedMigration {
+                module: "lyxal_essai".into(),
+                migration: "0001_initial".into(),
+                version: "0.1.0".into(),
+                script: Some("migrations/0001_initial.surql".into()),
+                node: Some("node-arrete".into()),
+                state: "interrupted".into(),
+                started_at: Some(date("2026-01-02T03:04:05Z")),
+                resolution: None,
+            },
+            InterruptedMigration {
+                module: "lyxal_autre".into(),
+                migration: "0001_initial".into(),
+                version: "0.2.0".into(),
+                script: None,
+                node: None,
+                state: "abandoned".into(),
+                started_at: None,
+                resolution: Some(MigrationResolution {
+                    action: "abandon".into(),
+                    actor: "cli:local".into(),
+                    reason: "état partiel".into(),
+                    node_id: "node-ops".into(),
+                    at: date("2026-01-03T00:00:00Z"),
+                }),
+            },
+        ];
+        assert_eq!(
+            migrations_summary(&listed),
+            "Migrations interrompues ou abandonnées : 2\n\
+             - module lyxal_essai, migration 0001_initial, version 0.1.0\n  \
+             script : migrations/0001_initial.surql\n  nœud : node-arrete\n  \
+             état : interrompue\n  début : 2026-01-02T03:04:05Z\n  \
+             dernière décision : aucune\n\
+             - module lyxal_autre, migration 0001_initial, version 0.2.0\n  \
+             script : inconnu\n  nœud : inconnu\n  état : abandonnée\n  début : inconnu\n  \
+             dernière décision : abandon par cli:local depuis le nœud node-ops, \
+             le 2026-01-03T00:00:00Z — état partiel\n"
+        );
+        let resolved = MigrationResolved {
+            module: "lyxal_essai".into(),
+            migration: "0001_initial".into(),
+            version: "0.1.0".into(),
+            action: "retry".into(),
+            status: "RetryRequested".into(),
+            previous_status: "Applying".into(),
+            resolved_at: date("2026-01-03T00:00:00Z"),
+        };
+        assert_eq!(
+            resolution_summary(&resolved, "cli:local"),
+            "Migration 0001_initial du module lyxal_essai (version 0.1.0) : elle sera rejouée \
+             au prochain démarrage du serveur.\n\
+             État précédent : Applying ; nouvel état : RetryRequested.\n\
+             Décision tracée au journal du runtime (auteur cli:local, le 2026-01-03T00:00:00Z).\n"
+        );
     }
 
     #[test]

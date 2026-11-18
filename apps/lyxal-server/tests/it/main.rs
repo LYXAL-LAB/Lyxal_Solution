@@ -6,6 +6,7 @@
 mod auth_routes;
 mod configuration;
 mod host_tasks;
+mod runtime_cli;
 mod serve;
 mod startup;
 mod storage_routes;

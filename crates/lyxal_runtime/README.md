@@ -137,6 +137,13 @@ rendre la main. `LyxalRuntime::interrupted_migrations` lit la liste. Le runtime 
 droit (il est sous `lyxal_auth`) : l'appelant vérifie celui de l'auteur avant d'appeler ; l'hôte
 `lyxal-server` le fait pour ses routes `/api/v1/system/migrations/*`.
 
+L'hôte `lyxal-server` offre ces deux opérations de deux façons (`apps/lyxal-server/README.md`) :
+
+| Situation | Moyen | Auteur tracé |
+| :--- | :--- | :--- |
+| **Serveur arrêté** — cas d'un serveur seul : la migration interrompue fait échouer l'installation du module, donc le démarrage, et aucune route n'est servie | Ligne de commande de l'hôte : `lyxal-server runtime migrations list [--module <module>]` et `lyxal-server runtime migrations resolve --module <module> --migration <id> --action retry\|abandon --reason <texte>`. La commande réinstalle le socle (rejouable), n'installe aucun module, et appelle les mêmes opérations du runtime. | `cli:<application.instance_id>` (pas d'appelant authentifié ; accès : qui peut lancer le binaire avec la configuration du serveur et les identifiants de la base) |
+| **Un autre nœud de l'installation est démarré** | Routes `GET /api/v1/system/migrations/interrupted` et `POST /api/v1/system/migrations/resolve` de ce nœud, réservées au droit `server.installation.manage`. | Identité ou application de l'appelant |
+
 Procédure pour l'exploitant :
 
 1. lire la liste : module, migration, script, nœud et date de l'exécution interrompue ;
@@ -148,8 +155,12 @@ Procédure pour l'exploitant :
    migration à rejouer l'est avec le script du package installé, même s'il a changé depuis
    l'interruption, puisqu'elle n'a jamais été appliquée) ; `abandon` pour consigner que l'état
    doit être réparé avant tout rejeu, puis `retry` une fois la base réparée ;
-4. relancer l'installation du module (redémarrage du nœud) : la migration est rejouée et
-   enregistrée `Applied`.
+4. relancer l'installation du module (démarrage du serveur arrêté, ou redémarrage du nœud) : la
+   migration est rejouée et enregistrée `Applied`.
+
+Une décision est refusée (`RUNTIME_LEASE_FENCED`) tant que le bail d'installation de la release
+est détenu : après l'arrêt brutal d'un nœud en cours d'installation, attendre l'échéance de son
+bail avant de décider.
 
 Le motif est conservé et journalisé : il ne contient ni secret ni donnée personnelle. Si la
 trace ne peut pas être écrite au journal, l'opération rend l'erreur (`RUNTIME_STORE_FAILED`)
