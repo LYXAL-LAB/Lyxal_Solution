@@ -174,9 +174,9 @@ fn::auth_identity_create({ traits: { email: "paul@alpha-btp.fr" } });
 -- test: adresse vérifiée : rattachement automatique par domaine
 {
     LET $paul = (SELECT VALUE identity FROM ONLY auth_credential_identifier WHERE value = "paul@alpha-btp.fr" LIMIT 1);
-    LET $before = array::len(SELECT * FROM auth_member_of WHERE in = $paul);
+    LET $memberships_before = array::len(SELECT * FROM auth_member_of WHERE in = $paul);
     LET $r = fn::auth_address_verify({ identity: <string> $paul, address: "paul@alpha-btp.fr" }).data;
-    RETURN $before == 0 AND $r.organizations_joined == [auth_organization:alpha]
+    RETURN $memberships_before == 0 AND $r.organizations_joined == [auth_organization:alpha]
         AND fn::auth_domain_auto_join({ identity: $paul }) == [];
 };
 

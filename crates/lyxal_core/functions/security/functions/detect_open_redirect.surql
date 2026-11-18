@@ -14,18 +14,18 @@
 DEFINE FUNCTION OVERWRITE fn::security_detect_open_redirect(
     $value: string
 ) -> object {
-    LET $input = string::lowercase(string::trim($value));
+    LET $lowered = string::lowercase(string::trim($value));
 
     LET $detected =
-        string::starts_with($input,"//")
-        OR string::matches($input,"^[a-z][a-z0-9+.-]*://")
-        OR string::matches($input,"^(javascript|data|vbscript):");
+        string::starts_with($lowered,"//")
+        OR string::matches($lowered,"^[a-z][a-z0-9+.-]*://")
+        OR string::matches($lowered,"^(javascript|data|vbscript):");
 
     RETURN {
         detected: $detected,
         category: "open_redirect",
         score: IF $detected { 70 } ELSE { 0 },
-        input: $input
+        input: $lowered
     };
 }
 COMMENT "Détecte une redirection potentiellement externe ou dangereuse."

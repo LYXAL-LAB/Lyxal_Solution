@@ -42,8 +42,8 @@ DEFINE FUNCTION OVERWRITE fn::auth_address_verify($params: object) {
     };
     LET $p = $report.value;
     IF !fn::auth_session_valid({}).system { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, {}); };
-    LET $value = fn::sanitize_pipeline_execute($p.address, [{ rule: "email" }], 5);
-    LET $verified = (UPDATE auth_address SET verified_at = time::now() WHERE identity = $p.identity AND channel = "email" AND value = $value RETURN id);
+    LET $email = fn::sanitize_pipeline_execute($p.address, [{ rule: "email" }], 5);
+    LET $verified = (UPDATE auth_address SET verified_at = time::now() WHERE identity = $p.identity AND channel = "email" AND value = $email RETURN id);
     IF array::len($verified) = 0 { RETURN fn::error_result("AUTH_IDENTITY_NOT_FOUND", $p.language, {}); };
     DELETE auth_required_action WHERE identity = $p.identity AND action = "verify_email";
     RETURN fn::result_ok({ addresses: $verified, organizations_joined: fn::auth_domain_auto_join({ identity: $p.identity }) });
@@ -189,17 +189,17 @@ DEFINE FUNCTION OVERWRITE fn::auth_address_change_request($params: object) {
     };
     LET $p = $report.value;
     IF !fn::auth_session_valid({}).system { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, {}); };
-    LET $value = fn::sanitize_pipeline_execute($p.new_address, [{ rule: "email" }], 5);
-    IF array::len(SELECT VALUE id FROM auth_credential_identifier WHERE type = "email" AND value = $value LIMIT 1) > 0 {
+    LET $email = fn::sanitize_pipeline_execute($p.new_address, [{ rule: "email" }], 5);
+    IF array::len(SELECT VALUE id FROM auth_credential_identifier WHERE type = "email" AND value = $email LIMIT 1) > 0 {
         RETURN fn::error_result("AUTH_IDENTIFIER_TAKEN", $p.language, { type: "email" });
     };
     -- Une seule demande en attente : la précédente est remplacée
     DELETE auth_pending_address_change WHERE identity = $p.identity;
-    LET $flow = fn::auth_flow_start({ type: "address_change", identity: <string> $p.identity, address: $value, client: $p.client });
+    LET $flow = fn::auth_flow_start({ type: "address_change", identity: <string> $p.identity, address: $email, client: $p.client });
     IF !$flow.ok { RETURN $flow; };
-    LET $pending = (CREATE ONLY auth_pending_address_change CONTENT { identity: $p.identity, new_address: $value, flow: $flow.data.id, expires_at: $flow.data.expires_at });
+    LET $pending = (CREATE ONLY auth_pending_address_change CONTENT { identity: $p.identity, new_address: $email, flow: $flow.data.id, expires_at: $flow.data.expires_at });
     IF $pending == NONE { RETURN fn::error_result("AUTH_WRITE_FORBIDDEN", $p.language, { table: "auth_pending_address_change" }); };
-    RETURN fn::result_ok({ flow: $flow.data.id, address: $value });
+    RETURN fn::result_ok({ flow: $flow.data.id, address: $email });
 } COMMENT "Demande un changement d'adresse ({ identity, new_address }) : adresse libre, parcours address_change, demande en attente (une par identité). Mot de passe actuel vérifié par l'hôte. Session système";
 
 DEFINE FUNCTION OVERWRITE fn::auth_address_change_confirm($params: object) {

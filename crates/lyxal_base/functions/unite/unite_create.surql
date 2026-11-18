@@ -26,11 +26,11 @@ DEFINE FUNCTION OVERWRITE fn::base_unite_create($params: object) {
     LET $language = $p.language;
 
     -- Un type inexistant ou inactif ne reçoit pas de nouvelle unité
-    LET $parent = (SELECT enabled FROM ONLY $p.type);
-    IF $parent == NONE {
+    LET $unit_type = (SELECT enabled FROM ONLY $p.type);
+    IF $unit_type == NONE {
         RETURN fn::error_result("BASE_UNITE_TYPE_INVALID", $language, { type: <string> $p.type });
     };
-    IF !$parent.enabled {
+    IF !$unit_type.enabled {
         RETURN fn::error_result("BASE_UNITE_TYPE_DISABLED", $language, { type: <string> $p.type });
     };
 

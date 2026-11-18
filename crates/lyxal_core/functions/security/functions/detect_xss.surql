@@ -14,7 +14,7 @@
 DEFINE FUNCTION OVERWRITE fn::security_detect_xss(
     $value: string
 ) -> object {
-    LET $input = string::lowercase($value);
+    LET $lowered = string::lowercase($value);
 
     LET $patterns = [
         "<script\\b",
@@ -29,7 +29,7 @@ DEFINE FUNCTION OVERWRITE fn::security_detect_xss(
 
     LET $matches = array::filter(
         $patterns,
-        |$pattern| string::matches($input,$pattern)
+        |$pattern| string::matches($lowered,$pattern)
     );
 
     RETURN {

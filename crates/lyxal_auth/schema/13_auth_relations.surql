@@ -123,10 +123,10 @@ DEFINE INDEX OVERWRITE auth_role_includes_unique ON TABLE auth_role_includes FIE
 DEFINE EVENT OVERWRITE auth_role_includes_guard ON TABLE auth_role_includes
 WHEN $event = "CREATE"
 THEN {
-    LET $parent = (SELECT scope, tenant FROM ONLY $after.in);
+    LET $parent_role = (SELECT scope, tenant FROM ONLY $after.in);
     LET $child = (SELECT scope, tenant FROM ONLY $after.out);
-    IF $parent.scope != $child.scope { THROW "AUTH_ROLE_SCOPE_MISMATCH"; };
-    IF $child.tenant IS NOT NONE AND $child.tenant != $parent.tenant { THROW "AUTH_ROLE_SCOPE_MISMATCH"; };
+    IF $parent_role.scope != $child.scope { THROW "AUTH_ROLE_SCOPE_MISMATCH"; };
+    IF $child.tenant IS NOT NONE AND $child.tenant != $parent_role.tenant { THROW "AUTH_ROLE_SCOPE_MISMATCH"; };
     IF $after.in = $after.out { THROW "AUTH_ROLE_CYCLE"; };
     LET $descendants = array::flatten($after.out.{..8+collect}(->auth_role_includes->auth_role));
     IF $after.in IN $descendants { THROW "AUTH_ROLE_CYCLE"; };

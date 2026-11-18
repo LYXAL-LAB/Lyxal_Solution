@@ -103,7 +103,9 @@ DEFINE FUNCTION OVERWRITE fn::auth_purge($params: object) {
     LET $now = time::now();
     LET $keep = $now - duration::from_days($p.session_retention_days);
     LET $expired_sessions = (UPDATE auth_session SET state = "expired" WHERE state = "active" AND (expires_at <= $now OR idle_expires_at <= $now) RETURN id);
-    LET $flows = (SELECT VALUE id FROM auth_flow WHERE expires_at <= $now LIMIT $p.limit);
+    -- Paquets : un tri (les plus anciens d'abord) seulement là où le champ est indexé ou l'ensemble
+    -- petit ; ailleurs toute ligne retenue est échue et l'ordre de suppression est indifférent
+    LET $flows = (SELECT VALUE id FROM auth_flow WHERE expires_at <= $now ORDER BY expires_at ASC LIMIT $p.limit);
     IF array::len($flows) > 0 { DELETE $flows; };
     LET $tokens = (SELECT VALUE id FROM auth_refresh_token WHERE expires_at <= $now OR (state != "active" AND created_at <= $keep) LIMIT $p.limit);
     IF array::len($tokens) > 0 { DELETE $tokens; };
@@ -124,7 +126,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_purge($params: object) {
     -- (identifiant seulement) puis suppression physique ; les références déclarées par chaque
     -- module (REFERENCE ON DELETE CASCADE / UNSET) suivent
     LET $deleted_until = $now - duration::from_days(fn::auth_policy_value({ theme: "retention", key: "deleted_days", default: 30 }));
-    LET $identities = (SELECT VALUE id FROM auth_identity WHERE state = "deleted" AND deleted_at <= $deleted_until LIMIT $p.limit);
+    LET $identities = (SELECT VALUE id FROM auth_identity WHERE state = "deleted" AND deleted_at <= $deleted_until ORDER BY deleted_at ASC LIMIT $p.limit);
     FOR $identity IN $identities {
         LET $published = fn::event_publish({
             event_id: rand::uuid::v7(),
@@ -137,7 +139,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_purge($params: object) {
         IF !$published.ok { THROW $published.error.code; };
         DELETE $identity;
     };
-    LET $organizations = (SELECT VALUE id FROM auth_organization WHERE state = "deleted" AND deleted_at <= $deleted_until LIMIT $p.limit);
+    LET $organizations = (SELECT VALUE id FROM auth_organization WHERE state = "deleted" AND deleted_at <= $deleted_until ORDER BY deleted_at ASC LIMIT $p.limit);
     FOR $organization IN $organizations {
         LET $published = fn::event_publish({
             event_id: rand::uuid::v7(),

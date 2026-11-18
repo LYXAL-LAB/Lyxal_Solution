@@ -57,7 +57,7 @@ DEFINE FUNCTION OVERWRITE fn::event_dead_letter_transfer(
     };
 
     -- 3. Construction de la clé DLQ déterministe
-    LET $dlq_id = type::record(string::concat("event_dead_letter:dlq_", record::id($delivery_id)));
+    LET $dlq_id = type::record("event_dead_letter", string::concat("dlq_", record::id($delivery_id)));
 
     -- 4. Idempotence : Vérifie si l'enregistrement DLQ existe déjà
     LET $existing_dlq = (SELECT * FROM ONLY $dlq_id);

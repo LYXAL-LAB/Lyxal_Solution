@@ -23,15 +23,15 @@ DEFINE FUNCTION OVERWRITE fn::auth_password_credential_get($params: object) {
     };
     LET $p = $report.value;
     IF !fn::auth_session_valid({}).system { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, {}); };
-    LET $value = fn::sanitize_pipeline_execute($p.identifier, [{ rule: "email" }], 5);
-    LET $identity = (SELECT VALUE identity FROM ONLY auth_credential_identifier WHERE type = "email" AND value = $value LIMIT 1);
+    LET $email = fn::sanitize_pipeline_execute($p.identifier, [{ rule: "email" }], 5);
+    LET $identity = (SELECT VALUE identity FROM ONLY auth_credential_identifier WHERE type = "email" AND value = $email LIMIT 1);
     -- Identifiant inconnu : réponse sans identité ; l'hôte vérifie alors une empreinte factice
-    IF $identity IS NONE { RETURN fn::result_ok({ identity: NONE, identifier: $value, state: NONE, secret: NONE, required_actions: [] }); };
+    IF $identity IS NONE { RETURN fn::result_ok({ identity: NONE, identifier: $email, state: NONE, secret: NONE, required_actions: [] }); };
     LET $state = (SELECT VALUE state FROM ONLY $identity);
     LET $secret = (SELECT VALUE secret_data FROM ONLY auth_credential WHERE identity = $identity AND type = "password" LIMIT 1);
     RETURN fn::result_ok({
         identity: $identity,
-        identifier: $value,
+        identifier: $email,
         state: $state,
         secret: $secret,
         required_actions: (SELECT VALUE action FROM auth_required_action WHERE identity = $identity ORDER BY action)

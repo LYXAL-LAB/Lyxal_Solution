@@ -44,8 +44,8 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_batch_claim($params: object) {
         claim_ttl = $ttl
         WHERE claim_generation = $current.claim_generation);
     IF $claimed == NONE {
-        LET $after = (SELECT VALUE claim_generation FROM ONLY $p.id);
-        RETURN IF $after != $current.claim_generation {
+        LET $generation_now = (SELECT VALUE claim_generation FROM ONLY $p.id);
+        RETURN IF $generation_now != $current.claim_generation {
             fn::error_result("INGESTION_BATCH_ALREADY_CLAIMED", $p.language, { batch_id: <string> record::id($p.id) })
         } ELSE {
             fn::error_result("INGESTION_WRITE_FORBIDDEN", $p.language, { table: "ingestion_batch" })

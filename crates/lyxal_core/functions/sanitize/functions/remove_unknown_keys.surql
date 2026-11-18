@@ -15,7 +15,7 @@
 --   Entrée          : NONE → NONE ; NULL ou mauvais type → THROW CORE_SANITIZE_INVALID_TYPE
 --
 -- Exemple
---   LET $input = fn::sanitize_remove_unknown_keys($params, ["name", "email"]);
+--   LET $known = fn::sanitize_remove_unknown_keys($params, ["name", "email"]);
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::sanitize_remove_unknown_keys(

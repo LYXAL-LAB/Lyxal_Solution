@@ -21,9 +21,9 @@ DEFINE FUNCTION OVERWRITE fn::event_fanout(
     LET $p = object::from_entries(array::map(object::entries($checks), |$e| [$e[0], $e[1].value]));
     LET $outbox_id = $p.outbox_id;
 
-    LET $event = (SELECT * FROM $outbox_id)[0];
+    LET $outbox_event = (SELECT * FROM $outbox_id)[0];
 
-    IF $event == NONE {
+    IF $outbox_event == NONE {
         RETURN fn::result_ok({
             deliveries_created: 0,
             status: "not_found"
@@ -33,7 +33,7 @@ DEFINE FUNCTION OVERWRITE fn::event_fanout(
     -- Tous les abonnements dont le pattern correspond, y compris les abonnements suspendus :
     -- leurs livraisons sont créées et attendent leur réactivation (fn::event_delivery_fetch_pending
     -- ne sert pas un abonnement suspendu) ; sinon l'événement, marqué ventilé, serait perdu
-    LET $type = $event.event_type;
+    LET $type = $outbox_event.event_type;
     LET $all_subs = (SELECT * FROM event_subscription);
     
     LET $created_count = 0;
@@ -48,16 +48,16 @@ DEFINE FUNCTION OVERWRITE fn::event_fanout(
             -- Vérification d'idempotence stricte : UNIQUE(outbox_event, subscription)
             LET $existing = (
                 SELECT id FROM event_delivery 
-                WHERE outbox_event = $event.id 
+                WHERE outbox_event = $outbox_event.id 
                   AND subscription = $sub.id
             )[0];
 
             IF $existing == NONE {
                 CREATE event_delivery CONTENT {
-                    outbox_event: $event.id,
+                    outbox_event: $outbox_event.id,
                     subscription: $sub.id,
                     target_module: $sub.target_module,
-                    context: $event.context,
+                    context: $outbox_event.context,
                     status: "pending",
                     attempts: 0,
                     next_retry_at: time::now(),
@@ -69,12 +69,12 @@ DEFINE FUNCTION OVERWRITE fn::event_fanout(
     };
 
     -- Marque l'événement outbox comme ventilé (fanned_out)
-    UPDATE $event.id SET 
+    UPDATE $outbox_event.id SET 
         status = "fanned_out", 
         fanned_out_at = time::now();
 
     RETURN fn::result_ok({
-        outbox_id: $event.id,
+        outbox_id: $outbox_event.id,
         deliveries_created: $created_count,
         status: "fanned_out"
     });

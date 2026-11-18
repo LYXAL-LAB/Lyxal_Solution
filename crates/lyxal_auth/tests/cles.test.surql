@@ -132,3 +132,19 @@ RETURN fn::auth_policy_save({ retention: { deleted_days: 7 } }).data.retention.d
 
 -- test: date de suppression inchangée
 RETURN (SELECT VALUE deleted_at FROM ONLY auth_identity:recente) > time::now() - 1d;
+
+-- préparation: deux identités supprimées depuis plus de 30 jours, la plus ancienne créée en dernier
+{
+    CREATE auth_identity:a_moins_ancienne CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "moins-ancienne@exemple.fr" } };
+    CREATE auth_identity:z_plus_ancienne CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "plus-ancienne@exemple.fr" } };
+    UPDATE [auth_identity:a_moins_ancienne, auth_identity:z_plus_ancienne] SET state = "deleted";
+    UPDATE auth_identity:a_moins_ancienne SET deleted_at = time::now() - 40d;
+    UPDATE auth_identity:z_plus_ancienne SET deleted_at = time::now() - 50d;
+};
+
+-- test: purge par paquets : l'identité supprimée depuis le plus longtemps part la première
+{
+    LET $r = fn::auth_purge({ limit: 1 }).data;
+    RETURN $r.identities_purged == 1
+        AND !record::exists(auth_identity:z_plus_ancienne) AND record::exists(auth_identity:a_moins_ancienne);
+};

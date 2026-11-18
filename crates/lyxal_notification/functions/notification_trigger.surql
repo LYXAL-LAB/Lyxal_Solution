@@ -162,19 +162,19 @@ DEFINE FUNCTION OVERWRITE fn::notification_trigger_workflow($params: object) -> 
 -- ----------------------------------------------------------------------------
 
 DEFINE FUNCTION OVERWRITE fn::notification_trigger_one($params: object) -> object {
-    LET $input = $params.input;
+    LET $subscriber_input = $params.input;
     -- Un identifiant seul désigne un abonné existant ; sinon il est créé ou mis à jour à la volée
-    LET $saved = fn::notification_subscriber_save({ tenant: $params.tenant, input: $input, must_exist: array::len(array::filter(object::values($input), |$v| $v IS NOT NONE)) = 1 });
-    IF $saved.code IS NOT NONE { RETURN { subscriber_id: $input.subscriber_id, status: "rejected", code: $saved.code, details: $saved.details }; };
-    IF $params.exclude_actor AND $params.actor IS NOT NONE AND $params.actor = $input.subscriber_id {
-        RETURN { subscriber_id: $input.subscriber_id, subscriber: $saved.subscriber.id, status: "skipped", skip_reason: "actor", run_id: NONE, job_ids: [] };
+    LET $saved = fn::notification_subscriber_save({ tenant: $params.tenant, input: $subscriber_input, must_exist: array::len(array::filter(object::values($subscriber_input), |$v| $v IS NOT NONE)) = 1 });
+    IF $saved.code IS NOT NONE { RETURN { subscriber_id: $subscriber_input.subscriber_id, status: "rejected", code: $saved.code, details: $saved.details }; };
+    IF $params.exclude_actor AND $params.actor IS NOT NONE AND $params.actor = $subscriber_input.subscriber_id {
+        RETURN { subscriber_id: $subscriber_input.subscriber_id, subscriber: $saved.subscriber.id, status: "skipped", skip_reason: "actor", run_id: NONE, job_ids: [] };
     };
     LET $run = fn::notification_run_create({
         tenant: $params.tenant, workflow: $params.workflow, subscriber: $saved.subscriber, idempotency_key: $params.idempotency_key,
         event_id: $params.event_id, payload: $params.payload, secret: $params.secret, expires_at: $params.expires_at,
         settings: $params.settings, actor: $params.actor, broadcast: NONE, overrides: $params.overrides, test: $params.test
     });
-    RETURN object::extend($run, { subscriber_id: $input.subscriber_id, subscriber: $saved.subscriber.id });
+    RETURN object::extend($run, { subscriber_id: $subscriber_input.subscriber_id, subscriber: $saved.subscriber.id });
 } COMMENT "Interne : déclenchement pour un abonné ({ tenant, workflow, input, idempotency_key, event_id, payload, secret, expires_at, settings, actor, exclude_actor, overrides, test }) : abonné créé ou mis à jour à la volée, auteur exclu ; issue de fn::notification_run_create avec subscriber_id et subscriber, ou rejected (code, details)";
 
 -- ----------------------------------------------------------------------------

@@ -438,20 +438,21 @@ DEFINE FUNCTION OVERWRITE fn::notification_purge($params: object) {
     LET $limit = $p.args.limit ?? 1000;
     LET $now = time::now();
     LET $secrets = (UPDATE notification_run SET secret = NONE WHERE secret IS NOT NONE AND expires_at IS NOT NONE AND expires_at <= $now RETURN id);
-    LET $log_ids = (SELECT VALUE id FROM notification_delivery_log WHERE purge_after <= $now LIMIT $limit);
+    -- Paquets : les lignes échues depuis le plus longtemps d'abord (tri sur le champ indexé purge_after)
+    LET $log_ids = (SELECT VALUE id FROM notification_delivery_log WHERE purge_after <= $now ORDER BY purge_after ASC LIMIT $limit);
     LET $logs = IF array::len($log_ids) = 0 { [] } ELSE { (DELETE $log_ids RETURN BEFORE) };
-    LET $run_ids = (SELECT VALUE id FROM notification_run WHERE purge_after <= $now AND status NOT IN ["pending", "waiting"] LIMIT $limit);
+    LET $run_ids = (SELECT VALUE id FROM notification_run WHERE purge_after <= $now AND status NOT IN ["pending", "waiting"] ORDER BY purge_after ASC LIMIT $limit);
     LET $runs = IF array::len($run_ids) = 0 { [] } ELSE { (DELETE $run_ids RETURN BEFORE) };
-    LET $broadcast_ids = (SELECT VALUE id FROM notification_broadcast WHERE purge_after <= $now AND status = "completed" LIMIT $limit);
+    LET $broadcast_ids = (SELECT VALUE id FROM notification_broadcast WHERE purge_after <= $now AND status = "completed" ORDER BY purge_after ASC LIMIT $limit);
     LET $broadcasts = IF array::len($broadcast_ids) = 0 { [] } ELSE { (DELETE $broadcast_ids RETURN BEFORE) };
-    LET $digest_ids = (SELECT VALUE id FROM notification_digest WHERE status = "closed" AND purge_after <= $now LIMIT $limit);
+    LET $digest_ids = (SELECT VALUE id FROM notification_digest WHERE status = "closed" AND purge_after <= $now ORDER BY purge_after ASC LIMIT $limit);
     LET $digests = IF array::len($digest_ids) = 0 { [] } ELSE { (DELETE $digest_ids RETURN BEFORE) };
-    LET $counter_ids = (SELECT VALUE id FROM notification_rate_limit WHERE purge_after <= $now LIMIT $limit);
+    LET $counter_ids = (SELECT VALUE id FROM notification_rate_limit WHERE purge_after <= $now ORDER BY purge_after ASC LIMIT $limit);
     LET $counters = IF array::len($counter_ids) = 0 { [] } ELSE { (DELETE $counter_ids RETURN BEFORE) };
-    LET $event_ids = (SELECT VALUE id FROM notification_provider_event WHERE purge_after <= $now LIMIT $limit);
+    LET $event_ids = (SELECT VALUE id FROM notification_provider_event WHERE purge_after <= $now ORDER BY purge_after ASC LIMIT $limit);
     LET $events = IF array::len($event_ids) = 0 { [] } ELSE { (DELETE $event_ids RETURN BEFORE) };
     -- Fil : messages au-delà de leur conservation (retention_days_inbox, décision F8)
-    LET $inbox_ids = (SELECT VALUE id FROM notification_inbox WHERE purge_after <= $now LIMIT $limit);
+    LET $inbox_ids = (SELECT VALUE id FROM notification_inbox WHERE purge_after <= $now ORDER BY purge_after ASC LIMIT $limit);
     LET $inbox = IF array::len($inbox_ids) = 0 { [] } ELSE { (DELETE $inbox_ids RETURN BEFORE) };
     RETURN fn::result_ok({
         secrets_cleared: array::len($secrets), log_entries: array::len($logs), runs: array::len($runs),

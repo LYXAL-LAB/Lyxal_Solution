@@ -14,7 +14,7 @@
 DEFINE FUNCTION OVERWRITE fn::security_detect_command_injection(
     $value: string
 ) -> object {
-    LET $input = string::lowercase($value);
+    LET $lowered = string::lowercase($value);
 
     LET $patterns = [
         "(;|&&|\\|\\|)\\s*(sh|bash|cmd|powershell|curl|wget|nc)\\b",
@@ -26,7 +26,7 @@ DEFINE FUNCTION OVERWRITE fn::security_detect_command_injection(
 
     LET $matches = array::filter(
         $patterns,
-        |$pattern| string::matches($input,$pattern)
+        |$pattern| string::matches($lowered,$pattern)
     );
 
     RETURN {

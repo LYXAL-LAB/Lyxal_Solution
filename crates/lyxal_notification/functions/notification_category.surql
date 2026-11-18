@@ -119,7 +119,7 @@ DEFINE FUNCTION OVERWRITE fn::notification_category_delete($params: object) {
     IF $category IS NONE { RETURN fn::error_result("NOTIFICATION_CATEGORY_NOT_FOUND", $p.language, { key: $p.key }); };
     -- Parcours visibles de l'appelant ; un parcours d'une autre organisation qui utiliserait une
     -- catégorie de l'installation la perd (REFERENCE ON DELETE UNSET)
-    LET $users = (SELECT VALUE key FROM notification_workflow WHERE category = $category.id LIMIT 10);
+    LET $users = (SELECT VALUE key FROM notification_workflow WHERE category = $category.id ORDER BY key ASC LIMIT 10);
     IF array::len($users) > 0 { RETURN fn::error_result("NOTIFICATION_CATEGORY_IN_USE", $p.language, { workflows: $users }); };
     LET $deleted = (DELETE $category.id RETURN BEFORE);
     IF array::len($deleted) = 0 { RETURN fn::error_result("NOTIFICATION_WRITE_FORBIDDEN", $p.language, { table: "notification_category" }); };

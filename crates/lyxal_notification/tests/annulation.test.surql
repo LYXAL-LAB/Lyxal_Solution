@@ -152,11 +152,11 @@ RETURN fn::notification_cancel({ tenant: "auth_organization:alpha", idempotency_
 -- test: envoi groupé borné (1 à 100) par lyxal_core ; entrées invalides
 -- en tant que: envoyeur
 {
-    LET $event = { tenant: "auth_organization:alpha", workflow_key: "relance", idempotency_key: "k", to: { subscriber_id: "client-1" } };
-    RETURN fn::notification_trigger_bulk({ events: array::map(<array>(0..101), |$i| $event) }).error.details.fields.events == ["CORE_VALIDATION_TOO_LONG"]
+    LET $trigger_event = { tenant: "auth_organization:alpha", workflow_key: "relance", idempotency_key: "k", to: { subscriber_id: "client-1" } };
+    RETURN fn::notification_trigger_bulk({ events: array::map(<array>(0..101), |$i| $trigger_event) }).error.details.fields.events == ["CORE_VALIDATION_TOO_LONG"]
         AND fn::notification_trigger_bulk({ events: [] }).error.code == "NOTIFICATION_INVALID_INPUT"
         AND fn::notification_trigger_bulk({ events: [1] }).error.code == "NOTIFICATION_INVALID_INPUT"
-        AND fn::notification_trigger_bulk({ events: array::map(<array>(0..100), |$i| object::extend($event, { idempotency_key: string::concat("cent-", <string> $i) })) }).data.results.all(|$e| $e.ok);
+        AND fn::notification_trigger_bulk({ events: array::map(<array>(0..100), |$i| object::extend($trigger_event, { idempotency_key: string::concat("cent-", <string> $i) })) }).data.results.all(|$e| $e.ok);
 };
 
 -- test: envoi groupé sans droit : chaque entrée refusée

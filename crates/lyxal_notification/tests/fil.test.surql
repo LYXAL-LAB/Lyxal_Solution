@@ -597,9 +597,9 @@ CREATE notification_inbox CONTENT { tenant: auth_organization:alpha, subscriber:
 
 -- test: purge : les messages du fil au-delà de leur conservation sont supprimés, les autres restent
 {
-    LET $before = count(SELECT id FROM notification_inbox);
+    LET $count_before = count(SELECT id FROM notification_inbox);
     LET $purged = fn::notification_purge({ args: { limit: 100 } }).data.inbox_items;
-    RETURN $purged == 1 AND count(SELECT id FROM notification_inbox) == $before - 1
+    RETURN $purged == 1 AND count(SELECT id FROM notification_inbox) == $count_before - 1
         AND count(SELECT id FROM notification_inbox WHERE title = "Ancien") == 0;
 };
 

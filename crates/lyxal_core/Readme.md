@@ -267,5 +267,5 @@ RETURN fn::validation_email("contact@example.com", -1);
 Autres scripts :
 
 * `scripts/ci/test_lyxal_core_selftest.py` vérifie que le banc accepte les bons tests et rejette les mauvais (fixtures dans `scripts/ci/fixtures/lyxal_core_tests/`).
-* `scripts/ci/validate_surql.sh` vérifie la syntaxe de tout le SurrealQL du dépôt.
+* `scripts/ci/validate_surql.sh` vérifie la syntaxe de tout le SurrealQL du dépôt et refuse toute déclaration `LET` d'un nom de variable réservé par SurrealDB 4.0 (`$event`, `$before`, `$after`, `$value`, `$input`, `$parent`, `$self`, `$this`).
 * Les trois scripts font partie de la CI (job « SurrealQL ») et de `scripts/ci/ci_local.sh`.

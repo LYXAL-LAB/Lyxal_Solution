@@ -49,7 +49,12 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_update($params: object) {
     LET $enabled = $p.enabled;
     LET $statut_comm = $p.statut_commercial;
     LET $documents = $p.documents;
-    LET $conditionnement = $p.conditionnement;
+    -- Nombres du conditionnement en décimaux, comme dans la fiche (champs TYPE decimal) : la
+    -- comparaison avec la fiche et l'écriture se font de décimal à décimal
+    LET $decimals = |$o| object::from_entries(array::map(object::entries($o), |$e| [$e[0], IF type::is_number($e[1]) { <decimal> $e[1] } ELSE { $e[1] }]));
+    LET $conditionnement = IF $p.conditionnement == NONE { NONE }
+        ELSE IF type::is_object($p.conditionnement.dimensions) { object::extend($decimals($p.conditionnement), { dimensions: $decimals($p.conditionnement.dimensions) }) }
+        ELSE { $decimals($p.conditionnement) };
     LET $unite_cond = $p.unite_conditionnement;
     LET $code_barre = $p.code_barre;
     LET $fabricant = $p.fabricant;

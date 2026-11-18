@@ -85,10 +85,10 @@ DELETE auth_organization:alpha;
 
 -- test: la reprise recale les places de la file sur les exécutions réellement en cours
 {
-    LET $before = (SELECT VALUE running FROM ONLY scheduler_queue:default);
+    LET $running_before = (SELECT VALUE running FROM ONLY scheduler_queue:default);
     LET $r = fn::scheduler_run_rescue({ node: "n1", generation: 1 });
-    LET $after = (SELECT VALUE running FROM ONLY scheduler_queue:default);
-    RETURN $before = 2 AND $r.data.reconciled >= 1 AND $after = 1 AND fn::scheduler_run_rescue({ node: "n1", generation: 1 }).data.reconciled = 0;
+    LET $running_after = (SELECT VALUE running FROM ONLY scheduler_queue:default);
+    RETURN $running_before = 2 AND $r.data.reconciled >= 1 AND $running_after = 1 AND fn::scheduler_run_rescue({ node: "n1", generation: 1 }).data.reconciled = 0;
 };
 
 -- préparation: beta garde 3 exécutions par planification ; « ancienne » : 3 exécutions il y a 60 jours (gardées) ; « recente » : 5 il y a 40 jours (2 à élaguer)

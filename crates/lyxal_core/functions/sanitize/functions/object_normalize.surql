@@ -19,7 +19,7 @@
 --   Entrée          : NONE → NONE ; NULL ou mauvais type → THROW CORE_SANITIZE_INVALID_TYPE
 --
 -- Exemple
---   LET $input = fn::sanitize_object_normalize($params, ["name", "language"], { language: "fr" }, true);
+--   LET $normalized = fn::sanitize_object_normalize($params, ["name", "language"], { language: "fr" }, true);
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::sanitize_object_normalize(

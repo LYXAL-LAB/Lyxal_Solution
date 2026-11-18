@@ -27,7 +27,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_audit_write($entry: object) -> object {
     LET $head = (SELECT seq, last_hash FROM ONLY type::record("secrets_audit_head", $scope));
     LET $seq = ($head.seq ?? 0) + 1;
     LET $caller = fn::secrets_caller();
-    LET $event = {
+    LET $audit_event = {
         seq: $seq,
         action: $entry.action,
         outcome: $entry.outcome ?? "success",
@@ -43,19 +43,19 @@ DEFINE FUNCTION OVERWRITE fn::secrets_audit_write($entry: object) -> object {
         details: $entry.details ?? {},
         at: time::now()
     };
-    LET $event = fn::secrets_audit_clean($event);
-    LET $chained = fn::security_audit_entry($event, $head.last_hash);
+    LET $audit_event = fn::secrets_audit_clean($audit_event);
+    LET $chained = fn::security_audit_entry($audit_event, $head.last_hash);
     UPSERT type::record("secrets_audit_head", $scope) SET tenant = $entry.tenant, seq = $seq, last_hash = $chained.entry_hash;
     CREATE secrets_audit CONTENT {
         tenant: $entry.tenant,
         scope_key: $scope,
         seq: $seq,
-        event: $event,
+        event: $audit_event,
         previous_hash: $chained.previous_hash,
         entry_hash: $chained.entry_hash,
         created_at: $chained.created_at
     };
-    RETURN $event;
+    RETURN $audit_event;
 } COMMENT "Interne (événements du module, refus constatés par le service) : ajoute une entrée chaînée au journal de la portée ({ tenant, action, outcome, secret, path, version, details, on_behalf }) ; auteur, type de session et adresse lus dans la session, ou, pour la session système seulement, dans on_behalf ({ actor, application, session, session_kind }) ; jamais de valeur";
 
 -- ----------------------------------------------------------------------------

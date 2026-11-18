@@ -213,11 +213,11 @@ RETURN fn::scheduler_run_ref({ run: "scheduler_run:abc xyz" }).error.code = "SCH
 {
     fn::scheduler_run_enqueue({ tenant: auth_organization:alpha, task: "essai.rapport", args: { format: "pdf" } });
     LET $claimed = fn::scheduler_run_claim({ queue: "default", node: "n8", limit: 1, handlers: ["essai.rapport"] }).data.items[0];
-    LET $before = (SELECT VALUE seen_at FROM ONLY scheduler_node:["n8", "default"]);
+    LET $seen_before = (SELECT VALUE seen_at FROM ONLY scheduler_node:["n8", "default"]);
     sleep(1100ms);
     LET $beat = fn::scheduler_run_heartbeat({ run: $claimed.id, lease: <string> $claimed.lease });
-    LET $after = (SELECT VALUE seen_at FROM ONLY scheduler_node:["n8", "default"]);
-    RETURN $beat.ok AND $before IS NOT NONE AND $after > $before + 1s;
+    LET $seen_after = (SELECT VALUE seen_at FROM ONLY scheduler_node:["n8", "default"]);
+    RETURN $beat.ok AND $seen_before IS NOT NONE AND $seen_after > $seen_before + 1s;
 };
 
 -- test: A11 — un compte sans scheduler.worker ne lit ni n'écrit les exécuteurs

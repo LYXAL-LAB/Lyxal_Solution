@@ -174,9 +174,9 @@ DEFINE FUNCTION OVERWRITE fn::auth_role_permission_set($params: object) {
         LET $granted = (RELATE ONLY $rid->auth_role_grants->$target);
         IF $granted == NONE { THROW "AUTH_WRITE_FORBIDDEN"; };
     };
-    LET $after = (SELECT VALUE out.code FROM auth_role_grants WHERE in = $rid);
-    IF array::len($after) != array::len($codes) { THROW "AUTH_WRITE_FORBIDDEN"; };
-    RETURN fn::result_ok({ role: $rid, permissions: array::sort($after) });
+    LET $granted_codes = (SELECT VALUE out.code FROM auth_role_grants WHERE in = $rid);
+    IF array::len($granted_codes) != array::len($codes) { THROW "AUTH_WRITE_FORBIDDEN"; };
+    RETURN fn::result_ok({ role: $rid, permissions: array::sort($granted_codes) });
 } COMMENT "Remplace les permissions accordées par un rôle ({ role, permissions : codes }) ; même portée que le rôle ; une permission retirée rend obsolètes les sessions des titulaires (événement)";
 
 -- ----------------------------------------------------------------------------
@@ -384,8 +384,8 @@ DEFINE FUNCTION OVERWRITE fn::auth_identity_permissions($params: object) {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
     LET $p = $report.value;
-    LET $self = $auth != NONE AND type::is_record($auth, "auth_session") AND (SELECT VALUE identity FROM ONLY $auth) = $p.identity;
-    IF !$self AND !fn::auth_has_permission({ permission: "auth.identity.read" }) AND !fn::auth_shares_organization({ identity: $p.identity, permission: "auth.member.read" }) {
+    LET $is_self = $auth != NONE AND type::is_record($auth, "auth_session") AND (SELECT VALUE identity FROM ONLY $auth) = $p.identity;
+    IF !$is_self AND !fn::auth_has_permission({ permission: "auth.identity.read" }) AND !fn::auth_shares_organization({ identity: $p.identity, permission: "auth.member.read" }) {
         RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, { permission: "auth.identity.read" });
     };
     LET $identity = (SELECT id, state, permissions_version FROM ONLY $p.identity);

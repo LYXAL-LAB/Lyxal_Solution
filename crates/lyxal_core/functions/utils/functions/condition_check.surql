@@ -91,19 +91,19 @@ DEFINE FUNCTION OVERWRITE fn::utils_condition_check(
         IF $op NOT IN ["eq", "ne", "lt", "lte", "gt", "gte", "between", "in", "not_in", "contains", "starts_with", "ends_with", "exists", "missing", "empty"] {
             RETURN { issue: "unknown_operator", children: [], rule: false };
         };
-        LET $value = $node.value;
+        LET $operand = $node.value;
         IF $op IN ["exists", "missing", "empty"] {
-            RETURN { issue: IF $value IS NONE { NONE } ELSE { "unexpected_value" }, children: [], rule: true };
+            RETURN { issue: IF $operand IS NONE { NONE } ELSE { "unexpected_value" }, children: [], rule: true };
         };
-        IF $value IS NONE { RETURN { issue: "missing_value", children: [], rule: true }; };
+        IF $operand IS NONE { RETURN { issue: "missing_value", children: [], rule: true }; };
         LET $valid = IF $op = "between" {
-            type::is_array($value) AND array::len($value) = 2 AND $ordered($value[0]) AND $same_kind($value[0], $value[1])
+            type::is_array($operand) AND array::len($operand) = 2 AND $ordered($operand[0]) AND $same_kind($operand[0], $operand[1])
         } ELSE IF $op IN ["in", "not_in"] {
-            type::is_array($value) AND array::len($value) >= 1 AND array::len($value) <= 100
+            type::is_array($operand) AND array::len($operand) >= 1 AND array::len($operand) <= 100
         } ELSE IF $op IN ["lt", "lte", "gt", "gte"] {
-            $ordered($value)
+            $ordered($operand)
         } ELSE IF $op IN ["starts_with", "ends_with"] {
-            type::is_string($value)
+            type::is_string($operand)
         } ELSE { true };
         RETURN { issue: IF $valid { NONE } ELSE { "invalid_value" }, children: [], rule: true };
     };

@@ -141,7 +141,6 @@ RETURN fn::secrets_audit_list({ tenant: "auth_organization:alpha" }).error.code 
 
 -- test: suppression des dernières entrées : détectée par la tête de chaîne
 {
-    LET $before = (SELECT * FROM secrets_audit WHERE scope_key = "alpha" AND seq = 5);
     DELETE secrets_audit WHERE scope_key = "alpha" AND seq >= 8;
     LET $v = fn::secrets_audit_verify({ tenant: "auth_organization:alpha", from_seq: 6 }).data;
     RETURN !$v.valid AND !$v.head_matches;

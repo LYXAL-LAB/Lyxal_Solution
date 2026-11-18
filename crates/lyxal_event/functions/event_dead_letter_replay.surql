@@ -31,7 +31,7 @@ DEFINE FUNCTION OVERWRITE fn::event_dead_letter_replay(
     IF $delivery == NONE {
         RETURN fn::error_result("EVENT_DELIVERY_NOT_FOUND", $p.language, { delivery: <string> $dl.delivery });
     };
-    LET $progress = (SELECT last_persisted_cursor FROM ONLY type::record(string::concat("event_subscription_progress:prog_", record::id($delivery.subscription))));
+    LET $progress = (SELECT last_persisted_cursor FROM ONLY type::record("event_subscription_progress", string::concat("prog_", record::id($delivery.subscription))));
     LET $cursor = $progress.last_persisted_cursor ?? 0;
     IF $delivery.delivery_seq != NONE AND $delivery.delivery_seq > $cursor {
         RETURN fn::error_result("EVENT_DEAD_LETTER_REPLAY_NOT_SETTLED", $p.language, {

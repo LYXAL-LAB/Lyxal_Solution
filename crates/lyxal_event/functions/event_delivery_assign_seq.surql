@@ -85,7 +85,7 @@ DEFINE FUNCTION OVERWRITE fn::event_delivery_assign_seq(
         };
 
         -- Si la livraison existait sans séquence (ex: créée par fanout initial), on lui alloue la séquence
-        LET $prog_rec = type::record(string::concat("event_subscription_progress:prog_", record::id($subscription)));
+        LET $prog_rec = type::record("event_subscription_progress", string::concat("prog_", record::id($subscription)));
         LET $prog = (SELECT * FROM ONLY $prog_rec);
 
         LET $current_seq = IF $prog != NONE THEN $prog.last_assigned_seq ELSE 0 END;
@@ -115,7 +115,7 @@ DEFINE FUNCTION OVERWRITE fn::event_delivery_assign_seq(
 
     -- 3. Allocation atomique de la séquence contiguë
     -- Identification canonique du record de progression
-    LET $prog_rec = type::record(string::concat("event_subscription_progress:prog_", record::id($subscription)));
+    LET $prog_rec = type::record("event_subscription_progress", string::concat("prog_", record::id($subscription)));
     LET $prog = (SELECT * FROM ONLY $prog_rec);
 
     LET $current_seq = IF $prog != NONE THEN $prog.last_assigned_seq ELSE 0 END;

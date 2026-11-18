@@ -145,3 +145,13 @@ RETURN fn::notification_workflow_create({ tenant: "auth_organization:alpha", key
 -- en tant que: autre
 RETURN fn::notification_category_delete({ key: "actualites" }).error.code == "NOTIFICATION_PERMISSION_DENIED"
     AND fn::notification_category_delete({ tenant: "auth_organization:beta", key: "actualites" }).error.code == "NOTIFICATION_CATEGORY_NOT_FOUND";
+
+-- test: catégorie utilisée par plusieurs parcours : leurs clés sont renvoyées triées
+-- en tant que: admin
+{
+    LET $category = fn::notification_category_create({ tenant: "auth_organization:alpha", key: "tri", name: "Tri" });
+    LET $last = fn::notification_workflow_create({ tenant: "auth_organization:alpha", key: "zeta", name: "Zeta", category: "tri", steps: [{ key: "email", type: "email" }] });
+    LET $first = fn::notification_workflow_create({ tenant: "auth_organization:alpha", key: "alerte", name: "Alerte", category: "tri", steps: [{ key: "email", type: "email" }] });
+    RETURN $category.ok AND $last.ok AND $first.ok
+        AND fn::notification_category_delete({ tenant: "auth_organization:alpha", key: "tri" }).error.details.workflows == ["alerte", "zeta"];
+};

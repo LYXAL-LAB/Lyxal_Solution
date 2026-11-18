@@ -2,7 +2,7 @@
 -- Function   : fn::event_outbox_get
 -- Module     : lyxal_event
 -- Description: Récupère un enregistrement outbox par son identifiant.
--- Contrat    : Retourne fn::result_ok($event) ou fn::result_ok(NONE)
+-- Contrat    : Retourne fn::result_ok($outbox_event) ou fn::result_ok(NONE)
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::event_outbox_get(
@@ -21,9 +21,9 @@ DEFINE FUNCTION OVERWRITE fn::event_outbox_get(
     LET $p = $report.value;
     LET $id = $p.id;
 
-    LET $event = (SELECT * FROM ONLY $id);
+    LET $outbox_event = (SELECT * FROM ONLY $id);
 
-    RETURN fn::result_ok($event);
+    RETURN fn::result_ok($outbox_event);
 } COMMENT "Récupère un événement outbox par son identifiant"
 PERMISSIONS FULL;
 
