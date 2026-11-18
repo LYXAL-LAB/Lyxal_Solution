@@ -2,8 +2,9 @@
 -- MASTER DATA : définitions d'erreurs du module lyxal_runtime
 -- Rejouable : chaque définition est créée seulement si elle n'existe pas.
 -- Les codes émis par le Rust (RuntimeError) sont vérifiés contre ce fichier par un test
--- (src/error/catalog.rs) ; RUNTIME_INVALID_PARAMETERS et RUNTIME_RELEASE_NOT_FOUND sont émis
--- par les fonctions fn::runtime_*.
+-- (src/error/catalog.rs) ; RUNTIME_INVALID_PARAMETERS, RUNTIME_RELEASE_NOT_FOUND,
+-- RUNTIME_MIGRATION_NOT_INTERRUPTED et RUNTIME_LEASE_FENCED sont aussi émis par les fonctions
+-- fn::runtime_*.
 -- ============================================================================
 
 IF !record::exists(error_definition:RUNTIME_DUPLICATE_MODULE) THEN (
@@ -562,12 +563,12 @@ IF !record::exists(error_definition:RUNTIME_MIGRATION_INTERRUPTED) THEN (
             fr: {
                 label: "Migration interrompue",
                 description: "Une exécution précédente a laissé la migration dans l'état Applying.",
-                resolution: "Vérifier l'état de la base puis relancer selon la politique de reprise."
+                resolution: "Vérifier l'état de la base, puis décider par fn::runtime_migration_resolve : retry pour la rejouer, abandon pour la laisser de côté."
             },
             en: {
                 label: "Interrupted migration",
                 description: "A previous run left the migration in Applying state.",
-                resolution: "Check the database state, then rerun according to the recovery policy."
+                resolution: "Check the database state, then decide with fn::runtime_migration_resolve: retry to replay it, abandon to set it aside."
             }
         }
     }
@@ -750,13 +751,40 @@ IF !record::exists(error_definition:RUNTIME_MIGRATION_RECOVERY_REQUIRED) THEN (
         translations: {
             fr: {
                 label: "Reprise manuelle requise",
-                description: "Une migration interrompue doit être vérifiée avant d'être rejouée.",
-                resolution: "Vérifier l'état de la base, puis corriger l'enregistrement de la migration."
+                description: "Une migration interrompue ou abandonnée doit être vérifiée avant d'être rejouée.",
+                resolution: "Vérifier l'état de la base, puis décider par fn::runtime_migration_resolve (retry pour la rejouer)."
             },
             en: {
                 label: "Manual recovery required",
-                description: "Interrupted migration requires manual recovery.",
-                resolution: "Check the database state, then fix the migration record."
+                description: "An interrupted or abandoned migration must be checked before it is replayed.",
+                resolution: "Check the database state, then decide with fn::runtime_migration_resolve (retry to replay it)."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:RUNTIME_MIGRATION_NOT_INTERRUPTED) THEN (
+    CREATE error_definition:RUNTIME_MIGRATION_NOT_INTERRUPTED CONTENT {
+        code: "RUNTIME_MIGRATION_NOT_INTERRUPTED",
+        module: "runtime",
+        domain: "migration",
+        category: "conflict",
+        severity: "error",
+        message: "Migration is not interrupted",
+        default_language: "fr",
+        http_status: 409,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Migration non interrompue",
+                description: "La décision demandée ne s'applique pas : la migration est inconnue, en cours d'exécution, déjà appliquée ou déjà abandonnée.",
+                resolution: "Lister les migrations interrompues (fn::runtime_migration_interrupted_list) ; une migration abandonnée n'accepte que retry."
+            },
+            en: {
+                label: "Migration not interrupted",
+                description: "The requested decision does not apply: the migration is unknown, running, already applied or already abandoned.",
+                resolution: "List interrupted migrations (fn::runtime_migration_interrupted_list); an abandoned migration only accepts retry."
             }
         }
     }

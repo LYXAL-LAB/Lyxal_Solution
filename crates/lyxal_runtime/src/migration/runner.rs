@@ -46,6 +46,7 @@ pub struct MigrationDryRunResult {
     pub to_skip: Vec<MigrationId>,
     pub has_drift: bool,
     pub has_interrupted: bool,
+    pub has_abandoned: bool,
 }
 
 /// Moteur officiel d'exécution des migrations SurrealQL de Lyxal OS.
@@ -186,6 +187,7 @@ impl MigrationRunner {
             to_skip,
             has_drift: plan.has_drift(),
             has_interrupted: plan.has_interrupted(),
+            has_abandoned: plan.has_abandoned(),
         }
     }
 
@@ -218,6 +220,9 @@ impl MigrationRunner {
                         module: plan.module_id.clone(),
                         migration: item.definition.id.to_string(),
                     });
+                }
+                MigrationPlanAction::FailAbandoned => {
+                    return Err(abandoned(plan, item));
                 }
                 _ => {}
             }
@@ -307,6 +312,10 @@ impl MigrationRunner {
                                     actual: item.definition.checksum.as_str().to_string(),
                                 });
                             }
+                        } else if r.status == MigrationStatus::Abandoned {
+                            // Abandonnée entre le plan et la prise du bail
+                            self.release_lease(acquired_lease.as_ref()).await;
+                            return Err(abandoned(plan, item));
                         } else if r.status == MigrationStatus::Applying {
                             let mut resolved = false;
                             for _ in 0..5 {
@@ -383,6 +392,8 @@ impl MigrationRunner {
                         duration_ms,
                         status,
                         error,
+                        script: item.definition.resource_path.clone(),
+                        node_id: Some(self.node_id.clone()),
                     };
                     if let Err(err) = self
                         .store
@@ -568,6 +579,15 @@ impl MigrationRunner {
             }
             sleep(Duration::from_millis(25 * attempts)).await;
         }
+    }
+}
+
+/// Refus d'une migration abandonnée par l'exploitant.
+fn abandoned(plan: &MigrationPlan, item: &MigrationPlanItem) -> RuntimeError {
+    RuntimeError::MigrationRecoveryRequired {
+        module: plan.module_id.clone(),
+        migration: item.definition.id.to_string(),
+        reason: "Abandonnée par l'exploitant : vérifier l'état de la base, puis la remettre à rejouer par fn::runtime_migration_resolve (action retry).".to_string(),
     }
 }
 

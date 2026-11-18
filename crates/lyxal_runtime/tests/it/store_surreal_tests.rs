@@ -116,6 +116,8 @@ async fn test_surreal_store_migration_crud() {
         duration_ms: 18,
         status: MigrationStatus::Applied,
         error: None,
+        script: None,
+        node_id: None,
     };
 
     // 1. Enregistrement

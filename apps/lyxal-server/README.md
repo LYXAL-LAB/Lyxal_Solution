@@ -352,6 +352,37 @@ cargo run -p lyxal-server
 | `GET /health` | Statuts des composants (serveur, base) et des modules (sondes `ModuleHealthCheck` évaluées par le runtime), sans détail interne ; `503` si un module est en panne. |
 | `GET /metrics` | Compteurs de requêtes et durée de fonctionnement. |
 | `GET /api/v1/system/modules` | Modules hébergés : identifiant, nom, version, état. |
+| 🔒 `GET /api/v1/system/migrations/interrupted` | Migrations interrompues ou abandonnées (`?module=` pour un seul module) : module, migration, version, script, nœud, état, début, dernière décision. |
+| 🔒 `POST /api/v1/system/migrations/resolve` | Décision sur une migration interrompue : `{ module, migration, action, reason }`, `action` valant `retry` (rejouée à la prochaine installation du module) ou `abandon` (installation refusée tant qu'un `retry` ne l'a pas remise à rejouer). |
+
+**Administration de l'installation** (`src/http/system.rs`, `seeds/server_permissions.surql`).
+Les deux routes `/api/v1/system/migrations/*` exposent la reprise guidée d'une migration
+interrompue de `lyxal_runtime` (procédure et refus : `crates/lyxal_runtime/README.md` §4.1).
+`lyxal_runtime` est sous `lyxal_auth` : il ne contrôle aucun droit et ses tables ne sont lisibles
+que par la session système. L'hôte déclare donc le droit `server.installation.manage` (portée
+installation, attribué au rôle `platform_admin`) et, pour chaque requête, contrôle le jeton
+d'accès (`Authorization: Bearer`), demande à `fn::auth_has_permission`, sur une session au nom
+de l'appelant, s'il détient ce droit, puis seulement appelle le runtime sur la session système.
+L'auteur de la décision (identité, ou application pour un compte de service) et son motif
+(obligatoire, 1 000 caractères au plus, ni secret ni donnée personnelle) sont gardés avec la
+décision et écrits au journal du runtime. Réponses `LyxalResult` avec `Cache-Control: no-store` ;
+corps borné par `server.body_limit_bytes`.
+
+| Refus | Code | HTTP |
+| :--- | :--- | :--- |
+| Sans jeton, jeton refusé | `AUTH_SESSION_REQUIRED` | 401 |
+| Sans le droit `server.installation.manage` | `AUTH_PERMISSION_DENIED` | 403 |
+| Corps ou paramètre illisible, champ inconnu, `action` inconnue | `SERVER_INVALID_REQUEST` | 400 |
+| Champ vide ou trop long | `RUNTIME_INVALID_PARAMETERS` | 400 |
+| Migration inconnue, en cours ou dans un autre état | `RUNTIME_MIGRATION_NOT_INTERRUPTED` | 409 |
+| Bail d'installation du module détenu par un autre nœud, ou par une installation en cours | `RUNTIME_LEASE_FENCED` | 412 |
+
+Ces routes sont servies par un nœud démarré. Un nœud dont l'installation d'un module échoue sur
+la migration interrompue ne démarre pas (`SERVER_MODULE_INSTALL_FAILED`) : sur un serveur seul,
+ou quand aucun autre nœud ne répond, la décision se prend **en ligne de commande, serveur
+arrêté** (`lyxal-server runtime migrations list|resolve`, ci-dessous), puis le serveur est
+relancé. Sur une installation à plusieurs nœuds, elle peut aussi se prendre par ces routes depuis
+un nœud démarré.
 
 Connexion (`/api/v1/auth`, JSON, réponses `LyxalResult`, erreurs `AUTH_*` sans détail sur
 l'existence d'un compte ; langue des messages par `Accept-Language`). Les routes marquées 🔒
@@ -409,8 +440,9 @@ placés dans le chemin (`auth_flow:…`, `auth_session:…`) sont encodés en po
 Jetons : `access_token` (JWT HS256, `expires_in` secondes), `refresh_token` (opaque, usage
 unique), `session`, `organization`, `permissions`.
 
-Commandes d'administration (installation existante : serveur démarré au moins une fois, même
-configuration et mêmes variables d'environnement) :
+Commandes d'administration (`src/cli.rs` ; installation existante : serveur démarré au moins une
+fois, même configuration et mêmes variables d'environnement — sauf `runtime migrations`, faites
+pour un serveur qui ne démarre pas) :
 
 ```bash
 lyxal-server admin setup --email admin@example.com
@@ -439,6 +471,47 @@ d'une organisation) ; `import` les relit et affiche son rapport (créés, modifi
 ignorés, invalides, illisibles ; `--tenant`, `--overwrite-reviewed` pour écraser un texte relu,
 `--dry-run` pour ne rien écrire) ; `check` liste les textes que le rendu refuse. `import` et
 `check` sortent en erreur (`SERVER_COMMAND_FAILED`) si un texte est invalide ou illisible.
+
+```bash
+lyxal-server runtime migrations list [--module lyxal_auth]
+lyxal-server runtime migrations resolve --module lyxal_auth --migration 0001_initial \
+    --action retry --reason "tables absentes, script rejouable"
+```
+
+Reprise d'une migration interrompue, **serveur arrêté** (procédure :
+`crates/lyxal_runtime/README.md` §4.1). Une migration interrompue empêche un serveur seul de
+démarrer, donc de servir les routes `/api/v1/system/migrations/*` : ces deux commandes font les
+mêmes opérations sans lui.
+
+* `list` affiche les migrations interrompues ou abandonnées, de tous les modules ou d'un seul :
+  module, migration, version, script, nœud, état, début, dernière décision.
+* `resolve` prend la décision : `--action retry` (la migration est rejouée au prochain démarrage)
+  ou `abandon` (le démarrage reste refusé tant qu'un `retry` ne l'a pas remise à rejouer) ;
+  `--reason` est obligatoire (1 000 caractères au plus, ni secret ni donnée personnelle). Les
+  quatre options sont obligatoires, dans un ordre libre.
+
+Elles se connectent à la base de la configuration, réinstallent le socle (`lyxal_core`,
+`lyxal_error`, définitions `SERVER_*`, schéma et fonctions du runtime : première étape de tout
+démarrage, rejouable, qui garantit que les fonctions de reprise présentes en base sont celles du
+binaire), **n'installent ni ne démarrent aucun module hébergé**, puis appellent
+`LyxalRuntime::interrupted_migrations` / `resolve_migration` : mêmes contrôles et même trace au
+journal du runtime que les routes. Elles fonctionnent aussi sur une base qui n'a jamais démarré.
+
+* **Nœud** : comme un serveur, chaque exécution reçoit un identifiant de nœud propre. Le bail
+  d'installation de la release est pris sans attendre ; s'il est encore détenu (serveur en cours
+  d'installation sur un autre nœud, ou arrêté brutalement depuis moins de la durée de son bail),
+  la commande est refusée (`RUNTIME_LEASE_FENCED`) : la relancer une fois le bail échu.
+* **Auteur tracé** : il n'y a pas d'appelant authentifié. L'auteur gardé avec la décision et au
+  journal est `cli:<application.instance_id>` (ex. `cli:local`) — la ligne de commande de
+  l'instance, jamais une personne ; le nœud et la date sont gardés à côté. Le motif dit qui a
+  décidé si l'exploitation le demande.
+* **Accès** : comme les autres commandes, aucun droit `lyxal_auth` n'est contrôlé. Peut décider
+  qui peut lancer le binaire avec la configuration du serveur et les identifiants de la base.
+* **Refus** : sortie en erreur (`SERVER_COMMAND_FAILED`), message commençant par le code du
+  runtime — `RUNTIME_MIGRATION_NOT_INTERRUPTED` (migration inconnue, en cours, ou dans un autre
+  état), `RUNTIME_INVALID_PARAMETERS` (motif vide ou trop long), `RUNTIME_LEASE_FENCED`. Une
+  `--action` autre que `retry` ou `abandon`, une option absente, inconnue ou répétée sont refusées
+  avant toute connexion (`SERVER_CONFIGURATION_INVALID`, avec l'aide).
 
 Désabonnement (`/api/v1/notification`, sans session ; le jeton signé est vérifié en temps
 constant avant toute lecture de la base ; réponses `Cache-Control: no-store`) :
@@ -537,8 +610,9 @@ garde son code `RUNTIME_*`.
 | `SERVER_INVALID_REQUEST` | `validation` | 400 |
 
 Les définitions sont générées depuis le catalogue `SERVER_ERROR_CATALOG` (`src/error.rs`) et
-installées au démarrage ; un test vérifie leur correspondance. `manifest.toml` de l'hôte ne
-déclare que ce fichier : l'hôte n'est pas un module du runtime.
+installées au démarrage ; un test vérifie leur correspondance. `manifest.toml` de l'hôte
+déclare ce fichier et ses seeds (droit d'administration de l'installation, tâches de fond) :
+l'hôte n'est pas un module du runtime.
 
 ---
 
@@ -565,7 +639,7 @@ tous les modules, routes système, `fn::error_result` de `lyxal_error` intact, r
 base installée (une release par module), rejeu des
 ressources de chaque module, définitions `SERVER_*`, corps des réponses d'erreur, routes
 `/api/v1/auth/*` de bout en bout (premier administrateur, connexion, sessions, déconnexion,
-service absent). `tests/scheduler_http.rs` parcourt les routes `/api/v1/scheduler/*` avec le
+service absent), routes `/api/v1/system/migrations/*` (liste, abandon puis reprise par un administrateur de la plateforme, refus sans jeton, sans droit, sur requête illisible, migration non interrompue, bail d'installation détenu ailleurs, auteur et motif au journal du runtime), commandes `runtime migrations` serveur arrêté (`tests/it/runtime_cli.rs` : un module d'essai déclarant une migration est hébergé avec les modules embarqués ; migration laissée « en cours », démarrage de l'hôte refusé, liste, refus sur motif invalide et bail détenu ailleurs, abandon puis démarrage encore refusé, reprise puis démarrage réussi et migration rejouée, rien à décider sur une installation saine ou jamais démarrée, auteur `cli:<instance>` au journal ; les fonctions des commandes sont appelées sur la base embarquée du test, sans passer par la lecture de la configuration). `tests/scheduler_http.rs` parcourt les routes `/api/v1/scheduler/*` avec le
 moteur réel (handler d'essai inscrit par le test) : planification contrôlée, prévision,
 déclenchement, rejeu, exécution différée exécutée puis annulée et relancée, droits, `no-store`,
 absence des routes du moteur. `tests/notification_http.rs` parcourt les routes de désabonnement

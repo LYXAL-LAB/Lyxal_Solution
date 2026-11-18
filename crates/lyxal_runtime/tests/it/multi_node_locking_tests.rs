@@ -278,6 +278,8 @@ async fn test_surreal_recovery_interrupted_applying() {
         duration_ms: 0,
         status: MigrationStatus::Applying,
         error: None,
+        script: None,
+        node_id: None,
     };
     store
         .record_migration(&applying_record, None)

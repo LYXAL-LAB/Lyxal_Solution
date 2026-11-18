@@ -1,9 +1,11 @@
-use super::{auth, handlers, middleware, notification, scheduler, secrets, storage, uploads};
+use super::{
+    auth, handlers, middleware, notification, scheduler, secrets, storage, system, uploads,
+};
 use crate::{config::CorsConfig, context::AppContext, error::ServerError};
 use axum::{
     http::{HeaderName, HeaderValue, Method},
     middleware::from_fn_with_state,
-    routing::get,
+    routing::{get, post},
     Router,
 };
 use std::{str::FromStr, time::Duration};
@@ -20,6 +22,14 @@ pub fn build_router(context: AppContext) -> Result<Router, ServerError> {
     let api = Router::new()
         .route("/system/info", get(handlers::root))
         .route("/system/modules", get(handlers::modules))
+        .route(
+            "/system/migrations/interrupted",
+            get(system::migrations_interrupted),
+        )
+        .route(
+            "/system/migrations/resolve",
+            post(system::migrations_resolve),
+        )
         .nest("/auth", auth::routes())
         .nest("/secrets", secrets::routes())
         .nest("/scheduler", scheduler::routes())

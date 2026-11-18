@@ -84,6 +84,8 @@ async fn test_memory_store_migration_records() {
         duration_ms: 12,
         status: MigrationStatus::Applied,
         error: None,
+        script: None,
+        node_id: None,
     };
 
     store.record_migration(&record, None).await.unwrap();

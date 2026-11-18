@@ -266,6 +266,15 @@ pub const MIGRATION_RECOVERY_REQUIRED: RuntimeErrorInfo = RuntimeErrorInfo {
     label: "Reprise manuelle requise",
 };
 
+pub const MIGRATION_NOT_INTERRUPTED: RuntimeErrorInfo = RuntimeErrorInfo {
+    code: "RUNTIME_MIGRATION_NOT_INTERRUPTED",
+    category: "conflict",
+    http_status: 409,
+    retryable: false,
+    message: "Migration is not interrupted",
+    label: "Migration non interrompue",
+};
+
 pub const MODULE_IMPLEMENTATION_MISSING: RuntimeErrorInfo = RuntimeErrorInfo {
     code: "RUNTIME_MODULE_IMPLEMENTATION_MISSING",
     category: "validation",
@@ -548,6 +557,7 @@ pub const RUNTIME_ERROR_CATALOG: &[RuntimeErrorInfo] = &[
     LEASE_FENCED,
     MIGRATION_LOCK_NOT_OWNER,
     MIGRATION_RECOVERY_REQUIRED,
+    MIGRATION_NOT_INTERRUPTED,
     MODULE_IMPLEMENTATION_MISSING,
     VERSION_INCOMPATIBLE,
     DEPENDENCY_VERSION_INCOMPATIBLE,

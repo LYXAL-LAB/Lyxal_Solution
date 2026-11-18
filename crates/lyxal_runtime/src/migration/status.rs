@@ -16,6 +16,12 @@ pub enum MigrationStatus {
     RolledBack,
     /// Migration ignorée (ex: migration conditionnelle non requise).
     Skipped,
+    /// Migration interrompue que l'exploitant a décidé de rejouer
+    /// (`fn::runtime_migration_resolve`, action `retry`) : rejouée à la prochaine installation.
+    RetryRequested,
+    /// Migration interrompue que l'exploitant a abandonnée (action `abandon`) : l'installation
+    /// du module est refusée tant qu'une décision `retry` ne l'a pas remise à rejouer.
+    Abandoned,
 }
 
 impl MigrationStatus {
@@ -33,6 +39,16 @@ impl MigrationStatus {
     pub fn is_failed(&self) -> bool {
         matches!(self, Self::Failed)
     }
+
+    /// Indique si l'exploitant a demandé de rejouer la migration interrompue.
+    pub fn is_retry_requested(&self) -> bool {
+        matches!(self, Self::RetryRequested)
+    }
+
+    /// Indique si l'exploitant a abandonné la migration interrompue.
+    pub fn is_abandoned(&self) -> bool {
+        matches!(self, Self::Abandoned)
+    }
 }
 
 impl fmt::Display for MigrationStatus {
@@ -44,6 +60,8 @@ impl fmt::Display for MigrationStatus {
             Self::Failed => write!(f, "Failed"),
             Self::RolledBack => write!(f, "RolledBack"),
             Self::Skipped => write!(f, "Skipped"),
+            Self::RetryRequested => write!(f, "RetryRequested"),
+            Self::Abandoned => write!(f, "Abandoned"),
         }
     }
 }

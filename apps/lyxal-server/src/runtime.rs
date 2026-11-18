@@ -1,10 +1,13 @@
 //! Assemblage du runtime de Lyxal OS pour ce serveur : `LyxalRuntime` sur SurrealDB, modules
-//! hébergés installés depuis leurs manifestes embarqués, puis démarrés.
+//! hébergés installés depuis leurs manifestes embarqués, puis démarrés ; runtime réduit à la
+//! reprise d'une migration interrompue pour la ligne de commande (`recovery`).
 
 use crate::{config::AppConfig, error::ServerError, modules};
 use lyxal_event::EventWorkerConfig;
 use lyxal_runtime::lock::SurrealInstallationLeaseManager;
-use lyxal_runtime::{EventEngineConfig, LyxalRuntime, RuntimeConfig, SurrealRuntimeStore};
+use lyxal_runtime::{
+    EventEngineConfig, LyxalRuntime, ModulePackage, RuntimeConfig, SurrealRuntimeStore,
+};
 use std::{sync::Arc, time::Duration};
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
@@ -26,6 +29,31 @@ pub struct Started {
 
 /// Construit le runtime, installe le noyau et les modules hébergés, puis les démarre.
 pub async fn start(config: &AppConfig, client: &Surreal<Any>) -> Result<Started, ServerError> {
+    start_with(config, client, Vec::new()).await
+}
+
+/// Runtime réduit à la reprise d'une migration interrompue (`LyxalRuntime::interrupted_migrations`
+/// et `resolve_migration`), pour les commandes `runtime migrations` exécutées serveur arrêté.
+///
+/// Le socle (`lyxal_core`, `lyxal_error`, définitions `SERVER_*`, schéma et fonctions du runtime)
+/// est réinstallé : c'est la première étape de tout démarrage, rejouable et sans lien avec les
+/// modules hébergés, et elle garantit que les fonctions de reprise et les définitions d'erreurs
+/// présentes en base sont celles de ce binaire. Aucun module hébergé n'est installé ni démarré :
+/// la commande reste utilisable quand l'installation d'un module est refusée.
+///
+/// Comme un serveur, le processus reçoit un identifiant de nœud propre (`NodeId::generate`) :
+/// il prend le bail d'installation comme un nœud distinct, refusé tant qu'un autre le détient.
+pub async fn recovery(client: &Surreal<Any>) -> Result<LyxalRuntime, ServerError> {
+    modules::install_foundation(client).await?;
+    Ok(LyxalRuntime::new(RuntimeConfig::new()).with_client(client.clone()))
+}
+
+/// `start`, avec des packages ajoutés aux modules embarqués (modules d'essai des tests).
+pub async fn start_with(
+    config: &AppConfig,
+    client: &Surreal<Any>,
+    additional: Vec<ModulePackage>,
+) -> Result<Started, ServerError> {
     modules::install_foundation(client).await?;
 
     let timeouts = &config.runtime;
@@ -55,7 +83,9 @@ pub async fn start(config: &AppConfig, client: &Surreal<Any>) -> Result<Started,
 
     let services = modules::register_services(&runtime, client, config).await?;
 
-    let report = runtime.install_packages(modules::packages(client)?).await?;
+    let mut packages = modules::packages(client)?;
+    packages.extend(additional);
+    let report = runtime.install_packages(packages).await?;
     if let Some(failure) = report.failed.first() {
         return Err(ServerError::ModuleInstall {
             module: failure.module_id.to_string(),

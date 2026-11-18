@@ -1,5 +1,5 @@
 use crate::error::RuntimeError;
-use crate::lock::MigrationLease;
+use crate::lock::{MigrationLease, NodeId};
 use crate::migration::{MigrationChecksum, MigrationId, MigrationRecord, MigrationStatus};
 use crate::store::dto::{
     ListParams, MigrationGetParams, MigrationListParams, MigrationRecordParams, MigrationRow,
@@ -116,6 +116,8 @@ fn migration_status(value: &str) -> Result<MigrationStatus, RuntimeError> {
         "Failed" => MigrationStatus::Failed,
         "RolledBack" => MigrationStatus::RolledBack,
         "Skipped" => MigrationStatus::Skipped,
+        "RetryRequested" => MigrationStatus::RetryRequested,
+        "Abandoned" => MigrationStatus::Abandoned,
         other => {
             return Err(RuntimeError::StoreFailed {
                 operation: "runtime_migration",
@@ -135,6 +137,8 @@ fn migration_from_row(row: MigrationRow) -> Result<MigrationRecord, RuntimeError
         duration_ms: to_u64("duration_ms", row.duration_ms)?,
         status: migration_status(&row.status)?,
         error: row.error,
+        script: row.script,
+        node_id: row.node_id.map(NodeId::new),
     })
 }
 
@@ -265,8 +269,12 @@ impl RuntimeStore for SurrealRuntimeStore {
                     applied_at: to_i64("applied_at", migration.applied_at)?,
                     duration_ms: to_i64("duration_ms", migration.duration_ms)?,
                     error: migration.error.clone(),
+                    script: migration.script.clone(),
+                    // Sous bail, le nœud est le détenteur du bail (garde de bail)
+                    node_id: lease
+                        .map(|l| l.owner.to_string())
+                        .or_else(|| migration.node_id.as_ref().map(NodeId::to_string)),
                     lease_key: lease.map(|l| l.key.canonical_string()),
-                    node_id: lease.map(|l| l.owner.to_string()),
                     generation: lease
                         .map(|l| to_i64("generation", l.generation))
                         .transpose()?,

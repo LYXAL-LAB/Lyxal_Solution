@@ -15,6 +15,7 @@ mod lyxal_event_runtime_integration_tests;
 mod manifest_tests;
 mod migration_lease_tests;
 mod migration_plan_tests;
+mod migration_recovery_tests;
 mod migration_runner_tests;
 mod migration_tests;
 mod module_batch_dag_tests;

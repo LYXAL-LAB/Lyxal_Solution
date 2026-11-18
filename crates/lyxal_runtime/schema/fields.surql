@@ -26,10 +26,22 @@ DEFINE FIELD OVERWRITE migration_id ON TABLE runtime_migration TYPE string;
 DEFINE FIELD OVERWRITE module_id ON TABLE runtime_migration TYPE string;
 DEFINE FIELD OVERWRITE module_version ON TABLE runtime_migration TYPE string;
 DEFINE FIELD OVERWRITE checksum ON TABLE runtime_migration TYPE string;
-DEFINE FIELD OVERWRITE status ON TABLE runtime_migration TYPE string;
+DEFINE FIELD OVERWRITE status ON TABLE runtime_migration TYPE string ASSERT $value IN ["Pending", "Applying", "Applied", "Failed", "RolledBack", "Skipped", "RetryRequested", "Abandoned"];
 DEFINE FIELD OVERWRITE applied_at ON TABLE runtime_migration TYPE option<int>;
 DEFINE FIELD OVERWRITE duration_ms ON TABLE runtime_migration TYPE option<int>;
 DEFINE FIELD OVERWRITE error ON TABLE runtime_migration TYPE option<string>;
+-- Script de la migration (chemin déclaré au manifeste), nœud qui a écrit le dernier état et
+-- début de la dernière exécution : ce qu'il faut pour reprendre une migration interrompue
+DEFINE FIELD OVERWRITE script ON TABLE runtime_migration TYPE option<string>;
+DEFINE FIELD OVERWRITE node_id ON TABLE runtime_migration TYPE option<string>;
+DEFINE FIELD OVERWRITE started_at ON TABLE runtime_migration TYPE option<datetime>;
+-- Dernière décision d'exploitation sur une migration interrompue (fn::runtime_migration_resolve)
+DEFINE FIELD OVERWRITE resolution ON TABLE runtime_migration TYPE option<object>;
+DEFINE FIELD OVERWRITE resolution.action ON TABLE runtime_migration TYPE string ASSERT $value IN ["retry", "abandon"];
+DEFINE FIELD OVERWRITE resolution.actor ON TABLE runtime_migration TYPE string;
+DEFINE FIELD OVERWRITE resolution.reason ON TABLE runtime_migration TYPE string;
+DEFINE FIELD OVERWRITE resolution.node_id ON TABLE runtime_migration TYPE string;
+DEFINE FIELD OVERWRITE resolution.at ON TABLE runtime_migration TYPE datetime;
 DEFINE FIELD OVERWRITE created_at ON TABLE runtime_migration TYPE datetime DEFAULT time::now() READONLY;
 DEFINE FIELD OVERWRITE updated_at ON TABLE runtime_migration TYPE datetime DEFAULT time::now();
 

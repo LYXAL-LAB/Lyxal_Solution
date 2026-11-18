@@ -1,4 +1,5 @@
 use crate::error::RuntimeError;
+use crate::lock::node_id::NodeId;
 use crate::migration::checksum::MigrationChecksum;
 use crate::migration::id::MigrationId;
 use crate::migration::status::MigrationStatus;
@@ -136,4 +137,8 @@ pub struct MigrationRecord {
     pub status: MigrationStatus,
     /// Message d'erreur éventuel en cas d'échec.
     pub error: Option<String>,
+    /// Script de la migration (chemin déclaré au manifeste), s'il est connu.
+    pub script: Option<String>,
+    /// Nœud qui a écrit cet état, s'il est connu.
+    pub node_id: Option<NodeId>,
 }

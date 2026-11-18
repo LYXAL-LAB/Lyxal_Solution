@@ -114,9 +114,12 @@ pub struct MigrationRecordParams {
     pub applied_at: i64,
     pub duration_ms: i64,
     pub error: Option<String>,
+    /// Script de la migration (chemin déclaré au manifeste).
+    pub script: Option<String>,
+    /// Nœud qui écrit cet état ; sous bail, le détenteur du bail.
+    pub node_id: Option<String>,
     /// Clé du bail sous lequel la migration est exécutée (garde de bail), sinon `None`.
     pub lease_key: Option<String>,
-    pub node_id: Option<String>,
     pub generation: Option<i64>,
 }
 
@@ -145,6 +148,23 @@ pub struct MigrationRow {
     pub duration_ms: i64,
     #[surreal(default)]
     pub error: Option<String>,
+    #[surreal(default)]
+    pub script: Option<String>,
+    #[surreal(default)]
+    pub node_id: Option<String>,
+}
+
+/// `fn::runtime_migration_resolve`, avec le bail d'installation sous lequel la décision est
+/// prise.
+#[derive(Debug, Clone, SurrealValue)]
+pub(crate) struct MigrationResolveCallParams {
+    pub module: String,
+    pub migration: String,
+    pub action: String,
+    pub reason: String,
+    pub actor: String,
+    pub node_id: String,
+    pub generation: i64,
 }
 
 // ---------------------------------------------------------------------------

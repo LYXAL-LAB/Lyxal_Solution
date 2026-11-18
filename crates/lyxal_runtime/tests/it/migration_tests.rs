@@ -209,6 +209,8 @@ fn test_migration_record_model() {
         duration_ms: 45,
         status: MigrationStatus::Applied,
         error: None,
+        script: None,
+        node_id: None,
     };
 
     assert_eq!(record.migration_id.as_str(), "001_init");
