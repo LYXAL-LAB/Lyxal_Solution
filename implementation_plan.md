@@ -47,7 +47,7 @@ moteur `fn::sanitize_pipeline_execute`.
 | `fn::base_unite_create`, `_update`, `fn::base_unite_type_update`, vues `_get` / `_list` | `factor`, `base_unit` acceptés et renvoyés ; garde : l'unité de base d'un type appartient à ce type et a le facteur 1 ; une unité de base ne perd pas son facteur |
 | `error/unite/` | `BASE_UNITE_TYPE_MISMATCH`, `BASE_UNITE_NOT_CONVERTIBLE`, `BASE_UNITE_BASE_INVALID` |
 | `seeds/` | facteurs des 30 unités, unité de base des 11 types (réécrits en place, régime §0) |
-| `tests/conversions.test.surql` | conversions nominales (`CM` → `M`, `KG` → `T`, `HA` → `M2`, `H` → `J`), refus entre types, unité non convertible, unité inactive, gardes de l'unité de base |
+| `tests/conversions.test.surql` | conversions nominales (`CM` → `M`, `KG` → `T`, `HA` → `M2`, `LTR` → `M3`), refus entre types, unité non convertible, unité inactive, gardes de l'unité de base |
 
 `lyxal_base` est en SurrealQL seul : pas de `XxxParams` Rust. README et feuilles de route de
 `lyxal_core` et `lyxal_base` mis à jour (étapes réalisées retirées).

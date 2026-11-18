@@ -4,9 +4,9 @@
 -- TABLE  : base_unite
 -- STANDARD : CREATE protégé par record::exists, rejouable (AGENTS.md §5.5) ; (Socle système is_system: true)
 -- FACTEURS : factor = quantité d'unité de base du type (base_unite_type.base_unit) que vaut une unité.
---            Sans facteur, l'unité n'est pas convertible : mois (durée variable), quantités,
---            conditionnements. Jour et semaine sont des durées calendaires (24 h et 168 h,
---            définitions des codes UN/ECE DAY et WEE), pas des temps de travail.
+--            Sans facteur, l'unité n'est pas convertible : quantités, conditionnements, et
+--            jour, semaine, mois (sur un devis ou un planning, ce sont des temps de travail dont
+--            la durée dépend de l'entreprise : la règle appartient à l'application métier).
 -- ============================================================================
 
 -- ============================================================================
@@ -176,7 +176,6 @@ IF !record::exists(base_unite:SEM) THEN (
         code: "SEM",
         abreviation: "sem",
         type: base_unite_type:DUREE,
-        factor: 168dec,
         enabled: true,
         is_system: true
     }
@@ -187,7 +186,6 @@ IF !record::exists(base_unite:J) THEN (
         code: "J",
         abreviation: "j",
         type: base_unite_type:DUREE,
-        factor: 24dec,
         enabled: true,
         is_system: true
     }

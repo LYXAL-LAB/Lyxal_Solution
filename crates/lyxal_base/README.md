@@ -125,7 +125,7 @@ au rejeu.
 | `SURFACE` | `M2` | `HA` (10000), `M2` (1) |
 | `VOLUME` | `M3` | `M3` (1), `LTR` (0,001) |
 | `MASSE` | `KG` | `T` (1000), `KG` (1), `G` (0,001) |
-| `DUREE` | `H` | `MOIS` (—), `SEM` (168), `J` (24), `H` (1) |
+| `DUREE` | `H` | `MOIS` (—), `SEM` (—), `J` (—), `H` (1) |
 | `QUANTITE` | — | `U`, `PCE`, `ENS`, `PAIRE`, `FORFAIT` (—) |
 | `CONDITIONNEMENT` | — | `ROUL`, `SAC`, `PAL`, `BTE`, `CART` (—) |
 | `ENERGIE` | `KWH` | `KWH` (1) |
@@ -133,13 +133,14 @@ au rejeu.
 | `PRESSION` | `BAR` | `BAR` (1) |
 | `DEBIT` | `M3H` | `M3H` (1) |
 
-19 unités convertibles, 11 non convertibles :
+17 unités convertibles, 13 non convertibles :
 
 * le mètre linéaire (`ML`) est une longueur d'un mètre : il se convertit comme `M` ;
-* le jour (`J`) et la semaine (`SEM`) sont des durées **calendaires**, 24 h et 168 h (définitions
-  des codes UN/ECE `DAY` et `WEE`), **pas des temps de travail** : une journée ou une semaine de
-  chantier (7 h, 8 h, 35 h…) dépend du contrat et se calcule dans le module métier ;
-* le mois (`MOIS`) n'a pas de durée fixe : pas de facteur ;
+* le jour (`J`), la semaine (`SEM`) et le mois (`MOIS`) n'ont **pas de facteur** : sur un devis
+  ou un planning ce sont des temps de travail, et une journée ou une semaine de chantier (7 h,
+  8 h, 35 h…) dépend de l'entreprise ; la conversion appartient à l'application métier, réglée
+  par organisation (une conversion calendaire, 24 h par jour, donnerait un résultat faux sans
+  erreur visible) ;
 * les quantités (`U`, `PCE`, `ENS`, `PAIRE`, `FORFAIT`) et les conditionnements n'ont ni facteur
   ni unité de base : le contenu d'un sac ou d'une palette dépend de l'article ;
 * un type à une seule unité a cette unité pour base, pour qu'une unité ajoutée ensuite (`MWH`,

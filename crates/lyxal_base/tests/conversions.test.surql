@@ -13,23 +13,23 @@ RETURN (SELECT VALUE [code, base_unit] FROM base_unite_type WHERE base_unit != N
     ]
     AND array::len(SELECT id FROM base_unite_type WHERE base_unit != NONE AND (base_unit.type != id OR base_unit.factor != 1dec)) == 0;
 
--- test: socle : facteurs des 19 unités convertibles
+-- test: socle : facteurs des 17 unités convertibles
 RETURN object::from_entries((SELECT VALUE [code, factor] FROM base_unite WHERE factor != NONE)) == {
     KM: 1000dec, M: 1dec, ML: 1dec, CM: 0.01dec, MM: 0.001dec, HA: 10000dec, M2: 1dec, M3: 1dec, LTR: 0.001dec,
-    T: 1000dec, KG: 1dec, G: 0.001dec, SEM: 168dec, J: 24dec, H: 1dec, KWH: 1dec, W: 1dec, BAR: 1dec, M3H: 1dec
+    T: 1000dec, KG: 1dec, G: 0.001dec, H: 1dec, KWH: 1dec, W: 1dec, BAR: 1dec, M3H: 1dec
 };
 
--- test: socle : mois, quantités et conditionnements sans facteur
-RETURN array::sort((SELECT VALUE code FROM base_unite WHERE factor == NONE)) == ["BTE", "CART", "ENS", "FORFAIT", "MOIS", "PAIRE", "PAL", "PCE", "ROUL", "SAC", "U"];
+-- test: socle : jour, semaine, mois, quantités et conditionnements sans facteur
+RETURN array::sort((SELECT VALUE code FROM base_unite WHERE factor == NONE)) == ["BTE", "CART", "ENS", "FORFAIT", "J", "MOIS", "PAIRE", "PAL", "PCE", "ROUL", "SAC", "SEM", "U"];
 
 -- test: CM → M, résultat décimal
 RETURN fn::base_unite_convert({ quantity: 250, from: "CM", to: "M" }).data == { quantity: 2.5dec, from: "CM", to: "M" }
     AND type::is_decimal(fn::base_unite_convert({ quantity: 250, from: "CM", to: "M" }).data.quantity);
 
--- test: KG → T, HA → M2, H → J
+-- test: KG → T, HA → M2, LTR → M3
 RETURN fn::base_unite_convert({ quantity: 1500, from: "KG", to: "T" }).data.quantity == 1.5dec
     AND fn::base_unite_convert({ quantity: 2, from: "HA", to: "M2" }).data.quantity == 20000dec
-    AND fn::base_unite_convert({ quantity: 48, from: "H", to: "J" }).data.quantity == 2dec;
+    AND fn::base_unite_convert({ quantity: 500, from: "LTR", to: "M3" }).data.quantity == 0.5dec;
 
 -- test: codes nettoyés (espaces, casse) ; mètre linéaire et mètre équivalents
 RETURN fn::base_unite_convert({ quantity: 3, from: " ml ", to: "mm" }).data == { quantity: 3000dec, from: "ML", to: "MM" };
@@ -40,8 +40,13 @@ RETURN fn::base_unite_convert({ quantity: 0.1, from: "M", to: "MM" }).data.quant
     AND fn::base_unite_convert({ quantity: 12.5dec, from: "G", to: "KG" }).data.quantity == 0.0125dec;
 
 -- test: résultat non arrondi
-RETURN fn::base_unite_convert({ quantity: 1, from: "H", to: "J" }).data.quantity == 1dec / 24dec
-    AND fn::base_unite_convert({ quantity: 1, from: "H", to: "J" }).data.quantity > 0.0416666666dec;
+RETURN fn::base_unite_convert({ quantity: 1, from: "MM", to: "KM" }).data.quantity == 0.000001dec
+    AND fn::base_unite_convert({ quantity: 1, from: "G", to: "T" }).data.quantity == 0.000001dec;
+
+-- test: heures → jours refusé : le jour (temps de travail, propre à l'entreprise) n'est pas convertible
+RETURN fn::base_unite_convert({ quantity: 16, from: "H", to: "J" }).error.code == "BASE_UNITE_NOT_CONVERTIBLE"
+    AND fn::base_unite_convert({ quantity: 16, from: "H", to: "J" }).error.details.code == "J"
+    AND fn::base_unite_convert({ quantity: 1, from: "SEM", to: "H" }).error.code == "BASE_UNITE_NOT_CONVERTIBLE";
 
 -- test: plus grande quantité acceptée
 RETURN fn::base_unite_convert({ quantity: 1000000000000000, from: "KM", to: "MM" }).data.quantity == 1000000000000000000000dec;
