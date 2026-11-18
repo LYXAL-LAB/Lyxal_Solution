@@ -10,7 +10,7 @@ page. Ce plan donne à chacune un ordre total. Aucune ligne de code avant la val
 
 ## 1. Décisions du CTO
 
-À valider par le CTO.
+Décisions V1 à V5 **validées par le CTO** le 18 novembre 2026, telles que proposées ci-dessous.
 
 | N° | Question | Proposition |
 | :- | :--- | :--- |
