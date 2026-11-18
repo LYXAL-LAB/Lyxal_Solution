@@ -301,7 +301,7 @@ avant chaque fusion.
 
 ## 7. Décisions du CTO
 
-À valider par le CTO.
+Décisions P1 à P14 **validées par le CTO** le 18 novembre 2026, telles que proposées ci-dessous ; P15 ajoutée à sa demande le même jour.
 
 | N° | Question | Proposition |
 | :- | :--- | :--- |
@@ -319,6 +319,7 @@ avant chaque fusion.
 | **P12** | Liste « Essais réels à faire » | Même convention que `crates/lyxal_notification/ROADMAP.md` : chaque `ROADMAP.md` tient un tableau des essais réels (préalable, action, résultat attendu) ; chaque lot y ajoute les siens ; un essai réussi est retiré et noté dans le `README.md`. Les tests automatiques n'appellent aucun service réel. |
 | **P13** | Anti-spam | Intégré (lot 11), porté de Stalwart sans la partie IA (propriétaire). Rspamd n'est pas utilisé. |
 | **P14** | Suivi des sources | Les commits sources sont figés au lot 0. Reprendre une version plus récente d'une source est un changement comme un autre : plan, `SOURCES.md` mis à jour, validation. |
+| **P15** | Proton comme source d'inspiration | Demande du CTO : s'inspirer aussi de **Proton** (Proton Mail, Proton Calendar, Proton Contacts). Le serveur de Proton n'est pas publié : seuls ses logiciels clients et ses bibliothèques le sont. Au lot 0, étude à verser dans `RECHERCHE_SOURCES.md` : dépôts publics de Proton, licence de chacun (à vérifier, non vérifiée à ce jour), et ce qui peut inspirer Lyxal — en premier le **chiffrement des boîtes, des agendas et des contacts** (clés par utilisateur, chiffrement de bout en bout, serveur qui ne lit pas le contenu), la gestion des clés et l'expérience des logiciels clients. Toute reprise suit P2 (provenance et licence dans `SOURCES.md`) et P6 (chaque primitive cryptographique est une extension de `lyxal_crypto` validée par le CTO). Le chiffrement des boîtes, placé hors périmètre au §9, devient un **sujet à instruire au lot 0** : le CTO décidera sur cette étude s'il entre dans le programme et à quel lot. |
 
 ## 8. Vérification
 
@@ -337,7 +338,8 @@ partir du lot où leur protocole existe. Les essais réels (P11, P12) se font su
   supprimés. (Les organisations multiples, elles, sont dans le programme, écrites pour Lyxal.)
 * Webmail et écrans de la console (Surrealist) : après la clôture, sur les fonctions publiques.
 * Chiffrement des boîtes au repos par OpenPGP ou S/MIME (Stalwart `crypto`, 9 696 lignes) :
-  plus tard, extension crypto importante à décider à part.
+  instruit au lot 0 avec l'étude de Proton (P15) ; hors périmètre tant que le CTO n'a pas
+  décidé sur cette étude.
 * Stockage de fichiers WebDAV (Stalwart `dav/file`, JMAP fichiers) : plus tard, sur `lyxal_storage`.
 * Annuaires externes LDAP et SQL pour les comptes : les comptes sont ceux de `lyxal_auth`.
 * Lecture de boîtes et d'agendas **externes** (Google, Microsoft, IMAP distant) : `lyxal_connect`.
