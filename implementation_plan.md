@@ -16,7 +16,7 @@ Trois lots, une demande de fusion par lot :
 
 ## 1. Décisions du CTO
 
-À valider par le CTO.
+Décisions P1 à P6 **validées par le CTO** le 18 novembre 2026, telles que proposées ci-dessous.
 
 | N° | Question | Proposition |
 | :- | :--- | :--- |
