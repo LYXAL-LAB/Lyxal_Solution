@@ -395,6 +395,16 @@ RETURN [
         AND $all[2].{ libelle, disponible } == { libelle: "Cuivre", disponible: false };
 };
 
+-- test: appelée depuis une fermeture, la liste garde le tri sur le libellé affiché et le filtre de disponibilité du locataire
+-- en tant que: alpha
+{
+    LET $pages = array::map([0, 1, 2, 3, 4], |$start| fn::catalogue_item_list({ search: "tri-", limit: 1, start: $start }).data[0].code);
+    LET $disponibles = array::map([true], |$flag| fn::catalogue_item_list({ search: "tri-", enabled: $flag }).data.code)[0];
+    RETURN $pages == ["TRI-A", "TRI-E", "TRI-C", "TRI-D", "TRI-B"]
+        AND $disponibles == fn::catalogue_item_list({ search: "tri-", enabled: true }).data.code
+        AND !($disponibles CONTAINS "TRI-C");
+};
+
 -- test: Beta, sans personnalisation, lit les mêmes articles dans l'ordre du référentiel ; le code départage les deux « Cuivre »
 -- en tant que: beta
 {
