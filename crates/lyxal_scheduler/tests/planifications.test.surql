@@ -127,8 +127,10 @@ RETURN fn::scheduler_schedule_create({ tenant: "auth_organization:alpha", name: 
 {
     fn::scheduler_settings_set({ tenant: "auth_organization:alpha", max_schedules: 2 });
     LET $r = fn::scheduler_schedule_create({ tenant: "auth_organization:alpha", name: "trop", task: "essai.purge", spec: { every: [1h] } });
+    -- Limite atteinte : un nom déjà pris reste signalé comme tel (création rejouée par un module)
+    LET $doublon = fn::scheduler_schedule_create({ tenant: "auth_organization:alpha", name: "rapport-quotidien", task: "essai.rapport", args: { format: "csv" }, spec: { every: [1h] } });
     fn::scheduler_settings_set({ tenant: "auth_organization:alpha", clear: ["max_schedules"] });
-    RETURN $r.error.code = "SCHEDULER_LIMIT_REACHED" AND $r.error.details.max = 2;
+    RETURN $r.error.code = "SCHEDULER_LIMIT_REACHED" AND $r.error.details.max = 2 AND $doublon.error.code = "SCHEDULER_SCHEDULE_EXISTS";
 };
 
 -- test: limite vérifiée aussi pour une écriture directe
