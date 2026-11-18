@@ -54,6 +54,18 @@ DEFINE FIELD OVERWRITE type
     COMMENT "Référence vers le type d'unité";
 
 -- ----------------------------------------------------------------------------
+-- Facteur de conversion
+-- Quantité d'unité de base du type (base_unite_type.base_unit) que vaut une unité.
+-- Exemple : M = 1, CM = 0.01, KM = 1000 ; absent : unité non convertible (FORFAIT, ENS, SAC)
+-- ----------------------------------------------------------------------------
+
+DEFINE FIELD OVERWRITE factor
+    ON TABLE base_unite
+    TYPE option<decimal>
+    ASSERT $value == NONE OR $value > 0
+    COMMENT "Facteur de conversion vers l'unité de base du type (décimal strictement positif) ; absent : unité non convertible";
+
+-- ----------------------------------------------------------------------------
 -- Statut d'activation
 -- ----------------------------------------------------------------------------
 

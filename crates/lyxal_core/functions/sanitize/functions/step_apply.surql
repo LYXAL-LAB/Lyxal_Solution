@@ -92,6 +92,7 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_step_apply(
         ELSE IF $step.rule = "remove_tabs" { fn::sanitize_remove_tabs($value, $options.replacement ?? " ") }
         ELSE IF $step.rule = "remove_tracking" { fn::sanitize_remove_tracking($value) }
         ELSE IF $step.rule = "remove_unknown_keys" { fn::sanitize_remove_unknown_keys($value, $options.allowed_keys) }
+        ELSE IF $step.rule = "replace_chars" { fn::sanitize_replace_chars($value, $options.remove ?? [], $options.replace ?? []) }
         ELSE IF $step.rule = "rfc3339" { fn::sanitize_rfc3339($value) }
         ELSE IF $step.rule = "round" { fn::sanitize_round($value, $options.precision) }
         ELSE IF $step.rule = "safe_extension" { fn::sanitize_safe_extension($value) }

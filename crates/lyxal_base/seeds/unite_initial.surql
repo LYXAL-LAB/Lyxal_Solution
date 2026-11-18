@@ -3,6 +3,10 @@
 -- MODULE : lyxal_base
 -- TABLE  : base_unite
 -- STANDARD : CREATE protégé par record::exists, rejouable (AGENTS.md §5.5) ; (Socle système is_system: true)
+-- FACTEURS : factor = quantité d'unité de base du type (base_unite_type.base_unit) que vaut une unité.
+--            Sans facteur, l'unité n'est pas convertible : quantités, conditionnements, et
+--            jour, semaine, mois (sur un devis ou un planning, ce sont des temps de travail dont
+--            la durée dépend de l'entreprise : la règle appartient à l'application métier).
 -- ============================================================================
 
 -- ============================================================================
@@ -14,6 +18,7 @@ IF !record::exists(base_unite:KM) THEN (
         code: "KM",
         abreviation: "km",
         type: base_unite_type:LONGUEUR,
+        factor: 1000dec,
         enabled: true,
         is_system: true
     }
@@ -24,6 +29,7 @@ IF !record::exists(base_unite:M) THEN (
         code: "M",
         abreviation: "m",
         type: base_unite_type:LONGUEUR,
+        factor: 1dec,
         enabled: true,
         is_system: true
     }
@@ -34,6 +40,7 @@ IF !record::exists(base_unite:ML) THEN (
         code: "ML",
         abreviation: "ml",
         type: base_unite_type:LONGUEUR,
+        factor: 1dec,
         enabled: true,
         is_system: true
     }
@@ -44,6 +51,7 @@ IF !record::exists(base_unite:CM) THEN (
         code: "CM",
         abreviation: "cm",
         type: base_unite_type:LONGUEUR,
+        factor: 0.01dec,
         enabled: true,
         is_system: true
     }
@@ -54,6 +62,7 @@ IF !record::exists(base_unite:MM) THEN (
         code: "MM",
         abreviation: "mm",
         type: base_unite_type:LONGUEUR,
+        factor: 0.001dec,
         enabled: true,
         is_system: true
     }
@@ -68,6 +77,7 @@ IF !record::exists(base_unite:HA) THEN (
         code: "HA",
         abreviation: "ha",
         type: base_unite_type:SURFACE,
+        factor: 10000dec,
         enabled: true,
         is_system: true
     }
@@ -78,6 +88,7 @@ IF !record::exists(base_unite:M2) THEN (
         code: "M2",
         abreviation: "m²",
         type: base_unite_type:SURFACE,
+        factor: 1dec,
         enabled: true,
         is_system: true
     }
@@ -92,6 +103,7 @@ IF !record::exists(base_unite:M3) THEN (
         code: "M3",
         abreviation: "m³",
         type: base_unite_type:VOLUME,
+        factor: 1dec,
         enabled: true,
         is_system: true
     }
@@ -102,6 +114,7 @@ IF !record::exists(base_unite:LTR) THEN (
         code: "LTR",
         abreviation: "L",
         type: base_unite_type:VOLUME,
+        factor: 0.001dec,
         enabled: true,
         is_system: true
     }
@@ -116,6 +129,7 @@ IF !record::exists(base_unite:T) THEN (
         code: "T",
         abreviation: "t",
         type: base_unite_type:MASSE,
+        factor: 1000dec,
         enabled: true,
         is_system: true
     }
@@ -126,6 +140,7 @@ IF !record::exists(base_unite:KG) THEN (
         code: "KG",
         abreviation: "kg",
         type: base_unite_type:MASSE,
+        factor: 1dec,
         enabled: true,
         is_system: true
     }
@@ -136,6 +151,7 @@ IF !record::exists(base_unite:G) THEN (
         code: "G",
         abreviation: "g",
         type: base_unite_type:MASSE,
+        factor: 0.001dec,
         enabled: true,
         is_system: true
     }
@@ -180,6 +196,7 @@ IF !record::exists(base_unite:H) THEN (
         code: "H",
         abreviation: "h",
         type: base_unite_type:DUREE,
+        factor: 1dec,
         enabled: true,
         is_system: true
     }
@@ -302,6 +319,7 @@ IF !record::exists(base_unite:KWH) THEN (
         code: "KWH",
         abreviation: "kWh",
         type: base_unite_type:ENERGIE,
+        factor: 1dec,
         enabled: true,
         is_system: true
     }
@@ -316,6 +334,7 @@ IF !record::exists(base_unite:W) THEN (
         code: "W",
         abreviation: "W",
         type: base_unite_type:PUISSANCE,
+        factor: 1dec,
         enabled: true,
         is_system: true
     }
@@ -330,6 +349,7 @@ IF !record::exists(base_unite:BAR) THEN (
         code: "BAR",
         abreviation: "bar",
         type: base_unite_type:PRESSION,
+        factor: 1dec,
         enabled: true,
         is_system: true
     }
@@ -344,6 +364,7 @@ IF !record::exists(base_unite:M3H) THEN (
         code: "M3H",
         abreviation: "m³/h",
         type: base_unite_type:DEBIT,
+        factor: 1dec,
         enabled: true,
         is_system: true
     }

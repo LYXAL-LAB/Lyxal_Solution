@@ -2,10 +2,10 @@
 -- Tests de fn::sanitize_step_catalog (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: une règle par fonction de valeurs (sauf date_range), plus default
-RETURN array::len(fn::sanitize_step_catalog()) == 93;
+RETURN array::len(fn::sanitize_step_catalog()) == 94;
 
 -- test: règles uniques
-RETURN array::len(array::distinct(fn::sanitize_step_catalog().map(|$e| $e.rule))) == 93;
+RETURN array::len(array::distinct(fn::sanitize_step_catalog().map(|$e| $e.rule))) == 94;
 
 -- test: sanitize_object exposée sous object_or_empty
 RETURN fn::sanitize_step_apply(fn::utils_engine_state(NONE, "", NONE), { rule: "object_or_empty", options: {} }).value == {};
@@ -25,5 +25,5 @@ RETURN fn::sanitize_pipeline_execute(" A  B ", fn::utils_engine_optimize([{ rule
 -- test: aucune règle du moteur masquée
 RETURN array::len(fn::utils_engine_pipeline([], fn::sanitize_step_catalog(), 1)) == 0;
 
--- test: chaque règle est appliquée par l'aiguillage
-RETURN array::all(fn::sanitize_step_catalog().filter(|$e| $e.required IS NONE).map(|$e| $e.rule), |$rule| fn::sanitize_step_apply(fn::utils_engine_state(NONE, "", NONE), { rule: $rule, options: {} }).stop == false);
+-- test: chaque règle sans option obligatoire est appliquée par l'aiguillage (replace_chars exige remove ou replace)
+RETURN array::all(fn::sanitize_step_catalog().filter(|$e| $e.required IS NONE AND $e.rule != "replace_chars").map(|$e| $e.rule), |$rule| fn::sanitize_step_apply(fn::utils_engine_state(NONE, "", NONE), { rule: $rule, options: {} }).stop == false);

@@ -9,14 +9,14 @@ Ce dossier regroupe les feuilles de route stratégiques et d'intégration transv
 
 2. **Feuilles de Route des Modules** :
    - [`ROADMAP_NOYAU.md`](./ROADMAP_NOYAU.md) — Ordre de création des crates du noyau technique à créer (`lyxal_auth`, `lyxal_i18n`, `lyxal_storage`, `lyxal_secrets`, `lyxal_scheduler`, `lyxal_notification`).
-   - [`crates/lyxal_core/ROADMAP.md`](../../crates/lyxal_core/ROADMAP.md) — Extensions de la bibliothèque standard SurrealQL.
+   - [`crates/lyxal_core/ROADMAP.md`](../../crates/lyxal_core/ROADMAP.md) — Bibliothèque standard SurrealQL (aucune étape prévue).
    - [`crates/lyxal_crypto/ROADMAP.md`](../../crates/lyxal_crypto/ROADMAP.md) — Audit de sécurité externe avant la première mise en production.
    - [`crates/lyxal_surreal/ROADMAP.md`](../../crates/lyxal_surreal/ROADMAP.md) — Transport SurrealDB (aucune étape prévue).
    - [`crates/lyxal_runtime/ROADMAP.md`](../../crates/lyxal_runtime/ROADMAP.md) — Reprise des migrations, retrait d'un module, coordination entre nœuds.
    - [`apps/lyxal-server/ROADMAP.md`](../../apps/lyxal-server/ROADMAP.md) — Authentification des clients, API des modules, hébergement des crates du noyau.
    - [`crates/lyxal_error/ROADMAP.md`](../../crates/lyxal_error/ROADMAP.md) — Observabilité, console, événements et fonctions à venir du moteur d'erreurs.
    - [`crates/lyxal_event/ROADMAP.md`](../../crates/lyxal_event/ROADMAP.md) — Métriques, exploitation de la dead letter, réglage automatique du moteur d'événements.
-   - [`crates/lyxal_base/ROADMAP.md`](../../crates/lyxal_base/ROADMAP.md) — Conversions et libellés traduits des unités.
+   - [`crates/lyxal_base/ROADMAP.md`](../../crates/lyxal_base/ROADMAP.md) — Référentiels de base (aucune étape prévue).
    - [`crates/lyxal_catalogue/ROADMAP.md`](../../crates/lyxal_catalogue/ROADMAP.md) — Substitutions, recherche avancée, historisation, catalogue intelligent.
    - [`crates/lyxal_pipeline_ingestion/ROADMAP.md`](../../crates/lyxal_pipeline_ingestion/ROADMAP.md) — Évolutions prévues du pipeline d'ingestion.
 

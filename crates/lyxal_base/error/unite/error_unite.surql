@@ -218,3 +218,84 @@ IF !record::exists(error_definition:BASE_LIBELLE_READ_FAILED) THEN (
         }
     }
 ) END;
+
+IF !record::exists(error_definition:BASE_UNITE_TYPE_MISMATCH) THEN (
+    CREATE error_definition:BASE_UNITE_TYPE_MISMATCH CONTENT {
+        code: "BASE_UNITE_TYPE_MISMATCH",
+        module: "base",
+        domain: "unite",
+        category: "validation",
+        severity: "error",
+        message: "Les deux unités ne sont pas du même type",
+        default_language: "fr",
+        http_status: 422,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Unités de types différents",
+                description: "Une quantité ne se convertit qu'entre deux unités du même type (deux longueurs, deux masses…).",
+                resolution: "Choisissez deux unités du même type d'unité."
+            },
+            en: {
+                label: "Units of different types",
+                description: "A quantity can only be converted between two units of the same type (two lengths, two masses…).",
+                resolution: "Choose two units of the same unit type."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:BASE_UNITE_NOT_CONVERTIBLE) THEN (
+    CREATE error_definition:BASE_UNITE_NOT_CONVERTIBLE CONTENT {
+        code: "BASE_UNITE_NOT_CONVERTIBLE",
+        module: "base",
+        domain: "unite",
+        category: "validation",
+        severity: "error",
+        message: "Cette unité n'est pas convertible",
+        default_language: "fr",
+        http_status: 422,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Unité non convertible",
+                description: "L'unité n'a pas de facteur de conversion, son type n'a pas d'unité de base, ou l'unité ou son type est désactivé (détail reason : no_factor, no_base_unit, disabled).",
+                resolution: "Utilisez une unité active dotée d'un facteur de conversion, ou saisissez la quantité directement dans l'unité voulue."
+            },
+            en: {
+                label: "Unit not convertible",
+                description: "The unit has no conversion factor, its type has no base unit, or the unit or its type is disabled (detail reason: no_factor, no_base_unit, disabled).",
+                resolution: "Use an active unit with a conversion factor, or enter the quantity directly in the target unit."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:BASE_UNITE_BASE_INVALID) THEN (
+    CREATE error_definition:BASE_UNITE_BASE_INVALID CONTENT {
+        code: "BASE_UNITE_BASE_INVALID",
+        module: "base",
+        domain: "unite",
+        category: "validation",
+        severity: "error",
+        message: "Unité de base invalide",
+        default_language: "fr",
+        http_status: 422,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Unité de base invalide",
+                description: "L'unité de base d'un type est une unité de ce type, de facteur 1 ; tant qu'elle est l'unité de base, elle garde ce facteur et ce type (détail reason : not_found, other_type, factor_not_one, base_unit_factor, base_unit_type).",
+                resolution: "Désignez une unité du même type dont le facteur vaut 1, ou désignez d'abord une autre unité de base pour le type."
+            },
+            en: {
+                label: "Invalid base unit",
+                description: "The base unit of a type is a unit of that type with factor 1; while it is the base unit, it keeps that factor and that type (detail reason: not_found, other_type, factor_not_one, base_unit_factor, base_unit_type).",
+                resolution: "Designate a unit of the same type whose factor is 1, or first designate another base unit for the type."
+            }
+        }
+    }
+) END;
