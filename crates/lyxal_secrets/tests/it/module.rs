@@ -1,15 +1,14 @@
 //! Sans clé maîtresse : chiffrement indisponible, fiches consultables, module dégradé (R5).
-//! Sonde de santé et worker arrêté par l'annulation.
+//! Sonde de santé et maintenance arrêtée par l'annulation.
 
 use lyxal_runtime::health::{HealthStatus, ModuleHealthCheck};
-use lyxal_runtime::worker::{CancellationToken, LyxalWorker, WorkerContext};
+use lyxal_runtime::worker::CancellationToken;
 use lyxal_runtime::ModuleContext;
 use lyxal_secrets::models::{SecretGetParams, SecretListParams};
 use lyxal_secrets::{
-    MaintenanceReport, MasterKeys, RotatorRegistry, SecretsHealthCheck, SecretsMaintenanceWorker,
+    MaintenanceReport, MasterKeys, RotatorRegistry, SecretsHealthCheck, SecretsMaintenance,
     MODULE_ID,
 };
-use std::time::Duration;
 
 use crate::support::{bench, code, master_key, put, reveal, ALPHA};
 
@@ -59,17 +58,10 @@ async fn without_a_master_key_values_are_refused_and_records_stay_readable() {
         .message
         .as_deref()
         .is_some_and(|m| m.contains("SECRETS_CRYPTO_UNAVAILABLE")));
-    let report = SecretsMaintenanceWorker::new(
-        bench.store.clone(),
-        None,
-        RotatorRegistry::new(),
-        Duration::from_secs(3600),
-        10,
-    )
-    .expect("worker")
-    .run_once(&CancellationToken::new())
-    .await
-    .expect("passage");
+    let report = SecretsMaintenance::new(bench.store.clone(), None, RotatorRegistry::new(), 10)
+        .run(&CancellationToken::new())
+        .await
+        .expect("passage");
     assert_eq!(report, MaintenanceReport::default());
 }
 
@@ -112,15 +104,13 @@ async fn the_probe_follows_the_master_key_and_pending_reseals() {
         .expect("sonde");
     assert_eq!(missing.status, HealthStatus::Degraded, "{missing:?}");
 
-    SecretsMaintenanceWorker::new(
+    SecretsMaintenance::new(
         bench.store.clone(),
         Some(rotated.clone()),
         RotatorRegistry::new(),
-        Duration::from_secs(3600),
         10,
     )
-    .expect("worker")
-    .run_once(&CancellationToken::new())
+    .run(&CancellationToken::new())
     .await
     .expect("passage");
     let done = SecretsHealthCheck::new(bench.store.clone(), Some(rotated))
@@ -137,41 +127,19 @@ async fn the_probe_follows_the_master_key_and_pending_reseals() {
 }
 
 #[tokio::test]
-async fn the_worker_stops_on_cancellation() {
+async fn the_maintenance_stops_on_cancellation() {
     let bench = bench().await;
-    let worker = SecretsMaintenanceWorker::new(
+    let worker = SecretsMaintenance::new(
         bench.store.clone(),
         Some(bench.master.clone()),
         RotatorRegistry::new(),
-        Duration::from_secs(3600),
         10,
-    )
-    .expect("worker");
+    );
     // Annulation avant le passage : rien n'est fait
     let cancelled = CancellationToken::new();
     cancelled.cancel();
     assert_eq!(
-        worker.run_once(&cancelled).await.expect("passage"),
+        worker.run(&cancelled).await.expect("passage"),
         MaintenanceReport::default()
     );
-
-    // Boucle du worker : un passage, puis arrêt sur annulation pendant l'attente
-    let descriptor = worker.descriptor().clone();
-    let cancellation = CancellationToken::new();
-    let context = WorkerContext::new(
-        descriptor.module_id.clone(),
-        descriptor.id.clone(),
-        ModuleContext::new(descriptor.module_id.clone()),
-        cancellation.clone(),
-    );
-    let stopper = async {
-        tokio::time::sleep(Duration::from_millis(200)).await;
-        cancellation.cancel();
-    };
-    let (ran, ()) = tokio::time::timeout(Duration::from_secs(30), async {
-        tokio::join!(worker.run(context), stopper)
-    })
-    .await
-    .expect("arrêt du worker");
-    ran.expect("worker");
 }

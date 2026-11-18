@@ -10,6 +10,7 @@ pub mod notification_feed;
 pub mod scheduler;
 pub mod secrets;
 mod storage;
+pub mod tasks;
 
 use crate::config::AppConfig;
 use crate::error::ServerError;
@@ -68,15 +69,49 @@ fn manifest(module: &EmbeddedModule) -> Result<ModuleManifest, ServerError> {
     })
 }
 
-/// Manifeste de l'hôte et ses définitions d'erreurs `SERVER_*`.
+/// Identifiant de l'hôte dans son manifeste.
+pub const SERVER_MODULE_ID: &str = "lyxal_server";
+
+/// Manifeste de l'hôte, ses définitions d'erreurs `SERVER_*` et son seed (tâches de fond confiées
+/// à `lyxal_scheduler`).
 const SERVER_MODULE: EmbeddedModule = EmbeddedModule {
-    id: "lyxal_server",
+    id: SERVER_MODULE_ID,
     manifest: include_str!("../../manifest.toml"),
-    files: &[(
-        "error/server.surql",
-        include_str!("../../error/server.surql"),
-    )],
+    files: &[
+        (
+            "error/server.surql",
+            include_str!("../../error/server.surql"),
+        ),
+        (
+            "seeds/server_tasks.surql",
+            include_str!("../../seeds/server_tasks.surql"),
+        ),
+    ],
 };
+
+/// Manifeste de l'hôte limité à ses seeds (`seeds`), ou sans eux : ses définitions d'erreurs
+/// s'installent avec le noyau, ses seeds après les modules hébergés dont ils ont besoin.
+fn server_manifest(seeds: bool) -> Result<ModuleManifest, ServerError> {
+    let mut manifest = manifest(&SERVER_MODULE)?;
+    if seeds {
+        manifest.resources.error_definitions.clear();
+    } else {
+        manifest.resources.seeds.clear();
+    }
+    Ok(manifest)
+}
+
+/// Installe les seeds de l'hôte (tâches de fond et leurs permissions), après l'installation des
+/// modules hébergés. Rejouable.
+pub async fn install_host_seeds(client: &Surreal<Any>) -> Result<(), ServerError> {
+    lyxal_runtime::schema::install_resources(
+        client,
+        &server_manifest(true)?,
+        &EmbeddedResourceProvider::new(SERVER_MODULE.files),
+    )
+    .await?;
+    Ok(())
+}
 
 /// Installe `lyxal_core`, `lyxal_error`, les définitions d'erreurs de l'hôte, puis le schéma du
 /// runtime. Rejouable.
@@ -92,7 +127,7 @@ pub async fn install_foundation(client: &Surreal<Any>) -> Result<(), ServerError
         ));
     }
     manifests.push((
-        manifest(&SERVER_MODULE)?,
+        server_manifest(false)?,
         EmbeddedResourceProvider::new(SERVER_MODULE.files),
     ));
     let batch: Vec<(&ModuleManifest, &dyn ResourceProvider)> = manifests
@@ -173,7 +208,8 @@ pub struct HostedServices {
 }
 
 /// Enregistre auprès du runtime les workers, consommateurs d'événements et sondes de santé des
-/// modules hébergés (avant leur installation et le démarrage du runtime).
+/// modules hébergés, et inscrit les handlers des tâches de fond de l'hôte au planificateur (avant
+/// leur installation et le démarrage du runtime).
 pub async fn register_services(
     runtime: &LyxalRuntime,
     client: &Surreal<Any>,
@@ -185,6 +221,12 @@ pub async fn register_services(
     let storage = storage::register_services(runtime, client, config)?;
     let secrets = secrets::register_services(runtime, client, config)?;
     let scheduler = scheduler::register_services(runtime, client, config)?;
+    tasks::register_handlers(
+        &mut scheduler.handlers(),
+        auth::purge(client),
+        storage::cleanup(client, &storage),
+        secrets.maintenance(),
+    )?;
     let notification =
         notification::register_services(runtime, client, config, crypto, &secrets).await?;
     #[cfg(feature = "module-ingestion")]
@@ -212,16 +254,15 @@ pub async fn register_services(
     })
 }
 
-/// Configuration qui dépend des modules installés (clés, accès, abonnements), avant le
-/// démarrage.
+/// Configuration qui dépend des modules installés (clés, accès, tâches de fond et leurs
+/// planifications, abonnements), avant le démarrage.
 pub async fn complete_services(
     runtime: &LyxalRuntime,
     client: &Surreal<Any>,
     services: &HostedServices,
 ) -> Result<(), ServerError> {
-    #[cfg(not(feature = "module-ingestion"))]
-    let _ = client;
     auth::complete_services(services.auth.as_ref()).await?;
+    tasks::install(client, &services.scheduler).await?;
     scheduler::register_executors(runtime, &services.scheduler).await?;
     #[cfg(feature = "module-ingestion")]
     {

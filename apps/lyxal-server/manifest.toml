@@ -1,10 +1,11 @@
-# Manifeste de l'hôte : il n'est pas un module du runtime (aucun LyxalModule) ; il déclare
-# seulement ses définitions d'erreurs, installées avec lyxal_core et lyxal_error au démarrage.
+# Manifeste de l'hôte : il n'est pas un module du runtime (aucun LyxalModule) ; il déclare ses
+# définitions d'erreurs, installées avec lyxal_core et lyxal_error au démarrage, et les tâches de
+# fond qu'il fait exécuter par lyxal_scheduler (seed installé après les modules hébergés).
 manifest_version = 1
 id = "lyxal_server"
 name = "Lyxal Server"
 version = "0.1.0"
-description = "Hôte de processus de Lyxal OS : définitions d'erreurs SERVER_*"
+description = "Hôte de processus de Lyxal OS : définitions d'erreurs SERVER_*, tâches de fond confiées à lyxal_scheduler"
 capabilities = []
 
 [runtime]
@@ -16,3 +17,4 @@ version = ">=0.1.0"
 
 [resources]
 error_definitions = ["error/server.surql"]
+seeds = ["seeds/server_tasks.surql"]

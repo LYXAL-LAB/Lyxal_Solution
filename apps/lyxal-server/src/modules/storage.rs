@@ -1,16 +1,16 @@
-//! Module `lyxal_storage` : implémentation `LyxalModule`, supports, worker de nettoyage et sonde
-//! de santé.
+//! Module `lyxal_storage` : implémentation `LyxalModule`, supports, nettoyage (exécuté par
+//! `lyxal_scheduler`, tâche `storage.cleanup` de `modules::tasks`) et sonde de santé.
 //!
 //! Le support `default` est un dossier du serveur (`LYXAL__STORAGE__DISK__ROOT`) ; des services
 //! S3 ou compatibles sont déclarés par nom (`LYXAL__STORAGE__S3__<NOM>__*`). Sans aucun support :
-//! aucun fichier n'est écrit ni lu, le worker n'est pas lancé et la sonde le signale.
+//! aucun fichier n'est écrit ni lu, le nettoyage ne fait rien sur ce nœud et la sonde le signale.
 
 use crate::config::AppConfig;
 use crate::context::StorageHost;
 use crate::error::ServerError;
 use lyxal_runtime::{LyxalModule, LyxalRuntime};
 use lyxal_storage::{
-    BackendConfig, Backends, ClamAvScanner, ContentScanner, ScannerConfig, StorageCleanupWorker,
+    BackendConfig, Backends, ClamAvScanner, ContentScanner, ScannerConfig, StorageCleanup,
     StorageHealthCheck, StorageModule, StorageStore,
 };
 use std::sync::Arc;
@@ -22,8 +22,6 @@ pub const MODULE_ID: &str = lyxal_storage::MODULE_ID;
 
 /// Nom du support d'un bucket créé sans support précisé.
 const DEFAULT_BACKEND: &str = "default";
-/// Intervalle du nettoyage.
-const CLEANUP_INTERVAL: Duration = Duration::from_secs(600);
 /// Éléments nettoyés par paquet.
 const CLEANUP_BATCH: u32 = 200;
 
@@ -104,8 +102,26 @@ fn scanner(config: &AppConfig) -> Option<Arc<dyn ContentScanner>> {
     )))
 }
 
-/// Sonde, et worker de nettoyage si un support est configuré. Rend les supports et l'antivirus,
-/// utilisés par les routes `/storage/*`.
+/// Nettoyage du stockage sur la session système de l'hôte, exécuté par la tâche
+/// `storage.cleanup` ; absent si aucun support n'est configuré. Les envois reprenables qu'il
+/// assemble passent par le même antivirus que les routes.
+pub fn cleanup(client: &Surreal<Any>, host: &StorageHost) -> Option<StorageCleanup> {
+    if host.backends.is_empty() {
+        return None;
+    }
+    let cleanup = StorageCleanup::new(
+        StorageStore::new(client.clone()),
+        host.backends.clone(),
+        CLEANUP_BATCH,
+    );
+    Some(match &host.scanner {
+        Some(scanner) => cleanup.with_scanner(scanner.clone()),
+        None => cleanup,
+    })
+}
+
+/// Sonde de santé. Rend les supports et l'antivirus, utilisés par les routes `/storage/*` et par
+/// le nettoyage.
 pub fn register_services(
     runtime: &LyxalRuntime,
     client: &Surreal<Any>,
@@ -114,19 +130,6 @@ pub fn register_services(
     let store = StorageStore::new(client.clone());
     let backends = Arc::new(backends(config)?);
     let scanner = scanner(config);
-    if !backends.is_empty() {
-        let mut worker = StorageCleanupWorker::new(
-            store.clone(),
-            backends.clone(),
-            CLEANUP_INTERVAL,
-            CLEANUP_BATCH,
-        )?;
-        // Les envois reprenables que le worker assemble passent par le même antivirus
-        if let Some(scanner) = &scanner {
-            worker = worker.with_scanner(scanner.clone());
-        }
-        runtime.register_worker(Arc::new(worker))?;
-    }
     let mut probe = StorageHealthCheck::new(store, backends.clone());
     if let Some(scanner) = &scanner {
         probe = probe.with_scanner(scanner.clone());

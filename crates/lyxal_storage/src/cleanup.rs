@@ -1,4 +1,5 @@
-//! Worker supervisé de nettoyage : écritures abandonnées, envois reprenables complets restés
+//! Nettoyage du stockage, une opération rendue à l'appelant avec son bilan (l'hôte la fait
+//! exécuter par `lyxal_scheduler`, tâche `storage.cleanup`) : écritures abandonnées, envois reprenables complets restés
 //! sans assemblage, fichiers supprimés hors délai, octets des buckets supprimés et des parties
 //! d'envois terminés.
 //!
@@ -7,27 +8,20 @@
 //! élément en échec (support inconnu ou injoignable) est journalisé et laissé pour le passage
 //! suivant : il n'interrompt pas les autres.
 
-use async_trait::async_trait;
-use lyxal_runtime::types::ModuleId;
-use lyxal_runtime::worker::{
-    CancellationToken, LyxalWorker, WorkerContext, WorkerCriticality, WorkerDescriptor, WorkerId,
-};
-use lyxal_runtime::RuntimeError;
+use lyxal_runtime::worker::CancellationToken;
 use lyxal_surreal::ToSql;
 use std::sync::Arc;
-use std::time::Duration;
 
 use crate::backend::{location, Backends};
 use crate::error::{StorageError, StorageResult};
 use crate::models::{
     BatchParams, ObjectRefParams, PageParams, PurgeItem, ReclaimDoneParams, ReclaimItem,
 };
-use crate::module::MODULE_ID;
 use crate::scanner::ContentScanner;
 use crate::service::StorageService;
 use crate::store::StorageStore;
 
-/// Bilan d'un passage du worker.
+/// Bilan d'un passage du nettoyage.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct CleanupReport {
     /// Écritures en attente abandonnées.
@@ -42,49 +36,27 @@ pub struct CleanupReport {
     pub failed: u64,
 }
 
-/// Worker de nettoyage du stockage.
-pub struct StorageCleanupWorker {
-    descriptor: WorkerDescriptor,
+/// Nettoyage du stockage.
+pub struct StorageCleanup {
     store: StorageStore,
     backends: Arc<Backends>,
     scanner: Option<Arc<dyn ContentScanner>>,
-    interval: Duration,
     batch: u32,
 }
 
-impl StorageCleanupWorker {
-    /// Nettoyage toutes les `interval`, par paquets de `batch` éléments (1 à 1000), sur la
-    /// session du store (session système de l'hôte ou compte du worker).
-    pub fn new(
-        store: StorageStore,
-        backends: Arc<Backends>,
-        interval: Duration,
-        batch: u32,
-    ) -> Result<Self, RuntimeError> {
-        let module_id = ModuleId::new(MODULE_ID);
-        let mut descriptor = WorkerDescriptor::new(
-            WorkerId::new(&module_id, "cleanup")?,
-            module_id,
-            "Lyxal Storage Cleanup",
-        );
-        descriptor.description = Some(
-            "Retrait des écritures abandonnées, des fichiers supprimés et des octets des buckets supprimés ; assemblage des envois reprenables interrompus"
-                .to_string(),
-        );
-        descriptor.criticality = WorkerCriticality::Optional;
-        // Le retrait en cours (un fichier, une fiche) se termine avant l'arrêt
-        descriptor.shutdown_timeout = Duration::from_secs(30);
-        Ok(Self {
-            descriptor,
+impl StorageCleanup {
+    /// Nettoyage par paquets de `batch` éléments (1 à 1000), sur la session du store (session
+    /// système de l'hôte ou compte de service du stockage).
+    pub fn new(store: StorageStore, backends: Arc<Backends>, batch: u32) -> Self {
+        Self {
             store,
             backends,
             scanner: None,
-            interval,
             batch: batch.clamp(1, 1000),
-        })
+        }
     }
 
-    /// Fait analyser par cet antivirus les envois reprenables que le worker assemble.
+    /// Fait analyser par cet antivirus les envois reprenables que le nettoyage assemble.
     pub fn with_scanner(mut self, scanner: Arc<dyn ContentScanner>) -> Self {
         self.scanner = Some(scanner);
         self
@@ -93,7 +65,7 @@ impl StorageCleanupWorker {
     /// Un passage : paquets successifs tant qu'un paquet est plein, ou jusqu'à l'annulation.
     /// Un élément en échec reste en tête de liste : les paquets suivants le passent (`start`),
     /// pour qu'il ne retienne pas les autres.
-    pub async fn run_once(&self, cancellation: &CancellationToken) -> StorageResult<CleanupReport> {
+    pub async fn run(&self, cancellation: &CancellationToken) -> StorageResult<CleanupReport> {
         let limit = i64::from(self.batch);
         let mut report = CleanupReport::default();
 
@@ -215,38 +187,5 @@ impl StorageCleanupWorker {
             })
             .await?;
         Ok(true)
-    }
-}
-
-#[async_trait]
-impl LyxalWorker for StorageCleanupWorker {
-    fn descriptor(&self) -> &WorkerDescriptor {
-        &self.descriptor
-    }
-
-    async fn run(&self, ctx: WorkerContext) -> Result<(), RuntimeError> {
-        while !ctx.is_cancelled() {
-            match self.run_once(&ctx.cancellation).await {
-                Ok(report) if report != CleanupReport::default() => {
-                    tracing::info!(
-                        expired = report.expired,
-                        assembled = report.assembled,
-                        purged = report.purged,
-                        reclaimed = report.reclaimed,
-                        failed = report.failed,
-                        "nettoyage du stockage"
-                    );
-                }
-                Ok(_) => {}
-                Err(error) => {
-                    tracing::warn!(code = %error.code(), error = %error, "nettoyage du stockage impossible");
-                }
-            }
-            tokio::select! {
-                _ = ctx.cancellation.cancelled() => break,
-                _ = tokio::time::sleep(self.interval) => {}
-            }
-        }
-        Ok(())
     }
 }

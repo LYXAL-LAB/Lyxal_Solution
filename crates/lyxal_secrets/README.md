@@ -11,7 +11,7 @@ clé maîtresse, urgence, compromission) dans [`PROCEDURES.md`](PROCEDURES.md), 
 Le **socle SurrealQL** (fiches, versions, étiquettes, états, droits, ticket de lecture, journal
 chaîné, événements, clés des organisations), le **service Rust** (scellement et ouverture des
 valeurs par `lyxal_crypto`, clés par organisation, lecture tracée avant remise, interface des
-autres modules, worker de maintenance, module et sonde de santé) et le **cycle de vie** (alertes
+autres modules, maintenance, module et sonde de santé) et le **cycle de vie** (alertes
 d'échéance, rappel et rotation en quatre étapes sans coupure, rotation d'urgence, essai sans
 bascule, rotation planifiée des clés d'organisation) et les **accès avancés** (accès temporaires
 par secret ou par dossier, demandes d'accès et de changement approuvées, protections, accès
@@ -23,7 +23,7 @@ base que scellée (`enc:v2`, AES-256-GCM), la clé reste hors de la base, et la 
 valeur passe par un ticket tracé au journal avant toute remise.
 
 Manifeste : `lyxal_secrets` 0.1.0, dépendances `lyxal_core`, `lyxal_error`, `lyxal_event`,
-`lyxal_auth`. Hébergé par `lyxal-server` (`SecretsModule`, worker de maintenance avec un registre de rotateurs vide, sonde,
+`lyxal_auth`. Hébergé par `lyxal-server` (`SecretsModule`, maintenance exécutée par `lyxal_scheduler` (tâche `secrets.maintenance` déclarée par l'hôte) avec un registre de rotateurs vide, sonde,
 routes `/api/v1/secrets/*` au nom de l'appelant : valeurs seulement dans les corps `POST`, réponses
 `Cache-Control: no-store`, ouverture d'un partage sans jeton).
 
@@ -50,10 +50,10 @@ clé maîtresse du coffre-fort (LYXAL__SECRETS__MASTER_KEY ; ancienne clé en le
   `KeyRingBuilder`, `StaticKeyResolver`, `CryptoEngine`) depuis ses clés `active` et
   `decrypt_only` ; aucune clé d'organisation n'est gardée en mémoire au-delà de l'opération.
 * **Rotation de la clé d'une organisation** (sur demande, droit `secrets.settings.manage`) :
-  nouvelle clé active, l'ancienne ne sert plus qu'à relire ; le worker rescelle toutes les
+  nouvelle clé active, l'ancienne ne sert plus qu'à relire ; la maintenance rescelle toutes les
   versions (`reencrypt_if_needed`, puis `fn::secrets_version_reseal`), puis détruit l'ancienne.
 * **Rotation de la clé maîtresse** : la nouvelle est fournie comme clé active, l'ancienne à côté
-  en lecture seule ; le worker rescelle les clés des organisations
+  en lecture seule ; la maintenance rescelle les clés des organisations
   (`fn::secrets_tenant_key_rewrap`) ; la sonde annonce la fin, puis l'ancienne est retirée.
 * Une organisation supprimée emporte ses clés et ses secrets (`REFERENCE ON DELETE CASCADE`).
 * Sans clé maîtresse, le module est dégradé : les fiches restent consultables, aucune valeur
@@ -73,7 +73,7 @@ clé maîtresse du coffre-fort (LYXAL__SECRETS__MASTER_KEY ; ancienne clé en le
 | `SecretsService::propose` | nouvelle valeur d'un secret protégé : scellée et écrite en version `proposed` (jamais servie avant l'application), puis demande de changement ouverte au nom de l'appelant |
 | `SecretsService::rotate_now`, `check_rotation` | rotation immédiate (dont l'urgence ; sans rotateur, l'urgence coupe la version courante et la rotation échoue aussitôt, `SECRETS_ROTATOR_UNAVAILABLE`) ; essai sans bascule de la valeur en service, outil du worker et de la session système (pas de route HTTP) |
 | `SecretsClient` | lecture et écriture des modules de l'hôte par organisation et chemin, session système, module annoncé comme consommateur |
-| `SecretsMaintenanceWorker` | `LyxalWorker` : purge à échéance, alertes d'échéance et rappels de rotation, démarrage des rotations dues qu'un rotateur sait faire, rotation des clés d'organisation échues, avancement des rotations réservées, expiration des demandes et retrait des accès finis, expiration des partages, rescellement des versions puis des clés d'organisation, destruction des clés inutilisées ; bilan `MaintenanceReport` |
+| `SecretsMaintenance` | maintenance, une opération (`run`) interrompue entre deux éléments à l'arrêt ; aucun `LyxalWorker` : l'hôte la fait exécuter toutes les 10 min par `lyxal_scheduler` (tâche `secrets.maintenance` qu'il déclare lui-même, `lyxal_secrets` ne dépendant pas du planificateur) : purge à échéance, alertes d'échéance et rappels de rotation, démarrage des rotations dues qu'un rotateur sait faire, rotation des clés d'organisation échues, avancement des rotations réservées, expiration des demandes et retrait des accès finis, expiration des partages, rescellement des versions puis des clés d'organisation, destruction des clés inutilisées ; bilan `MaintenanceReport` |
 | `SecretsModule`, `SecretsHealthCheck` | descripteur du module ; sonde : base joignable, clé maîtresse présente, clés scellées par une clé maîtresse absente du trousseau (dégradé), rescellements en attente |
 | `SecretsError` | code `SECRETS_*` de la base, ou cause constatée par le service (`SECRETS_CRYPTO_UNAVAILABLE`, `SECRETS_VALUE_TOO_LARGE`, `SECRETS_VALUE_CORRUPTED`, `SECRETS_TENANT_KEY_UNAVAILABLE`) ; jamais de valeur |
 
@@ -123,17 +123,17 @@ Aucune table n'a de `CHANGEFEED` ni d'historique natif : une version détruite d
   programme lit avec `secrets.value.read`, et seulement s'il figure parmi les consommateurs prévus
   quand la fiche en liste : identifiant de son application (`auth_application:…`, d'après
   `fn::auth_context`), ou nom du module annoncé par la session système.
-* **Échéances** : le worker signale une seule fois l'échéance proche (délai d'alerte des
+* **Échéances** : la maintenance signale une seule fois l'échéance proche (délai d'alerte des
   réglages), l'échéance atteinte et la rotation due (`fn::secrets_due_mark`) ; une nouvelle
   échéance ou une nouvelle date de rotation remet ces alertes à zéro. Une clé d'organisation plus
-  ancienne que la période de rotation de sa portée est changée par le worker.
+  ancienne que la période de rotation de sa portée est changée par la maintenance.
 * **Rotation** (modèle AWS) : `started` → `created` (la nouvelle valeur est écrite en version
-  `pending` ; le worker n'écrit une version qu'à cette étape) → `installed` (activée chez le
+  `pending` ; la maintenance n'écrit une version qu'à cette étape) → `installed` (activée chez le
   service extérieur) → `tested` → `succeeded` : `current` passe sur la nouvelle version,
   l'ancienne devient `previous`, la prochaine date est recalculée. Jusqu'à la bascule, la valeur en
   service ne change pas. Un échec est réessayé 3 fois (1 min, 10 min, 1 h) à l'étape atteinte,
   puis la rotation échoue et l'étiquette `pending` est retirée. Une seule rotation en cours par
-  secret ; le worker la réserve juste avant d'y travailler (jeton renouvelé à chaque étape ; seul son détenteur la fait avancer), elle reprend après un arrêt ou une réservation expirée.
+  secret ; la maintenance la réserve juste avant d'y travailler (jeton renouvelé à chaque étape ; seul son détenteur la fait avancer), elle reprend après un arrêt ou une réservation expirée.
   Annulation par l'écriture. Rotation d'urgence : décision d'une personne (droit d'écriture,
   assurance la plus haute et récente) ou d'un programme qui a le droit d'écriture ; la version
   courante est désactivée tout de suite, avant toute autre étape.
@@ -262,12 +262,12 @@ Tests Rust (`tests/it/`, base embarquée, sessions de personnes et de programmes
 test) : valeur écrite puis relue, 64 Kio acceptés et au-delà refusés, enveloppe recopiée ou
 altérée, écritures concurrentes, rotation des clés d'organisation et de la clé maîtresse,
 organisation supprimée, fonctionnement sans clé maîtresse, lectures refusées journalisées,
-double facteur, consommateurs, sonde, worker arrêté par l'annulation, aucune valeur dans les
+double facteur, consommateurs, sonde, maintenance arrêtée par l'annulation, aucune valeur dans les
 `Debug` et les erreurs, rotation complète sans coupure, nouvel essai et échec définitif, reprise
 après interruption, urgence avec et sans rotateur, rappel seul sans rotateur, essai sans bascule,
-rotation planifiée des clés d'organisation, réservation périmée reprise par un autre worker, arrêt du
-worker pendant une rotation, accès temporaires d'une personne et d'un programme, valeur proposée
-servie seulement après approbations et application, changement d'urgence, worker des demandes, partages (ouverture épuisée, clé et mot de passe faux,
+rotation planifiée des clés d'organisation, réservation périmée reprise par un autre passage, arrêt de la
+maintenance pendant une rotation, accès temporaires d'une personne et d'un programme, valeur proposée
+servie seulement après approbations et application, changement d'urgence, maintenance des demandes, partages (ouverture épuisée, clé et mot de passe faux,
 destruction au cinquième essai, lien réservé à l'organisation ou à l'installation, retrait, échéance), version `pending` d'un
 autre auteur jamais mise en service, `LIVE SELECT` sans enveloppe ; 45 tests et 1 test unitaire. Hôte :
 `apps/lyxal-server/tests/secrets_http.rs` (routes HTTP de bout en bout) et `apps/lyxal-server/tests/secrets.rs`.

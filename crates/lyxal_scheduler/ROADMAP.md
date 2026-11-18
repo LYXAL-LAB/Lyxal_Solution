@@ -13,5 +13,3 @@ avant toute ligne de code (`.agents/AGENTS.md` §3).
 * Politique de chevauchement `terminate_other`.
 * Règles RRULE.
 * Tableau de bord Surrealist sur les `fn::scheduler_*`.
-* Bascule des workers périodiques existants (`AuthPurgeWorker`, `StorageCleanupWorker`,
-  `SecretsMaintenanceWorker`), chacun par son propre plan (S8).

@@ -3,7 +3,8 @@
 -- MODULE : lyxal_scheduler
 -- RÔLE   : Types d'action exécutables, déclarés par les modules propriétaires
 -- ============================================================================
--- Une tâche est déclarée par le seed de son module (IF !record::exists(scheduler_task:⟨m.a⟩)
+-- Une tâche est déclarée par le seed de son module, ou par celui de l'hôte pour un module qui
+-- ne peut pas dépendre du planificateur (IF !record::exists(scheduler_task:⟨m.a⟩)
 -- THEN (CREATE …) END;), jamais par une personne. Identifiant ⟨module.action⟩ en minuscules ;
 -- module = lyxal_<module>. Seule la session système écrit (PERMISSIONS NONE pour toute autre
 -- session) et, après création, seulement l'état (gardes scheduler_task_create_guard et

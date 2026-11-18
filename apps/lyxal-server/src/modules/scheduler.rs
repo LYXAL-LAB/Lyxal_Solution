@@ -1,10 +1,12 @@
 //! Module `lyxal_scheduler` : implémentation `LyxalModule`, planificateur élu (bail `leader` du
 //! runtime), un exécuteur par file, sonde de santé et registre des handlers.
 //!
-//! Tout le moteur tourne sur la session système de l'hôte (T2). Les modules hébergés qui
-//! déclarent des tâches `handler` inscrivent leur code dans le registre rendu par
-//! [`register_services`] (`SchedulerHost::handlers`), avant le démarrage du runtime ; aucun module
-//! ne le fait encore (S8). Places par file et par nœud : `LYXAL__SCHEDULER__WORKERS` (W3).
+//! Tout le moteur tourne sur la session système de l'hôte (T2). Les handlers des tâches
+//! `handler` sont inscrits dans le registre rendu par [`register_services`]
+//! (`SchedulerHost::handlers`), avant le démarrage du runtime : l'hôte y inscrit ceux de ses
+//! tâches de fond (`modules::tasks` : purge de `lyxal_auth`, nettoyage de `lyxal_storage`,
+//! maintenance de `lyxal_secrets`). Places par file et par nœud : `LYXAL__SCHEDULER__WORKERS`
+//! (W3).
 
 use crate::config::AppConfig;
 use crate::error::ServerError;

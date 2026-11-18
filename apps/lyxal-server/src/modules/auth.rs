@@ -1,5 +1,6 @@
-//! Module `lyxal_auth` : implémentation `LyxalModule`, sonde de santé, worker de purge et
-//! service de connexion de l'hôte (routes `/auth/*`).
+//! Module `lyxal_auth` : implémentation `LyxalModule`, sonde de santé, purge (exécutée par
+//! `lyxal_scheduler`, tâche `auth.purge` de `modules::tasks`) et service de connexion de l'hôte
+//! (routes `/auth/*`).
 //!
 //! Le service de connexion demande la clé applicative (`LYXAL__CRYPTO__APPLICATION_KEY` :
 //! clés de signature, empreintes de mots de passe et secrets des messages scellés) et
@@ -9,20 +10,17 @@
 use crate::config::AppConfig;
 use crate::error::ServerError;
 use lyxal_auth::{
-    AccessConfig, AccessService, AuthHealthCheck, AuthModule, AuthPurgeWorker, AuthStore,
+    AccessConfig, AccessService, AuthHealthCheck, AuthModule, AuthPurge, AuthStore,
     SigningKeyService,
 };
 use lyxal_crypto::{CryptoEngine, StaticKeyResolver};
 use lyxal_runtime::{LyxalModule, LyxalRuntime};
 use std::sync::Arc;
-use std::time::Duration;
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
 pub const MODULE_ID: &str = lyxal_auth::MODULE_ID;
 
-/// Intervalle de la purge.
-const PURGE_INTERVAL: Duration = Duration::from_secs(900);
 /// Éléments purgés par paquet.
 const PURGE_BATCH: i64 = 500;
 
@@ -36,7 +34,12 @@ pub struct AuthHost {
     pub keys: Arc<SigningKeyService<StaticKeyResolver>>,
 }
 
-/// Sonde, purge et, si la clé applicative et `auth.public_url` sont fournies, service de connexion.
+/// Purge de `lyxal_auth` sur la session système de l'hôte, exécutée par la tâche `auth.purge`.
+pub fn purge(client: &Surreal<Any>) -> AuthPurge {
+    AuthPurge::new(AuthStore::new(client.clone()), PURGE_BATCH)
+}
+
+/// Sonde et, si la clé applicative et `auth.public_url` sont fournies, service de connexion.
 pub fn register_services(
     runtime: &LyxalRuntime,
     client: &Surreal<Any>,
@@ -44,11 +47,6 @@ pub fn register_services(
     crypto: Option<Arc<CryptoEngine<StaticKeyResolver>>>,
 ) -> Result<Option<Arc<AuthHost>>, ServerError> {
     let store = AuthStore::new(client.clone());
-    runtime.register_worker(Arc::new(AuthPurgeWorker::new(
-        store.clone(),
-        PURGE_INTERVAL,
-        PURGE_BATCH,
-    )?))?;
     let host = host(client, config, crypto)?;
     let disabled = host.is_none().then(|| {
         "connexion désactivée : LYXAL__CRYPTO__APPLICATION_KEY et auth.public_url requis"

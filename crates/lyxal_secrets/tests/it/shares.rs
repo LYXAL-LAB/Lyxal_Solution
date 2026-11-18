@@ -7,11 +7,10 @@ use lyxal_crypto::{SecretBytes, SecretString};
 use lyxal_runtime::worker::CancellationToken;
 use lyxal_secrets::models::{SecretCreateParams, ShareListParams, ShareRefParams, ShareState};
 use lyxal_secrets::{
-    OpenerContext, RotatorRegistry, SecretsMaintenanceWorker, SecretsService, ShareCreated,
-    ShareOpen, ShareRequest, ShareSource,
+    OpenerContext, RotatorRegistry, SecretsMaintenance, SecretsService, ShareCreated, ShareOpen,
+    ShareRequest, ShareSource,
 };
 use lyxal_surreal::ToSql;
-use std::time::Duration;
 
 use crate::support::{bench, code, Bench, ALPHA, BETA};
 
@@ -422,15 +421,13 @@ async fn a_revoked_share_no_longer_opens_and_the_worker_expires_due_shares() {
         code(bench.service.share_open(open(&kept, None, None)).await),
         "SECRETS_SHARE_UNAVAILABLE"
     );
-    let report = SecretsMaintenanceWorker::new(
+    let report = SecretsMaintenance::new(
         bench.store.clone(),
         Some(bench.master.clone()),
         RotatorRegistry::new(),
-        Duration::from_secs(3600),
         10,
     )
-    .expect("worker")
-    .run_once(&CancellationToken::new())
+    .run(&CancellationToken::new())
     .await
     .expect("passage");
     assert_eq!(report.shares_expired, 1);

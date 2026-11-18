@@ -9,7 +9,8 @@ use lyxal_runtime::{LyxalModule, ModuleContext, RuntimeError};
 pub const MODULE_ID: &str = "lyxal_secrets";
 
 /// Module `lyxal_secrets` : ses ressources SurrealQL sont installées par le runtime depuis le
-/// manifeste ; worker et sonde sont enregistrés par l'hôte.
+/// manifeste ; la sonde est enregistrée par l'hôte, qui fait exécuter la maintenance par
+/// `lyxal_scheduler`.
 pub struct SecretsModule {
     descriptor: ModuleDescriptor,
 }

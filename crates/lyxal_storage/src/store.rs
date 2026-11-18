@@ -1,7 +1,7 @@
 //! Accès aux fonctions SurrealQL de `lyxal_storage` : un appel typé d'une ligne par fonction
 //! (`LyxalSurrealCall::call_fn`). Les règles restent dans SurrealQL ; la session SurrealDB du
 //! client détermine l'appelant (session système de l'hôte, session d'un utilisateur, ou compte
-//! du worker).
+//! de service du stockage).
 
 use async_trait::async_trait;
 use lyxal_surreal::{LyxalSurrealCall, LyxalSurrealError};
@@ -100,7 +100,7 @@ impl StorageStore {
         self.call_fn("storage_object_list", params).await
     }
 
-    /// `fn::storage_object_delete` : fichier supprimé (octets retirés plus tard par le worker).
+    /// `fn::storage_object_delete` : fichier supprimé (octets retirés plus tard par le nettoyage).
     pub async fn object_delete(&self, params: ObjectRefParams) -> Call<StoredObject> {
         self.call_fn("storage_object_delete", params).await
     }

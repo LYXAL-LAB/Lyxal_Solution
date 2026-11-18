@@ -8,8 +8,8 @@ use lyxal_storage::models::{
     ObjectCommitParams, ObjectGetParams, ObjectState, UploadClaimParams, UploadReleaseParams,
 };
 use lyxal_storage::{
-    ClamAvScanner, CleanupReport, ScannerConfig, StorageCleanupWorker, StorageError,
-    StorageService, UploadRequest, PART_SIZE,
+    ClamAvScanner, CleanupReport, ScannerConfig, StorageCleanup, StorageError, StorageService,
+    UploadRequest, PART_SIZE,
 };
 use lyxal_surreal::ToSql;
 use std::sync::Arc;
@@ -34,16 +34,10 @@ fn data(size: usize) -> Vec<u8> {
 }
 
 async fn pass(bench: &Bench) -> CleanupReport {
-    StorageCleanupWorker::new(
-        bench.store.clone(),
-        bench.backends.clone(),
-        Duration::from_secs(3600),
-        10,
-    )
-    .expect("worker")
-    .run_once(&CancellationToken::new())
-    .await
-    .expect("passage")
+    StorageCleanup::new(bench.store.clone(), bench.backends.clone(), 10)
+        .run(&CancellationToken::new())
+        .await
+        .expect("passage")
 }
 
 async fn count(bench: &Bench, table: &str) -> usize {
@@ -445,16 +439,10 @@ async fn an_assembly_stopped_by_the_shutdown_leaves_the_upload_complete() {
         assert_eq!(bench.stored_paths().await.len(), 2, "{kind:?}");
 
         // Le worker arrêté pendant un assemblage ne compte ni succès ni échec
-        let stopped = StorageCleanupWorker::new(
-            bench.store.clone(),
-            bench.backends.clone(),
-            Duration::from_secs(3600),
-            10,
-        )
-        .expect("worker")
-        .run_once(&cancellation)
-        .await
-        .expect("passage");
+        let stopped = StorageCleanup::new(bench.store.clone(), bench.backends.clone(), 10)
+            .run(&cancellation)
+            .await
+            .expect("passage");
         assert_eq!(stopped, CleanupReport::default());
 
         // Au redémarrage, l'envoi est assemblé

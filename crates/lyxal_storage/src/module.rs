@@ -26,7 +26,8 @@ const PROBE_DIRECTORY: &str = "_lyxal_probe";
 const PROBE_CONTENT: &[u8] = b"lyxal_storage";
 
 /// Module `lyxal_storage` : ses ressources SurrealQL sont installées par le runtime depuis le
-/// manifeste ; worker et sonde sont enregistrés par l'hôte.
+/// manifeste ; la sonde est enregistrée par l'hôte, qui fait exécuter le nettoyage par
+/// `lyxal_scheduler`.
 pub struct StorageModule {
     descriptor: ModuleDescriptor,
 }

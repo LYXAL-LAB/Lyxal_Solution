@@ -11,7 +11,7 @@ use lyxal_secrets::models::{
     VersionListParams,
 };
 use lyxal_secrets::{
-    ProposeRequest, RotatorRegistry, SecretsMaintenanceWorker, SecretsService, SecretsStore,
+    ProposeRequest, RotatorRegistry, SecretsMaintenance, SecretsService, SecretsStore,
 };
 use lyxal_surreal::ToSql;
 use std::time::Duration;
@@ -409,16 +409,14 @@ async fn the_worker_expires_unanswered_requests_and_removes_old_grants() {
              CREATE secrets_grant:vieux CONTENT {{ tenant: {ALPHA}, subject_identity: auth_identity:lecteur, path: 'api', folder: true, actions: ['list'], starts_at: time::now() - 41d, expires_at: time::now() - 40d, reason: 'ancien' }};"
         ))
         .await;
-    let worker = SecretsMaintenanceWorker::new(
+    let worker = SecretsMaintenance::new(
         bench.store.clone(),
         Some(bench.master.clone()),
         RotatorRegistry::default(),
-        Duration::from_secs(3600),
         10,
-    )
-    .expect("worker");
+    );
     let report = worker
-        .run_once(&CancellationToken::new())
+        .run(&CancellationToken::new())
         .await
         .expect("passage");
     assert_eq!(report.requests_expired, 1, "{report:?}");
@@ -436,7 +434,7 @@ async fn the_worker_expires_unanswered_requests_and_removes_old_grants() {
 
     // Passage suivant : plus rien à faire
     let again = worker
-        .run_once(&CancellationToken::new())
+        .run(&CancellationToken::new())
         .await
         .expect("passage");
     assert_eq!((again.requests_expired, again.grants_removed), (0, 0));
