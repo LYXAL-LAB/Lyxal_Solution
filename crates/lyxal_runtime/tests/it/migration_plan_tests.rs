@@ -143,6 +143,8 @@ async fn test_migration_plan_building_scenarios() {
         duration_ms: 10,
         status: MigrationStatus::Applied,
         error: None,
+        script: None,
+        node_id: None,
     };
     store.record_migration(&rec1, None).await.unwrap();
 
@@ -166,6 +168,8 @@ async fn test_migration_plan_building_scenarios() {
         duration_ms: 10,
         status: MigrationStatus::Applied,
         error: None,
+        script: None,
+        node_id: None,
     };
     store.record_migration(&bad_rec1, None).await.unwrap();
 

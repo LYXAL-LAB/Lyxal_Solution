@@ -239,6 +239,8 @@ async fn test_migration_runner_interrupted_applying_fails_hard() {
         duration_ms: 0,
         status: MigrationStatus::Applying,
         error: None,
+        script: None,
+        node_id: None,
     };
     store.record_migration(&record, None).await.unwrap();
 

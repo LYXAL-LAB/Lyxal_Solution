@@ -17,6 +17,10 @@ use crate::lifecycle::LifecycleManager;
 use crate::lock::installation::InstallationLeaseManager;
 use crate::lock::manager::MigrationLeaseManager;
 use crate::lock::node_id::NodeId;
+use crate::migration::recovery::{
+    InterruptedMigration, MigrationInterruptedParams, MigrationRecovery, MigrationResolveParams,
+    MigrationResolved,
+};
 use crate::migration::runner::MigrationRunner;
 use crate::module::LyxalModule;
 use crate::package::installer::ModuleInstaller;
@@ -472,6 +476,38 @@ impl LyxalRuntime {
             self.config.clone(),
         )
         .with_event_bus(self.event_bus.clone()))
+    }
+
+    /// Opérations de reprise d'une migration interrompue, sur la session système du runtime.
+    fn migration_recovery(&self) -> Result<MigrationRecovery, RuntimeError> {
+        let client = self.client.clone().ok_or(RuntimeError::StoreMissing {
+            component: "surreal_client",
+        })?;
+        Ok(MigrationRecovery::new(
+            client,
+            self.node_id.clone(),
+            self.event_bus.clone(),
+        ))
+    }
+
+    /// Migrations interrompues (restées « en cours » après une coupure) ou abandonnées et non
+    /// rejouées, pour tous les modules ou un seul.
+    pub async fn interrupted_migrations(
+        &self,
+        params: MigrationInterruptedParams,
+    ) -> Result<Vec<InterruptedMigration>, RuntimeError> {
+        self.migration_recovery()?.interrupted(params).await
+    }
+
+    /// Décision de l'exploitant sur une migration interrompue (`retry` : rejouée à la prochaine
+    /// installation du module ; `abandon` : installation refusée tant qu'un `retry` ne l'a pas
+    /// remise à rejouer), prise sous le bail d'installation de la release et tracée au journal
+    /// du runtime. L'appelant a vérifié le droit de l'auteur (`params.actor`).
+    pub async fn resolve_migration(
+        &self,
+        params: MigrationResolveParams,
+    ) -> Result<MigrationResolved, RuntimeError> {
+        self.migration_recovery()?.resolve(params).await
     }
 
     /// Construit le plan d'installation d'un package (Dry-Run pur, zéro mutation).

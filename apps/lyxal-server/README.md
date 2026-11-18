@@ -352,6 +352,34 @@ cargo run -p lyxal-server
 | `GET /health` | Statuts des composants (serveur, base) et des modules (sondes `ModuleHealthCheck` évaluées par le runtime), sans détail interne ; `503` si un module est en panne. |
 | `GET /metrics` | Compteurs de requêtes et durée de fonctionnement. |
 | `GET /api/v1/system/modules` | Modules hébergés : identifiant, nom, version, état. |
+| 🔒 `GET /api/v1/system/migrations/interrupted` | Migrations interrompues ou abandonnées (`?module=` pour un seul module) : module, migration, version, script, nœud, état, début, dernière décision. |
+| 🔒 `POST /api/v1/system/migrations/resolve` | Décision sur une migration interrompue : `{ module, migration, action, reason }`, `action` valant `retry` (rejouée à la prochaine installation du module) ou `abandon` (installation refusée tant qu'un `retry` ne l'a pas remise à rejouer). |
+
+**Administration de l'installation** (`src/http/system.rs`, `seeds/server_permissions.surql`).
+Les deux routes `/api/v1/system/migrations/*` exposent la reprise guidée d'une migration
+interrompue de `lyxal_runtime` (procédure et refus : `crates/lyxal_runtime/README.md` §4.1).
+`lyxal_runtime` est sous `lyxal_auth` : il ne contrôle aucun droit et ses tables ne sont lisibles
+que par la session système. L'hôte déclare donc le droit `server.installation.manage` (portée
+installation, attribué au rôle `platform_admin`) et, pour chaque requête, contrôle le jeton
+d'accès (`Authorization: Bearer`), demande à `fn::auth_has_permission`, sur une session au nom
+de l'appelant, s'il détient ce droit, puis seulement appelle le runtime sur la session système.
+L'auteur de la décision (identité, ou application pour un compte de service) et son motif
+(obligatoire, 1 000 caractères au plus, ni secret ni donnée personnelle) sont gardés avec la
+décision et écrits au journal du runtime. Réponses `LyxalResult` avec `Cache-Control: no-store` ;
+corps borné par `server.body_limit_bytes`.
+
+| Refus | Code | HTTP |
+| :--- | :--- | :--- |
+| Sans jeton, jeton refusé | `AUTH_SESSION_REQUIRED` | 401 |
+| Sans le droit `server.installation.manage` | `AUTH_PERMISSION_DENIED` | 403 |
+| Corps ou paramètre illisible, champ inconnu, `action` inconnue | `SERVER_INVALID_REQUEST` | 400 |
+| Champ vide ou trop long | `RUNTIME_INVALID_PARAMETERS` | 400 |
+| Migration inconnue, en cours ou dans un autre état | `RUNTIME_MIGRATION_NOT_INTERRUPTED` | 409 |
+| Bail d'installation du module détenu par un autre nœud, ou par une installation en cours | `RUNTIME_LEASE_FENCED` | 412 |
+
+Ces routes sont servies par un nœud démarré. Un nœud dont l'installation d'un module échoue sur
+la migration interrompue ne démarre pas (`SERVER_MODULE_INSTALL_FAILED`) : la décision se prend
+depuis un autre nœud de l'installation, puis le nœud arrêté est relancé.
 
 Connexion (`/api/v1/auth`, JSON, réponses `LyxalResult`, erreurs `AUTH_*` sans détail sur
 l'existence d'un compte ; langue des messages par `Accept-Language`). Les routes marquées 🔒
@@ -537,8 +565,9 @@ garde son code `RUNTIME_*`.
 | `SERVER_INVALID_REQUEST` | `validation` | 400 |
 
 Les définitions sont générées depuis le catalogue `SERVER_ERROR_CATALOG` (`src/error.rs`) et
-installées au démarrage ; un test vérifie leur correspondance. `manifest.toml` de l'hôte ne
-déclare que ce fichier : l'hôte n'est pas un module du runtime.
+installées au démarrage ; un test vérifie leur correspondance. `manifest.toml` de l'hôte
+déclare ce fichier et ses seeds (droit d'administration de l'installation, tâches de fond) :
+l'hôte n'est pas un module du runtime.
 
 ---
 
@@ -565,7 +594,7 @@ tous les modules, routes système, `fn::error_result` de `lyxal_error` intact, r
 base installée (une release par module), rejeu des
 ressources de chaque module, définitions `SERVER_*`, corps des réponses d'erreur, routes
 `/api/v1/auth/*` de bout en bout (premier administrateur, connexion, sessions, déconnexion,
-service absent). `tests/scheduler_http.rs` parcourt les routes `/api/v1/scheduler/*` avec le
+service absent), routes `/api/v1/system/migrations/*` (liste, abandon puis reprise par un administrateur de la plateforme, refus sans jeton, sans droit, sur requête illisible, migration non interrompue, bail d'installation détenu ailleurs, auteur et motif au journal du runtime). `tests/scheduler_http.rs` parcourt les routes `/api/v1/scheduler/*` avec le
 moteur réel (handler d'essai inscrit par le test) : planification contrôlée, prévision,
 déclenchement, rejeu, exécution différée exécutée puis annulée et relancée, droits, `no-store`,
 absence des routes du moteur. `tests/notification_http.rs` parcourt les routes de désabonnement

@@ -81,6 +81,16 @@ pub enum MigrationEvent {
         migration_id: MigrationId,
         generation: u64,
     },
+    /// Décision de l'exploitant sur une migration interrompue (`retry` ou `abandon`) : qui
+    /// (`actor`), pourquoi (`reason`) ; la date et le nœud sont ceux de l'événement.
+    Resolved {
+        migration_id: MigrationId,
+        version: String,
+        action: String,
+        actor: String,
+        reason: String,
+        previous_status: String,
+    },
 }
 
 /// Événements liés au moteur de santé du Runtime.

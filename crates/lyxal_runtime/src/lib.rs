@@ -77,9 +77,11 @@ pub use manifest::{
     CURRENT_MANIFEST_VERSION,
 };
 pub use migration::{
-    validate_migration_definitions, MigrationChecksum, MigrationDefinition, MigrationDiscovery,
-    MigrationDryRunResult, MigrationId, MigrationPlan, MigrationPlanAction, MigrationPlanItem,
-    MigrationRecord, MigrationRunResult, MigrationRunner, MigrationStatus,
+    validate_migration_definitions, InterruptedMigration, MigrationChecksum, MigrationDefinition,
+    MigrationDiscovery, MigrationDryRunResult, MigrationId, MigrationInterruptedParams,
+    MigrationPlan, MigrationPlanAction, MigrationPlanItem, MigrationRecord, MigrationRecovery,
+    MigrationResolution, MigrationResolveAction, MigrationResolveParams, MigrationResolved,
+    MigrationRunResult, MigrationRunner, MigrationStatus,
 };
 pub use module::LyxalModule;
 pub use package::{

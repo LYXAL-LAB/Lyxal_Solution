@@ -72,8 +72,8 @@ fn manifest(module: &EmbeddedModule) -> Result<ModuleManifest, ServerError> {
 /// Identifiant de l'hôte dans son manifeste.
 pub const SERVER_MODULE_ID: &str = "lyxal_server";
 
-/// Manifeste de l'hôte, ses définitions d'erreurs `SERVER_*` et son seed (tâches de fond confiées
-/// à `lyxal_scheduler`).
+/// Manifeste de l'hôte, ses définitions d'erreurs `SERVER_*` et ses seeds (droit d'administration
+/// de l'installation, tâches de fond confiées à `lyxal_scheduler`).
 const SERVER_MODULE: EmbeddedModule = EmbeddedModule {
     id: SERVER_MODULE_ID,
     manifest: include_str!("../../manifest.toml"),
@@ -81,6 +81,10 @@ const SERVER_MODULE: EmbeddedModule = EmbeddedModule {
         (
             "error/server.surql",
             include_str!("../../error/server.surql"),
+        ),
+        (
+            "seeds/server_permissions.surql",
+            include_str!("../../seeds/server_permissions.surql"),
         ),
         (
             "seeds/server_tasks.surql",
@@ -101,8 +105,8 @@ fn server_manifest(seeds: bool) -> Result<ModuleManifest, ServerError> {
     Ok(manifest)
 }
 
-/// Installe les seeds de l'hôte (tâches de fond et leurs permissions), après l'installation des
-/// modules hébergés. Rejouable.
+/// Installe les seeds de l'hôte (droit d'administration de l'installation, tâches de fond et
+/// leurs permissions), après l'installation des modules hébergés. Rejouable.
 pub async fn install_host_seeds(client: &Surreal<Any>) -> Result<(), ServerError> {
     lyxal_runtime::schema::install_resources(
         client,

@@ -22,6 +22,9 @@ pub enum MigrationPlanAction {
     },
     /// La migration a été interrompue lors d'une exécution précédente (état 'Applying').
     FailInterrupted,
+    /// La migration interrompue a été abandonnée par l'exploitant (état 'Abandoned') : elle
+    /// n'est rejouée qu'après une décision `retry`.
+    FailAbandoned,
 }
 
 /// Élément individuel d'un plan de migration.
@@ -103,6 +106,10 @@ impl MigrationPlan {
                         }
                     }
                     MigrationStatus::Applying => MigrationPlanAction::FailInterrupted,
+                    // Décision de l'exploitant : rejouée avec le script du package, même
+                    // corrigé depuis l'interruption (elle n'a jamais été appliquée)
+                    MigrationStatus::RetryRequested => MigrationPlanAction::Retry,
+                    MigrationStatus::Abandoned => MigrationPlanAction::FailAbandoned,
                     MigrationStatus::Pending => MigrationPlanAction::Apply,
                     MigrationStatus::RolledBack => MigrationPlanAction::Apply,
                     MigrationStatus::Skipped => MigrationPlanAction::Skip,
@@ -156,6 +163,13 @@ impl MigrationPlan {
         self.items
             .iter()
             .any(|i| matches!(i.action, MigrationPlanAction::FailInterrupted))
+    }
+
+    /// Indique si le plan contient une migration abandonnée par l'exploitant.
+    pub fn has_abandoned(&self) -> bool {
+        self.items
+            .iter()
+            .any(|i| matches!(i.action, MigrationPlanAction::FailAbandoned))
     }
 
     /// Retourne la liste des éléments du plan.

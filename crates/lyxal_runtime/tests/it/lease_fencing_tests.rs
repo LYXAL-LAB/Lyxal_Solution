@@ -68,6 +68,8 @@ fn record(status: MigrationStatus) -> MigrationRecord {
         duration_ms: 0,
         status,
         error: None,
+        script: None,
+        node_id: None,
     }
 }
 

@@ -155,6 +155,22 @@ pub enum RuntimeError {
         reason: String,
     },
 
+    /// Décision demandée sur une migration qui n'est pas interrompue (`status` : `unknown`,
+    /// `running` ou son état enregistré).
+    #[error("Migration '{migration}' of module '{module}' is not interrupted (status: {status})")]
+    MigrationNotInterrupted {
+        module: String,
+        migration: String,
+        status: String,
+    },
+
+    /// Paramètres refusés par une fonction `fn::runtime_*` (`fields` : codes par champ).
+    #[error("Runtime function '{function}' refused its parameters")]
+    InvalidParameters {
+        function: &'static str,
+        fields: serde_json::Value,
+    },
+
     #[error(
         "Module implementation missing for module '{module}' (version '{version}'): LyxalModule is required for installation"
     )]
@@ -314,6 +330,8 @@ impl RuntimeError {
             Self::LeaseFenced { .. } => &catalog::LEASE_FENCED,
             Self::MigrationLockNotOwner { .. } => &catalog::MIGRATION_LOCK_NOT_OWNER,
             Self::MigrationRecoveryRequired { .. } => &catalog::MIGRATION_RECOVERY_REQUIRED,
+            Self::MigrationNotInterrupted { .. } => &catalog::MIGRATION_NOT_INTERRUPTED,
+            Self::InvalidParameters { .. } => &catalog::INVALID_PARAMETERS,
             Self::ModuleImplementationMissing { .. } => &catalog::MODULE_IMPLEMENTATION_MISSING,
             Self::RuntimeVersionIncompatible { .. } => &catalog::VERSION_INCOMPATIBLE,
             Self::DependencyVersionIncompatible { .. } => &catalog::DEPENDENCY_VERSION_INCOMPATIBLE,
@@ -489,6 +507,19 @@ impl RuntimeError {
                 "module_id": module.as_str(),
                 "migration_id": migration,
                 "reason": reason,
+            }),
+            Self::MigrationNotInterrupted {
+                module,
+                migration,
+                status,
+            } => json!({
+                "module": module,
+                "migration": migration,
+                "status": status,
+            }),
+            Self::InvalidParameters { function, fields } => json!({
+                "function": function,
+                "fields": fields,
             }),
             Self::ModuleImplementationMissing { module, version } => json!({
                 "module_id": module.as_str(),

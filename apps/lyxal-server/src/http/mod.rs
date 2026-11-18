@@ -10,6 +10,7 @@ mod router;
 mod scheduler;
 mod secrets;
 mod storage;
+pub mod system;
 mod uploads;
 
 pub use router::build_router;
