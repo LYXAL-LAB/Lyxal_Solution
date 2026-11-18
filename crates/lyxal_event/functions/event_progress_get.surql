@@ -24,7 +24,7 @@ DEFINE FUNCTION OVERWRITE fn::event_progress_get(
     LET $p = object::from_entries(array::map(object::entries($checks), |$e| [$e[0], $e[1].value]));
     LET $subscription = $p.subscription;
 
-    LET $prog_rec = type::record(string::concat("event_subscription_progress:prog_", record::id($subscription)));
+    LET $prog_rec = type::record("event_subscription_progress", string::concat("prog_", record::id($subscription)));
     LET $prog = (SELECT * FROM ONLY $prog_rec);
 
     IF $prog == NONE {

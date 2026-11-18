@@ -40,8 +40,8 @@ DEFINE FIELD OVERWRITE unite ON TABLE catalogue_composition_ligne
 
 DEFINE FIELD OVERWRITE coefficient_perte ON TABLE catalogue_composition_ligne
     TYPE decimal
-    DEFAULT 1.0
-    ASSERT $value >= 1.0
+    DEFAULT 1dec
+    ASSERT $value >= 1dec
     COMMENT "Coefficient de perte/chute (1.0 = aucune perte, 1.05 = 5% de perte)";
 
 DEFINE FIELD OVERWRITE ordre ON TABLE catalogue_composition_ligne

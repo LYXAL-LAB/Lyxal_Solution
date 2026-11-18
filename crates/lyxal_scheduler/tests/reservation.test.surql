@@ -144,11 +144,11 @@ UPDATE (SELECT VALUE b.id FROM ONLY passe:r) SET cancel_requested = false;
     LET $b = (SELECT VALUE b FROM ONLY passe:r);
     LET $h = fn::scheduler_run_heartbeat({ run: $b.id, lease: $b.lease });
     LET $done = fn::scheduler_run_complete({ run: $b.id, lease: $b.lease, result: { pages: 12 } });
-    LET $after = (SELECT VALUE running FROM ONLY scheduler_queue:default);
+    LET $running_after = (SELECT VALUE running FROM ONLY scheduler_queue:default);
     LET $next = fn::scheduler_run_claim({ queue: "default", node: "n2" });
     UPDATE passe:r SET c = $next.data.items[0];
     RETURN $h.data.cancel_requested AND $done.data.state = "completed" AND $done.data.result = { pages: 12 } AND $done.data.lease IS NONE
-        AND $done.data.finished_at IS NOT NONE AND $done.data.duration_ms >= 0 AND $after = 1
+        AND $done.data.finished_at IS NOT NONE AND $done.data.duration_ms >= 0 AND $running_after = 1
         AND $next.data.items.args.note = ["c"]
         AND fn::scheduler_run_complete({ run: $b.id, lease: $b.lease }).error.code = "SCHEDULER_LEASE_LOST";
 };
@@ -273,10 +273,10 @@ RETURN fn::scheduler_run_retry({ run: (SELECT VALUE run.id FROM ONLY passe:g) })
 -- test: élagage : terminées anciennes supprimées, les 3 dernières de la planification gardées, récentes gardées
 {
     LET $s = (SELECT VALUE schedule FROM ONLY passe:p);
-    LET $before = count(SELECT * FROM scheduler_run);
+    LET $count_before = count(SELECT * FROM scheduler_run);
     LET $p = fn::scheduler_run_prune({ node: "n1", generation: 1, limit: 100 });
     LET $kept = (SELECT VALUE scheduled_for FROM scheduler_run WHERE schedule = $s ORDER BY scheduled_for DESC);
-    RETURN $p.data.deleted = 9 AND count(SELECT * FROM scheduler_run) = $before - 9 AND array::len($kept) = 3
+    RETURN $p.data.deleted = 9 AND count(SELECT * FROM scheduler_run) = $count_before - 9 AND array::len($kept) = 3
         AND $kept[0] > time::now() - 40d - 2h
         AND fn::scheduler_run_prune({ node: "n1", generation: 1 }).data.deleted = 0;
 };

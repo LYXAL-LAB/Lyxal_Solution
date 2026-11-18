@@ -74,12 +74,12 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_task_record($name: string) -> record<sch
 -- ----------------------------------------------------------------------------
 
 DEFINE FUNCTION OVERWRITE fn::scheduler_args_check($task: object, $args: any, $tenant: option<record<auth_organization>>) -> object {
-    LET $value = $args ?? {};
-    IF !type::is_object($value) { RETURN { valid: false, value: NONE, details: { args: [{ code: "CORE_VALIDATION_TYPE" }] } }; };
+    LET $given_args = $args ?? {};
+    IF !type::is_object($given_args) { RETURN { valid: false, value: NONE, details: { args: [{ code: "CORE_VALIDATION_TYPE" }] } }; };
     LET $report = IF $task.args_schema IS NONE {
-        IF object::is_empty($value) { { valid: true, value: {}, by_field: {} } } ELSE { { valid: false, value: NONE, by_field: { args: [{ code: "CORE_VALIDATION_NOT_ALLOWED", details: { reason: "no_arguments" } }] } } }
+        IF object::is_empty($given_args) { { valid: true, value: {}, by_field: {} } } ELSE { { valid: false, value: NONE, by_field: { args: [{ code: "CORE_VALIDATION_NOT_ALLOWED", details: { reason: "no_arguments" } }] } } }
     } ELSE {
-        fn::validation_object_execute($value, $task.args_schema, 100)
+        fn::validation_object_execute($given_args, $task.args_schema, 100)
     };
     IF !$report.valid { RETURN { valid: false, value: NONE, details: $report.by_field }; };
     LET $max = fn::scheduler_settings_effective({ tenant: $tenant }).max_args_bytes;

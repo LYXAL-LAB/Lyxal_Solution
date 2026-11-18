@@ -223,12 +223,12 @@ DEFINE FUNCTION OVERWRITE fn::auth_identity_get($params: object) {
     LET $identity = (SELECT * FROM ONLY $p.identity);
     IF $identity == NONE { RETURN fn::error_result("AUTH_IDENTITY_NOT_FOUND", $p.language, {}); };
     LET $iid = $identity.id;
-    LET $self = $auth != NONE AND type::is_record($auth, "auth_session") AND (SELECT VALUE identity FROM ONLY $auth) = $iid;
+    LET $is_self = $auth != NONE AND type::is_record($auth, "auth_session") AND (SELECT VALUE identity FROM ONLY $auth) = $iid;
     LET $admin = fn::auth_has_permission({ permission: "auth.identity.read" });
     RETURN fn::result_ok(object::extend(IF $admin { $identity } ELSE { object::remove($identity, "admin_metadata") }, {
         identifiers: (SELECT type, value FROM auth_credential_identifier WHERE identity = $iid),
         addresses: (SELECT channel, usage, value, verified_at, primary FROM auth_address WHERE identity = $iid),
-        memberships: IF $self OR $admin { (SELECT out AS organization, state FROM auth_member_of WHERE in = $iid) } ELSE { [] }
+        memberships: IF $is_self OR $admin { (SELECT out AS organization, state FROM auth_member_of WHERE in = $iid) } ELSE { [] }
     }));
 } COMMENT "Lit une identité visible par l'appelant ({ identity }) avec identifiants, adresses et, pour elle-même ou un administrateur, ses adhésions ; admin_metadata réservé à auth.identity.read";
 

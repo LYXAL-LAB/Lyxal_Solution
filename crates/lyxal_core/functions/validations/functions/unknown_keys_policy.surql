@@ -25,9 +25,9 @@
 --   CORE_UNSUPPORTED_OPTION : politique inconnue
 --
 -- Exemple (dans une fonction de module)
---   LET $input = fn::validation_unknown_keys_policy($params.input, ["name", "email"], "strip");
---   IF !$input.valid {
---       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $input.code });
+--   LET $policy = fn::validation_unknown_keys_policy($params.input, ["name", "email"], "strip");
+--   IF !$policy.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $policy.code });
 --   };
 -- ============================================================================
 

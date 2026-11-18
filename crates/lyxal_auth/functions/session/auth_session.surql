@@ -311,8 +311,8 @@ DEFINE FUNCTION OVERWRITE fn::auth_session_list($params: object) {
     IF $p.organization IS NOT NONE AND !fn::auth_has_permission({ permission: "auth.session.manage", tenant: $p.organization }) {
         RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, { permission: "auth.session.manage" });
     };
-    LET $self = IF $check.system { NONE } ELSE { (SELECT VALUE identity FROM ONLY $auth) };
-    LET $identity = $p.identity ?? (IF $p.organization IS NONE { $self } ELSE { NONE });
+    LET $own_identity = IF $check.system { NONE } ELSE { (SELECT VALUE identity FROM ONLY $auth) };
+    LET $identity = $p.identity ?? (IF $p.organization IS NONE { $own_identity } ELSE { NONE });
     LET $rows = (SELECT id, identity, application, kind, organization, aal, client, created_at, last_seen_at, idle_expires_at, expires_at
         FROM auth_session
         WHERE state = "active" AND expires_at > time::now()

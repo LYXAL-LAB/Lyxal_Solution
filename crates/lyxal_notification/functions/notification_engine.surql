@@ -101,8 +101,8 @@ DEFINE FUNCTION OVERWRITE fn::notification_wait_due($params: object) -> object {
 
 DEFINE FUNCTION OVERWRITE fn::notification_group_key($params: object) -> string {
     IF $params.step.group_by IS NONE { RETURN ""; };
-    LET $value = fn::utils_object_get_path($params.context, string::split($params.step.group_by, "."), NONE);
-    RETURN IF $value IS NONE OR type::is_null($value) { "" } ELSE { <string> $value };
+    LET $group_value = fn::utils_object_get_path($params.context, string::split($params.step.group_by, "."), NONE);
+    RETURN IF $group_value IS NONE OR type::is_null($group_value) { "" } ELSE { <string> $group_value };
 } COMMENT "Interne : clé lue dans le contexte au chemin group_by de l'étape ({ step, context }) ; vide sans group_by ou valeur absente";
 
 -- ----------------------------------------------------------------------------
@@ -110,9 +110,9 @@ DEFINE FUNCTION OVERWRITE fn::notification_group_key($params: object) -> string 
 -- ----------------------------------------------------------------------------
 
 DEFINE FUNCTION OVERWRITE fn::notification_digest_merge($params: object) -> object {
-    LET $event = { run: $params.run.id, payload: $params.run.payload, at: time::now() };
+    LET $digest_event = { run: $params.run.id, payload: $params.run.payload, at: time::now() };
     LET $updated = (UPDATE ONLY $params.digest SET count += 1,
-        events = IF array::len(events) < 100 { array::append(events, $event) } ELSE { events }
+        events = IF array::len(events) < 100 { array::append(events, $digest_event) } ELSE { events }
         WHERE status = "open");
     IF $updated == NONE { THROW "NOTIFICATION_WRITE_FORBIDDEN"; };
     LET $job = fn::notification_job_add({ run: $params.run.id, step_key: $params.step.key, type: "digest", status: "merged" });

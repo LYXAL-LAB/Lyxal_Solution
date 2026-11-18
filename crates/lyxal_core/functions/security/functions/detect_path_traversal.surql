@@ -14,7 +14,7 @@
 DEFINE FUNCTION OVERWRITE fn::security_detect_path_traversal(
     $value: string
 ) -> object {
-    LET $input = string::lowercase($value);
+    LET $lowered = string::lowercase($value);
 
     LET $patterns = [
         "\\.\\./",
@@ -28,7 +28,7 @@ DEFINE FUNCTION OVERWRITE fn::security_detect_path_traversal(
 
     LET $matches = array::filter(
         $patterns,
-        |$pattern| string::matches($input,$pattern)
+        |$pattern| string::matches($lowered,$pattern)
     );
 
     RETURN {

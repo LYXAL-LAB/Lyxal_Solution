@@ -59,7 +59,7 @@ DEFINE FUNCTION OVERWRITE fn::event_flush_batch(
     };
 
     -- 2. Chargement de la progression de l'abonnement
-    LET $prog_rec = type::record(string::concat("event_subscription_progress:prog_", record::id($subscription)));
+    LET $prog_rec = type::record("event_subscription_progress", string::concat("prog_", record::id($subscription)));
     LET $prog = (SELECT * FROM ONLY $prog_rec);
 
     LET $current_cursor = IF $prog != NONE THEN $prog.last_persisted_cursor ELSE 0 END;

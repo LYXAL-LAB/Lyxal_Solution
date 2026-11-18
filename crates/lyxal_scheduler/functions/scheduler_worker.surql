@@ -279,10 +279,10 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_publish($params: object) {
 
 DEFINE FUNCTION OVERWRITE fn::scheduler_run_fail($params: object) {
     -- Message d'erreur du programme : tronqué à 1 000 caractères plutôt que refusé (la tentative doit se terminer)
-    LET $input = IF type::is_object($params.error) AND type::is_string($params.error.message) {
+    LET $error_input = IF type::is_object($params.error) AND type::is_string($params.error.message) {
         object::extend($params, { error: object::extend($params.error, { message: string::slice($params.error.message, 0, 1000) }) })
     } ELSE { $params };
-    LET $report = fn::validation_object_execute($input, {
+    LET $report = fn::validation_object_execute($error_input, {
         fields: {
             run: { pipeline: fn::scheduler_ref("scheduler_run"), required: true },
             lease: { pipeline: [{ rule: "required_string", options: { min_length: 36, max_length: 36 } }], required: true },
@@ -382,6 +382,7 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_prunable($id: record<scheduler_run>,
     IF $finished_at >= $now - $settings.run_retention { RETURN false; };
     IF $schedule IS NONE { RETURN true; };
     -- Toujours les N dernières exécutions terminées de chaque planification (S7)
+    -- (simple décompte borné : le choix des lignes comptées est indifférent, donc sans tri)
     LET $newer = count(SELECT VALUE id FROM scheduler_run WHERE schedule = $schedule AND state IN ["completed", "dead", "cancelled", "skipped"]
         AND (scheduled_for > $scheduled_for OR (scheduled_for = $scheduled_for AND id > $id)) LIMIT $settings.keep_last_runs);
     RETURN $newer >= $settings.keep_last_runs;

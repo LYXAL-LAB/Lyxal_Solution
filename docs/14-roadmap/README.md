@@ -20,5 +20,8 @@ Ce dossier regroupe les feuilles de route stratégiques et d'intégration transv
    - [`crates/lyxal_catalogue/ROADMAP.md`](../../crates/lyxal_catalogue/ROADMAP.md) — Substitutions, recherche avancée, historisation, catalogue intelligent.
    - [`crates/lyxal_pipeline_ingestion/ROADMAP.md`](../../crates/lyxal_pipeline_ingestion/ROADMAP.md) — Évolutions prévues du pipeline d'ingestion.
 
-3. **Audits d'Architecture & Décisions Structurantes** :
+3. **Socle Technique** :
+   - [`SURREALDB_4.md`](./SURREALDB_4.md) — Passage à SurrealDB 4.0 : reporté, conditions pour le rouvrir, travail restant.
+
+4. **Audits d'Architecture & Décisions Structurantes** :
    - [`docs/01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md`](../01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md) — Audit exhaustif des tables relationnelles SurrealDB (`TYPE NORMAL` vs `TYPE RELATION`).

@@ -217,6 +217,17 @@ RETURN (UPDATE catalogue_item SET description = "Piraté", unite_conditionnement
 -- en tant que: alpha
 RETURN fn::catalogue_item_update({ id: test_ref:placo.item, enabled: false }).error.code == "CATALOGUE_ITEM_SYNC_FIELD_PROTECTED";
 
+-- test: le flux maître pose un conditionnement : nombres rangés en décimaux
+-- en tant que: sync
+RETURN fn::catalogue_item_update({ id: test_ref:placo.item, conditionnement: { quantite: 2.6, poids_kg: 27.5, dimensions: { epaisseur: 12.5 } } }).data.conditionnement
+    == { quantite: 2.6dec, poids_kg: 27.5dec, dimensions: { epaisseur: 12.5dec } };
+
+-- test: comparaison de décimal à décimal : le même conditionnement renvoyé n'est pas une modification d'un champ maître, un autre l'est
+-- en tant que: alpha
+RETURN fn::catalogue_item_update({ id: test_ref:placo.item, conditionnement: { quantite: 2.6, poids_kg: 27.5, dimensions: { epaisseur: 12.5 } } }).error.code != "CATALOGUE_ITEM_SYNC_FIELD_PROTECTED"
+    AND fn::catalogue_item_update({ id: test_ref:placo.item, conditionnement: { quantite: 2.7, poids_kg: 27.5, dimensions: { epaisseur: 12.5 } } }).error.code == "CATALOGUE_ITEM_SYNC_FIELD_PROTECTED"
+    AND fn::catalogue_item_update({ id: test_ref:placo.item, conditionnement: { quantite: 2.6, poids_kg: 27.5, dimensions: { epaisseur: 13 } } }).error.code == "CATALOGUE_ITEM_SYNC_FIELD_PROTECTED";
+
 -- test: un locataire personnalise un article maître pour lui seul
 -- en tant que: alpha
 RETURN fn::catalogue_item_personnaliser({ item_id: test_ref:placo.item, code_interne_client: " A-BA13 ", libelle_personnalise: "Placo maison" }).data.{ code_interne_client, libelle_personnalise, enabled, tenant }

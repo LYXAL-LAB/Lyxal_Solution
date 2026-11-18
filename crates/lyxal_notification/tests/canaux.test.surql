@@ -202,7 +202,7 @@ RETURN fn::notification_endpoint_change({ action: "update", endpoint: (SELECT * 
 -- en tant que: admin
 {
     LET $sealed = "enc:v2:cle-2027:BBBBBBBBBBBBBBBBBBBBBBBB";
-    LET $before = (SELECT VALUE secret_rotated_at FROM ONLY test_ref:web.id_);
+    LET $rotated_before = (SELECT VALUE secret_rotated_at FROM ONLY test_ref:web.id_);
     LET $renamed = fn::notification_endpoint_update({ tenant: "auth_organization:alpha", endpoint: <string> test_ref:slack.id_, name: "Salon des devis" });
     LET $chat_id = fn::notification_endpoint_update({ tenant: "auth_organization:alpha", endpoint: <string> test_ref:telegram.id_, chat_id: "@alpha_devis" });
     LET $wrong = fn::notification_endpoint_update({ tenant: "auth_organization:alpha", endpoint: <string> test_ref:slack.id_, chat_id: "42" });
@@ -211,7 +211,7 @@ RETURN fn::notification_endpoint_change({ action: "update", endpoint: (SELECT * 
     LET $other_scope = fn::notification_endpoint_update({ tenant: "auth_organization:beta", endpoint: <string> test_ref:slack.id_, name: "X" });
     RETURN $renamed.data.name == "Salon des devis" AND $chat_id.data.chat_id == "@alpha_devis"
         AND $wrong.error.details.reason == "telegram_chat_id"
-        AND $rotated.data.signed AND $rotated.data.secret_rotated_at >= $before
+        AND $rotated.data.signed AND $rotated.data.secret_rotated_at >= $rotated_before
         AND $not_web.error.details.reason == "signing_secret"
         AND $other_scope.error.code == "NOTIFICATION_PERMISSION_DENIED";
 };

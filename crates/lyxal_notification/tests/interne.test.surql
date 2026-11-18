@@ -76,14 +76,14 @@ RETURN fn::notification_template_unknown_keys({ keys: ["notification.common.gree
 {
     LET $run = (SELECT VALUE id FROM ONLY notification_run LIMIT 1);
     LET $first = (SELECT VALUE step_key FROM notification_job WHERE run = $run);
-    LET $before = fn::notification_run_finalize({ run: $run });
+    LET $status_before = fn::notification_run_finalize({ run: $run });
     UPDATE notification_job SET status = "completed" WHERE run = $run AND step_key = "email";
     LET $next = fn::notification_run_advance({ run: $run });
     LET $again = fn::notification_run_advance({ run: $run });
     LET $jobs = (SELECT VALUE [step_key, status] FROM notification_job WHERE run = $run ORDER BY step_key);
     UPDATE notification_job SET status = "canceled" WHERE run = $run AND step_key = "rappel";
-    LET $after = fn::notification_run_finalize({ run: $run });
-    RETURN $first == ["email"] AND $before == { status: "pending" } AND $next == { status: "pending" } AND $again == $next
+    LET $status_after = fn::notification_run_finalize({ run: $run });
+    RETURN $first == ["email"] AND $status_before == { status: "pending" } AND $next == { status: "pending" } AND $again == $next
         AND $jobs == [["email", "completed"], ["rappel", "queued"]] AND (SELECT VALUE cursor FROM ONLY $run) == 2
-        AND $after == { status: "completed" } AND (SELECT VALUE [status, secret] FROM ONLY $run) == ["completed", NONE];
+        AND $status_after == { status: "completed" } AND (SELECT VALUE [status, secret] FROM ONLY $run) == ["completed", NONE];
 };

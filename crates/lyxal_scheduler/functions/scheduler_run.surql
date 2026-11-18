@@ -344,7 +344,8 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_ref($params: object) {
     }, 20);
     IF !$report.valid { RETURN fn::scheduler_invalid($params, $report.by_field); };
     LET $p = $report.value;
-    -- Identifiant natif (les identifiants composés [planification, date] compris), contrôlé à son tour
+    -- Identifiant natif (les identifiants composés [planification, date] compris) : la chaîne, entièrement
+    -- valide (surql_record_string ci-dessus), est relue telle quelle, puis contrôlée à son tour
     LET $native = fn::validation_record_id(type::record($p.run), ["scheduler_run"]);
     IF !$native.valid { RETURN fn::scheduler_invalid($params, { run: [$native.code] }); };
     RETURN fn::result_ok($native.value);

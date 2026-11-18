@@ -33,17 +33,17 @@ DEFINE FUNCTION OVERWRITE fn::notification_subscriber_fields($params: object) ->
 -- (personne invitée qui crée son compte, décision B1).
 
 DEFINE FUNCTION OVERWRITE fn::notification_subscriber_save($params: object) -> object {
-    LET $input = $params.input;
+    LET $subscriber_input = $params.input;
     LET $scope = IF $params.tenant IS NONE { "installation" } ELSE { <string> record::id($params.tenant) };
-    IF $input.identity IS NOT NONE AND $input.subscriber_id != string::concat("auth:", <string> record::id($input.identity)) {
+    IF $subscriber_input.identity IS NOT NONE AND $subscriber_input.subscriber_id != string::concat("auth:", <string> record::id($subscriber_input.identity)) {
         RETURN { code: "NOTIFICATION_INVALID_INPUT", details: { fields: { identity: ["NOTIFICATION_SUBSCRIBER_IDENTITY_MISMATCH"] } } };
     };
-    LET $email = IF $input.email IS NONE { NONE } ELSE { fn::sanitize_pipeline_execute($input.email, [{ rule: "email" }], 5) };
+    LET $email = IF $subscriber_input.email IS NONE { NONE } ELSE { fn::sanitize_pipeline_execute($subscriber_input.email, [{ rule: "email" }], 5) };
     LET $changes = object::from_entries(array::filter([
-        ["email", $email], ["phone", $input.phone], ["first_name", $input.first_name], ["last_name", $input.last_name],
-        ["locale", $input.locale], ["timezone", $input.timezone], ["data", $input.data]
+        ["email", $email], ["phone", $subscriber_input.phone], ["first_name", $subscriber_input.first_name], ["last_name", $subscriber_input.last_name],
+        ["locale", $subscriber_input.locale], ["timezone", $subscriber_input.timezone], ["data", $subscriber_input.data]
     ], |$entry| $entry[1] IS NOT NONE));
-    LET $existing = (SELECT * FROM ONLY notification_subscriber WHERE scope_key = $scope AND subscriber_id = $input.subscriber_id LIMIT 1);
+    LET $existing = (SELECT * FROM ONLY notification_subscriber WHERE scope_key = $scope AND subscriber_id = $subscriber_input.subscriber_id LIMIT 1);
     IF $existing IS NOT NONE {
         IF !array::any(object::entries($changes), |$entry| $existing[$entry[0]] != $entry[1]) {
             RETURN { code: NONE, subscriber: $existing, created: false, changed: false };
@@ -55,15 +55,15 @@ DEFINE FUNCTION OVERWRITE fn::notification_subscriber_save($params: object) -> o
     IF $params.must_exist { RETURN { code: "NOTIFICATION_SUBSCRIBER_NOT_FOUND", details: {} }; };
     LET $rid = type::record("notification_subscriber", string::replace(<string> rand::uuid::v7(), "-", ""));
     LET $inserted = (INSERT IGNORE INTO notification_subscriber object::extend($changes, {
-        id: $rid, tenant: $params.tenant, subscriber_id: $input.subscriber_id, identity: $input.identity
+        id: $rid, tenant: $params.tenant, subscriber_id: $subscriber_input.subscriber_id, identity: $subscriber_input.identity
     }));
     IF array::len($inserted) = 0 {
         -- Créé entre-temps par un autre appel (index unique), sinon écriture refusée
-        LET $raced = (SELECT * FROM ONLY notification_subscriber WHERE scope_key = $scope AND subscriber_id = $input.subscriber_id LIMIT 1);
+        LET $raced = (SELECT * FROM ONLY notification_subscriber WHERE scope_key = $scope AND subscriber_id = $subscriber_input.subscriber_id LIMIT 1);
         IF $raced IS NONE { RETURN { code: "NOTIFICATION_WRITE_FORBIDDEN", details: { table: "notification_subscriber" } }; };
         RETURN { code: NONE, subscriber: $raced, created: false, changed: false };
     };
-    IF string::starts_with($input.subscriber_id, "auth:") AND $email IS NOT NONE {
+    IF string::starts_with($subscriber_input.subscriber_id, "auth:") AND $email IS NOT NONE {
         LET $guest = (SELECT VALUE id FROM ONLY notification_subscriber WHERE scope_key = $scope AND subscriber_id = string::concat("email:", $email) LIMIT 1);
         IF $guest IS NOT NONE {
             FOR $preference IN (SELECT * FROM notification_preference WHERE subscriber = $guest) {

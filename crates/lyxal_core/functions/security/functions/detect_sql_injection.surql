@@ -14,7 +14,7 @@
 DEFINE FUNCTION OVERWRITE fn::security_detect_sql_injection(
     $value: string
 ) -> object {
-    LET $input = string::lowercase($value);
+    LET $lowered = string::lowercase($value);
 
     LET $patterns = [
         "\\bunion\\s+select\\b",
@@ -29,7 +29,7 @@ DEFINE FUNCTION OVERWRITE fn::security_detect_sql_injection(
 
     LET $matches = array::filter(
         $patterns,
-        |$pattern| string::matches($input,$pattern)
+        |$pattern| string::matches($lowered,$pattern)
     );
 
     RETURN {

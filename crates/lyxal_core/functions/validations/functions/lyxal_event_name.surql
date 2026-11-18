@@ -28,9 +28,9 @@
 --   CORE_INVALID_ARGUMENT : $min_segments < 1 ou $min_segments > $max_segments
 --
 -- Exemple (dans une fonction de module)
---   LET $event = fn::validation_lyxal_event_name($params.event_type, 2, 4);
---   IF !$event.valid {
---       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $event.code });
+--   LET $name_check = fn::validation_lyxal_event_name($params.event_type, 2, 4);
+--   IF !$name_check.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $name_check.code });
 --   };
 -- ============================================================================
 

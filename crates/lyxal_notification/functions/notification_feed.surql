@@ -18,13 +18,13 @@
 DEFINE FUNCTION OVERWRITE fn::notification_link_valid($params: object) -> bool {
     IF !type::is_string($params.value) { RETURN false; };
     -- Gabarit : la partie fixe, avant la première variable ou instruction MiniJinja
-    LET $value = IF $params.template = true { string::split(string::split($params.value, "{{")[0], "{%")[0] } ELSE { $params.value };
-    IF $value = "" { RETURN false; };
+    LET $link = IF $params.template = true { string::split(string::split($params.value, "{{")[0], "{%")[0] } ELSE { $params.value };
+    IF $link = "" { RETURN false; };
     -- Aucun caractère de contrôle (un navigateur retire tabulations et retours à la ligne)
-    IF fn::sanitize_remove_control_chars($value, false) != $value { RETURN false; };
-    IF fn::validation_http_url($value, false, true).valid { RETURN true; };
+    IF fn::sanitize_remove_control_chars($link, false) != $link { RETURN false; };
+    IF fn::validation_http_url($link, false, true).valid { RETURN true; };
     -- Chemin de l'application : « /… », jamais « // » ni « /\ » ni un schéma
-    RETURN fn::sanitize_safe_redirect($value, "/") == $value AND !fn::security_detect_open_redirect($value).detected;
+    RETURN fn::sanitize_safe_redirect($link, "/") == $link AND !fn::security_detect_open_redirect($link).detected;
 } COMMENT "Interne : lien du fil ({ value, template }) acceptable : adresse HTTPS (fn::validation_http_url) ou chemin de l'application commençant par « / » (fn::sanitize_safe_redirect, sans « // » ni « /\\ », fn::security_detect_open_redirect), sans caractère de contrôle ; javascript:, data: et tout autre schéma refusés. template : seule la partie fixe d'un gabarit, avant la première variable, est contrôlée (le lien rendu l'est à la livraison)";
 
 -- ----------------------------------------------------------------------------

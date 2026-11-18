@@ -34,9 +34,9 @@ DEFINE FUNCTION OVERWRITE fn::utils_collection_sort_by(
                 IF $ik IS NONE OR type::is_null($ik) {
                     array::append($sorted, $item)
                 } ELSE {
-                    LET $before = array::filter($sorted, |$x| $x[$key] IS NOT NONE AND !type::is_null($x[$key]) AND $x[$key] <= $ik);
-                    LET $after  = array::filter($sorted, |$x| $x[$key] IS NONE OR type::is_null($x[$key]) OR $x[$key] > $ik);
-                    array::concat(array::append($before, $item), $after)
+                    LET $head = array::filter($sorted, |$x| $x[$key] IS NOT NONE AND !type::is_null($x[$key]) AND $x[$key] <= $ik);
+                    LET $tail = array::filter($sorted, |$x| $x[$key] IS NONE OR type::is_null($x[$key]) OR $x[$key] > $ik);
+                    array::concat(array::append($head, $item), $tail)
                 }
             }
         )
@@ -49,9 +49,9 @@ DEFINE FUNCTION OVERWRITE fn::utils_collection_sort_by(
                 IF $ik IS NONE OR type::is_null($ik) {
                     array::append($sorted, $item)
                 } ELSE {
-                    LET $before = array::filter($sorted, |$x| $x[$key] IS NOT NONE AND !type::is_null($x[$key]) AND $x[$key] >= $ik);
-                    LET $after  = array::filter($sorted, |$x| $x[$key] IS NONE OR type::is_null($x[$key]) OR $x[$key] < $ik);
-                    array::concat(array::append($before, $item), $after)
+                    LET $head = array::filter($sorted, |$x| $x[$key] IS NOT NONE AND !type::is_null($x[$key]) AND $x[$key] >= $ik);
+                    LET $tail = array::filter($sorted, |$x| $x[$key] IS NONE OR type::is_null($x[$key]) OR $x[$key] < $ik);
+                    array::concat(array::append($head, $item), $tail)
                 }
             }
         )

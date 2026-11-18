@@ -64,15 +64,15 @@ RETURN fn::notification_preference_resolve({ tenant: auth_organization:alpha, wo
 -- test: la catégorie du parcours s'intercale entre le choix global et celui du parcours
 -- en tant que: admin
 {
-    LET $before = fn::notification_preference_get({ tenant: "auth_organization:alpha", subscriber_id: "s", workflow: "notification_workflow:lettre" }).data.resolved.channels.email;
+    LET $email_before = fn::notification_preference_get({ tenant: "auth_organization:alpha", subscriber_id: "s", workflow: "notification_workflow:lettre" }).data.resolved.channels.email;
     LET $set = fn::notification_preference_set({ tenant: "auth_organization:alpha", level: "subscriber_category", subscriber_id: "s", category: "actualites", channels: { email: true, sms: false } }).data;
-    LET $after = fn::notification_preference_get({ tenant: "auth_organization:alpha", subscriber_id: "s", workflow: "notification_workflow:lettre" }).data;
-    RETURN $before == { allowed: false, level: "subscriber_global" }
+    LET $prefs_after = fn::notification_preference_get({ tenant: "auth_organization:alpha", subscriber_id: "s", workflow: "notification_workflow:lettre" }).data;
+    RETURN $email_before == { allowed: false, level: "subscriber_global" }
         AND $set.channels == { email: true, sms: false }
-        AND $after.resolved.channels.email == { allowed: true, level: "subscriber_category" }
-        AND $after.resolved.channels.sms == { allowed: false, level: "subscriber_category" }
-        AND $after.categories.map(|$c| [$c.key, $c.channels]) == [["actualites", { email: true, sms: false }]]
-        AND $after.global.channels == { email: false };
+        AND $prefs_after.resolved.channels.email == { allowed: true, level: "subscriber_category" }
+        AND $prefs_after.resolved.channels.sms == { allowed: false, level: "subscriber_category" }
+        AND $prefs_after.categories.map(|$c| [$c.key, $c.channels]) == [["actualites", { email: true, sms: false }]]
+        AND $prefs_after.global.channels == { email: false };
 };
 
 -- test: null efface un canal d'un niveau, qui ne s'exprime plus
@@ -219,12 +219,12 @@ RETURN fn::notification_unsubscribe({ subscriber: "notification_subscriber:x", c
     LET $opt_in = fn::notification_preference_write({ tenant: auth_organization:alpha, level: "subscriber_workflow", subscriber: $s.id, workflow: notification_workflow:lettre, channels: { email: true } });
     LET $r = fn::notification_unsubscribe({ subscriber: <string> $s.id, category: "notification_category:actualites", channel: "email" }).data;
     LET $again = fn::notification_unsubscribe({ subscriber: <string> $s.id, category: "notification_category:actualites", channel: "email" }).ok;
-    LET $event = (SELECT VALUE payload FROM ONLY event_outbox WHERE event_type = "notification.subscriber.unsubscribed" LIMIT 1);
+    LET $published = (SELECT VALUE payload FROM ONLY event_outbox WHERE event_type = "notification.subscriber.unsubscribed" LIMIT 1);
     RETURN $opt_in.channels.email == true AND $r == { subscriber: $s.id, level: "subscriber_category", channel: "email" } AND $again
         AND (SELECT VALUE channels FROM ONLY notification_preference WHERE subscriber = $s.id AND level = "subscriber_category" LIMIT 1) == { email: false }
         AND (SELECT VALUE channels FROM ONLY notification_preference WHERE subscriber = $s.id AND level = "subscriber_workflow" AND workflow = notification_workflow:lettre LIMIT 1) == { email: false, push: false, sms: true }
         AND fn::notification_preference_resolve({ tenant: auth_organization:alpha, workflow: (SELECT * FROM ONLY notification_workflow:lettre), subscriber: $s }).channels.email == { allowed: false, level: "subscriber_workflow" }
-        AND $event == { subscriber_id: <string> $s.id, tenant: "auth_organization:alpha", category_id: "notification_category:actualites", channel: "email" };
+        AND $published == { subscriber_id: <string> $s.id, tenant: "auth_organization:alpha", category_id: "notification_category:actualites", channel: "email" };
 };
 
 -- test: désabonnement d'un parcours sans catégorie ; lien invalide (cibles manquantes ou supprimées)

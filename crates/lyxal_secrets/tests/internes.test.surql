@@ -107,11 +107,11 @@ RETURN fn::secrets_audit_clean({ a: NONE, b: { c: NONE, d: 1 }, e: [NONE, 2] }) 
 -- test: écriture d'une entrée de journal et publication sur le bus
 {
     LET $s = (SELECT * FROM ONLY (SELECT VALUE id_secret FROM ONLY passe:s));
-    LET $before = (SELECT VALUE seq FROM ONLY secrets_audit_head:alpha);
+    LET $seq_before = (SELECT VALUE seq FROM ONLY secrets_audit_head:alpha);
     LET $e = fn::secrets_audit_write({ tenant: auth_organization:alpha, action: "test.write", secret: $s.id, path: $s.path, details: { note: NONE } });
     LET $published = fn::secrets_publish("secrets.test.done", $s, { number: 1 });
-    RETURN $e.seq = $before + 1 AND $e.details = { note: NULL } AND $e.session_kind = "system" AND $published
-        AND (SELECT VALUE seq FROM ONLY secrets_audit_head:alpha) = $before + 1
+    RETURN $e.seq = $seq_before + 1 AND $e.details = { note: NULL } AND $e.session_kind = "system" AND $published
+        AND (SELECT VALUE seq FROM ONLY secrets_audit_head:alpha) = $seq_before + 1
         AND array::len(SELECT * FROM event_outbox WHERE event_type = "secrets.test.done") = 1
         AND fn::secrets_audit_verify({ tenant: "auth_organization:alpha" }).data.valid;
 };

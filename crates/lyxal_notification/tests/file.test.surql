@@ -199,9 +199,9 @@ RETURN fn::notification_job_complete({ job_id: <string> test_ref:bail1.job, clai
     LET $renewed = fn::notification_job_renew({ job_id: <string> $job.job_id, claim_token: $job.claim_token, lease_seconds: 600 }).data;
     LET $stale = fn::notification_job_renew({ job_id: <string> $job.job_id, claim_token: "01a1bca0-0000-7000-8000-000000000000" });
     LET $released = fn::notification_job_release({ job_id: <string> $job.job_id, claim_token: $job.claim_token }).data;
-    LET $after = (SELECT status, attempts, claim_token FROM ONLY $job.job_id);
+    LET $job_after = (SELECT status, attempts, claim_token FROM ONLY $job.job_id);
     RETURN $renewed.locked_until > time::now() + 500s AND $stale.error.code == "NOTIFICATION_JOB_CLAIM_LOST"
-        AND $released.status == "queued" AND $after == { status: "queued", attempts: 0, claim_token: NONE }
+        AND $released.status == "queued" AND $job_after == { status: "queued", attempts: 0, claim_token: NONE }
         AND fn::notification_job_release({ job_id: <string> $job.job_id, claim_token: $job.claim_token }).error.code == "NOTIFICATION_JOB_CLAIM_LOST";
 };
 
@@ -279,3 +279,17 @@ DEFINE TABLE OVERWRITE notification_job
 
 -- test: l'étape refusée est restée réservée
 RETURN (SELECT VALUE status FROM ONLY test_ref:refus.job) == "running";
+
+-- préparation: deux lignes de journal échues, la plus ancienne créée en dernier
+{
+    LET $log = (SELECT * FROM ONLY notification_delivery_log WHERE run.idempotency_key = "rejet-1" LIMIT 1);
+    CREATE notification_delivery_log:a_recente CONTENT { run: $log.run, job: $log.job, attempt: 0, status: "retry", code: "recente", purge_after: time::now() - 1h };
+    CREATE notification_delivery_log:z_ancienne CONTENT { run: $log.run, job: $log.job, attempt: 0, status: "retry", code: "ancienne", purge_after: time::now() - 2h };
+};
+
+-- test: purge par paquets : la ligne échue depuis le plus longtemps part la première
+-- en tant que: worker
+RETURN fn::notification_purge({ args: { limit: 1 } }).data.log_entries == 1;
+
+-- test: la ligne la plus récente attend le paquet suivant
+RETURN (SELECT VALUE code FROM notification_delivery_log WHERE code IN ["recente", "ancienne"]) == ["recente"];

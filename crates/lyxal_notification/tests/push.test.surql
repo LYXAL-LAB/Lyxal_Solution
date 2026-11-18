@@ -91,13 +91,13 @@
 -- test: une inscription renvoyée (même empreinte) met l'appareil à jour au lieu d'en créer un autre
 -- en tant que: membre
 {
-    LET $before = (SELECT VALUE registered_at FROM ONLY test_ref:android.id_);
+    LET $registered_before = (SELECT VALUE registered_at FROM ONLY test_ref:android.id_);
     LET $again = fn::notification_my_device_register({ tenant: "auth_organization:alpha", provider: "fcm", platform: "android", name: "Pixel", token: "jeton-fcm-essai-0000000000000000000000000001",
         fingerprint: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", sealed_token: "enc:v2:cle-2027:BBBBBBBBBBBBBBBBBBBBBBBB" });
     LET $other_service = fn::notification_my_device_register({ tenant: "auth_organization:alpha", provider: "apns", token: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         fingerprint: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", sealed_token: "enc:v2:cle-2027:BBBBBBBBBBBBBBBBBBBBBBBB" });
     RETURN $again.ok AND $again.data.created == false AND $again.data.device.id == test_ref:android.id_
-        AND $again.data.device.name == "Pixel" AND $again.data.device.registered_at >= $before
+        AND $again.data.device.name == "Pixel" AND $again.data.device.registered_at >= $registered_before
         AND $other_service.error.details.reason == "provider"
         AND array::len(fn::notification_my_device_list({ tenant: "auth_organization:alpha" }).data) == 3;
 };

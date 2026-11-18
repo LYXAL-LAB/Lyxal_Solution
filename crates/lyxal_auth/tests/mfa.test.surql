@@ -31,10 +31,10 @@ RETURN (SELECT VALUE available_aal FROM ONLY auth_identity:marie) == 1 AND (SELE
 
 -- test: double facteur exigé : par rôle (platform_admin), par organisation, sinon non
 {
-    LET $before = fn::auth_mfa_required({ identity: auth_identity:marie, organization: auth_organization:alpha });
+    LET $required_before = fn::auth_mfa_required({ identity: auth_identity:marie, organization: auth_organization:alpha });
     UPDATE auth_organization:alpha SET mfa_required = true;
-    LET $after = fn::auth_mfa_required({ identity: auth_identity:marie, organization: auth_organization:alpha });
-    RETURN !$before AND $after AND fn::auth_mfa_required({ identity: auth_identity:admin })
+    LET $required_after = fn::auth_mfa_required({ identity: auth_identity:marie, organization: auth_organization:alpha });
+    RETURN !$required_before AND $required_after AND fn::auth_mfa_required({ identity: auth_identity:admin })
         AND !fn::auth_mfa_required({ identity: auth_identity:marie }) AND !fn::auth_mfa_required({});
 };
 

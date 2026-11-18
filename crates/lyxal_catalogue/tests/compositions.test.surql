@@ -100,9 +100,9 @@ RETURN fn::catalogue_composition_publish({ composition_id: test_ref:c0v2.id_comp
 -- test: chaîne N1 → N2 → … → N8, une composition publiée par niveau
 -- en tant que: sync
 RETURN array::all(array::map(<array> (1..8), |$i| {
-    LET $parent = <string> (SELECT VALUE id FROM ONLY catalogue_item WHERE code = string::concat("N", <string> $i) LIMIT 1);
+    LET $parent_item = <string> (SELECT VALUE id FROM ONLY catalogue_item WHERE code = string::concat("N", <string> $i) LIMIT 1);
     LET $child = <string> (SELECT VALUE id FROM ONLY catalogue_item WHERE code = string::concat("N", <string> ($i + 1)) LIMIT 1);
-    LET $comp = fn::catalogue_composition_create({ parent_item: $parent }).data.id;
+    LET $comp = fn::catalogue_composition_create({ parent_item: $parent_item }).data.id;
     LET $line = fn::catalogue_composition_add_line({ composition_id: <string> $comp, composant_item: $child, quantite: 1, unite: "base_unite:U" });
     RETURN $line.ok AND fn::catalogue_composition_publish({ composition_id: <string> $comp }).ok;
 }));

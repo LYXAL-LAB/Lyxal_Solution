@@ -98,6 +98,7 @@ Lors de l'écriture ou de la migration de fichiers `.surql` pour SurrealDB 3.3.4
    - `string::split("abc", "")` retourne `["", "a", "b", "c", ""]` (chaînes vides aux deux extrémités).
 4. **Portée des Variables (`LET`) et Opérateur d'Égalité en Début de Bloc** :
    - Toute réaffectation sans `LET` (`$x = ...`) échoue au parsing (`Parameter declarations without 'let' are deprecated`), et `LET $x = ...` à l'intérieur d'un bloc `FOR` ou `IF` est **strictement local au bloc** $\rightarrow$ privilégier `array::fold` ou `array::map` pour accumuler un état.
+   - **`LET $event`, `$before`, `$after`, `$value`, `$input`, `$parent`, `$self` et `$this` sont interdits** : ces noms sont ceux des variables fournies par la base (`DEFINE EVENT`, `ASSERT` / `VALUE`, sous-requêtes). La 3.3.4 accepte la déclaration, mais SurrealDB 4.0 refuse la fonction ou le bloc à l'installation $\rightarrow$ donner à la variable locale un nom qui dit ce qu'elle contient (`$previous`, `$cleaned`, `$parent_role`…). Lire ces variables là où la base les fournit reste normal. Contrôlé par `scripts/ci/validate_surql.sh`.
    - Une comparaison `$a = $b` placée en tête d'un bloc `{ $a = $b }` est interprétée comme une affectation sans `LET` $\rightarrow$ utiliser **`==`** (`{ $a == $b }`).
 5. **Littéraux de Chaînes, Échappements & Moteur Regex Rust** :
    - Tout antislash d'expression régulière dans un littéral `"..."` doit être doublé (`"\\s+"`, `"\\."`, `"\\p{L}"`, `"\\x00"`, et `"\\\\"` pour un antislash littéral dans une classe `[...]`).
@@ -153,7 +154,7 @@ Lors de l'écriture ou de la migration de fichiers `.surql` pour SurrealDB 3.3.4
 
 ## 4. Protocole de Test Reproductible SurrealDB 3.3.4
 
-Outillage versionné dans `scripts/ci/` : `install_surreal.sh` (binaire 3.3.4 exact), `validate_surql.sh` (`surreal validate` de tout le workspace), `test_lyxal_core.py` (suite `lyxal_core`), `test_lyxal_modules.py` (tests `tests/*.test.surql` de chaque module, installé depuis son manifeste dans une base neuve, blocs exécutés sous des identités JWT simulées : `-- identité <nom>: {claims}`, `-- en tant que: <nom>`, `-- préparation:` ; format en tête du script, exemple : `crates/lyxal_catalogue/tests/`), `test_all.sh` (tests Rust + serveurs de test), `ci_local.sh` (tout, comme la CI).
+Outillage versionné dans `scripts/ci/` : `install_surreal.sh` (binaire 3.3.4 exact), `validate_surql.sh` (`surreal validate` de tout le workspace, refus des `LET` de noms réservés, §2.5 point 4), `test_lyxal_core.py` (suite `lyxal_core`), `test_lyxal_modules.py` (tests `tests/*.test.surql` de chaque module, installé depuis son manifeste dans une base neuve, blocs exécutés sous des identités JWT simulées : `-- identité <nom>: {claims}`, `-- en tant que: <nom>`, `-- préparation:` ; format en tête du script, exemple : `crates/lyxal_catalogue/tests/`), `test_all.sh` (tests Rust + serveurs de test), `ci_local.sh` (tout, comme la CI).
 
 Pour valider un schéma, une fonction ou une migration :
 

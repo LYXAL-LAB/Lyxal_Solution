@@ -200,12 +200,12 @@ RETURN fn::notification_integration_create({ key: "z", provider: "postmark", nam
 -- en tant que: worker
 {
     LET $failed = fn::notification_job_fail({ job_id: <string> test_ref:d1.job, claim_token: test_ref:d1.token, integration: <string> test_ref:d1.integration, class: "transient", code: "NOTIFICATION_PROVIDER_UNAVAILABLE", detail: "HTTP 503", retry_delay_seconds: 0 }).data;
-    LET $after = fn::notification_integration_select({ job_id: <string> test_ref:d1.job }).data.key;
+    LET $order_after = fn::notification_integration_select({ job_id: <string> test_ref:d1.job }).data.key;
     LET $claimed = fn::notification_job_claim({ channel: "email", worker_id: "w2", limit: 10 }).data.find(|$j| $j.idempotency_key = "d1");
     CREATE test_ref:d1b CONTENT { job: $claimed.job_id, token: $claimed.claim_token, integration: $claimed.integration.id };
     RETURN $failed.status == "queued"
         AND (SELECT VALUE integration.key FROM ONLY test_ref:d1.job) == "principale"
-        AND $after == ["secours", "principale"]
+        AND $order_after == ["secours", "principale"]
         AND $claimed.integration.key == "secours";
 };
 
