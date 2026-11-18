@@ -209,3 +209,27 @@ RETURN fn::auth_api_key_session_create({ key_hash: "8d8d8d8d8d8d8d8d8d8d8d8d8d8d
         AND fn::auth_service_session_open({ client_id: $spa.client_id, access_slot: "a" }).error.code == "AUTH_APPLICATION_NOT_FOUND"
         AND fn::auth_service_session_open({ client_id: "lyx_inconnu_inconnu_inconnu", access_slot: "a" }).error.code == "AUTH_APPLICATION_NOT_FOUND";
 };
+
+-- préparation: trois applications d'une organisation, dont deux de même nom
+{
+    CREATE auth_organization:tri CONTENT { slug: "tri", name: "Tri" };
+    CREATE auth_application:tri_b CONTENT { tenant: auth_organization:tri, client_id: "lyx_tri_bbbbbbbbbbbb", name: "Portail", type: "spa" };
+    CREATE auth_application:tri_a CONTENT { tenant: auth_organization:tri, client_id: "lyx_tri_aaaaaaaaaaaa", name: "Portail", type: "spa" };
+    CREATE auth_application:tri_c CONTENT { tenant: auth_organization:tri, client_id: "lyx_tri_cccccccccccc", name: "Accueil", type: "spa" };
+};
+
+-- test: deux applications de même nom : la liste tronquée garde toujours la même, dans le même ordre
+{
+    LET $expected = [auth_application:tri_c, auth_application:tri_a, auth_application:tri_b];
+    LET $cuts = [
+        fn::auth_application_list({ tenant: "auth_organization:tri", limit: 1 }).data.id,
+        fn::auth_application_list({ tenant: "auth_organization:tri", limit: 2 }).data.id,
+        fn::auth_application_list({ tenant: "auth_organization:tri", limit: 3 }).data.id
+    ];
+    LET $again = [
+        fn::auth_application_list({ tenant: "auth_organization:tri", limit: 1 }).data.id,
+        fn::auth_application_list({ tenant: "auth_organization:tri", limit: 2 }).data.id,
+        fn::auth_application_list({ tenant: "auth_organization:tri", limit: 3 }).data.id
+    ];
+    RETURN $cuts == [array::slice($expected, 0, 1), array::slice($expected, 0, 2), $expected] AND $again == $cuts;
+};

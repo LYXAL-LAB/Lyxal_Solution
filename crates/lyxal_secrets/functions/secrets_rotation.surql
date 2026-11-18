@@ -293,13 +293,13 @@ DEFINE FUNCTION OVERWRITE fn::secrets_rotation_get($params: object) {
     IF !fn::secrets_can({ action: "list", tenant: $secret.tenant, path: $secret.path }) AND !fn::secrets_can({ action: "worker", tenant: $secret.tenant }) {
         RETURN fn::error_result("SECRETS_PERMISSION_DENIED", $p.language, {});
     };
-    LET $ids = (SELECT VALUE id FROM secrets_rotation WHERE secret = $secret.id ORDER BY started_at DESC LIMIT $p.limit);
+    LET $ids = (SELECT VALUE id FROM secrets_rotation WHERE secret = $secret.id ORDER BY started_at DESC, id DESC LIMIT $p.limit);
     LET $items = array::map($ids, |$id| fn::secrets_rotation_view($id));
     RETURN fn::result_ok({
         active: array::filter($items, |$r| $r.state INSIDE ["started", "created", "installed", "tested"])[0],
         items: $items
     });
-} COMMENT "Rotations d'un secret, les plus récentes d'abord ({ secret, limit (100 au plus) }) : { active (rotation en cours ou NONE), items }. Droit : liste";
+} COMMENT "Rotations d'un secret, les plus récentes d'abord puis par identifiant décroissant à date égale (ordre total) ({ secret, limit (100 au plus) }) : { active (rotation en cours ou NONE), items }. Droit : liste";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_rotation_claim

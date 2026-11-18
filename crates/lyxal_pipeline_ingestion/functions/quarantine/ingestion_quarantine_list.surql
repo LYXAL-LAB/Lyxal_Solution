@@ -34,8 +34,8 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_quarantine_list($params: object) {
             ($p.batch_id == NONE OR batch = $p.batch_id)
             AND ($p.severite == NONE OR severite = $p.severite)
             AND ($p.is_resolved == NONE OR is_resolved = $p.is_resolved)
-        ORDER BY ligne_numero ASC, created_at ASC
+        ORDER BY batch ASC, ligne_numero ASC, created_at ASC, id ASC
         LIMIT $p.limit START $p.start);
 
     RETURN fn::result_ok({ records: $records, total: $total, limit: $p.limit, start: $p.start });
-} COMMENT "Retourne la liste paginée et filtrée (lot, sévérité, résolution) des anomalies en quarantaine, triée par numéro de ligne";
+} COMMENT "Retourne la liste paginée et filtrée (lot, sévérité, résolution) des anomalies en quarantaine, triée par lot, numéro de ligne, date de création puis identifiant (ordre total)";

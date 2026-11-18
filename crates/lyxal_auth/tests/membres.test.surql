@@ -110,3 +110,30 @@ RETURN fn::auth_organization_member_add({ organization: "pas_une_org:x", identit
 
 -- test: création directe d'une adhésion avec rôles (session système)
 RETURN fn::auth_membership_create({ identity: auth_identity:lea, organization: auth_organization:beta, roles: [], by: NONE }).roles == [auth_role:organization_member];
+
+-- préparation: trois adhésions, dont deux à la même date (identifiants d'adhésion en sens inverse des identités)
+{
+    CREATE auth_organization:tri CONTENT { slug: "tri", name: "Tri" };
+    CREATE auth_identity:tri_a CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "tri_a@tri.test" } };
+    CREATE auth_identity:tri_b CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "tri_b@tri.test" } };
+    CREATE auth_identity:tri_c CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "tri_c@tri.test" } };
+    RELATE auth_identity:tri_b->auth_member_of->auth_organization:tri CONTENT { id: auth_member_of:tri_1, joined_at: d"2026-01-02T00:00:00Z" };
+    RELATE auth_identity:tri_a->auth_member_of->auth_organization:tri CONTENT { id: auth_member_of:tri_2, joined_at: d"2026-01-02T00:00:00Z" };
+    RELATE auth_identity:tri_c->auth_member_of->auth_organization:tri CONTENT { id: auth_member_of:tri_3, joined_at: d"2026-01-01T00:00:00Z" };
+};
+
+-- test: deux membres arrivés à la même date gardent le même ordre, page par page, sans doublon ni manque
+{
+    LET $expected = [auth_identity:tri_c, auth_identity:tri_a, auth_identity:tri_b];
+    LET $pages = [
+        fn::auth_organization_member_list({ organization: "auth_organization:tri", limit: 1, start: 0 }).data[0].identity,
+        fn::auth_organization_member_list({ organization: "auth_organization:tri", limit: 1, start: 1 }).data[0].identity,
+        fn::auth_organization_member_list({ organization: "auth_organization:tri", limit: 1, start: 2 }).data[0].identity
+    ];
+    LET $again = [
+        fn::auth_organization_member_list({ organization: "auth_organization:tri", limit: 1, start: 0 }).data[0].identity,
+        fn::auth_organization_member_list({ organization: "auth_organization:tri", limit: 1, start: 1 }).data[0].identity,
+        fn::auth_organization_member_list({ organization: "auth_organization:tri", limit: 1, start: 2 }).data[0].identity
+    ];
+    RETURN fn::auth_organization_member_list({ organization: "auth_organization:tri" }).data.identity == $expected AND $pages == $expected AND $again == $expected;
+};

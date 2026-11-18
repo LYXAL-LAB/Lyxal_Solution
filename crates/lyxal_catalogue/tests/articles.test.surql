@@ -349,3 +349,67 @@ RETURN fn::catalogue_caller({}).{ sync, tenant } == { sync: true, tenant: NONE }
 -- test: une session révoquée n'a aucun droit
 -- en tant que: revoquee
 RETURN fn::catalogue_caller({}).valid == false AND fn::catalogue_access({ is_custom: false, tenant: NONE, action: "read" }) == false;
+
+-- test: quatre articles maîtres dont deux de même libellé (Cuivre) ; l'ordre des libellés du référentiel est TRI-B, TRI-C, TRI-D, TRI-A
+-- en tant que: sync
+RETURN [
+    fn::catalogue_item_create({ code: "TRI-A", type: "catalogue_type:PRODUIT", libelle: "Zinc", unite_reference: "base_unite:U", master_id: "M-TRI-A" }).ok,
+    fn::catalogue_item_create({ code: "TRI-D", type: "catalogue_type:PRODUIT", libelle: "Cuivre", unite_reference: "base_unite:U", master_id: "M-TRI-D" }).ok,
+    fn::catalogue_item_create({ code: "TRI-C", type: "catalogue_type:PRODUIT", libelle: "Cuivre", unite_reference: "base_unite:U", master_id: "M-TRI-C" }).ok,
+    fn::catalogue_item_create({ code: "TRI-B", type: "catalogue_type:PRODUIT", libelle: "Acier", unite_reference: "base_unite:U", master_id: "M-TRI-B" }).ok
+] == [true, true, true, true];
+
+-- test: Alpha renomme deux articles pour lui (ses libellés s'ordonnent à l'inverse du référentiel), en désactive un sans le renommer et crée un article privé
+-- en tant que: alpha
+RETURN [
+    fn::catalogue_item_personnaliser({ item_id: <string> (SELECT VALUE id FROM ONLY catalogue_item WHERE code = "TRI-A" LIMIT 1), libelle_personnalise: "Aluminium" }).ok,
+    fn::catalogue_item_personnaliser({ item_id: <string> (SELECT VALUE id FROM ONLY catalogue_item WHERE code = "TRI-B" LIMIT 1), libelle_personnalise: "Zamak" }).ok,
+    fn::catalogue_item_personnaliser({ item_id: <string> (SELECT VALUE id FROM ONLY catalogue_item WHERE code = "TRI-C" LIMIT 1), enabled: false }).ok,
+    fn::catalogue_item_create({ code: "TRI-E", type: "catalogue_type:PRODUIT", libelle: "Bronze", unite_reference: "base_unite:U" }).ok
+] == [true, true, true, true];
+
+-- test: la liste d'Alpha suit le libellé affiché (personnalisé, sinon référentiel) puis le code, page par page, sans doublon ni manque
+-- en tant que: alpha
+{
+    LET $expected = ["TRI-A", "TRI-E", "TRI-C", "TRI-D", "TRI-B"];
+    LET $pages = [
+        fn::catalogue_item_list({ search: "tri-", limit: 1, start: 0 }).data[0].code,
+        fn::catalogue_item_list({ search: "tri-", limit: 1, start: 1 }).data[0].code,
+        fn::catalogue_item_list({ search: "tri-", limit: 1, start: 2 }).data[0].code,
+        fn::catalogue_item_list({ search: "tri-", limit: 1, start: 3 }).data[0].code,
+        fn::catalogue_item_list({ search: "tri-", limit: 1, start: 4 }).data[0].code
+    ];
+    LET $again = [
+        fn::catalogue_item_list({ search: "tri-", limit: 1, start: 0 }).data[0].code,
+        fn::catalogue_item_list({ search: "tri-", limit: 1, start: 1 }).data[0].code,
+        fn::catalogue_item_list({ search: "tri-", limit: 1, start: 2 }).data[0].code,
+        fn::catalogue_item_list({ search: "tri-", limit: 1, start: 3 }).data[0].code,
+        fn::catalogue_item_list({ search: "tri-", limit: 1, start: 4 }).data[0].code
+    ];
+    LET $all = fn::catalogue_item_list({ search: "tri-" }).data;
+    RETURN $all.code == $expected AND $pages == $expected AND $again == $expected
+        AND fn::catalogue_item_list({ search: "tri-", limit: 2, start: 3 }).data.code == ["TRI-D", "TRI-B"]
+        -- la clé de tri n'est pas renvoyée ; le contenu de chaque article est inchangé
+        AND array::all($all, |$item| !(object::keys($item) CONTAINS "libelle_affiche"))
+        AND $all[0].{ libelle, personnalisation, disponible } == { libelle: "Zinc", personnalisation: { libelle_personnalise: "Aluminium", code_interne_client: NONE, enabled: true }, disponible: true }
+        AND $all[2].{ libelle, disponible } == { libelle: "Cuivre", disponible: false };
+};
+
+-- test: Beta, sans personnalisation, lit les mêmes articles dans l'ordre du référentiel ; le code départage les deux « Cuivre »
+-- en tant que: beta
+{
+    LET $expected = ["TRI-B", "TRI-C", "TRI-D", "TRI-A"];
+    LET $pages = [
+        fn::catalogue_item_list({ search: "tri-", limit: 1, start: 0 }).data[0].code,
+        fn::catalogue_item_list({ search: "tri-", limit: 1, start: 1 }).data[0].code,
+        fn::catalogue_item_list({ search: "tri-", limit: 1, start: 2 }).data[0].code,
+        fn::catalogue_item_list({ search: "tri-", limit: 1, start: 3 }).data[0].code
+    ];
+    LET $again = [
+        fn::catalogue_item_list({ search: "tri-", limit: 1, start: 0 }).data[0].code,
+        fn::catalogue_item_list({ search: "tri-", limit: 1, start: 1 }).data[0].code,
+        fn::catalogue_item_list({ search: "tri-", limit: 1, start: 2 }).data[0].code,
+        fn::catalogue_item_list({ search: "tri-", limit: 1, start: 3 }).data[0].code
+    ];
+    RETURN fn::catalogue_item_list({ search: "tri-" }).data.code == $expected AND $pages == $expected AND $again == $expected;
+};

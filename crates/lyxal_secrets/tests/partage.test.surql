@@ -202,3 +202,27 @@ UPDATE (SELECT VALUE autre_partage FROM ONLY passe:ids) SET secret = NONE, creat
         AND array::sort($types) = ["secrets.share.consumed", "secrets.share.created", "secrets.share.destroyed", "secrets.share.opened", "secrets.share.revoked"]
         AND !string::contains(<string> (SELECT * FROM secrets_audit), "TEXTE") AND !string::contains(<string> (SELECT * FROM event_outbox), "COPIE");
 };
+
+-- préparation: trois partages d'une autre organisation, dont deux créés à la même date
+{
+    CREATE auth_organization:tri CONTENT { slug: "tri", name: "Tri" };
+    CREATE secrets_share:tri_a CONTENT { tenant: auth_organization:tri, created_identity: auth_identity:partageur, envelope: "enc:v2:share:A", key_fingerprint: string::repeat("a", 64), expires_at: time::now() + 1h, created_at: d"2026-01-02T00:00:00Z" };
+    CREATE secrets_share:tri_b CONTENT { tenant: auth_organization:tri, created_identity: auth_identity:partageur, envelope: "enc:v2:share:B", key_fingerprint: string::repeat("b", 64), expires_at: time::now() + 1h, created_at: d"2026-01-02T00:00:00Z" };
+    CREATE secrets_share:tri_c CONTENT { tenant: auth_organization:tri, created_identity: auth_identity:partageur, envelope: "enc:v2:share:C", key_fingerprint: string::repeat("c", 64), expires_at: time::now() + 1h, created_at: d"2026-01-01T00:00:00Z" };
+};
+
+-- test: deux partages créés à la même date gardent le même ordre, page par page, sans doublon ni manque
+{
+    LET $expected = [secrets_share:tri_b, secrets_share:tri_a, secrets_share:tri_c];
+    LET $pages = [
+        fn::secrets_share_list({ tenant: "auth_organization:tri", limit: 1, start: 0 }).data.items[0].id,
+        fn::secrets_share_list({ tenant: "auth_organization:tri", limit: 1, start: 1 }).data.items[0].id,
+        fn::secrets_share_list({ tenant: "auth_organization:tri", limit: 1, start: 2 }).data.items[0].id
+    ];
+    LET $again = [
+        fn::secrets_share_list({ tenant: "auth_organization:tri", limit: 1, start: 0 }).data.items[0].id,
+        fn::secrets_share_list({ tenant: "auth_organization:tri", limit: 1, start: 1 }).data.items[0].id,
+        fn::secrets_share_list({ tenant: "auth_organization:tri", limit: 1, start: 2 }).data.items[0].id
+    ];
+    RETURN fn::secrets_share_list({ tenant: "auth_organization:tri" }).data.items.id == $expected AND $pages == $expected AND $again == $expected;
+};

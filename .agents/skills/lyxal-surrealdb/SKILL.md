@@ -74,6 +74,17 @@ Avant d'écrire ou de recommander une construction SurrealQL, appliquer ces règ
   - `LET $id = <record<table_cible>> $params.id;`
   - Lecture unitaire directe : `LET $rec = (SELECT * FROM ONLY $id);`
 - Vérification d'existence avant création pour retourner une erreur métier déterministe (`fn::error_result("<MODULE>_..._ALREADY_EXISTS", $language, {...})`) au lieu de laisser échouer un index unique brut.
+- **Liste renvoyée avec `LIMIT` : ordre total obligatoire.** Toute liste rendue à un appelant avec `LIMIT` (pagination `limit` + `start`, liste tronquée par `limit` seul, tri complet puis `array::slice`) trie sur une clé **totale** : le `ORDER BY` se termine par une clé unique, dans le même sens que le tri principal — l'identifiant (`id`), ou la clé métier unique quand elle existe et se lit mieux (`code` d'un article, `batch, ligne_numero` d'une ligne importée). Une date, un libellé ou une priorité ne sont pas uniques : sans départage, deux lignes à égalité peuvent changer de page d'un appel à l'autre (une ligne lue deux fois, une autre jamais), et une liste tronquée ne garde pas toujours les mêmes lignes.
+  ```surql
+  -- Interdit : deux déclenchements de même date n'ont pas d'ordre fixe
+  SELECT * FROM notification_run WHERE scope_key = $scope ORDER BY created_at DESC LIMIT $p.limit START $p.start;
+  -- Attendu : l'identifiant ferme l'ordre
+  SELECT * FROM notification_run WHERE scope_key = $scope ORDER BY created_at DESC, id DESC LIMIT $p.limit START $p.start;
+  ```
+  - **Clés de tri parmi les champs renvoyés**, sous le nom écrit dans `ORDER BY` : un champ renommé se trie par son alias (`SELECT in AS identity ... ORDER BY joined_at, identity`), et une clé calculée n'est pas retirée par `OMIT` (la retirer après la requête, par `object::remove`). `SELECT VALUE` n'est pas concerné. Quand la fonction est appelée depuis une fermeture (`array::map($pages, |$start| fn::...)`), la 3.3.4 exécute la requête autrement : une clé absente des champs renvoyés y est ignorée sans erreur ou refusée (`Cannot ORDER BY ... not in the statement selection`), et `$parent` y est vide dans une sous-requête de projection.
+  - **Index** : `, id` ajouté dans le même sens après la clé d'un index à un seul champ garde la lecture par l'index. Un index composé n'est repris que si le tri suit tous ses champs dans l'ordre (index `(exhausted_at, replayed)` : `ORDER BY exhausted_at DESC, replayed DESC, id DESC`) ; sinon toute la table est triée. Vérifier par `EXPLAIN`.
+  - **Non concernés** : les lots des workers (réservations, purges, échéances), qui traitent toutes les lignes sélectionnées.
+  - **Test** : deux lignes à égalité sur la clé principale, lues page par page (`limit: 1` + `start`) par des appels directs (pas dans une fermeture) : ni doublon ni manque, même ordre à chaque appel.
 
 ### 2.4. Verrous Moteurs (`DEFINE EVENT ... Guard`) vs Événements Métier (`lyxal_event`)
 Distinguer strictement deux usages de `DEFINE EVENT` dans Lyxal OS :

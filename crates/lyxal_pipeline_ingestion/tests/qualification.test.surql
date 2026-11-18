@@ -168,3 +168,41 @@ RETURN fn::ingestion_staged_requalify({ item_id: test_ref:sans_unite.item, new_q
 -- test: même par écriture directe, un article VERIFIED a une unité
 -- attendu-erreur: INGESTION_UNIT_UNRESOLVED
 UPDATE ingestion_staged_item SET qualification = "VERIFIED" WHERE reference_fabricant = "SANS_UNITE";
+
+-- préparation: deux lots dont les lignes portent les mêmes numéros (le lot enregistré en premier se trie en second)
+{
+    fn::ingestion_batch_create({ id: "lot_tri_b", source_type: "CSV", fournisseur_id: "FOURN_PLACO", source_object: fn::test_source("tri_b.csv", "tri_b.csv") });
+    fn::ingestion_batch_create({ id: "lot_tri_a", source_type: "CSV", fournisseur_id: "FOURN_PLACO", source_object: fn::test_source("tri_a.csv", "tri_a.csv") });
+    fn::ingestion_batch_claim({ id: "lot_tri_b", owner: "banc" });
+    fn::ingestion_batch_claim({ id: "lot_tri_a", owner: "banc" });
+    fn::ingestion_staged_save({ claim: { owner: "banc", generation: 1 }, batch_id: "lot_tri_b", rules_version: "1", items: [
+        { ligne_numero: 1, canonical_fingerprint: crypto::blake3("tb1"), fabricant: "TRI", reference_fabricant: "B1", libelle_commercial: "Plaque", unite_reference: "M2", conditionnement: {} },
+        { ligne_numero: 2, canonical_fingerprint: crypto::blake3("tb2"), fabricant: "TRI", reference_fabricant: "B2", libelle_commercial: "Plaque", unite_reference: "M2", conditionnement: {} }
+    ] });
+    fn::ingestion_staged_save({ claim: { owner: "banc", generation: 1 }, batch_id: "lot_tri_a", rules_version: "1", items: [
+        { ligne_numero: 1, canonical_fingerprint: crypto::blake3("ta1"), fabricant: "TRI", reference_fabricant: "A1", libelle_commercial: "Plaque", unite_reference: "M2", conditionnement: {} },
+        { ligne_numero: 3, canonical_fingerprint: crypto::blake3("ta3"), fabricant: "TRI", reference_fabricant: "A3", libelle_commercial: "Plaque", unite_reference: "M2", conditionnement: {} }
+    ] });
+};
+
+-- test: sans filtre de lot, deux lignes de même numéro gardent le même ordre (lot puis numéro de ligne), page par page, sans doublon ni manque
+-- en tant que: steward
+{
+    LET $expected = ["A1", "A3", "B1", "B2"];
+    LET $pages = [
+        fn::ingestion_staged_list({ fabricant: "tri", limit: 1, start: 0 }).data.items[0].reference_fabricant,
+        fn::ingestion_staged_list({ fabricant: "tri", limit: 1, start: 1 }).data.items[0].reference_fabricant,
+        fn::ingestion_staged_list({ fabricant: "tri", limit: 1, start: 2 }).data.items[0].reference_fabricant,
+        fn::ingestion_staged_list({ fabricant: "tri", limit: 1, start: 3 }).data.items[0].reference_fabricant
+    ];
+    LET $again = [
+        fn::ingestion_staged_list({ fabricant: "tri", limit: 1, start: 0 }).data.items[0].reference_fabricant,
+        fn::ingestion_staged_list({ fabricant: "tri", limit: 1, start: 1 }).data.items[0].reference_fabricant,
+        fn::ingestion_staged_list({ fabricant: "tri", limit: 1, start: 2 }).data.items[0].reference_fabricant,
+        fn::ingestion_staged_list({ fabricant: "tri", limit: 1, start: 3 }).data.items[0].reference_fabricant
+    ];
+    LET $all = fn::ingestion_staged_list({ fabricant: "tri" }).data;
+    RETURN $all.items.reference_fabricant == $expected AND $all.total == 4
+        AND $all.items.map(|$i| [$i.batch, $i.ligne_numero]) == [["lot_tri_a", 1], ["lot_tri_a", 3], ["lot_tri_b", 1], ["lot_tri_b", 2]]
+        AND $pages == $expected AND $again == $expected;
+};

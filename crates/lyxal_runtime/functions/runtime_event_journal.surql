@@ -55,8 +55,8 @@ DEFINE FUNCTION OVERWRITE fn::runtime_event_list($params: object) {
         SELECT event_id, sequence, node_id, timestamp, kind, module_id, correlation_id, causation_id, payload
         FROM runtime_event_journal
         WHERE $p.module_id = NONE OR module_id = $p.module_id
-        ORDER BY timestamp DESC, sequence DESC
+        ORDER BY timestamp DESC, node_id DESC, sequence DESC
         LIMIT $p.limit
     );
-} COMMENT "Événements récents du journal, du plus récent au plus ancien, éventuellement filtrés par module."
+} COMMENT "Événements récents du journal, du plus récent au plus ancien, puis par nœud et par séquence décroissants à date égale (ordre total : une séquence est unique par nœud), éventuellement filtrés par module."
 PERMISSIONS FULL;

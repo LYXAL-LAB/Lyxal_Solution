@@ -75,6 +75,22 @@ RETURN [
     fn::ingestion_quarantine_list({ is_resolved: true }).data.total
 ] == [2, ["INGESTION_UNIT_UNRESOLVED"], 0];
 
+-- test: deux anomalies de la même ligne gardent le même ordre (création puis identifiant), page par page, sans doublon ni manque
+-- en tant que: steward
+{
+    LET $expected = ["INGESTION_UNIT_UNRESOLVED", "INGESTION_GTIN_INVALID"];
+    LET $pages = [
+        fn::ingestion_quarantine_list({ batch_id: "lot_z", limit: 1, start: 0 }).data.records[0].code_erreur,
+        fn::ingestion_quarantine_list({ batch_id: "lot_z", limit: 1, start: 1 }).data.records[0].code_erreur
+    ];
+    LET $again = [
+        fn::ingestion_quarantine_list({ batch_id: "lot_z", limit: 1, start: 0 }).data.records[0].code_erreur,
+        fn::ingestion_quarantine_list({ batch_id: "lot_z", limit: 1, start: 1 }).data.records[0].code_erreur
+    ];
+    LET $all = fn::ingestion_quarantine_list({}).data.records;
+    RETURN $all.code_erreur == $expected AND $all.ligne_numero == [1, 1] AND $pages == $expected AND $again == $expected;
+};
+
 -- préparation: identifiants
 CREATE test_ref:q SET
     unite = <string> record::id((SELECT VALUE id FROM ONLY ingestion_quarantine_record WHERE code_erreur = "INGESTION_UNIT_UNRESOLVED" LIMIT 1)),

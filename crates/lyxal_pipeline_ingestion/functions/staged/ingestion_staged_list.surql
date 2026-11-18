@@ -40,8 +40,8 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_staged_list($params: object) {
             ($p.batch_id == NONE OR batch = $p.batch_id)
             AND ($p.qualification == NONE OR qualification = $p.qualification)
             AND ($p.fabricant == NONE OR fabricant = $p.fabricant)
-        ORDER BY ligne_numero ASC
+        ORDER BY batch ASC, ligne_numero ASC
         LIMIT $p.limit START $p.start);
 
     RETURN fn::result_ok({ items: $items, total: $total, limit: $p.limit, start: $p.start });
-} COMMENT "Retourne la liste paginée et filtrée (lot, qualification, fabricant) des articles en staging, triée par numéro de ligne";
+} COMMENT "Retourne la liste paginée et filtrée (lot, qualification, fabricant) des articles en staging, triée par lot puis par numéro de ligne (ordre total : un numéro de ligne est unique dans son lot)";

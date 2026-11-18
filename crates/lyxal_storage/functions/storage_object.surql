@@ -256,9 +256,10 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_list($params: object) {
     IF !fn::storage_can({ action: "read", tenant: $bucket.tenant }) { RETURN fn::error_result("STORAGE_PERMISSION_DENIED", $p.language, {}); };
     LET $rows = (SELECT * FROM storage_object
         WHERE bucket = $bucket.id AND state = $p.state AND ($p.prefix IS NONE OR string::starts_with(key, $p.prefix))
-        ORDER BY key);
+        -- Plusieurs fichiers supprimés peuvent porter la même clé : l'identifiant les départage
+        ORDER BY key, id);
     RETURN fn::result_ok({ items: array::slice($rows, $p.start, $p.start + $p.limit), total: array::len($rows) });
-} COMMENT "Fichiers d'un bucket ({ bucket, prefix, state (available), limit, start }), triés par clé ; { items, total }. Droit : lecture";
+} COMMENT "Fichiers d'un bucket ({ bucket, prefix, state (available), limit, start }), triés par clé puis par identifiant (ordre total, y compris entre fichiers supprimés de même clé) ; { items, total }. Droit : lecture";
 
 -- ----------------------------------------------------------------------------
 -- fn::storage_object_delete

@@ -135,6 +135,29 @@ fn::scheduler_schedule_next_set({ node: "n1", generation: 1, schedule: (SELECT V
         AND fn::scheduler_calendar_delete({ calendar: $cal }).error.code = "SCHEDULER_CALENDAR_IN_USE";
 };
 
+-- préparation: une deuxième planification utilise le calendrier
+-- en tant que: admin
+{
+    LET $cal = <string> (SELECT VALUE id_cal FROM ONLY passe:cal);
+    LET $s = fn::scheduler_schedule_create({ tenant: "auth_organization:alpha", name: "avant", task: "essai.rapport", args: { format: "pdf" }, spec: { cron: ["0 8 * * *"] }, calendars: [$cal] });
+    UPDATE passe:cal SET id_avant = $s.data.id;
+};
+
+-- test: les planifications d'un calendrier sont rendues par nom, dans le même ordre d'un appel à l'autre
+-- (un nom est unique dans la portée et un calendrier ne sert qu'aux planifications de sa portée :
+-- deux noms égaux n'existent pas ; l'identifiant ferme l'ordre)
+-- en tant que: admin
+{
+    LET $cal = <string> (SELECT VALUE id_cal FROM ONLY passe:cal);
+    LET $expected = [(SELECT VALUE id_avant FROM ONLY passe:cal), (SELECT VALUE id_schedule FROM ONLY passe:cal)];
+    RETURN fn::scheduler_calendar_get({ calendar: $cal }).data.schedules == $expected
+        AND fn::scheduler_calendar_get({ calendar: $cal }).data.schedules == $expected;
+};
+
+-- préparation: la deuxième planification est retirée
+-- en tant que: admin
+fn::scheduler_schedule_delete({ schedule: <string> (SELECT VALUE id_avant FROM ONLY passe:cal) });
+
 -- test: suppression directe d'un calendrier utilisé refusée
 -- attendu-erreur: SCHEDULER_CALENDAR_IN_USE
 DELETE (SELECT VALUE id_cal FROM ONLY passe:cal);

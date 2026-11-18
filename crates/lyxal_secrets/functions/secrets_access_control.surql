@@ -206,12 +206,12 @@ DEFINE FUNCTION OVERWRITE fn::secrets_grant_list($params: object) {
             AND ($p.identity IS NONE OR subject_identity = $p.identity)
             AND ($p.application IS NONE OR subject_application = $p.application)
             AND (!$p.active_only OR (revoked_at IS NONE AND expires_at > $now))
-        ORDER BY created_at DESC);
+        ORDER BY created_at DESC, id DESC);
     RETURN fn::result_ok({
         items: array::map(array::slice($ids, $p.start, $p.start + $p.limit), |$id| fn::secrets_grant_view($id)),
         total: array::len($ids)
     });
-} COMMENT "Accès d'une organisation, les plus récents d'abord ({ tenant, identity, application, active_only (défaut vrai), limit (100 au plus), start }) : { items, total }. Le gestionnaire des accès voit tout ; chacun voit les siens";
+} COMMENT "Accès d'une organisation, les plus récents d'abord puis par identifiant décroissant à date égale (ordre total) ({ tenant, identity, application, active_only (défaut vrai), limit (100 au plus), start }) : { items, total }. Le gestionnaire des accès voit tout ; chacun voit les siens";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_access_emergency

@@ -247,9 +247,9 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_list($params: object) {
             AND ($task IS NONE OR task = $task)
             AND ($p.state IS NONE OR state = $p.state)
             AND ($p.since IS NONE OR scheduled_for >= $p.since)
-        ORDER BY scheduled_for DESC);
+        ORDER BY scheduled_for DESC, id DESC);
     RETURN fn::result_ok({ items: array::slice($all, $p.start, $p.start + $p.limit), total: array::len($all) });
-} COMMENT "Exécutions d'une portée ({ tenant, schedule, task, state, since (date prévue), limit (500 au plus), start }), les plus récentes d'abord : { items, total }. Droit : lecture";
+} COMMENT "Exécutions d'une portée ({ tenant, schedule, task, state, since (date prévue), limit (500 au plus), start }), les plus récentes d'abord puis par identifiant décroissant à date prévue égale (ordre total) : { items, total }. Droit : lecture";
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_run_cancel

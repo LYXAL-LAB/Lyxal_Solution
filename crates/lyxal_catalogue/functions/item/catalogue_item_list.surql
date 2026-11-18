@@ -44,7 +44,15 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_list($params: object) {
         NONE
     };
 
-    LET $records = (SELECT * FROM catalogue_item WHERE
+    -- Tri sur le libellé affiché au locataire : son libellé personnalisé s'il existe, sinon celui
+    -- du référentiel ; le code de l'article, unique, départage les libellés égaux (ordre total :
+    -- deux pages ne se recouvrent pas). La clé de tri reste parmi les champs lus (une clé absente
+    -- peut être ignorée par le moteur) et est retirée de chaque article avant le renvoi.
+    LET $records = (SELECT *,
+            ((IF is_custom == false AND $tenant != NONE {
+                (SELECT VALUE libelle_personnalise FROM ONLY catalogue_item_personnalisation WHERE item = $parent.id AND tenant = $tenant LIMIT 1)
+            } ELSE { NONE }) ?? libelle) AS libelle_affiche
+        FROM catalogue_item WHERE
         ($type == NONE OR type = $type) AND
         -- enabled filtre la disponibilité pour le locataire de la session (article actif et non
         -- désactivé par lui)
@@ -53,16 +61,16 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_list($params: object) {
         } ELSE { true })) = $enabled) AND
         ($category_item_ids == NONE OR id IN $category_item_ids) AND
         ($search == NONE OR string::lowercase(code) CONTAINS $search OR string::lowercase(libelle) CONTAINS $search)
-        ORDER BY libelle ASC LIMIT $limit START $start
+        ORDER BY libelle_affiche ASC, code ASC LIMIT $limit START $start
     );
 
     RETURN fn::result_ok($records.map(|$item| {
         LET $personnalisation = IF $item.is_custom == false AND $tenant != NONE {
             (SELECT libelle_personnalise, code_interne_client, enabled FROM ONLY catalogue_item_personnalisation WHERE item = $item.id AND tenant = $tenant LIMIT 1)
         } ELSE { NONE };
-        RETURN object::extend($item, {
+        RETURN object::extend(object::remove($item, "libelle_affiche"), {
             personnalisation: $personnalisation,
             disponible: $item.enabled AND ($personnalisation.enabled ?? true)
         });
     }));
-} COMMENT "Liste paginée des éléments du catalogue avec multi-filtres (type, catégorie, disponibilité pour le locataire de la session, recherche) ; chaque article porte la personnalisation du locataire (ou NONE) et sa disponibilité pour lui";
+} COMMENT "Liste paginée des éléments du catalogue avec multi-filtres (type, catégorie, disponibilité pour le locataire de la session, recherche) ; chaque article porte la personnalisation du locataire (ou NONE) et sa disponibilité pour lui ; triée sur le libellé affiché (libellé personnalisé du locataire s'il existe, sinon libellé du référentiel) puis sur le code de l'article (ordre total)";

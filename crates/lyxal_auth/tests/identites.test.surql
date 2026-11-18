@@ -230,3 +230,27 @@ fn::auth_identity_create({ traits: { email: "ext1@exemple.fr" }, organization: "
 
 -- test: rien n'a été créé par la tentative annulée
 RETURN array::len(SELECT * FROM auth_credential_identifier WHERE value = "ext1@exemple.fr") == 1;
+
+-- préparation: trois identités plus anciennes que toutes les autres, dont deux créées à la même date
+{
+    CREATE auth_identity:tri_b CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "tri_b@tri.test" }, created_at: d"2001-01-02T00:00:00Z" };
+    CREATE auth_identity:tri_a CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "tri_a@tri.test" }, created_at: d"2001-01-02T00:00:00Z" };
+    CREATE auth_identity:tri_c CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "tri_c@tri.test" }, created_at: d"2001-01-01T00:00:00Z" };
+};
+
+-- test: deux identités créées à la même date gardent le même ordre, page par page, sans doublon ni manque
+-- en tant que: admin
+{
+    LET $expected = [auth_identity:tri_c, auth_identity:tri_a, auth_identity:tri_b];
+    LET $pages = [
+        fn::auth_identity_list({ limit: 1, start: 0 }).data[0].id,
+        fn::auth_identity_list({ limit: 1, start: 1 }).data[0].id,
+        fn::auth_identity_list({ limit: 1, start: 2 }).data[0].id
+    ];
+    LET $again = [
+        fn::auth_identity_list({ limit: 1, start: 0 }).data[0].id,
+        fn::auth_identity_list({ limit: 1, start: 1 }).data[0].id,
+        fn::auth_identity_list({ limit: 1, start: 2 }).data[0].id
+    ];
+    RETURN fn::auth_identity_list({ limit: 3 }).data.id == $expected AND $pages == $expected AND $again == $expected;
+};

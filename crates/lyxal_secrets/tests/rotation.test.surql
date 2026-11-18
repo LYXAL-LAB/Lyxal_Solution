@@ -401,3 +401,32 @@ RETURN (SELECT VALUE event_type FROM event_outbox WHERE producer = "lyxal_secret
     "secrets.rotation.started", "secrets.rotation.cancelled",
     "secrets.rotation.started", "secrets.rotation.checked", "secrets.rotation.cancelled"
 ];
+
+-- préparation: trois rotations annulées d'un même secret, dont deux commencées au même instant
+{
+    LET $secret = fn::secrets_secret_create({ tenant: "auth_organization:alpha", path: "api/tri", kind: "api_key" }).data.id;
+    CREATE passe:tri SET secret = $secret;
+    CREATE secrets_rotation:tri_a CONTENT { secret: $secret, tenant: auth_organization:alpha, started_at: d"2026-01-02T00:00:00Z" };
+    UPDATE secrets_rotation:tri_a SET state = "cancelled", finished_at = time::now();
+    CREATE secrets_rotation:tri_b CONTENT { secret: $secret, tenant: auth_organization:alpha, started_at: d"2026-01-02T00:00:00Z" };
+    UPDATE secrets_rotation:tri_b SET state = "cancelled", finished_at = time::now();
+    CREATE secrets_rotation:tri_c CONTENT { secret: $secret, tenant: auth_organization:alpha, started_at: d"2026-01-01T00:00:00Z" };
+    UPDATE secrets_rotation:tri_c SET state = "cancelled", finished_at = time::now();
+};
+
+-- test: deux rotations commencées au même instant : la liste tronquée garde toujours la même, dans le même ordre
+{
+    LET $secret = <string> (SELECT VALUE secret FROM ONLY passe:tri);
+    LET $expected = [secrets_rotation:tri_b, secrets_rotation:tri_a, secrets_rotation:tri_c];
+    LET $cuts = [
+        fn::secrets_rotation_get({ secret: $secret, limit: 1 }).data.items.id,
+        fn::secrets_rotation_get({ secret: $secret, limit: 2 }).data.items.id,
+        fn::secrets_rotation_get({ secret: $secret, limit: 3 }).data.items.id
+    ];
+    LET $again = [
+        fn::secrets_rotation_get({ secret: $secret, limit: 1 }).data.items.id,
+        fn::secrets_rotation_get({ secret: $secret, limit: 2 }).data.items.id,
+        fn::secrets_rotation_get({ secret: $secret, limit: 3 }).data.items.id
+    ];
+    RETURN $cuts == [array::slice($expected, 0, 1), array::slice($expected, 0, 2), $expected] AND $again == $cuts;
+};

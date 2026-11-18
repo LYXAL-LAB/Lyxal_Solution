@@ -255,9 +255,9 @@ DEFINE FUNCTION OVERWRITE fn::auth_identity_list($params: object) {
     };
     RETURN fn::result_ok(
         SELECT id, traits, state, external_id, created_at FROM auth_identity
-        WHERE $p.state IS NONE OR state = $p.state ORDER BY created_at LIMIT $p.limit START $p.start
+        WHERE $p.state IS NONE OR state = $p.state ORDER BY created_at, id LIMIT $p.limit START $p.start
     );
-} COMMENT "Liste les identités de l'installation ({ state, limit, start }). Permission auth.identity.read ; les membres d'une organisation se listent par fn::auth_organization_member_list";
+} COMMENT "Liste les identités de l'installation ({ state, limit, start }), par date de création puis identifiant (ordre total). Permission auth.identity.read ; les membres d'une organisation se listent par fn::auth_organization_member_list";
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_identity_update_traits

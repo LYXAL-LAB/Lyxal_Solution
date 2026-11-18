@@ -298,3 +298,33 @@ RETURN fn::storage_object_expire({}).error.code == "STORAGE_PERMISSION_DENIED"
     RETURN fn::storage_object_purge({ object: <string> $o }).error.code == "STORAGE_OBJECT_STATE_INVALID"
         AND fn::storage_object_purge_list({}).data.items == [];
 };
+
+-- préparation: trois fichiers supprimés, dont deux de même clé (une adresse libérée puis réutilisée)
+{
+    LET $bucket = (SELECT VALUE id FROM ONLY storage_bucket WHERE scope_key = "alpha" AND name = "plans" LIMIT 1);
+    CREATE storage_object:tri_b CONTENT { bucket: $bucket, tenant: auth_organization:alpha, key: "tri/meme.pdf", filename: "meme.pdf", backend: "default" };
+    UPDATE storage_object:tri_b SET state = "deleted", deleted_at = time::now(), purge_after = time::now() + 30d, pending_expires_at = NONE;
+    CREATE storage_object:tri_a CONTENT { bucket: $bucket, tenant: auth_organization:alpha, key: "tri/meme.pdf", filename: "meme.pdf", backend: "default" };
+    UPDATE storage_object:tri_a SET state = "deleted", deleted_at = time::now(), purge_after = time::now() + 30d, pending_expires_at = NONE;
+    CREATE storage_object:tri_c CONTENT { bucket: $bucket, tenant: auth_organization:alpha, key: "tri/autre.pdf", filename: "autre.pdf", backend: "default" };
+    UPDATE storage_object:tri_c SET state = "deleted", deleted_at = time::now(), purge_after = time::now() + 30d, pending_expires_at = NONE;
+};
+
+-- test: deux fichiers supprimés de même clé gardent le même ordre, page par page, sans doublon ni manque
+-- en tant que: lecteur
+{
+    LET $bucket = <string> (SELECT VALUE id FROM ONLY storage_bucket WHERE scope_key = "alpha" AND name = "plans" LIMIT 1);
+    LET $expected = [storage_object:tri_c, storage_object:tri_a, storage_object:tri_b];
+    LET $pages = [
+        fn::storage_object_list({ bucket: $bucket, prefix: "tri", state: "deleted", limit: 1, start: 0 }).data.items[0].id,
+        fn::storage_object_list({ bucket: $bucket, prefix: "tri", state: "deleted", limit: 1, start: 1 }).data.items[0].id,
+        fn::storage_object_list({ bucket: $bucket, prefix: "tri", state: "deleted", limit: 1, start: 2 }).data.items[0].id
+    ];
+    LET $again = [
+        fn::storage_object_list({ bucket: $bucket, prefix: "tri", state: "deleted", limit: 1, start: 0 }).data.items[0].id,
+        fn::storage_object_list({ bucket: $bucket, prefix: "tri", state: "deleted", limit: 1, start: 1 }).data.items[0].id,
+        fn::storage_object_list({ bucket: $bucket, prefix: "tri", state: "deleted", limit: 1, start: 2 }).data.items[0].id
+    ];
+    LET $all = fn::storage_object_list({ bucket: $bucket, prefix: "tri", state: "deleted" }).data;
+    RETURN $all.items.id == $expected AND $all.total == 3 AND $pages == $expected AND $again == $expected;
+};

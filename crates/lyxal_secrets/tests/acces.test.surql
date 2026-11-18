@@ -444,3 +444,46 @@ RETURN fn::secrets_access_emergency({ tenant: "auth_organization:alpha", path: "
     RETURN array::sort($types) = ["secrets.access.emergency", "secrets.access.granted", "secrets.access.revoked", "secrets.policy.updated",
         "secrets.request.applied", "secrets.request.approved", "secrets.request.cancelled", "secrets.request.created", "secrets.request.expired", "secrets.request.rejected"];
 };
+
+-- préparation: trois demandes et trois accès d'une autre organisation, dont deux créés à la même date
+{
+    CREATE auth_organization:tri CONTENT { slug: "tri", name: "Tri" };
+    CREATE secrets_request:tri_a CONTENT { tenant: auth_organization:tri, kind: "access", requested_identity: auth_identity:lecteur, path: "a", folder: true, actions: ["list"], duration: 1h, reason: "x", required_approvals: 1, expires_at: time::now() + 1d, created_at: d"2026-01-02T00:00:00Z" };
+    CREATE secrets_request:tri_b CONTENT { tenant: auth_organization:tri, kind: "access", requested_identity: auth_identity:lecteur, path: "b", folder: true, actions: ["list"], duration: 1h, reason: "x", required_approvals: 1, expires_at: time::now() + 1d, created_at: d"2026-01-02T00:00:00Z" };
+    CREATE secrets_request:tri_c CONTENT { tenant: auth_organization:tri, kind: "access", requested_identity: auth_identity:lecteur, path: "c", folder: true, actions: ["list"], duration: 1h, reason: "x", required_approvals: 1, expires_at: time::now() + 1d, created_at: d"2026-01-01T00:00:00Z" };
+    CREATE secrets_grant:tri_a CONTENT { tenant: auth_organization:tri, subject_identity: auth_identity:lecteur, path: "a", folder: true, actions: ["list"], expires_at: time::now() + 1h, reason: "x", created_at: d"2026-01-02T00:00:00Z" };
+    CREATE secrets_grant:tri_b CONTENT { tenant: auth_organization:tri, subject_identity: auth_identity:lecteur, path: "b", folder: true, actions: ["list"], expires_at: time::now() + 1h, reason: "x", created_at: d"2026-01-02T00:00:00Z" };
+    CREATE secrets_grant:tri_c CONTENT { tenant: auth_organization:tri, subject_identity: auth_identity:lecteur, path: "c", folder: true, actions: ["list"], expires_at: time::now() + 1h, reason: "x", created_at: d"2026-01-01T00:00:00Z" };
+};
+
+-- test: deux demandes créées à la même date gardent le même ordre, page par page, sans doublon ni manque
+{
+    LET $expected = [secrets_request:tri_b, secrets_request:tri_a, secrets_request:tri_c];
+    LET $pages = [
+        fn::secrets_request_list({ tenant: "auth_organization:tri", limit: 1, start: 0 }).data.items[0].id,
+        fn::secrets_request_list({ tenant: "auth_organization:tri", limit: 1, start: 1 }).data.items[0].id,
+        fn::secrets_request_list({ tenant: "auth_organization:tri", limit: 1, start: 2 }).data.items[0].id
+    ];
+    LET $again = [
+        fn::secrets_request_list({ tenant: "auth_organization:tri", limit: 1, start: 0 }).data.items[0].id,
+        fn::secrets_request_list({ tenant: "auth_organization:tri", limit: 1, start: 1 }).data.items[0].id,
+        fn::secrets_request_list({ tenant: "auth_organization:tri", limit: 1, start: 2 }).data.items[0].id
+    ];
+    RETURN fn::secrets_request_list({ tenant: "auth_organization:tri" }).data.items.id == $expected AND $pages == $expected AND $again == $expected;
+};
+
+-- test: deux accès créés à la même date gardent le même ordre, page par page, sans doublon ni manque
+{
+    LET $expected = [secrets_grant:tri_b, secrets_grant:tri_a, secrets_grant:tri_c];
+    LET $pages = [
+        fn::secrets_grant_list({ tenant: "auth_organization:tri", limit: 1, start: 0 }).data.items[0].id,
+        fn::secrets_grant_list({ tenant: "auth_organization:tri", limit: 1, start: 1 }).data.items[0].id,
+        fn::secrets_grant_list({ tenant: "auth_organization:tri", limit: 1, start: 2 }).data.items[0].id
+    ];
+    LET $again = [
+        fn::secrets_grant_list({ tenant: "auth_organization:tri", limit: 1, start: 0 }).data.items[0].id,
+        fn::secrets_grant_list({ tenant: "auth_organization:tri", limit: 1, start: 1 }).data.items[0].id,
+        fn::secrets_grant_list({ tenant: "auth_organization:tri", limit: 1, start: 2 }).data.items[0].id
+    ];
+    RETURN fn::secrets_grant_list({ tenant: "auth_organization:tri" }).data.items.id == $expected AND $pages == $expected AND $again == $expected;
+};
