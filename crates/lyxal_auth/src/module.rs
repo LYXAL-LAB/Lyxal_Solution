@@ -14,7 +14,7 @@ use crate::store::AuthStore;
 pub const MODULE_ID: &str = "lyxal_auth";
 
 /// Module `lyxal_auth` : ses ressources SurrealQL sont installées par le runtime depuis le
-/// manifeste ; aucun worker en lot 2 (la purge arrive au lot 3).
+/// manifeste ; aucun worker : la purge (`AuthPurge`) est exécutée par `lyxal_scheduler` sur l'hôte.
 pub struct AuthModule {
     descriptor: ModuleDescriptor,
 }

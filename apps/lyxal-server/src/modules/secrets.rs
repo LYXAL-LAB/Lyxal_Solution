@@ -1,5 +1,6 @@
 //! Module `lyxal_secrets` : implémentation `LyxalModule`, trousseau maître du coffre-fort,
-//! worker de maintenance, sonde de santé, et service des routes `/secrets/*`.
+//! maintenance (exécutée par `lyxal_scheduler`, tâche `secrets.maintenance` de `modules::tasks`),
+//! sonde de santé, et service des routes `/secrets/*`.
 //!
 //! La clé maîtresse du coffre-fort est propre au coffre-fort (R1), distincte de la clé
 //! applicative partagée par `lyxal_auth` et `lyxal_notification` : `LYXAL__SECRETS__MASTER_KEY`
@@ -13,11 +14,10 @@ use crate::error::ServerError;
 use lyxal_crypto::{EnvironmentKeyProvider, KeyId, ResolvedKey};
 use lyxal_runtime::{LyxalModule, LyxalRuntime};
 use lyxal_secrets::{
-    MasterKeys, RotatorRegistry, SecretsClient, SecretsHealthCheck, SecretsMaintenanceWorker,
+    MasterKeys, RotatorRegistry, SecretsClient, SecretsHealthCheck, SecretsMaintenance,
     SecretsModule, SecretsService, SecretsStore,
 };
 use std::sync::Arc;
-use std::time::Duration;
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
@@ -27,8 +27,6 @@ pub const MODULE_ID: &str = lyxal_secrets::MODULE_ID;
 const MASTER_KEY_VAR: &str = "LYXAL__SECRETS__MASTER_KEY";
 /// Variable d'environnement de l'ancienne clé maîtresse, pendant une rotation.
 const PREVIOUS_MASTER_KEY_VAR: &str = "LYXAL__SECRETS__PREVIOUS_MASTER_KEY";
-/// Intervalle de la maintenance (purge, rescellement).
-const MAINTENANCE_INTERVAL: Duration = Duration::from_secs(600);
 /// Éléments traités par paquet.
 const MAINTENANCE_BATCH: u32 = 200;
 
@@ -62,6 +60,18 @@ impl SecretsHost {
     /// Client du coffre-fort pour un module hébergé, annoncé comme consommateur (`module`).
     pub fn client(&self, module: &str) -> SecretsClient {
         SecretsClient::new(self.store.clone(), self.master.clone(), module)
+    }
+
+    /// Maintenance du coffre-fort (purge, alertes, rotations, rescellement) sur la session
+    /// système, avec le trousseau maître et les rotateurs de l'hôte ; exécutée par la tâche
+    /// `secrets.maintenance`.
+    pub fn maintenance(&self) -> SecretsMaintenance {
+        SecretsMaintenance::new(
+            self.store.clone(),
+            self.master.clone(),
+            self.rotators.clone(),
+            MAINTENANCE_BATCH,
+        )
     }
 
     /// Vrai si la clé maîtresse du coffre-fort est configurée.
@@ -122,7 +132,7 @@ pub fn master_keys(config: &SecretsConfig) -> Result<Option<MasterKeys>, ServerE
         .map_err(|e| configuration_error("secrets.master_key", e))
 }
 
-/// Worker de maintenance et sonde ; rend ce qu'il faut aux modules pour lire leurs secrets.
+/// Sonde de santé ; rend ce qu'il faut aux modules pour lire leurs secrets et à la maintenance.
 pub fn register_services(
     runtime: &LyxalRuntime,
     client: &Surreal<Any>,
@@ -143,13 +153,6 @@ pub fn register_services(
     // Aucun rotateur pour l'instant : les modules qui parlent aux services extérieurs inscriront
     // le leur ; sans rotateur, une rotation due ne donne que le rappel
     let rotators = RotatorRegistry::new();
-    runtime.register_worker(Arc::new(SecretsMaintenanceWorker::new(
-        store.clone(),
-        master.clone(),
-        rotators.clone(),
-        MAINTENANCE_INTERVAL,
-        MAINTENANCE_BATCH,
-    )?))?;
     runtime
         .health_registry()
         .register_check(Arc::new(SecretsHealthCheck::new(

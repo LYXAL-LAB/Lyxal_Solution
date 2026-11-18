@@ -512,13 +512,17 @@ async fn the_vault_without_master_key_is_degraded() {
 }
 
 /// Le planificateur démarre avec le module : planificateur élu, un exécuteur par file, sonde
-/// sain, registre des handlers ouvert et vide (S8) ; une publication différée s'exécute.
+/// sain, registre des handlers ouvert où l'hôte a inscrit ceux de ses tâches de fond ; une
+/// publication différée s'exécute.
 #[tokio::test]
 async fn the_scheduler_runs_with_its_workers_and_probe() {
     let config = config("planificateur");
     let client = database("planificateur").await;
     let started = runtime::start(&config, &client).await.expect("démarrage");
-    assert!(started.scheduler.handlers().is_empty());
+    assert_eq!(
+        started.scheduler.handlers().tasks(),
+        vec!["auth.purge", "secrets.maintenance", "storage.cleanup"]
+    );
     let mut served = started.scheduler.served_queues();
     for _ in 0..100 {
         if served.len() == 2 {

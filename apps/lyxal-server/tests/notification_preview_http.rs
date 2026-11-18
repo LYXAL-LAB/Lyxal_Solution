@@ -177,9 +177,10 @@ async fn a_step_is_previewed_through_http_on_behalf_of_the_caller() {
     )
     .expect("routeur");
 
-    // La planification de la purge a été créée par l'installation du module
+    // La planification de la purge a été créée par l'installation du module (les autres
+    // planifications de l'installation sont celles des tâches de fond de l'hôte)
     let schedules: Vec<Value> = client
-        .query("SELECT VALUE [name, record::id(task)] FROM scheduler_schedule")
+        .query("SELECT VALUE [name, record::id(task)] FROM scheduler_schedule WHERE task.module = 'lyxal_notification'")
         .await
         .and_then(|mut r| r.take(0))
         .expect("planifications");

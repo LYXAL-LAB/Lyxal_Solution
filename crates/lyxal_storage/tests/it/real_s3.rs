@@ -18,12 +18,11 @@ use lyxal_runtime::worker::CancellationToken;
 use lyxal_runtime::ModuleContext;
 use lyxal_storage::models::{BucketRefParams, ObjectGetParams, SettingsSetParams};
 use lyxal_storage::{
-    BackendConfig, Backends, ByteRange, CleanupReport, StorageCleanupWorker, StorageHealthCheck,
+    BackendConfig, Backends, ByteRange, CleanupReport, StorageCleanup, StorageHealthCheck,
     StorageService, StorageStore, MODULE_ID, PART_SIZE,
 };
 use lyxal_surreal::{SecretString, ToSql};
 use std::sync::Arc;
-use std::time::Duration;
 
 use crate::support::{chunks, installed_client, read_all, request};
 
@@ -55,13 +54,7 @@ async fn real_s3_service_stores_serves_and_cleans() {
     );
     let store = StorageStore::new(installed_client().await);
     let service = StorageService::new(store.clone(), backends.clone());
-    let worker = StorageCleanupWorker::new(
-        store.clone(),
-        backends.clone(),
-        Duration::from_secs(3600),
-        50,
-    )
-    .expect("worker");
+    let worker = StorageCleanup::new(store.clone(), backends.clone(), 50);
     let context = ModuleContext::new(MODULE_ID);
 
     // Sonde : fichier témoin écrit, relu et retiré
@@ -130,7 +123,7 @@ async fn real_s3_service_stores_serves_and_cleans() {
         .await
         .expect("suppression");
     let report = worker
-        .run_once(&CancellationToken::new())
+        .run(&CancellationToken::new())
         .await
         .expect("nettoyage");
     assert_eq!(
@@ -147,7 +140,7 @@ async fn real_s3_service_stores_serves_and_cleans() {
         .await
         .expect("suppression");
     worker
-        .run_once(&CancellationToken::new())
+        .run(&CancellationToken::new())
         .await
         .expect("nettoyage");
     store
@@ -157,7 +150,7 @@ async fn real_s3_service_stores_serves_and_cleans() {
         .await
         .expect("bucket supprimé");
     let report = worker
-        .run_once(&CancellationToken::new())
+        .run(&CancellationToken::new())
         .await
         .expect("nettoyage");
     assert_eq!(report.reclaimed, 1, "{report:?}");

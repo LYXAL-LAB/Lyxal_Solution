@@ -18,9 +18,10 @@ typés de chaque fonction publique (voir « Partie Rust »). Le **moteur** tourn
 exécutions, un exécuteur par file et par nœud les exécute (handler Rust inscrit par un module,
 fonction SurrealQL du module, publication différée d'un événement). Les interfaces y accèdent par
 les routes HTTP `/api/v1/scheduler/*` de l'hôte, au nom de l'appelant (voir « Accès par
-l'hôte »). `lyxal_notification` déclare les premières tâches (exécuteur `function` : reprise
-des parcours à la fin d'une attente, purge horaire) ; aucun module n'inscrit encore de handler
-Rust (S8). L'exploitation est décrite à la fin de ce
+l'hôte »). `lyxal_notification` déclare ses tâches par son seed (exécuteur `function` : reprise
+des parcours à la fin d'une attente, purge horaire) ; l'hôte déclare les trois tâches de fond des
+modules dont le planificateur dépend (exécuteur `handler` : `auth.purge`, `storage.cleanup`,
+`secrets.maintenance`, voir « Tâches de l'hôte »). L'exploitation est décrite à la fin de ce
 document (« Exploitation »).
 
 Manifeste : `lyxal_scheduler` 0.1.0, dépendances `lyxal_core`, `lyxal_error`, `lyxal_event`,
@@ -30,7 +31,7 @@ enregistrés par l'hôte (`apps/lyxal-server/src/modules/scheduler.rs`).
 ## Les trois objets
 
 ```text
-Tâche (scheduler_task)              ce qu'un module sait exécuter ; déclarée par le seed du module
+Tâche (scheduler_task)              ce qu'un module sait exécuter ; déclarée par le seed du module (ou de l'hôte)
    ▼                                 ex. notification.digest, automation.workflow_run
 Planification (scheduler_schedule)  quand, avec quels arguments ; créée par une personne ou un module
    ▼
@@ -42,7 +43,8 @@ ou **immédiate** (`fn::scheduler_run_enqueue`).
 
 ## Tâches
 
-Une tâche est déclarée par le seed de son module propriétaire, en session système, comme une
+Une tâche est déclarée par le seed de son module propriétaire (ou par celui de l'hôte, voir
+« Tâches de l'hôte »), en session système, comme une
 permission `lyxal_auth` :
 
 ```surql
@@ -77,6 +79,27 @@ IF !record::exists(scheduler_task:⟨notification.digest⟩) THEN (
 * Une tâche n'est jamais créée, modifiée ni supprimée par une personne ; la session système peut
   seulement l'activer ou la désactiver (`fn::scheduler_task_set_state`). Une tâche désactivée ne
   reçoit ni planification ni exécution, et ses exécutions en attente ne sont pas réservées.
+
+### Tâches de l'hôte
+
+`lyxal_scheduler` dépend de `lyxal_auth` (et `lyxal_storage`, `lyxal_secrets` ne dépendent pas de
+lui) : ces modules ne peuvent pas déclarer de tâche par leur seed ni inscrire de handler sans
+dépendance circulaire. L'hôte `lyxal-server`, qui les héberge tous, le fait à leur place, sans
+changement du contrat ci-dessus : son seed (`apps/lyxal-server/seeds/server_tasks.surql`), joué
+en session système après l'installation des modules, crée la tâche au nom du module propriétaire
+(`module: "lyxal_auth"`, installé) avec l'exécuteur `handler`, et la permission propre de la
+tâche ; l'hôte inscrit le handler, qui appelle l'opération publique du module, et crée la
+planification de l'installation si elle est absente.
+
+| Tâche | Module | Permission propre | Planification | Rythme | Délai maximal |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `auth.purge` | `lyxal_auth` | `auth.purge.run` | `auth-purge` | 15 min | 5 min |
+| `storage.cleanup` | `lyxal_storage` | `storage.cleanup.run` | `storage-cleanup` | 10 min | 30 min |
+| `secrets.maintenance` | `lyxal_secrets` | `secrets.maintenance.run` | `secrets-maintenance` | 10 min | 15 min |
+
+File `default`, portée `installation`, chevauchement `skip`, 3 tentatives, décalage aléatoire de
+30 s au plus. Les trois permissions ne sont attribuées à aucun rôle : seule la session système
+fait exécuter ces tâches.
 
 Les personnes créent librement leurs planifications d'une tâche active. Un module
 d'automatisation déclarera par exemple `automation.workflow_run`, avec l'identifiant du flux en
@@ -346,8 +369,9 @@ Le jeton de bail n'apparaît dans aucun journal. Les rythmes se règlent par `Le
 
 ### Handlers (`handler.rs`) et client (`client.rs`)
 
-Un module qui déclare une tâche `handler` inscrit son code dans le registre de l'hôte au
-démarrage (`SchedulerHost::handlers`) :
+Le code d'une tâche `handler` est inscrit dans le registre de l'hôte au démarrage
+(`SchedulerHost::handlers`), par le module qui la déclare ou, pour les tâches de l'hôte, par
+l'hôte lui-même (`apps/lyxal-server/src/modules/tasks.rs`) :
 
 ```rust
 #[async_trait]

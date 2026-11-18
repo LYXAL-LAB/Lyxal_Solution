@@ -53,7 +53,7 @@ pub struct MasterKeys {
 
 impl MasterKeys {
     /// Trousseau de la clé active et, s'il y en a une, de l'ancienne clé (lecture seule, le
-    /// temps que le worker rescelle les clés des organisations).
+    /// temps que la maintenance rescelle les clés des organisations).
     pub fn from_keys(active: ResolvedKey, previous: Option<ResolvedKey>) -> SecretsResult<Self> {
         let previous_id = previous.as_ref().map(|key| key.id().clone());
         let mut builder = KeyRingBuilder::new();

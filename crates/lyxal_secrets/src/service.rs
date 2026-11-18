@@ -312,7 +312,7 @@ impl SecretsService {
     }
 
     /// Nouvelle clé active pour une organisation (`None` : l'installation), à la demande d'une
-    /// personne qui détient le droit de réglage ; le worker rescelle ensuite les versions (R3).
+    /// personne qui détient le droit de réglage ; la maintenance rescelle ensuite les versions (R3).
     pub async fn rotate_tenant_key(
         &self,
         tenant: Option<String>,
@@ -333,7 +333,7 @@ impl SecretsService {
     /// Rotation demandée maintenant, avec les droits de l'appelant (écriture ; urgence : double
     /// facteur récent pour une personne). Avec un rotateur pour le secret, la rotation est
     /// réservée (son jeton sert à chaque étape) et déroulée aussitôt (rendue réussie, en échec,
-    /// ou en attente d'un nouvel essai que le worker reprendra). Sans rotateur : `SECRETS_ROTATOR_UNAVAILABLE` et rien ne
+    /// ou en attente d'un nouvel essai que la maintenance reprendra). Sans rotateur : `SECRETS_ROTATOR_UNAVAILABLE` et rien ne
     /// démarre, sauf en urgence où la version en service est coupée et la rotation échoue
     /// aussitôt (`SECRETS_ROTATOR_UNAVAILABLE`) : une personne écrira la nouvelle valeur.
     pub async fn rotate_now(&self, request: RotateRequest) -> SecretsResult<RotationRecord> {
@@ -362,12 +362,12 @@ impl SecretsService {
             })
             .await?;
         let Some(claimed) = claimed.items.into_iter().next() else {
-            // Déjà réservée par un worker : il la déroule
+            // Déjà réservée par la maintenance : elle la déroule
             return Ok(rotation);
         };
         match self.runner().advance(claimed).await? {
             RotationOutcome::Advanced(done) => Ok(*done),
-            // Reprise par un worker entre-temps : son état actuel
+            // Reprise par la maintenance entre-temps : son état actuel
             RotationOutcome::LeaseLost => Ok(system
                 .rotation_get(RotationGetParams {
                     secret: secret.id.to_sql(),
@@ -384,7 +384,7 @@ impl SecretsService {
     /// Essai sans bascule : le rotateur teste la valeur en service auprès du service extérieur,
     /// sans rien changer ; le résultat est enregistré sur la fiche, journalisé et publié.
     ///
-    /// Outil du worker : tout le chemin passe par la **session système** du service (fiche,
+    /// Outil de la maintenance : tout le chemin passe par la **session système** du service (fiche,
     /// lecture tracée de la valeur, le rotateur annoncé comme consommateur, puis
     /// `fn::secrets_rotation_check_record`), quelle que soit la session de l'appelant. Il n'est
     /// exposé par aucune route : l'hôte ne l'appelle que pour la maintenance. Sans rotateur :

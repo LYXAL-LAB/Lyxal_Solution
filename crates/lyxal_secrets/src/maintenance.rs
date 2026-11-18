@@ -1,4 +1,5 @@
-//! Worker supervisé de maintenance du coffre-fort :
+//! Maintenance du coffre-fort, une opération rendue à l'appelant avec son bilan (l'hôte la fait
+//! exécuter par `lyxal_scheduler`, tâche `secrets.maintenance`) :
 //!
 //! 1. purge des secrets supprimés dont la date de purge est passée (et des tickets échus) ;
 //! 2. rescellement, par la clé active de leur organisation, des versions scellées par une clé
@@ -25,15 +26,9 @@
 //! un service extérieur) est mise en course avec elle. Une rotation interrompue est abandonnée en
 //! l'état : sa réservation expire et un passage ultérieur la reprend à l'étape enregistrée.
 
-use async_trait::async_trait;
-use lyxal_runtime::types::ModuleId;
-use lyxal_runtime::worker::{
-    CancellationToken, LyxalWorker, WorkerContext, WorkerCriticality, WorkerDescriptor, WorkerId,
-};
-use lyxal_runtime::RuntimeError;
+use lyxal_runtime::worker::CancellationToken;
 use lyxal_surreal::ToSql;
 use std::collections::HashMap;
-use std::time::Duration;
 
 use crate::error::{SecretsError, SecretsResult};
 use crate::keys::{MasterKeys, Scope, TenantKeys, TenantRing};
@@ -42,11 +37,10 @@ use crate::models::{
     RewrapVersion, RotationBeginParams, RotationClaimParams, RotationState, SecretGetParams,
     ShareDueParams, TenantKeyDestroyParams, VersionResealParams,
 };
-use crate::module::MODULE_ID;
 use crate::rotation::{RotationOutcome, RotationRunner, RotatorRegistry};
 use crate::store::SecretsStore;
 
-/// Bilan d'un passage du worker.
+/// Bilan d'un passage de la maintenance.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct MaintenanceReport {
     /// Secrets purgés à échéance.
@@ -77,53 +71,32 @@ pub struct MaintenanceReport {
     pub shares_removed: u64,
 }
 
-/// Worker de maintenance du coffre-fort.
-pub struct SecretsMaintenanceWorker {
-    descriptor: WorkerDescriptor,
+/// Maintenance du coffre-fort.
+pub struct SecretsMaintenance {
     keys: TenantKeys,
     runner: RotationRunner,
-    interval: Duration,
     batch: u32,
 }
 
-impl SecretsMaintenanceWorker {
-    /// Maintenance toutes les `interval`, par paquets de `batch` éléments (1 à 1000), sur la
-    /// session système de l'hôte, avec le trousseau maître du coffre-fort (absent : purge et
-    /// alertes seulement) et les rotateurs inscrits par l'hôte.
+impl SecretsMaintenance {
+    /// Maintenance par paquets de `batch` éléments (1 à 1000), sur la session système de l'hôte,
+    /// avec le trousseau maître du coffre-fort (absent : purge et alertes seulement) et les
+    /// rotateurs inscrits par l'hôte.
     pub fn new(
         system: SecretsStore,
         master: Option<MasterKeys>,
         rotators: RotatorRegistry,
-        interval: Duration,
         batch: u32,
-    ) -> Result<Self, RuntimeError> {
-        let module_id = ModuleId::new(MODULE_ID);
-        let mut descriptor = WorkerDescriptor::new(
-            WorkerId::new(&module_id, "maintenance")?,
-            module_id,
-            "Lyxal Secrets Maintenance",
-        );
-        descriptor.description = Some(
-            "Purge des secrets supprimés à échéance ; alertes d'échéance ; rotation des secrets et des clés d'organisation ; rescellement après rotation d'une clé d'organisation ou de la clé maîtresse ; destruction des anciennes clés ; expiration des demandes d'accès et retrait des anciens accès ; expiration et retrait des partages"
-                .to_string(),
-        );
-        descriptor.criticality = WorkerCriticality::Optional;
-        // Le rescellement en cours (une version, une clé) se termine avant l'arrêt
-        descriptor.shutdown_timeout = Duration::from_secs(30);
-        Ok(Self {
-            descriptor,
+    ) -> Self {
+        Self {
             runner: RotationRunner::new(system.clone(), master.clone(), rotators),
             keys: TenantKeys::new(system, master),
-            interval,
             batch: batch.clamp(1, 1000),
-        })
+        }
     }
 
     /// Un passage : paquets successifs tant qu'ils avancent, ou jusqu'à l'annulation.
-    pub async fn run_once(
-        &self,
-        cancellation: &CancellationToken,
-    ) -> SecretsResult<MaintenanceReport> {
+    pub async fn run(&self, cancellation: &CancellationToken) -> SecretsResult<MaintenanceReport> {
         let limit = i64::from(self.batch);
         let mut report = MaintenanceReport::default();
         let system = self.keys.system();
@@ -506,46 +479,5 @@ impl SecretsMaintenanceWorker {
             })
             .await?;
         Ok(true)
-    }
-}
-
-#[async_trait]
-impl LyxalWorker for SecretsMaintenanceWorker {
-    fn descriptor(&self) -> &WorkerDescriptor {
-        &self.descriptor
-    }
-
-    async fn run(&self, ctx: WorkerContext) -> Result<(), RuntimeError> {
-        while !ctx.is_cancelled() {
-            match self.run_once(&ctx.cancellation).await {
-                Ok(report) if report != MaintenanceReport::default() => {
-                    tracing::info!(
-                        purged = report.purged,
-                        resealed = report.resealed,
-                        rewrapped = report.rewrapped,
-                        destroyed_keys = report.destroyed_keys,
-                        failed = report.failed,
-                        alerts = report.alerts,
-                        rotations_succeeded = report.rotations_succeeded,
-                        rotations_failed = report.rotations_failed,
-                        tenant_keys_rotated = report.tenant_keys_rotated,
-                        requests_expired = report.requests_expired,
-                        grants_removed = report.grants_removed,
-                        shares_expired = report.shares_expired,
-                        shares_removed = report.shares_removed,
-                        "maintenance du coffre-fort"
-                    );
-                }
-                Ok(_) => {}
-                Err(error) => {
-                    tracing::warn!(code = %error.code(), error = %error, "maintenance du coffre-fort impossible");
-                }
-            }
-            tokio::select! {
-                _ = ctx.cancellation.cancelled() => break,
-                _ = tokio::time::sleep(self.interval) => {}
-            }
-        }
-        Ok(())
     }
 }

@@ -4,7 +4,7 @@
 //! écrits par parties sur le support (empreinte BLAKE3 et taille calculées au passage), puis
 //! `fn::storage_object_commit` rend le fichier disponible. Aucune transaction ne couvre la base
 //! et le support : en cas d'échec, les octets déjà écrits sont retirés et la fiche est supprimée ;
-//! une écriture interrompue par l'arrêt du serveur est retirée par le worker à la fin de son délai.
+//! une écriture interrompue par l'arrêt du serveur est retirée par le nettoyage à la fin de son délai.
 
 use bytes::Bytes;
 use futures::stream::BoxStream;
@@ -206,7 +206,7 @@ impl StorageService {
     }
 
     /// Écriture en échec : octets retirés du support, fiche supprimée. Un échec de ce nettoyage
-    /// est journalisé ; le worker retire alors l'écriture à la fin de son délai.
+    /// est journalisé ; le nettoyage retire alors l'écriture à la fin de son délai.
     async fn abandon(&self, target: &WriteTarget<'_>) {
         self.remove_written(target).await;
         let deleted = self

@@ -1,36 +1,29 @@
-//! Worker de nettoyage et sonde de santé.
+//! Nettoyage et sonde de santé.
 
 use bytes::Bytes;
 use lyxal_runtime::health::{HealthStatus, ModuleHealthCheck};
-use lyxal_runtime::worker::{CancellationToken, LyxalWorker, WorkerContext};
+use lyxal_runtime::worker::CancellationToken;
 use lyxal_runtime::ModuleContext;
 use lyxal_storage::models::{BucketCreateParams, ObjectBeginParams, SettingsSetParams};
-use lyxal_storage::{Backends, CleanupReport, StorageCleanupWorker, StorageHealthCheck, MODULE_ID};
+use lyxal_storage::{Backends, CleanupReport, StorageCleanup, StorageHealthCheck, MODULE_ID};
 use lyxal_surreal::ToSql;
 use object_store::path::Path;
 use object_store::ObjectStoreExt;
 use std::sync::Arc;
-use std::time::Duration;
 
 use crate::support::{bench, chunks, request, Bench, Kind, KINDS};
 
-fn worker(bench: &Bench) -> StorageCleanupWorker {
+fn worker(bench: &Bench) -> StorageCleanup {
     worker_with_batch(bench, 2)
 }
 
-fn worker_with_batch(bench: &Bench, batch: u32) -> StorageCleanupWorker {
-    StorageCleanupWorker::new(
-        bench.store.clone(),
-        bench.backends.clone(),
-        Duration::from_secs(3600),
-        batch,
-    )
-    .expect("worker")
+fn worker_with_batch(bench: &Bench, batch: u32) -> StorageCleanup {
+    StorageCleanup::new(bench.store.clone(), bench.backends.clone(), batch)
 }
 
 async fn pass(bench: &Bench) -> CleanupReport {
     worker(bench)
-        .run_once(&CancellationToken::new())
+        .run(&CancellationToken::new())
         .await
         .expect("passage")
 }
@@ -271,7 +264,7 @@ async fn failing_items_are_kept_and_do_not_hold_back_the_others() {
             .expect("suppression");
     }
     let report = worker_with_batch(&bench, 1)
-        .run_once(&CancellationToken::new())
+        .run(&CancellationToken::new())
         .await
         .expect("passage");
     assert_eq!(
@@ -374,7 +367,7 @@ async fn staged_files_left_by_a_crash_are_removed_from_disk() {
 }
 
 #[tokio::test]
-async fn the_worker_stops_on_cancellation() {
+async fn the_cleanup_stops_on_cancellation() {
     let bench = bench(Kind::Memory).await;
     let bucket = bench.bucket("plans").await;
     bench
@@ -394,32 +387,10 @@ async fn the_worker_stops_on_cancellation() {
     cancelled.cancel();
     let worker = worker(&bench);
     assert_eq!(
-        worker.run_once(&cancelled).await.expect("passage"),
+        worker.run(&cancelled).await.expect("passage"),
         CleanupReport::default()
     );
     assert_eq!(count(&bench, "storage_object").await, 1);
-
-    // Boucle du worker : un passage, puis arrêt sur annulation pendant l'attente
-    let descriptor = worker.descriptor().clone();
-    let cancellation = CancellationToken::new();
-    let context = WorkerContext::new(
-        descriptor.module_id.clone(),
-        descriptor.id.clone(),
-        ModuleContext::new(descriptor.module_id.clone()),
-        cancellation.clone(),
-    );
-    let stopper = async {
-        while count(&bench, "storage_object").await > 0 {
-            tokio::time::sleep(Duration::from_millis(20)).await;
-        }
-        cancellation.cancel();
-    };
-    let (ran, ()) = tokio::time::timeout(Duration::from_secs(30), async {
-        tokio::join!(worker.run(context), stopper)
-    })
-    .await
-    .expect("arrêt du worker");
-    ran.expect("worker");
 }
 
 #[tokio::test]

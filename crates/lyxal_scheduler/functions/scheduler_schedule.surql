@@ -215,6 +215,11 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_schedule_create($params: object) {
     LET $scope = fn::scheduler_scope_key($p.tenant);
     LET $calendars = array::distinct($p.calendars ?? []);
     IF !fn::scheduler_calendars_valid($calendars, $scope) { RETURN fn::error_result("SCHEDULER_CALENDAR_NOT_FOUND", $p.language, {}); };
+    -- Nom déjà pris : signalé avant la limite (un module qui rejoue la création de sa
+    -- planification la retrouve, même quand la limite de la portée est atteinte)
+    IF array::len(SELECT VALUE id FROM scheduler_schedule WHERE scope_key = $scope AND name = $p.name LIMIT 1) > 0 {
+        RETURN fn::error_result("SCHEDULER_SCHEDULE_EXISTS", $p.language, { name: $p.name });
+    };
     LET $max = fn::scheduler_settings_effective({ tenant: $p.tenant }).max_schedules;
     IF count(SELECT VALUE id FROM scheduler_schedule WHERE scope_key = $scope) >= $max { RETURN fn::error_result("SCHEDULER_LIMIT_REACHED", $p.language, { limit: "max_schedules", max: $max }); };
     LET $inserted = (INSERT IGNORE INTO scheduler_schedule {

@@ -3986,7 +3986,6 @@ dependencies = [
  "surrealdb",
  "thiserror 1.0.69",
  "tokio",
- "tokio-util",
  "tracing",
  "uuid",
  "webauthn-authenticator-rs",

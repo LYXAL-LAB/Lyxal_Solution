@@ -6,7 +6,7 @@
 //! (`fn::storage_upload_part_add`) : la base est la seule vérité sur la position de l'envoi.
 //! Quand tous les octets sont là, les parties sont relues dans l'ordre et passent par l'écriture
 //! d'un envoi simple (taille, empreinte, type réel, antivirus), puis le fichier est rendu
-//! disponible. Les parties sont retirées du support par le worker (`storage_reclaim`).
+//! disponible. Les parties sont retirées du support par le nettoyage (`storage_reclaim`).
 
 use bytes::{Bytes, BytesMut};
 use futures::stream::BoxStream;
@@ -28,7 +28,7 @@ use crate::service::{StorageService, WriteTarget, PART_SIZE};
 use crate::store::StorageStore;
 
 /// Durée de la réservation de l'assemblage, en secondes : au-delà, un assemblage interrompu
-/// brutalement est repris par le worker.
+/// brutalement est repris par le nettoyage.
 const CLAIM_SECONDS: i64 = 1800;
 /// Délai après lequel un assemblage en cours prolonge sa réservation.
 const RENEW_AFTER: Duration = Duration::from_secs(300);
@@ -276,7 +276,7 @@ impl StorageService {
     /// Assemble un envoi complet : les parties sont relues dans l'ordre et écrites comme un
     /// envoi simple (taille, empreinte, type réel, antivirus), puis le fichier est rendu
     /// disponible. Un seul assembleur à la fois. Un contenu refusé abandonne l'envoi ; un échec
-    /// passager (support, antivirus ou base indisponible) le laisse complet : le worker
+    /// passager (support, antivirus ou base indisponible) le laisse complet : le nettoyage
     /// l'assemblera.
     pub async fn upload_complete(&self, upload: &str) -> StorageResult<StoredObject> {
         self.upload_complete_until(upload, &CancellationToken::new())
@@ -374,7 +374,7 @@ impl StorageService {
         .await
     }
 
-    /// Abandonne un envoi : sa fiche est supprimée, ses parties sont retirées par le worker.
+    /// Abandonne un envoi : sa fiche est supprimée, ses parties sont retirées par le nettoyage.
     pub async fn upload_terminate(&self, upload: &str) -> StorageResult<()> {
         let status = self.upload_status(upload).await?;
         self.store

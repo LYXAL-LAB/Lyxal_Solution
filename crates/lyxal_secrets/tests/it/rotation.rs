@@ -6,15 +6,14 @@
 
 use async_trait::async_trait;
 use lyxal_crypto::SecretBytes;
-use lyxal_runtime::worker::{CancellationToken, LyxalWorker, WorkerContext};
-use lyxal_runtime::ModuleContext;
+use lyxal_runtime::worker::CancellationToken;
 use lyxal_secrets::models::{
     RotationBeginParams, RotationClaimParams, RotationGetParams, RotationRecord, RotationState,
     RotationStep, RotationStepParams, SecretCreateParams, SecretGetParams, SecretRecord, Stage,
 };
 use lyxal_secrets::{
     MaintenanceReport, PutValue, RevealRequest, RotateRequest, RotationOutcome, RotationRunner,
-    RotatorError, RotatorRegistry, SecretRotator, SecretsMaintenanceWorker, SecretsService,
+    RotatorError, RotatorRegistry, SecretRotator, SecretsMaintenance, SecretsService,
 };
 use lyxal_surreal::ToSql;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -135,20 +134,18 @@ fn service(bench: &Bench, rotator: &Arc<TestRotator>) -> SecretsService {
     bench.service.clone().with_rotators(registry(rotator))
 }
 
-fn worker(bench: &Bench, rotators: RotatorRegistry) -> SecretsMaintenanceWorker {
-    SecretsMaintenanceWorker::new(
+fn worker(bench: &Bench, rotators: RotatorRegistry) -> SecretsMaintenance {
+    SecretsMaintenance::new(
         bench.store.clone(),
         Some(bench.master.clone()),
         rotators,
-        Duration::from_secs(3600),
         10,
     )
-    .expect("worker")
 }
 
 async fn pass(bench: &Bench, rotators: RotatorRegistry) -> MaintenanceReport {
     worker(bench, rotators)
-        .run_once(&CancellationToken::new())
+        .run(&CancellationToken::new())
         .await
         .expect("passage")
 }
@@ -758,7 +755,7 @@ impl SecretRotator for BlockingRotator {
 }
 
 #[tokio::test]
-async fn the_worker_stops_while_a_rotator_hangs_and_leaves_the_rotation_as_recorded() {
+async fn the_maintenance_stops_while_a_rotator_hangs_and_leaves_the_rotation_as_recorded() {
     let bench = bench().await;
     let secret = bench.secret(Some(ALPHA), "rot/muet").await;
     bench.put(&secret, b"ancienne").await;
@@ -769,14 +766,7 @@ async fn the_worker_stops_while_a_rotator_hangs_and_leaves_the_rotation_as_recor
     let mut rotators = RotatorRegistry::new();
     rotators.register(rotator.clone());
     let worker = worker(&bench, rotators);
-    let descriptor = worker.descriptor().clone();
     let cancellation = CancellationToken::new();
-    let context = WorkerContext::new(
-        descriptor.module_id.clone(),
-        descriptor.id.clone(),
-        ModuleContext::new(descriptor.module_id.clone()),
-        cancellation.clone(),
-    );
     let stopper = async {
         tokio::time::timeout(Duration::from_secs(30), rotator.entered.notified())
             .await
@@ -787,7 +777,7 @@ async fn the_worker_stops_while_a_rotator_hangs_and_leaves_the_rotation_as_recor
     };
     let (ran, asked) = tokio::join!(
         async {
-            let ran = worker.run(context).await;
+            let ran = worker.run(&cancellation).await;
             (ran, tokio::time::Instant::now())
         },
         stopper

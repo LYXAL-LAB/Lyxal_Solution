@@ -19,9 +19,11 @@ configuration (config/*.toml + variables LYXAL__*)
   → connexion SurrealDB (lyxal_surreal)
   → installation rejouable : lyxal_core, lyxal_error, définitions SERVER_*, schéma du runtime
   → LyxalRuntime (store SurrealDB, baux, moteur d'événements)
-  → services des modules (workers, consommateurs d'événements, sondes de santé)
+  → services des modules (workers, consommateurs d'événements, sondes de santé, handlers des
+    tâches de fond de l'hôte)
   → install_packages : tous les modules hébergés (releases, migrations sous bail)
-  → services dépendant des modules installés (accès JWT, abonnements)
+  → services dépendant des modules installés (accès JWT, tâches de fond de l'hôte et leurs
+    planifications, abonnements)
   → start_all : modules, workers, EventWorker et ramasse-miettes
   → HTTP
 arrêt (SIGINT / SIGTERM) → stop_all (workers puis modules, ordre inverse)
@@ -48,11 +50,11 @@ déclaré manque.
 | `lyxal_core` | toujours | `ManifestModule` (SurrealQL seul) |
 | `lyxal_error` | toujours | `ManifestModule` |
 | `lyxal_event` | toujours | `ManifestModule` ; moteur démarré par le runtime |
-| `lyxal_auth` | toujours | `AuthModule`, `AuthHealthCheck` |
+| `lyxal_auth` | toujours | `AuthModule`, `AuthHealthCheck` ; purge `AuthPurge` exécutée par le planificateur (tâche `auth.purge`) |
 | `lyxal_notification` | toujours | `NotificationModule` (son installation crée la planification horaire `notification-purge` du planificateur), `NotificationConsumer` (événements `auth.*`), `NotificationEmailWorker` (envoi par les intégrations, identifiants lus dans `lyxal_secrets` ; avec les liens de désabonnement), trois `NotificationChannelWorker` (SMS, messagerie d'équipe, adresse web), `NotificationPushWorker` (Web Push, FCM, APNs ; identifiants lus dans `lyxal_secrets`), le `NotificationChannelWorker` du fil (`in_app`, toujours, sans clé), `FeedHubWorker` (requête `LIVE SELECT` du fil répartie par `FeedHub` vers les flux SSE, toujours), `NotificationBroadcastWorker`, `NotificationStepWorker` (attentes des parcours confiées au planificateur), `NotificationHealthCheck` ; routes `/api/v1/notification/*` (désabonnement, aperçu, retours des fournisseurs, essai d'une intégration, adresses de messagerie et web, appareils push et clé VAPID, fil dans l'application et son flux SSE) |
-| `lyxal_storage` | toujours | `StorageModule`, `StorageCleanupWorker` (si un support est configuré), `StorageHealthCheck` ; supports disque et S3 ; envoi reprenable |
-| `lyxal_secrets` | toujours | `SecretsModule`, `SecretsMaintenanceWorker` (purge, rescellement), `SecretsHealthCheck` ; trousseau maître du coffre-fort ; `SecretsClient` pour les modules hébergés |
-| `lyxal_scheduler` | toujours | `SchedulerModule`, `SchedulerLeaderWorker` (planificateur élu par le bail `leader` du runtime), un `SchedulerExecutorWorker` par file (enregistré après l'installation, une fois les files connues), `SchedulerHealthCheck` ; registre des handlers ouvert aux modules hébergés (`SchedulerHost::handlers`, aucun inscrit pour l'instant) |
+| `lyxal_storage` | toujours | `StorageModule`, `StorageHealthCheck` ; nettoyage `StorageCleanup` exécuté par le planificateur (tâche `storage.cleanup` ; sans support configuré, l'exécution ne fait rien) ; supports disque et S3 ; envoi reprenable |
+| `lyxal_secrets` | toujours | `SecretsModule`, `SecretsHealthCheck` ; maintenance `SecretsMaintenance` (purge, rescellement) exécutée par le planificateur (tâche `secrets.maintenance`) ; trousseau maître du coffre-fort ; `SecretsClient` pour les modules hébergés |
+| `lyxal_scheduler` | toujours | `SchedulerModule`, `SchedulerLeaderWorker` (planificateur élu par le bail `leader` du runtime), un `SchedulerExecutorWorker` par file (enregistré après l'installation, une fois les files connues), `SchedulerHealthCheck` ; registre des handlers (`SchedulerHost::handlers`) où l'hôte inscrit ceux de ses tâches de fond (`modules/tasks.rs`) |
 | `lyxal_base` | toujours | `ManifestModule` |
 | `lyxal_catalogue` | toujours | `ManifestModule` (SurrealQL seul) |
 | `lyxal_pipeline_ingestion` | fonctionnalité `module-ingestion` (par défaut) | `PipelineIngestionModule`, `IngestionWorker` (lit les fichiers sources des lots dans `lyxal_storage`), `IngestionHealthCheck` ; bucket `ingestion-sources` créé au démarrage |
@@ -169,8 +171,8 @@ vie qui abandonne les envois en plusieurs parties incomplets (`AbortIncompleteMu
 quelques jours) : un envoi coupé par un arrêt brutal du serveur n'est effacé que par le service.
 
 Sans aucun support, le serveur démarre : aucun fichier n'est écrit ni lu
-(`STORAGE_BACKEND_UNKNOWN`), le worker de nettoyage n'est pas lancé et la sonde du module est
-dégradée. La sonde écrit, relit et retire un fichier témoin sur chaque support.
+(`STORAGE_BACKEND_UNKNOWN`), le nettoyage ne fait rien sur ce nœud (son exécution se termine
+avec le résultat `{ skipped: "no_backend" }`) et la sonde du module est dégradée. La sonde écrit, relit et retire un fichier témoin sur chaque support.
 
 Routes des fichiers, sous `/api/v1/storage` (`{bucket}` : clé du bucket, `{clé}` : clé du
 fichier, par exemple `plans/2026/a.pdf`) :
@@ -246,9 +248,9 @@ LYXAL__SECRETS__PREVIOUS_MASTER_KEY_ID    vault-2026
 ```
 
 Changer la clé maîtresse : fournir la nouvelle comme clé active et l'ancienne à côté, redémarrer ;
-le worker de maintenance (toutes les 10 minutes) rescelle les clés des organisations, la sonde
+la maintenance (tâche `secrets.maintenance` du planificateur, toutes les 10 minutes) rescelle les clés des organisations, la sonde
 annonce la fin du rescellement (« l'ancienne clé maîtresse … peut être retirée »), puis retirer
-l'ancienne et redémarrer. Le même worker purge les secrets supprimés à échéance, rescelle les
+l'ancienne et redémarrer. La même maintenance purge les secrets supprimés à échéance, rescelle les
 versions après la rotation de la clé d'une organisation et détruit les clés devenues inutiles.
 Le test `tests/secrets.rs` (exécutable séparé : il fournit la clé maîtresse par variable
 d'environnement) vérifie l'écriture et la relecture d'une valeur par un module hébergé.
@@ -263,6 +265,29 @@ ont 30 s pour finir ; au-delà, leur bail expire et une autre tentative les repr
 ```text
 LYXAL__SCHEDULER__WORKERS    places par file et par nœud (4 par défaut, 1 à 64)
 ```
+
+**Tâches de fond de l'hôte** (`src/modules/tasks.rs`, `seeds/server_tasks.surql`). La purge de
+`lyxal_auth`, le nettoyage de `lyxal_storage` et la maintenance de `lyxal_secrets` ne sont pas des
+workers : le planificateur les exécute, une seule fois à la fois pour toute l'installation.
+`lyxal_scheduler` dépend de `lyxal_auth`, donc aucun de ces trois modules ne peut dépendre du
+planificateur : c'est l'hôte qui déclare leurs tâches, inscrit leur handler (qui appelle
+l'opération publique du module et rend son bilan comme résultat de l'exécution) et crée leur
+planification si elle est absente, après l'installation des modules (rejouable, sans doublon).
+
+| Tâche | Planification | Rythme | Délai maximal | Opération |
+| :--- | :--- | :--- | :--- | :--- |
+| `auth.purge` | `auth-purge` | 15 min | 5 min | `AuthPurge::run` |
+| `storage.cleanup` | `storage-cleanup` | 10 min | 30 min | `StorageCleanup::run` |
+| `secrets.maintenance` | `secrets-maintenance` | 10 min | 15 min | `SecretsMaintenance::run` |
+
+File `default`, portée installation, chevauchement `skip`, décalage aléatoire de 30 s au plus,
+3 tentatives (échec passager : nouvelle tentative après 30 s à 5 min). À l'arrêt du nœud ou au
+délai maximal, l'opération s'interrompt entre deux paquets (résultat `interrupted`) ; le reste
+est fait à l'exécution suivante. Chaque tâche a sa permission propre (`auth.purge.run`,
+`storage.cleanup.run`, `secrets.maintenance.run`), déclarée par l'hôte et attribuée à aucun
+rôle : seule la session système de l'hôte planifie, déclenche, rejoue ou relance ces tâches ; un
+administrateur de la plateforme peut les mettre en pause, pas les reprendre. Le suivi (bilan,
+échecs, tentatives) se lit dans les exécutions du planificateur.
 
 Routes du planificateur, sous `/api/v1/scheduler` (JSON, réponses `LyxalResult`, erreurs
 `SCHEDULER_*` dans la langue de la requête) :
@@ -566,5 +591,9 @@ fermeture du flux à l'expiration de la session, reprise de la requête `LIVE SE
 `KILL`, fermeture des flux à l'arrêt du worker ; signes de vie donnés à la main, sans fenêtre
 de temps réelle) ;
 `tests/it/startup.rs` démarre l'hôte sans aucun réglage d'envoi (sonde des notifications
-dégradée).
+dégradée). `tests/it/host_tasks.rs` vérifie les tâches de fond de l'hôte : tâches, permissions
+et planifications présentes après l'installation, sans doublon au redémarrage ; exécution
+déclenchée par le moteur réel (session expirée marquée, écriture abandonnée retirée, secret échu
+purgé ; nettoyage sans support : rien) ; déclenchement et reprise refusés à un administrateur de
+la plateforme, mise en pause acceptée.
 `scripts/ci/ci_local.sh` rejoue la CI complète.

@@ -145,7 +145,9 @@ IF !record::exists(auth_permission:⟨notification.read⟩) THEN (
 * **Applications** : secret client → session `service` sans renouvellement
   (`client_credentials`) ; révoquer un secret invalide les sessions de service antérieures ;
   clé d'API → session `api_key` aux permissions de la clé, bornées par celles du propriétaire.
-* **Purge** (`AuthPurgeWorker`, 15 min, interrompue entre deux paquets à l'arrêt) : parcours,
+* **Purge** (`AuthPurge::run`, par paquets, interrompue entre deux paquets à l'arrêt ; rend son
+  bilan ; l'hôte la fait exécuter toutes les 15 min par `lyxal_scheduler`, tâche `auth.purge`
+  qu'il déclare lui-même, `lyxal_auth` ne dépendant pas du planificateur) : parcours,
   codes, sessions et jetons expirés, compteurs d'échecs, invitations expirées, TOTP jamais
   confirmés, demandes d'acceptation et journal d'émission des codes de plus d'un jour.
 * **Purge des supprimés** : une organisation ou une identité passée à l'état `deleted` reçoit
@@ -282,7 +284,7 @@ transaction : il n'est jamais enregistré.
   (`session_actor`, `login_actor`), exigence d'action sensible (`require_fresh`).
 * `PasswordService`, jetons (`access_token`, jetons opaques et empreintes) dans `services/`.
 * `AuthModule` (`LyxalModule`), `AuthHealthCheck` (`ModuleHealthCheck`, « dégradé » si l'hôte ne
-  sert pas la connexion), `AuthPurgeWorker` (`LyxalWorker`).
+  sert pas la connexion), `AuthPurge` (opération de purge ; aucun `LyxalWorker`).
 
 Hébergé par `lyxal-server` (`build.rs`, `src/modules/auth.rs`) : routes `/api/v1/auth/*`,
 commandes `admin setup` et `auth rotate-signing-key` (README du serveur).

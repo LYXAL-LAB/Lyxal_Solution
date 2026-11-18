@@ -13,7 +13,7 @@ gestion de fichiers de SurrealDB : [`MODELE_SOURCES.md`](MODELE_SOURCES.md).
 | Identifiant | `lyxal_storage` (version `0.1.0`) |
 | Dépendances (`manifest.toml`) | `lyxal_core`, `lyxal_error`, `lyxal_event`, `lyxal_auth` |
 | Dépendances Rust | `lyxal_surreal`, `lyxal_runtime`, `lyxal_crypto` ; `object_store` 0.13, `infer`, `clamav-client` |
-| Hébergement | `apps/lyxal-server` (`StorageModule`, `StorageCleanupWorker`, `StorageHealthCheck`) |
+| Hébergement | `apps/lyxal-server` (`StorageModule`, `StorageHealthCheck` ; nettoyage `StorageCleanup` exécuté par `lyxal_scheduler`, tâche `storage.cleanup` déclarée par l'hôte) |
 
 ## 1. Modèle
 
@@ -49,8 +49,8 @@ pending ──► available ──► quarantined ──► deleted
 
 * `pending` : écriture ouverte, jamais servie, abandonnée après son délai ;
 * `available` : seul état où le fichier peut être servi ;
-* `quarantined` : retiré du service par le worker (contrôle du contenu), toujours compté ;
-* `deleted` : adresse libérée ; la fiche reste jusqu'au retrait des octets par le worker.
+* `quarantined` : retiré du service par le compte de service (contrôle du contenu), toujours compté ;
+* `deleted` : adresse libérée ; la fiche reste jusqu'au retrait des octets par le nettoyage.
 
 Toute autre transition est refusée par la base (`STORAGE_OBJECT_STATE_INVALID`). Les règles des
 fonctions valent aussi pour une écriture directe dans la table : une garde
@@ -70,7 +70,7 @@ son organisation (`STORAGE_BUCKET_NOT_EMPTY`).
 
 **Bucket supprimé** : l'événement `storage_bucket_reclaim` écrit, dans la transaction de la
 suppression, le préfixe de ses octets dans `storage_reclaim`. Il vaut aussi pour un bucket
-supprimé avec son organisation, dont les fiches partent en cascade : le worker retire alors les
+supprimé avec son organisation, dont les fiches partent en cascade : le nettoyage retire alors les
 octets au passage suivant.
 
 **Envoi reprenable** (fichier reçu en plusieurs requêtes, repris après une coupure) :
@@ -93,7 +93,7 @@ octets au passage suivant.
 4. dès que l'envoi n'est plus en cours (assemblé, abandonné, expiré, supprimé avec son
    organisation), l'événement `storage_object_upload_parts` retire ses lignes de parties et
    inscrit le dossier de leurs octets dans `storage_reclaim`, dans la même transaction : le
-   worker le retire du support.
+   nettoyage le retire du support.
 
 Seul l'auteur de l'envoi (ou le worker) le consulte et le poursuit. Une partie écrite directement
 dans la table suit les mêmes règles (garde `storage_upload_part_guard`) ; une partie inscrite ne
@@ -200,7 +200,7 @@ Publiés par `fn::event_publish` dans la transaction de la mutation : `storage.o
 | `content::detect` | type réel d'un fichier, reconnu à ses premiers octets (`infer`) |
 | `ContentScanner`, `ClamAvScanner`, `ScannerConfig` | antivirus branché sur l'écriture : service `clamd` de ClamAV, en TCP ou par socket Unix (`clamav-client`) |
 | `StorageService` (`upload`) | envoi reprenable : `upload_create`, `upload_status`, `upload_append` (octets à une position), `upload_complete` (assemblage), `upload_terminate` |
-| `StorageCleanupWorker` | worker supervisé : écritures abandonnées, envois reprenables complets restés sans assemblage, fichiers supprimés hors délai, octets des buckets supprimés et des parties d'envois terminés |
+| `StorageCleanup` | nettoyage, une opération (`run`) interrompue entre deux éléments à l'arrêt, qui rend son bilan `CleanupReport` : écritures abandonnées, envois reprenables complets restés sans assemblage, fichiers supprimés hors délai, octets des buckets supprimés et des parties d'envois terminés. Aucun `LyxalWorker` : l'hôte la fait exécuter toutes les 10 min par `lyxal_scheduler` (tâche `storage.cleanup` qu'il déclare lui-même, `lyxal_storage` ne dépendant pas du planificateur) |
 | `StorageModule`, `StorageHealthCheck` | module `LyxalModule` ; la sonde écrit, relit et retire un fichier témoin sur chaque support |
 | `StorageError` | erreur SurrealQL ou du support ; `code()`, `is_retryable()` |
 
@@ -228,13 +228,13 @@ Publiés par `fn::event_publish` dans la transaction de la mutation : `storage.o
   passent par l'écriture d'un envoi simple (taille, empreinte, type réel, antivirus) ; pendant
   cette étape le fichier occupe deux fois sa place. Contenu refusé (type interdit, virus) :
   l'envoi est abandonné. Échec passager (support, antivirus ou base indisponible), ou arrêt du
-  serveur : l'envoi reste complet et le worker l'assemble à son passage suivant (30 minutes au
-  plus après un arrêt brutal en cours d'assemblage, durée de la réservation). Le worker vérifie
+  serveur : l'envoi reste complet et le nettoyage l'assemble à son passage suivant (30 minutes au
+  plus après un arrêt brutal en cours d'assemblage, durée de la réservation). Le nettoyage vérifie
   l'arrêt du serveur entre deux parties : l'écriture en cours est abandonnée proprement et la
   réservation rendue.
 * **Échec** (support, taille, flux interrompu, fin d'écriture refusée) : les octets écrits sont
   retirés, la fiche passe à `deleted`, l'erreur est rendue. Une écriture coupée par l'arrêt du
-  serveur est retirée par le worker à la fin de son délai.
+  serveur est retirée par le nettoyage à la fin de son délai.
 * **Lecture** : seul un fichier `available` est servi (`fn::storage_object_open`).
 * **Nettoyage** : les octets d'abord, la fiche ou la ligne ensuite ; des octets déjà absents ne
   sont pas une erreur. Un élément en échec (support inconnu ou injoignable) est journalisé,
@@ -247,7 +247,7 @@ Publiés par `fn::event_publish` dans la transaction de la mutation : `storage.o
   passagères et les réponses `503` sont retentées par `object_store` ; un service injoignable ou
   des identifiants refusés rendent `STORAGE_BACKEND_UNAVAILABLE`, sans identifiant dans le
   message. Un envoi en plusieurs parties coupé par un arrêt brutal du serveur n'est pas retiré
-  par le worker : c'est le service qui l'efface. Bunny le fait seul après 10 jours ; **sur un
+  par le nettoyage : c'est le service qui l'efface. Bunny le fait seul après 10 jours ; **sur un
   autre service S3 (AWS, par exemple), une règle de cycle de vie qui abandonne les envois en
   plusieurs parties incomplets (`AbortIncompleteMultipartUpload`) doit être posée sur le
   bucket**, sans quoi ces parties restent stockées et facturées.
@@ -262,9 +262,9 @@ Publiés par `fn::event_publish` dans la transaction de la mutation : `storage.o
 * Tests Rust `tests/it/` (base embarquée ; supports mémoire, disque et S3 sur un serveur S3 de
   test `s3s-fs` lancé dans les tests) : fichier écrit puis relu
   à l'identique, plage d'octets, fichier de 64 Mo sans dépasser trois parties en mémoire, échecs
-  nettoyés, fichier altéré détecté, worker, sonde, appels du store ; type réel et types refusés ;
+  nettoyés, fichier altéré détecté, nettoyage, sonde, appels du store ; type réel et types refusés ;
   envoi reprenable (plusieurs requêtes, coupure, mauvaise position, deux requêtes simultanées,
-  contenu refusé à l'assemblage, assemblage terminé par le worker, arrêt du serveur pendant
+  contenu refusé à l'assemblage, assemblage terminé par le nettoyage, arrêt du serveur pendant
   l'assemblage, assembleur en retard refusé, abandon, expiration) ;
   antivirus sur un faux service `clamd` lancé dans les tests (fichier sain, signature de test
   EICAR, limite de taille, service injoignable ou muet). Un essai sur un vrai service ClamAV

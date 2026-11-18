@@ -10,25 +10,26 @@
 //! service des valeurs (`SecretsService`), la rotation par les rotateurs inscrits
 //! (`SecretRotator`, `RotationRunner`), l'interface des autres modules de l'hôte
 //! (`SecretsClient`), les partages à usage unique (`SecretsService::share_create`,
-//! `SecretsService::share_open`), le worker de maintenance supervisé, le module `LyxalModule` et sa sonde de
-//! santé.
+//! `SecretsService::share_open`), la maintenance (`SecretsMaintenance`, exécutée par
+//! `lyxal_scheduler` sur l'hôte), le module `LyxalModule` et sa sonde de santé.
 
 pub mod client;
 pub mod error;
 pub mod health;
 pub mod keys;
+pub mod maintenance;
 pub mod models;
 pub mod module;
 pub mod rotation;
 pub mod service;
 pub mod share;
 pub mod store;
-pub mod worker;
 
 pub use client::{ClientRead, ClientWrite, SecretsClient};
 pub use error::{SecretsError, SecretsResult};
 pub use health::SecretsHealthCheck;
 pub use keys::MasterKeys;
+pub use maintenance::{MaintenanceReport, SecretsMaintenance};
 pub use module::{SecretsModule, MODULE_ID};
 pub use rotation::{RotationOutcome, RotationRunner, RotatorError, RotatorRegistry, SecretRotator};
 pub use service::{
@@ -37,4 +38,3 @@ pub use service::{
 };
 pub use share::{OpenerContext, ShareCreated, ShareOpen, ShareRequest, ShareSource};
 pub use store::SecretsStore;
-pub use worker::{MaintenanceReport, SecretsMaintenanceWorker};

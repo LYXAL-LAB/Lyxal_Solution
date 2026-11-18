@@ -2,25 +2,17 @@
 //! coffre-fort et rescellement des clés d'organisation ; organisation supprimée.
 
 use lyxal_runtime::worker::CancellationToken;
-use lyxal_secrets::{MaintenanceReport, MasterKeys, RotatorRegistry, SecretsMaintenanceWorker};
-use std::time::Duration;
+use lyxal_secrets::{MaintenanceReport, MasterKeys, RotatorRegistry, SecretsMaintenance};
 
 use crate::support::{bench, code, master_key, reveal, Bench, ALPHA, BETA};
 
-fn worker(bench: &Bench, master: Option<MasterKeys>) -> SecretsMaintenanceWorker {
-    SecretsMaintenanceWorker::new(
-        bench.store.clone(),
-        master,
-        RotatorRegistry::new(),
-        Duration::from_secs(3600),
-        2,
-    )
-    .expect("worker")
+fn worker(bench: &Bench, master: Option<MasterKeys>) -> SecretsMaintenance {
+    SecretsMaintenance::new(bench.store.clone(), master, RotatorRegistry::new(), 2)
 }
 
 async fn pass(bench: &Bench, master: Option<MasterKeys>) -> MaintenanceReport {
     worker(bench, master)
-        .run_once(&CancellationToken::new())
+        .run(&CancellationToken::new())
         .await
         .expect("passage")
 }
