@@ -38,7 +38,8 @@ functions = [
     "functions/unite/unite_list.surql",
     "functions/unite/unite_update.surql",
     "functions/unite/unite_delete.surql",
-    "functions/unite/unite_resolve.surql"
+    "functions/unite/unite_resolve.surql",
+    "functions/unite/unite_convert.surql"
 ]
 error_definitions = [
     "error/parametres/error_parametres.surql",

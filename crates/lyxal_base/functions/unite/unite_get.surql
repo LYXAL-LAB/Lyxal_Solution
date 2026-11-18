@@ -29,10 +29,11 @@ DEFINE FUNCTION OVERWRITE fn::base_unite_get($params: object) {
 
     LET $record_id = IF $p.id != NONE { $p.id } ELSE { type::record("base_unite", $p.code) };
     -- usable : unité et type actifs, seule règle d'emploi d'une unité dans un nouveau document
+    -- convertible : facteur défini et type doté d'une unité de base (fn::base_unite_convert)
     LET $found = IF $p.fetch_type {
-        (SELECT *, (enabled AND type.enabled == true) AS usable, type.* AS type_detail, (SELECT norme, code FROM base_unite_code WHERE unite = $parent.id ORDER BY norme, code) AS codes FROM ONLY $record_id)
+        (SELECT *, (enabled AND type.enabled == true) AS usable, (factor != NONE AND type.base_unit != NONE) AS convertible, type.* AS type_detail, (SELECT norme, code FROM base_unite_code WHERE unite = $parent.id ORDER BY norme, code) AS codes FROM ONLY $record_id)
     } ELSE {
-        (SELECT *, (enabled AND type.enabled == true) AS usable, (SELECT norme, code FROM base_unite_code WHERE unite = $parent.id ORDER BY norme, code) AS codes FROM ONLY $record_id)
+        (SELECT *, (enabled AND type.enabled == true) AS usable, (factor != NONE AND type.base_unit != NONE) AS convertible, (SELECT norme, code FROM base_unite_code WHERE unite = $parent.id ORDER BY norme, code) AS codes FROM ONLY $record_id)
     };
     IF $found == NONE {
         RETURN fn::error_result("BASE_UNITE_NOT_FOUND", $language, { id: <string> $record_id });
@@ -42,4 +43,4 @@ DEFINE FUNCTION OVERWRITE fn::base_unite_get($params: object) {
         RETURN fn::error_result("BASE_LIBELLE_READ_FAILED", $p.language, { cause: $labelled.error });
     };
     RETURN fn::result_ok($labelled.records[0]);
-} COMMENT "Lit une unité par son identifiant (base_unite:<CODE>) ou par son code ; libellé rendu dans la langue demandée (locale, par défaut language) ; usable indique si l'unité et son type sont actifs, codes liste ses codes d'échange normalisés";
+} COMMENT "Lit une unité par son identifiant (base_unite:<CODE>) ou par son code ; libellé rendu dans la langue demandée (locale, par défaut language) ; usable indique si l'unité et son type sont actifs, convertible si elle a un facteur de conversion (factor) et son type une unité de base, codes liste ses codes d'échange normalisés";

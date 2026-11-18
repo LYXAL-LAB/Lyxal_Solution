@@ -11,6 +11,7 @@ DEFINE FUNCTION OVERWRITE fn::base_unite_create($params: object) {
             libelle: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 128 } }], required: true },
             abreviation: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 10 } }], required: true },
             type: { pipeline: [{ rule: "record", options: { expected_table: "base_unite_type" } }], required: true },
+            factor: { pipeline: [{ rule: "number", options: { min_value: 0.000001, max_value: 1000000 } }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -38,10 +39,12 @@ DEFINE FUNCTION OVERWRITE fn::base_unite_create($params: object) {
         RETURN fn::error_result("BASE_UNITE_ALREADY_EXISTS", $language, { code: $p.code });
     };
 
+    -- Facteur vers l'unité de base du type, en décimal ; absent : unité non convertible
     LET $created = (CREATE ONLY $record_id CONTENT {
         code: $p.code,
         abreviation: $p.abreviation,
         type: $p.type,
+        factor: IF $p.factor != NONE { <decimal> $p.factor } ELSE { NONE },
         enabled: true
     });
     IF $created == NONE {
@@ -54,4 +57,4 @@ DEFINE FUNCTION OVERWRITE fn::base_unite_create($params: object) {
         RETURN fn::error_result("BASE_LIBELLE_WRITE_FAILED", $language, { cause: $failure });
     };
     RETURN fn::result_ok(object::extend($created, { libelle: $p.libelle }));
-} COMMENT "Crée une unité de mesure rattachée à un type d'unité existant et actif ; le libellé devient le texte source de la clé base.unite_<code> de lyxal_i18n";
+} COMMENT "Crée une unité de mesure rattachée à un type d'unité existant et actif ; factor (facultatif, de 0,000001 à 1 000 000) est son facteur de conversion vers l'unité de base du type ; le libellé devient le texte source de la clé base.unite_<code> de lyxal_i18n";

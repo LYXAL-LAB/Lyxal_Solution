@@ -28,6 +28,18 @@ DEFINE FIELD OVERWRITE code
     COMMENT "Code technique unique du type d'unité (alphanumérique, majuscules), clé de l'identifiant base_unite_type:<CODE>";
 
 -- ----------------------------------------------------------------------------
+-- Unité de base
+-- Unité du type à laquelle se rapportent les facteurs de conversion (base_unite.factor).
+-- Exemple : base_unite:M pour LONGUEUR, base_unite:KG pour MASSE ; absente : type sans conversion
+-- ----------------------------------------------------------------------------
+
+DEFINE FIELD OVERWRITE base_unit
+    ON TABLE base_unite_type
+    TYPE option<record<base_unite>>
+    REFERENCE ON DELETE REJECT
+    COMMENT "Unité de base du type (unité de ce type, de facteur 1), référence des facteurs de conversion ; absente : unités du type non convertibles";
+
+-- ----------------------------------------------------------------------------
 -- Statut d'activation
 -- ----------------------------------------------------------------------------
 

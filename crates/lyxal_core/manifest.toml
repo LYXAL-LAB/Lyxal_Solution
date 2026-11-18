@@ -78,6 +78,7 @@ functions = [
     "functions/sanitize/functions/remove_tabs.surql",
     "functions/sanitize/functions/remove_tracking.surql",
     "functions/sanitize/functions/remove_unknown_keys.surql",
+    "functions/sanitize/functions/replace_chars.surql",
     "functions/sanitize/functions/rfc3339.surql",
     "functions/sanitize/functions/round.surql",
     "functions/sanitize/functions/safe_extension.surql",

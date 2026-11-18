@@ -19,10 +19,10 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_resolve_units($params: object) {
     };
 
     -- Forme exacte (majuscules, comme raw_alias est enregistré), puis clé sans point, tiret ni
-    -- souligné (« m.l. » → « ML »)
+    -- souligné (« m.l. » → « ML »), par les règles uppercase et replace_chars de lyxal_core
     LET $pairs = array::distinct($report.value.raw_units).map(|$raw| {
         LET $exact = fn::sanitize_uppercase($raw);
-        RETURN { raw: $raw, exact: $exact, key: string::replace(string::replace(string::replace($exact, ".", ""), "-", ""), "_", "") };
+        RETURN { raw: $raw, exact: $exact, key: fn::sanitize_replace_chars($exact, [".", "-", "_"], NONE) };
     }).filter(|$pair| $pair.key != "");
 
     -- 1. Alias de l'ingestion (libellés commerciaux) sur la forme exacte puis sur la clé, sinon la clé

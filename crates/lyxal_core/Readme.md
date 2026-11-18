@@ -25,11 +25,11 @@ Ces éléments appartiennent aux modules. Le Core fournit les briques ; les modu
 
 ```text
 lyxal_core/
-├── manifest.toml            (id lyxal_core, version 0.1.0, 484 fonctions déclarées)
+├── manifest.toml            (id lyxal_core, version 0.1.0, 485 fonctions déclarées)
 ├── Readme.md
 └── functions/
     ├── validations/   functions/ (196) · tests/ (196)   fn::validation_*
-    ├── sanitize/      functions/ (97) · tests/ (97)     fn::sanitize_*
+    ├── sanitize/      functions/ (98) · tests/ (98)     fn::sanitize_*
     ├── security/      functions/ (71) · tests/ (71)     fn::security_*
     └── utils/         functions/ (119) · tests/ (119)   fn::utils_*
 ```
@@ -130,6 +130,8 @@ IF !$email.valid { RETURN fn::error_result("AUTH_EMAIL_INVALID", $params.languag
 LET $clean = fn::sanitize_email($email.value);
 ```
 
+Une liste de caractères se retire ou se remplace avec `fn::sanitize_replace_chars($value, $remove, $replace)` (règle `replace_chars` du moteur, options `remove` et `replace`, l'une au moins) : `remove` est un tableau de caractères à retirer, `replace` un tableau de couples `{ from, to }` (un caractère vers une chaîne de 8 caractères au plus) ; les suppressions sont appliquées d'abord, puis les remplacements dans l'ordre ; aucune expression régulière, casse respectée ; une liste mal formée lève `CORE_INVALID_ARGUMENT`.
+
 Le nettoyage HTML et Markdown est **lexical** (expressions régulières) : il ne remplace pas un parseur HTML anti-XSS. `string::replace` de SurrealDB 3.3.4 ne gère pas les groupes de capture (« $1 ») : les fonctions qui doivent garder une partie du motif (liens Markdown…) découpent le texte.
 
 ### Fonctions `security` et `utils`
@@ -190,7 +192,7 @@ Un seul moteur exécute les pipelines de tous les domaines. Il ne connaît aucun
 | Domaine | Catalogue | Points d'entrée | Résultat |
 | :--- | :--- | :--- | :--- |
 | `validations` | `fn::validation_step_catalog()` : 177 règles, une par validateur à une seule valeur | `fn::validation_pipeline_execute($value, $pipeline, $max_steps)`, `fn::validation_object_execute($value, $schema, $max_steps)` | rapport `{ valid, value, errors, warnings, by_field }` ; ne lève jamais pour une donnée invalide |
-| `sanitize` | `fn::sanitize_step_catalog()` : 93 règles, une par fonction de valeurs (sauf `date_range`), plus `default` | `fn::sanitize_pipeline_execute($value, $pipeline, $max_steps)`, `fn::sanitize_object_execute($value, $schema, $max_steps)` | valeur nettoyée ; donnée non nettoyable → `CORE_SANITIZE_INVALID_TYPE` |
+| `sanitize` | `fn::sanitize_step_catalog()` : 94 règles, une par fonction de valeurs (sauf `date_range`), plus `default` | `fn::sanitize_pipeline_execute($value, $pipeline, $max_steps)`, `fn::sanitize_object_execute($value, $schema, $max_steps)` | valeur nettoyée ; donnée non nettoyable → `CORE_SANITIZE_INVALID_TYPE` |
 | `security` | `fn::security_step_catalog()` : 22 règles (masquage et empreintes, détections, `permission_check`) | `fn::security_pipeline_execute($value, $pipeline, $max_steps)`, `fn::security_object_execute($value, $schema, $max_steps)` | `{ value, findings, score, decisions, allowed, errors }` |
 
 * Une étape s'écrit `{ rule, options }` ; les options sont les paramètres de la fonction appelée. `required` (dans le catalogue) liste les options obligatoires.
@@ -237,7 +239,7 @@ Aucun module ne l'appelle encore. L'adoption se fera à la reprise de chaque mod
 
 `scripts/ci/test_lyxal_core.py` démarre un serveur SurrealDB 3.3.4 jetable et :
 
-1. charge les 484 fonctions et vérifie qu'elles sont toutes définies ;
+1. charge les 485 fonctions et vérifie qu'elles sont toutes définies ;
 2. vérifie que chaque fonction a son fichier `<nom>.test.surql`, et inversement ;
 3. exécute chaque fichier de tests.
 

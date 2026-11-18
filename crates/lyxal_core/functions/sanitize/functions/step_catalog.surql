@@ -87,6 +87,7 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_step_catalog() -> array<object> {
         { rule: "remove_tabs", cost: 1 },
         { rule: "remove_tracking", cost: 1 },
         { rule: "remove_unknown_keys", cost: 1, required: ["allowed_keys"] },
+        { rule: "replace_chars", cost: 1 },
         { rule: "rfc3339", cost: 1 },
         { rule: "round", cost: 1, required: ["precision"] },
         { rule: "safe_extension", cost: 1 },

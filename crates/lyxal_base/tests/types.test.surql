@@ -52,11 +52,12 @@ RETURN fn::base_unite_type_delete({ id: "base_unite_type:TEMPERATURE" }).data ==
 -- test: messages d'erreur résolus en anglais
 RETURN fn::base_unite_type_get({ code: "INCONNU", language: "en" }).error.label == "Unit type not found";
 
--- test: les 15 codes du module sont définis
-RETURN array::len(SELECT id FROM error_definition WHERE string::starts_with(code, "BASE_")) == 15
+-- test: les 18 codes du module sont définis
+RETURN array::len(SELECT id FROM error_definition WHERE string::starts_with(code, "BASE_")) == 18
     AND [
         "BASE_INVALID_PARAMETERS", "BASE_LIBELLE_READ_FAILED", "BASE_LIBELLE_WRITE_FAILED", "BASE_NO_UPDATABLE_FIELDS_PROVIDED", "BASE_WRITE_FORBIDDEN",
         "BASE_UNITE_TYPE_NOT_FOUND", "BASE_UNITE_TYPE_ALREADY_EXISTS", "BASE_UNITE_TYPE_IS_SYSTEM", "BASE_UNITE_TYPE_IN_USE",
         "BASE_UNITE_NOT_FOUND", "BASE_UNITE_ALREADY_EXISTS", "BASE_UNITE_IS_SYSTEM", "BASE_UNITE_IN_USE",
-        "BASE_UNITE_TYPE_INVALID", "BASE_UNITE_TYPE_DISABLED"
+        "BASE_UNITE_TYPE_INVALID", "BASE_UNITE_TYPE_DISABLED",
+        "BASE_UNITE_TYPE_MISMATCH", "BASE_UNITE_NOT_CONVERTIBLE", "BASE_UNITE_BASE_INVALID"
     ].all(|$c| record::exists(type::record("error_definition", $c)));
