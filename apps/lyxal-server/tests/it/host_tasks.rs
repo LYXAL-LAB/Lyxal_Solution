@@ -370,8 +370,14 @@ async fn a_caller_without_the_task_permission_cannot_run_a_host_task() {
         .await;
         assert_eq!(status, StatusCode::FORBIDDEN, "{} : {body}", task.task);
     }
+    // Aucun déclenchement refusé n'a créé d'exécution (une échéance normale du planificateur,
+    // d'origine `schedule`, peut tomber pendant l'essai : elle n'est pas comptée)
     assert_eq!(
-        count(&client, "RETURN count(SELECT * FROM scheduler_run);").await,
+        count(
+            &client,
+            "RETURN count(SELECT * FROM scheduler_run WHERE origin != 'schedule');"
+        )
+        .await,
         0
     );
     started.runtime.stop_all().await.expect("arrêt");
