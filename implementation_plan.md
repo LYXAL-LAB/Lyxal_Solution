@@ -9,7 +9,7 @@ scripts d'installation ne changent pas. Aucune ligne de code avant la validation
 
 ## 1. Décisions du CTO
 
-À valider par le CTO.
+Décisions U1 à U5 **validées par le CTO** le 18 novembre 2026, telles que proposées ci-dessous.
 
 | N° | Question | Proposition |
 | :- | :--- | :--- |
