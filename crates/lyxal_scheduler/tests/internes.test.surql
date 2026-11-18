@@ -235,3 +235,39 @@ RETURN fn::scheduler_calendar_rules_check([{ mode: "include", kind: "weekdays", 
         AND fn::scheduler_schedule_payload($s, {}).task = "essai.rapport" AND !object::keys(fn::scheduler_schedule_payload($s, {})).any(|$k| $k = "args")
         AND $p.task = "essai.rapport" AND $p.attempt = 1 AND $p.error_code IS NONE AND !object::keys($p).any(|$k| $k IN ["args", "result"]);
 };
+
+-- préparation: trois exécutions d'une planification, dont deux prévues à la même date (plus tardives que toutes les autres)
+{
+    LET $s = (SELECT * FROM ONLY (SELECT VALUE schedule FROM ONLY passe:i));
+    LET $task = (SELECT * FROM ONLY $s.task);
+    LET $t = d"2090-01-02T00:00:00Z";
+    fn::scheduler_run_spawn($s, $task, scheduler_run:tri_a, $t, $t, "trigger", "allow_all");
+    fn::scheduler_run_spawn($s, $task, scheduler_run:tri_b, $t, $t, "trigger", "allow_all");
+    fn::scheduler_run_spawn($s, $task, scheduler_run:tri_c, $t - 1d, $t - 1d, "trigger", "allow_all");
+};
+
+-- test: deux exécutions prévues à la même date gardent le même ordre, page par page, sans doublon ni manque
+{
+    LET $s = <string> (SELECT VALUE schedule FROM ONLY passe:i);
+    LET $expected = [scheduler_run:tri_b, scheduler_run:tri_a, scheduler_run:tri_c];
+    LET $pages = [
+        fn::scheduler_run_list({ tenant: "auth_organization:alpha", schedule: $s, since: d"2090-01-01T00:00:00Z", limit: 1, start: 0 }).data.items[0].id,
+        fn::scheduler_run_list({ tenant: "auth_organization:alpha", schedule: $s, since: d"2090-01-01T00:00:00Z", limit: 1, start: 1 }).data.items[0].id,
+        fn::scheduler_run_list({ tenant: "auth_organization:alpha", schedule: $s, since: d"2090-01-01T00:00:00Z", limit: 1, start: 2 }).data.items[0].id
+    ];
+    LET $again = [
+        fn::scheduler_run_list({ tenant: "auth_organization:alpha", schedule: $s, since: d"2090-01-01T00:00:00Z", limit: 1, start: 0 }).data.items[0].id,
+        fn::scheduler_run_list({ tenant: "auth_organization:alpha", schedule: $s, since: d"2090-01-01T00:00:00Z", limit: 1, start: 1 }).data.items[0].id,
+        fn::scheduler_run_list({ tenant: "auth_organization:alpha", schedule: $s, since: d"2090-01-01T00:00:00Z", limit: 1, start: 2 }).data.items[0].id
+    ];
+    LET $all = fn::scheduler_run_list({ tenant: "auth_organization:alpha", schedule: $s, since: d"2090-01-01T00:00:00Z" }).data;
+    RETURN $all.items.id == $expected AND $all.total == 3 AND $pages == $expected AND $again == $expected;
+};
+
+-- test: les dernières exécutions d'une planification suivent le même ordre total, d'un appel à l'autre
+{
+    LET $s = (SELECT VALUE schedule FROM ONLY passe:i);
+    LET $expected = [scheduler_run:tri_b, scheduler_run:tri_a, scheduler_run:tri_c];
+    RETURN array::slice(fn::scheduler_schedule_view($s).recent_runs.id, 0, 3) == $expected
+        AND array::slice(fn::scheduler_schedule_view($s).recent_runs.id, 0, 3) == $expected;
+};

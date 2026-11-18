@@ -155,12 +155,12 @@ DEFINE FUNCTION OVERWRITE fn::secrets_share_list($params: object) {
     };
     LET $p = $report.value;
     -- Les droits de la table ne montrent que ses partages, ou tous avec le droit de partage
-    LET $ids = (SELECT VALUE id FROM secrets_share WHERE tenant = $p.tenant AND (!$p.active_only OR state = "active") ORDER BY created_at DESC);
+    LET $ids = (SELECT VALUE id FROM secrets_share WHERE tenant = $p.tenant AND (!$p.active_only OR state = "active") ORDER BY created_at DESC, id DESC);
     RETURN fn::result_ok({
         items: array::map(array::slice($ids, $p.start, $p.start + $p.limit), |$id| fn::secrets_share_view($id)),
         total: array::len($ids)
     });
-} COMMENT "Partages d'une portée, les plus récents d'abord ({ tenant, active_only (défaut vrai), limit (100 au plus), start }) : { items, total }, sans élément scellé. L'auteur voit les siens ; secrets.share.create voit tout";
+} COMMENT "Partages d'une portée, les plus récents d'abord puis par identifiant décroissant à date égale (ordre total) ({ tenant, active_only (défaut vrai), limit (100 au plus), start }) : { items, total }, sans élément scellé. L'auteur voit les siens ; secrets.share.create voit tout";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_share_load_params (interne)

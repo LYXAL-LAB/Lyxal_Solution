@@ -1,7 +1,8 @@
 -- ============================================================================
 -- Function   : fn::event_dead_letter_list
 -- Module     : lyxal_event
--- Description: Liste les enregistrements de dead-letter ordonnés par date d'épuisement décroissante.
+-- Description: Liste les enregistrements de dead-letter ordonnés par date d'épuisement décroissante,
+--              puis, à date égale, par rejeu et par identifiant décroissants (ordre total).
 -- Contrat    : Retourne fn::result_ok(Vec<EventDeadLetter>)
 -- ============================================================================
 
@@ -23,13 +24,15 @@ DEFINE FUNCTION OVERWRITE fn::event_dead_letter_list(
     LET $limit = $p.limit;
     LET $delivery = $p.delivery;
 
+    -- L'ordre suit l'index idx_dead_letter_audit (exhausted_at, replayed), dont les entrées se
+    -- suivent par identifiant : la liste est lue dans l'index, sans tri de toute la table.
     LET $items = IF $delivery != NONE {
-        (SELECT * FROM event_dead_letter WHERE delivery = $delivery ORDER BY exhausted_at DESC LIMIT $limit)
+        (SELECT * FROM event_dead_letter WHERE delivery = $delivery ORDER BY exhausted_at DESC, replayed DESC, id DESC LIMIT $limit)
     } ELSE {
-        (SELECT * FROM event_dead_letter ORDER BY exhausted_at DESC LIMIT $limit)
+        (SELECT * FROM event_dead_letter ORDER BY exhausted_at DESC, replayed DESC, id DESC LIMIT $limit)
     };
 
     RETURN fn::result_ok($items);
-} COMMENT "Liste les enregistrements en quarantaine dead-letter"
+} COMMENT "Liste les enregistrements en quarantaine dead-letter, du plus récemment épuisé au plus ancien, puis, à date égale, par rejeu et par identifiant décroissants (ordre total)"
 PERMISSIONS FULL;
 

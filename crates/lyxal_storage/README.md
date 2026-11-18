@@ -150,7 +150,7 @@ l'installation.
 | `storage_object_commit` | **object**, **size**, **content_type**, **blake3**, `claim` (envoi reprenable : jeton de la réservation) | fiche `available` | worker, ou l'appelant qui a ouvert l'écriture (son identité, ou son application pour un compte de service) |
 | `storage_object_get` | **object**, ou **bucket** et **key** | fiche (par adresse : fichier non supprimé) | lecture |
 | `storage_object_open` | **object**, ou **bucket** et **key** | fiche d'un fichier à servir ; refus s'il n'est pas `available` | lecture |
-| `storage_object_list` | **bucket**, `prefix`, `state` (`available`), `limit`, `start` | `{ items, total }`, triés par clé | lecture |
+| `storage_object_list` | **bucket**, `prefix`, `state` (`available`), `limit`, `start` | `{ items, total }`, triés par clé puis par identifiant (ordre total, y compris entre fichiers supprimés de même clé) | lecture |
 | `storage_object_delete` | **object** | fiche `deleted` | écriture |
 | `storage_object_usage` | `tenant` | `{ objects, bytes, reserved_bytes, quota_bytes }` | lecture |
 | `storage_object_quarantine` | **object**, **reason** | fiche `quarantined` | worker |

@@ -5,7 +5,8 @@
 -- Fonction : fn::error_occurrence_list
 --
 -- Liste les occurrences d'erreurs, filtrées par code et module source, de la
--- plus récente à la plus ancienne.
+-- plus récente à la plus ancienne, puis par identifiant décroissant à date
+-- égale (ordre total : deux pages ne se recouvrent pas).
 --
 -- Paramètres
 --   code, source_module, limit (1 à 500, défaut 50), start (défaut 0), language
@@ -34,9 +35,9 @@ DEFINE FUNCTION OVERWRITE fn::error_occurrence_list(
     RETURN fn::result_ok(SELECT * FROM error_occurrence
         WHERE ($p.code IS NONE OR code = $p.code)
           AND ($p.source_module IS NONE OR source_module = $p.source_module)
-        ORDER BY occurred_at DESC
+        ORDER BY occurred_at DESC, id DESC
         LIMIT $p.limit
         START $p.start);
 }
-COMMENT "Liste les occurrences d'erreurs, filtrées par code et module source, de la plus récente à la plus ancienne."
+COMMENT "Liste les occurrences d'erreurs, filtrées par code et module source, de la plus récente à la plus ancienne, puis par identifiant décroissant à date égale (ordre total)."
 PERMISSIONS FULL;

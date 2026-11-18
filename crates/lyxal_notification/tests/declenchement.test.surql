@@ -212,3 +212,50 @@ RETURN fn::notification_run_get({ run: "notification_run:inconnu" }).error.code 
         AND count(SELECT id FROM notification_run WHERE tenant = auth_organization:alpha) == 0
         AND count(SELECT id FROM notification_job WHERE !record::exists(run)) == 0;
 };
+
+-- préparation: trois suppressions de Beta, dont la même adresse sur deux canaux (identifiants en sens inverse des canaux)
+{
+    CREATE notification_suppression:tri_1 CONTENT { tenant: auth_organization:beta, channel: "sms", address: "meme@tri.test", reason: "manual" };
+    CREATE notification_suppression:tri_2 CONTENT { tenant: auth_organization:beta, channel: "email", address: "meme@tri.test", reason: "manual" };
+    CREATE notification_suppression:tri_3 CONTENT { tenant: auth_organization:beta, channel: "email", address: "avant@tri.test", reason: "manual" };
+};
+
+-- test: la même adresse supprimée sur deux canaux garde le même ordre, page par page, sans doublon ni manque
+{
+    LET $expected = [notification_suppression:tri_3, notification_suppression:tri_2, notification_suppression:tri_1];
+    LET $pages = [
+        fn::notification_suppression_list({ tenant: "auth_organization:beta", limit: 1, start: 0 }).data[0].id,
+        fn::notification_suppression_list({ tenant: "auth_organization:beta", limit: 1, start: 1 }).data[0].id,
+        fn::notification_suppression_list({ tenant: "auth_organization:beta", limit: 1, start: 2 }).data[0].id
+    ];
+    LET $again = [
+        fn::notification_suppression_list({ tenant: "auth_organization:beta", limit: 1, start: 0 }).data[0].id,
+        fn::notification_suppression_list({ tenant: "auth_organization:beta", limit: 1, start: 1 }).data[0].id,
+        fn::notification_suppression_list({ tenant: "auth_organization:beta", limit: 1, start: 2 }).data[0].id
+    ];
+    RETURN fn::notification_suppression_list({ tenant: "auth_organization:beta" }).data.id == $expected AND $pages == $expected AND $again == $expected;
+};
+
+-- préparation: trois déclenchements de Beta, dont deux créés à la même date
+{
+    CREATE notification_workflow:tri CONTENT { key: "tri", name: "Tri", status: "active", steps: [{ key: "email", type: "email" }] };
+    CREATE notification_run:tri_a CONTENT { tenant: auth_organization:beta, workflow: notification_workflow:tri, idempotency_key: "tri-a", address: {}, purge_after: time::now() + 30d, created_at: d"2026-01-02T00:00:00Z" };
+    CREATE notification_run:tri_b CONTENT { tenant: auth_organization:beta, workflow: notification_workflow:tri, idempotency_key: "tri-b", address: {}, purge_after: time::now() + 30d, created_at: d"2026-01-02T00:00:00Z" };
+    CREATE notification_run:tri_c CONTENT { tenant: auth_organization:beta, workflow: notification_workflow:tri, idempotency_key: "tri-c", address: {}, purge_after: time::now() + 30d, created_at: d"2026-01-01T00:00:00Z" };
+};
+
+-- test: deux déclenchements créés à la même date gardent le même ordre, page par page, sans doublon ni manque
+{
+    LET $expected = [notification_run:tri_b, notification_run:tri_a, notification_run:tri_c];
+    LET $pages = [
+        fn::notification_run_list({ tenant: "auth_organization:beta", workflow: "notification_workflow:tri", limit: 1, start: 0 }).data[0].id,
+        fn::notification_run_list({ tenant: "auth_organization:beta", workflow: "notification_workflow:tri", limit: 1, start: 1 }).data[0].id,
+        fn::notification_run_list({ tenant: "auth_organization:beta", workflow: "notification_workflow:tri", limit: 1, start: 2 }).data[0].id
+    ];
+    LET $again = [
+        fn::notification_run_list({ tenant: "auth_organization:beta", workflow: "notification_workflow:tri", limit: 1, start: 0 }).data[0].id,
+        fn::notification_run_list({ tenant: "auth_organization:beta", workflow: "notification_workflow:tri", limit: 1, start: 1 }).data[0].id,
+        fn::notification_run_list({ tenant: "auth_organization:beta", workflow: "notification_workflow:tri", limit: 1, start: 2 }).data[0].id
+    ];
+    RETURN fn::notification_run_list({ tenant: "auth_organization:beta", workflow: "notification_workflow:tri" }).data.id == $expected AND $pages == $expected AND $again == $expected;
+};

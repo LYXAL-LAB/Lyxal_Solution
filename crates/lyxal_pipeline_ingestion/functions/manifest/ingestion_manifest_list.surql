@@ -30,8 +30,8 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_manifest_list($params: object) {
         FROM ingestion_publication_manifest WHERE
             ($p.batch_id == NONE OR batch = $p.batch_id)
             AND ($p.statut == NONE OR statut = $p.statut)
-        ORDER BY created_at DESC
+        ORDER BY created_at DESC, id DESC
         LIMIT $p.limit START $p.start);
 
     RETURN fn::result_ok({ manifests: $manifests, total: $total, limit: $p.limit, start: $p.start });
-} COMMENT "Retourne la liste paginée et filtrée (lot, statut) des manifestes de publication, du plus récent au plus ancien";
+} COMMENT "Retourne la liste paginée et filtrée (lot, statut) des manifestes de publication, du plus récent au plus ancien, puis par identifiant décroissant à date égale (ordre total)";

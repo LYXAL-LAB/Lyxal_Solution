@@ -5,7 +5,8 @@
 -- Fonction : fn::error_mapping_list
 --
 -- Liste les correspondances externes, filtrées par fournisseur et service,
--- triées par priorité puis fournisseur.
+-- triées par priorité, fournisseur puis identifiant (ordre total : deux pages
+-- ne se recouvrent pas).
 --
 -- Paramètres
 --   provider, service, enabled_only (défaut true), limit (1 à 500, défaut 50), start (défaut 0), language
@@ -36,9 +37,9 @@ DEFINE FUNCTION OVERWRITE fn::error_mapping_list(
         WHERE ($p.provider IS NONE OR provider = $p.provider)
           AND ($p.service IS NONE OR service = $p.service)
           AND ($p.enabled_only == false OR enabled = true)
-        ORDER BY priority ASC, provider ASC
+        ORDER BY priority ASC, provider ASC, id ASC
         LIMIT $p.limit
         START $p.start);
 }
-COMMENT "Liste les correspondances externes, filtrées par fournisseur et service, triées par priorité puis fournisseur."
+COMMENT "Liste les correspondances externes, filtrées par fournisseur et service, triées par priorité, fournisseur puis identifiant (ordre total)."
 PERMISSIONS FULL;

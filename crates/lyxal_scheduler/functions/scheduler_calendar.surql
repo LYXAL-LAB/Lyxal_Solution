@@ -161,9 +161,9 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_calendar_get($params: object) {
     LET $calendar = (SELECT * FROM ONLY $p.calendar);
     IF $calendar == NONE { RETURN fn::error_result("SCHEDULER_CALENDAR_NOT_FOUND", $p.language, { calendar: <string> $p.calendar }); };
     RETURN fn::result_ok(object::extend($calendar, {
-        schedules: (SELECT VALUE id FROM scheduler_schedule WHERE calendars CONTAINS $calendar.id ORDER BY name ASC LIMIT 100)
+        schedules: (SELECT VALUE id FROM scheduler_schedule WHERE calendars CONTAINS $calendar.id ORDER BY name ASC, id ASC LIMIT 100)
     }));
-} COMMENT "Calendrier et planifications lisibles qui l'utilisent (100 au plus). Un calendrier illisible est introuvable (SCHEDULER_CALENDAR_NOT_FOUND). Droit : lecture";
+} COMMENT "Calendrier et planifications lisibles qui l'utilisent (100 au plus, par nom puis identifiant : ordre total). Un calendrier illisible est introuvable (SCHEDULER_CALENDAR_NOT_FOUND). Droit : lecture";
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_calendar_list

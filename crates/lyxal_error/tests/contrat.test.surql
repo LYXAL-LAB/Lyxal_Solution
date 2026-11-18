@@ -60,3 +60,49 @@ RETURN fn::error_definition_disable({ code: "DEMO_PANNE" }).data.disabled == tru
 
 -- test: la purge supprime les occurrences antérieures à la date
 RETURN fn::error_occurrence_purge_before({ before_date: d"2099-01-01T00:00:00Z" }).data.count == 1;
+
+-- préparation: trois occurrences, dont deux à la même date (identifiants en sens inverse du tri)
+{
+    CREATE error_occurrence:tri_a CONTENT { definition: error_definition:DEMO_PANNE, code: "DEMO_PANNE", source_module: "tri", occurred_at: d"2026-01-02T00:00:00Z" };
+    CREATE error_occurrence:tri_b CONTENT { definition: error_definition:DEMO_PANNE, code: "DEMO_PANNE", source_module: "tri", occurred_at: d"2026-01-02T00:00:00Z" };
+    CREATE error_occurrence:tri_c CONTENT { definition: error_definition:DEMO_PANNE, code: "DEMO_PANNE", source_module: "tri", occurred_at: d"2026-01-01T00:00:00Z" };
+};
+
+-- test: deux occurrences de même date gardent le même ordre, page par page, sans doublon ni manque
+{
+    LET $expected = [error_occurrence:tri_b, error_occurrence:tri_a, error_occurrence:tri_c];
+    LET $pages = [
+        fn::error_occurrence_list({ source_module: "tri", limit: 1, start: 0 }).data[0].id,
+        fn::error_occurrence_list({ source_module: "tri", limit: 1, start: 1 }).data[0].id,
+        fn::error_occurrence_list({ source_module: "tri", limit: 1, start: 2 }).data[0].id
+    ];
+    LET $again = [
+        fn::error_occurrence_list({ source_module: "tri", limit: 1, start: 0 }).data[0].id,
+        fn::error_occurrence_list({ source_module: "tri", limit: 1, start: 1 }).data[0].id,
+        fn::error_occurrence_list({ source_module: "tri", limit: 1, start: 2 }).data[0].id
+    ];
+    RETURN fn::error_occurrence_list({ source_module: "tri" }).data.id == $expected AND $pages == $expected AND $again == $expected;
+};
+
+-- préparation: trois correspondances, dont deux de même priorité et de même fournisseur
+{
+    CREATE error_external_mapping:tri_b CONTENT { provider: "tri_pay", external_code: "b", definition: error_definition:DEMO_PANNE, priority: 10 };
+    CREATE error_external_mapping:tri_a CONTENT { provider: "tri_pay", external_code: "a", definition: error_definition:DEMO_PANNE, priority: 10 };
+    CREATE error_external_mapping:tri_c CONTENT { provider: "tri_pay", external_code: "c", definition: error_definition:DEMO_PANNE, priority: 5 };
+};
+
+-- test: deux correspondances de même priorité et de même fournisseur gardent le même ordre, page par page
+{
+    LET $expected = [error_external_mapping:tri_c, error_external_mapping:tri_a, error_external_mapping:tri_b];
+    LET $pages = [
+        fn::error_mapping_list({ provider: "tri_pay", limit: 1, start: 0 }).data[0].id,
+        fn::error_mapping_list({ provider: "tri_pay", limit: 1, start: 1 }).data[0].id,
+        fn::error_mapping_list({ provider: "tri_pay", limit: 1, start: 2 }).data[0].id
+    ];
+    LET $again = [
+        fn::error_mapping_list({ provider: "tri_pay", limit: 1, start: 0 }).data[0].id,
+        fn::error_mapping_list({ provider: "tri_pay", limit: 1, start: 1 }).data[0].id,
+        fn::error_mapping_list({ provider: "tri_pay", limit: 1, start: 2 }).data[0].id
+    ];
+    RETURN fn::error_mapping_list({ provider: "tri_pay" }).data.id == $expected AND $pages == $expected AND $again == $expected;
+};

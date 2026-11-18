@@ -195,3 +195,30 @@ RETURN fn::ingestion_manifest_get_detail({ manifest_ref: "MAN-ABSENT" }).error.c
 -- en tant que: qualif
 RETURN fn::ingestion_manifest_get_detail({ manifest_ref: "MAN-M1" }).error.code == "INGESTION_MANIFEST_NOT_FOUND"
     AND fn::ingestion_manifest_list({}).data.total == 0;
+
+-- préparation: date de création figée, pour ce banc seulement et à partir d'ici (le schéma la
+-- remplit par time::now() à chaque écriture : deux manifestes n'auraient jamais la même date)
+DEFINE FIELD OVERWRITE created_at ON TABLE ingestion_publication_manifest TYPE datetime VALUE d"2026-01-02T00:00:00Z" COMMENT "Banc : date de création figée";
+
+-- préparation: deux brouillons d'un autre lot, créés à la même date
+{
+    fn::ingestion_batch_create({ id: "lot_tri", source_type: "CSV", fournisseur_id: "FOURN_PLACO", source_object: fn::test_source("tri.csv", "tri.csv") });
+    fn::ingestion_manifest_save({ manifest_ref: "MAN-TRI-1", batch_id: "lot_tri", manifest_version: 1 });
+    fn::ingestion_manifest_save({ manifest_ref: "MAN-TRI-2", batch_id: "lot_tri", manifest_version: 2 });
+};
+
+-- test: deux manifestes créés à la même date gardent le même ordre (identifiant décroissant), page par page, sans doublon ni manque
+{
+    LET $rows = (SELECT <string> record::id(id) AS id, created_at FROM ingestion_publication_manifest WHERE batch = ingestion_batch:lot_tri);
+    LET $expected = array::sort::desc($rows.id);
+    LET $pages = [
+        fn::ingestion_manifest_list({ batch_id: "lot_tri", limit: 1, start: 0 }).data.manifests[0].id,
+        fn::ingestion_manifest_list({ batch_id: "lot_tri", limit: 1, start: 1 }).data.manifests[0].id
+    ];
+    LET $again = [
+        fn::ingestion_manifest_list({ batch_id: "lot_tri", limit: 1, start: 0 }).data.manifests[0].id,
+        fn::ingestion_manifest_list({ batch_id: "lot_tri", limit: 1, start: 1 }).data.manifests[0].id
+    ];
+    RETURN array::len($expected) == 2 AND array::distinct($rows.created_at) == [d"2026-01-02T00:00:00Z"]
+        AND fn::ingestion_manifest_list({ batch_id: "lot_tri" }).data.manifests.id == $expected AND $pages == $expected AND $again == $expected;
+};

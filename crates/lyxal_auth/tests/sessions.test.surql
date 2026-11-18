@@ -178,3 +178,27 @@ RETURN array::all((SELECT VALUE key_hash FROM auth_login_failure), |$h| string::
     LET $inactive = fn::auth_session_open({ identity: auth_identity:gestion, kind: "interactive", amr: ["password"], access_slot: "a" });
     RETURN $rights.permissions == ["auth.self.manage"] AND $inactive.code == "AUTH_IDENTITY_INACTIVE";
 };
+
+-- préparation: trois sessions d'une même identité, dont deux vues pour la dernière fois au même instant
+{
+    CREATE auth_identity:tri CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "tri@tri.test" } };
+    CREATE auth_session:tri_a CONTENT { identity: auth_identity:tri, last_seen_at: d"2026-01-02T00:00:00Z", idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_session:tri_b CONTENT { identity: auth_identity:tri, last_seen_at: d"2026-01-02T00:00:00Z", idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_session:tri_c CONTENT { identity: auth_identity:tri, last_seen_at: d"2026-01-01T00:00:00Z", idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+};
+
+-- test: deux sessions vues au même instant : la liste tronquée garde toujours la même, dans le même ordre
+{
+    LET $expected = [auth_session:tri_b, auth_session:tri_a, auth_session:tri_c];
+    LET $cuts = [
+        fn::auth_session_list({ identity: "auth_identity:tri", limit: 1 }).data.id,
+        fn::auth_session_list({ identity: "auth_identity:tri", limit: 2 }).data.id,
+        fn::auth_session_list({ identity: "auth_identity:tri", limit: 3 }).data.id
+    ];
+    LET $again = [
+        fn::auth_session_list({ identity: "auth_identity:tri", limit: 1 }).data.id,
+        fn::auth_session_list({ identity: "auth_identity:tri", limit: 2 }).data.id,
+        fn::auth_session_list({ identity: "auth_identity:tri", limit: 3 }).data.id
+    ];
+    RETURN $cuts == [array::slice($expected, 0, 1), array::slice($expected, 0, 2), $expected] AND $again == $cuts;
+};

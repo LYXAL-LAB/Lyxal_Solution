@@ -329,12 +329,12 @@ DEFINE FUNCTION OVERWRITE fn::secrets_request_list($params: object) {
             AND ($p.kind IS NONE OR kind = $p.kind)
             AND (!$p.mine OR (requested_identity IS NOT NONE AND requested_identity = $caller.identity)
                 OR (requested_identity IS NONE AND requested_application = $caller.application))
-        ORDER BY created_at DESC);
+        ORDER BY created_at DESC, id DESC);
     RETURN fn::result_ok({
         items: array::map(array::slice($ids, $p.start, $p.start + $p.limit), |$id| fn::secrets_request_view($id)),
         total: array::len($ids)
     });
-} COMMENT "Demandes d'une organisation, les plus récentes d'abord ({ tenant, state, kind, mine, limit (100 au plus), start }) : { items, total }. Le gestionnaire des accès voit tout ; chacun voit les siennes";
+} COMMENT "Demandes d'une organisation, les plus récentes d'abord puis par identifiant décroissant à date égale (ordre total) ({ tenant, state, kind, mine, limit (100 au plus), start }) : { items, total }. Le gestionnaire des accès voit tout ; chacun voit les siennes";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_access_due

@@ -628,3 +628,75 @@ async fn test_external_functions_validate_inputs_with_core() {
     assert_eq!(register["error"]["code"], "EVENT_INVALID_PARAMETERS");
     assert!(register["error"]["details"]["fields"]["max_attempts"].is_array());
 }
+
+/// Ordre total de `fn::event_dead_letter_list` : des dead letters épuisées au même instant sont
+/// départagées par leur rejeu puis par leur identifiant (décroissants), et une liste tronquée garde
+/// toujours les mêmes.
+#[tokio::test]
+async fn test_dead_letter_list_orders_equal_dates_by_id() {
+    let db = connect("mem://").await.unwrap();
+    db.use_ns("test_ns").use_db("test_dlq_order").await.unwrap();
+
+    common::setup_test_db(&db).await;
+
+    let store = Arc::new(EventStore::new(db.clone()));
+    common::install_event(store.client()).await;
+
+    // Quatre dead letters, dont trois épuisées au même instant (une déjà rejouée) ; la dernière
+    // est plus ancienne.
+    db.query(
+        r#"
+        FOR $row IN [
+            { key: "dlq_a", at: d"2026-01-02T00:00:00Z", replayed: false },
+            { key: "dlq_b", at: d"2026-01-02T00:00:00Z", replayed: false },
+            { key: "dlq_c", at: d"2026-01-01T00:00:00Z", replayed: false },
+            { key: "dlq_0", at: d"2026-01-02T00:00:00Z", replayed: true }
+        ] {
+            CREATE type::record("event_dead_letter", $row.key) CONTENT {
+                delivery: type::record("event_delivery", $row.key),
+                outbox_event: type::record("event_outbox", $row.key),
+                target_module: "test_consumer_module",
+                context: { instance_id: "inst_alpha", namespace: "test_ns", database: "test_dlq_order" },
+                attempts: 3,
+                last_error: "handler failed",
+                payload: {},
+                metadata: {},
+                replayed: $row.replayed,
+                exhausted_at: $row.at
+            };
+        };
+        "#,
+    )
+    .await
+    .unwrap()
+    .check()
+    .unwrap();
+
+    let expected =
+        ["dlq_0", "dlq_b", "dlq_a", "dlq_c"].map(|key| format!("event_dead_letter:{key}"));
+
+    // Chemin des appelants Rust (limite 100), lu deux fois
+    for _ in 0..2 {
+        let listed: Vec<String> = store
+            .get_dead_letters()
+            .await
+            .unwrap()
+            .iter()
+            .map(|dead_letter| dead_letter.id.to_sql())
+            .collect();
+        assert_eq!(listed, expected);
+    }
+
+    // Liste tronquée : la frontière tombe entre les deux dead letters de même date
+    for limit in 1..=expected.len() {
+        for _ in 0..2 {
+            let cut = call_json(
+                &db,
+                "RETURN { ids: fn::event_dead_letter_list($params).data.map(|$d| <string> $d.id) }",
+                json!({ "limit": limit }),
+            )
+            .await;
+            assert_eq!(cut["ids"], json!(expected[..limit]), "limite {limit}");
+        }
+    }
+}

@@ -132,3 +132,62 @@ async fn test_bus_with_journal_persists_events_asynchronously() {
     let recent = journal.recent(5).await.unwrap();
     assert_eq!(recent.len(), 5);
 }
+
+/// Ordre total de `fn::runtime_event_list` : à date égale, le nœud puis la séquence départagent
+/// (une séquence n'est unique que par nœud) ; une liste tronquée garde toujours les mêmes événements.
+#[tokio::test]
+async fn test_surreal_journal_orders_equal_timestamps_by_node_then_sequence() {
+    let client = common::setup_db("test_ns", "test_journal_order").await;
+
+    let journal = SurrealRuntimeEventJournal::new(client);
+    journal.bootstrap().await.unwrap();
+
+    let module = ModuleId::new("lyxal-auth");
+    // (nœud, séquence, date) : trois événements à la même date, dont deux nœuds à la même séquence
+    let rows = [
+        ("node-a", 1, 1_700_000_000_500),
+        ("node-b", 1, 1_700_000_000_500),
+        ("node-a", 2, 1_700_000_000_500),
+        ("node-b", 9, 1_700_000_000_400),
+    ];
+    for (node, sequence, timestamp_ms) in rows {
+        let event = RuntimeEvent {
+            id: RuntimeEventId::generate(),
+            sequence,
+            node_id: NodeId::new(node),
+            timestamp_ms,
+            kind: RuntimeEventKind::Lifecycle,
+            module_id: Some(module.clone()),
+            correlation_id: None,
+            causation_id: None,
+            payload: RuntimeEventPayload::Lifecycle(LifecycleEvent::Started),
+        };
+        journal.append(&event).await.unwrap();
+    }
+
+    let expected = [("node-b", 1), ("node-a", 2), ("node-a", 1), ("node-b", 9)];
+    for limit in 1..=expected.len() {
+        for _ in 0..2 {
+            let recent: Vec<(String, u64)> = journal
+                .recent(limit)
+                .await
+                .unwrap()
+                .iter()
+                .map(|event| (event.node_id.to_string(), event.sequence))
+                .collect();
+            let by_module: Vec<(String, u64)> = journal
+                .by_module(&module, limit)
+                .await
+                .unwrap()
+                .iter()
+                .map(|event| (event.node_id.to_string(), event.sequence))
+                .collect();
+            let wanted: Vec<(String, u64)> = expected[..limit]
+                .iter()
+                .map(|(node, sequence)| (node.to_string(), *sequence))
+                .collect();
+            assert_eq!(recent, wanted, "limite {limit}");
+            assert_eq!(by_module, wanted, "limite {limit} (par module)");
+        }
+    }
+}

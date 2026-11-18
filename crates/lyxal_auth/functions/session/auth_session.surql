@@ -318,9 +318,9 @@ DEFINE FUNCTION OVERWRITE fn::auth_session_list($params: object) {
         WHERE state = "active" AND expires_at > time::now()
             AND ($identity IS NONE OR identity = $identity)
             AND ($p.organization IS NONE OR organization = $p.organization)
-        ORDER BY last_seen_at DESC LIMIT $p.limit);
+        ORDER BY last_seen_at DESC, id DESC LIMIT $p.limit);
     RETURN fn::result_ok(array::map($rows, |$r| object::extend($r, { current: $auth IS NOT NONE AND $r.id = $auth })));
-} COMMENT "Sessions actives visibles par l'appelant ({ organization, identity, limit }) : les siennes par défaut ; celles d'une organisation avec auth.session.manage ; current marque la session de l'appel";
+} COMMENT "Sessions actives visibles par l'appelant ({ organization, identity, limit }) : les siennes par défaut ; celles d'une organisation avec auth.session.manage ; current marque la session de l'appel ; dernière activité la plus récente d'abord, puis identifiant décroissant (ordre total)";
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_session_check : validité d'une session désignée par un jeton vérifié par l'hôte

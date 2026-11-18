@@ -162,9 +162,9 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_schedule_view($id: record<scheduler_sche
     IF $schedule == NONE { RETURN NONE; };
     RETURN object::extend($schedule, {
         recent_runs: (SELECT id, state, origin, scheduled_for, attempt, finished_at, error FROM scheduler_run
-            WHERE schedule = $id ORDER BY scheduled_for DESC LIMIT 10)
+            WHERE schedule = $id ORDER BY scheduled_for DESC, id DESC LIMIT 10)
     });
-} COMMENT "Interne : planification et ses 10 dernières exécutions lisibles (identifiant, état, origine, date prévue, tentative, fin, erreur)";
+} COMMENT "Interne : planification et ses 10 dernières exécutions lisibles (identifiant, état, origine, date prévue, tentative, fin, erreur), par date prévue puis identifiant décroissants (ordre total)";
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_schedule_fields (interne)

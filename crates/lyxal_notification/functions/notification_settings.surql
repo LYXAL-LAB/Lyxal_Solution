@@ -188,9 +188,9 @@ DEFINE FUNCTION OVERWRITE fn::notification_suppression_list($params: object) {
     LET $scope = IF $p.tenant IS NONE { "installation" } ELSE { <string> record::id($p.tenant) };
     LET $rows = (SELECT * FROM notification_suppression
         WHERE scope_key = $scope AND ($p.reason IS NONE OR reason = $p.reason) AND ($p.channel IS NONE OR channel = $p.channel)
-        ORDER BY address LIMIT $p.limit START $p.start);
+        ORDER BY address, channel LIMIT $p.limit START $p.start);
     RETURN fn::result_ok($rows);
-} COMMENT "Adresses et numéros supprimés d'une portée ({ tenant, reason, channel, limit, start }), triés par adresse. Permission notification.read";
+} COMMENT "Adresses et numéros supprimés d'une portée ({ tenant, reason, channel, limit, start }), triés par adresse puis par canal (ordre total : une adresse n'est supprimée qu'une fois par canal). Permission notification.read";
 
 -- ----------------------------------------------------------------------------
 -- fn::notification_run_get
@@ -241,5 +241,5 @@ DEFINE FUNCTION OVERWRITE fn::notification_run_list($params: object) {
     LET $scope = IF $p.tenant IS NONE { "installation" } ELSE { <string> record::id($p.tenant) };
     RETURN fn::result_ok(SELECT * OMIT secret FROM notification_run
         WHERE scope_key = $scope AND ($p.status IS NONE OR status = $p.status) AND ($p.workflow IS NONE OR workflow = $p.workflow)
-        ORDER BY created_at DESC LIMIT $p.limit START $p.start);
-} COMMENT "Déclenchements d'une portée ({ tenant, status, workflow, limit, start }), du plus récent au plus ancien ; jamais de secret. Permission notification.read";
+        ORDER BY created_at DESC, id DESC LIMIT $p.limit START $p.start);
+} COMMENT "Déclenchements d'une portée ({ tenant, status, workflow, limit, start }), du plus récent au plus ancien, puis par identifiant décroissant à date égale (ordre total) ; jamais de secret. Permission notification.read";

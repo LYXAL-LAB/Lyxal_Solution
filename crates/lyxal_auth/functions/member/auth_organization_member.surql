@@ -142,11 +142,13 @@ DEFINE FUNCTION OVERWRITE fn::auth_organization_member_list($params: object) {
     IF !fn::auth_has_permission({ permission: "auth.organization.manage" }) AND !fn::auth_has_permission({ permission: "auth.member.read", tenant: $p.organization }) {
         RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, { permission: "auth.member.read" });
     };
+    -- Départage sur l'identité, unique dans l'organisation, sous son nom renvoyé (identity) :
+    -- une clé de tri absente des champs renvoyés peut être ignorée par le moteur
     RETURN fn::result_ok(
         SELECT in AS identity, state, joined_at, ->auth_has_role->auth_role.key AS roles
-        FROM auth_member_of WHERE out = $p.organization ORDER BY joined_at LIMIT $p.limit START $p.start
+        FROM auth_member_of WHERE out = $p.organization ORDER BY joined_at, identity LIMIT $p.limit START $p.start
     );
-} COMMENT "Liste les membres d'une organisation avec leurs rôles ({ organization, limit, start }). Permission auth.member.read ou auth.organization.manage";
+} COMMENT "Liste les membres d'une organisation avec leurs rôles ({ organization, limit, start }), par date d'adhésion puis identité (ordre total). Permission auth.member.read ou auth.organization.manage";
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_is_last_admin : l'adhésion est-elle la dernière adhésion active administratrice ?

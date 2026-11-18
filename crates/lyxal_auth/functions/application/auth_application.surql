@@ -88,8 +88,8 @@ DEFINE FUNCTION OVERWRITE fn::auth_application_list($params: object) {
     LET $p = $report.value;
     IF !fn::auth_application_can({ tenant: $p.tenant }) { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, { permission: "auth.application.manage" }); };
     RETURN fn::result_ok(SELECT *, (SELECT id, prefix, expires_at, revoked_at, created_at FROM auth_application_secret WHERE application = $parent.id) AS secrets
-        FROM auth_application WHERE ($p.tenant IS NONE AND tenant IS NONE) OR tenant = $p.tenant ORDER BY name LIMIT $p.limit);
-} COMMENT "Applications d'une portée ({ tenant, limit }) avec leurs secrets (préfixe seulement). Permission de gestion des applications";
+        FROM auth_application WHERE ($p.tenant IS NONE AND tenant IS NONE) OR tenant = $p.tenant ORDER BY name, id LIMIT $p.limit);
+} COMMENT "Applications d'une portée ({ tenant, limit }) avec leurs secrets (préfixe seulement), par nom puis identifiant (ordre total). Permission de gestion des applications";
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_application_secret_add / _revoke
