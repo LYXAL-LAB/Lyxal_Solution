@@ -1,11 +1,11 @@
 use async_trait::async_trait;
 use lyxal_event::{
-    DeliveryStatus, Event, EventContext, EventDelivery, EventStore, EventSubscription,
-    EventWorkerConfig, Handler, HandlerContext, HandlerRegistry, LyxalEventError,
+    DeliveryStatus, Event, EventContext, EventDelivery, EventStore, EventSubscription, Handler,
+    HandlerContext, HandlerRegistry, LyxalEventError,
 };
 use lyxal_runtime::descriptor::ModuleDescriptor;
 use lyxal_runtime::error::RuntimeError;
-use lyxal_runtime::event_engine::{EventConsumerModule, EventEngineConfig};
+use lyxal_runtime::event_engine::EventConsumerModule;
 use lyxal_runtime::module::LyxalModule;
 use lyxal_runtime::runtime::LyxalRuntime;
 use lyxal_runtime::types::ModuleId;
@@ -95,7 +95,7 @@ async fn test_runtime_event_worker_auto_start_and_dispatch() {
     };
     let notification_module = Arc::new(MockNotificationModule::new(handler));
 
-    let mut event_config = EventEngineConfig::default();
+    let mut event_config = crate::common::event_config();
     event_config.worker_config.poll_interval = Duration::from_millis(50);
 
     let runtime = LyxalRuntime::new(crate::common::runtime_config())
@@ -117,6 +117,7 @@ async fn test_runtime_event_worker_auto_start_and_dispatch() {
         "lyxal_notification",
         "booking.created",
         "notification.booking_created_handler",
+        crate::common::TEST_HOST,
     );
     event_store
         .register_subscription(&sub)
@@ -183,7 +184,7 @@ async fn test_runtime_define_event_e2e() {
     };
     let notification_module = Arc::new(MockNotificationModule::new(handler));
 
-    let mut event_config = EventEngineConfig::default();
+    let mut event_config = crate::common::event_config();
     event_config.worker_config.poll_interval = Duration::from_millis(50);
 
     let runtime = LyxalRuntime::new(crate::common::runtime_config())
@@ -203,6 +204,7 @@ async fn test_runtime_define_event_e2e() {
         "lyxal_notification",
         "booking.created",
         "notification.booking_created_handler",
+        crate::common::TEST_HOST,
     );
     event_store
         .register_subscription(&sub)
@@ -269,7 +271,7 @@ async fn test_runtime_define_event_e2e() {
 async fn test_runtime_shutdown_graceful_no_zombies() {
     let client = common::setup_db("test_ns", "test_db").await;
 
-    let mut event_config = EventEngineConfig::default();
+    let mut event_config = crate::common::event_config();
     event_config.worker_config.poll_interval = Duration::from_millis(50);
     event_config.gc_interval = Duration::from_millis(50);
 
@@ -325,6 +327,7 @@ async fn test_runtime_restart_and_fanout_recovery() {
         "lyxal_notification",
         "booking.created",
         "notification.booking_created_handler",
+        crate::common::TEST_HOST,
     );
     event_store
         .register_subscription(&sub)
@@ -351,14 +354,8 @@ async fn test_runtime_restart_and_fanout_recovery() {
     };
     let notification_module = Arc::new(MockNotificationModule::new(handler));
 
-    let event_config = EventEngineConfig {
-        auto_recover_fanouts: true,
-        worker_config: EventWorkerConfig {
-            poll_interval: Duration::from_millis(50),
-            ..Default::default()
-        },
-        ..Default::default()
-    };
+    let mut event_config = crate::common::event_config().with_auto_recover_fanouts(true);
+    event_config.worker_config.poll_interval = Duration::from_millis(50);
 
     let runtime = LyxalRuntime::new(crate::common::runtime_config())
         .with_client(client.clone())
@@ -405,11 +402,11 @@ async fn test_runtime_multi_instance_isolation() {
     let module_alpha = Arc::new(MockNotificationModule::new(handler_alpha));
     let module_beta = Arc::new(MockNotificationModule::new(handler_beta));
 
-    let mut config_alpha = EventEngineConfig::default();
+    let mut config_alpha = crate::common::event_config();
     config_alpha.worker_config.poll_interval = Duration::from_millis(50);
     config_alpha.worker_config.instance_id = Some("instance_alpha".to_string());
 
-    let mut config_beta = EventEngineConfig::default();
+    let mut config_beta = crate::common::event_config();
     config_beta.worker_config.poll_interval = Duration::from_millis(50);
     config_beta.worker_config.instance_id = Some("instance_beta".to_string());
 
@@ -438,6 +435,7 @@ async fn test_runtime_multi_instance_isolation() {
         "lyxal_notification",
         "booking.created",
         "notification.booking_created_handler",
+        crate::common::TEST_HOST,
     );
     store_alpha
         .register_subscription(&sub_alpha)
@@ -451,6 +449,7 @@ async fn test_runtime_multi_instance_isolation() {
         "lyxal_notification",
         "booking.created",
         "notification.booking_created_handler",
+        crate::common::TEST_HOST,
     );
     store_beta
         .register_subscription(&sub_beta)
@@ -504,7 +503,7 @@ async fn test_runtime_multi_instance_isolation() {
 async fn test_runtime_missing_handler_behavior() {
     let client = common::setup_db("test_ns", "test_db").await;
 
-    let mut event_config = EventEngineConfig::default();
+    let mut event_config = crate::common::event_config();
     event_config.worker_config.poll_interval = Duration::from_millis(50);
 
     let runtime = LyxalRuntime::new(crate::common::runtime_config())
@@ -520,6 +519,7 @@ async fn test_runtime_missing_handler_behavior() {
         "lyxal_unknown",
         "booking.created",
         "unknown.non_existent_handler",
+        crate::common::TEST_HOST,
     );
     event_store
         .register_subscription(&sub)
@@ -659,7 +659,7 @@ async fn test_runtime_event_worker_crash_supervision() {
 #[tokio::test]
 async fn test_runtime_restart_reuses_event_workers() {
     let client = common::setup_db("test_ns", "test_restart").await;
-    let mut event_config = EventEngineConfig::default();
+    let mut event_config = crate::common::event_config();
     event_config.worker_config.poll_interval = Duration::from_millis(50);
     let runtime = LyxalRuntime::new(crate::common::runtime_config())
         .with_client(client)
@@ -675,4 +675,83 @@ async fn test_runtime_restart_reuses_event_workers() {
         Some(WorkerState::Running)
     );
     runtime.stop_all().await.expect("arrêt final");
+}
+
+// ---------------------------------------------------------------------------
+// Hôtes : configuration du moteur et sonde de lyxal_event
+// ---------------------------------------------------------------------------
+
+/// Le moteur d'événements sert l'hôte du runtime : une configuration construite pour un autre
+/// hôte est refusée au démarrage du moteur.
+#[tokio::test]
+async fn test_event_engine_for_another_host_is_refused() {
+    let client = common::setup_db("host_ns", "host_refused").await;
+    let runtime = LyxalRuntime::new(crate::common::runtime_config())
+        .with_client(client)
+        .with_event_config(lyxal_runtime::EventEngineConfig::new(&crate::common::host(
+            "lyxal_other",
+        )));
+    let refused = runtime.init_event_engine().await;
+    assert!(
+        matches!(&refused, Err(RuntimeError::EventEngineError { message }) if message.contains("lyxal_other")),
+        "{refused:?}"
+    );
+}
+
+/// La sonde `lyxal_event`, enregistrée par le runtime avec le moteur, passe à « dégradé » quand
+/// un hôte a des livraisons anciennes sans chef vivant, et nomme cet hôte.
+#[tokio::test]
+async fn test_event_engine_health_check_reports_host_without_leader() {
+    let client = common::setup_db("host_ns", "host_health").await;
+    let runtime = LyxalRuntime::new(crate::common::runtime_config())
+        .with_client(client.clone())
+        .with_event_config(
+            crate::common::event_config().with_backlog_alert_after(Duration::from_secs(60)),
+        );
+    runtime
+        .init_event_engine()
+        .await
+        .expect("moteur d'événements");
+    let check = runtime
+        .health_registry()
+        .get_check(&lyxal_runtime::ModuleId::new(
+            lyxal_runtime::event_engine::EVENT_MODULE_ID,
+        ))
+        .expect("sonde lyxal_event enregistrée");
+    let ctx = lyxal_runtime::context::ModuleContext::new("lyxal_event");
+    let healthy = check.check(&ctx).await.expect("sonde");
+    assert_eq!(healthy.status, lyxal_runtime::HealthStatus::Healthy);
+
+    // Abonnement d'un hôte jamais démarré : sa livraison attend depuis 10 minutes
+    let store = runtime.event_store().unwrap();
+    store
+        .register_subscription(&EventSubscription::new(
+            "sub_absent",
+            "lyxal_notification",
+            "booking.created",
+            "notification.booking_created_handler",
+            "lyxal_absent",
+        ))
+        .await
+        .expect("abonnement");
+    runtime
+        .event_publisher()
+        .unwrap()
+        .publish(&BookingCreated {
+            booking_id: "b1".to_string(),
+            customer_email: "b1@lyxal.com".to_string(),
+        })
+        .await
+        .expect("publication");
+    client
+        .query("UPDATE event_delivery SET created_at = time::now() - 10m")
+        .await
+        .unwrap()
+        .check()
+        .unwrap();
+
+    let degraded = check.check(&ctx).await.expect("sonde");
+    assert_eq!(degraded.status, lyxal_runtime::HealthStatus::Degraded);
+    let message = degraded.message.unwrap_or_default();
+    assert!(message.contains("lyxal_absent : 1"), "{message}");
 }

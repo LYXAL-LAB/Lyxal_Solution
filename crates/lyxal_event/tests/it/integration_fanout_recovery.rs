@@ -30,12 +30,14 @@ async fn test_recover_pending_fanouts_after_crash() {
         "lyxal_accounting",
         "invoice.issued",
         "handle_invoice",
+        common::HOST,
     );
     let sub2 = EventSubscription::new(
         "sub_analytics",
         "lyxal_analytics",
         "invoice.*",
         "track_revenue",
+        common::HOST,
     );
     store.register_subscription(&sub1).await.unwrap();
     store.register_subscription(&sub2).await.unwrap();

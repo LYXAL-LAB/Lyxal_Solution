@@ -128,6 +128,7 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
         &mut self,
         subscription: &RecordId,
     ) -> &mut SubscriptionProgressTracker {
+        let host = self.lease_manager.host().to_string();
         let node_id = self.lease_manager.node_id().to_string();
         let client = self.client.clone();
         let gen = Arc::new(std::sync::atomic::AtomicU64::new(
@@ -138,7 +139,14 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
         self.trackers
             .entry(subscription.clone())
             .or_insert_with(|| {
-                SubscriptionProgressTracker::new(client, subscription.clone(), node_id, gen, cancel)
+                SubscriptionProgressTracker::new(
+                    client,
+                    subscription.clone(),
+                    host,
+                    node_id,
+                    gen,
+                    cancel,
+                )
             })
     }
 
@@ -175,6 +183,7 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
             outbox_event: outbox_event.clone(),
             subscription: subscription.clone(),
             target_module: target_module.to_string(),
+            host: self.lease_manager.host().to_string(),
             node_id,
             generation,
             context,
@@ -404,6 +413,7 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
             let params = super::dto::DeadLetterTransferParams {
                 delivery_id,
                 error: super::progress::bounded_error_message(reason),
+                host: self.lease_manager.host().to_string(),
                 node_id: self.lease_manager.node_id().to_string(),
                 generation: self.lease_manager.current_generation(),
             };
@@ -472,6 +482,7 @@ mod tests {
         let client = surrealdb::engine::any::connect("mem://").await.unwrap();
         let lease = Arc::new(OutboxLeaseManager::new(
             client.clone(),
+            "host_1",
             "node_1",
             Duration::from_secs(5),
         ));
@@ -503,6 +514,7 @@ mod tests {
         let client = surrealdb::engine::any::connect("mem://").await.unwrap();
         let lease = Arc::new(OutboxLeaseManager::new(
             client.clone(),
+            "host_1",
             "node_1",
             Duration::from_secs(5),
         ));

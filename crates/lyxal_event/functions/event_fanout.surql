@@ -56,6 +56,8 @@ DEFINE FUNCTION OVERWRITE fn::event_fanout(
                 CREATE event_delivery CONTENT {
                     outbox_event: $outbox_event.id,
                     subscription: $sub.id,
+                    -- L'hôte de l'abonnement : seul son chef des événements traitera la livraison
+                    host: $sub.host,
                     target_module: $sub.target_module,
                     context: $outbox_event.context,
                     status: "pending",
@@ -78,5 +80,5 @@ DEFINE FUNCTION OVERWRITE fn::event_fanout(
         deliveries_created: $created_count,
         status: "fanned_out"
     });
-} COMMENT "Ventile un événement outbox vers tous ses abonnés, suspendus compris (livraisons en attente de réactivation), de façon strictement idempotente"
+} COMMENT "Ventile un événement outbox vers tous ses abonnés, suspendus compris (livraisons en attente de réactivation), de façon strictement idempotente ; chaque livraison porte l'hôte de son abonnement"
 PERMISSIONS FULL;

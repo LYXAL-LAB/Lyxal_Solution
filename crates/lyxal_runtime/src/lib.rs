@@ -58,7 +58,8 @@ pub use event::{
     RuntimeSystemEvent, SubscriptionError, SurrealRuntimeEventJournal, WorkerEvent,
 };
 pub use event_engine::{
-    EventConsumerModule, EventEngineConfig, EventGarbageCollectorService, EventWorkerService,
+    EventConsumerModule, EventEngineConfig, EventEngineHealthCheck, EventGarbageCollectorService,
+    EventWorkerService,
 };
 pub use health::{
     chrono_now_string, GlobalHealthStatus, HealthCheckResult, HealthConfig, HealthEngine,

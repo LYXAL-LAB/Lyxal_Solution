@@ -1,7 +1,15 @@
+use crate::presence::HostId;
 use lyxal_event::EventWorkerConfig;
 use std::time::Duration;
 
+/// Seuil par défaut de la sonde du moteur d'événements : une livraison en attente depuis plus
+/// longtemps, sur un hôte sans chef vivant, rend le moteur « dégradé » (décision H4).
+pub const DEFAULT_BACKLOG_ALERT_AFTER: Duration = Duration::from_secs(300);
+
 /// Configuration du LYXAL Event Engine intégré dans Lyxal Runtime.
+///
+/// Construite par [`EventEngineConfig::new`] pour l'hôte du runtime : pas de valeur par défaut,
+/// le worker d'événements sert les abonnements d'un hôte précis.
 #[derive(Debug, Clone)]
 pub struct EventEngineConfig {
     /// Indique si le moteur d'événements asynchrone est activé pour l'instance.
@@ -18,23 +26,28 @@ pub struct EventEngineConfig {
     pub recover_fanout_batch_size: usize,
     /// Initialise automatiquement les schémas et fonctions SurrealQL de lyxal_event.
     pub auto_init_schema: bool,
+    /// Âge à partir duquel la sonde `lyxal_event` signale les livraisons d'un hôte sans chef
+    /// vivant (5 minutes par défaut).
+    pub backlog_alert_after: Duration,
 }
 
-impl Default for EventEngineConfig {
-    fn default() -> Self {
+impl EventEngineConfig {
+    /// Configuration du moteur d'événements de l'hôte `host` (celui du `RuntimeConfig`), avec
+    /// les réglages par défaut.
+    #[must_use]
+    pub fn new(host: &HostId) -> Self {
         Self {
             enabled: true,
-            worker_config: EventWorkerConfig::default(),
+            worker_config: EventWorkerConfig::new(host.as_str()),
             gc_interval: Duration::from_secs(300),
             retention_days: 7,
             auto_recover_fanouts: true,
             recover_fanout_batch_size: 50,
             auto_init_schema: true,
+            backlog_alert_after: DEFAULT_BACKLOG_ALERT_AFTER,
         }
     }
-}
 
-impl EventEngineConfig {
     /// Active ou désactive le moteur d'événements.
     #[must_use]
     pub fn with_enabled(mut self, enabled: bool) -> Self {
@@ -67,6 +80,13 @@ impl EventEngineConfig {
     #[must_use]
     pub fn with_auto_recover_fanouts(mut self, auto_recover: bool) -> Self {
         self.auto_recover_fanouts = auto_recover;
+        self
+    }
+
+    /// Définit l'âge à partir duquel la sonde signale les livraisons d'un hôte sans chef vivant.
+    #[must_use]
+    pub fn with_backlog_alert_after(mut self, age: Duration) -> Self {
+        self.backlog_alert_after = age;
         self
     }
 

@@ -17,6 +17,7 @@ DEFINE FUNCTION OVERWRITE fn::event_flush_batch(
     LET $checks = {
         subscription: fn::validation_record_id($params.subscription, ["event_subscription"]),
         target_cursor: fn::validation_integer($params.target_cursor, 0, NONE),
+        host: fn::validation_regex($params.host, "^[a-z][a-z0-9_]{0,63}$"),
         node_id: fn::validation_required_string($params.node_id, 1, 128),
         generation: fn::validation_integer($params.generation, 1, NONE),
         delivered_ids: fn::validation_array_of_records($params.delivered_ids ?? [], "event_delivery", false),
@@ -32,6 +33,7 @@ DEFINE FUNCTION OVERWRITE fn::event_flush_batch(
     LET $p = object::from_entries(array::map(object::entries($checks), |$e| [$e[0], $e[1].value]));
     LET $subscription = $p.subscription;
     LET $target_cursor = $p.target_cursor;
+    LET $host = $p.host;
     LET $node_id = $p.node_id;
     LET $generation = $p.generation;
     LET $delivered_ids = $p.delivered_ids;
@@ -40,7 +42,8 @@ DEFINE FUNCTION OVERWRITE fn::event_flush_batch(
     LET $drop_reason = $p.drop_reason;
 
     LET $now = time::now();
-    LET $lease_rec = event_stream_lease:outbox_leader;
+    -- Bail du chef des événements de cet hôte (un bail par hôte)
+    LET $lease_rec = type::record("event_stream_lease", $host);
 
     -- 1. Garde transactionnelle de Fencing (Écriture conditionnelle sur le bail)
     LET $guard = (
@@ -56,6 +59,17 @@ DEFINE FUNCTION OVERWRITE fn::event_flush_batch(
 
     IF array::len($guard) == 0 {
         THROW "EVENT_STALE_LEADER_FENCED";
+    };
+
+    -- Contrôle de propriété, dans la même transaction que la garde : l'abonnement appartient à
+    -- l'hôte de ce bail (un chef n'écrit jamais dans le flux d'un abonnement d'un autre hôte)
+    LET $owner = (SELECT VALUE host FROM ONLY $subscription);
+    IF $owner != $host {
+        RETURN fn::error_result("EVENT_SUBSCRIPTION_NOT_OWNED", $params.language, {
+            subscription: <string> $subscription,
+            host: $host,
+            owner_host: $owner
+        });
     };
 
     -- 2. Chargement de la progression de l'abonnement
@@ -153,6 +167,6 @@ DEFINE FUNCTION OVERWRITE fn::event_flush_batch(
         dead_letter_count: array::len($dead_letter_ids),
         dropped_count: array::len($dropped_ids)
     });
-} COMMENT "Applique les statuts terminaux et avance le curseur sous invariant contigu et garde de fencing."
+} COMMENT "Applique les statuts terminaux et avance le curseur d'un abonnement ({ subscription, target_cursor, host, node_id, generation, delivered_ids, dead_letter_ids, dropped_ids, drop_reason }) sous invariant contigu et garde du bail de l'hôte (EVENT_STALE_LEADER_FENCED) ; abonnement d'un autre hôte : EVENT_SUBSCRIPTION_NOT_OWNED."
 PERMISSIONS FULL;
 

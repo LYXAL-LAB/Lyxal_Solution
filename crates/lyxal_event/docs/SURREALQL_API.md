@@ -31,16 +31,18 @@ module, exécutées côté serveur, y accèdent.
 | :--- | :--- | :--- |
 | `name` | `string` | Nom unique. |
 | `target_module` | `string` | Module consommateur. |
+| `host` | `string` | Hôte propriétaire : rôle du binaire qui porte le handler (`^[a-z][a-z0-9_]{0,63}$`, index `idx_subscription_host`). |
 | `event_pattern` | `string` | Type exact, `prefixe.*` ou `*`. |
 | `handler_name` | `string` | Nom du handler. |
 | `max_attempts` | `number` | Budget d'essais d'une livraison avant dead letter (1 à 100, défaut 5). |
-| `is_active` | `bool` | Un abonnement inactif ne reçoit plus de livraison au fan-out. |
+| `is_active` | `bool` | Abonnement suspendu : ses livraisons sont créées et attendent sa réactivation. |
 
 ### `event_delivery` — une livraison par couple (événement, abonnement)
 
 | Champ | Type | Rôle |
 | :--- | :--- | :--- |
 | `outbox_event`, `subscription` | `record` | Couple unique (index `idx_delivery_unique_fanout`). |
+| `host` | `string` | Hôte de l'abonnement, recopié à la ventilation ; lecture par l'index `idx_delivery_claim_eligibility` `(host, status, next_retry_at)`. Une livraison orpheline (abonnement supprimé) garde son hôte. |
 | `target_module`, `context` | `string`, `object` | Repris de l'abonnement et de l'événement. |
 | `status` | `string` | `pending`, `processing`, `failed` (retry programmé), `delivered`, `dead_letter`, `dropped`. |
 | `delivery_seq` | `option<int>` | Séquence dans le flux de l'abonnement, attribuée au premier séquencement, conservée aux reprises. |
@@ -60,10 +62,10 @@ Enregistrement `event_subscription_progress:prog_<id de l'abonnement>`.
 | `last_persisted_cursor` | Plus grande séquence telle que toutes les séquences jusqu'à elle sont résolues (`delivered`, `dead_letter`, `dropped`). |
 | `partition`, `updated_at` | Partition (toujours 0) et dernier avancement. |
 
-### `event_stream_lease` — bail du leader
+### `event_stream_lease` — un bail par hôte
 
-Enregistrement unique `event_stream_lease:outbox_leader` : `owner_node_id`, `generation`
-(croît à chaque prise de bail), `acquired_at`, `expires_at`, `last_flushed_at`, `is_released`.
+Enregistrement `event_stream_lease:<hôte>` : `host`, `owner_node_id`, `generation` (croît à
+chaque prise de bail), `acquired_at`, `expires_at`, `last_flushed_at`, `is_released`.
 
 ### `event_dead_letter` — quarantaine
 
@@ -92,7 +94,9 @@ La validation des entrées suit la décision CTO de la reprise :
 | Fonction | Paramètres (requis en gras) | Donnée renvoyée |
 | :--- | :--- | :--- |
 | `fn::event_publish` | **event_id** (UUID), **event_type**, **producer**, version (défaut 1), source, context, correlation_id, causation_id, payload, metadata, auto_fanout (défaut `true`) | événement créé |
-| `fn::event_subscription_register` | **name**, **target_module**, **event_pattern**, **handler_name**, is_active (défaut `true`), max_attempts (1 à 100, défaut 5) | abonnement (créé, ou mis à jour s'il existe sous ce nom) |
+| `fn::event_subscription_register` | **name**, **target_module**, **host**, **event_pattern**, **handler_name**, is_active (défaut `true`), max_attempts (1 à 100, défaut 5) | abonnement (créé, ou mis à jour s'il existe sous ce nom pour le même hôte) ; autre hôte : `EVENT_SUBSCRIPTION_HOST_CONFLICT` |
+| `fn::event_subscription_transfer` | **name**, **host** | `{ name, previous_host, host, deliveries }` : l'abonnement et ses livraisons non soldées passent au nouvel hôte ; `EVENT_HOST_ACTIVE` tant que le bail de l'ancien hôte est vivant, `EVENT_SUBSCRIPTION_NOT_FOUND`. Session système seulement. |
+| `fn::event_backlog` | older_than (durée, 1 s à 30 j, défaut 5 min) | par hôte ayant des livraisons non soldées, trié par hôte : `{ host, pending, waiting (créées avant older_than), oldest, leader_alive, leader_node }` |
 | `fn::event_outbox_get` | **id** (`record<event_outbox>`) | événement ou `NONE` |
 | `fn::event_delivery_get` | **id** (`record<event_delivery>`) | livraison ou `NONE` |
 | `fn::event_dead_letter_list` | limit (1 à 1 000, défaut 100), delivery | dead letters |
@@ -116,21 +120,22 @@ Appelées par `EventWorker` et ses composants, jamais par un module.
 | :--- | :--- | :--- |
 | `fn::event_fanout` | **outbox_id** | Crée les livraisons des abonnements actifs correspondants (idempotent) et passe l'événement en `fanned_out`. |
 | `fn::event_recover_pending_fanouts` | limit | Ventile les événements restés `pending`. Renvoie `{ recovered_count }`. |
-| `fn::event_delivery_fetch_pending` | **limit**, instance_id, subscription | Livraisons éligibles (non résolues, verrou expiré, retry échu), avec l'événement d'origine et `max_attempts` de l'abonnement. |
-| `fn::event_delivery_assign_seq` | **outbox_event**, **subscription**, **target_module**, **node_id**, **generation**, **context**, lock_seconds (défaut 30) | Sous garde de bail : attribue la séquence suivante, ou reverrouille une livraison qui en a déjà une sans la changer. |
+| `fn::event_delivery_fetch_pending` | **host**, limit (défaut 50), instance_id, subscription | Livraisons éligibles de l'hôte (non résolues, verrou expiré, retry échu), des plus anciennes aux plus récentes, avec l'événement d'origine et `max_attempts` de l'abonnement. |
+| `fn::event_delivery_assign_seq` | **outbox_event**, **subscription**, **target_module**, **host**, **node_id**, **generation**, context, lock_seconds (défaut 30) | Sous garde du bail de l'hôte et contrôle de propriété : attribue la séquence suivante, ou reverrouille une livraison qui en a déjà une sans la changer. |
 | `fn::event_delivery_failure` | **delivery_id**, **error**, retry_delay_seconds | Enregistre un échec transitoire (`failed`, `last_error`, `next_retry_at`). Ne libère pas le verrou et ne décide jamais d'une dead letter. |
-| `fn::event_dead_letter_transfer` | **delivery_id**, **error**, **node_id**, **generation** | Sous garde de bail : crée la dead letter et passe la livraison en `dead_letter` (barrière DLQ). |
-| `fn::event_flush_batch` | **subscription**, **target_cursor**, **node_id**, **generation**, delivered_ids, dead_letter_ids, dropped_ids, drop_reason | Sous garde de bail : applique les résolutions et avance le curseur après contrôle de contiguïté. |
+| `fn::event_dead_letter_transfer` | **delivery_id**, **error**, **host**, **node_id**, **generation** | Sous garde du bail de l'hôte et contrôle de propriété de la livraison : crée la dead letter et passe la livraison en `dead_letter` (barrière DLQ). |
+| `fn::event_flush_batch` | **subscription**, **target_cursor**, **host**, **node_id**, **generation**, delivered_ids, dead_letter_ids, dropped_ids, drop_reason | Sous garde du bail de l'hôte et contrôle de propriété : applique les résolutions et avance le curseur après contrôle de contiguïté. |
 | `fn::event_progress_get` | **subscription** | `{ last_assigned_seq, last_persisted_cursor, exists, … }` |
-| `fn::event_lease_acquire` | **node_id**, **ttl_seconds** | `{ acquired, generation, owner_node_id, expires_at }` |
-| `fn::event_lease_renew` | **node_id**, **generation**, **ttl_seconds** | `{ renewed, generation, expires_at }` |
-| `fn::event_lease_release` | **node_id**, **generation** | `{ released }` |
+| `fn::event_lease_acquire` | **host**, **node_id**, ttl_seconds (défaut 6) | Bail `event_stream_lease:<host>` : `{ acquired, generation, owner_node_id, expires_at }` |
+| `fn::event_lease_renew` | **host**, **node_id**, **generation**, ttl_seconds | `{ renewed, generation, expires_at }` |
+| `fn::event_lease_release` | **host**, **node_id**, **generation** | `{ released }` |
 
 ### 2.3. Erreurs levées par `THROW`
 
-Les trois fonctions protégées par le bail (`event_delivery_assign_seq`,
+Les trois fonctions protégées par le bail de l'hôte (`event_delivery_assign_seq`,
 `event_dead_letter_transfer`, `event_flush_batch`) écrivent d'abord sur le bail pour se
-protéger. Un échec ultérieur doit annuler toute la transaction : il est donc levé par `THROW`,
+protéger. Le refus de propriété (`EVENT_SUBSCRIPTION_NOT_OWNED`), qui suit la garde sans autre
+écriture, est un résultat d'erreur ordinaire (`fn::error_result`). Un échec ultérieur doit annuler toute la transaction : il est donc levé par `THROW`,
 exception documentée au contrat `fn::error_result` (décision CTO Q2). Côté Rust, ces codes sont
 reconnus en un seul endroit (`src/error.rs`) et deviennent `LyxalEventError::StaleLeaderFenced`
 ou une erreur d'invariant de curseur.
@@ -143,6 +148,11 @@ ou une erreur d'invariant de curseur.
 | :--- | :--- | :--- | :--- |
 | `EVENT_INVALID_PARAMETERS` | `validation` | 400 | toutes les fonctions (`details.fields`) |
 | `EVENT_DELIVERY_NOT_FOUND` | `not_found` | 404 | `event_delivery_failure`, `event_dead_letter_replay`, `event_dead_letter_transfer` (`THROW`) |
+| `EVENT_SUBSCRIPTION_NOT_FOUND` | `not_found` | 404 | `event_subscription_transfer` |
+| `EVENT_WRITE_FORBIDDEN` | `authorization` | 403 | `event_publish`, `event_subscription_register`, `event_subscription_transfer`, `event_lease_acquire` (session sans droit) |
+| `EVENT_SUBSCRIPTION_HOST_CONFLICT` | `conflict` | 409 | `event_subscription_register` |
+| `EVENT_SUBSCRIPTION_NOT_OWNED` | `conflict` | 409 | `event_delivery_assign_seq`, `event_flush_batch`, `event_dead_letter_transfer` |
+| `EVENT_HOST_ACTIVE` | `conflict` | 409 | `event_subscription_transfer` (réessayable) |
 | `EVENT_DEAD_LETTER_REPLAY_NOT_SETTLED` | `conflict` | 409 | `event_dead_letter_replay` (réessayable) |
 | `EVENT_STALE_LEADER_FENCED` | `conflict` | 412 | fonctions protégées par le bail (`THROW`) |
 | `EVENT_CURSOR_NON_MONOTONIC` | `validation` | 422 | `event_flush_batch` (`THROW`) |

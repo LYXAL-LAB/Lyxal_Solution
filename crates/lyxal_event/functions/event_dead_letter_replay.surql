@@ -27,7 +27,7 @@ DEFINE FUNCTION OVERWRITE fn::event_dead_letter_replay(
 
     -- La séquence de la livraison doit être couverte par le curseur persisté : la livraison
     -- reçoit ensuite une nouvelle séquence en fin de flux, sans laisser de trou.
-    LET $delivery = (SELECT delivery_seq, subscription FROM ONLY $dl.delivery);
+    LET $delivery = (SELECT delivery_seq, subscription, host, subscription.host AS subscription_host FROM ONLY $dl.delivery);
     IF $delivery == NONE {
         RETURN fn::error_result("EVENT_DELIVERY_NOT_FOUND", $p.language, { delivery: <string> $dl.delivery });
     };
@@ -45,9 +45,12 @@ DEFINE FUNCTION OVERWRITE fn::event_dead_letter_replay(
         replayed = true,
         replayed_at = time::now();
 
-    -- Réinitialise la livraison associée en statut 'pending'
+    -- Réinitialise la livraison associée en statut 'pending', pour l'hôte courant de son abonnement
+    -- (changé peut-être depuis par fn::event_subscription_transfer ; abonnement supprimé : la
+    -- livraison garde son hôte)
     UPDATE $dl.delivery SET
         status = "pending",
+        host = $delivery.subscription_host ?? $delivery.host,
         delivery_seq = NONE,
         attempts = 0,
         next_retry_at = time::now(),
@@ -56,5 +59,5 @@ DEFINE FUNCTION OVERWRITE fn::event_dead_letter_replay(
         last_error = NONE;
 
     RETURN fn::result_ok(true);
-} COMMENT "Rejoue une dead letter : sa livraison repasse en pending et recevra une nouvelle séquence. Refusé tant que le curseur persisté ne couvre pas l'ancienne séquence."
+} COMMENT "Rejoue une dead letter : sa livraison repasse en pending, pour l'hôte courant de son abonnement, et recevra une nouvelle séquence. Refusé tant que le curseur persisté ne couvre pas l'ancienne séquence."
 PERMISSIONS FULL;

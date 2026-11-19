@@ -3,7 +3,6 @@
 //! reprise d'une migration interrompue pour la ligne de commande (`recovery`).
 
 use crate::{config::AppConfig, error::ServerError, modules};
-use lyxal_event::EventWorkerConfig;
 use lyxal_runtime::lock::SurrealInstallationLeaseManager;
 use lyxal_runtime::{
     EventEngineConfig, LyxalRuntime, ModuleId, ModulePackage, RuntimeConfig, SurrealRuntimeStore,
@@ -60,22 +59,16 @@ pub async fn start_with(
     additional: Vec<ModulePackage>,
 ) -> Result<Started, ServerError> {
     let timeouts = &config.runtime;
-    let runtime_config = RuntimeConfig::new(modules::host_id()?)
+    let host = modules::host_id()?;
+    // Le chef des événements de cet hôte ne sert que les abonnements de `lyxal_server` (bail
+    // `event_stream_lease:lyxal_server`). Le filtre `instance_id` reste vide : les événements
+    // émis par la base (`DEFINE EVENT`) portent le contexte `default`.
+    // `lyxal_event` est installé comme les autres modules, depuis son manifeste.
+    let event_config = EventEngineConfig::new(&host).with_auto_init_schema(false);
+    let runtime_config = RuntimeConfig::new(host)
         .with_install_timeout(Duration::from_secs(timeouts.module_install_timeout_seconds))
         .with_start_timeout(Duration::from_secs(timeouts.module_start_timeout_seconds))
         .with_stop_timeout(Duration::from_secs(timeouts.module_stop_timeout_seconds));
-    let event_config = EventEngineConfig {
-        // Le worker traite toutes les livraisons de la base de l'instance : les événements émis
-        // par la base (`DEFINE EVENT`) ne connaissent pas l'instance hôte (contexte `default`),
-        // et chaque instance a sa propre base (`database.namespace` / `database.database`).
-        worker_config: EventWorkerConfig {
-            instance_id: None,
-            ..EventWorkerConfig::default()
-        },
-        // `lyxal_event` est installé comme les autres modules, depuis son manifeste.
-        auto_init_schema: false,
-        ..EventEngineConfig::default()
-    };
     let runtime = LyxalRuntime::new(runtime_config);
     let foundation = modules::install_foundation(client, runtime.node_id()).await?;
     let runtime = runtime

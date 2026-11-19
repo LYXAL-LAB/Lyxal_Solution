@@ -94,6 +94,14 @@ pub const EMBEDDED_RESOURCES: &[(&str, &str)] = &[
         include_str!("../../functions/event_subscription_register.surql"),
     ),
     (
+        "functions/event_subscription_transfer.surql",
+        include_str!("../../functions/event_subscription_transfer.surql"),
+    ),
+    (
+        "functions/event_backlog.surql",
+        include_str!("../../functions/event_backlog.surql"),
+    ),
+    (
         "functions/event_outbox_get.surql",
         include_str!("../../functions/event_outbox_get.surql"),
     ),
@@ -172,6 +180,7 @@ struct PurgeGarbageParams {
 struct SubscriptionRegisterParams {
     name: String,
     target_module: String,
+    host: String,
     event_pattern: String,
     handler_name: String,
     is_active: bool,
@@ -239,6 +248,7 @@ impl EventStore {
         let params = SubscriptionRegisterParams {
             name: sub.name.clone(),
             target_module: sub.target_module.clone(),
+            host: sub.host.clone(),
             event_pattern: sub.event_pattern.clone(),
             handler_name: sub.handler_name.clone(),
             is_active: sub.is_active,
@@ -247,6 +257,32 @@ impl EventStore {
         let created: EventSubscription =
             self.call_fn("event_subscription_register", params).await?;
         Ok(created)
+    }
+
+    /// Change l'hôte d'un abonnement et de ses livraisons non soldées
+    /// (`fn::event_subscription_transfer`, fonction d'exploitation). Refusé
+    /// (`EVENT_HOST_ACTIVE`) tant que le bail du chef de l'ancien hôte est vivant.
+    pub async fn transfer_subscription(
+        &self,
+        name: &str,
+        host: &str,
+    ) -> Result<crate::engine::dto::SubscriptionTransferResult, LyxalEventError> {
+        let params = crate::engine::dto::SubscriptionTransferParams {
+            name: name.to_string(),
+            host: host.to_string(),
+        };
+        Ok(self.call_fn("event_subscription_transfer", params).await?)
+    }
+
+    /// Livraisons non soldées par hôte et état du chef de chaque hôte (`fn::event_backlog`).
+    pub async fn backlog(
+        &self,
+        older_than: std::time::Duration,
+    ) -> Result<Vec<crate::engine::dto::EventBacklog>, LyxalEventError> {
+        let params = crate::engine::dto::EventBacklogParams {
+            older_than: older_than.into(),
+        };
+        Ok(self.call_fn("event_backlog", params).await?)
     }
 
     /// Déclenche le fan-out explicite pour un événement outbox.

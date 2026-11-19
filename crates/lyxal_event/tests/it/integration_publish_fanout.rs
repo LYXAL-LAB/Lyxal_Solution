@@ -48,12 +48,14 @@ async fn test_publish_and_fanout_end_to_end() {
         "lyxal_notification",
         "booking.created",
         "send_confirmation_email",
+        common::HOST,
     );
     let sub_crm = EventSubscription::new(
         "sub_crm_booking",
         "lyxal_crm",
         "booking.*",
         "sync_customer_crm",
+        common::HOST,
     );
 
     store

@@ -1,13 +1,18 @@
 -- ============================================================================
 -- Table: event_stream_lease
--- Description: Table de coordination distribuée du bail de streaming outbox (Leadership & Fencing).
+-- Description: Baux des chefs des événements (Leadership & Fencing), un par hôte :
+--              identifiant event_stream_lease:<hôte>.
 -- ============================================================================
 
 DEFINE TABLE OVERWRITE event_stream_lease
     TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS NONE
-    COMMENT "Table de coordination distribuée du bail de streaming outbox (Leadership & Fencing).";
+    COMMENT "Baux des chefs des événements, un par hôte (event_stream_lease:<hôte>) : génération monotone (fencing), propriétaire, échéance.";
+
+DEFINE FIELD OVERWRITE host ON TABLE event_stream_lease TYPE string
+    ASSERT string::matches($value, "^[a-z][a-z0-9_]{0,63}$")
+    COMMENT "Hôte servi par ce bail (égal à l'identifiant de l'enregistrement).";
 
 DEFINE FIELD OVERWRITE generation ON TABLE event_stream_lease TYPE int
     COMMENT "Numéro de génération monotone strict pour le fencing token.";

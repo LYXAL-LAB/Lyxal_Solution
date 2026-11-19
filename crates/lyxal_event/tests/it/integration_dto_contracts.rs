@@ -38,6 +38,7 @@ async fn test_rejection_of_legacy_dto_and_negative_contracts() {
         "test_consumer_module",
         "test.event",
         "handle_test_event",
+        common::HOST,
     )
     .with_max_attempts(3);
     store.register_subscription(&sub).await.unwrap();
@@ -179,18 +180,20 @@ async fn test_delivery_fetch_pending_canonical_contract() {
         "test_consumer_module",
         "test.event",
         "handle_alpha",
+        common::HOST,
     );
     let sub2 = EventSubscription::new(
         "sub_fetch_beta",
         "test_consumer_module",
         "test.event",
         "handle_beta",
+        common::HOST,
     );
     store.register_subscription(&sub1).await.unwrap();
     store.register_subscription(&sub2).await.unwrap();
 
     // Insertion de 9 outbox events distincts (un par delivery pour respecter idx_delivery_unique_fanout)
-    for i in 1..=9 {
+    for i in 1..=10 {
         db.query(format!(
             r#"
             CREATE event_outbox:ev{} CONTENT {{
@@ -221,6 +224,7 @@ async fn test_delivery_fetch_pending_canonical_contract() {
     db.query(
         r#"
         CREATE event_delivery:d1 CONTENT {
+            host: "lyxal_test",
             outbox_event: event_outbox:ev1,
             subscription: event_subscription:sub_fetch_alpha,
             target_module: "test_consumer_module",
@@ -242,6 +246,7 @@ async fn test_delivery_fetch_pending_canonical_contract() {
     db.query(
         r#"
         CREATE event_delivery:d2 CONTENT {
+            host: "lyxal_test",
             outbox_event: event_outbox:ev2,
             subscription: event_subscription:sub_fetch_alpha,
             target_module: "test_consumer_module",
@@ -264,6 +269,7 @@ async fn test_delivery_fetch_pending_canonical_contract() {
     db.query(
         r#"
         CREATE event_delivery:d3 CONTENT {
+            host: "lyxal_test",
             outbox_event: event_outbox:ev3,
             subscription: event_subscription:sub_fetch_alpha,
             target_module: "test_consumer_module",
@@ -285,6 +291,7 @@ async fn test_delivery_fetch_pending_canonical_contract() {
     db.query(
         r#"
         CREATE event_delivery:d4 CONTENT {
+            host: "lyxal_test",
             outbox_event: event_outbox:ev4,
             subscription: event_subscription:sub_fetch_alpha,
             target_module: "test_consumer_module",
@@ -306,6 +313,7 @@ async fn test_delivery_fetch_pending_canonical_contract() {
     db.query(
         r#"
         CREATE event_delivery:d5 CONTENT {
+            host: "lyxal_test",
             outbox_event: event_outbox:ev5,
             subscription: event_subscription:sub_fetch_alpha,
             target_module: "test_consumer_module",
@@ -317,6 +325,7 @@ async fn test_delivery_fetch_pending_canonical_contract() {
             created_at: time::now() - 10s
         };
         CREATE event_delivery:d6 CONTENT {
+            host: "lyxal_test",
             outbox_event: event_outbox:ev6,
             subscription: event_subscription:sub_fetch_alpha,
             target_module: "test_consumer_module",
@@ -328,6 +337,7 @@ async fn test_delivery_fetch_pending_canonical_contract() {
             created_at: time::now() - 8s
         };
         CREATE event_delivery:d7 CONTENT {
+            host: "lyxal_test",
             outbox_event: event_outbox:ev7,
             subscription: event_subscription:sub_fetch_alpha,
             target_module: "test_consumer_module",
@@ -349,6 +359,7 @@ async fn test_delivery_fetch_pending_canonical_contract() {
     db.query(
         r#"
         CREATE event_delivery:d8 CONTENT {
+            host: "lyxal_test",
             outbox_event: event_outbox:ev8,
             subscription: event_subscription:sub_fetch_alpha,
             target_module: "test_consumer_module",
@@ -370,6 +381,7 @@ async fn test_delivery_fetch_pending_canonical_contract() {
     db.query(
         r#"
         CREATE event_delivery:d9 CONTENT {
+            host: "lyxal_test",
             outbox_event: event_outbox:ev9,
             subscription: event_subscription:sub_fetch_beta,
             target_module: "test_consumer_module",
@@ -387,12 +399,35 @@ async fn test_delivery_fetch_pending_canonical_contract() {
     .check()
     .unwrap();
 
+    // D10: Éligible mais d'un autre hôte : jamais lue par le chef de l'hôte de test
+    db.query(
+        r#"
+        CREATE event_delivery:d10 CONTENT {
+            host: "lyxal_other",
+            outbox_event: event_outbox:ev10,
+            subscription: event_subscription:sub_fetch_other,
+            target_module: "test_consumer_module",
+            status: "pending",
+            attempts: 0,
+            context: { instance_id: "inst_alpha", namespace: "test_ns", database: "test_fetch" },
+            locked_until: NONE,
+            next_retry_at: NONE,
+            created_at: time::now() - 40s
+        };
+        "#,
+    )
+    .await
+    .unwrap()
+    .check()
+    .unwrap();
+
     // =========================================================================
     // Test 1 : Requête sans filtre instance/subscription -> doit ramener d1, d2, d8, d9
     // (exclut d3 [verrou], d4 [retry futur], d5 [delivered], d6 [dead_letter], d7 [dropped])
     // =========================================================================
     let all = store
         .fetch_pending_deliveries(lyxal_event::engine::dto::DeliveryFetchPendingParams {
+            host: common::HOST.to_string(),
             limit: 50,
             instance_id: None,
             subscription: None,
@@ -410,11 +445,25 @@ async fn test_delivery_fetch_pending_canonical_contract() {
     assert!(ids.contains(&"event_delivery:d8".to_string()));
     assert!(ids.contains(&"event_delivery:d9".to_string()));
 
+    // L'autre hôte ne lit que la sienne
+    let other = store
+        .fetch_pending_deliveries(lyxal_event::engine::dto::DeliveryFetchPendingParams {
+            host: "lyxal_other".to_string(),
+            limit: 50,
+            instance_id: None,
+            subscription: None,
+        })
+        .await
+        .unwrap();
+    let other_ids: Vec<String> = other.iter().map(|d| d.id.to_sql()).collect();
+    assert_eq!(other_ids, vec!["event_delivery:d10".to_string()]);
+
     // =========================================================================
     // Test 2 : Filtre par instance 'inst_alpha' -> doit ramener d1, d2, d9 (exclut d8)
     // =========================================================================
     let alpha_only = store
         .fetch_pending_deliveries(lyxal_event::engine::dto::DeliveryFetchPendingParams {
+            host: common::HOST.to_string(),
             limit: 50,
             instance_id: Some("inst_alpha".to_string()),
             subscription: None,
@@ -430,6 +479,7 @@ async fn test_delivery_fetch_pending_canonical_contract() {
     // =========================================================================
     let beta_sub_only = store
         .fetch_pending_deliveries(lyxal_event::engine::dto::DeliveryFetchPendingParams {
+            host: common::HOST.to_string(),
             limit: 50,
             instance_id: None,
             subscription: Some(lyxal_surreal::RecordId::new(
@@ -447,6 +497,7 @@ async fn test_delivery_fetch_pending_canonical_contract() {
     // =========================================================================
     let limited = store
         .fetch_pending_deliveries(lyxal_event::engine::dto::DeliveryFetchPendingParams {
+            host: common::HOST.to_string(),
             limit: 2,
             instance_id: None,
             subscription: None,
@@ -478,6 +529,7 @@ async fn test_suspended_subscription_holds_its_deliveries() {
         "test_consumer_module",
         "test.event",
         "handle_suspendue",
+        common::HOST,
     );
     let registered = store.register_subscription(&sub).await.unwrap();
     db.query(
@@ -490,6 +542,7 @@ async fn test_suspended_subscription_holds_its_deliveries() {
             payload: {}, metadata: {}, status: "fanned_out", fanned_out_at: time::now()
         };
         CREATE event_delivery:ds CONTENT {
+            host: "lyxal_test",
             outbox_event: event_outbox:ev_s, subscription: $sub, target_module: "test_consumer_module",
             status: "pending", attempts: 0,
             context: { instance_id: "inst", namespace: "test_ns", database: "test_suspend" },
@@ -505,6 +558,7 @@ async fn test_suspended_subscription_holds_its_deliveries() {
 
     let fetch = || {
         store.fetch_pending_deliveries(lyxal_event::engine::dto::DeliveryFetchPendingParams {
+            host: common::HOST.to_string(),
             limit: 10,
             instance_id: None,
             subscription: None,
@@ -546,6 +600,7 @@ async fn test_event_published_while_suspended_is_delivered_after_reactivation() 
         "test_consumer_module",
         "test.event",
         "handle_suspendue",
+        common::HOST,
     );
     sub.is_active = false;
     store.register_subscription(&sub).await.unwrap();
@@ -571,6 +626,7 @@ async fn test_event_published_while_suspended_is_delivered_after_reactivation() 
 
     let fetch = || {
         store.fetch_pending_deliveries(lyxal_event::engine::dto::DeliveryFetchPendingParams {
+            host: common::HOST.to_string(),
             limit: 10,
             instance_id: None,
             subscription: None,

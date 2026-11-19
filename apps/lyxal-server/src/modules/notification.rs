@@ -257,6 +257,7 @@ pub async fn reconcile_subscriptions(
                 id: None,
                 name: name.to_string(),
                 target_module: CONSUMER_MODULE.to_string(),
+                host: super::HOST_ID.to_string(),
                 event_pattern: event_type.to_string(),
                 handler_name: AUTH_HANDLER.to_string(),
                 is_active: enabled,

@@ -30,6 +30,8 @@ pub struct EventDelivery {
     pub outbox_event: RecordId,
     /// Référence à l'abonnement destinataire.
     pub subscription: RecordId,
+    /// Hôte de l'abonnement : seul son chef des événements traite la livraison.
+    pub host: String,
     /// Module destinataire.
     pub target_module: String,
     /// Contexte d'isolation de l'instance.

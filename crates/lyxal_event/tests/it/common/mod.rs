@@ -90,9 +90,17 @@ pub async fn delivery_statuses(db: &Surreal<Any>) -> Vec<String> {
     res.take(0).expect("statuts")
 }
 
-/// Configuration de worker pour les tests : boucles et bail courts.
+/// Hôte des tests à un seul hôte.
+pub const HOST: &str = "lyxal_test";
+
+/// Configuration de worker pour les tests de l'hôte `HOST` : boucles et bail courts.
 pub fn fast_config(worker_id: &str) -> lyxal_event::EventWorkerConfig {
-    lyxal_event::EventWorkerConfig::default()
+    fast_host_config(HOST, worker_id)
+}
+
+/// Configuration de worker pour les tests de l'hôte `host` : boucles et bail courts.
+pub fn fast_host_config(host: &str, worker_id: &str) -> lyxal_event::EventWorkerConfig {
+    lyxal_event::EventWorkerConfig::new(host)
         .with_worker_id(worker_id)
         .with_batch_size(50)
         .with_poll_interval(std::time::Duration::from_millis(20))

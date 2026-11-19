@@ -12,6 +12,7 @@ mod integration_define_event;
 mod integration_dto_contracts;
 mod integration_fanout_recovery;
 mod integration_instance_isolation;
+mod integration_multi_host;
 mod integration_publish_fanout;
 mod integration_retry_dlq_replay;
 mod unit_tests;

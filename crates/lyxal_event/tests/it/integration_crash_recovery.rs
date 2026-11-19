@@ -43,7 +43,13 @@ async fn test_worker_crash_and_lease_recovery() {
     common::install_event(store.client()).await;
 
     // 1. Abonnement
-    let sub = EventSubscription::new("task_sub", "lyxal_worker", "task.assigned", "execute_task");
+    let sub = EventSubscription::new(
+        "task_sub",
+        "lyxal_worker",
+        "task.assigned",
+        "execute_task",
+        common::HOST,
+    );
     store.register_subscription(&sub).await.unwrap();
 
     // 2. Publication d'un événement
@@ -122,7 +128,13 @@ async fn crash_after_sequencing(
     store: &Arc<EventStore>,
     count: usize,
 ) {
-    let sub = EventSubscription::new("task_sub", "lyxal_worker", "task.assigned", "execute_task");
+    let sub = EventSubscription::new(
+        "task_sub",
+        "lyxal_worker",
+        "task.assigned",
+        "execute_task",
+        common::HOST,
+    );
     store.register_subscription(&sub).await.unwrap();
     let publisher =
         EventPublisher::new(store.clone(), "lyxal_orchestrator", EventContext::default());

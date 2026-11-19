@@ -10,6 +10,8 @@ pub struct EventSubscription {
     pub name: String,
     /// Module destinataire (ex: "lyxal_notification").
     pub target_module: String,
+    /// Hôte propriétaire : rôle du binaire qui porte le handler (ex: "lyxal_server").
+    pub host: String,
     /// Motif écouté (ex: "booking.created", "booking.*", "*").
     pub event_pattern: String,
     /// Nom du handler correspondant.
@@ -23,18 +25,20 @@ pub struct EventSubscription {
 }
 
 impl EventSubscription {
-    /// Crée une nouvelle définition d'abonnement.
+    /// Crée une nouvelle définition d'abonnement, servie par l'hôte `host`.
     #[must_use]
     pub fn new(
         name: impl Into<String>,
         target_module: impl Into<String>,
         event_pattern: impl Into<String>,
         handler_name: impl Into<String>,
+        host: impl Into<String>,
     ) -> Self {
         Self {
             id: None,
             name: name.into(),
             target_module: target_module.into(),
+            host: host.into(),
             event_pattern: event_pattern.into(),
             handler_name: handler_name.into(),
             is_active: true,
