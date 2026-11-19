@@ -198,7 +198,7 @@ Le lot 3 ne dépend que du lot 1 et peut se faire en parallèle du lot 2.
 
 ## 7. Décisions du CTO
 
-À valider par le CTO.
+Décisions H1 à H9 **validées par le CTO** le 19 novembre 2026, telles que proposées ci-dessous (H9 telle quelle : le cas de deux modules d'un même hôte sur un même type d'événement va à la feuille de route de `lyxal_event`).
 
 | N° | Question | Proposition |
 | :- | :--- | :--- |
