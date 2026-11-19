@@ -67,7 +67,7 @@
 -- test: alpha réserve sa seule place
 -- en tant que: worker
 {
-    LET $c = fn::scheduler_run_claim({ queue: "default", node: "n1", limit: 1 }).data.items;
+    LET $c = fn::scheduler_run_claim({ queue: "default", node: "n1", host: "hote_essai", handlers: ["essai.rapport"], limit: 1 }).data.items;
     RETURN array::len($c) = 1 AND $c[0].tenant = auth_organization:alpha;
 };
 
@@ -75,7 +75,7 @@
 -- en tant que: worker
 {
     sleep(1100ms);
-    LET $c = fn::scheduler_run_claim({ queue: "default", node: "n1", limit: 1 }).data.items;
+    LET $c = fn::scheduler_run_claim({ queue: "default", node: "n1", host: "hote_essai", handlers: ["essai.rapport"], limit: 1 }).data.items;
     LET $q = (SELECT VALUE running FROM ONLY scheduler_queue:default);
     RETURN array::len($c) = 1 AND $c[0].tenant = auth_organization:beta AND $q = 2;
 };

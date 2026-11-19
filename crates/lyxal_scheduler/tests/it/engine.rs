@@ -8,7 +8,7 @@ use jiff::{SignedDuration, Timestamp};
 use lyxal_runtime::health::{HealthStatus, ModuleHealthCheck};
 use lyxal_runtime::lock::{NodeId, SurrealLeaderLeaseManager};
 use lyxal_runtime::worker::{CancellationToken, LyxalWorker, WorkerContext};
-use lyxal_runtime::{ModuleContext, RuntimeError};
+use lyxal_runtime::{HostId, ModuleContext, RuntimeError};
 use lyxal_scheduler::models::*;
 use lyxal_scheduler::spec::{to_datetime, to_duration, to_timestamp};
 use lyxal_scheduler::{
@@ -35,9 +35,92 @@ struct Bench {
     handlers: HandlerRegistry,
 }
 
+/// Hôte d'essai (`hote_a` par défaut, `hote_b` pour le second binaire des essais à deux hôtes).
+fn host(name: &str) -> HostId {
+    HostId::new(name).expect("hôte")
+}
+
 impl Bench {
     fn engine(&self, node: &str) -> SchedulerEngine {
-        SchedulerEngine::new(self.store.clone(), self.handlers.clone(), NodeId::new(node))
+        SchedulerEngine::new(
+            self.store.clone(),
+            self.handlers.clone(),
+            NodeId::new(node),
+            host("hote_a"),
+        )
+    }
+
+    /// Moteur d'un nœud `node` de l'hôte `host_name`, avec ses propres handlers.
+    fn engine_of(&self, host_name: &str, node: &str, handlers: HandlerRegistry) -> SchedulerEngine {
+        SchedulerEngine::new(
+            self.store.clone(),
+            handlers,
+            NodeId::new(node),
+            host(host_name),
+        )
+    }
+
+    /// Exécuteurs de `engine` pour chaque file de `queues`.
+    fn executors_of(&self, engine: &SchedulerEngine, queues: &[&str]) -> Vec<Running> {
+        queues
+            .iter()
+            .map(|queue| {
+                start(Arc::new(
+                    SchedulerExecutorWorker::with_timing(engine.clone(), *queue, 2, exec_timing())
+                        .expect("exécuteur"),
+                ))
+            })
+            .collect()
+    }
+
+    /// Les nœuds de l'hôte `host_name` n'ont plus réservé depuis deux minutes (hôte arrêté
+    /// depuis plus longtemps que la fenêtre de présence d'une minute). `seen_at` est recalculé
+    /// à chaque écriture : sa définition est levée le temps de l'écriture, aucun exécuteur ne
+    /// doit tourner pendant ce temps.
+    async fn age_nodes_of(&self, host_name: &str) {
+        self.client
+            .query(
+                "DEFINE FIELD OVERWRITE seen_at ON TABLE scheduler_node TYPE datetime;
+                 UPDATE scheduler_node SET seen_at = time::now() - 2m WHERE host = $host;
+                 DEFINE FIELD OVERWRITE seen_at ON TABLE scheduler_node TYPE datetime VALUE time::now();",
+            )
+            .bind(("host", host_name.to_string()))
+            .await
+            .and_then(|r| r.check())
+            .expect("nœuds vieillis");
+    }
+
+    /// Exécution de la tâche d'installation `task` disponible depuis dix minutes (au-delà du
+    /// seuil de 5 min de la sonde), écrite directement en session système : la garde des
+    /// exécutions refuse de changer la date d'une exécution en attente.
+    async fn enqueue_waiting(&self, task: &str) -> RecordId {
+        let run: Option<RecordId> = self
+            .client
+            .query(
+                "LET $since = time::now() - 10m;
+                 LET $task = type::record('scheduler_task', $name);
+                 RETURN (CREATE ONLY scheduler_run CONTENT {
+                     task: $task, queue: (SELECT VALUE queue FROM ONLY $task), origin: 'enqueue',
+                     scheduled_for: $since, available_at: $since, state: 'queued', priority: 5,
+                     max_attempts: (SELECT VALUE retry.max_attempts FROM ONLY $task)
+                 }).id;",
+            )
+            .bind(("name", task.to_string()))
+            .await
+            .and_then(|mut r| r.take(2))
+            .expect("exécution en attente");
+        run.expect("exécution créée")
+    }
+
+    async fn nodes_of(&self, host_name: &str) -> i64 {
+        let count: Option<i64> = self
+            .client
+            .query("RETURN count(SELECT VALUE id FROM scheduler_node WHERE host = $host);")
+            .bind(("host", host_name.to_string()))
+            .await
+            .and_then(|mut r| r.take(0))
+            .expect("nœuds");
+        count.unwrap_or_default()
     }
 
     fn executor(&self, node: &str, queue: &str, slots: u32) -> Arc<SchedulerExecutorWorker> {
@@ -647,7 +730,7 @@ async fn a_run_abandoned_by_a_stopped_node_is_rescued_by_another() {
     let run = bench.enqueue("essai.long", None, None).await;
 
     // Nœud a : la tentative ne rend pas la main ; arrêt du nœud → abandon après le délai d'arrêt
-    let node_a = SchedulerEngine::new(bench.store.clone(), stubborn, NodeId::new("noeud-a"));
+    let node_a = bench.engine_of("hote_a", "noeud-a", stubborn);
     let timing = ExecutorTiming {
         max_heartbeat: Duration::from_secs(30),
         ..exec_timing()
@@ -906,25 +989,179 @@ async fn a_full_tenant_does_not_block_another() {
     executor.stop(Duration::from_secs(5)).await;
 }
 
+/// Deux hôtes sur une base (H3, H4, H5) : la tâche `handler` de l'hôte B n'est jamais réservée
+/// par l'hôte A, même bien après son délai maximal ; B arrêté, elle attend (`queued`, aucune
+/// tentative) et la sonde de A la signale en nommant B ; au retour de B, elle est exécutée. Les
+/// tâches `function` et `event` sont exécutées par l'un ou l'autre hôte.
 #[tokio::test]
-async fn a_task_without_handler_waits_then_fails() {
+async fn two_hosts_a_handler_task_waits_for_its_host() {
     let bench = bench().await;
-    let run = bench.enqueue("essai.court", None, None).await;
-    let executor = start(bench.executor("noeud-a", "default", 2));
-    tokio::time::sleep(Duration::from_millis(300)).await;
-    assert_eq!(
-        bench.state(&run).await,
-        "queued",
-        "laissée à un nœud qui a le code"
-    );
-    bench
-        .wait_state(&run, "dead", Duration::from_secs(10))
+    let seen = Arc::new(Mutex::new(Vec::new()));
+    let b_handlers = || {
+        let mut handlers = HandlerRegistry::new();
+        handlers
+            .register(Arc::new(Recorder {
+                task: "essai.court",
+                seen: seen.clone(),
+            }))
+            .expect("handler");
+        handlers
+    };
+    let ctx = ModuleContext::new("lyxal_scheduler");
+
+    // L'hôte B a tourné : il s'est inscrit en réservant, puis il s'est arrêté
+    let node_b = bench.engine_of("hote_b", "noeud-b1", b_handlers());
+    for worker in bench.executors_of(&node_b, &["default"]) {
+        eventually("hôte b inscrit", Duration::from_secs(5), || async {
+            bench.nodes_of("hote_b").await == 1
+        })
         .await;
-    executor.stop(Duration::from_secs(5)).await;
-    assert_eq!(
-        bench.error_code(&run).await.as_deref(),
-        Some("SCHEDULER_HANDLER_NOT_FOUND")
+        worker.stop(Duration::from_secs(5)).await;
+    }
+    bench.age_nodes_of("hote_b").await;
+
+    // B arrêté : sa tâche (délai maximal 1 s) attend depuis dix minutes ; l'hôte A sert les
+    // deux files sans aucun handler
+    let run = bench.enqueue_waiting("essai.court").await;
+    let purge = bench.enqueue("essai.purge", None, None).await;
+    let tick = bench.enqueue("essai.global", None, None).await;
+    let node_a = bench.engine_of("hote_a", "noeud-a", HandlerRegistry::new());
+    let a = bench.executors_of(&node_a, &["default", "maintenance"]);
+    bench
+        .wait_state(&purge, "completed", Duration::from_secs(10))
+        .await;
+    bench
+        .wait_state(&tick, "completed", Duration::from_secs(10))
+        .await;
+    tokio::time::sleep(Duration::from_millis(1500)).await;
+    assert_eq!(bench.state(&run).await, "queued", "jamais réservée par A");
+    assert_eq!(bench.attempt(&run).await, 0);
+    assert_eq!(bench.error_code(&run).await, None);
+    let report = SchedulerHealthCheck::new(node_a.clone())
+        .check(&ctx)
+        .await
+        .expect("sonde");
+    assert_eq!(report.status, HealthStatus::Degraded);
+    let message = report.message.unwrap_or_default();
+    assert!(message.contains("tâche essai.court"), "{message}");
+    assert!(message.contains("1 exécution(s) en attente"), "{message}");
+    assert!(message.contains("hôte absent : hote_b"), "{message}");
+    assert!(!message.contains("files servies par aucun"), "{message}");
+
+    // Retour de B (nouveau nœud) : la tâche est exécutée, une seule fois, et la sonde de A
+    // redevient saine
+    let node_b = bench.engine_of("hote_b", "noeud-b2", b_handlers());
+    let b = bench.executors_of(&node_b, &["default", "maintenance"]);
+    bench
+        .wait_state(&run, "completed", Duration::from_secs(10))
+        .await;
+    assert_eq!(bench.attempt(&run).await, 1);
+    assert_eq!(seen.lock().expect("contextes").len(), 1);
+    let check = SchedulerHealthCheck::new(node_a.clone());
+    eventually("sonde de A saine", Duration::from_secs(5), || async {
+        check.check(&ctx).await.expect("sonde").status == HealthStatus::Healthy
+    })
+    .await;
+
+    // A arrêté : B exécute aussi les tâches function et event
+    for worker in a {
+        worker.stop(Duration::from_secs(5)).await;
+    }
+    let purge = bench.enqueue("essai.purge", None, None).await;
+    let tick = bench.enqueue("essai.global", None, None).await;
+    bench
+        .wait_state(&purge, "completed", Duration::from_secs(10))
+        .await;
+    bench
+        .wait_state(&tick, "completed", Duration::from_secs(10))
+        .await;
+    for worker in b {
+        worker.stop(Duration::from_secs(5)).await;
+    }
+}
+
+/// Deux hôtes : un seul planificateur élu pour toute la base ; quand il s'arrête, celui de
+/// l'autre hôte prend le bail.
+#[tokio::test]
+async fn two_hosts_one_elected_scheduler_and_failover() {
+    let bench = bench().await;
+    let leader = |host_name: &str, node: &str| {
+        Arc::new(
+            SchedulerLeaderWorker::with_timing(
+                bench.engine_of(host_name, node, HandlerRegistry::new()),
+                SurrealLeaderLeaseManager::new(bench.client.clone()),
+                leader_timing(),
+            )
+            .expect("planificateur"),
+        )
+    };
+    let (a, b) = (leader("hote_a", "noeud-a"), leader("hote_b", "noeud-b"));
+    let token = CancellationToken::new();
+    for _ in 0..3 {
+        let (ra, rb) = tokio::join!(a.run_once(&token), b.run_once(&token));
+        let (ra, rb) = (ra.expect("tour a"), rb.expect("tour b"));
+        assert!(
+            ra.leader != rb.leader,
+            "un seul planificateur : {ra:?} {rb:?}"
+        );
+    }
+    let leases = SurrealLeaderLeaseManager::new(bench.client.clone());
+    let owner = || async {
+        leases
+            .inspect(LEADER_KEY)
+            .await
+            .expect("bail")
+            .map(|lease| lease.owner)
+    };
+    let first = owner().await.expect("planificateur élu");
+    let (running_a, running_b) = (start(a), start(b));
+    let (elected, other, other_node) = if first == NodeId::new("noeud-a") {
+        (running_a, running_b, NodeId::new("noeud-b"))
+    } else {
+        (running_b, running_a, NodeId::new("noeud-a"))
+    };
+    elected.stop(Duration::from_secs(5)).await;
+    eventually(
+        "bascule vers l'autre hôte",
+        Duration::from_secs(10),
+        || async { owner().await == Some(other_node.clone()) },
+    )
+    .await;
+    other.stop(Duration::from_secs(5)).await;
+}
+
+/// Deux hôtes : une file servie par l'autre hôte ne déclenche aucune alerte ; l'autre hôte
+/// arrêté depuis plus d'une minute, la file est signalée.
+#[tokio::test]
+async fn two_hosts_a_queue_served_by_the_other_host_is_not_an_alert() {
+    let bench = bench().await;
+    let node_b = bench.engine_of("hote_b", "noeud-b", HandlerRegistry::new());
+    let b = bench.executors_of(&node_b, &["maintenance"]);
+    let node_a = bench.engine_of("hote_a", "noeud-a", HandlerRegistry::new());
+    let a = bench.executors_of(&node_a, &["default"]);
+    eventually("deux hôtes inscrits", Duration::from_secs(5), || async {
+        bench.nodes_of("hote_a").await == 1 && bench.nodes_of("hote_b").await == 1
+    })
+    .await;
+    let check = SchedulerHealthCheck::new(node_a.clone());
+    let ctx = ModuleContext::new("lyxal_scheduler");
+    let report = check.check(&ctx).await.expect("sonde");
+    assert_eq!(report.status, HealthStatus::Healthy, "{:?}", report.message);
+
+    for worker in b {
+        worker.stop(Duration::from_secs(5)).await;
+    }
+    bench.age_nodes_of("hote_b").await;
+    let report = check.check(&ctx).await.expect("sonde");
+    assert_eq!(report.status, HealthStatus::Degraded);
+    let message = report.message.unwrap_or_default();
+    assert!(
+        message.contains("files servies par aucun nœud actif : maintenance"),
+        "{message}"
     );
+    for worker in a {
+        worker.stop(Duration::from_secs(5)).await;
+    }
 }
 
 #[tokio::test]
@@ -967,11 +1204,16 @@ async fn health_reports_served_queues_and_missing_handlers() {
     let engine = bench.engine("noeud-a");
     let check = SchedulerHealthCheck::new(engine.clone());
     let ctx = ModuleContext::new("lyxal_scheduler");
+    // Tâche handler en attente depuis dix minutes, servie par aucun nœud (jamais aucun)
+    let run = bench.enqueue_waiting("essai.court").await;
     let degraded = check.check(&ctx).await.expect("sonde");
     assert_eq!(degraded.status, HealthStatus::Degraded);
     let message = degraded.message.unwrap_or_default();
     assert!(message.contains("aucune file"), "{message}");
-    assert!(message.contains("essai.rapport"), "{message}");
+    assert!(message.contains("tâche essai.court"), "{message}");
+    assert!(message.contains("aucun hôte ne l'a servie"), "{message}");
+    // Tâches handler sans exécution en attente : aucune alerte
+    assert!(!message.contains("essai.rapport"), "{message}");
     assert!(!message.contains("alpha"), "{message}");
 
     for task in ["essai.rapport", "essai.lent", "essai.court", "essai.long"] {
@@ -990,13 +1232,12 @@ async fn health_reports_served_queues_and_missing_handlers() {
         engine.executors().queues().len() == 2
     })
     .await;
-    let healthy = check.check(&ctx).await.expect("sonde");
-    assert_eq!(
-        healthy.status,
-        HealthStatus::Healthy,
-        "{:?}",
-        healthy.message
-    );
+    // L'exécution en attente est réservée dès que le nœud a le handler
+    eventually("sonde saine", Duration::from_secs(5), || async {
+        check.check(&ctx).await.expect("sonde").status == HealthStatus::Healthy
+    })
+    .await;
+    assert_ne!(bench.state(&run).await, "queued");
     default.stop(Duration::from_secs(5)).await;
     maintenance.stop(Duration::from_secs(5)).await;
 }
@@ -1114,7 +1355,7 @@ async fn a_handler_served_by_another_node_is_not_reported_missing() {
         let (handler, ..) = waiter(task);
         handlers.register(Arc::new(handler)).expect("handler");
     }
-    let node_b = SchedulerEngine::new(bench.store.clone(), handlers, NodeId::new("noeud-b"));
+    let node_b = bench.engine_of("hote_b", "noeud-b", handlers);
     let b = start(Arc::new(
         SchedulerExecutorWorker::with_timing(node_b, "maintenance", 1, exec_timing())
             .expect("exécuteur"),
@@ -1130,7 +1371,7 @@ async fn a_handler_served_by_another_node_is_not_reported_missing() {
         ))
     });
     eventually("files servies", Duration::from_secs(5), || async {
-        engine.executors().queues().len() == 2
+        engine.executors().queues().len() == 2 && bench.nodes_of("hote_b").await == 1
     })
     .await;
     let ctx = ModuleContext::new("lyxal_scheduler");

@@ -46,5 +46,5 @@ pub use worker::{
     ClaimResult, ClaimedRun, EngineHealth, FunctionCallParams, HealthParams, Heartbeat, LeaseToken,
     PruneResult, QueueStatus, RescueResult, RescuedRun, RunClaimParams, RunCompleteParams,
     RunFailParams, RunFailure, RunHeartbeatParams, RunPruneParams, RunPublishParams,
-    RunRescueParams,
+    RunRescueParams, UnservedTask,
 };

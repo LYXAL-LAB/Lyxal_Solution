@@ -77,9 +77,9 @@ RETURN fn::scheduler_queue_pause({ queue: "default", reason: "Maintenance" }).ok
 
 -- test: le moteur ne réserve rien dans une file en pause ; file inconnue
 -- en tant que: worker
-RETURN fn::scheduler_run_claim({ queue: "default", node: "n1" }).data == { items: [], paused: true }
-    AND fn::scheduler_run_claim({ queue: "inconnue", node: "n1" }).error.code = "SCHEDULER_QUEUE_NOT_FOUND"
-    AND fn::scheduler_run_claim({ queue: "default", node: "" }).error.code = "SCHEDULER_INVALID_PARAMETERS";
+RETURN fn::scheduler_run_claim({ queue: "default", node: "n1", host: "hote_essai", handlers: ["essai.rapport"] }).data == { items: [], paused: true }
+    AND fn::scheduler_run_claim({ queue: "inconnue", node: "n1", host: "hote_essai", handlers: ["essai.rapport"] }).error.code = "SCHEDULER_QUEUE_NOT_FOUND"
+    AND fn::scheduler_run_claim({ queue: "default", node: "", host: "hote_essai", handlers: ["essai.rapport"] }).error.code = "SCHEDULER_INVALID_PARAMETERS";
 
 -- test: reprise de la file
 -- en tant que: plateforme
@@ -88,7 +88,7 @@ RETURN fn::scheduler_queue_resume({ queue: "default" }).ok;
 -- test: réservation par priorité puis date, dans les places de la file ; bail rendu au moteur
 -- en tant que: worker
 {
-    LET $c = fn::scheduler_run_claim({ queue: "default", node: "n1", limit: 5 });
+    LET $c = fn::scheduler_run_claim({ queue: "default", node: "n1", host: "hote_essai", handlers: ["essai.rapport"], limit: 5 });
     UPSERT passe:r SET a = $c.data.items[0], b = $c.data.items[1];
     RETURN array::len($c.data.items) = 2 AND $c.data.items.args.note = ["b", "a"] AND $c.data.items.all(|$r| $r.attempt = 1 AND string::len($r.lease) = 36 AND $r.lease_node = "n1" AND $r.timeout = 1m)
         AND $c.data.items[0].locked_until > time::now() + 1m AND $c.data.items[0].locked_until <= time::now() + 2m
@@ -98,7 +98,7 @@ RETURN fn::scheduler_queue_resume({ queue: "default" }).ok;
 
 -- test: file pleine : plus rien n'est réservé
 -- en tant que: worker
-RETURN fn::scheduler_run_claim({ queue: "default", node: "n2" }).data.items = [];
+RETURN fn::scheduler_run_claim({ queue: "default", node: "n2", host: "hote_essai", handlers: ["essai.rapport"] }).data.items = [];
 
 -- test: places visibles dans la liste des files
 -- en tant que: lecteur
@@ -145,7 +145,7 @@ UPDATE (SELECT VALUE b.id FROM ONLY passe:r) SET cancel_requested = false;
     LET $h = fn::scheduler_run_heartbeat({ run: $b.id, lease: $b.lease });
     LET $done = fn::scheduler_run_complete({ run: $b.id, lease: $b.lease, result: { pages: 12 } });
     LET $running_after = (SELECT VALUE running FROM ONLY scheduler_queue:default);
-    LET $next = fn::scheduler_run_claim({ queue: "default", node: "n2" });
+    LET $next = fn::scheduler_run_claim({ queue: "default", node: "n2", host: "hote_essai", handlers: ["essai.rapport"] });
     UPDATE passe:r SET c = $next.data.items[0];
     RETURN $h.data.cancel_requested AND $done.data.state = "completed" AND $done.data.result = { pages: 12 } AND $done.data.lease IS NONE
         AND $done.data.finished_at IS NOT NONE AND $done.data.duration_ms >= 0 AND $running_after = 1
@@ -182,7 +182,7 @@ RETURN [1, 2, 3, 4].map(|$n| fn::scheduler_retry_delay({ strategy: "exponential"
 {
     LET $a = (SELECT VALUE a FROM ONLY passe:r);
     LET $avail = (SELECT VALUE available_at FROM ONLY $a.id);
-    LET $c = fn::scheduler_run_claim({ queue: "default", node: "n3" });
+    LET $c = fn::scheduler_run_claim({ queue: "default", node: "n3", host: "hote_essai", handlers: ["essai.rapport"] });
     RETURN IF $avail > time::now() { $c.data.items = [] } ELSE { $c.data.items[0].attempt = 2 };
 };
 
@@ -207,13 +207,13 @@ RETURN [1, 2, 3, 4].map(|$n| fn::scheduler_retry_delay({ strategy: "exponential"
 -- test: une organisation pleine n'en bloque pas une autre ; places jamais dépassées
 -- en tant que: worker
 {
-    LET $c = fn::scheduler_run_claim({ queue: "maintenance", node: "n1", limit: 10 });
+    LET $c = fn::scheduler_run_claim({ queue: "maintenance", node: "n1", host: "hote_essai", handlers: ["essai.rapport"], limit: 10 });
     UPSERT passe:m SET items = $c.data.items;
     RETURN array::sort($c.data.items.map(|$r| record::id($r.tenant))) = ["alpha", "beta"]
         AND (SELECT VALUE running FROM ONLY scheduler_slot:["maintenance", "alpha"]) = 1
         AND (SELECT VALUE running FROM ONLY scheduler_slot:["maintenance", "beta"]) = 1
         AND (SELECT VALUE running FROM ONLY scheduler_queue:maintenance) = 2
-        AND fn::scheduler_run_claim({ queue: "maintenance", node: "n1" }).data.items = [];
+        AND fn::scheduler_run_claim({ queue: "maintenance", node: "n1", host: "hote_essai", handlers: ["essai.rapport"] }).data.items = [];
 };
 
 -- test: compteur de places d'une organisation protégé
@@ -242,7 +242,7 @@ UPDATE (SELECT VALUE items[0].id FROM ONLY passe:m) SET locked_until = time::now
     LET $s = fn::scheduler_schedule_create({ name: "tic", task: "essai.global", spec: { every: [1m] }, pause_on_failure: true }).data.id;
     fn::scheduler_schedule_next_set({ node: "n1", generation: 1, schedule: $s, next_fire_at: time::now() + 1m });
     fn::scheduler_schedule_fire({ node: "n1", generation: 1, schedule: $s, fire_times: [{ at: time::now() - 10s, available_at: time::now() - 10s }], next_fire_at: time::now() + 1m });
-    LET $c = fn::scheduler_run_claim({ queue: "default", node: "n1", limit: 10 }).data.items.filter(|$r| $r.schedule = $s)[0];
+    LET $c = fn::scheduler_run_claim({ queue: "default", node: "n1", host: "hote_essai", handlers: ["essai.rapport"], limit: 10 }).data.items.filter(|$r| $r.schedule = $s)[0];
     UPSERT passe:g SET schedule = $s, run = $c;
 };
 
@@ -286,7 +286,7 @@ RETURN fn::scheduler_run_retry({ run: (SELECT VALUE run.id FROM ONLY passe:g) })
 {
     LET $a = (SELECT VALUE a FROM ONLY passe:r);
     RETURN [
-        fn::scheduler_run_claim({ queue: "default", node: "n1" }),
+        fn::scheduler_run_claim({ queue: "default", node: "n1", host: "hote_essai", handlers: ["essai.rapport"] }),
         fn::scheduler_run_heartbeat({ run: <string> $a.id, lease: "00000000-0000-7000-8000-000000000000" }),
         fn::scheduler_run_complete({ run: <string> $a.id, lease: "00000000-0000-7000-8000-000000000000" }),
         fn::scheduler_run_fail({ run: <string> $a.id, lease: "00000000-0000-7000-8000-000000000000", error: { code: "X" } }),

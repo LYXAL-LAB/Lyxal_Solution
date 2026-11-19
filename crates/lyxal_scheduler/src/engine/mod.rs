@@ -19,6 +19,7 @@ pub use executor::{ExecutorTiming, SchedulerExecutorWorker};
 pub use leader::{LeaderReport, LeaderTiming, SchedulerLeaderWorker};
 
 use lyxal_runtime::lock::NodeId;
+use lyxal_runtime::HostId;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, PoisonError};
 
@@ -87,25 +88,38 @@ impl Drop for ServeGuard {
 }
 
 /// Ce que partagent les workers et la sonde du moteur sur un nœud : la session système, le
-/// registre des handlers, l'identifiant du nœud et les files servies.
+/// registre des handlers, l'identifiant du nœud, son hôte et les files servies.
 #[derive(Clone)]
 pub struct SchedulerEngine {
     store: SchedulerStore,
     handlers: HandlerRegistry,
     node: NodeId,
+    host: HostId,
     executors: ExecutorSet,
 }
 
 impl SchedulerEngine {
-    /// Moteur sur la session système `store` (T2), avec les handlers inscrits par les modules
-    /// et l'identifiant du nœud (`LyxalRuntime::node_id`).
-    pub fn new(store: SchedulerStore, handlers: HandlerRegistry, node: NodeId) -> Self {
+    /// Moteur sur la session système `store` (T2), avec les handlers inscrits par les modules,
+    /// l'identifiant du nœud (`LyxalRuntime::node_id`) et son hôte (`LyxalRuntime::host_id`).
+    /// Une tâche `handler` n'est réservée que par un nœud qui a son handler (H3).
+    pub fn new(
+        store: SchedulerStore,
+        handlers: HandlerRegistry,
+        node: NodeId,
+        host: HostId,
+    ) -> Self {
         Self {
             store,
             handlers,
             node,
+            host,
             executors: ExecutorSet::default(),
         }
+    }
+
+    /// Hôte du nœud.
+    pub fn host(&self) -> &HostId {
+        &self.host
     }
 
     /// Session système.

@@ -73,8 +73,9 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_claim($params: object) {
         fields: {
             queue: { pipeline: [{ rule: "slug", options: { max_length: 64 } }], required: true },
             node: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 128 } }], required: true },
+            host: { pipeline: [{ rule: "regex", options: { pattern: "^[a-z][a-z0-9_]{0,63}$" } }], required: true },
             limit: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 100 } }], default: 10 },
-            handlers: { pipeline: [{ rule: "array" }, { rule: "array_length", options: { max_length: 1000 } }, { rule: "each", options: { pipeline: [{ rule: "lyxal_event_name", options: { min_segments: 2, max_segments: 2 } }] } }] },
+            handlers: { pipeline: [{ rule: "array" }, { rule: "array_length", options: { max_length: 1000 } }, { rule: "each", options: { pipeline: [{ rule: "lyxal_event_name", options: { min_segments: 2, max_segments: 2 } }] } }], required: true },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -84,19 +85,15 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_claim($params: object) {
     IF !fn::scheduler_can({ action: "worker" }) { RETURN fn::error_result("SCHEDULER_PERMISSION_DENIED", $p.language, {}); };
     LET $queue = (SELECT * FROM ONLY fn::scheduler_queue_record($p.queue));
     IF $queue == NONE { RETURN fn::error_result("SCHEDULER_QUEUE_NOT_FOUND", $p.language, { queue: $p.queue }); };
-    -- Handlers de ce nœud pour la sonde de santé (un handler manquant ici peut exister ailleurs)
-    IF $p.handlers IS NOT NONE {
-        UPSERT type::record("scheduler_node", [$p.node, $p.queue]) SET node = $p.node, queue = $queue.id, handlers = array::distinct($p.handlers);
-    };
+    -- Hôte et handlers de ce nœud pour la sonde de santé (un handler manquant ici peut exister
+    -- ailleurs) ; la file reste servie tant que le nœud réserve
+    UPSERT type::record("scheduler_node", [$p.node, $p.queue]) SET node = $p.node, host = $p.host, queue = $queue.id, handlers = array::distinct($p.handlers);
     IF $queue.paused { RETURN fn::result_ok({ items: [], paused: true }); };
     LET $now = time::now();
     LET $disabled = (SELECT VALUE id FROM scheduler_task WHERE state = "disabled");
-    -- Tâches handler dont ce nœud n'a pas le code : laissées à un nœud qui l'a, sauf celles qui
-    -- attendent depuis plus que leur délai maximal (réservées puis terminées en échec
-    -- SCHEDULER_HANDLER_NOT_FOUND par l'exécuteur)
-    LET $foreign = IF $p.handlers IS NONE { [] } ELSE {
-        (SELECT VALUE id FROM scheduler_task WHERE executor = "handler" AND target NOTINSIDE $p.handlers)
-    };
+    -- Tâches handler dont ce nœud n'a pas le code : jamais réservées ici, quelle que soit leur
+    -- attente (elles attendent un nœud qui a le code, H3) ; tâches function et event : tout nœud
+    LET $foreign = (SELECT VALUE id FROM scheduler_task WHERE executor = "handler" AND target NOTINSIDE $p.handlers);
     -- Organisations déjà pleines dans cette file : écartées avant la sélection, pour que leurs
     -- exécutions en attente ne masquent jamais celles des autres organisations
     LET $full = array::filter((SELECT tenant, scope_key, running FROM scheduler_slot WHERE queue = $queue.id AND running > 0), |$slot|
@@ -104,8 +101,7 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_claim($params: object) {
     -- Priorité puis date ; des candidats en surnombre pour les réservations perdues entre deux nœuds
     LET $candidates = (SELECT id, queue, tenant, scope_key, task, priority, available_at FROM scheduler_run
         WHERE queue = $queue.id AND state IN ["queued", "retrying"] AND available_at <= $now AND task NOTINSIDE $disabled
-            AND scope_key NOTINSIDE $full
-            AND (task NOTINSIDE $foreign OR available_at + task.timeout <= $now)
+            AND scope_key NOTINSIDE $full AND task NOTINSIDE $foreign
         ORDER BY priority ASC, available_at ASC LIMIT $p.limit * 10);
     LET $outcome = array::fold($candidates, { items: [], full: false }, |$acc, $candidate| {
         IF $acc.full OR array::len($acc.items) >= $p.limit { RETURN $acc; };
@@ -115,7 +111,7 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_run_claim($params: object) {
             ELSE { { items: array::append($acc.items, $claimed.run), full: false } };
     });
     RETURN fn::result_ok({ items: $outcome.items, paused: false });
-} COMMENT "Moteur : réserve les exécutions disponibles d'une file ({ queue, node, limit (100 au plus), handlers : noms des tâches handler dont le nœud a le code, absent : toutes }) par priorité puis date, dans les places de la file et de chaque organisation (une organisation pleine laisse passer les autres) ; file en pause : aucune ; tâches désactivées ignorées ; handlers du nœud enregistrés pour la sonde de santé (scheduler_node) ; une tâche handler absente de handlers n'est réservée qu'après avoir attendu plus que son délai maximal (l'exécuteur la termine alors en échec SCHEDULER_HANDLER_NOT_FOUND). Chaque exécution réservée porte son jeton de bail (lease), à rendre à chaque battement et à la fin, son exécuteur et sa cible. { items, paused }. Droit : session système ou scheduler.worker";
+} COMMENT "Moteur : réserve les exécutions disponibles d'une file ({ queue, node, host : hôte du nœud, limit (100 au plus), handlers : noms des tâches handler dont le nœud a le code, liste vide permise }) par priorité puis date, dans les places de la file et de chaque organisation (une organisation pleine laisse passer les autres) ; file en pause : aucune ; tâches désactivées ignorées ; hôte et handlers du nœud enregistrés pour la sonde de santé (scheduler_node) ; une tâche handler absente de handlers n'est jamais réservée par ce nœud, quelle que soit son attente (elle attend un nœud qui a son code) ; les tâches function et event sont réservées par tout nœud. Chaque exécution réservée porte son jeton de bail (lease), à rendre à chaque battement et à la fin, son exécuteur et sa cible. { items, paused }. Droit : session système ou scheduler.worker";
 
 -- ----------------------------------------------------------------------------
 -- fn::scheduler_run_leased (interne)
@@ -435,11 +431,42 @@ DEFINE FUNCTION OVERWRITE fn::scheduler_health($params: object) {
     IF !$report.valid { RETURN fn::scheduler_invalid($params, $report.by_field); };
     LET $p = $report.value;
     IF !fn::scheduler_can({ action: "worker" }) { RETURN fn::error_result("SCHEDULER_PERMISSION_DENIED", $p.language, {}); };
-    LET $limit = time::now() - $p.late_after;
+    LET $now = time::now();
+    LET $limit = $now - $p.late_after;
+    -- Nœuds actifs : réservation ou battement dans la dernière minute, quel que soit leur hôte
+    LET $live = (SELECT queue, handlers FROM scheduler_node WHERE seen_at >= $now - 1m);
+    LET $served_queues = array::distinct($live.queue);
+    LET $handlers_served = array::sort::asc(array::distinct(array::flatten($live.handlers)));
+    LET $handler_tasks = (SELECT id, target FROM scheduler_task WHERE executor = "handler" AND state = "active" ORDER BY target ASC, id ASC);
     RETURN fn::result_ok({
-        queues: array::map((SELECT id, paused FROM scheduler_queue ORDER BY id ASC), |$q| { name: <string> record::id($q.id), paused: $q.paused }),
+        queues: array::map((SELECT id, paused FROM scheduler_queue ORDER BY id ASC), |$q| {
+            name: <string> record::id($q.id), paused: $q.paused, served: $served_queues CONTAINS $q.id
+        }),
         late: count(SELECT VALUE id FROM scheduler_run WHERE state IN ["queued", "retrying"] AND available_at < $limit),
-        handler_tasks: (SELECT VALUE target FROM scheduler_task WHERE executor = "handler" AND state = "active" ORDER BY target ASC),
-        handlers_served: array::sort::asc(array::distinct(array::flatten(SELECT VALUE handlers FROM scheduler_node WHERE seen_at >= time::now() - 1m)))
+        handler_tasks: $handler_tasks.target,
+        handlers_served: $handlers_served,
+        unserved_tasks: fn::scheduler_unserved_tasks(array::filter($handler_tasks, |$t| $t.target NOTINSIDE $handlers_served), $now, $limit)
     });
-} COMMENT "Moteur (sonde de santé) : files { name, paused }, nombre d'exécutions réservables qui attendent depuis plus de late_after (5 min par défaut, 1 j au plus) au-delà de leur date de disponibilité, tâches handler actives (handler_tasks), tâches handler inscrites sur au moins un nœud qui a réservé dans la dernière minute (handlers_served). Aucune donnée d'organisation. Droit : session système ou scheduler.worker";
+} COMMENT "Moteur (sonde de santé) : files { name, paused, served : un nœud actif (réservation ou battement dans la dernière minute, tous hôtes confondus) sert la file }, nombre d'exécutions réservables qui attendent depuis plus de late_after (5 min par défaut, 1 j au plus) au-delà de leur date de disponibilité, tâches handler actives (handler_tasks), tâches handler inscrites sur au moins un nœud actif (handlers_served), tâches handler actives qu'aucun nœud actif ne sert et dont une exécution réservable attend depuis plus de late_after (unserved_tasks : { task, waiting : exécutions réservables en attente, oldest : date de disponibilité de la plus ancienne, last_host : hôte du dernier nœud qui servait la tâche, NONE si aucun depuis un jour }). Aucune exécution n'est mise en échec : elles attendent le retour d'un nœud qui a le code. Aucune donnée d'organisation. Droit : session système ou scheduler.worker";
+
+-- ----------------------------------------------------------------------------
+-- fn::scheduler_unserved_tasks (interne)
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::scheduler_unserved_tasks($tasks: array<object>, $now: datetime, $limit: datetime) -> array<object> {
+    LET $reports = array::map($tasks, |$t| {
+        -- Clés de tri parmi les champs renvoyés (requêtes appelées depuis une fermeture)
+        LET $oldest = (SELECT id, available_at FROM scheduler_run
+            WHERE task = $t.id AND state IN ["queued", "retrying"] AND available_at <= $now
+            ORDER BY available_at ASC, id ASC LIMIT 1)[0];
+        LET $last = (SELECT id, host, seen_at FROM scheduler_node WHERE handlers CONTAINS $t.target
+            ORDER BY seen_at DESC, id DESC LIMIT 1)[0];
+        RETURN {
+            task: $t.target,
+            waiting: count(SELECT VALUE id FROM scheduler_run WHERE task = $t.id AND state IN ["queued", "retrying"] AND available_at <= $now),
+            oldest: $oldest.available_at,
+            last_host: $last.host
+        };
+    });
+    RETURN array::filter($reports, |$r| $r.oldest IS NOT NONE AND $r.oldest < $limit);
+} COMMENT "Interne : pour chaque tâche handler sans nœud actif ($tasks : { id, target }), exécutions réservables en attente à $now, date de disponibilité de la plus ancienne et hôte du dernier nœud qui servait la tâche ; seules les tâches dont la plus ancienne attend depuis avant $limit sont rendues ({ task, waiting, oldest, last_host })";

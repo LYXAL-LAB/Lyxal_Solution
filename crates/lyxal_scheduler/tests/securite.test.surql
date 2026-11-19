@@ -203,16 +203,17 @@ RETURN fn::scheduler_run_ref({ run: "scheduler_run:abc xyz" }).error.code = "SCH
 
 -- test: A11 — handlers inscrits par un autre nœud, connus de la sonde
 {
-    fn::scheduler_run_claim({ queue: "maintenance", node: "n7", limit: 1, handlers: ["essai.rapport"] });
+    fn::scheduler_run_claim({ queue: "maintenance", node: "n7", host: "hote_essai", limit: 1, handlers: ["essai.rapport"] });
     LET $h = fn::scheduler_health({});
     RETURN $h.data.handler_tasks = ["essai.rapport"] AND $h.data.handlers_served = ["essai.rapport"]
-        AND (SELECT VALUE handlers FROM ONLY scheduler_node:["n7", "maintenance"]) = ["essai.rapport"];
+        AND (SELECT VALUE handlers FROM ONLY scheduler_node:["n7", "maintenance"]) = ["essai.rapport"]
+        AND (SELECT VALUE host FROM ONLY scheduler_node:["n7", "maintenance"]) = "hote_essai";
 };
 
 -- test: A11 — un nœud dont toutes les places sont occupées reste présent : ses battements rafraîchissent sa présence
 {
     fn::scheduler_run_enqueue({ tenant: auth_organization:alpha, task: "essai.rapport", args: { format: "pdf" } });
-    LET $claimed = fn::scheduler_run_claim({ queue: "default", node: "n8", limit: 1, handlers: ["essai.rapport"] }).data.items[0];
+    LET $claimed = fn::scheduler_run_claim({ queue: "default", node: "n8", host: "hote_essai", limit: 1, handlers: ["essai.rapport"] }).data.items[0];
     LET $seen_before = (SELECT VALUE seen_at FROM ONLY scheduler_node:["n8", "default"]);
     sleep(1100ms);
     LET $beat = fn::scheduler_run_heartbeat({ run: $claimed.id, lease: <string> $claimed.lease });
@@ -222,4 +223,4 @@ RETURN fn::scheduler_run_ref({ run: "scheduler_run:abc xyz" }).error.code = "SCH
 
 -- test: A11 — un compte sans scheduler.worker ne lit ni n'écrit les exécuteurs
 -- en tant que: admin
-RETURN array::len(SELECT * FROM scheduler_node) = 0 AND array::len(CREATE scheduler_node:["x", "default"] CONTENT { node: "x", queue: scheduler_queue:default }) = 0;
+RETURN array::len(SELECT * FROM scheduler_node) = 0 AND array::len(CREATE scheduler_node:["x", "default"] CONTENT { node: "x", host: "hote_x", queue: scheduler_queue:default }) = 0;

@@ -117,8 +117,9 @@ impl SchedulerExecutorWorker {
             .run_claim(RunClaimParams {
                 queue: self.queue.clone(),
                 node: self.engine.node().to_string(),
+                host: self.engine.host().to_string(),
                 limit: Some(i64::try_from(limit).unwrap_or(1)),
-                handlers: Some(self.engine.handlers().tasks()),
+                handlers: self.engine.handlers().tasks(),
                 language: None,
             })
             .await?;

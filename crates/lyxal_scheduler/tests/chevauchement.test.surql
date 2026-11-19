@@ -116,7 +116,7 @@ RETURN count(SELECT * FROM event_outbox WHERE event_type = "scheduler.run.skippe
 -- test: cancel_other avec une exécution en cours : demande d'annulation, la nouvelle attend
 {
     LET $s = (SELECT VALUE id FROM ONLY scheduler_schedule WHERE name = "p-cancel-other" LIMIT 1);
-    LET $c = fn::scheduler_run_claim({ queue: "default", node: "n1", limit: 100 }).data.items;
+    LET $c = fn::scheduler_run_claim({ queue: "default", node: "n1", host: "hote_essai", handlers: ["essai.rapport"], limit: 100 }).data.items;
     LET $mine = $c.filter(|$r| $r.schedule = $s)[0];
     UPSERT passe:co SET run = $mine.id, lease = $mine.lease;
     LET $f = fn::scheduler_schedule_fire({ node: "n1", generation: 1, schedule: $s, fire_times: [{ at: time::now() - 1m, available_at: time::now() - 1m }], next_fire_at: time::now() + 1m });

@@ -126,12 +126,12 @@ IF !record::exists(error_definition:SCHEDULER_HANDLER_NOT_FOUND) THEN (
         translations: {
             fr: {
                 label: "Aucun handler inscrit",
-                description: "Aucun nœud n'a inscrit le code de cette tâche pendant son délai maximal.",
+                description: "Le nœud qui exécute la tâche n'a pas inscrit son code (un nœud ne réserve normalement que les tâches dont il a le code).",
                 resolution: "Vérifiez que le module qui déclare la tâche est hébergé et inscrit son handler."
             },
             en: {
                 label: "No handler registered",
-                description: "No node registered the code of this task during its timeout.",
+                description: "The node running the task has not registered its code (a node normally claims only the tasks whose code it has).",
                 resolution: "Check that the module declaring the task is hosted and registers its handler."
             }
         }

@@ -271,3 +271,26 @@ RETURN fn::scheduler_calendar_rules_check([{ mode: "include", kind: "weekdays", 
     RETURN array::slice(fn::scheduler_schedule_view($s).recent_runs.id, 0, 3) == $expected
         AND array::slice(fn::scheduler_schedule_view($s).recent_runs.id, 0, 3) == $expected;
 };
+
+-- test: tâches handler sans nœud actif appelées directement : attente, plus ancienne, dernier hôte ; seules celles qui attendent depuis avant la limite
+{
+    LET $now = time::now();
+    LET $since = $now - 10m;
+    CREATE scheduler_task:⟨essai.isole⟩ CONTENT {
+        module: "lyxal_essai", executor: "handler", target: "essai.isole", scope: "installation",
+        retry: { max_attempts: 1, strategy: "fixed", initial_delay: 1s, max_delay: 1s }
+    };
+    FOR $at IN [$since, $since + 1m] {
+        CREATE scheduler_run CONTENT {
+            task: scheduler_task:⟨essai.isole⟩, queue: scheduler_queue:default, origin: "enqueue",
+            scheduled_for: $at, available_at: $at, state: "queued", priority: 5, max_attempts: 1
+        };
+    };
+    LET $task = { id: scheduler_task:⟨essai.isole⟩, target: "essai.isole" };
+    LET $never = fn::scheduler_unserved_tasks([$task], $now, $now - 5m);
+    CREATE scheduler_node:["nx", "default"] CONTENT { node: "nx", host: "hote_x", queue: scheduler_queue:default, handlers: ["essai.isole"] };
+    RETURN $never == [{ task: "essai.isole", waiting: 2, oldest: $since, last_host: NONE }]
+        AND fn::scheduler_unserved_tasks([$task], $now, $now - 5m) == [{ task: "essai.isole", waiting: 2, oldest: $since, last_host: "hote_x" }]
+        AND fn::scheduler_unserved_tasks([$task], $now, $since) = []
+        AND fn::scheduler_unserved_tasks([], $now, $now) = [];
+};

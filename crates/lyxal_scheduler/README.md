@@ -182,11 +182,12 @@ waiting / queued / retrying ──(annulation)──► cancelled ; running ─�
   (`scheduler_queue.running < concurrency`) et places de l'organisation dans la file
   (`scheduler_slot`, réglage `tenant_concurrency`). Les organisations déjà pleines sont écartées
   avant la sélection : leurs exécutions en attente ne masquent jamais celles des autres. Chaque réservation pose un **bail** : jeton nouveau (lisible par le moteur seulement),
-  nœud, échéance = maintenant + délai de la tâche + 1 min. Le nœud passe la liste des tâches
-  `handler` dont il a le code (`handlers`) : une autre tâche `handler` lui est laissée tant
-  qu'elle n'attend pas depuis plus que son délai maximal ; au-delà, il la réserve et la termine en
-  échec `SCHEDULER_HANDLER_NOT_FOUND` (retentable, puis `dead`). Chaque exécution réservée porte
-  son exécuteur et sa cible.
+  nœud, échéance = maintenant + délai de la tâche + 1 min. Le nœud passe son hôte (`host`) et la
+  liste, obligatoire et éventuellement vide, des tâches `handler` dont il a le code (`handlers`) :
+  une autre tâche `handler` ne lui est **jamais** réservée, quelle que soit son attente ; elle
+  attend, sans tentative ni échec, un nœud qui a son code (plusieurs hôtes sur une même base).
+  Les tâches `function` et `event` sont réservées par tout nœud, de tout hôte. Chaque exécution
+  réservée porte son exécuteur et sa cible.
 * **Publication différée** (`fn::scheduler_run_publish`, tâche `event`, W5) : publie l'événement
   de la tâche (`fn::event_publish` : type = cible, producteur = module de la tâche, source =
   l'exécution, charge = arguments, métadonnées `{ scheduled_for, attempt, tenant }`) et termine
@@ -356,8 +357,11 @@ planification et rend ses prochaines échéances.
 ### Moteur (`engine/`)
 
 Tout le moteur tourne sur la **session système** de l'hôte (T2) ; il ne lit et n'écrit que par
-les fonctions `fn::scheduler_*` du moteur. `SchedulerEngine` réunit la session, le registre des
-handlers, l'identifiant du nœud et les files servies.
+les fonctions `fn::scheduler_*` du moteur. `SchedulerEngine::new(store, handlers, node, host)` réunit la
+session, le registre des handlers, l'identifiant du nœud (`LyxalRuntime::node_id`), son hôte
+(`LyxalRuntime::host_id`) et les files servies. Un seul planificateur est élu pour toute la base,
+quel que soit le nombre d'hôtes ; les exécuteurs de chaque hôte ne réservent que les tâches
+`handler` dont leur nœud a le code.
 
 | Worker | Rôle |
 | :--- | :--- |
@@ -427,12 +431,17 @@ Aucune route n'appelle une fonction du moteur (X2). Toutes les réponses portent
 ### Module et santé
 
 `SchedulerModule` (`LyxalModule`, descripteur du manifeste). `SchedulerHealthCheck` : malade si
-`fn::scheduler_health` échoue ; dégradé si aucune file (ou une file active) n'a d'exécuteur sur
-ce nœud, si des exécutions réservables attendent depuis plus de 5 min au-delà de leur date, ou si
-une tâche `handler` active n'a de handler inscrit sur aucun nœud actif. Chaque exécuteur
-enregistre à chaque réservation les handlers de son nœud (`scheduler_node`, oublié après un jour
-sans réservation) : un handler absent de ce nœud mais servi par un nœud actif dans la dernière
-minute est une simple information du message. Le texte ne contient aucune donnée d'organisation.
+`fn::scheduler_health` échoue ; dégradé si aucune file n'a d'exécuteur sur ce nœud, si une file
+active n'est servie par aucun nœud actif (de cet hôte ou d'un autre : `queues[].served`), si des
+exécutions réservables attendent depuis plus de 5 min au-delà de leur date, ou si une tâche
+`handler` active qu'aucun nœud actif ne sert a une exécution en attente depuis plus de 5 min
+(`unserved_tasks : { task, waiting, oldest, last_host }`) : le message nomme la tâche, le nombre
+d'exécutions en attente, la plus ancienne et l'hôte absent (dernier hôte qui la servait).
+Aucune exécution n'est mise en échec pour autant : elle attend le retour de cet hôte. Chaque
+exécuteur enregistre à chaque réservation l'hôte et les handlers de son nœud (`scheduler_node`,
+rafraîchi par les battements, oublié après un jour sans réservation) ; un nœud est actif s'il a
+réservé ou battu dans la dernière minute. Un handler absent de ce nœud mais servi par un nœud
+actif est une simple information du message. Le texte ne contient aucune donnée d'organisation.
 
 ### Réglages de l'hôte
 
