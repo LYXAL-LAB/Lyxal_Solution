@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use lyxal_runtime::config::RuntimeConfig;
 use lyxal_runtime::context::ModuleContext;
 use lyxal_runtime::descriptor::ModuleDescriptor;
 use lyxal_runtime::error::RuntimeError;
@@ -129,7 +128,7 @@ impl LyxalWorker for ErrorWorker {
 
 #[tokio::test]
 async fn test_start_and_stop_module_orchestrates_workers() {
-    let runtime = LyxalRuntime::new(RuntimeConfig::default());
+    let runtime = LyxalRuntime::new(crate::common::runtime_config());
     let stop_flag = Arc::new(AtomicBool::new(false));
     let module = Arc::new(MockModule::new("lyxal-notification", stop_flag.clone()));
     let mod_id = ModuleId::new("lyxal-notification");
@@ -174,7 +173,7 @@ async fn test_start_and_stop_module_orchestrates_workers() {
 
 #[tokio::test]
 async fn test_required_worker_failure_affects_health() {
-    let runtime = LyxalRuntime::new(RuntimeConfig::default());
+    let runtime = LyxalRuntime::new(crate::common::runtime_config());
     let stop_flag = Arc::new(AtomicBool::new(false));
     let module = Arc::new(MockModule::new("lyxal-notification", stop_flag));
     let mod_id = ModuleId::new("lyxal-notification");
@@ -208,7 +207,7 @@ async fn test_required_worker_failure_affects_health() {
 
 #[tokio::test]
 async fn test_optional_worker_failure_degrades_health() {
-    let runtime = LyxalRuntime::new(RuntimeConfig::default());
+    let runtime = LyxalRuntime::new(crate::common::runtime_config());
     let stop_flag = Arc::new(AtomicBool::new(false));
     let module = Arc::new(MockModule::new("lyxal-webhook", stop_flag));
     let mod_id = ModuleId::new("lyxal-webhook");
@@ -241,7 +240,7 @@ async fn test_optional_worker_failure_degrades_health() {
 
 #[tokio::test]
 async fn test_controller_observes_worker_state() {
-    let runtime = Arc::new(LyxalRuntime::new(RuntimeConfig::default()));
+    let runtime = Arc::new(LyxalRuntime::new(crate::common::runtime_config()));
     let stop_flag = Arc::new(AtomicBool::new(false));
     let module = Arc::new(MockModule::new("lyxal-notification", stop_flag));
     let mod_id = ModuleId::new("lyxal-notification");

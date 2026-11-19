@@ -18,7 +18,6 @@ use lyxal_runtime::store::memory::MemoryRuntimeStore;
 use lyxal_runtime::store::models::{StoredModule, StoredModuleRelease};
 use lyxal_runtime::store::traits::RuntimeStore;
 use lyxal_runtime::types::{ModuleId, ModuleState};
-use lyxal_runtime::RuntimeConfig;
 use semver::{Version, VersionReq};
 use std::sync::Arc;
 
@@ -227,7 +226,7 @@ fn test_registered_descriptor_used_without_available_package() {
 async fn test_observer_resolves_correct_installed_release() {
     let store: Arc<dyn RuntimeStore> = Arc::new(MemoryRuntimeStore::new());
     let registry = ModuleRegistry::new();
-    let lifecycle = LifecycleManager::new(RuntimeConfig::default());
+    let lifecycle = LifecycleManager::new(crate::common::runtime_config());
 
     // Enregistrer l'identité du module et une release Failed v1.0.0 puis une release Installed v1.1.0
     store
@@ -385,6 +384,65 @@ fn test_strict_mode_stops_unspecified_module_without_uninstall() {
         .iter()
         .find(|a| a.module_id == ModuleId::new("lyxal-timezone"));
     assert!(timezone_action.is_none());
+}
+
+/// Le mode strict ne vise que les modules de ce runtime : un module connu seulement par la base
+/// (installé par un autre hôte) est signalé dans `foreign_modules`, sans aucune action.
+#[test]
+fn test_strict_mode_reports_modules_of_other_hosts_without_planning_them() {
+    let runtime_version = Version::parse("0.1.0").unwrap();
+
+    let mut actual = ActualRuntimeState::new();
+    actual.insert(ObservedModuleState {
+        module_id: ModuleId::new("lyxal-timezone"),
+        installed_version: Some(Version::parse("1.0.0").unwrap()),
+        release_status: Some(ModuleReleaseStatus::Installed),
+        runtime_state: Some(ModuleState::Running),
+        is_registered: true,
+    });
+    // Modules de l'autre hôte : une release en base, ni registre ni cycle de vie local
+    for id in ["lyxal-other-b", "lyxal-other-a"] {
+        actual.insert(ObservedModuleState {
+            module_id: ModuleId::new(id),
+            installed_version: Some(Version::parse("1.0.0").unwrap()),
+            release_status: Some(ModuleReleaseStatus::Installed),
+            runtime_state: None,
+            is_registered: false,
+        });
+    }
+
+    let desired = DesiredRuntimeState::new()
+        .with_strict(true)
+        .running("lyxal-timezone");
+    let plan = RuntimeDiffer::diff(&desired, &actual, &[], &runtime_version, &[]).unwrap();
+
+    assert!(plan.actions.is_empty(), "{:?}", plan.actions);
+    assert!(plan.blockers.is_empty());
+    let foreign: Vec<&str> = plan
+        .foreign_modules
+        .iter()
+        .map(|f| f.module_id.as_str())
+        .collect();
+    assert_eq!(foreign, vec!["lyxal-other-a", "lyxal-other-b"]);
+    assert!(plan.foreign_modules.iter().all(|f| f.hosts.is_empty()));
+
+    // Hors mode strict aussi, ces modules sont signalés et non visés.
+    let relaxed = DesiredRuntimeState::new().running("lyxal-timezone");
+    let plan = RuntimeDiffer::diff(&relaxed, &actual, &[], &runtime_version, &[]).unwrap();
+    assert!(plan.actions.is_empty());
+    assert_eq!(plan.foreign_modules.len(), 2);
+
+    // Un module de la base que l'état désiré vise explicitement n'est pas « étranger ».
+    let targeted = DesiredRuntimeState::new()
+        .running("lyxal-timezone")
+        .installed("lyxal-other-a");
+    let plan = RuntimeDiffer::diff(&targeted, &actual, &[], &runtime_version, &[]).unwrap();
+    let foreign: Vec<&str> = plan
+        .foreign_modules
+        .iter()
+        .map(|f| f.module_id.as_str())
+        .collect();
+    assert_eq!(foreign, vec!["lyxal-other-b"]);
 }
 
 #[test]

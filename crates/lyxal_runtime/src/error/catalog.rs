@@ -527,6 +527,33 @@ pub const RELEASE_NOT_FOUND: RuntimeErrorInfo = RuntimeErrorInfo {
     label: "Release introuvable",
 };
 
+pub const RELEASE_CHECKSUM_MISMATCH: RuntimeErrorInfo = RuntimeErrorInfo {
+    code: "RUNTIME_RELEASE_CHECKSUM_MISMATCH",
+    category: "conflict",
+    http_status: 409,
+    retryable: false,
+    message: "Installed release content differs from this binary",
+    label: "Release installée différente",
+};
+
+pub const HOST_INVALID: RuntimeErrorInfo = RuntimeErrorInfo {
+    code: "RUNTIME_HOST_INVALID",
+    category: "validation",
+    http_status: 422,
+    retryable: false,
+    message: "Host identifier is invalid",
+    label: "Identifiant d'hôte invalide",
+};
+
+pub const WRITE_FORBIDDEN: RuntimeErrorInfo = RuntimeErrorInfo {
+    code: "RUNTIME_WRITE_FORBIDDEN",
+    category: "authorization",
+    http_status: 403,
+    retryable: false,
+    message: "Write refused by permissions",
+    label: "Écriture refusée",
+};
+
 /// Toutes les erreurs du runtime, y compris celles émises seulement par le SurrealQL.
 pub const RUNTIME_ERROR_CATALOG: &[RuntimeErrorInfo] = &[
     DUPLICATE_MODULE,
@@ -586,6 +613,9 @@ pub const RUNTIME_ERROR_CATALOG: &[RuntimeErrorInfo] = &[
     EVENT_ENGINE_ERROR,
     INVALID_PARAMETERS,
     RELEASE_NOT_FOUND,
+    RELEASE_CHECKSUM_MISMATCH,
+    HOST_INVALID,
+    WRITE_FORBIDDEN,
 ];
 
 #[cfg(test)]

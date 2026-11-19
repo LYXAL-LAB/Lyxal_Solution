@@ -211,7 +211,7 @@ Tâches de `lyxal_scheduler` déclarées par le seed du module (exécuteur `func
 | Tâche | Cible | Usage |
 | :--- | :--- | :--- |
 | `notification.run_resume` | `fn::notification_run_resume` | fin d'une attente ou d'un regroupement (`unique_for` 1 j, arguments `{ run, step_key }`) |
-| `notification.purge` | `fn::notification_purge` | planification horaire `notification-purge` (cron `0 * * * *`, décalage de 5 min au plus), créée à l'installation du module si elle est absente |
+| `notification.purge` | `fn::notification_purge` | planification horaire `notification-purge` (cron `0 * * * *`, décalage de 5 min au plus), créée par le hook d'installation du module si elle est absente : une fois par release pour toute la base ; supprimée ensuite, elle n'est pas recréée au démarrage suivant |
 
 ### 1.4. Intégrations et fournisseurs
 

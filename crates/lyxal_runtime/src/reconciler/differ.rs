@@ -6,8 +6,8 @@ use crate::reconciler::desired::{
     DesiredModuleState, DesiredRuntimeState, DesiredStateOrigin, ModuleTargetState,
 };
 use crate::reconciler::plan::{
-    ActionKind, BlockerKind, ReconciliationAction, ReconciliationBlocker, ReconciliationPlan,
-    ReconciliationReason,
+    ActionKind, BlockerKind, ForeignModule, ReconciliationAction, ReconciliationBlocker,
+    ReconciliationPlan, ReconciliationReason,
 };
 use crate::resolver::DependencyResolver;
 use crate::types::ModuleId;
@@ -63,14 +63,18 @@ impl RuntimeDiffer {
             explicit_map.insert(m.module_id.clone(), m.clone());
         }
 
-        // Mode strict : tout module existant dans l'état réel non spécifié dans desired devient Absent
+        // Mode strict : tout module de ce runtime (enregistré ou suivi localement) non spécifié
+        // dans desired devient Absent. Les modules connus seulement par la base sont ceux des
+        // autres hôtes : ils ne sont jamais visés.
         if desired.strict {
-            for actual_id in actual.module_ids() {
-                effective_desired
-                    .entry(actual_id.clone())
-                    .or_insert_with(|| {
-                        DesiredModuleState::new(actual_id, ModuleTargetState::Absent)
-                    });
+            for (actual_id, observed) in actual.modules() {
+                if observed.is_local() {
+                    effective_desired
+                        .entry(actual_id.clone())
+                        .or_insert_with(|| {
+                            DesiredModuleState::new(actual_id.clone(), ModuleTargetState::Absent)
+                        });
+                }
             }
         }
 
@@ -289,7 +293,23 @@ impl RuntimeDiffer {
         // Tri déterministe des blockers
         blockers.sort_by(|a, b| a.module_id.cmp(&b.module_id));
 
-        Ok(ReconciliationPlan { actions, blockers })
+        // Modules des autres hôtes : dans la base, ni locaux ni visés par l'état désiré
+        let mut foreign_modules: Vec<ForeignModule> = actual
+            .modules()
+            .iter()
+            .filter(|(id, observed)| !observed.is_local() && !effective_desired.contains_key(*id))
+            .map(|(id, _)| ForeignModule {
+                module_id: id.clone(),
+                hosts: Vec::new(),
+            })
+            .collect();
+        foreign_modules.sort_by(|a, b| a.module_id.cmp(&b.module_id));
+
+        Ok(ReconciliationPlan {
+            actions,
+            blockers,
+            foreign_modules,
+        })
     }
 
     #[allow(clippy::too_many_arguments)]

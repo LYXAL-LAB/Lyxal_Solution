@@ -79,6 +79,24 @@ DEFINE FIELD OVERWRITE started_at ON TABLE runtime_worker TYPE option<int>;
 DEFINE FIELD OVERWRITE stopped_at ON TABLE runtime_worker TYPE option<int>;
 DEFINE FIELD OVERWRITE updated_at ON TABLE runtime_worker TYPE option<datetime>;
 
+-- Champs pour runtime_node (identifiant runtime_node:<node_id>)
+DEFINE FIELD OVERWRITE node_id ON TABLE runtime_node TYPE string;
+-- Hôte : rôle du binaire, le même pour toutes ses copies (format d'un identifiant de module)
+DEFINE FIELD OVERWRITE host ON TABLE runtime_node TYPE string ASSERT string::matches($value, "^[a-z][a-z0-9_]{0,63}$");
+-- Modules enregistrés dans le runtime de ce nœud
+DEFINE FIELD OVERWRITE modules ON TABLE runtime_node TYPE array<string>;
+-- Empreinte du socle embarqué par le binaire de ce nœud (NONE : nœud démarré sans socle déclaré)
+DEFINE FIELD OVERWRITE foundation_checksum ON TABLE runtime_node TYPE option<string>;
+-- Dates écrites par fn::runtime_node_upsert, à l'heure de la base : premier et dernier battement
+DEFINE FIELD OVERWRITE started_at ON TABLE runtime_node TYPE datetime;
+DEFINE FIELD OVERWRITE seen_at ON TABLE runtime_node TYPE datetime;
+
+-- Champs pour runtime_foundation (enregistrement unique runtime_foundation:current)
+DEFINE FIELD OVERWRITE checksum ON TABLE runtime_foundation TYPE string;
+DEFINE FIELD OVERWRITE host ON TABLE runtime_foundation TYPE string;
+DEFINE FIELD OVERWRITE node_id ON TABLE runtime_foundation TYPE string;
+DEFINE FIELD OVERWRITE installed_at ON TABLE runtime_foundation TYPE datetime;
+
 -- Champs pour runtime_event_journal
 DEFINE FIELD OVERWRITE event_id ON TABLE runtime_event_journal TYPE string;
 DEFINE FIELD OVERWRITE sequence ON TABLE runtime_event_journal TYPE int;

@@ -18,7 +18,6 @@ use lyxal_runtime::store::memory::MemoryRuntimeStore;
 use lyxal_runtime::store::models::StoredModuleRelease;
 use lyxal_runtime::store::traits::RuntimeStore;
 use lyxal_runtime::types::ModuleId;
-use lyxal_runtime::RuntimeConfig;
 use semver::{Version, VersionReq};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -76,7 +75,7 @@ async fn test_single_module_full_installation_pipeline() {
     let store = Arc::new(MemoryRuntimeStore::new());
     let lease_mgr = Arc::new(MemoryInstallationLeaseManager::new());
 
-    let runtime = LyxalRuntime::new(RuntimeConfig::default())
+    let runtime = LyxalRuntime::new(crate::common::runtime_config())
         .with_client(client)
         .with_store(store.clone())
         .with_installation_lease_manager(lease_mgr);
@@ -143,7 +142,7 @@ async fn test_installation_hook_failure_and_recovery() {
     let client = common::setup_db("test_hook_failure", "test_hook_failure").await;
 
     let store = Arc::new(MemoryRuntimeStore::new());
-    let runtime = LyxalRuntime::new(RuntimeConfig::default())
+    let runtime = LyxalRuntime::new(crate::common::runtime_config())
         .with_client(client)
         .with_store(store.clone());
 
@@ -224,7 +223,7 @@ async fn test_missing_module_implementation_fails() {
     let client = common::setup_db("test", "test").await;
 
     let store = Arc::new(MemoryRuntimeStore::new());
-    let runtime = LyxalRuntime::new(RuntimeConfig::default())
+    let runtime = LyxalRuntime::new(crate::common::runtime_config())
         .with_client(client)
         .with_store(store);
 
@@ -258,7 +257,7 @@ async fn test_incompatible_runtime_version_fails() {
     let store = Arc::new(MemoryRuntimeStore::new());
     // Runtime version = 0.1.0
     let runtime = LyxalRuntime::new(
-        RuntimeConfig::default().with_runtime_version(Version::parse("0.1.0").unwrap()),
+        crate::common::runtime_config().with_runtime_version(Version::parse("0.1.0").unwrap()),
     )
     .with_client(client)
     .with_store(store);
@@ -304,7 +303,7 @@ async fn test_dependency_version_incompatibility_fails() {
         .await
         .unwrap();
 
-    let runtime = LyxalRuntime::new(RuntimeConfig::default())
+    let runtime = LyxalRuntime::new(crate::common::runtime_config())
         .with_client(client)
         .with_store(store);
 

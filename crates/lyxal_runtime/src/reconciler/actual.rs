@@ -34,6 +34,13 @@ impl ObservedModuleState {
         }
     }
 
+    /// Indique si le module appartient à ce runtime : enregistré dans son `ModuleRegistry` ou
+    /// suivi par son `LifecycleManager`. Un module connu seulement par la base (installé par un
+    /// autre hôte) n'est pas local.
+    pub fn is_local(&self) -> bool {
+        self.is_registered || self.runtime_state.is_some()
+    }
+
     /// Indique si le module est actuellement en cours d'exécution actif sur ce nœud.
     pub fn is_running(&self) -> bool {
         self.runtime_state

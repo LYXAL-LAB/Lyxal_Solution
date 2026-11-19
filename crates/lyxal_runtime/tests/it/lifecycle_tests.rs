@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use lyxal_runtime::{
     LifecycleManager, LyxalModule, ModuleContext, ModuleDescriptor, ModuleId, ModuleState,
-    RuntimeConfig, RuntimeError,
+    RuntimeError,
 };
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -85,7 +85,7 @@ impl LyxalModule for TestModule {
 
 #[tokio::test]
 async fn test_lifecycle_success_path() {
-    let config = RuntimeConfig::default();
+    let config = crate::common::runtime_config();
     let manager = LifecycleManager::new(config);
     let module: Arc<dyn LyxalModule> = Arc::new(TestModule::new("app_module"));
     let ctx = ModuleContext::new("app_module");
@@ -121,7 +121,7 @@ async fn test_lifecycle_success_path() {
 
 #[tokio::test]
 async fn test_lifecycle_install_failure() {
-    let config = RuntimeConfig::default();
+    let config = crate::common::runtime_config();
     let manager = LifecycleManager::new(config);
     let test_mod = Arc::new(TestModule::new("faulty_install"));
     test_mod.fail_install.store(true, Ordering::SeqCst);
@@ -140,7 +140,7 @@ async fn test_lifecycle_install_failure() {
 
 #[tokio::test]
 async fn test_lifecycle_start_failure() {
-    let config = RuntimeConfig::default();
+    let config = crate::common::runtime_config();
     let manager = LifecycleManager::new(config);
     let test_mod = Arc::new(TestModule::new("faulty_start"));
     let module: Arc<dyn LyxalModule> = test_mod.clone();
@@ -161,7 +161,7 @@ async fn test_lifecycle_start_failure() {
 
 #[tokio::test]
 async fn test_lifecycle_stop_failure() {
-    let config = RuntimeConfig::default();
+    let config = crate::common::runtime_config();
     let manager = LifecycleManager::new(config);
     let test_mod = Arc::new(TestModule::new("faulty_stop"));
     let module: Arc<dyn LyxalModule> = test_mod.clone();
@@ -183,7 +183,7 @@ async fn test_lifecycle_stop_failure() {
 
 #[tokio::test]
 async fn test_lifecycle_timeout_on_start() {
-    let config = RuntimeConfig::new().with_start_timeout(Duration::from_millis(50));
+    let config = crate::common::runtime_config().with_start_timeout(Duration::from_millis(50));
     let manager = LifecycleManager::new(config);
 
     let test_mod = Arc::new(TestModule::with_hang(
@@ -213,7 +213,7 @@ async fn test_lifecycle_timeout_on_start() {
 
 #[tokio::test]
 async fn test_lifecycle_invalid_state_transition() {
-    let config = RuntimeConfig::default();
+    let config = crate::common::runtime_config();
     let manager = LifecycleManager::new(config);
     let module: Arc<dyn LyxalModule> = Arc::new(TestModule::new("transition_test"));
     let ctx = ModuleContext::new("transition_test");

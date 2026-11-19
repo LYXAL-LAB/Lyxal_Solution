@@ -131,6 +131,22 @@ pub enum RuntimeError {
         message: String,
     },
 
+    /// Release déjà installée dans la base, de même version, dont le contenu n'est pas celui
+    /// embarqué par ce binaire (`installed` vaut `absente` si la base n'a gardé aucune empreinte).
+    #[error(
+        "Release checksum mismatch for module '{module}' version '{version}': the database holds '{installed}', this binary embeds '{embedded}'"
+    )]
+    ReleaseChecksumMismatch {
+        module: ModuleId,
+        version: String,
+        installed: String,
+        embedded: String,
+    },
+
+    /// Nom d'hôte refusé (format d'un identifiant de module, 64 caractères au plus).
+    #[error("Invalid host identifier '{host}': {reason}")]
+    HostInvalid { host: String, reason: String },
+
     /// Écriture refusée par la base : le bail n'est plus détenu par ce nœud dans cette génération.
     #[error("Lease '{key}' (owner '{owner}', generation {generation}) was fenced: write refused")]
     LeaseFenced {
@@ -328,6 +344,8 @@ impl RuntimeError {
             Self::MigrationLockTimeout { .. } => &catalog::MIGRATION_LOCK_TIMEOUT,
             Self::MigrationLeaseLost { .. } => &catalog::MIGRATION_LEASE_LOST,
             Self::LeaseFenced { .. } => &catalog::LEASE_FENCED,
+            Self::ReleaseChecksumMismatch { .. } => &catalog::RELEASE_CHECKSUM_MISMATCH,
+            Self::HostInvalid { .. } => &catalog::HOST_INVALID,
             Self::MigrationLockNotOwner { .. } => &catalog::MIGRATION_LOCK_NOT_OWNER,
             Self::MigrationRecoveryRequired { .. } => &catalog::MIGRATION_RECOVERY_REQUIRED,
             Self::MigrationNotInterrupted { .. } => &catalog::MIGRATION_NOT_INTERRUPTED,
@@ -471,6 +489,21 @@ impl RuntimeError {
             Self::MigrationLockTimeout { key, duration_ms } => json!({
                 "lock_key": key,
                 "timeout_ms": duration_ms,
+            }),
+            Self::ReleaseChecksumMismatch {
+                module,
+                version,
+                installed,
+                embedded,
+            } => json!({
+                "module_id": module.as_str(),
+                "version": version,
+                "installed_checksum": installed,
+                "embedded_checksum": embedded,
+            }),
+            Self::HostInvalid { host, reason } => json!({
+                "host": host,
+                "reason": reason,
             }),
             Self::LeaseFenced {
                 key,

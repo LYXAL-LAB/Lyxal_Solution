@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 use lyxal_runtime::{
-    LyxalModule, LyxalRuntime, ModuleContext, ModuleDescriptor, ModuleId, ModuleState,
-    RuntimeConfig, RuntimeError,
+    LyxalModule, LyxalRuntime, ModuleContext, ModuleDescriptor, ModuleId, ModuleState, RuntimeError,
 };
 use std::sync::{Arc, Mutex};
 
@@ -53,7 +52,7 @@ impl LyxalModule for InstrumentedModule {
 #[tokio::test]
 async fn test_full_lyxal_scenario_dag_and_lifecycle() {
     let event_log = Arc::new(Mutex::new(Vec::new()));
-    let runtime = LyxalRuntime::new(RuntimeConfig::default());
+    let runtime = LyxalRuntime::new(crate::common::runtime_config());
 
     // Scénario canonique officiel :
     // timezone (0 dép)
@@ -156,7 +155,7 @@ async fn test_full_lyxal_scenario_dag_and_lifecycle() {
 #[tokio::test]
 async fn test_full_scenario_registered_in_reverse_order() {
     let event_log = Arc::new(Mutex::new(Vec::new()));
-    let runtime = LyxalRuntime::new(RuntimeConfig::default());
+    let runtime = LyxalRuntime::new(crate::common::runtime_config());
 
     let mod_booking = Arc::new(InstrumentedModule::new(
         "booking",

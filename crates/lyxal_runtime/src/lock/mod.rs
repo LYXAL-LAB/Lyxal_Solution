@@ -7,7 +7,7 @@ pub mod manager;
 pub mod memory;
 pub mod node_id;
 pub mod recovery;
-mod store;
+pub(crate) mod store;
 pub mod surreal;
 
 pub use config::MigrationLockConfig;

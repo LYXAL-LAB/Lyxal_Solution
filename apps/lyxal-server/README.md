@@ -17,24 +17,28 @@ SDK `surrealdb` 3.3.
 configuration (config/*.toml + variables LYXAL__*)
   → journalisation
   → connexion SurrealDB (lyxal_surreal)
-  → installation rejouable : lyxal_core, lyxal_error, définitions SERVER_*, schéma du runtime
-  → LyxalRuntime (store SurrealDB, baux, moteur d'événements)
+  → LyxalRuntime de l'hôte `lyxal_server` (store SurrealDB, baux, moteur d'événements)
+  → socle sous bail (lyxal_core, lyxal_error, schéma du runtime ; empreinte enregistrée, socle
+    non réinstallé si la base porte déjà celle du binaire), puis définitions SERVER_*
   → services des modules (workers, consommateurs d'événements, sondes de santé, handlers des
     tâches de fond de l'hôte)
   → install_packages : tous les modules hébergés (releases, migrations sous bail)
   → services dépendant des modules installés (accès JWT, tâches de fond de l'hôte et leurs
     planifications, abonnements)
-  → start_all : modules, workers, EventWorker et ramasse-miettes
+  → start_all : modules, présence du nœud (runtime_node), workers, EventWorker et ramasse-miettes
   → HTTP
-arrêt (SIGINT / SIGTERM) → stop_all (workers puis modules, ordre inverse)
+arrêt (SIGINT / SIGTERM) → stop_all (workers puis modules, ordre inverse, puis retrait du nœud)
 ```
 
 L'`EventWorker` traite toutes les livraisons de la base de l'instance : les événements émis par
 la base (`DEFINE EVENT`) ne portent pas l'identifiant de l'instance hôte, et chaque instance a sa
 propre base.
 
-Un module déjà installé dans la même version n'est pas réinstallé ; une installation
-interrompue est reprise en rejouant ses ressources (toutes rejouables). Un échec d'installation
+Un module déjà installé dans la même version n'est pas réinstallé et son hook `install` n'est
+pas rejoué ; une release de même version au contenu différent fait refuser le démarrage
+(`RUNTIME_RELEASE_CHECKSUM_MISMATCH`) ; une installation interrompue est reprise en rejouant ses
+ressources (toutes rejouables). La sonde de santé de `lyxal_core` passe à « dégradé » si un autre
+binaire a remplacé le socle de la base. Un échec d'installation
 ou de démarrage arrête le serveur.
 
 ---
@@ -490,10 +494,11 @@ mêmes opérations sans lui.
   `--reason` est obligatoire (1 000 caractères au plus, ni secret ni donnée personnelle). Les
   quatre options sont obligatoires, dans un ordre libre.
 
-Elles se connectent à la base de la configuration, réinstallent le socle (`lyxal_core`,
-`lyxal_error`, définitions `SERVER_*`, schéma et fonctions du runtime : première étape de tout
-démarrage, rejouable, qui garantit que les fonctions de reprise présentes en base sont celles du
-binaire), **n'installent ni ne démarrent aucun module hébergé**, puis appellent
+Elles se connectent à la base de la configuration, installent le socle comme au démarrage
+(`lyxal_core`, `lyxal_error`, schéma et fonctions du runtime, sous le bail du socle, réinstallé
+seulement si la base porte une autre empreinte), puis les définitions `SERVER_*` (première étape
+de tout démarrage, rejouable, qui garantit que les fonctions de reprise présentes en base sont
+celles du binaire), **n'installent ni ne démarrent aucun module hébergé**, puis appellent
 `LyxalRuntime::interrupted_migrations` / `resolve_migration` : mêmes contrôles et même trace au
 journal du runtime que les routes. Elles fonctionnent aussi sur une base qui n'a jamais démarré.
 

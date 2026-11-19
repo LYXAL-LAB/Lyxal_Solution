@@ -290,7 +290,7 @@ pub fn register_handlers(
 
 fn install_error(task: &str, detail: impl std::fmt::Display) -> ServerError {
     ServerError::ModuleInstall {
-        module: super::SERVER_MODULE_ID.to_string(),
+        module: super::HOST_ID.to_string(),
         message: format!("tâche de fond {task} : {detail}"),
     }
 }

@@ -6,7 +6,7 @@ use crate::{config::AppConfig, error::ServerError, modules};
 use lyxal_event::EventWorkerConfig;
 use lyxal_runtime::lock::SurrealInstallationLeaseManager;
 use lyxal_runtime::{
-    EventEngineConfig, LyxalRuntime, ModulePackage, RuntimeConfig, SurrealRuntimeStore,
+    EventEngineConfig, LyxalRuntime, ModuleId, ModulePackage, RuntimeConfig, SurrealRuntimeStore,
 };
 use std::{sync::Arc, time::Duration};
 use surrealdb::engine::any::Any;
@@ -35,17 +35,22 @@ pub async fn start(config: &AppConfig, client: &Surreal<Any>) -> Result<Started,
 /// Runtime réduit à la reprise d'une migration interrompue (`LyxalRuntime::interrupted_migrations`
 /// et `resolve_migration`), pour les commandes `runtime migrations` exécutées serveur arrêté.
 ///
-/// Le socle (`lyxal_core`, `lyxal_error`, définitions `SERVER_*`, schéma et fonctions du runtime)
-/// est réinstallé : c'est la première étape de tout démarrage, rejouable et sans lien avec les
-/// modules hébergés, et elle garantit que les fonctions de reprise et les définitions d'erreurs
-/// présentes en base sont celles de ce binaire. Aucun module hébergé n'est installé ni démarré :
-/// la commande reste utilisable quand l'installation d'un module est refusée.
+/// Le socle (`lyxal_core`, `lyxal_error`, schéma et fonctions du runtime) est installé comme au
+/// démarrage d'un serveur, sous le bail d'installation du socle, puis les définitions `SERVER_*` :
+/// c'est la première étape de tout démarrage, rejouable et sans lien avec les modules hébergés,
+/// et elle garantit que les fonctions de reprise et les définitions d'erreurs présentes en base
+/// sont celles de ce binaire (une base qui porte déjà l'empreinte de ce socle n'est pas
+/// réinstallée). Aucun module hébergé n'est installé ni démarré : la commande reste utilisable
+/// quand l'installation d'un module est refusée.
 ///
 /// Comme un serveur, le processus reçoit un identifiant de nœud propre (`NodeId::generate`) :
 /// il prend le bail d'installation comme un nœud distinct, refusé tant qu'un autre le détient.
 pub async fn recovery(client: &Surreal<Any>) -> Result<LyxalRuntime, ServerError> {
-    modules::install_foundation(client).await?;
-    Ok(LyxalRuntime::new(RuntimeConfig::new()).with_client(client.clone()))
+    let runtime = LyxalRuntime::new(RuntimeConfig::new(modules::host_id()?));
+    let foundation = modules::install_foundation(client, runtime.node_id()).await?;
+    Ok(runtime
+        .with_foundation_checksum(foundation.checksum)
+        .with_client(client.clone()))
 }
 
 /// `start`, avec des packages ajoutés aux modules embarqués (modules d'essai des tests).
@@ -54,10 +59,8 @@ pub async fn start_with(
     client: &Surreal<Any>,
     additional: Vec<ModulePackage>,
 ) -> Result<Started, ServerError> {
-    modules::install_foundation(client).await?;
-
     let timeouts = &config.runtime;
-    let runtime_config = RuntimeConfig::new()
+    let runtime_config = RuntimeConfig::new(modules::host_id()?)
         .with_install_timeout(Duration::from_secs(timeouts.module_install_timeout_seconds))
         .with_start_timeout(Duration::from_secs(timeouts.module_start_timeout_seconds))
         .with_stop_timeout(Duration::from_secs(timeouts.module_stop_timeout_seconds));
@@ -73,13 +76,21 @@ pub async fn start_with(
         auto_init_schema: false,
         ..EventEngineConfig::default()
     };
-    let runtime = LyxalRuntime::new(runtime_config)
+    let runtime = LyxalRuntime::new(runtime_config);
+    let foundation = modules::install_foundation(client, runtime.node_id()).await?;
+    let runtime = runtime
+        .with_foundation_checksum(foundation.checksum)
         .with_event_config(event_config)
         .with_client(client.clone())
         .with_store(Arc::new(SurrealRuntimeStore::new(client.clone())))
         .with_installation_lease_manager(Arc::new(SurrealInstallationLeaseManager::new(
             client.clone(),
         )));
+
+    // Sonde du socle, rattachée à `lyxal_core` : « dégradé » si un autre binaire l'a remplacé
+    runtime.health_registry().register_check(Arc::new(
+        runtime.foundation_health_check(ModuleId::new(modules::FOUNDATION[0])),
+    ))?;
 
     let services = modules::register_services(&runtime, client, config).await?;
 

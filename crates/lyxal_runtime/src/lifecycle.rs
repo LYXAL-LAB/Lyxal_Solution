@@ -69,6 +69,36 @@ impl LifecycleManager {
         }
     }
 
+    /// Passe à `Installed`, sans appeler le hook `install`, un module `Registered` dont la
+    /// release est déjà installée dans la base (par un autre hôte, ou avant un redémarrage) :
+    /// le hook n'est exécuté qu'une fois par release pour toute la base, par l'installateur.
+    /// Un module inconnu de ce gestionnaire ou dans un autre état n'est pas modifié.
+    pub async fn mark_installed(&self, module_id: &ModuleId) -> Result<(), RuntimeError> {
+        {
+            let mut states = self
+                .states
+                .write()
+                .map_err(|_| RuntimeError::LockPoisoned {
+                    context: "Failed to acquire write lock on module states",
+                })?;
+            match states.get_mut(module_id) {
+                Some(state) if *state == ModuleState::Registered => {
+                    *state = ModuleState::Installed;
+                }
+                _ => return Ok(()),
+            }
+        }
+        self.emit(
+            module_id,
+            LifecycleEvent::StateChanged {
+                from: ModuleState::Registered,
+                to: ModuleState::Installed,
+            },
+        )
+        .await;
+        Ok(())
+    }
+
     /// Exécute la phase d'installation pour un module individuel.
     pub async fn install_module(
         &self,

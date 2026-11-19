@@ -20,5 +20,11 @@ DEFINE TABLE OVERWRITE runtime_health TYPE NORMAL SCHEMAFULL PERMISSIONS NONE
 DEFINE TABLE OVERWRITE runtime_worker TYPE NORMAL SCHEMAFULL PERMISSIONS NONE
     COMMENT "Table système enregistrant l'état observable des workers par nœud";
 
+DEFINE TABLE OVERWRITE runtime_node TYPE NORMAL SCHEMAFULL PERMISSIONS NONE
+    COMMENT "Présence des nœuds : un enregistrement par processus en marche, avec son hôte et ses modules, rafraîchi par son battement";
+
+DEFINE TABLE OVERWRITE runtime_foundation TYPE NORMAL SCHEMAFULL PERMISSIONS NONE
+    COMMENT "Socle installé (lyxal_core, lyxal_error, schéma du runtime) : enregistrement unique runtime_foundation:current, avec son empreinte et le nœud qui l'a installé";
+
 DEFINE TABLE OVERWRITE runtime_event_journal TYPE NORMAL SCHEMAFULL PERMISSIONS NONE
     COMMENT "Table système enregistrant le journal d'audit des événements internes du Runtime";

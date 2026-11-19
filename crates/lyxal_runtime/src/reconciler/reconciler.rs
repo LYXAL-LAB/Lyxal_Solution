@@ -10,7 +10,7 @@ use crate::reconciler::report::{
 };
 use crate::runtime::LyxalRuntime;
 use crate::types::{ModuleId, ModuleState};
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -47,13 +47,37 @@ impl RuntimeReconciler {
         let actual = observer.observe().await?;
         let known_descriptors = self.runtime.registry().descriptors();
 
-        RuntimeDiffer::diff(
+        let mut plan = RuntimeDiffer::diff(
             desired,
             &actual,
             available,
             self.runtime.config().runtime_version(),
             &known_descriptors,
-        )
+        )?;
+        self.locate_foreign_modules(&mut plan).await?;
+        Ok(plan)
+    }
+
+    /// Renseigne, pour chaque module d'un autre hôte, les hôtes dont un nœud vivant le déclare
+    /// (`runtime_node`). Sans module étranger, la base n'est pas lue.
+    async fn locate_foreign_modules(
+        &self,
+        plan: &mut ReconciliationPlan,
+    ) -> Result<(), RuntimeError> {
+        if plan.foreign_modules.is_empty() {
+            return Ok(());
+        }
+        let nodes = self.runtime.nodes().await?;
+        for foreign in &mut plan.foreign_modules {
+            let hosts: BTreeSet<String> = nodes
+                .iter()
+                .filter(|node| node.alive == Some(true))
+                .filter(|node| node.modules.iter().any(|m| m == foreign.module_id.as_str()))
+                .map(|node| node.host.clone())
+                .collect();
+            foreign.hosts = hosts.into_iter().collect();
+        }
+        Ok(())
     }
 
     /// Applique les actions planifiées en revalidant systématiquement les préconditions (TOCTOU).
@@ -279,26 +303,36 @@ impl RuntimeReconciler {
                 }
 
                 ActionKind::MarkInactive => {
-                    // Marquage inactif persistant si applicable
+                    // Seul un module enregistré dans ce runtime peut être marqué inactif : la
+                    // release d'un module d'un autre hôte n'est jamais touchée, et l'action
+                    // n'est jamais comptée comme exécutée
+                    let Some(desc) = self
+                        .runtime
+                        .registry()
+                        .get(&mod_id)
+                        .map(|m| m.descriptor().clone())
+                    else {
+                        failed.push(ReconciliationActionFailure {
+                            module_id: mod_id.clone(),
+                            action_kind: action.kind,
+                            error: RuntimeError::UnknownModule { id: mod_id.clone() },
+                        });
+                        failed_modules.insert(mod_id);
+                        continue;
+                    };
+                    // Marquage inactif persistant si le runtime a un store
                     if let Some(store) = self.runtime.store() {
-                        if let Some(desc) = self
-                            .runtime
-                            .registry()
-                            .get(&mod_id)
-                            .map(|m| m.descriptor().clone())
+                        if let Err(error) = store
+                            .update_release_status(&mod_id, &desc.version, "Inactive", None)
+                            .await
                         {
-                            if let Err(error) = store
-                                .update_release_status(&mod_id, &desc.version, "Inactive", None)
-                                .await
-                            {
-                                failed.push(ReconciliationActionFailure {
-                                    module_id: mod_id.clone(),
-                                    action_kind: action.kind,
-                                    error,
-                                });
-                                failed_modules.insert(mod_id);
-                                continue;
-                            }
+                            failed.push(ReconciliationActionFailure {
+                                module_id: mod_id.clone(),
+                                action_kind: action.kind,
+                                error,
+                            });
+                            failed_modules.insert(mod_id);
+                            continue;
                         }
                     }
                     executed.push(ActionOutcome {

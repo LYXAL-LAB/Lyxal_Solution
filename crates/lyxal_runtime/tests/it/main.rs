@@ -22,6 +22,7 @@ mod module_batch_dag_tests;
 mod module_installation_tests;
 mod multi_node_installation_tests;
 mod multi_node_locking_tests;
+mod presence_tests;
 mod reconciler_apply_tests;
 mod reconciler_plan_tests;
 mod registry_and_resolver_tests;

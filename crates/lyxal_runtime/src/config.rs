@@ -1,8 +1,11 @@
+use crate::presence::{HostId, PresenceConfig};
 use std::time::Duration;
 
 /// Configuration centralisée du moteur d'exécution Lyxal Runtime.
 #[derive(Debug, Clone)]
 pub struct RuntimeConfig {
+    /// Hôte : rôle du binaire qui porte ce runtime, constante de son code.
+    pub host: HostId,
     /// Délai maximal alloué pour l'opération d'installation d'un module (par défaut: 30s).
     pub install_timeout: Duration,
     /// Délai maximal alloué pour l'opération de démarrage d'un module (par défaut: 30s).
@@ -11,26 +14,35 @@ pub struct RuntimeConfig {
     pub stop_timeout: Duration,
     /// Version courante du Runtime Lyxal (par défaut: 0.1.0).
     pub runtime_version: semver::Version,
+    /// Réglages de la présence du nœud dans la base (battement, purge).
+    pub presence: PresenceConfig,
 }
 
 /// Version du runtime, identique à celle du crate (vérifié par test).
 pub const RUNTIME_VERSION: semver::Version = semver::Version::new(0, 1, 0);
 
-impl Default for RuntimeConfig {
-    fn default() -> Self {
+impl RuntimeConfig {
+    /// Crée la configuration du runtime de l'hôte `host`, avec les valeurs par défaut.
+    pub fn new(host: HostId) -> Self {
         Self {
+            host,
             install_timeout: Duration::from_secs(30),
             start_timeout: Duration::from_secs(30),
             stop_timeout: Duration::from_secs(30),
             runtime_version: RUNTIME_VERSION,
+            presence: PresenceConfig::default(),
         }
     }
-}
 
-impl RuntimeConfig {
-    /// Crée une configuration avec les valeurs par défaut.
-    pub fn new() -> Self {
-        Self::default()
+    /// Retourne l'hôte de ce runtime.
+    pub fn host(&self) -> &HostId {
+        &self.host
+    }
+
+    /// Modifie les réglages de présence du nœud.
+    pub fn with_presence(mut self, presence: PresenceConfig) -> Self {
+        self.presence = presence;
+        self
     }
 
     /// Modifie le timeout d'installation.

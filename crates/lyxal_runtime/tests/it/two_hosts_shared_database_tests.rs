@@ -1,19 +1,21 @@
 //! Deux hôtes à jeux de modules différents sur une même base.
 //!
-//! Un hôte A héberge les modules `p3_shared` et `p3_alpha`, un hôte B héberge `p3_shared` et
-//! `p3_beta`. Chaque hôte a son propre `LyxalRuntime`, son propre store système, son propre
-//! gestionnaire de baux et son propre identifiant de nœud ; seule la base est commune (moteur
-//! embarqué `mem://`, comme les autres tests à plusieurs nœuds du crate).
+//! Un hôte A (`p3_host_a`) héberge les modules `p3_shared` et `p3_alpha`, un hôte B
+//! (`p3_host_b`) héberge `p3_shared` et `p3_beta`. Chaque hôte a son propre `LyxalRuntime`, son
+//! propre store système, son propre gestionnaire de baux et son propre identifiant de nœud ;
+//! seule la base est commune (moteur embarqué `mem://`, comme les autres tests à plusieurs
+//! nœuds du crate).
 //!
-//! Les tests vérifient l'installation des deux jeux, les baux d'installation, que la
-//! réconciliation d'un hôte ne touche ni aux modules ni aux releases de l'autre, et que le
-//! redémarrage ou l'arrêt d'un hôte laisse l'autre en marche.
+//! Les tests vérifient l'installation des deux jeux, les baux d'installation, que le hook
+//! `install` d'un module n'est appelé qu'une fois pour toute la base (ni par le second hôte, ni
+//! à un redémarrage), la présence des nœuds (`runtime_node`), que la réconciliation stricte d'un
+//! hôte signale les modules de l'autre sans les viser, le refus d'une release de même version au
+//! contenu différent, et que le redémarrage ou l'arrêt d'un hôte laisse l'autre en marche.
 //!
-//! Ces tests couvrent ce qui fonctionne aujourd'hui avec deux hôtes. Le moteur d'événements
-//! est désactivé sur les deux hôtes : son worker est élu par un bail unique pour toute la base
-//! (`event_stream_lease:outbox_leader`) et ne sert que les handlers de son propre hôte, de
-//! sorte que les événements destinés aux handlers de l'autre hôte ne lui parviennent pas.
-//! Ce point relève d'un correctif du runtime et de `lyxal_event`, pas de ce fichier.
+//! Le moteur d'événements est désactivé sur les deux hôtes : son worker est élu par un bail
+//! unique pour toute la base (`event_stream_lease:outbox_leader`) et ne sert que les handlers de
+//! son propre hôte, de sorte que les événements destinés aux handlers de l'autre hôte ne lui
+//! parviennent pas. Ce point relève du correctif de `lyxal_event`, pas de ce fichier.
 
 use crate::common;
 use async_trait::async_trait;
@@ -30,6 +32,9 @@ use lyxal_runtime::manifest::ModuleManifest;
 use lyxal_runtime::module::LyxalModule;
 use lyxal_runtime::package::ModulePackage;
 use lyxal_runtime::reconciler::desired::DesiredRuntimeState;
+use lyxal_runtime::reconciler::plan::{
+    ActionKind, ForeignModule, ReconciliationAction, ReconciliationPlan, ReconciliationReason,
+};
 use lyxal_runtime::reconciler::reconciler::RuntimeReconciler;
 use lyxal_runtime::reconciler::report::ConvergenceStatus;
 use lyxal_runtime::resource::ResourceKind;
@@ -55,6 +60,8 @@ const SHARED: &str = "p3_shared";
 const ALPHA: &str = "p3_alpha";
 const BETA: &str = "p3_beta";
 const VERSION: &str = "0.1.0";
+const HOST_A: &str = "p3_host_a";
+const HOST_B: &str = "p3_host_b";
 
 /// Compteurs des hooks d'un module, communs à toutes ses instances (un hôte redémarré recrée
 /// l'instance du module mais garde les mêmes compteurs).
@@ -129,6 +136,21 @@ impl LyxalWorker for TickWorker {
 
 /// Package d'un module de test : une table, une migration, une dépendance éventuelle.
 fn package(id: &str, dependency: Option<&str>, counters: &Counters) -> ModulePackage {
+    package_with_schema(
+        id,
+        dependency,
+        counters,
+        &format!("DEFINE TABLE OVERWRITE {id}_item SCHEMALESS;"),
+    )
+}
+
+/// Package d'un module de test dont le fichier de schéma a le contenu donné.
+fn package_with_schema(
+    id: &str,
+    dependency: Option<&str>,
+    counters: &Counters,
+    schema: &str,
+) -> ModulePackage {
     let manifest = ModuleManifest {
         manifest_version: CURRENT_MANIFEST_VERSION,
         id: ModuleId::new(id),
@@ -142,11 +164,7 @@ fn package(id: &str, dependency: Option<&str>, counters: &Counters) -> ModulePac
     };
     let provider = Arc::new(
         common::MemoryProvider::new()
-            .add_resource(
-                &format!("schema/{id}.surql"),
-                ResourceKind::Schema,
-                &format!("DEFINE TABLE OVERWRITE {id}_item SCHEMALESS;"),
-            )
+            .add_resource(&format!("schema/{id}.surql"), ResourceKind::Schema, schema)
             .add_resource(
                 "migrations/0001_initial.surql",
                 ResourceKind::Migration,
@@ -172,10 +190,10 @@ struct Host {
 }
 
 impl Host {
-    fn new(client: &Surreal<Any>, node: &str, own_module: &'static str) -> Self {
+    fn new(client: &Surreal<Any>, node: &str, host: &str, own_module: &'static str) -> Self {
         let store = Arc::new(SurrealRuntimeStore::new(client.clone()));
         let runtime = Arc::new(
-            LyxalRuntime::new(RuntimeConfig::default())
+            LyxalRuntime::new(RuntimeConfig::new(common::host(host)))
                 .with_client(client.clone())
                 .with_event_config(EventEngineConfig::default().with_enabled(false))
                 .with_store(store.clone())
@@ -284,8 +302,8 @@ async fn two_running_hosts(db: &str) -> (Surreal<Any>, Host, Host, Counters, Cou
         Counters::default(),
         Counters::default(),
     );
-    let host_a = Host::new(&client, "host-a", ALPHA);
-    let host_b = Host::new(&client, "host-b", BETA);
+    let host_a = Host::new(&client, "host-a", HOST_A, ALPHA);
+    let host_b = Host::new(&client, "host-b", HOST_B, BETA);
 
     let installed_a = host_a
         .runtime
@@ -315,8 +333,8 @@ async fn two_hosts_install_and_start_different_module_sets_on_one_database() {
         Counters::default(),
         Counters::default(),
     );
-    let host_a = Host::new(&client, "host-a", ALPHA);
-    let host_b = Host::new(&client, "host-b", BETA);
+    let host_a = Host::new(&client, "host-a", HOST_A, ALPHA);
+    let host_b = Host::new(&client, "host-b", HOST_B, BETA);
 
     // L'hôte A installe son jeu : tout est nouveau.
     let installed_a = host_a
@@ -342,6 +360,8 @@ async fn two_hosts_install_and_start_different_module_sets_on_one_database() {
     assert!(installed_b.failed.is_empty() && installed_b.not_attempted.is_empty());
     assert_eq!(shared.snapshot().0, 1, "hook install du module commun");
     assert_eq!((alpha.snapshot().0, beta.snapshot().0), (1, 1));
+    // Pour l'hôte B, le module commun est installé sans que son hook ait été rejoué.
+    assert_eq!(host_b.state(SHARED), Some(ModuleState::Installed));
 
     // La base connaît les trois modules, chacun avec une release installée et sa migration.
     let snapshot = database_snapshot(&host_a.store).await;
@@ -409,15 +429,159 @@ async fn two_hosts_install_and_start_different_module_sets_on_one_database() {
     assert_eq!(host_b.state(ALPHA), None);
     assert!(host_a.worker_is_running().await);
     assert!(host_b.worker_is_running().await);
-    // Le module commun est démarré une fois par hôte ; aucun hook d'arrêt n'est appelé.
-    // (Les compteurs du hook `install` ne sont plus comparés après `start_all` : au démarrage,
-    // le runtime rappelle ce hook pour un module dont la release était déjà installée.)
-    assert_eq!((shared.snapshot().1, shared.snapshot().2), (2, 0));
-    assert_eq!((alpha.snapshot().1, alpha.snapshot().2), (1, 0));
-    assert_eq!((beta.snapshot().1, beta.snapshot().2), (1, 0));
+    // Le module commun est démarré une fois par hôte ; aucun hook d'arrêt n'est appelé. Le
+    // démarrage n'appelle jamais le hook `install` : une seule fois pour le module commun, par
+    // l'hôte qui l'a installé, une fois pour chaque module propre.
+    assert_eq!(shared.snapshot(), (1, 2, 0));
+    assert_eq!(alpha.snapshot(), (1, 1, 0));
+    assert_eq!(beta.snapshot(), (1, 1, 0));
 
+    // Présence : chaque nœud a écrit sa ligne, avec son hôte et ses modules.
+    let nodes = host_a.runtime.nodes().await.unwrap();
+    let mut seen: Vec<(String, String, Vec<String>, Option<bool>)> = nodes
+        .into_iter()
+        .map(|n| (n.node_id, n.host, n.modules, n.alive))
+        .collect();
+    seen.sort();
+    assert_eq!(
+        seen,
+        vec![
+            (
+                "host-a".to_string(),
+                HOST_A.to_string(),
+                vec![ALPHA.to_string(), SHARED.to_string()],
+                Some(true)
+            ),
+            (
+                "host-b".to_string(),
+                HOST_B.to_string(),
+                vec![BETA.to_string(), SHARED.to_string()],
+                Some(true)
+            ),
+        ]
+    );
+
+    // L'arrêt propre d'un hôte retire sa ligne et laisse celle de l'autre.
     host_a.runtime.stop_all().await.unwrap();
+    let remaining: Vec<String> = host_b
+        .runtime
+        .nodes()
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|n| n.node_id)
+        .collect();
+    assert_eq!(remaining, vec!["host-b".to_string()]);
     host_b.runtime.stop_all().await.unwrap();
+    assert!(host_b.runtime.nodes().await.unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn starting_a_module_that_was_never_installed_is_refused() {
+    let client = common::setup_db("p3_not_installed", "p3_not_installed").await;
+    let counters = Counters::default();
+    let host = Host::new(&client, "host-a", HOST_A, ALPHA);
+    host.runtime
+        .register(Arc::new(HostedModule {
+            descriptor: ModuleDescriptor::builder(SHARED, VERSION).build(),
+            counters: counters.clone(),
+        }))
+        .unwrap();
+
+    // `start_all` n'installe plus : un module resté `Registered` fait échouer le démarrage.
+    let err = host.runtime.start_all().await.unwrap_err();
+    match err {
+        RuntimeError::InvalidStateTransition { module, from, to } => {
+            assert_eq!(module, ModuleId::new(SHARED));
+            assert_eq!(from, ModuleState::Registered);
+            assert_eq!(to, ModuleState::Starting);
+        }
+        other => panic!("InvalidStateTransition attendu, obtenu {other:?}"),
+    }
+    assert_eq!(counters.snapshot(), (0, 0, 0));
+    // Un nœud qui n'a pas démarré ne s'annonce pas dans la base.
+    assert!(host.runtime.nodes().await.unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn a_release_with_the_same_version_and_another_content_is_refused() {
+    let client = common::setup_db("p3_checksum", "p3_checksum").await;
+    let (shared, alpha, beta) = (
+        Counters::default(),
+        Counters::default(),
+        Counters::default(),
+    );
+    let host_a = Host::new(&client, "host-a", HOST_A, ALPHA);
+    let host_b = Host::new(&client, "host-b", HOST_B, BETA);
+    host_a
+        .runtime
+        .install_packages(host_a.packages(&shared, &alpha))
+        .await
+        .unwrap();
+
+    // L'installateur a écrit l'empreinte de la release.
+    let release = host_a
+        .store
+        .get_release(&ModuleId::new(SHARED), VERSION)
+        .await
+        .unwrap()
+        .unwrap();
+    let recorded = release.checksum.expect("empreinte de la release");
+    assert_eq!(recorded.len(), 64);
+
+    // L'hôte B embarque le module commun sous le même numéro, avec un autre contenu.
+    let other_content = package_with_schema(
+        SHARED,
+        None,
+        &shared,
+        &format!("DEFINE TABLE OVERWRITE {SHARED}_item SCHEMAFULL;"),
+    );
+    let err = host_b
+        .runtime
+        .install_packages(vec![other_content, package(BETA, Some(SHARED), &beta)])
+        .await
+        .unwrap_err();
+    assert_eq!(err.code(), "RUNTIME_RELEASE_CHECKSUM_MISMATCH");
+    match err {
+        RuntimeError::ReleaseChecksumMismatch {
+            module,
+            version,
+            installed,
+            embedded,
+        } => {
+            assert_eq!(module, ModuleId::new(SHARED));
+            assert_eq!(version, VERSION);
+            assert_eq!(installed, recorded);
+            assert_ne!(embedded, recorded);
+        }
+        other => panic!("ReleaseChecksumMismatch attendu, obtenu {other:?}"),
+    }
+
+    // Rien n'a été installé par l'hôte B : ni son module propre, ni un second hook du commun.
+    assert!(host_b
+        .store
+        .get_release(&ModuleId::new(BETA), VERSION)
+        .await
+        .unwrap()
+        .is_none());
+    assert_eq!((shared.snapshot().0, beta.snapshot().0), (1, 0));
+    let unchanged = host_a
+        .store
+        .get_release(&ModuleId::new(SHARED), VERSION)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(unchanged.checksum, Some(recorded));
+    assert_eq!(unchanged.status, "Installed");
+
+    // Le même contenu est accepté.
+    let accepted = host_b
+        .runtime
+        .install_packages(host_b.packages(&shared, &beta))
+        .await
+        .unwrap();
+    assert_eq!(accepted.already_installed, vec![ModuleId::new(SHARED)]);
+    assert_eq!(accepted.installed, vec![ModuleId::new(BETA)]);
 }
 
 #[tokio::test]
@@ -428,8 +592,8 @@ async fn two_hosts_install_concurrently_without_double_installation() {
         Counters::default(),
         Counters::default(),
     );
-    let host_a = Host::new(&client, "host-a", ALPHA);
-    let host_b = Host::new(&client, "host-b", BETA);
+    let host_a = Host::new(&client, "host-a", HOST_A, ALPHA);
+    let host_b = Host::new(&client, "host-b", HOST_B, BETA);
 
     let (result_a, result_b) = tokio::join!(
         host_a
@@ -482,11 +646,28 @@ async fn reconciliation_of_one_host_leaves_the_other_hosts_modules_untouched() {
     assert_eq!(report.convergence, ConvergenceStatus::Converged);
     assert_eq!(database_snapshot(&host_b.store).await, before);
 
-    // 2. Mode strict : l'hôte A voit dans la base un module qu'il n'héberge pas. Quoi qu'il
-    //    planifie, la release de ce module et l'hôte B ne doivent pas changer.
+    // 2. Mode strict : l'hôte A voit dans la base un module qu'il n'héberge pas. Il le signale
+    //    comme module d'un autre hôte, avec l'hôte vivant qui le déclare, et ne planifie rien.
     let strict = desired.clone().with_strict(true);
+    let strict_plan = reconciler.plan(&strict, &available).await.unwrap();
+    assert!(
+        strict_plan.actions.is_empty(),
+        "aucune action attendue : {:?}",
+        strict_plan.actions
+    );
+    assert!(strict_plan.blockers.is_empty());
+    assert_eq!(
+        strict_plan.foreign_modules,
+        vec![ForeignModule {
+            module_id: ModuleId::new(BETA),
+            hosts: vec![HOST_B.to_string()],
+        }]
+    );
     let strict_report = reconciler.reconcile(&strict, &available).await.unwrap();
+    assert_eq!(strict_report.planned_actions, 0);
+    assert!(strict_report.executed.is_empty());
     assert!(strict_report.failed.is_empty());
+    assert_eq!(strict_report.convergence, ConvergenceStatus::Converged);
     assert_eq!(database_snapshot(&host_b.store).await, before);
     assert_eq!(release_status(&host_b.store, BETA).await, "Installed");
 
@@ -498,6 +679,50 @@ async fn reconciliation_of_one_host_leaves_the_other_hosts_modules_untouched() {
     // L'hôte A garde aussi son propre jeu en marche.
     assert_eq!(host_a.state(ALPHA), Some(ModuleState::Running));
     assert_eq!(host_a.state(SHARED), Some(ModuleState::Running));
+
+    // 3. Hôte B arrêté : son module reste signalé, sans hôte vivant qui le déclare.
+    host_b.runtime.stop_all().await.unwrap();
+    let plan_alone = reconciler.plan(&strict, &available).await.unwrap();
+    assert!(plan_alone.actions.is_empty());
+    assert_eq!(
+        plan_alone.foreign_modules,
+        vec![ForeignModule {
+            module_id: ModuleId::new(BETA),
+            hosts: Vec::new(),
+        }]
+    );
+    assert_eq!(release_status(&host_a.store, BETA).await, "Installed");
+
+    host_a.runtime.stop_all().await.unwrap();
+}
+
+#[tokio::test]
+async fn marking_inactive_a_module_this_runtime_does_not_host_fails() {
+    let (_client, host_a, host_b, _shared, _alpha, _beta) =
+        two_running_hosts("p3_mark_inactive").await;
+    let reconciler = RuntimeReconciler::new(host_a.runtime.clone());
+
+    // Plan écrit à la main : le calcul du plan ne vise jamais le module d'un autre hôte.
+    let mut plan = ReconciliationPlan::new();
+    plan.actions.push(ReconciliationAction {
+        module_id: ModuleId::new(BETA),
+        kind: ActionKind::MarkInactive,
+        reason: ReconciliationReason::new(None, "Installed", false),
+        package: None,
+        preconditions: Vec::new(),
+    });
+    let report = reconciler
+        .apply(plan, &[], &DesiredRuntimeState::new())
+        .await
+        .unwrap();
+    assert!(report.executed.is_empty(), "{:?}", report.executed);
+    assert_eq!(report.failed.len(), 1);
+    assert_eq!(report.failed[0].module_id, ModuleId::new(BETA));
+    assert!(matches!(
+        report.failed[0].error,
+        RuntimeError::UnknownModule { .. }
+    ));
+    assert_eq!(release_status(&host_b.store, BETA).await, "Installed");
 
     host_a.runtime.stop_all().await.unwrap();
     host_b.runtime.stop_all().await.unwrap();
@@ -525,7 +750,7 @@ async fn restarting_one_host_has_no_effect_on_the_other() {
 
     // Redémarrage de A : un nouveau processus (nouveau runtime, même nœud) rejoue installation
     // et démarrage. Rien n'est réinstallé.
-    let host_a2 = Host::new(&client, "host-a", ALPHA);
+    let host_a2 = Host::new(&client, "host-a", HOST_A, ALPHA);
     let reinstalled = host_a2
         .runtime
         .install_packages(host_a2.packages(&shared, &alpha))
@@ -545,6 +770,15 @@ async fn restarting_one_host_has_no_effect_on_the_other() {
     host_a2.runtime.start_all().await.unwrap();
     assert_eq!(host_a2.state(ALPHA), Some(ModuleState::Running));
     assert!(host_a2.worker_is_running().await);
+    // Le redémarrage n'appelle aucun hook `install` : ni celui du module propre, ni celui du
+    // module commun.
+    assert_eq!(alpha.snapshot().0, 1, "hook install de p3_alpha");
+    assert_eq!(
+        shared.snapshot().0,
+        shared_before.0,
+        "hook install du module commun"
+    );
+    assert_eq!(shared_before.0, 1);
 
     // Toujours aucun effet sur B.
     assert_eq!(host_b.state(BETA), Some(ModuleState::Running));
