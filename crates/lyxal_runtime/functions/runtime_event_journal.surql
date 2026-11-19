@@ -23,8 +23,10 @@ DEFINE FUNCTION OVERWRITE fn::runtime_event_append($params: object) {
     };
     LET $p = object::from_entries(array::map(object::entries($checks), |$e| [$e[0], $e[1].value]));
 
-    -- Réécrire le même événement (rejeu) ne crée pas de doublon
-    LET $saved = UPSERT ONLY type::record("runtime_event_journal", [$p.event_id]) CONTENT {
+    -- Réécrire le même événement (rejeu) ne crée pas de doublon. MERGE et non CONTENT : un
+    -- remplacement complet retirerait created_at, que son DEFAULT ne recalcule pas à la mise à
+    -- jour (erreur de type en 3.3.4)
+    LET $saved = UPSERT ONLY type::record("runtime_event_journal", [$p.event_id]) MERGE {
         event_id: $p.event_id,
         sequence: $p.sequence,
         node_id: $p.node_id,

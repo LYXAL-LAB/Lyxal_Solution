@@ -21,6 +21,7 @@ use crate::package::types::{
     ModuleInstallationOutcome, ModuleInstallationReport, ModuleNotAttempted, ModuleReleaseStatus,
 };
 use crate::resolver::DependencyResolver;
+use crate::resource::{ResourceChecksum, ResourceDiscovery};
 use crate::schema::importer::SchemaImporter;
 use crate::schema::plan::SchemaImportPlan;
 use crate::store::models::{StoredModule, StoredModuleRelease};
@@ -187,7 +188,16 @@ impl ModuleInstaller {
             }
         }
 
-        // 4. Détermination de la nature de l'installation et des états persistés
+        // 4. Empreinte de la release : fichiers de `[resources]` (migrations comprises), chemin
+        //    et contenu, dans l'ordre déclaré
+        let mut resources =
+            ResourceDiscovery::install_resources(manifest, package.provider().as_ref()).await?;
+        resources.extend(
+            ResourceDiscovery::migration_resources(manifest, package.provider().as_ref()).await?,
+        );
+        let checksum = ResourceChecksum::of(&resources);
+
+        // 5. Détermination de la nature de l'installation et des états persistés
         let version_str = package.version().to_string();
         let existing_release = self.store.get_release(package.id(), &version_str).await?;
 
@@ -196,11 +206,14 @@ impl ModuleInstaller {
                 if rel.status == ModuleReleaseStatus::Installed.as_str()
                     || rel.status == ModuleReleaseStatus::Active.as_str()
                 {
+                    Self::ensure_same_release(package, rel, &checksum)?;
                     InstallationNature::AlreadyInstalled
                 } else if rel.status == ModuleReleaseStatus::Failed.as_str()
                     && rel.installation_phase.as_deref()
                         == Some(InstallationPhase::InstallHook.as_str())
+                    && rel.checksum.as_deref() == Some(checksum.as_str())
                 {
+                    // Seul le hook est à rejouer : le schéma en base est celui de ce binaire
                     InstallationNature::HookRecovery
                 } else {
                     InstallationNature::FreshInstall
@@ -223,7 +236,7 @@ impl ModuleInstaller {
             InstallationNature::FreshInstall | InstallationNature::UpgradeCandidate { .. } => true,
         };
 
-        // 5. Planification du schéma et des migrations
+        // 6. Planification du schéma et des migrations
         let schema_plan = if schema_required {
             Some(
                 SchemaImportPlan::from_manifest(package.manifest(), package.provider().as_ref())
@@ -251,6 +264,7 @@ impl ModuleInstaller {
             module_id: package.id().clone(),
             version: package.version().clone(),
             nature,
+            checksum,
             manifest: manifest.clone(),
             schema_required,
             schema_plan,
@@ -258,7 +272,54 @@ impl ModuleInstaller {
         })
     }
 
+    /// Refuse une release déjà installée dont l'empreinte n'est pas celle du package : même
+    /// version, contenu différent (deux binaires de commits différents, ou fichier modifié sans
+    /// recréer la base). Une release installée sans empreinte ne peut pas être vérifiée : elle
+    /// est refusée de la même façon.
+    fn ensure_same_release(
+        package: &ModulePackage,
+        release: &StoredModuleRelease,
+        checksum: &str,
+    ) -> Result<(), RuntimeError> {
+        if release.checksum.as_deref() == Some(checksum) {
+            return Ok(());
+        }
+        Err(RuntimeError::ReleaseChecksumMismatch {
+            module: package.id().clone(),
+            version: package.version().to_string(),
+            installed: release
+                .checksum
+                .clone()
+                .unwrap_or_else(|| "absente".to_string()),
+            embedded: checksum.to_string(),
+        })
+    }
+
+    /// Rapport d'une release déjà installée : le hook `install` n'est pas rejoué, le module
+    /// passe à `Installed` dans ce runtime.
+    async fn already_installed(
+        &self,
+        package: &ModulePackage,
+        start_time: Instant,
+    ) -> Result<ModuleInstallationReport, RuntimeError> {
+        self.lifecycle_manager.mark_installed(package.id()).await?;
+        Ok(ModuleInstallationReport {
+            module_id: package.id().clone(),
+            version: package.version().to_string(),
+            outcome: ModuleInstallationOutcome::AlreadyInstalled,
+            duration_ms: start_time.elapsed().as_millis() as u64,
+            schema_resources_count: 0,
+            migrations_applied: 0,
+            migrations_skipped: 0,
+            phase: InstallationPhase::Complete,
+        })
+    }
+
     /// Exécute l'installation complète d'un package individuel.
+    ///
+    /// Le hook `LyxalModule::install` n'est appelé qu'ici, sous le bail d'installation de la
+    /// release, une fois pour toute la base : une release déjà installée (par un autre hôte, ou
+    /// avant un redémarrage) passe le module à `Installed` sans rejouer le hook.
     pub async fn execute_installation(
         &self,
         package: ModulePackage,
@@ -268,16 +329,7 @@ impl ModuleInstaller {
 
         // Si le module est déjà installé avec succès, idempotence immédiate
         if !plan.is_mutation_required() {
-            return Ok(ModuleInstallationReport {
-                module_id: package.id().clone(),
-                version: package.version().to_string(),
-                outcome: ModuleInstallationOutcome::AlreadyInstalled,
-                duration_ms: start_time.elapsed().as_millis() as u64,
-                schema_resources_count: 0,
-                migrations_applied: 0,
-                migrations_skipped: 0,
-                phase: InstallationPhase::Complete,
-            });
+            return self.already_installed(&package, start_time).await;
         }
 
         // Exigence stricte : une implémentation Rust LyxalModule est obligatoire pour exécuter l'installation
@@ -369,16 +421,9 @@ impl ModuleInstaller {
                     if let Err(e) = lease_mgr.release(&lease).await {
                         tracing::warn!(error = %e, "Libération du bail impossible : il expirera à son échéance");
                     }
-                    return Ok(ModuleInstallationReport {
-                        module_id: package.id().clone(),
-                        version: package.version().to_string(),
-                        outcome: ModuleInstallationOutcome::AlreadyInstalled,
-                        duration_ms: start_time.elapsed().as_millis() as u64,
-                        schema_resources_count: 0,
-                        migrations_applied: 0,
-                        migrations_skipped: 0,
-                        phase: InstallationPhase::Complete,
-                    });
+                    // Installée par un autre nœud pendant l'attente du bail : même contrôle
+                    Self::ensure_same_release(&package, &r, &plan.checksum)?;
+                    return self.already_installed(&package, start_time).await;
                 }
             }
 
@@ -420,6 +465,7 @@ impl ModuleInstaller {
             ModuleReleaseStatus::Installing.as_str(),
         )
         .with_description(package.manifest().description.clone().unwrap_or_default())
+        .with_checksum(plan.checksum.clone())
         .with_installation_phase(InstallationPhase::Registration.as_str());
         self.store.register_release(&stored_release).await?;
 

@@ -3,7 +3,6 @@ use lyxal_event::{
     DeliveryStatus, Event, EventContext, EventDelivery, EventStore, EventSubscription,
     EventWorkerConfig, Handler, HandlerContext, HandlerRegistry, LyxalEventError,
 };
-use lyxal_runtime::config::RuntimeConfig;
 use lyxal_runtime::descriptor::ModuleDescriptor;
 use lyxal_runtime::error::RuntimeError;
 use lyxal_runtime::event_engine::{EventConsumerModule, EventEngineConfig};
@@ -99,7 +98,7 @@ async fn test_runtime_event_worker_auto_start_and_dispatch() {
     let mut event_config = EventEngineConfig::default();
     event_config.worker_config.poll_interval = Duration::from_millis(50);
 
-    let runtime = LyxalRuntime::new(RuntimeConfig::default())
+    let runtime = LyxalRuntime::new(crate::common::runtime_config())
         .with_client(client.clone())
         .with_event_config(event_config);
 
@@ -124,7 +123,9 @@ async fn test_runtime_event_worker_auto_start_and_dispatch() {
         .await
         .expect("register subscription");
 
-    // Démarrage complet orchestré par le Runtime
+    // Démarrage complet orchestré par le Runtime. Le module est installé d'abord : ce runtime
+    // n'a pas de store de modules, `start_all` n'appelle jamais le hook `install`.
+    runtime.install_all().await.expect("runtime install_all");
     runtime.start_all().await.expect("runtime start_all");
     tokio::time::sleep(Duration::from_millis(100)).await;
 
@@ -185,7 +186,7 @@ async fn test_runtime_define_event_e2e() {
     let mut event_config = EventEngineConfig::default();
     event_config.worker_config.poll_interval = Duration::from_millis(50);
 
-    let runtime = LyxalRuntime::new(RuntimeConfig::default())
+    let runtime = LyxalRuntime::new(crate::common::runtime_config())
         .with_client(client.clone())
         .with_event_config(event_config);
 
@@ -236,6 +237,7 @@ async fn test_runtime_define_event_e2e() {
         .await
         .expect("define event schema");
 
+    runtime.install_all().await.expect("runtime install_all");
     runtime.start_all().await.expect("runtime start_all");
 
     // Insertion d'un booking déclenchant le DEFINE EVENT
@@ -271,7 +273,7 @@ async fn test_runtime_shutdown_graceful_no_zombies() {
     event_config.worker_config.poll_interval = Duration::from_millis(50);
     event_config.gc_interval = Duration::from_millis(50);
 
-    let runtime = LyxalRuntime::new(RuntimeConfig::default())
+    let runtime = LyxalRuntime::new(crate::common::runtime_config())
         .with_client(client)
         .with_event_config(event_config);
 
@@ -358,7 +360,7 @@ async fn test_runtime_restart_and_fanout_recovery() {
         ..Default::default()
     };
 
-    let runtime = LyxalRuntime::new(RuntimeConfig::default())
+    let runtime = LyxalRuntime::new(crate::common::runtime_config())
         .with_client(client.clone())
         .with_event_config(event_config);
 
@@ -368,6 +370,7 @@ async fn test_runtime_restart_and_fanout_recovery() {
     runtime.register_event_consumer(notification_module).await;
 
     // Le boot du runtime doit automatiquement appeler recover_pending_fanouts
+    runtime.install_all().await.expect("install_all");
     runtime.start_all().await.expect("start_all with recovery");
 
     // Attente que le worker traite la livraison issue du fan-out recouvré
@@ -410,11 +413,11 @@ async fn test_runtime_multi_instance_isolation() {
     config_beta.worker_config.poll_interval = Duration::from_millis(50);
     config_beta.worker_config.instance_id = Some("instance_beta".to_string());
 
-    let runtime_alpha = LyxalRuntime::new(RuntimeConfig::default())
+    let runtime_alpha = LyxalRuntime::new(crate::common::runtime_config())
         .with_client(client_alpha)
         .with_event_config(config_alpha);
 
-    let runtime_beta = LyxalRuntime::new(RuntimeConfig::default())
+    let runtime_beta = LyxalRuntime::new(crate::common::runtime_config())
         .with_client(client_beta)
         .with_event_config(config_beta);
 
@@ -454,6 +457,8 @@ async fn test_runtime_multi_instance_isolation() {
         .await
         .expect("sub beta");
 
+    runtime_alpha.install_all().await.expect("install alpha");
+    runtime_beta.install_all().await.expect("install beta");
     runtime_alpha.start_all().await.expect("start alpha");
     runtime_beta.start_all().await.expect("start beta");
 
@@ -502,7 +507,7 @@ async fn test_runtime_missing_handler_behavior() {
     let mut event_config = EventEngineConfig::default();
     event_config.worker_config.poll_interval = Duration::from_millis(50);
 
-    let runtime = LyxalRuntime::new(RuntimeConfig::default())
+    let runtime = LyxalRuntime::new(crate::common::runtime_config())
         .with_client(client.clone())
         .with_event_config(event_config);
 
@@ -610,7 +615,7 @@ async fn test_runtime_event_worker_crash_supervision() {
     let worker = Arc::new(CrashingWorker::new(runs.clone()));
     let worker_id = worker.descriptor().id.clone();
 
-    let runtime = LyxalRuntime::new(RuntimeConfig::default());
+    let runtime = LyxalRuntime::new(crate::common::runtime_config());
     runtime
         .register_worker(worker)
         .expect("register crashing worker");
@@ -656,7 +661,7 @@ async fn test_runtime_restart_reuses_event_workers() {
     let client = common::setup_db("test_ns", "test_restart").await;
     let mut event_config = EventEngineConfig::default();
     event_config.worker_config.poll_interval = Duration::from_millis(50);
-    let runtime = LyxalRuntime::new(RuntimeConfig::default())
+    let runtime = LyxalRuntime::new(crate::common::runtime_config())
         .with_client(client)
         .with_event_config(event_config);
 

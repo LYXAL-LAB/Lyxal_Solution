@@ -29,7 +29,9 @@ functions = [
     "functions/runtime_health.surql",
     "functions/runtime_worker.surql",
     "functions/runtime_event_journal.surql",
-    "functions/runtime_lease.surql"
+    "functions/runtime_lease.surql",
+    "functions/runtime_node.surql",
+    "functions/runtime_foundation.surql"
 ]
 error_definitions = [
     "error/runtime.surql"

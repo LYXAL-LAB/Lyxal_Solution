@@ -154,7 +154,9 @@ async fn an_interrupted_migration_is_resolved_from_the_command_line_while_the_se
 
     // Un nœud a commencé la migration du module puis s'est arrêté : elle reste « en cours »,
     // sans bail de migration vivant
-    modules::install_foundation(&client).await.expect("socle");
+    modules::install_foundation(&client, &lyxal_runtime::NodeId::generate())
+        .await
+        .expect("socle");
     run(
         &client,
         r#"fn::runtime_migration_record({ module_id: "lyxal_essai", migration_id: "0001_initial", module_version: "0.1.0", checksum: string::repeat("a", 64), status: "Applying", applied_at: 0, duration_ms: 0, script: "migrations/0001_initial.surql", node_id: "node-arrete" });"#,

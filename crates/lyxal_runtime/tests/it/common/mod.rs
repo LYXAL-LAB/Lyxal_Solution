@@ -3,17 +3,33 @@
 use std::path::PathBuf;
 use surrealdb::engine::any::connect;
 
-/// Crée une base mémoire isolée et y installe `lyxal_core` et `lyxal_error` par le runtime,
-/// depuis leurs manifestes, phase par phase (`schema::install_batch`).
-pub async fn setup_db(ns: &str, db: &str) -> surrealdb::Surreal<surrealdb::engine::any::Any> {
+/// Hôte des runtimes de test qui n'ont pas besoin d'un nom particulier.
+pub const TEST_HOST: &str = "lyxal_test";
+
+/// Hôte de test au nom donné.
+pub fn host(name: &str) -> lyxal_runtime::HostId {
+    lyxal_runtime::HostId::new(name).expect("nom d'hôte de test")
+}
+
+/// Configuration d'un runtime de test, pour l'hôte `TEST_HOST`.
+pub fn runtime_config() -> lyxal_runtime::RuntimeConfig {
+    lyxal_runtime::RuntimeConfig::new(host(TEST_HOST))
+}
+
+/// Base mémoire vierge et isolée.
+pub async fn blank_db(ns: &str, db: &str) -> surrealdb::Surreal<surrealdb::engine::any::Any> {
     let client = connect("mem://").await.expect("connect mem://");
     client.use_ns(ns).use_db(db).await.expect("use_ns/use_db");
+    client
+}
 
+/// Modules du socle hors runtime (`lyxal_core`, `lyxal_error`), lus depuis leurs dossiers.
+pub fn foundation_modules() -> Vec<(lyxal_runtime::manifest::ModuleManifest, DirResourceProvider)> {
     let crates = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .expect("dossier crates")
         .to_path_buf();
-    let modules: Vec<_> = ["lyxal_core", "lyxal_error"]
+    ["lyxal_core", "lyxal_error"]
         .iter()
         .map(|name| {
             let dir = crates.join(name);
@@ -22,7 +38,14 @@ pub async fn setup_db(ns: &str, db: &str) -> surrealdb::Surreal<surrealdb::engin
                     .expect("manifeste");
             (manifest, DirResourceProvider::new(dir))
         })
-        .collect();
+        .collect()
+}
+
+/// Crée une base mémoire isolée et y installe `lyxal_core` et `lyxal_error` par le runtime,
+/// depuis leurs manifestes, phase par phase (`schema::install_batch`).
+pub async fn setup_db(ns: &str, db: &str) -> surrealdb::Surreal<surrealdb::engine::any::Any> {
+    let client = blank_db(ns, db).await;
+    let modules = foundation_modules();
     let batch: Vec<(
         &lyxal_runtime::manifest::ModuleManifest,
         &dyn lyxal_runtime::resource::ResourceProvider,

@@ -26,6 +26,9 @@ pub struct ModuleInstallationPlan {
     pub version: semver::Version,
     /// Nature de l'opération planifiée.
     pub nature: InstallationNature,
+    /// Empreinte de la release : SHA-256 des fichiers de `[resources]`, chemin et contenu, dans
+    /// l'ordre déclaré.
+    pub checksum: String,
     /// Manifeste validé du module.
     pub manifest: ModuleManifest,
     /// Indique si l'exécution de l'importation de schéma baseline est requise.

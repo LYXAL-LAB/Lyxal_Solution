@@ -19,7 +19,6 @@ use lyxal_runtime::resource::ResourceKind;
 use lyxal_runtime::runtime::LyxalRuntime;
 use lyxal_runtime::store::memory::MemoryRuntimeStore;
 use lyxal_runtime::types::{ModuleId, ModuleState};
-use lyxal_runtime::RuntimeConfig;
 use semver::Version;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -142,7 +141,7 @@ async fn test_controller_converged_loop_zero_mutations() {
     let store = Arc::new(MemoryRuntimeStore::new());
     let lease_mgr = Arc::new(MemoryInstallationLeaseManager::new());
     let runtime = Arc::new(
-        LyxalRuntime::new(RuntimeConfig::default())
+        LyxalRuntime::new(crate::common::runtime_config())
             .with_client(client)
             .with_store(store.clone())
             .with_installation_lease_manager(lease_mgr),
@@ -200,7 +199,7 @@ async fn test_unhealthy_running_module_does_not_trigger_reconciliation_mutation(
     let store = Arc::new(MemoryRuntimeStore::new());
     let lease_mgr = Arc::new(MemoryInstallationLeaseManager::new());
     let runtime = Arc::new(
-        LyxalRuntime::new(RuntimeConfig::default())
+        LyxalRuntime::new(crate::common::runtime_config())
             .with_client(client)
             .with_store(store.clone())
             .with_installation_lease_manager(lease_mgr),
@@ -259,7 +258,7 @@ async fn test_controller_drift_detection_and_automatic_restoration() {
     let store = Arc::new(MemoryRuntimeStore::new());
     let lease_mgr = Arc::new(MemoryInstallationLeaseManager::new());
     let runtime = Arc::new(
-        LyxalRuntime::new(RuntimeConfig::default())
+        LyxalRuntime::new(crate::common::runtime_config())
             .with_client(client)
             .with_store(store.clone())
             .with_installation_lease_manager(lease_mgr),
@@ -305,7 +304,7 @@ async fn test_controller_empty_to_full_reconciliation() {
     let store = Arc::new(MemoryRuntimeStore::new());
     let lease_mgr = Arc::new(MemoryInstallationLeaseManager::new());
     let runtime = Arc::new(
-        LyxalRuntime::new(RuntimeConfig::default())
+        LyxalRuntime::new(crate::common::runtime_config())
             .with_client(client)
             .with_store(store.clone())
             .with_installation_lease_manager(lease_mgr),
@@ -349,7 +348,7 @@ async fn test_controller_partial_failure_retry_and_convergence() {
     let store = Arc::new(MemoryRuntimeStore::new());
     let lease_mgr = Arc::new(MemoryInstallationLeaseManager::new());
     let runtime = Arc::new(
-        LyxalRuntime::new(RuntimeConfig::default())
+        LyxalRuntime::new(crate::common::runtime_config())
             .with_client(client)
             .with_store(store.clone())
             .with_installation_lease_manager(lease_mgr),
@@ -394,7 +393,7 @@ async fn test_run_once_concurrent_calls_do_not_overlap() {
     let store = Arc::new(MemoryRuntimeStore::new());
     let lease_mgr = Arc::new(MemoryInstallationLeaseManager::new());
     let runtime = Arc::new(
-        LyxalRuntime::new(RuntimeConfig::default())
+        LyxalRuntime::new(crate::common::runtime_config())
             .with_client(client)
             .with_store(store.clone())
             .with_installation_lease_manager(lease_mgr),
@@ -421,7 +420,7 @@ async fn test_controller_graceful_shutdown() {
     let store = Arc::new(MemoryRuntimeStore::new());
     let lease_mgr = Arc::new(MemoryInstallationLeaseManager::new());
     let runtime = Arc::new(
-        LyxalRuntime::new(RuntimeConfig::default())
+        LyxalRuntime::new(crate::common::runtime_config())
             .with_client(client)
             .with_store(store.clone())
             .with_installation_lease_manager(lease_mgr),

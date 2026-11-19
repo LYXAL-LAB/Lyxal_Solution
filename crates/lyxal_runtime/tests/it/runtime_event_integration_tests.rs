@@ -1,6 +1,5 @@
 use crate::common;
 use async_trait::async_trait;
-use lyxal_runtime::config::RuntimeConfig;
 use lyxal_runtime::context::ModuleContext;
 use lyxal_runtime::descriptor::ModuleDescriptor;
 use lyxal_runtime::error::RuntimeError;
@@ -91,7 +90,7 @@ impl LyxalWorker for DummyWorker {
 
 #[tokio::test]
 async fn test_lifecycle_emits_started_and_stopped() {
-    let runtime = LyxalRuntime::new(RuntimeConfig::default());
+    let runtime = LyxalRuntime::new(crate::common::runtime_config());
     let mut sub = runtime.subscribe(RuntimeEventFilter::for_kinds([RuntimeEventKind::Lifecycle]));
 
     let module = Arc::new(DummyModule::new("lyxal-auth"));
@@ -139,7 +138,7 @@ async fn test_installation_pipeline_emits_ordered_events() {
     let store = Arc::new(SurrealRuntimeStore::new(client.clone()));
     store.bootstrap().await.unwrap();
 
-    let runtime = LyxalRuntime::new(RuntimeConfig::default())
+    let runtime = LyxalRuntime::new(crate::common::runtime_config())
         .with_client(client)
         .with_store(store);
 
@@ -318,7 +317,7 @@ async fn test_health_transition_emitted_once() {
 #[tokio::test]
 async fn test_event_bus_failure_isolation() {
     // Si un journal d'événements échoue ou si personne n'écoute, le Runtime continue de fonctionner sans régression
-    let runtime = LyxalRuntime::new(RuntimeConfig::default());
+    let runtime = LyxalRuntime::new(crate::common::runtime_config());
     let module = Arc::new(DummyModule::new("lyxal-crm"));
     runtime.register(module).unwrap();
     runtime.install_all().await.unwrap();

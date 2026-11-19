@@ -15,7 +15,6 @@ use lyxal_runtime::resource::ResourceKind;
 use lyxal_runtime::runtime::LyxalRuntime;
 use lyxal_runtime::store::memory::MemoryRuntimeStore;
 use lyxal_runtime::types::{ModuleId, ModuleState};
-use lyxal_runtime::RuntimeConfig;
 use semver::Version;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -108,7 +107,7 @@ async fn test_apply_empty_to_full_convergence() {
     let lease_mgr = Arc::new(MemoryInstallationLeaseManager::new());
 
     let runtime = Arc::new(
-        LyxalRuntime::new(RuntimeConfig::default())
+        LyxalRuntime::new(crate::common::runtime_config())
             .with_client(client)
             .with_store(store.clone())
             .with_installation_lease_manager(lease_mgr),
@@ -173,7 +172,7 @@ async fn test_stop_booking_while_calendar_running() {
     let lease_mgr = Arc::new(MemoryInstallationLeaseManager::new());
 
     let runtime = Arc::new(
-        LyxalRuntime::new(RuntimeConfig::default())
+        LyxalRuntime::new(crate::common::runtime_config())
             .with_client(client)
             .with_store(store.clone())
             .with_installation_lease_manager(lease_mgr),
@@ -231,7 +230,7 @@ async fn test_partial_failure_and_not_attempted_reporting() {
     let lease_mgr = Arc::new(MemoryInstallationLeaseManager::new());
 
     let runtime = Arc::new(
-        LyxalRuntime::new(RuntimeConfig::default())
+        LyxalRuntime::new(crate::common::runtime_config())
             .with_client(client)
             .with_store(store.clone())
             .with_installation_lease_manager(lease_mgr),
@@ -277,7 +276,7 @@ async fn test_revalidation_already_converged_is_successful_skip() {
     let lease_mgr = Arc::new(MemoryInstallationLeaseManager::new());
 
     let runtime = Arc::new(
-        LyxalRuntime::new(RuntimeConfig::default())
+        LyxalRuntime::new(crate::common::runtime_config())
             .with_client(client)
             .with_store(store.clone())
             .with_installation_lease_manager(lease_mgr),
@@ -323,7 +322,7 @@ async fn test_revalidation_failed_state_is_not_silent_skip() {
     let lease_mgr = Arc::new(MemoryInstallationLeaseManager::new());
 
     let runtime = Arc::new(
-        LyxalRuntime::new(RuntimeConfig::default())
+        LyxalRuntime::new(crate::common::runtime_config())
             .with_client(client)
             .with_store(store.clone())
             .with_installation_lease_manager(lease_mgr),

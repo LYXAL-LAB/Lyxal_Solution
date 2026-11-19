@@ -27,6 +27,10 @@ use crate::package::installer::ModuleInstaller;
 use crate::package::model::ModulePackage;
 use crate::package::plan::ModuleInstallationPlan;
 use crate::package::types::{ModuleBatchInstallationResult, ModuleInstallationReport};
+use crate::presence::{
+    FoundationHealthCheck, FoundationWatch, HostId, NodePresence, PresenceStore, PresenceWorker,
+    RuntimeNode,
+};
 use crate::reconciler::reconciler::RuntimeReconciler;
 use crate::registry::ModuleRegistry;
 use crate::resolver::DependencyResolver;
@@ -43,14 +47,14 @@ use lyxal_event::{
 };
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 use tokio::sync::RwLock;
 
 /// Façade principale orchestrant le registre, le graphe de dépendances, le cycle de vie, les workers et la persistance de Lyxal OS.
 pub struct LyxalRuntime {
-    registry: ModuleRegistry,
+    registry: Arc<ModuleRegistry>,
     lifecycle: Arc<LifecycleManager>,
     config: RuntimeConfig,
     store: Option<Arc<dyn RuntimeStore>>,
@@ -73,12 +77,12 @@ pub struct LyxalRuntime {
     /// Workers du moteur d'événements déjà enregistrés : un redémarrage (`start_all` après
     /// `stop_all`) les réutilise au lieu de les réenregistrer.
     event_workers_registered: AtomicBool,
-}
-
-impl Default for LyxalRuntime {
-    fn default() -> Self {
-        Self::new(RuntimeConfig::default())
-    }
+    /// Empreinte du socle embarqué par le binaire (`schema::install_foundation`).
+    foundation_checksum: Option<String>,
+    /// Dernière observation du socle installé dans la base, écrite par le battement.
+    foundation_watch: Arc<FoundationWatch>,
+    /// Présence du nœud dans la base, créée au premier `start_all` d'un runtime adossé à une base.
+    presence: OnceLock<Arc<NodePresence>>,
 }
 
 impl LyxalRuntime {
@@ -96,7 +100,7 @@ impl LyxalRuntime {
         );
 
         Self {
-            registry: ModuleRegistry::new(),
+            registry: Arc::new(ModuleRegistry::new()),
             lifecycle,
             config,
             store: None,
@@ -116,7 +120,75 @@ impl LyxalRuntime {
             event_store: None,
             event_publisher: None,
             event_workers_registered: AtomicBool::new(false),
+            foundation_checksum: None,
+            foundation_watch: Arc::new(FoundationWatch::default()),
+            presence: OnceLock::new(),
         }
+    }
+
+    /// Déclare l'empreinte du socle embarqué par ce binaire (`FoundationInstallation::checksum`
+    /// rendu par `schema::install_foundation`) : elle est écrite dans la ligne de présence du
+    /// nœud et comparée à chaque battement au socle installé dans la base.
+    pub fn with_foundation_checksum(mut self, checksum: impl Into<String>) -> Self {
+        self.foundation_checksum = Some(checksum.into());
+        self
+    }
+
+    /// Sonde du socle, à enregistrer pour un module du socle hébergé par l'hôte (par exemple
+    /// `lyxal_core`) : « dégradé » quand un autre binaire a remplacé le socle de la base. À
+    /// construire après `with_foundation_checksum`.
+    pub fn foundation_health_check(&self, module_id: ModuleId) -> FoundationHealthCheck {
+        FoundationHealthCheck::new(
+            module_id,
+            self.foundation_checksum.clone(),
+            self.foundation_watch.clone(),
+        )
+    }
+
+    /// Retourne l'hôte de ce runtime (rôle du binaire, `RuntimeConfig::host`).
+    pub fn host_id(&self) -> &HostId {
+        &self.config.host
+    }
+
+    /// Nœuds connus de la base (`fn::runtime_node_list`), du battement le plus récent au plus
+    /// ancien ; `alive` dit si le dernier battement date de moins que
+    /// `PresenceConfig::alive_within`.
+    ///
+    /// Un runtime sans client SurrealDB ne connaît aucun nœud : liste vide.
+    pub async fn nodes(&self) -> Result<Vec<RuntimeNode>, RuntimeError> {
+        let Some(client) = &self.client else {
+            return Ok(Vec::new());
+        };
+        PresenceStore::new(client.clone())
+            .list_nodes(self.config.presence.alive_within)
+            .await
+    }
+
+    /// Inscrit le nœud dans la base (premier battement) et enregistre le worker de présence.
+    /// Sans client SurrealDB, le runtime n'a pas de présence.
+    async fn init_presence(&self) -> Result<(), RuntimeError> {
+        let Some(client) = &self.client else {
+            return Ok(());
+        };
+        let presence = match self.presence.get() {
+            Some(presence) => presence.clone(),
+            None => {
+                let presence = Arc::new(NodePresence::new(
+                    PresenceStore::new(client.clone()),
+                    self.node_id.clone(),
+                    self.config.host.clone(),
+                    self.registry.clone(),
+                    self.foundation_checksum.clone(),
+                    self.foundation_watch.clone(),
+                    self.config.presence.clone(),
+                ));
+                self.worker_registry
+                    .register(Arc::new(PresenceWorker::new(presence.clone())?))?;
+                self.presence.get_or_init(|| presence).clone()
+            }
+        };
+        presence.beat().await?;
+        Ok(())
     }
 
     /// Associe un bus d'événements personnalisé au runtime.
@@ -702,7 +774,10 @@ impl LyxalRuntime {
         self.lifecycle.stop_module(&module, &ctx).await
     }
 
-    /// Installe l'ensemble des modules enregistrés selon l'ordre topologique.
+    /// Appelle le hook `install` de tous les modules enregistrés, dans l'ordre topologique, sans
+    /// base ni bail : réservé aux runtimes sans persistance (tests). Avec une base, l'installation
+    /// passe par `install_package` / `install_packages`, qui n'appellent le hook qu'une fois par
+    /// release pour toute la base, sous bail.
     pub async fn install_all(&self) -> Result<(), RuntimeError> {
         let order = self.validate()?;
 
@@ -717,6 +792,10 @@ impl LyxalRuntime {
     }
 
     /// Démarre l'ensemble des modules et services d'arrière-plan enregistrés selon l'ordre topologique.
+    ///
+    /// Les modules doivent être installés (`install_packages`, ou `install_all` sans base) : le
+    /// hook `install` n'est jamais appelé ici, et un module resté `Registered` fait échouer le
+    /// démarrage (`InvalidStateTransition`).
     pub async fn start_all(&self) -> Result<(), RuntimeError> {
         let order = self.validate()?;
 
@@ -727,12 +806,6 @@ impl LyxalRuntime {
         for module_id in order {
             if let Some(module) = self.registry.get(&module_id) {
                 let ctx = ModuleContext::new(module_id.clone());
-                let state = self
-                    .module_state(&module_id)
-                    .unwrap_or(ModuleState::Registered);
-                if state == ModuleState::Registered {
-                    self.lifecycle.install_module(&module, &ctx).await?;
-                }
                 self.lifecycle.start_module(&module, &ctx).await?;
 
                 let report = self
@@ -743,7 +816,11 @@ impl LyxalRuntime {
             }
         }
 
-        // 3. Démarrer l'ensemble des workers supervisés du runtime (dont EventWorker et GC)
+        // 3. Inscrire le nœud dans la base (hôte, modules) et enregistrer son worker de présence :
+        //    un nœud dont un module n'a pas démarré ne s'annonce pas
+        self.init_presence().await?;
+
+        // 4. Démarrer l'ensemble des workers supervisés du runtime (EventWorker, GC, présence)
         self.worker_supervisor.start_all().await?;
 
         Ok(())
@@ -763,6 +840,11 @@ impl LyxalRuntime {
                 let ctx = ModuleContext::new(module_id.clone());
                 self.lifecycle.stop_module(&module, &ctx).await?;
             }
+        }
+
+        // 3. Retirer le nœud de la base, avec ses lignes runtime_worker et runtime_health
+        if let Some(presence) = self.presence.get() {
+            presence.leave().await?;
         }
 
         Ok(())
@@ -829,7 +911,8 @@ mod tests {
 
     #[test]
     fn worker_start_failures_follow_criticality() {
-        let runtime = LyxalRuntime::new(RuntimeConfig::default());
+        let host = crate::presence::HostId::new("lyxal_test").unwrap();
+        let runtime = LyxalRuntime::new(RuntimeConfig::new(host));
         let module = ModuleId::new("lyxal_test");
         runtime
             .register_worker(Arc::new(worker(

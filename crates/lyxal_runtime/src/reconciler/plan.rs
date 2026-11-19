@@ -157,6 +157,17 @@ impl ReconciliationBlocker {
     }
 }
 
+/// Module présent dans la base que ce runtime n'héberge pas et que l'état désiré ne vise pas :
+/// le module d'un autre hôte. Il est signalé, jamais planifié.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ForeignModule {
+    /// Module concerné.
+    pub module_id: ModuleId,
+    /// Hôtes dont un nœud vivant déclare ce module (triés, sans doublon) ; vide si aucun nœud
+    /// vivant ne le déclare, ou si le plan a été calculé sans accès à la base.
+    pub hosts: Vec<String>,
+}
+
 /// Plan de réconciliation calculé par `RuntimeDiffer` (Dry-Run pur, zéro mutation).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReconciliationPlan {
@@ -164,6 +175,8 @@ pub struct ReconciliationPlan {
     pub actions: Vec<ReconciliationAction>,
     /// Bloqueurs identifiés empêchant certaines branches de converger.
     pub blockers: Vec<ReconciliationBlocker>,
+    /// Modules des autres hôtes, triés par identifiant : aucune action ne les vise.
+    pub foreign_modules: Vec<ForeignModule>,
 }
 
 impl ReconciliationPlan {
@@ -172,6 +185,7 @@ impl ReconciliationPlan {
         Self {
             actions: Vec::new(),
             blockers: Vec::new(),
+            foreign_modules: Vec::new(),
         }
     }
 

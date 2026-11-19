@@ -8,7 +8,7 @@
 //! - [`ActualRuntimeState`], [`ObservedModuleState`]
 //! - [`RuntimeObserver`]
 //! - [`RuntimeDiffer`]
-//! - [`ReconciliationPlan`], [`ReconciliationAction`], [`ReconciliationBlocker`]
+//! - [`ReconciliationPlan`], [`ReconciliationAction`], [`ReconciliationBlocker`], [`ForeignModule`]
 //! - [`RuntimeReconciler`]
 //! - [`ReconciliationReport`], [`ConvergenceStatus`]
 
@@ -26,8 +26,8 @@ pub use desired::{DesiredModuleState, DesiredRuntimeState, DesiredStateOrigin, M
 pub use differ::RuntimeDiffer;
 pub use observer::RuntimeObserver;
 pub use plan::{
-    ActionKind, ActionPrecondition, BlockerKind, ReconciliationAction, ReconciliationBlocker,
-    ReconciliationPlan, ReconciliationReason,
+    ActionKind, ActionPrecondition, BlockerKind, ForeignModule, ReconciliationAction,
+    ReconciliationBlocker, ReconciliationPlan, ReconciliationReason,
 };
 pub use reconciler::RuntimeReconciler;
 pub use report::{

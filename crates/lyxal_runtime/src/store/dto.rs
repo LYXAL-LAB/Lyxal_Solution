@@ -2,6 +2,7 @@
 //! au SurrealQL. Un champ `None` vaut « non fourni ».
 
 use lyxal_surreal::{Datetime, SurrealValue};
+use surrealdb::types::Duration;
 
 /// Paramètres d'une fonction de liste sans critère.
 #[derive(Debug, Clone, Default, SurrealValue)]
@@ -266,4 +267,93 @@ pub struct EventRow {
     #[surreal(default)]
     pub causation_id: Option<String>,
     pub payload: serde_json::Value,
+}
+
+// ---------------------------------------------------------------------------
+// Présence des nœuds et socle installé
+// ---------------------------------------------------------------------------
+
+/// `fn::runtime_node_upsert`.
+#[derive(Debug, Clone, SurrealValue)]
+pub struct RuntimeNodeUpsertParams {
+    pub node_id: String,
+    pub host: String,
+    /// Modules enregistrés dans le runtime du nœud.
+    pub modules: Vec<String>,
+    /// Empreinte du socle embarqué par le binaire du nœud.
+    pub foundation_checksum: Option<String>,
+}
+
+/// `fn::runtime_node_remove`.
+#[derive(Debug, Clone, SurrealValue)]
+pub struct RuntimeNodeRemoveParams {
+    pub node_id: String,
+}
+
+/// Résultat de `fn::runtime_node_remove`.
+#[derive(Debug, Clone, PartialEq, Eq, SurrealValue)]
+pub struct RuntimeNodeRemoved {
+    pub node_id: String,
+    /// Faux si aucune ligne de présence n'a été supprimée.
+    pub removed: bool,
+    /// Lignes `runtime_worker` supprimées.
+    pub workers: i64,
+    /// Lignes `runtime_health` supprimées.
+    pub health: i64,
+}
+
+/// `fn::runtime_node_list`.
+#[derive(Debug, Clone, Default, SurrealValue)]
+pub struct RuntimeNodeListParams {
+    /// Âge maximal du dernier battement d'un nœud vivant (30 s si absent).
+    pub alive_within: Option<Duration>,
+}
+
+/// `fn::runtime_node_purge`.
+#[derive(Debug, Clone, Default, SurrealValue)]
+pub struct RuntimeNodePurgeParams {
+    /// Âge du dernier battement au-delà duquel un nœud est purgé (7 jours si absent).
+    pub older_than: Option<Duration>,
+}
+
+/// Résultat de `fn::runtime_node_purge` : lignes supprimées.
+#[derive(Debug, Clone, PartialEq, Eq, SurrealValue)]
+pub struct RuntimeNodePurged {
+    pub nodes: i64,
+    pub workers: i64,
+    pub health: i64,
+}
+
+/// Présence d'un nœud telle que stockée (`runtime_node`).
+#[derive(Debug, Clone, PartialEq, SurrealValue)]
+pub struct RuntimeNode {
+    pub node_id: String,
+    pub host: String,
+    pub modules: Vec<String>,
+    #[surreal(default)]
+    pub foundation_checksum: Option<String>,
+    pub started_at: Datetime,
+    pub seen_at: Datetime,
+    /// Dernier battement assez récent (renseigné par `fn::runtime_node_list` seulement).
+    #[surreal(default)]
+    pub alive: Option<bool>,
+}
+
+/// `fn::runtime_foundation_record`.
+#[derive(Debug, Clone, SurrealValue)]
+pub struct RuntimeFoundationRecordParams {
+    pub checksum: String,
+    pub host: String,
+    pub node_id: String,
+    /// Génération du bail d'installation « foundation » détenu par le nœud.
+    pub generation: i64,
+}
+
+/// Socle installé tel que stocké (`runtime_foundation:current`).
+#[derive(Debug, Clone, PartialEq, SurrealValue)]
+pub struct RuntimeFoundation {
+    pub checksum: String,
+    pub host: String,
+    pub node_id: String,
+    pub installed_at: Datetime,
 }

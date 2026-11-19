@@ -16,7 +16,6 @@ use lyxal_runtime::runtime::LyxalRuntime;
 use lyxal_runtime::store::surreal::SurrealRuntimeStore;
 use lyxal_runtime::store::traits::RuntimeStore;
 use lyxal_runtime::types::ModuleId;
-use lyxal_runtime::RuntimeConfig;
 use semver::Version;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -97,7 +96,7 @@ async fn test_concurrent_nodes_installation_mutual_exclusion_and_idempotence() {
     // Noeud A
     let node_a_id = NodeId::new("node-alpha");
     let lease_mgr_a = Arc::new(SurrealInstallationLeaseManager::new(client.clone()));
-    let runtime_a = LyxalRuntime::new(RuntimeConfig::default())
+    let runtime_a = LyxalRuntime::new(crate::common::runtime_config())
         .with_client(client.clone())
         .with_store(store.clone())
         .with_installation_lease_manager(lease_mgr_a)
@@ -114,7 +113,7 @@ async fn test_concurrent_nodes_installation_mutual_exclusion_and_idempotence() {
     // Noeud B
     let node_b_id = NodeId::new("node-beta");
     let lease_mgr_b = Arc::new(SurrealInstallationLeaseManager::new(client.clone()));
-    let runtime_b = LyxalRuntime::new(RuntimeConfig::default())
+    let runtime_b = LyxalRuntime::new(crate::common::runtime_config())
         .with_client(client.clone())
         .with_store(store.clone())
         .with_installation_lease_manager(lease_mgr_b)

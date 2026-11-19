@@ -3,8 +3,8 @@
 -- Rejouable : chaque définition est créée seulement si elle n'existe pas.
 -- Les codes émis par le Rust (RuntimeError) sont vérifiés contre ce fichier par un test
 -- (src/error/catalog.rs) ; RUNTIME_INVALID_PARAMETERS, RUNTIME_RELEASE_NOT_FOUND,
--- RUNTIME_MIGRATION_NOT_INTERRUPTED et RUNTIME_LEASE_FENCED sont aussi émis par les fonctions
--- fn::runtime_*.
+-- RUNTIME_MIGRATION_NOT_INTERRUPTED, RUNTIME_LEASE_FENCED et RUNTIME_WRITE_FORBIDDEN sont aussi
+-- émis par les fonctions fn::runtime_*.
 -- ============================================================================
 
 IF !record::exists(error_definition:RUNTIME_DUPLICATE_MODULE) THEN (
@@ -1541,6 +1541,87 @@ IF !record::exists(error_definition:RUNTIME_RELEASE_NOT_FOUND) THEN (
                 label: "Release not found",
                 description: "Module release was not found.",
                 resolution: "Register the release before updating its status."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:RUNTIME_RELEASE_CHECKSUM_MISMATCH) THEN (
+    CREATE error_definition:RUNTIME_RELEASE_CHECKSUM_MISMATCH CONTENT {
+        code: "RUNTIME_RELEASE_CHECKSUM_MISMATCH",
+        module: "runtime",
+        domain: "release",
+        category: "conflict",
+        severity: "error",
+        message: "Installed release content differs from this binary",
+        default_language: "fr",
+        http_status: 409,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Release installée différente",
+                description: "La release installée dans la base, de même version, n'a pas le contenu embarqué par ce binaire (détail : module, version, empreintes).",
+                resolution: "Déployer tous les hôtes depuis le même commit ; en pré-production, recréer la base après avoir modifié un fichier du module."
+            },
+            en: {
+                label: "Installed release differs",
+                description: "The release installed in the database, with the same version, does not have the content embedded in this binary.",
+                resolution: "Deploy every host from the same commit; before production, recreate the database after changing a module file."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:RUNTIME_HOST_INVALID) THEN (
+    CREATE error_definition:RUNTIME_HOST_INVALID CONTENT {
+        code: "RUNTIME_HOST_INVALID",
+        module: "runtime",
+        domain: "host",
+        category: "validation",
+        severity: "error",
+        message: "Host identifier is invalid",
+        default_language: "fr",
+        http_status: 422,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Identifiant d'hôte invalide",
+                description: "Le nom d'hôte ne respecte pas le format d'un identifiant de module (minuscule initiale, puis minuscules, chiffres ou tiret bas, 64 caractères au plus).",
+                resolution: "Corriger la constante d'hôte du binaire."
+            },
+            en: {
+                label: "Invalid host identifier",
+                description: "The host name does not follow the module identifier format (a lowercase letter, then lowercase letters, digits or underscores, 64 characters at most).",
+                resolution: "Fix the host constant of the binary."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:RUNTIME_WRITE_FORBIDDEN) THEN (
+    CREATE error_definition:RUNTIME_WRITE_FORBIDDEN CONTENT {
+        code: "RUNTIME_WRITE_FORBIDDEN",
+        module: "runtime",
+        domain: "permissions",
+        category: "authorization",
+        severity: "error",
+        message: "Write refused by permissions",
+        default_language: "fr",
+        http_status: 403,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Écriture refusée",
+                description: "L'écriture a été refusée par les permissions de la table (détail : table).",
+                resolution: "Les tables du runtime ne sont écrites que par la session système de l'hôte."
+            },
+            en: {
+                label: "Write refused",
+                description: "The write was refused by the table permissions (detail: table).",
+                resolution: "Runtime tables are written only by the host system session."
             }
         }
     }

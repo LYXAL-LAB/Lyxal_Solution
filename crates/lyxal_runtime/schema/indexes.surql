@@ -16,6 +16,9 @@ DEFINE INDEX OVERWRITE idx_runtime_health_unique ON TABLE runtime_health COLUMNS
 
 DEFINE INDEX OVERWRITE idx_runtime_worker_unique ON TABLE runtime_worker COLUMNS node_id, worker_id UNIQUE;
 
+DEFINE INDEX OVERWRITE idx_runtime_node_id ON TABLE runtime_node COLUMNS node_id UNIQUE;
+DEFINE INDEX OVERWRITE idx_runtime_node_seen ON TABLE runtime_node COLUMNS seen_at;
+
 DEFINE INDEX OVERWRITE idx_runtime_runtime_event_id ON TABLE runtime_event_journal COLUMNS event_id UNIQUE;
 DEFINE INDEX OVERWRITE idx_runtime_runtime_event_node_seq ON TABLE runtime_event_journal COLUMNS node_id, sequence UNIQUE;
 DEFINE INDEX OVERWRITE idx_runtime_runtime_event_module ON TABLE runtime_event_journal COLUMNS module_id;

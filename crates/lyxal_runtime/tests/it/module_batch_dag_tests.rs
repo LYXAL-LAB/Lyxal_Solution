@@ -13,7 +13,6 @@ use lyxal_runtime::runtime::LyxalRuntime;
 use lyxal_runtime::store::memory::MemoryRuntimeStore;
 use lyxal_runtime::store::traits::RuntimeStore;
 use lyxal_runtime::types::ModuleId;
-use lyxal_runtime::RuntimeConfig;
 use semver::{Version, VersionReq};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -113,7 +112,7 @@ async fn test_batch_dag_diamond_installation_and_start_order() {
     let client = common::setup_db("test", "test").await;
 
     let store = Arc::new(MemoryRuntimeStore::new());
-    let runtime = LyxalRuntime::new(RuntimeConfig::default())
+    let runtime = LyxalRuntime::new(crate::common::runtime_config())
         .with_client(client)
         .with_store(store.clone());
 
@@ -180,7 +179,7 @@ async fn test_batch_duplicate_module_rejection() {
     let client = common::setup_db("test", "test").await;
 
     let store = Arc::new(MemoryRuntimeStore::new());
-    let runtime = LyxalRuntime::new(RuntimeConfig::default())
+    let runtime = LyxalRuntime::new(crate::common::runtime_config())
         .with_client(client)
         .with_store(store);
 
@@ -199,7 +198,7 @@ async fn test_batch_fault_isolation_and_not_attempted_reporting() {
     let client = common::setup_db("test", "test").await;
 
     let store = Arc::new(MemoryRuntimeStore::new());
-    let runtime = LyxalRuntime::new(RuntimeConfig::default())
+    let runtime = LyxalRuntime::new(crate::common::runtime_config())
         .with_client(client)
         .with_store(store);
 

@@ -30,6 +30,7 @@ pub mod manifest;
 pub mod migration;
 pub mod module;
 pub mod package;
+pub mod presence;
 pub mod reconciler;
 pub mod registry;
 pub mod resolver;
@@ -89,19 +90,30 @@ pub use package::{
     ModuleInstallationOutcome, ModuleInstallationPlan, ModuleInstallationReport, ModuleInstaller,
     ModulePackage, ModuleReleaseStatus,
 };
+pub use presence::{
+    FoundationHealthCheck, FoundationObservation, FoundationWatch, HostId, NodePresence,
+    PresenceConfig, PresenceStore, PresenceWorker, RuntimeFoundation, RuntimeNode,
+    RuntimeNodeListParams, RuntimeNodePurgeParams, RuntimeNodePurged, RuntimeNodeRemoveParams,
+    RuntimeNodeRemoved, RuntimeNodeUpsertParams,
+};
 pub use reconciler::{
     ActionKind, ActionOutcome, ActionPrecondition, ActualRuntimeState, BlockerKind,
     ConvergenceStatus, DesiredModuleState, DesiredRuntimeState, DesiredStateOrigin, DriftItem,
-    ModuleTargetState, NotAttemptedAction, ObservedModuleState, ReconciliationAction,
-    ReconciliationActionFailure, ReconciliationBlocker, ReconciliationPlan, ReconciliationReason,
-    ReconciliationReport, RuntimeDiffer, RuntimeObserver, RuntimeReconciler,
+    ForeignModule, ModuleTargetState, NotAttemptedAction, ObservedModuleState,
+    ReconciliationAction, ReconciliationActionFailure, ReconciliationBlocker, ReconciliationPlan,
+    ReconciliationReason, ReconciliationReport, RuntimeDiffer, RuntimeObserver, RuntimeReconciler,
     SkippedRevalidationAction, SkippedRevalidationReason,
 };
 pub use registry::ModuleRegistry;
 pub use resolver::DependencyResolver;
-pub use resource::{ModuleResource, ResourceDiscovery, ResourceKind, ResourceProvider};
+pub use resource::{
+    ModuleResource, ResourceChecksum, ResourceDiscovery, ResourceKind, ResourceProvider,
+};
 pub use runtime::LyxalRuntime;
-pub use schema::{SchemaImportPlan, SchemaImportResult, SchemaImporter};
+pub use schema::{
+    FoundationInstallation, SchemaImportPlan, SchemaImportResult, SchemaImporter,
+    FOUNDATION_LEASE_KEY,
+};
 pub use store::{
     MemoryRuntimeStore, RuntimeStore, StoredModule, StoredModuleRelease, SurrealRuntimeStore,
 };

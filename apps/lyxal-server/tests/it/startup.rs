@@ -271,7 +271,9 @@ async fn module_resources_are_replayable() {
     use lyxal_server::modules::{install_foundation, EMBEDDED_MODULES};
 
     let client = database("replay").await;
-    install_foundation(&client).await.expect("noyau");
+    install_foundation(&client, &lyxal_runtime::NodeId::generate())
+        .await
+        .expect("noyau");
     for module in EMBEDDED_MODULES {
         installing_release(&client, module.id).await;
     }
@@ -298,7 +300,7 @@ async fn module_resources_are_replayable() {
 #[tokio::test]
 async fn server_error_definitions_are_installed() {
     let client = database("server_errors").await;
-    lyxal_server::modules::install_foundation(&client)
+    lyxal_server::modules::install_foundation(&client, &lyxal_runtime::NodeId::generate())
         .await
         .expect("noyau");
     let mut res = client
@@ -323,7 +325,9 @@ async fn every_emitted_error_code_is_defined() {
     use lyxal_server::modules::{install_foundation, EMBEDDED_MODULES};
 
     let client = database("error_codes").await;
-    install_foundation(&client).await.expect("noyau");
+    install_foundation(&client, &lyxal_runtime::NodeId::generate())
+        .await
+        .expect("noyau");
     let mut emitted = std::collections::BTreeSet::new();
     for module in EMBEDDED_MODULES {
         let manifest = ManifestParser::parse_str(module.manifest).expect("manifeste");

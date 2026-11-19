@@ -23,7 +23,7 @@ use lyxal_runtime::package::types::ModuleInstallationOutcome;
 use lyxal_runtime::resource::ResourceKind;
 use lyxal_runtime::store::{RuntimeStore, SurrealRuntimeStore};
 use lyxal_runtime::types::ModuleId;
-use lyxal_runtime::{LyxalModule, LyxalRuntime, RuntimeConfig, RuntimeError};
+use lyxal_runtime::{LyxalModule, LyxalRuntime, RuntimeError};
 use std::sync::Arc;
 use std::time::Duration;
 use surrealdb::engine::any::Any;
@@ -325,7 +325,7 @@ async fn test_interrupted_migration_is_listed_resolved_and_replayed() {
 async fn test_abandoned_migration_blocks_installation_until_retry() {
     let client = common::setup_db("recovery_abandon", "recovery_abandon").await;
     let bus: Arc<dyn RuntimeEventBus> = Arc::new(MemoryRuntimeEventBus::new(NodeId::new("node-b")));
-    let runtime = LyxalRuntime::new(RuntimeConfig::default())
+    let runtime = LyxalRuntime::new(crate::common::runtime_config())
         .with_node_id(NodeId::new("node-b"))
         .with_event_bus(bus)
         .with_client(client.clone())
