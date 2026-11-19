@@ -15,7 +15,7 @@ use lyxal_notification::{
 };
 use lyxal_runtime::lock::{NodeId, SurrealLeaderLeaseManager};
 use lyxal_runtime::worker::{CancellationToken, LyxalWorker, WorkerContext};
-use lyxal_runtime::{LyxalModule, ModuleContext, RuntimeError};
+use lyxal_runtime::{HostId, LyxalModule, ModuleContext, RuntimeError};
 use lyxal_scheduler::{
     ExecutorTiming, HandlerRegistry, LeaderTiming, SchedulerClient, SchedulerEngine,
     SchedulerExecutorWorker, SchedulerLeaderWorker, SchedulerStore,
@@ -63,6 +63,7 @@ impl Engine {
             SchedulerStore::new(client.clone()),
             HandlerRegistry::new(),
             NodeId::new("noeud-essai"),
+            HostId::new("hote_essai").expect("hôte"),
         );
         let leader = SchedulerLeaderWorker::with_timing(
             engine.clone(),

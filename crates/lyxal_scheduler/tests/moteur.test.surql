@@ -1,7 +1,8 @@
 -- lyxal-test: assertions
 -- Moteur (lot 3) : échéances avec date de disponibilité décalée (décalage aléatoire, U5) et
 -- refus d'une disponibilité avant la date prévue, réservation limitée aux handlers du nœud et
--- exécuteur et cible rendus, handler absent réservé après son délai maximal, publication
+-- exécuteur et cible rendus, hôte et handlers obligatoires, handler absent jamais réservé (même
+-- après son délai maximal) et signalé par la sonde avec le dernier hôte qui le servait, publication
 -- différée et fin dans la même transaction (succès, jeton périmé, tâche qui n'est pas event,
 -- publication refusée qui annule la fin), sonde de santé, droits du moteur.
 --
@@ -71,7 +72,7 @@
     LET $f = fn::scheduler_schedule_fire({ node: "n1", generation: 1, schedule: $s, fire_times: [{ at: $t, available_at: $t + 10m }], next_fire_at: time::now() + 9m });
     LET $run = (SELECT * FROM ONLY $f.data.runs[0].id);
     RETURN $f.ok AND $f.data.runs[0].id = type::record("scheduler_run", [$s, $t]) AND $run.scheduled_for = $t AND $run.available_at = $t + 10m
-        AND fn::scheduler_run_claim({ queue: "default", node: "n1", limit: 10 }).data.items = [];
+        AND fn::scheduler_run_claim({ queue: "default", node: "n1", host: "hote_essai", limit: 10, handlers: ["essai.rapport"] }).data.items = [];
 };
 
 -- test: disponibilité avant la date prévue refusée (échéance et rejeu)
@@ -100,12 +101,25 @@
 -- en tant que: worker
 {
     LET $h = (SELECT VALUE handler_run FROM ONLY passe:m);
-    LET $c = fn::scheduler_run_claim({ queue: "default", node: "n1", limit: 10, handlers: [] });
+    LET $c = fn::scheduler_run_claim({ queue: "default", node: "n1", host: "hote_essai", limit: 10, handlers: [] });
     LET $e = $c.data.items[0];
     UPSERT passe:m MERGE { event_claim: $e };
     RETURN array::len($c.data.items) = 1 AND $e.executor = "event" AND $e.target = "essai.rappel.envoi" AND !$e.cancel_requested
         AND (SELECT VALUE state FROM ONLY $h) = "queued"
-        AND fn::scheduler_run_claim({ queue: "default", node: "n1", handlers: ["Pas Un Nom"] }).error.code = "SCHEDULER_INVALID_PARAMETERS";
+        AND fn::scheduler_run_claim({ queue: "default", node: "n1", host: "hote_essai", handlers: ["Pas Un Nom"] }).error.code = "SCHEDULER_INVALID_PARAMETERS"
+        AND (SELECT VALUE host FROM ONLY scheduler_node:["n1", "default"]) = "hote_essai";
+};
+
+-- test: hôte et handlers obligatoires (liste vide permise), hôte au format d'un identifiant de module
+-- en tant que: worker
+{
+    LET $missing_handlers = fn::scheduler_run_claim({ queue: "default", node: "n1", host: "hote_essai" });
+    LET $missing_host = fn::scheduler_run_claim({ queue: "default", node: "n1", handlers: [] });
+    RETURN $missing_handlers.error.code = "SCHEDULER_INVALID_PARAMETERS" AND $missing_handlers.error.details.fields.handlers IS NOT NONE
+        AND $missing_host.error.code = "SCHEDULER_INVALID_PARAMETERS" AND $missing_host.error.details.fields.host IS NOT NONE
+        AND ["Hote", "1hote", "hote-b", "", string::repeat("h", 65)].all(|$bad|
+            fn::scheduler_run_claim({ queue: "default", node: "n1", host: $bad, handlers: [] }).error.code = "SCHEDULER_INVALID_PARAMETERS")
+        AND fn::scheduler_run_claim({ queue: "maintenance", node: "n9", host: string::repeat("h", 64), handlers: [] }).data.items = [];
 };
 
 -- préparation: tâche handler de délai maximal court (1 s), sans code sur le nœud ; une exécution immédiate
@@ -118,14 +132,61 @@
     UPSERT passe:m MERGE { court_run: $c };
 };
 
--- test: handler absent réservé après son délai maximal, puis terminé en échec SCHEDULER_HANDLER_NOT_FOUND
+-- test: handler absent jamais réservé, même après son délai maximal : l'exécution attend, sans tentative ni erreur
 {
     LET $c = (SELECT VALUE court_run FROM ONLY passe:m);
     SLEEP 1100ms;
-    LET $found = fn::scheduler_run_claim({ queue: "default", node: "n1", handlers: [] }).data.items;
-    LET $f = fn::scheduler_run_fail({ run: $found[0].id, lease: $found[0].lease, error: { code: "SCHEDULER_HANDLER_NOT_FOUND" } });
-    RETURN array::len($found) = 1 AND $found[0].id = $c AND $found[0].executor = "handler" AND $found[0].target = "essai.court"
-        AND $f.data.state = "retrying" AND $f.data.error.code = "SCHEDULER_HANDLER_NOT_FOUND";
+    LET $found = fn::scheduler_run_claim({ queue: "default", node: "n1", host: "hote_essai", handlers: [] }).data.items;
+    LET $run = (SELECT state, attempt, error FROM ONLY $c);
+    RETURN !($found.id CONTAINS $c) AND $run.state = "queued" AND $run.attempt = 0 AND $run.error IS NONE;
+};
+
+-- test: sonde : tâche handler qu'aucun nœud actif ne sert, en attente depuis plus que late_after (aucun hôte ne l'a jamais servie) ; files servies par un nœud actif
+{
+    LET $c = (SELECT * FROM ONLY (SELECT VALUE court_run FROM ONLY passe:m));
+    LET $h = fn::scheduler_health({ late_after: 1s });
+    -- essai.rapport aussi : le nœud n1 vient de réserver avec une liste de handlers vide
+    RETURN $h.ok AND $h.data.unserved_tasks.task == ["essai.court", "essai.rapport"]
+        AND $h.data.unserved_tasks[0] == { task: "essai.court", waiting: 1, oldest: $c.available_at, last_host: NONE }
+        AND $h.data.queues == [{ name: "default", paused: false, served: true }, { name: "maintenance", paused: false, served: true }]
+        AND fn::scheduler_health({}).data.unserved_tasks = [];
+};
+
+-- test: l'hôte qui a le code réserve et termine l'exécution en attente ; la tâche n'est plus signalée
+-- en tant que: worker
+{
+    LET $c = (SELECT VALUE court_run FROM ONLY passe:m);
+    LET $found = fn::scheduler_run_claim({ queue: "default", node: "n2", host: "hote_b", handlers: ["essai.court"] }).data.items;
+    LET $done = fn::scheduler_run_complete({ run: $found[0].id, lease: $found[0].lease });
+    RETURN array::len($found) = 1 AND $found[0].id = $c AND $found[0].attempt = 1 AND $found[0].target = "essai.court"
+        AND $done.data.state = "completed" AND fn::scheduler_health({}).data.unserved_tasks = [];
+};
+
+-- test: hôte arrêté depuis plus d'une minute : une nouvelle exécution en attente nomme le dernier hôte qui servait la tâche
+{
+    -- Exécution disponible depuis dix minutes, écrite directement en session système
+    LET $since = time::now() - 10m;
+    LET $c = (CREATE ONLY scheduler_run CONTENT {
+        task: scheduler_task:⟨essai.court⟩, queue: scheduler_queue:default, origin: "enqueue",
+        scheduled_for: $since, available_at: $since, state: "queued", priority: 5, max_attempts: 2
+    }).id;
+    -- seen_at est recalculé à chaque écriture : définition levée le temps de vieillir le nœud de hote_b
+    DEFINE FIELD OVERWRITE seen_at ON TABLE scheduler_node TYPE datetime;
+    UPDATE scheduler_node SET seen_at = time::now() - 2m WHERE host = "hote_b";
+    DEFINE FIELD OVERWRITE seen_at ON TABLE scheduler_node TYPE datetime VALUE time::now();
+    LET $h = fn::scheduler_health({});
+    UPSERT passe:m MERGE { court_run: $c };
+    RETURN $h.data.unserved_tasks == [{ task: "essai.court", waiting: 1, oldest: $since, last_host: "hote_b" }]
+        AND !($h.data.handlers_served CONTAINS "essai.court");
+};
+
+-- test: au retour de l'hôte, l'exécution est réservée et terminée
+-- en tant que: worker
+{
+    LET $c = (SELECT VALUE court_run FROM ONLY passe:m);
+    LET $found = fn::scheduler_run_claim({ queue: "default", node: "n3", host: "hote_b", handlers: ["essai.court"] }).data.items;
+    RETURN $found.id = [$c] AND fn::scheduler_run_complete({ run: $c, lease: $found[0].lease }).data.state = "completed"
+        AND fn::scheduler_health({}).data.unserved_tasks = [];
 };
 
 -- test: publication différée refusée hors session système : la fin de l'exécution est annulée
@@ -163,7 +224,7 @@
 -- test: publication d'une tâche qui n'est pas event refusée
 {
     LET $h = (SELECT VALUE handler_run FROM ONLY passe:m);
-    LET $c = fn::scheduler_run_claim({ queue: "default", node: "n1", handlers: ["essai.rapport"] }).data.items.filter(|$r| $r.id = $h)[0];
+    LET $c = fn::scheduler_run_claim({ queue: "default", node: "n1", host: "hote_essai", handlers: ["essai.rapport"] }).data.items.filter(|$r| $r.id = $h)[0];
     LET $p = fn::scheduler_run_publish({ run: $c.id, lease: $c.lease });
     fn::scheduler_run_complete({ run: $c.id, lease: $c.lease });
     RETURN $p.error.code = "SCHEDULER_INVALID_PARAMETERS" AND $p.error.details.fields.run[0].details.executor = "handler"
@@ -181,7 +242,7 @@
     LET $h = fn::scheduler_health({});
     LET $late = fn::scheduler_health({ late_after: 1s });
     RETURN $h.ok AND $h.data.queues.name = ["default", "maintenance"] AND $h.data.queues.all(|$q| !$q.paused)
-        AND $h.data.handler_tasks = ["essai.court", "essai.rapport"] AND $h.data.late = 0
+        AND $h.data.handler_tasks = ["essai.court", "essai.rapport"] AND $h.data.late = 0 AND $h.data.unserved_tasks = []
         AND $late.data.late >= 1 AND !string::contains(<string> $h.data, "alpha")
         AND fn::scheduler_health({ late_after: 0s }).error.code = "SCHEDULER_INVALID_PARAMETERS";
 };

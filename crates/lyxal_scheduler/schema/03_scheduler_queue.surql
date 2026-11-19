@@ -92,21 +92,28 @@ DEFINE FIELD OVERWRITE updated_at ON TABLE scheduler_slot
 
 DEFINE INDEX OVERWRITE scheduler_slot_queue ON TABLE scheduler_slot FIELDS queue, scope_key UNIQUE;
 
--- Exécuteurs actifs (sonde de santé) : handlers inscrits sur chaque nœud qui sert une file,
+-- Exécuteurs actifs (sonde de santé) : hôte et handlers de chaque nœud qui sert une file,
 -- réécrits à chaque réservation (fn::scheduler_run_claim), élagués après un jour sans réservation
--- (fn::scheduler_run_prune). Un handler manquant n'est signalé que si aucun nœud actif ne l'a.
+-- (fn::scheduler_run_prune). Une file ou une tâche handler n'est signalée que si aucun nœud actif
+-- (réservation ou battement dans la dernière minute) ne la sert ; l'hôte du dernier nœud qui
+-- servait la tâche est alors nommé.
 
 DEFINE TABLE OVERWRITE scheduler_node
     TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
         FOR select, create, update, delete WHERE fn::scheduler_can({ action: "worker" })
-    COMMENT "Exécuteurs actifs : handlers inscrits par nœud et par file (identifiant [nœud, file])";
+    COMMENT "Exécuteurs actifs : hôte et handlers inscrits par nœud et par file (identifiant [nœud, file])";
 
 DEFINE FIELD OVERWRITE node ON TABLE scheduler_node
     TYPE string
     ASSERT string::len($value) >= 1 AND string::len($value) <= 128
     COMMENT "Nœud";
+
+DEFINE FIELD OVERWRITE host ON TABLE scheduler_node
+    TYPE string
+    ASSERT string::matches($value, "^[a-z][a-z0-9_]{0,63}$")
+    COMMENT "Hôte du nœud (rôle du binaire, le même pour toutes ses copies)";
 
 DEFINE FIELD OVERWRITE queue ON TABLE scheduler_node
     TYPE record<scheduler_queue>

@@ -194,7 +194,7 @@ RETURN fn::scheduler_settings_get({ tenant: "auth_organization:alpha" }).error.c
         fn::scheduler_run_list({ tenant: $alpha }),
         fn::scheduler_audit_list({ tenant: $alpha }),
         fn::scheduler_due_list({}),
-        fn::scheduler_run_claim({ queue: "default", node: "n1" }),
+        fn::scheduler_run_claim({ queue: "default", node: "n1", host: "hote_essai", handlers: ["essai.rapport"] }),
         fn::scheduler_run_rescue({ node: "n1", generation: 1 }),
         fn::scheduler_run_prune({ node: "n1", generation: 1 })
     ].all(|$r| $r.error.code = "SCHEDULER_PERMISSION_DENIED");

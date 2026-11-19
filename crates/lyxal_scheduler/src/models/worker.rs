@@ -47,11 +47,13 @@ pub struct RunClaimParams {
     pub queue: String,
     /// Nœud qui réserve.
     pub node: String,
+    /// Hôte du nœud (`LyxalRuntime::host_id`), inscrit pour la sonde de santé.
+    pub host: String,
     /// Nombre maximal d'exécutions réservées (100 au plus).
     pub limit: Option<i64>,
-    /// Tâches `handler` dont le nœud a le code (absent : toutes) ; une autre tâche `handler`
-    /// n'est réservée qu'après avoir attendu plus que son délai maximal.
-    pub handlers: Option<Vec<String>>,
+    /// Tâches `handler` dont le nœud a le code (liste vide permise) : une autre tâche `handler`
+    /// n'est jamais réservée par ce nœud, quelle que soit son attente.
+    pub handlers: Vec<String>,
     /// Langue des messages d'erreur.
     pub language: Option<String>,
 }
@@ -164,6 +166,23 @@ pub struct QueueStatus {
     pub name: String,
     /// File en pause.
     pub paused: bool,
+    /// Un nœud actif (réservation ou battement dans la dernière minute, tous hôtes confondus)
+    /// sert la file.
+    pub served: bool,
+}
+
+/// Tâche `handler` active qu'aucun nœud actif ne sert, et dont une exécution réservable attend
+/// depuis plus que le retard toléré.
+#[derive(Debug, Clone, PartialEq, SurrealValue)]
+pub struct UnservedTask {
+    /// Tâche (nom du handler).
+    pub task: String,
+    /// Exécutions réservables en attente.
+    pub waiting: i64,
+    /// Date de disponibilité de la plus ancienne.
+    pub oldest: SchedulerDatetime,
+    /// Hôte du dernier nœud qui servait la tâche (aucun depuis un jour : absent).
+    pub last_host: Option<String>,
 }
 
 /// Résultat de `fn::scheduler_health`.
@@ -177,6 +196,9 @@ pub struct EngineHealth {
     pub handler_tasks: Vec<String>,
     /// Tâches `handler` inscrites sur au moins un nœud qui a réservé dans la dernière minute.
     pub handlers_served: Vec<String>,
+    /// Tâches `handler` sans nœud actif dont une exécution attend depuis plus que le retard
+    /// toléré : elles attendent, sans échec, le retour d'un nœud qui a leur code.
+    pub unserved_tasks: Vec<UnservedTask>,
 }
 
 /// Paramètres passés à la fonction SurrealQL d'une tâche `function`.

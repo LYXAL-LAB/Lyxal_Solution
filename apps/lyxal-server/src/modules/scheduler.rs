@@ -70,6 +70,7 @@ pub fn register_services(
         SchedulerStore::new(client.clone()),
         HandlerRegistry::new(),
         runtime.node_id().clone(),
+        runtime.host_id().clone(),
     );
     runtime.register_worker(Arc::new(SchedulerLeaderWorker::new(
         engine.clone(),

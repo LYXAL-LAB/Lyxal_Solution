@@ -953,8 +953,9 @@ async fn engine_and_workers() {
         .run_claim(RunClaimParams {
             queue: "default".to_string(),
             node: "noeud-1".to_string(),
+            host: "hote_essai".to_string(),
             limit: Some(2),
-            handlers: None,
+            handlers: vec!["essai.rapport".to_string()],
             language: None,
         })
         .await
@@ -971,8 +972,9 @@ async fn engine_and_workers() {
             RunClaimParams {
                 queue: "default".to_string(),
                 node: "noeud-2".to_string(),
+                host: "hote_essai".to_string(),
                 limit: None,
-                handlers: None,
+                handlers: vec!["essai.rapport".to_string()],
                 language: None,
             },
         )
@@ -1153,8 +1155,9 @@ async fn engine_wrappers_publish_and_report_health() {
         .run_claim(RunClaimParams {
             queue: "default".to_string(),
             node: "noeud-1".to_string(),
+            host: "hote_essai".to_string(),
             limit: Some(1),
-            handlers: Some(Vec::new()),
+            handlers: Vec::new(),
             language: None,
         })
         .await
@@ -1192,6 +1195,13 @@ async fn engine_wrappers_publish_and_report_health() {
     let health = store.health(HealthParams::default()).await.expect("santé");
     assert_eq!(health.handler_tasks, vec!["essai.rapport".to_string()]);
     assert!(health.handlers_served.is_empty());
+    assert!(health.unserved_tasks.is_empty(), "{health:?}");
+    let served: Vec<(&str, bool)> = health
+        .queues
+        .iter()
+        .map(|q| (q.name.as_str(), q.served))
+        .collect();
+    assert_eq!(served, vec![("default", true), ("maintenance", false)]);
     let _: EngineHealth = lossless(
         raw(&store, "scheduler_health", HealthParams::default()).await,
         &[],
