@@ -228,21 +228,3 @@ crate = "surrealdb-types-derive"
 expression = "BUSL-1.1"
 license-files = [{ path = "LICENSE", hash = 0xbb1191d7 }]
 
-# Trois crates du workspace n'ont pas de champ `license` dans leur `Cargo.toml` (les autres
-# ont `license.workspace = true`, soit `MIT OR Apache-2.0`). Anomalie signalée au CTO au
-# lot 0 : la correction est d'ajouter `license.workspace = true` à ces trois manifestes, puis
-# de retirer ces trois clarifications.
-[[licenses.clarify]]
-crate = "lyxal_error"
-expression = "MIT OR Apache-2.0"
-license-files = []
-
-[[licenses.clarify]]
-crate = "lyxal_surreal"
-expression = "MIT OR Apache-2.0"
-license-files = []
-
-[[licenses.clarify]]
-crate = "lyxal_pipeline_ingestion"
-expression = "MIT OR Apache-2.0"
-license-files = []

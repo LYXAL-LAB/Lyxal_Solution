@@ -2,6 +2,7 @@
 name = "lyxal_pipeline_ingestion"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 description = "Moteur industriel d'ingestion, normalisation, qualification et préparation des catalogues fabricants pour Lyxal OS"
 
 [dependencies]

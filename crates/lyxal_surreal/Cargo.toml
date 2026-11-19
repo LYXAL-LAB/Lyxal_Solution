@@ -2,6 +2,7 @@
 name = "lyxal_surreal"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 description = "Client générique et exécuteur de fonctions SurrealQL pour l'écosystème Lyxal OS"
 
 [dependencies]

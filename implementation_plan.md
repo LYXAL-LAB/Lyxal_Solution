@@ -220,8 +220,10 @@ jeux de modules différents s'installent sous bail, démarrent, se réconcilient
 s'arrêtent sur une même base sans effet l'un sur l'autre. **Le moteur d'événements ne le permet
 pas encore** : un seul `EventWorker` est élu pour toute la base et ne sert que les handlers de
 son hôte ; les événements destinés aux handlers de l'autre hôte finissent en dead letter (ou
-restent en attente si les hôtes ont des `instance_id` différents). Le correctif du runtime et de
-`lyxal_event` a son propre plan, à valider avant le lot 3. Non essayé : les exécuteurs de
+restent en attente si les hôtes ont des `instance_id` différents). **Décision du CTO du 19 novembre 2026** : l'hôte dédié est maintenu (P3) ; le moteur
+d'événements et le planificateur sont corrigés pour servir plusieurs hôtes sur une base (chaque
+hôte ne traite que les événements et les tâches de ses propres modules). Ce correctif a son
+propre plan, à valider avant le lot 3. Non essayé : les exécuteurs de
 `lyxal_scheduler` sur deux hôtes (d'après le code, un exécuteur qui réserve une tâche dont le
 handler est inscrit sur l'autre hôte la fait échouer avec `SCHEDULER_HANDLER_NOT_FOUND`).
 

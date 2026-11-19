@@ -2,6 +2,7 @@
 name = "lyxal_error"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 description = "Modèles d'erreurs métiers et contrats de résultats purs pour l'écosystème Lyxal OS"
 
 [dependencies]
