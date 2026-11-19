@@ -350,10 +350,23 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
                             .unwrap_or_else(|| "Handler failed".to_string()),
                     ),
                     retry_delay_seconds: 1,
+                    host: self.lease_manager.host().to_string(),
+                    node_id: self.lease_manager.node_id().to_string(),
+                    generation: self.lease_manager.current_generation(),
                 };
                 let failure: Result<bool, LyxalSurrealError> =
                     self.call_fn("event_delivery_failure", params).await;
-                failure.map_err(|e| FeederError::Surreal(Box::new(e)))?;
+                if let Err(e) = failure {
+                    if crate::error::is_stale_leader_fenced(&e) {
+                        tracing::warn!(
+                            node_id = %self.lease_manager.node_id(),
+                            "Fencing détecté à l'enregistrement d'un échec : mandat de leader révoqué"
+                        );
+                        self.cancellation.cancel();
+                        return Err(FeederError::Fenced);
+                    }
+                    return Err(FeederError::Surreal(Box::new(e)));
+                }
             }
         }
 

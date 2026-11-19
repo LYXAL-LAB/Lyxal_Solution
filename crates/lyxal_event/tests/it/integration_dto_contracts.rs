@@ -57,6 +57,16 @@ async fn test_rejection_of_legacy_dto_and_negative_contracts() {
     assert_eq!(deliveries.len(), 1, "Une livraison doit être initialisée");
     let delivery_id = deliveries[0].id.clone();
 
+    // Bail du chef de l'hôte : fn::event_delivery_failure écrit sous sa garde
+    db.query(
+        "RETURN fn::event_lease_acquire({ host: $host, node_id: 'node_x', ttl_seconds: 600 })",
+    )
+    .bind(("host", common::HOST))
+    .await
+    .unwrap()
+    .check()
+    .unwrap();
+
     // 1. Ancien DTO { id, error_message } : refusé, rapport par champ, aucune mutation
     let legacy = call_json(
         &db,
@@ -93,6 +103,9 @@ async fn test_rejection_of_legacy_dto_and_negative_contracts() {
                 delivery_id: lyxal_surreal::RecordId::new("event_delivery", "inexistante"),
                 error: "network error".into(),
                 retry_delay_seconds: 10,
+                host: common::HOST.to_string(),
+                node_id: "node_x".into(),
+                generation: 1,
             },
         ))
         .await
@@ -110,6 +123,9 @@ async fn test_rejection_of_legacy_dto_and_negative_contracts() {
                 delivery_id: delivery_id.clone(),
                 error: "canonical network error".into(),
                 retry_delay_seconds: 10,
+                host: common::HOST.to_string(),
+                node_id: "node_x".into(),
+                generation: 1,
             },
         ))
         .await
@@ -140,6 +156,9 @@ async fn test_rejection_of_legacy_dto_and_negative_contracts() {
                 delivery_id: delivery_id.clone(),
                 error: "still failing".into(),
                 retry_delay_seconds: 10,
+                host: common::HOST.to_string(),
+                node_id: "node_x".into(),
+                generation: 1,
             },
         ))
         .await

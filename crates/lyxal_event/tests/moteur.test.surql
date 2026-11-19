@@ -26,8 +26,26 @@ RETURN fn::event_recover_pending_fanouts({ limit: 0 }).error.code == "EVENT_INVA
 RETURN fn::event_outbox_get({ id: (SELECT VALUE id FROM ONLY event_outbox LIMIT 1) }).data.event_type == "task.assigned"
     AND fn::event_outbox_get({ id: "pas_un_id" }).error.code == "EVENT_INVALID_PARAMETERS";
 
--- test: un échec transitoire est enregistré avec la date du prochain essai
-RETURN fn::event_delivery_failure({ delivery_id: (SELECT VALUE id FROM ONLY event_delivery LIMIT 1), error: "service indisponible", retry_delay_seconds: 60 }).data == true
+-- préparation: les chefs des hôtes A (nœud a1) et B (nœud b1) prennent leur bail
+RETURN [fn::event_lease_acquire({ host: "host_a", node_id: "a1", ttl_seconds: 600 }), fn::event_lease_acquire({ host: "host_b", node_id: "b1", ttl_seconds: 600 })];
+
+-- test: un nœud qui n'est pas le chef de l'hôte n'enregistre pas d'échec
+-- attendu-erreur: EVENT_STALE_LEADER_FENCED
+RETURN fn::event_delivery_failure({ delivery_id: (SELECT VALUE id FROM ONLY event_delivery LIMIT 1), error: "x", host: "host_a", node_id: "a2", generation: 1 });
+
+-- test: une génération dépassée n'enregistre pas d'échec
+-- attendu-erreur: EVENT_STALE_LEADER_FENCED
+RETURN fn::event_delivery_failure({ delivery_id: (SELECT VALUE id FROM ONLY event_delivery LIMIT 1), error: "x", host: "host_a", node_id: "a1", generation: 2 });
+
+-- test: le chef de B n'enregistre pas d'échec sur une livraison de A
+RETURN fn::event_delivery_failure({ delivery_id: (SELECT VALUE id FROM ONLY event_delivery LIMIT 1), error: "x", host: "host_b", node_id: "b1", generation: 1 }).error.code == "EVENT_SUBSCRIPTION_NOT_OWNED"
+    AND (SELECT VALUE status FROM ONLY event_delivery LIMIT 1) == "pending";
+
+-- test: l'hôte, le nœud et la génération sont obligatoires
+RETURN fn::event_delivery_failure({ delivery_id: (SELECT VALUE id FROM ONLY event_delivery LIMIT 1), error: "x" }).error.code == "EVENT_INVALID_PARAMETERS";
+
+-- test: un échec transitoire est enregistré par le chef de l'hôte, avec la date du prochain essai
+RETURN fn::event_delivery_failure({ delivery_id: (SELECT VALUE id FROM ONLY event_delivery LIMIT 1), error: "service indisponible", retry_delay_seconds: 60, host: "host_a", node_id: "a1", generation: 1 }).data == true
     AND (SELECT VALUE status FROM ONLY event_delivery LIMIT 1) == "failed"
     AND (SELECT VALUE next_retry_at FROM ONLY event_delivery LIMIT 1) > time::now() + 30s;
 
@@ -35,7 +53,7 @@ RETURN fn::event_delivery_failure({ delivery_id: (SELECT VALUE id FROM ONLY even
 RETURN fn::event_delivery_fetch_pending({ host: "host_a" }).data == [];
 
 -- test: un échec sur une livraison inconnue est refusé
-RETURN fn::event_delivery_failure({ delivery_id: event_delivery:inconnue, error: "x" }).error.code == "EVENT_DELIVERY_NOT_FOUND";
+RETURN fn::event_delivery_failure({ delivery_id: event_delivery:inconnue, error: "x", host: "host_a", node_id: "a1", generation: 1 }).error.code == "EVENT_DELIVERY_NOT_FOUND";
 
 -- test: la purge garde les livraisons non soldées et leur événement
 RETURN fn::event_purge_garbage({ retention_days: 1 }).data == true

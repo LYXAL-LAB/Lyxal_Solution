@@ -181,6 +181,11 @@ pub struct DeliveryFailureParams {
     pub delivery_id: RecordId,
     pub error: String,
     pub retry_delay_seconds: u64,
+    /// Hôte du chef qui écrit l'échec : la livraison doit lui appartenir.
+    pub host: String,
+    /// Nœud et génération du bail du chef (garde de fencing).
+    pub node_id: String,
+    pub generation: u64,
 }
 
 /// Enregistrement d'une livraison éligible renvoyé par `fn::event_delivery_fetch_pending`.
