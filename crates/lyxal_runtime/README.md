@@ -29,7 +29,10 @@ résultat, définitions d'erreurs), `lyxal_surreal` (transport), `lyxal_crypto` 
   nœud détient encore le bail dans la même génération (sinon `RUNTIME_LEASE_FENCED`).
 * **Baux à l'heure de la base** : les échéances sont calculées par SurrealDB, jamais par
   l'horloge d'un nœud. Chaque reprise incrémente la génération ; un ancien détenteur ne peut
-  plus renouveler, libérer ni écrire.
+  plus renouveler, libérer ni écrire. Sur un serveur SurrealDB, deux nœuds qui écrivent le même
+  bail en même temps (deux hôtes qui démarrent ensemble) font échouer l'une des transactions par
+  un conflit d'écriture transitoire : la prise, le renouvellement et la libération sont alors
+  rejoués (8 fois au plus) et rendent la réponse ordinaire ; toute autre erreur remonte.
 * **Dérive détectée** : une migration appliquée dont le contenu a changé arrête l'installation
   (`RUNTIME_MIGRATION_CHECKSUM_MISMATCH`).
 * **Migration interrompue jamais rejouée d'office** : une migration restée `Applying` après une
@@ -287,10 +290,11 @@ réessayable), `RUNTIME_INVALID_MANIFEST` (`validation`, 422), `RUNTIME_RELEASE_
 * La santé, le démarrage et l'arrêt des modules sont locaux au nœud ; seuls les installations,
   les migrations, le socle et les rôles élus (bail `leader`) sont coordonnés entre nœuds. La
   présence des nœuds est publiée en base, mais n'est pas encore agrégée par module.
-* Le moteur d'événements intégré élit un seul chef pour toute la base : avec deux hôtes à
-  handlers différents, le chef élu lit aussi les livraisons destinées aux handlers de l'autre
-  hôte, ne les trouve pas dans son processus et les met en échec, puis en dead letter. Deux hôtes sur une même base n'activent donc pas encore le moteur
-  d'événements (plan « plusieurs hôtes sur une même base », lots suivants).
+* Plusieurs hôtes sur une même base : chacun a son chef des événements et ne traite que ses
+  abonnements (`crates/lyxal_event/README.md`). Deux modules d'un **même** hôte ne peuvent pas
+  encore écouter le même type d'événement (un handler par type et par processus,
+  `crates/lyxal_event/ROADMAP.md`). Les hôtes d'une même base se déploient du même commit : une
+  release de même version au contenu différent est refusée.
 * La cible `Absent` arrête un module sans supprimer ses données ; les rétrogradations sont
   bloquées.
 * Une migration interrompue au milieu d'un script non transactionnel peut laisser un état
@@ -313,9 +317,21 @@ interrompue ou sans bail d'installation, trace au journal), baux (concurrence, h
 refusée après reprise, élection d'un seul nœud par le bail `leader`), workers, santé, réconciliation, intégration de `lyxal_event`,
 présence (battement, retrait à l'arrêt, nœud déclaré mort puis purgé avec ses lignes), socle
 (deux démarrages simultanés : une seule installation sous bail ; socle remplacé par un autre
-binaire : sonde « dégradé ») et deux hôtes sur une même base (hook `install` appelé une fois pour
-un module commun et jamais au redémarrage, refus d'une release de même version au contenu
-différent, réconciliation stricte sans action sur les modules de l'autre hôte). Les fichiers
+binaire : sonde « dégradé ») et deux hôtes sur une même base, moteur d'événements activé
+(`tests/it/two_hosts_shared_database_tests.rs` : hook `install` appelé une fois pour un module
+commun et jamais au redémarrage, refus d'une release de même version au contenu différent,
+réconciliation stricte sans action sur les modules de l'autre hôte, chaque événement livré au
+handler de son hôte une fois et sans dead letter, livraisons d'un hôte arrêté en attente sans
+essai compté puis livrées à son retour, ventilation simultanée des mêmes événements par les deux
+hôtes). Le même parcours est rejoué sur un serveur SurrealDB 3.3.4 réel, chaque hôte sur sa
+connexion (test ignoré par défaut, lancé par `scripts/ci/test_all.sh`) :
+
+```bash
+LYXAL_SURREAL_WS_URL=ws://127.0.0.1:8000 LYXAL_SURREAL_USER=root LYXAL_SURREAL_PASS=… \
+  cargo test -p lyxal_runtime --test it -- --ignored --exact \
+  two_hosts_shared_database_tests::two_hosts_lifecycle_with_events_on_a_remote_server
+```
+ Les fichiers
 `tests/contrat.test.surql` et `tests/presence.test.surql` appellent chaque fonction
 `fn::runtime_*` (cas nominaux, paramètres refusés, identité sans droit).
 `scripts/ci/ci_local.sh` rejoue la CI complète, dont la validation du SurrealQL par un binaire

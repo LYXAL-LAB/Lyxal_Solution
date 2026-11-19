@@ -120,8 +120,19 @@ async fn server_installs_and_starts_hosted_modules() {
     assert_eq!(get(&router, "/live").await.0, StatusCode::NO_CONTENT);
     assert_eq!(get(&router, "/ready").await.0, StatusCode::NO_CONTENT);
 
-    let (status, modules) = get(&router, "/api/v1/system/modules").await;
-    assert_eq!(status, StatusCode::OK);
+    let (status, system) = get(&router, "/api/v1/system/modules").await;
+    assert_eq!(status, StatusCode::OK, "{system}");
+    // Hôte et nœud de ce processus ; seul nœud vivant de la base, avec ses modules démarrés
+    assert_eq!(system["host"], "lyxal_server", "{system}");
+    let node = runtime.node_id().to_string();
+    assert_eq!(system["node_id"], node.as_str(), "{system}");
+    let nodes = system["nodes"].as_array().expect("nœuds");
+    assert_eq!(nodes.len(), 1, "{system}");
+    assert_eq!(nodes[0]["node_id"], node.as_str());
+    assert_eq!(nodes[0]["host"], "lyxal_server");
+    assert_eq!(nodes[0]["current"], true);
+    assert!(nodes[0]["seen_at"].is_string(), "{system}");
+    let modules = &system["modules"];
     let ids: Vec<&str> = modules
         .as_array()
         .expect("liste")

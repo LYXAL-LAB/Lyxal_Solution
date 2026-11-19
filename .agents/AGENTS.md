@@ -400,7 +400,8 @@ impl EventConsumerModule for NotificationModule {
 ### 5.6.4. Séquencement Streaming In-Process & Invariant de Contiguïté
 
 * Le streaming d'événements est pris en charge par le moteur unifié **LYXAL Event Engine** (`ReliableDispatcher`, `OutboxFeeder`, `HandlerConsumerBridge`).
-* **Fencing Transactionnel Étanche** : Le leader détient un bail distribué (`event_stream_lease:outbox_leader`) à génération monotone. Toute écriture durable (`assign_seq`, `flush_batch`, `dead_letter_transfer`) applique une garde conditionnelle atomique sur le bail et échoue avec `EVENT_STALE_LEADER_FENCED` en cas de split-brain ou de perte de leadership.
+* **Un chef par hôte** : plusieurs hôtes (binaires, par exemple `lyxal_server` et `lyxal_groupware`) peuvent partager une base. Chaque abonnement appartient à un hôte (`event_subscription.host`, recopié sur chaque livraison) ; il est enregistré par l'hôte qui porte son handler, et un abonnement réclamé par un autre hôte est refusé (`EVENT_SUBSCRIPTION_HOST_CONFLICT`). Chaque hôte élit un chef des événements par un bail propre, `event_stream_lease:<hôte>` ; ce chef ne lit, ne numérote, n'exécute et ne solde que les livraisons de son hôte. Hôte arrêté : ses livraisons attendent son retour, sans essai compté ni dead letter, et la sonde de `lyxal_event` (`EventEngineHealthCheck`) de l'hôte présent passe à « dégradé » après 5 minutes. Le changement d'hôte d'un abonnement est une opération d'exploitation (`fn::event_subscription_transfer`, refusée tant que l'ancien hôte a un chef vivant).
+* **Fencing Transactionnel Étanche** : Le chef d'un hôte détient le bail `event_stream_lease:<hôte>`, à génération monotone. Toute écriture durable (`assign_seq`, `flush_batch`, `dead_letter_transfer`, `delivery_failure`) applique, dans la même écriture, une garde conditionnelle sur ce bail (`EVENT_STALE_LEADER_FENCED` en cas de split-brain ou de perte du bail) et un contrôle de propriété : l'abonnement de la livraison appartient à cet hôte (`EVENT_SUBSCRIPTION_NOT_OWNED` sinon).
 * **Invariant de Contiguïté sans Trou** : Chaque abonnement possède un flux ordonné (`event_subscription_progress`). Le curseur persistant (`last_persisted_cursor`) ne progresse via `fn::event_flush_batch` que si toutes les séquences antérieures sont résolues (`delivered`, `dead_letter`, `dropped`).
 * **Barrière DLQ Atomique** : Tout message empoisonné est persisté dans `event_dead_letter` via `fn::event_dead_letter_transfer` avant toute confirmation du curseur.
 * **Reprise Post-Crash Déterministe** : Lors d'un crash ou redémarrage du serveur, `fetch_and_enqueue_pending` reprend les livraisons en cours dès expiration de leur verrou (`locked_until`). La fonction `fn::event_delivery_assign_seq` reverrouille atomiquement la livraison sans modifier son numéro de séquence `delivery_seq` d'origine.
@@ -679,6 +680,7 @@ migrations = ["migrations/0001_initial.surql"]
 
 * `lyxal_runtime` installe **exactement** les fichiers déclarés dans `[resources]`, par phase (`schemas`, `functions`, `error_definitions`, `events`, `seeds`, puis `migrations`) et dans l'ordre déclaré. Une clé inconnue du manifeste est refusée (`RUNTIME_MANIFEST_PARSE_ERROR`).
 * Les migrations s'exécutent sous un bail distribué renouvelé tant qu'elles durent ; leur résultat n'est enregistré que si le nœud détient encore le bail (sinon `RUNTIME_LEASE_FENCED`). Une migration appliquée dont le contenu a changé arrête l'installation (`RUNTIME_MIGRATION_CHECKSUM_MISMATCH`).
+* Chaque release porte l'empreinte de ses fichiers `[resources]` (`runtime_release.checksum`). Une release déjà installée sous le même numéro avec un autre contenu est refusée (`RUNTIME_RELEASE_CHECKSUM_MISMATCH`) : deux hôtes qui partagent une base se déploient du même commit.
 
 > `lyxal_booking` ne déclare **pas** de dépendance vers `lyxal_notification` : conformément au §5.6.1, un producteur d'événements ne connaît jamais ses consommateurs. C'est `lyxal_notification` qui s'abonne à `booking.created` via `lyxal_event`.
 
@@ -700,12 +702,13 @@ impl LyxalModule for BookingModule {
         &self.descriptor
     }
 
-    /// Hook d'installation, exécuté par le Runtime sous bail d'installation
-    /// (`InstallationLeaseManager`) ; une release déjà installée n'est pas réinstallée.
+    /// Hook d'installation : écritures en base, rejouables. Appelé par l'installateur du
+    /// Runtime, sous bail d'installation, une seule fois par release pour toute la base.
     async fn install(&self, _ctx: &ModuleContext) -> Result<(), RuntimeError> {
         Ok(())
     }
 
+    /// Réglages propres au processus : appelé à chaque démarrage de chaque nœud.
     async fn start(&self, _ctx: &ModuleContext) -> Result<(), RuntimeError> {
         Ok(())
     }
@@ -715,6 +718,8 @@ impl LyxalModule for BookingModule {
     }
 }
 ```
+
+* **Hook `install` une fois par release** : seul l'installateur (`install_package`, `install_packages`) appelle `install`, sous bail d'installation (`<module>:<version>`), une fois pour toute la base, par le premier nœud qui installe la release. Un second hôte, ou un redémarrage, trouve la release installée et passe le module à `Installed` sans rejouer le hook. `start_all` n'installe jamais : un module resté `Registered` fait échouer le démarrage (`RUNTIME_INVALID_STATE_TRANSITION`). Tout ce qui est propre au processus (clés en mémoire, connexions, inscriptions locales) va donc dans `start`.
 
 ### 5.8.3. Contrat des Processus de Fond (`LyxalWorker`)
 
@@ -784,9 +789,12 @@ impl ModuleHealthCheck for BookingHealthCheck {
 * Les modules métiers (`lyxal_booking`, `lyxal_crm`, etc.) dépendent **uniquement des traits et contrats** de `lyxal_runtime`.
 * Les modules métiers **n'instancient jamais le Runtime** eux-mêmes.
 * C'est le binaire hôte (`apps/lyxal-server` ou CLI) qui instancie le `LyxalRuntime` et démarre le serveur réseau. Au démarrage, `lyxal-server` :
-  1. installe `lyxal_core`, `lyxal_error`, ses définitions `SERVER_*` et le schéma du runtime (rejouable) ;
+  1. installe le socle (`lyxal_core`, `lyxal_error`, schéma du runtime) par `lyxal_runtime::schema::install_foundation`, sous le bail d'installation du socle, puis ses définitions `SERVER_*` (rejouable) ;
   2. installe tous les modules hébergés par `install_packages` (releases, migrations sous bail) ;
   3. enregistre leurs workers et sondes de santé, puis démarre l'ensemble par `start_all` (moteur d'événements compris).
+* **Identité d'hôte** : chaque binaire hôte a un nom fixe, inscrit dans son code et égal à l'`id` de son manifeste d'hôte (`lyxal_server`, plus tard `lyxal_groupware`), le même pour toutes ses copies et jamais réglable par configuration (`HostId`, passé à `RuntimeConfig::new`, à `EventEngineConfig::new`, au planificateur et aux abonnements). Chaque processus est un **nœud** (identifiant tiré au sort au démarrage) qui se déclare dans `runtime_node` (hôte, modules démarrés, empreinte du socle), avec un battement toutes les 10 s ; la ligne est retirée à l'arrêt propre et purgée après 7 jours sans battement.
+* **Plusieurs hôtes sur une base** : chaque hôte ne traite que les événements de ses abonnements (§5.6.4) et que les tâches `handler` dont il a le code ; les tâches `function` et `event` du planificateur sont exécutées par n'importe quel hôte, et un seul planificateur est élu pour toute la base. Un socle remplacé par un binaire d'une autre empreinte met l'autre hôte en « dégradé ».
+* **Réconciliation stricte par hôte** : en mode strict, le réconciliateur ne vise que les modules enregistrés dans son propre runtime ; les modules installés par un autre hôte sont listés dans `ReconciliationPlan::foreign_modules` (avec les hôtes vivants qui les déclarent), sans aucune action. Une action sur un module non enregistré échoue (`UnknownModule`), elle n'est jamais comptée comme exécutée.
 * Les modules hébergés sont **embarqués dans le binaire** : `build.rs` du serveur lit le `manifest.toml` de chaque module et inclut exactement les fichiers de `[resources]` (compilation en échec si un fichier manque). Héberger un module = l'inscrire dans `build.rs` et, s'il a du code Rust, déclarer son `LyxalModule` et ses services dans `apps/lyxal-server/src/modules/` ; un module sans code Rust est porté par un `ManifestModule` construit depuis son manifeste.
 * Les erreurs de l'hôte sont préfixées `SERVER_` et répondent au contrat `LyxalResult` (`{ ok, data, error }`), sans détail interne pour le client.
 

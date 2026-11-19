@@ -10,6 +10,7 @@ supervisés, santé, présence des nœuds, réconciliation) et ses limites sont 
 | :--- | :--- | :--- |
 | 1 | Retrait d'un module et de ses données | — |
 | 2 | Coordination du cycle de vie entre nœuds | — |
+| 3 | Plusieurs hôtes : suites | `apps/lyxal-groupware` |
 
 ---
 
@@ -37,3 +38,20 @@ Critères d'acceptation :
       `runtime_node`, `runtime_health` et `runtime_worker`) ;
 - [ ] arrêt ou redémarrage d'un module demandé pour tous les nœuds ;
 - [ ] tests à deux nœuds (perte d'un nœud, reprise).
+
+## 3. Plusieurs hôtes : suites
+
+Plusieurs hôtes partagent déjà une base (identité d'hôte, présence, hook `install` unique,
+chef des événements par hôte, réservation stricte des tâches `handler`). Points laissés hors du
+correctif par le CTO (décision H9), à reprendre chacun par son propre plan :
+
+- [ ] deux modules d'un **même** hôte qui écoutent le même type d'événement (un handler par type
+      et par processus) : à lever avant le premier cas dans `lyxal-groupware`
+      (`crates/lyxal_event/ROADMAP.md`) ;
+- [ ] filtre `instance_id` du moteur d'événements : il ne sert pas à séparer les hôtes, son rôle
+      reste à décider (`crates/lyxal_event/ROADMAP.md`) ;
+- [ ] files du planificateur réservées à un hôte (`crates/lyxal_scheduler/ROADMAP.md`) ;
+- [ ] exécuteur du planificateur créé à chaud pour une file apparue après le démarrage
+      (`crates/lyxal_scheduler/ROADMAP.md`) ;
+- [ ] création de `apps/lyxal-groupware` (lot 3 du programme courrier, agendas et contacts,
+      `implementation_plan.md` à la racine).

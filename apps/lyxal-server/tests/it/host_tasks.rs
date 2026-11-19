@@ -48,7 +48,7 @@ async fn count(client: &Surreal<Any>, query: &str) -> i64 {
 }
 
 /// Planification de l'installation d'une tâche de fond de l'hôte.
-async fn schedule_of(store: &SchedulerStore, task: HostTask) -> SchedulerRecordId {
+pub(crate) async fn schedule_of(store: &SchedulerStore, task: HostTask) -> SchedulerRecordId {
     let page = store
         .schedule_list(ScheduleListParams {
             task: Some(task.task.to_string()),

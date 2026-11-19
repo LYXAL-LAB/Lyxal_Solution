@@ -77,11 +77,11 @@ par champ.
   `fn::event_delivery_assign_seq`, `fn::event_delivery_failure`,
   `fn::event_dead_letter_transfer`, `fn::event_flush_batch`, `fn::event_progress_get`,
   `fn::event_lease_acquire`, `fn::event_lease_renew`, `fn::event_lease_release`. Toutes, sauf
-  la ventilation, la reprise des ventilations, l'échec transitoire et la lecture de progression,
-  prennent l'hôte (`host`) du chef qui les appelle.
+  la ventilation, la reprise des ventilations et la lecture de progression, prennent l'hôte
+  (`host`) du chef qui les appelle.
 
-Les trois fonctions protégées par le bail de l'hôte (`assign_seq`, `dead_letter_transfer`,
-`flush_batch`) lèvent leurs erreurs de garde et de curseur par `THROW` pour annuler toute la
+Les quatre fonctions protégées par le bail de l'hôte (`assign_seq`, `delivery_failure`,
+`dead_letter_transfer`, `flush_batch`) lèvent leurs erreurs de garde et de curseur par `THROW` pour annuler toute la
 transaction, y compris l'écriture de garde sur le bail (exception documentée, décision CTO). Le
 refus de propriété (`EVENT_SUBSCRIPTION_NOT_OWNED`) est un résultat d'erreur ordinaire : il
 suit la garde et n'écrit rien d'autre.
@@ -171,7 +171,10 @@ embarquée et exercent le chemin de production (`EventWorker::run`) : publicatio
 retries et dead letters, rejeu, reprise après crash, isolation par instance, `DEFINE EVENT`,
 concurrence entre plusieurs workers, purge, et plusieurs hôtes sur une base
 (`tests/it/integration_multi_host.rs` : chaque événement au handler de son hôte, hôte arrêté,
-deux nœuds d'un hôte et reprise, propriété, conflit et changement d'hôte). Les tests SurrealQL
+deux nœuds d'un hôte et reprise, propriété, conflit et changement d'hôte). Le moteur complet,
+démarré par le runtime à deux hôtes sur une base, est aussi essayé par
+`crates/lyxal_runtime/tests/it/two_hosts_shared_database_tests.rs`, sur moteur embarqué et sur
+un serveur SurrealDB 3.3.4 (`ws://`, `scripts/ci/test_all.sh`). Les tests SurrealQL
 (`tests/hotes.test.surql`, `tests/moteur.test.surql`) appellent chaque fonction publique, sous
 la session système et sous une identité sans droit. `scripts/ci/ci_local.sh` rejoue la CI complète,
 dont la validation du SurrealQL par un binaire SurrealDB 3.3.4.

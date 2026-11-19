@@ -215,17 +215,27 @@ plateforme (une saturation mémoire ou un plantage n'arrête pas `lyxal-server`)
 propres limites et droits système ; (2) **exploitation** — on peut ne pas déployer le courrier,
 ou le placer sur une machine qui a le port 25 ouvert ; (3) **licence** — le binaire qui lie du
 code dérivé d'AGPL est distinct, `lyxal-server` ne lie aucun des nouveaux crates (P2).
-Essai du lot 0 (tests `two_hosts_shared_database_tests` de `lyxal_runtime`) : deux hôtes à
-jeux de modules différents s'installent sous bail, démarrent, se réconcilient, redémarrent et
-s'arrêtent sur une même base sans effet l'un sur l'autre. **Le moteur d'événements ne le permet
-pas encore** : un seul `EventWorker` est élu pour toute la base et ne sert que les handlers de
-son hôte ; les événements destinés aux handlers de l'autre hôte finissent en dead letter (ou
-restent en attente si les hôtes ont des `instance_id` différents). **Décision du CTO du 19 novembre 2026** : l'hôte dédié est maintenu (P3) ; le moteur
-d'événements et le planificateur sont corrigés pour servir plusieurs hôtes sur une base (chaque
-hôte ne traite que les événements et les tâches de ses propres modules). Ce correctif a son
-propre plan, à valider avant le lot 3. Non essayé : les exécuteurs de
-`lyxal_scheduler` sur deux hôtes (d'après le code, un exécuteur qui réserve une tâche dont le
-handler est inscrit sur l'autre hôte la fait échouer avec `SCHEDULER_HANDLER_NOT_FOUND`).
+**Décision du CTO du 19 novembre 2026** : l'hôte dédié est maintenu (P3), et le moteur a été
+corrigé pour servir plusieurs hôtes sur une base. **Ce correctif est fait** (plan « plusieurs
+hôtes sur une même base », lots 1 à 4, exécuté) :
+
+- chaque binaire a un nom d'hôte fixe (`lyxal_server`, `lyxal_groupware`) ; chaque nœud se
+  déclare dans `runtime_node` ; le hook `install` d'un module n'est exécuté qu'une fois par
+  release pour toute la base ; le socle est installé sous bail ; la réconciliation stricte ne
+  vise que les modules de son hôte (`lyxal_runtime`) ;
+- un chef des événements par hôte (`event_stream_lease:<hôte>`), chaque abonnement appartient à
+  un hôte ; un hôte arrêté laisse ses livraisons en attente, sans échec, et l'autre le signale
+  (`lyxal_event`) ;
+- une tâche `handler` n'est réservée que par un nœud qui a son code, quelle que soit son
+  attente ; les tâches `function` et `event` sont exécutées par tout hôte ; un seul planificateur
+  élu pour la base (`lyxal_scheduler`).
+
+Essais : `crates/lyxal_runtime/tests/it/two_hosts_shared_database_tests.rs` (deux hôtes, moteur
+d'événements activé : installation, démarrage, réconciliation, redémarrage, arrêt, ventilation
+simultanée ; aussi sur un serveur SurrealDB 3.3.4 réel, `ws://`) et
+`apps/lyxal-server/tests/it/two_hosts.rs` (les trois tâches de fond de `lyxal-server` ne sont
+exécutées que par lui, à côté d'un second hôte). Reste pour `lyxal-groupware` : deux modules d'un
+**même** hôte qui écoutent le même type d'événement (`crates/lyxal_event/ROADMAP.md`).
 
 ### 4.4. Données et répartition SurrealQL / Rust
 
