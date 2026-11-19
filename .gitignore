@@ -39,6 +39,11 @@ history.txt
 surrealdb-3.3.4/
 surrealist-surrealist-v3.9.13/
 scratch/
+# Sources externes clonées par scripts/sources/fetch_sources.sh (jamais versées dans le dépôt)
+.sources/
 claude-skills-main/
 *.pdb
 
+
+# Fichiers compilés de Python (créés à chaque lancement des scripts)
+__pycache__/

@@ -33,7 +33,40 @@ Aucun crate ne démarre sans ordre du CTO et `implementation_plan.md` validé
 (`.agents/AGENTS.md` §3). Les sources de chaque crate sont fixées par le CTO dans ce plan.
 Un crate créé est retiré de ce document : son état est alors décrit par son `README.md`.
 
-Aucun crate du noyau ne reste à créer.
+## Crates à créer : programme courrier, agendas et contacts
+
+Cinq crates et un hôte, inscrits « à créer » dans `.agents/AGENTS.md` §6 après
+`lyxal_notification`. Le programme (architecture, sources, 23 lots, décisions F1 à F5 et P1 à
+P15 du CTO) est décrit par `implementation_plan.md` à la racine du dépôt ; chaque lot a son
+propre plan, validé avant tout code. L'ordre de création est celui des lots :
+
+| Rang | Élément | Créé par le lot | Complété par les lots | Dossier |
+| :-: | :--- | :--- | :--- | :--- |
+| 1 | `apps/lyxal-groupware` (hôte dédié, décision P3) | 3 — hôte et socle réseau | 5, 6, 8, 10, 12, 13, 15 et suivants (écoutes) | à créer au lot 3 |
+| 2 | `lyxal_mail` (squelette au lot 3, module au lot 4) | 3 et 4 — socle courrier | 5 à 13 (réception, envoi, IMAP, recherche, Sieve, anti-spam, JMAP, administration) | [`crates/lyxal_mail`](../../crates/lyxal_mail/README.md) |
+| 3 | `lyxal_mail_proto` | 4 — socle courrier | 5, 7, 8, 9, 10, 12 (syntaxes portées) | [`crates/lyxal_mail_proto`](../../crates/lyxal_mail_proto/README.md) |
+| 4 | `lyxal_dav` | 14 — formats agenda et contact | 15 (socle WebDAV) | [`crates/lyxal_dav`](../../crates/lyxal_dav/README.md) |
+| 5 | `lyxal_calendar` | 16 — CalDAV | 17, 18, 20 (tâches, partage, planification, JMAP) | [`crates/lyxal_calendar`](../../crates/lyxal_calendar/README.md) |
+| 6 | `lyxal_contacts` | 19 — CardDAV | 20 (JMAP) | [`crates/lyxal_contacts`](../../crates/lyxal_contacts/README.md) |
+
+Avant eux : le lot 0 (cadre : sources figées, tri du code propriétaire de Stalwart, contrôle
+des licences, mesures de SurrealDB, essai de deux hôtes sur une base) ; le lot 1 (mots de passe
+d'application, dans `lyxal_auth`) ; le lot 2 (extensions de `lyxal_crypto`). Les lots 14 à 17 et
+19 ne dépendent pas du courrier : le CTO peut les avancer après le lot 3 (décision P9). Les
+lots 21 et 22 (durcissement, essais réels, clôture) portent sur les cinq crates.
+
+Au lot 0, chaque dossier ne contient que des documents (`README.md`, `SOURCES.md`,
+`ROADMAP.md`, et `RECHERCHE_SOURCES.md` pour `lyxal_mail` et `lyxal_calendar`) : pas de
+`Cargo.toml`, pas de code. Ces crates ne sont pas membres du workspace.
+
+Règles propres à ce programme (décisions F4, F5, P2, P3) :
+
+- chaque crate déclare `license = "AGPL-3.0-only"` dans son `Cargo.toml` et tient un
+  `SOURCES.md` (élément porté, projet, commit, licence, fichier d'origine) ;
+- aucun fichier ni extrait de Stalwart sous `LicenseRef-SEL` n'est utilisé
+  (`scripts/sources/strip_sel.py`) ;
+- aucun crate existant ne reçoit de code porté d'une source AGPL ou GPL, et `lyxal-server` ne
+  lie aucun de ces crates : ils sont hébergés par `apps/lyxal-groupware`.
 
 ---
 
@@ -44,5 +77,7 @@ Aucun crate du noyau ne reste à créer.
 - [ ] banc SurrealQL (`scripts/ci/test_lyxal_modules.py`) : cas nominaux, erreurs, identités et
       permissions ; chaque fonction publique appelée ;
 - [ ] code Rust, s'il existe, sans avertissement `clippy -D warnings` ;
-- [ ] hébergé par `lyxal-server` (`build.rs`, `src/modules/`), installation et rejeu vérifiés ;
+- [ ] hébergé par `lyxal-server` (`build.rs`, `src/modules/`), installation et rejeu vérifiés — pour les
+      crates du programme courrier, agendas et contacts : hébergé par `apps/lyxal-groupware`, licence
+      `AGPL-3.0-only` déclarée, `SOURCES.md` à jour, exception nommée dans `deny.toml` ;
 - [ ] inscrit sans la mention « à créer » dans `.agents/AGENTS.md` §6 et retiré de ce document.

@@ -34,6 +34,7 @@ mod scenario_tests;
 mod schema_importer_tests;
 mod store_memory_tests;
 mod store_surreal_tests;
+mod two_hosts_shared_database_tests;
 mod worker_concurrency_tests;
 mod worker_lifecycle_integration_tests;
 mod worker_registry_tests;

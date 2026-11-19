@@ -2,8 +2,9 @@
 
 Création, dans le Noyau Technique, d'un **serveur de courrier complet** et d'un **serveur
 CalDAV / CardDAV complet**, portés de projets open source existants et adaptés à Lyxal OS et à
-SurrealDB. Études de sources (18 novembre 2026) : `etude_serveur_mail.md` et `etude_caldav.md`
-(à verser dans les crates au lot 0 sous le nom `RECHERCHE_SOURCES.md`). Les mesures de ce plan
+SurrealDB. Études de sources (18 novembre 2026), versées au lot 0 :
+`crates/lyxal_mail/RECHERCHE_SOURCES.md` (courrier, Proton, mesures de SurrealDB) et
+`crates/lyxal_calendar/RECHERCHE_SOURCES.md` (agendas et contacts). Les mesures de ce plan
 ont été faites sur les clones locaux, en lecture seule, sans rien compiler ni exécuter (§3.1).
 
 **Deux niveaux de validation** (`AGENTS.md` §3) : ce plan fixe le programme (architecture,
@@ -139,11 +140,12 @@ SurrealDB. Les tailles sont celles de la source (§3.1), pas du résultat.
 | Organisations multiples, quotas par organisation | **Écrit pour Lyxal** sur `lyxal_auth` et `lyxal_storage` | — | Mox (comptes et domaines), sabre/dav (principals) | tout le code `tenant` de Stalwart |
 | Annuaire, SCIM, télémétrie, grappe, IA | `lyxal_auth` et l'existant Lyxal ; SCIM, IA, réplicas : hors programme | — | — | `scim`, `scim-proto`, `common/enterprise`, `store/backend/composite` |
 
-**Application de F5** : au lot 0, un script produit une copie de travail de Stalwart **sans**
-les 66 fichiers propriétaires ni les 2 070 extraits ; seule cette copie sert de source. Le
-dépôt de Stalwart contient un script `resources/scripts/ossify.py` (non lu : à examiner au
-lot 0, il fait peut-être déjà ce tri). La version sans la fonctionnalité Cargo `enterprise` est
-la version libre prévue par l'éditeur.
+**Application de F5** : `scripts/sources/strip_sel.py` (lot 0) produit une copie de travail de
+Stalwart **sans** les 66 fichiers propriétaires ni les extraits propriétaires (2 067 dans les
+fichiers gardés, 3 dans un fichier lui-même supprimé) ; seule cette copie sert de source. Le
+script de l'éditeur `resources/scripts/ossify.py`, lu au lot 0, fait le même tri : ses règles
+donnent le même résultat fichier par fichier (rapport dans `crates/lyxal_mail/SOURCES.md`). La
+version sans la fonctionnalité Cargo `enterprise` est la version libre prévue par l'éditeur.
 
 ## 4. Architecture
 
@@ -213,8 +215,17 @@ plateforme (une saturation mémoire ou un plantage n'arrête pas `lyxal-server`)
 propres limites et droits système ; (2) **exploitation** — on peut ne pas déployer le courrier,
 ou le placer sur une machine qui a le port 25 ouvert ; (3) **licence** — le binaire qui lie du
 code dérivé d'AGPL est distinct, `lyxal-server` ne lie aucun des nouveaux crates (P2).
-Non vérifié, à prouver au lot 0 : deux hôtes à jeux de modules différents sur la même base
-(installation sous bail, `EventWorker`, élection du planificateur).
+Essai du lot 0 (tests `two_hosts_shared_database_tests` de `lyxal_runtime`) : deux hôtes à
+jeux de modules différents s'installent sous bail, démarrent, se réconcilient, redémarrent et
+s'arrêtent sur une même base sans effet l'un sur l'autre. **Le moteur d'événements ne le permet
+pas encore** : un seul `EventWorker` est élu pour toute la base et ne sert que les handlers de
+son hôte ; les événements destinés aux handlers de l'autre hôte finissent en dead letter (ou
+restent en attente si les hôtes ont des `instance_id` différents). **Décision du CTO du 19 novembre 2026** : l'hôte dédié est maintenu (P3) ; le moteur
+d'événements et le planificateur sont corrigés pour servir plusieurs hôtes sur une base (chaque
+hôte ne traite que les événements et les tâches de ses propres modules). Ce correctif a son
+propre plan, à valider avant le lot 3. Non essayé : les exécuteurs de
+`lyxal_scheduler` sur deux hôtes (d'après le code, un exécuteur qui réserve une tâche dont le
+handler est inscrit sur l'autre hôte la fait échouer avec `SCHEDULER_HANDLER_NOT_FOUND`).
 
 ### 4.4. Données et répartition SurrealQL / Rust
 
@@ -258,10 +269,10 @@ validé par le CTO avant tout code.**
 | :- | :--- | :--- | :--- | :--- | :--- | :-: | :--- |
 | **0. Cadre** | `SOURCES.md` et licences par crate, commits figés, copie de Stalwart sans SEL, contrôle des licences de l'arbre des dépendances, inscription « à créer » (`AGENTS.md` §6, `ROADMAP_NOYAU.md`) ; **mesures** : boîte de 100 000 à 1 000 000 de messages dans SurrealDB (liste, synchronisation, recherche), deux hôtes sur une base | — | — | docs, scripts ; essais hors dépôt | P1 à P4 | S | Les mesures peuvent imposer de revoir P4 |
 | **1. Mots de passe d'application** | Mot de passe par appareil, révocable, limité à des permissions ; vérification à chaque connexion sans Argon2 complet ; limitation des essais | — | Écrit pour Lyxal (modèle : jetons d'application de RustiCal, Mox) | `lyxal_auth`, `lyxal-server` | P8 | S | Contournement du double facteur à borner |
-| **2. Crypto, vague 1** | TLS côté serveur, vérification RSA et Ed25519, vérification et signature DKIM, génération de clés | 6376, 8301, 8463 | `mail-auth`, `ring` ; Mox `dkim` | `lyxal_crypto` | P6 | M | Nouvelles crates crypto ; API figée à étendre |
-| **3. Hôte et socle réseau** | `apps/lyxal-groupware`, écoutes supervisées, TLS (certificat fourni), limites par IP, délais, budget mémoire, DNS, configuration, santé | 3207, 8314 | Stalwart `common/network` ; Mox | hôte, `lyxal_mail` (squelette) | 0, 2 | M | Deux hôtes sur une base |
-| **4. Socle courrier** | `lyxal_mail_proto` (lecture MIME par `mail-parser`) ; `lyxal_mail` : domaines, adresses, alias, boîtes, messages, quotas, droits, erreurs, événements, banc | 5322, 2045-2049 | Stalwart `email` (modèle), Mox `store` | `lyxal_mail_proto`, `lyxal_mail` | 0 | L | Modèle des boîtes (UID, MODSEQ, fils) à figer tôt |
-| **5. Réception SMTP** | Serveur SMTP entrant, refus dès `RCPT TO`, SPF / DKIM / DMARC, en-tête `Authentication-Results`, antivirus, remise en boîte, événement `mail.message.received` | 5321, 1870, 2920, 6152, 6531, 3463, 7208, 7489, 8601 | Stalwart `smtp-proto`, `smtp/inbound` ; Mox `smtpserver` | `lyxal_mail*`, hôte | 2, 3, 4 | L | Port 25 exposé ; attaques sur les fins de ligne |
+| **2. Crypto, vague 1** | TLS côté serveur, vérification RSA et Ed25519, vérification et signature DKIM, génération de clés ; **chiffrement de fichiers en flux** (niveau A du chiffrement des boîtes, P15) | 6376, 8301, 8463 | `mail-auth`, `ring` ; Mox `dkim` ; chiffrement en flux écrit pour Lyxal | `lyxal_crypto` | P6 | M | Nouvelles crates crypto ; API figée à étendre ; format de chiffrement en flux à définir |
+| **3. Hôte et socle réseau** | `apps/lyxal-groupware`, écoutes supervisées, TLS (certificat fourni), limites par IP, délais, budget mémoire, DNS, configuration, santé | 3207, 8314 | Stalwart `common/network` ; Mox | hôte, `lyxal_mail` (squelette) | 0, 2 ; correctif du moteur d'événements pour deux hôtes (§4.3) | M | Deux hôtes sur une base |
+| **4. Socle courrier** | `lyxal_mail_proto` (lecture MIME par `mail-parser`) ; `lyxal_mail` : domaines, adresses, alias, boîtes, messages, quotas, droits, erreurs, événements, banc ; **contenu des messages et des pièces jointes chiffré au repos** (niveau A, clés de la plateforme par organisation) ; drapeau « chiffré » réservé sur les messages (niveaux B et C) | 5322, 2045-2049 | Stalwart `email` (modèle), Mox `store` | `lyxal_mail_proto`, `lyxal_mail`, `lyxal_storage` | 0, 2 | L | Modèle des boîtes (UID, MODSEQ, fils) à figer tôt |
+| **5. Réception SMTP** | Serveur SMTP entrant, refus dès `RCPT TO`, SPF / DKIM / DMARC, en-tête `Authentication-Results`, antivirus, remise en boîte dans l'ordre fixe antivirus → anti-spam → filtres → index → chiffrement (étapes posées même si vides), événement `mail.message.received` | 5321, 1870, 2920, 6152, 6531, 3463, 7208, 7489, 8601 | Stalwart `smtp-proto`, `smtp/inbound` ; Mox `smtpserver` | `lyxal_mail*`, hôte | 2, 3, 4 | L | Port 25 exposé ; attaques sur les fins de ligne |
 | **6. Envoi** | File par destination, tentatives, envoi vers les MX, dépôt authentifié (587 / 465), signature DKIM, avis de non-remise, adresses de retour signées, contrat public de dépôt | 5321 (client), 6409, 4954, 3461, 3464, 8058 | Stalwart `smtp/queue`, `smtp/outbound` ; Mox `queue`, `smtpclient`, `dsn` ; KumoMTA | `lyxal_mail*`, hôte | 1, 5 | XL | Délivrabilité ; relais ouvert ; pertes de messages |
 | **7. Transport sûr et rapports** | MTA-STS, DANE, TLS-RPT, rapports DMARC reçus et émis, ARC | 8461, 7672, 6698, 8460, 7489, 8617 | Stalwart `smtp/reporting`, `smtp-report`, `outbound/{dane,mta_sts}` ; Mox | `lyxal_mail*`, `lyxal_crypto` | 6, P6 | L | DNSSEC ; vérificateur de certificat sur mesure |
 | **8. IMAP** | IMAP4rev2 et rev1, extensions (IDLE, CONDSTORE, QRESYNC, MOVE, UIDPLUS, SPECIAL-USE, QUOTA, ACL…) | 9051, 3501, 2177, 7162, 6851… | Stalwart `imap-proto`, `imap` ; Mox `imapserver` | `lyxal_mail*`, hôte | 1, 4 | XL | Compatibilité Outlook, Apple Mail, Thunderbird ; performances |
@@ -269,13 +280,14 @@ validé par le CTO avant tout code.**
 | **10. Sieve** | Filtres Sieve, ManageSieve, réponse d'absence, filtres à la réception | 5228 et extensions, 5804, 5230 | Stalwart `sieve`, `managesieve`, `email/sieve` | `lyxal_mail*`, hôte | 5, 8 | L | Bac à sable des scripts (boucles, envois) |
 | **11. Anti-spam** | Règles, listes DNS, classement bayésien et apprentissage, réputation, quarantaine | — | Stalwart `spam-filter` (hors `ai`), `nlp` ; Mox `junk` | `lyxal_mail` | 5 | XL | Faux positifs ; réglages à l'usage |
 | **12. JMAP courrier** | Cœur JMAP, courrier, dépôt, identités, fils, push, WebSocket, blobs, quotas, Sieve | 8620, 8621, 8887 | Stalwart `jmap-proto`, `jmap` | `lyxal_mail*`, hôte | 6, 8 | XL | Volume ; états et synchronisation |
+| **12 bis. Chiffrement à la remise** (optionnel) | Niveau B du chiffrement des boîtes : chaque message est chiffré à la remise par la clé publique OpenPGP de l'utilisateur (le serveur ne peut plus le relire ; les logiciels classiques déchiffrent) ; dépôt et contrôle de la clé publique ; activable par compte ; courrier seulement | 9580, 3156 | `rpgp` (MIT / Apache-2.0), derrière `lyxal_crypto` | `lyxal_crypto`, `lyxal_mail` | 12, P6 | L | Recherche, aperçu et apprentissage anti-spam perdus pour les comptes chiffrés ; clé perdue, courrier perdu |
 | **13. Administration du courrier** | Routes HTTP (domaines, clés DKIM et rotation, contrôle des enregistrements DNS, file, quarantaine), certificats automatiques, configuration automatique des logiciels | 8555, 6186 | Stalwart `common/network/{acme,autoconfig}` ; Mox `autotls`, `webadmin` (modèle) | `lyxal_mail`, hôte, `lyxal_crypto` | 6, P6 | M | ACME : extension crypto |
 | **14. Formats agenda et contact** | `lyxal_dav` : iCalendar, vCard, récurrences bornées, fuseaux | 5545, 7986, 6868, 6350, 2426 | Stalwart `calcard` | `lyxal_dav` | 0 | M | Tolérance aux fichiers hors norme |
 | **15. Socle WebDAV** | XML, propriétés, `PROPFIND` / `REPORT`, principals, droits, synchronisation par jeton, découverte, méthodes DAV dans l'hôte | 4918, 3253, 3744, 5397, 6578, 5689, 6764 | Stalwart `dav-proto`, `dav/common` ; RustiCal `dav`, `xml` ; sabre/dav | `lyxal_dav`, hôte | 1, 3, 14 | L | XML hostile ; particularités des clients |
-| **16. CalDAV** | `lyxal_calendar` : agendas, événements, recherche par période, lecture groupée, propriétés Apple, restitution à l'octet près | 4791, 7809 | Stalwart `dav/calendar`, `groupware/calendar` ; sabre/dav (modèle SQL, tests) | `lyxal_calendar`, hôte | 15 | XL | Récurrences ; clients Apple non documentés |
+| **16. CalDAV** | `lyxal_calendar` : agendas, événements, recherche par période, lecture groupée, propriétés Apple, restitution à l'octet près ; chiffrement au repos (niveau A) | 4791, 7809 | Stalwart `dav/calendar`, `groupware/calendar` ; sabre/dav (modèle SQL, tests) | `lyxal_calendar`, hôte | 15 | XL | Récurrences ; clients Apple non documentés |
 | **17. Tâches, partage, disponibilités** | `VTODO`, `VJOURNAL`, partage lecture / écriture, délégation, `free-busy-query`, alarmes et rappels | 3744, 9074, 7953 | idem ; RustiCal (partage par groupes) | `lyxal_calendar` | 16 | L | Extensions de partage hors RFC |
 | **18. Planification** | Boîtes `schedule-inbox` / `-outbox`, invitations internes, invitations par e-mail (envoi et réception), réponses, contre-propositions | 5546, 6638, 6047 | Stalwart `groupware/scheduling` ; sabre/dav `Schedule` | `lyxal_calendar` | 5, 6, 17 | XL | Usurpation d'organisateur ; exceptions de récurrence |
-| **19. CardDAV** | `lyxal_contacts` : carnets, contacts, recherche, synchronisation, partage | 6352 | Stalwart `dav/card`, `groupware/contact` ; RustiCal `carddav` | `lyxal_contacts`, hôte | 15 | L | vCard 3 et 4 mêlées |
+| **19. CardDAV** | `lyxal_contacts` : carnets, contacts, recherche, synchronisation, partage ; chiffrement au repos (niveau A) | 6352 | Stalwart `dav/card`, `groupware/contact` ; RustiCal `carddav` | `lyxal_contacts`, hôte | 15 | L | vCard 3 et 4 mêlées |
 | **20. JMAP agendas et contacts** | JSCalendar, JSContact, méthodes JMAP correspondantes | 8984, 9553, 9610 ; brouillon « JMAP for Calendars » | Stalwart `jmap` (agendas, contacts) | `lyxal_calendar`, `lyxal_contacts` | 12, 18, 19 | L | Norme agendas encore en brouillon (non revérifié) |
 | **21. Durcissement et conformité** | Fuzzing des analyseurs, essais de charge, suites de conformité (P10), corrections | — | Bancs de Mox, sabre/dav, RustiCal (transposés) | tous | 12, 20 | L | Nombre d'écarts inconnu d'avance |
 | **22. Essais réels et clôture** | Essais sur domaine, IP et appareils réels (§8), audit `lyxal-audit` par crate, procédures d'exploitation, `README.md`, `ROADMAP.md`, `SOURCES.md` définitifs | — | — | tous, docs | 21, P11 | M | Dépend des moyens fournis par le CTO |
@@ -284,6 +296,18 @@ Ordre : la valeur arrive tôt (lot 5 : courrier entrant, attendu par `lyxal_noti
 lot 6 : envoi sans fournisseur ; lot 8 : vraies boîtes). Les lots 14 à 17 et 19 ne dépendent
 pas du courrier : ils peuvent être avancés après le lot 3 si le CTO veut les agendas plus tôt.
 Les lots 18 et 20 exigent le courrier.
+
+**Chiffrement des boîtes** (décision du CTO sur l'étude Proton, P15) — trois niveaux :
+
+| Niveau | Principe | Place dans le programme |
+| :- | :--- | :--- |
+| **A** | Chiffrement au repos avec des clés de la plateforme par organisation (modèle de `lyxal_secrets`) | **Dans le programme** : chiffrement de fichiers en flux, extension de `lyxal_crypto` détaillée et validée avec le lot 2 (la primitive actuelle plafonne à 1 Mio) ; appliqué dès le lot 4 au courrier, puis aux agendas (lot 16) et aux contacts (lot 19) |
+| **B** | Chiffrement à la remise par la clé publique OpenPGP de l'utilisateur, avec `rpgp` | **Lot optionnel 12 bis**, après le lot 12. Les lots 4 et 5 réservent dès maintenant le drapeau « chiffré » et l'ordre antivirus → anti-spam → filtres → index → chiffrement |
+| **C** | Bout en bout complet, à la Proton : clés chez le client ; exige nos propres logiciels clients (ou une passerelle) et retire au serveur la recherche, les filtres et l'anti-spam sur le contenu des boîtes qui l'activent | **Gardé dans le programme, sans lot fixé à ce jour** ; son plan est instruit après le niveau B. D'ici là, aucun lot ne ferme cette possibilité : modèle des clés par utilisateur, drapeau « chiffré », contrats qui ne supposent jamais le contenu des messages lisible par le serveur |
+
+Agendas et contacts : niveau A seulement (aucun logiciel CalDAV / CardDAV classique ne
+déchiffre). Ce que Proton apporte d'autre (fonctions du futur webmail, alias d'adresses à la
+SimpleLogin à instruire avec le lot 13) est consigné dans `crates/lyxal_mail/ROADMAP.md`.
 
 ## 6. Dépendances nouvelles
 
@@ -310,7 +334,7 @@ Décisions P1 à P14 **validées par le CTO** le 18 novembre 2026, telles que pr
 | **P3** | Hébergement des ports | Hôte dédié `apps/lyxal-groupware` (§4.3) pour tous les ports du courrier **et** le HTTP de CalDAV, CardDAV et JMAP ; `lyxal-server` inchangé. Si refusé : tout dans `lyxal-server`, qui lie alors les crates AGPL et expose les ports du courrier dans le processus de l'API. |
 | **P4** | Portage du stockage | Voie **B** (§4.4) : modèle SurrealQL conforme aux règles ; couches de protocole portées, accès aux données réécrits. Confirmée ou revue après les mesures du lot 0. La voie A reste le repli si les mesures condamnent B pour les index des boîtes. |
 | **P5** | Sources principales | Courrier : **Stalwart** (protocoles) et **Mox** (modèle de données, comportements, bancs) ; bibliothèques `mail-*` en dépendances. DAV, agendas, contacts : **Stalwart** (`dav-proto`, `dav`, `groupware`, `calcard` — même bibliothèque iCalendar que JMAP et la planification), **sabre/dav** pour le modèle de données et les tests, **RustiCal** pour le découpage du stockage, les jetons d'application et WebDAV-Push. `calcard` : version du dépôt Stalwart (AGPL, sur `jiff`, déjà dans le dépôt Lyxal) plutôt que la 0.3.14 archivée. |
-| **P6** | Extensions de `lyxal_crypto` (§11.3) — accord de principe, détail validé lot par lot | (a) TLS côté serveur avec `rustls` (lot 2) ; (b) vérification de signatures **RSA-SHA256** et **Ed25519** — Ed25519 sort du « hors scope » (lot 2) ; (c) **DKIM** : canonicalisation, vérification, signature RSA et Ed25519 (lot 2) ; (d) génération de clés RSA et Ed25519 pour DKIM (`ring` ne génère pas de clés RSA ; l'étude signale l'avis RUSTSEC-2023-0071 sur la crate `rsa`, non revérifié) (lot 2) ; (e) **ARC** : vérification et scellement (lot 7) ; (f) **DANE** : contrôle du certificat contre l'enregistrement TLSA (lot 7) ; (g) **ACME** : demande de certificat et clés (lot 13) ; (h) **SCRAM-SHA-256** pour l'authentification IMAP / SMTP (PBKDF2-HMAC), si retenu au lot 8. Sources : `mail-auth`, `ring`, Mox (toutes permissives). Chiffrement des boîtes (OpenPGP, S/MIME) : hors programme (§9). Si (b) à (d) sont refusés : pas de DKIM, donc pas de lots 5 à 7 complets. |
+| **P6** | Extensions de `lyxal_crypto` (§11.3) — accord de principe, détail validé lot par lot | (a) TLS côté serveur avec `rustls` (lot 2) ; (b) vérification de signatures **RSA-SHA256** et **Ed25519** — Ed25519 sort du « hors scope » (lot 2) ; (c) **DKIM** : canonicalisation, vérification, signature RSA et Ed25519 (lot 2) ; (d) génération de clés RSA et Ed25519 pour DKIM (`ring` ne génère pas de clés RSA ; l'étude signale l'avis RUSTSEC-2023-0071 sur la crate `rsa`, non revérifié) (lot 2) ; (e) **ARC** : vérification et scellement (lot 7) ; (f) **DANE** : contrôle du certificat contre l'enregistrement TLSA (lot 7) ; (g) **ACME** : demande de certificat et clés (lot 13) ; (h) **SCRAM-SHA-256** pour l'authentification IMAP / SMTP (PBKDF2-HMAC), si retenu au lot 8. (i) **chiffrement de fichiers en flux** pour le niveau A du chiffrement des boîtes (lot 2) ; (j) **OpenPGP en chiffrement** par `rpgp` pour le niveau B (lot 12 bis, optionnel) ; les extensions du niveau C sont instruites avec son plan (P15, §5). Sources : `mail-auth`, `ring`, Mox, `rpgp` (toutes permissives). Si (b) à (d) sont refusés : pas de DKIM, donc pas de lots 5 à 7 complets. |
 | **P7** | Dépendances notables | Accord de principe sur `mail-parser`, `mail-builder`, `mail-send`, `mail-auth`, `rustls` côté serveur, `hickory-resolver` avec DNSSEC ; le reste lot par lot (§6). |
 | **P8** | Mots de passe d'application dans `lyxal_auth` | Évolution de `lyxal_auth` (lot 1) : mot de passe par appareil, sans double facteur, révocable, limité aux permissions `mail.*`, `calendar.*`, `contacts.*` choisies, utilisable en HTTP Basic et en SASL PLAIN / LOGIN sur TLS seulement ; essais limités ; journal des connexions. |
 | **P9** | Ordre des lots | Ordre du §5 (courrier d'abord). Variante possible sans surcoût : lots 14 à 17 et 19 juste après le lot 3. |
@@ -319,7 +343,7 @@ Décisions P1 à P14 **validées par le CTO** le 18 novembre 2026, telles que pr
 | **P12** | Liste « Essais réels à faire » | Même convention que `crates/lyxal_notification/ROADMAP.md` : chaque `ROADMAP.md` tient un tableau des essais réels (préalable, action, résultat attendu) ; chaque lot y ajoute les siens ; un essai réussi est retiré et noté dans le `README.md`. Les tests automatiques n'appellent aucun service réel. |
 | **P13** | Anti-spam | Intégré (lot 11), porté de Stalwart sans la partie IA (propriétaire). Rspamd n'est pas utilisé. |
 | **P14** | Suivi des sources | Les commits sources sont figés au lot 0. Reprendre une version plus récente d'une source est un changement comme un autre : plan, `SOURCES.md` mis à jour, validation. |
-| **P15** | Proton comme source d'inspiration | Demande du CTO : s'inspirer aussi de **Proton** (Proton Mail, Proton Calendar, Proton Contacts). Le serveur de Proton n'est pas publié : seuls ses logiciels clients et ses bibliothèques le sont. Au lot 0, étude à verser dans `RECHERCHE_SOURCES.md` : dépôts publics de Proton, licence de chacun (à vérifier, non vérifiée à ce jour), et ce qui peut inspirer Lyxal — en premier le **chiffrement des boîtes, des agendas et des contacts** (clés par utilisateur, chiffrement de bout en bout, serveur qui ne lit pas le contenu), la gestion des clés et l'expérience des logiciels clients. Toute reprise suit P2 (provenance et licence dans `SOURCES.md`) et P6 (chaque primitive cryptographique est une extension de `lyxal_crypto` validée par le CTO). Le chiffrement des boîtes, placé hors périmètre au §9, devient un **sujet à instruire au lot 0** : le CTO décidera sur cette étude s'il entre dans le programme et à quel lot. |
+| **P15** | Proton comme source d'inspiration | Demande du CTO : s'inspirer aussi de **Proton** (Proton Mail, Proton Calendar, Proton Contacts). Le serveur de Proton n'est pas publié : seuls ses logiciels clients et ses bibliothèques le sont. Au lot 0, étude à verser dans `RECHERCHE_SOURCES.md` : dépôts publics de Proton, licence de chacun (à vérifier, non vérifiée à ce jour), et ce qui peut inspirer Lyxal — en premier le **chiffrement des boîtes, des agendas et des contacts** (clés par utilisateur, chiffrement de bout en bout, serveur qui ne lit pas le contenu), la gestion des clés et l'expérience des logiciels clients. Toute reprise suit P2 (provenance et licence dans `SOURCES.md`) et P6 (chaque primitive cryptographique est une extension de `lyxal_crypto` validée par le CTO). **Décision du CTO sur cette étude (18 novembre 2026)** : le chiffrement des boîtes entre dans le programme. Niveau A (au repos, clés de la plateforme par organisation) : extension de `lyxal_crypto` au lot 2, appliqué dès le lot 4. Niveau B (à la remise, clé publique OpenPGP de l'utilisateur, `rpgp`) : lot optionnel 12 bis ; les lots 4 et 5 lui réservent le drapeau « chiffré » et l'ordre de remise. Niveau C (bout en bout complet) : **gardé dans le programme, sans lot fixé à ce jour**, instruit après le niveau B ; aucun lot ne doit fermer cette possibilité. Agendas et contacts : niveau A seulement. Détail au §5 ; étude dans `crates/lyxal_mail/RECHERCHE_SOURCES.md` (partie 2). |
 
 ## 8. Vérification
 
@@ -337,9 +361,8 @@ partir du lot où leur protocole existe. Les essais réels (P11, P12) se font su
   IA, réplicas et répartition du stockage, télémétrie en direct, restauration des éléments
   supprimés. (Les organisations multiples, elles, sont dans le programme, écrites pour Lyxal.)
 * Webmail et écrans de la console (Surrealist) : après la clôture, sur les fonctions publiques.
-* Chiffrement des boîtes au repos par OpenPGP ou S/MIME (Stalwart `crypto`, 9 696 lignes) :
-  instruit au lot 0 avec l'étude de Proton (P15) ; hors périmètre tant que le CTO n'a pas
-  décidé sur cette étude.
+  Les logiciels clients propres à Lyxal qu'exige le niveau C du chiffrement relèvent du plan de
+  ce niveau (§5), pas de cette exclusion.
 * Stockage de fichiers WebDAV (Stalwart `dav/file`, JMAP fichiers) : plus tard, sur `lyxal_storage`.
 * Annuaires externes LDAP et SQL pour les comptes : les comptes sont ceux de `lyxal_auth`.
 * Lecture de boîtes et d'agendas **externes** (Google, Microsoft, IMAP distant) : `lyxal_connect`.
@@ -352,15 +375,16 @@ partir du lot où leur protocole existe. Les essais réels (P11, P12) se font su
 
 | Risque | Ce qu'il faut savoir |
 | :--- | :--- |
-| **Taille** | 23 lots, dont 6 XL et 10 L : en lots de taille habituelle (S = ½, M = 1, L = 2, XL = 4), environ **50 lots**, contre 5 à 8 pour chacun des crates déjà livrés. Les sources à porter ou à transposer font environ 315 000 lignes de Rust côté Stalwart (hors colle `common`, `store`, `registry` et hors parties écartées au §9), soit plus de deux fois et demie tout le Rust actuel du dépôt. C'est le plus gros programme du dépôt, de loin. |
+| **Taille** | 23 lots, dont 6 XL et 10 L : en lots de taille habituelle (S = ½, M = 1, L = 2, XL = 4), environ **50 lots**, contre 5 à 8 pour chacun des crates déjà livrés. Les sources à porter ou à transposer font environ 315 000 lignes de Rust côté Stalwart (hors colle `common`, `store`, `registry` et hors parties écartées au §9), soit plus de deux fois et demie tout le Rust actuel du dépôt. C'est le plus gros programme du dépôt, de loin. S'y ajoutent le lot optionnel 12 bis (niveau B du chiffrement, L) et le niveau C, sans lot ni taille à ce jour. |
 | **Délivrabilité** | Envoyer sans fournisseur demande une IP réputée, un DNS inverse, SPF, DKIM et DMARC alignés, une montée en charge progressive et une surveillance des listes noires. C'est un travail d'exploitation continu que le code ne remplace pas. Beaucoup d'hébergeurs bloquent le port 25 sortant (sources secondaires de l'étude). |
 | **Exposition** | Les ports 25, 587, 465, 143, 993 sont attaqués en permanence : spam, relais ouvert, recherche d'adresses, essais de mots de passe, saturation mémoire. Stalwart lui-même a publié des avis de déni de service (étude). Limites, délais et fuzzing sont dans les lots 3, 5 et 21 ; l'hôte dédié (P3) borne les dégâts. |
 | **Entretien d'un gros portage** | Stalwart publie une version par semaine et a cassé son schéma entre 0.16 et 1.0 (étude) ; ses tests sont privés. Avec la voie B, chaque correctif amont (sécurité comprise) est à reporter à la main. Il faut une veille des avis de sécurité des sources. |
-| **SurrealDB à l'échelle d'une boîte** | Inconnu : listes triées de centaines de milliers de messages, compteurs MODSEQ sous écritures concurrentes, recherche plein texte, journaux de synchronisation. Mesuré au lot 0 avant de figer P4 ; rien n'a été mesuré à ce jour. |
+| **SurrealDB à l'échelle d'une boîte** | Mesuré au lot 0 sur une boîte de 1 000 000 de messages (`crates/lyxal_mail/RECHERCHE_SOURCES.md`, « Mesures SurrealDB ») : première page, page par curseur, synchronisation, changement de drapeau et remise tiennent les seuils sur les trois moteurs, à condition de paginer par curseur ou par plage d'UID (jamais par décalage) et de tenir les compteurs à l'écriture. Restent inconnus : la charge concurrente (lectures sous écritures, plusieurs écrivains dans un même dossier), plusieurs comptes dans une table, la recherche plein texte sur le corps des messages (un mot fréquent combiné à un dossier et à un tri coûte déjà 4 à 11 s sur les sujets), le comportement dans la durée. |
 | **Compatibilité des logiciels clients** | Outlook, Apple Mail, Calendrier et Rappels d'Apple ne sont pas documentés : seuls des essais réels (P11) tranchent. |
 | **Perte ou fuite de courrier** | Inacceptable en production : sauvegarde et restauration des boîtes, cohérence entre SurrealDB (métadonnées) et `lyxal_storage` (octets), isolation entre organisations testée à chaque lot. |
+| **Chiffrement des boîtes** | Niveau A : nouvelle primitive (chiffrement de fichiers en flux) dans `lyxal_crypto`, à faire relire. Niveau B : recherche dans le texte, aperçu et apprentissage anti-spam après coup perdus pour les comptes qui l'activent ; une clé perdue rend le courrier illisible. Niveau C : exige des logiciels clients propres à Lyxal ou une passerelle, et retire au serveur recherche, filtres et anti-spam sur le contenu ; sans lot fixé, il impose dès le lot 4 des contrats qui ne supposent jamais le contenu lisible par le serveur. |
 | **Licence** | Traitée par le CTO (F2). Ce plan garantit seulement la traçabilité (F4, P2) et l'exclusion du code propriétaire (F5). |
-| **Faits non vérifiés** | Deux hôtes sur une base ; contenu de `ossify.py` ; licences de `rcgen`, `x509-parser`, `imaptest`, `swaks` ; état des brouillons JMAP agendas ; numéros de RFC ; dépendance GPL de RustiCal (reprise de l'étude). Rien n'a été compilé. |
+| **Faits non vérifiés** | Exécuteurs de `lyxal_scheduler` sur deux hôtes ; licences de `rcgen`, `x509-parser`, `imaptest`, `swaks` ; état des brouillons JMAP agendas ; numéros de RFC ; dépendance GPL de RustiCal (reprise de l'étude). Rien n'a été compilé. |
 
 ## 11. Checklist (§13 des standards)
 
@@ -371,6 +395,7 @@ partir du lot où leur protocole existe. Les essais réels (P11, P12) se font su
 * [ ] **Erreurs** : codes `MAIL_*`, `CALENDAR_*`, `CONTACTS_*` en master data ; aucune erreur silencieuse.
 * [ ] **Événements** : `fn::event_publish` vérifié ; producteurs sans connaissance des consommateurs ; handlers idempotents.
 * [ ] **Cryptographie** : tout par `lyxal_crypto` ; extensions P6 validées avant tout code ; aucune crate crypto dans les modules ; secrets dans `lyxal_secrets`.
+* [ ] **Chiffrement des boîtes** (P15, §5) : niveau A appliqué ; drapeau « chiffré » et ordre de remise réservés (niveau B) ; aucun contrat ne suppose le contenu d'un message lisible par le serveur (niveau C).
 * [ ] **Zéro dette** (§0) : une migration par module, versions `0.y.z`, aucun alias ni code mort, pas de document historique ; `ROADMAP.md` tenue.
 * [ ] **Provenance** (F4, F5) : `SOURCES.md` à jour, licence déclarée par crate, aucune partie `LicenseRef-SEL`, aucun code AGPL / GPL dans un crate existant.
 * [ ] **Validation CTO** : ce plan, puis un plan détaillé par lot.
