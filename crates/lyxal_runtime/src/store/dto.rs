@@ -349,6 +349,21 @@ pub struct RuntimeFoundationRecordParams {
     pub generation: i64,
 }
 
+/// `fn::runtime_foundation_clear`.
+#[derive(Debug, Clone, SurrealValue)]
+pub struct RuntimeFoundationClearParams {
+    pub node_id: String,
+    /// Génération du bail d'installation « foundation » détenu par le nœud.
+    pub generation: i64,
+}
+
+/// Résultat de `fn::runtime_foundation_clear`.
+#[derive(Debug, Clone, PartialEq, SurrealValue)]
+pub struct RuntimeFoundationCleared {
+    /// Faux si aucune empreinte n'était enregistrée.
+    pub cleared: bool,
+}
+
 /// Socle installé tel que stocké (`runtime_foundation:current`).
 #[derive(Debug, Clone, PartialEq, SurrealValue)]
 pub struct RuntimeFoundation {

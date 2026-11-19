@@ -94,9 +94,9 @@ RETURN fn::runtime_node_list({}).data == [];
     };
 };
 
--- test: une identité sans droit ne retire aucun nœud
+-- test: une identité sans droit ne retire aucun nœud, et le retrait est refusé
 -- en tant que: utilisateur
-RETURN fn::runtime_node_remove({ node_id: "n2" }).data.removed == false;
+RETURN fn::runtime_node_remove({ node_id: "n2" }).error.code == "RUNTIME_WRITE_FORBIDDEN";
 
 -- test: le nœud et ses lignes sont toujours là
 RETURN record::exists(runtime_node:n2)
@@ -137,9 +137,14 @@ RETURN fn::runtime_node_remove({}).error.code == "RUNTIME_INVALID_PARAMETERS"
     UPDATE runtime_health SET updated_at = time::now() - 8d WHERE node_id = "n4";
 };
 
--- test: une identité sans droit ne purge rien
+-- test: une identité sans droit ne purge rien, et la purge est refusée
 -- en tant que: utilisateur
-RETURN fn::runtime_node_purge({}).data == { nodes: 0, workers: 0, health: 0 };
+RETURN fn::runtime_node_purge({}).error.code == "RUNTIME_WRITE_FORBIDDEN";
+
+-- test: la purge refusée n'a rien supprimé
+RETURN record::exists(runtime_node:n3)
+    AND count(SELECT * FROM runtime_worker WHERE node_id = "n4") == 1
+    AND count(SELECT * FROM runtime_health WHERE node_id = "n4") == 1;
 
 -- test: un délai de moins d'une minute est refusé
 RETURN fn::runtime_node_purge({ older_than: 10s }).error.code == "RUNTIME_INVALID_PARAMETERS"
@@ -204,6 +209,28 @@ RETURN fn::runtime_foundation_record({ checksum: "abc", host: "lyxal_server", no
 -- test: une identité sans droit ne lit pas le socle
 -- en tant que: utilisateur
 RETURN fn::runtime_foundation_get({}).data == NONE;
+
+-- test: une identité sans droit ne peut pas effacer l'empreinte du socle
+-- en tant que: utilisateur
+RETURN fn::runtime_foundation_clear({ node_id: "n1", generation: 1 }).error.code == "RUNTIME_WRITE_FORBIDDEN";
+
+-- test: un autre nœud, ou une autre génération, ne peut pas effacer l'empreinte du socle
+RETURN fn::runtime_foundation_clear({ node_id: "n2", generation: 1 }).error.code == "RUNTIME_LEASE_FENCED"
+    AND fn::runtime_foundation_clear({ node_id: "n1", generation: 2 }).error.code == "RUNTIME_LEASE_FENCED"
+    AND fn::runtime_foundation_get({}).data.checksum == string::repeat("c", 64);
+
+-- test: des paramètres invalides sont refusés
+RETURN fn::runtime_foundation_clear({ node_id: "n1" }).error.code == "RUNTIME_INVALID_PARAMETERS"
+    AND fn::runtime_foundation_clear({ node_id: "n1", generation: 0 }).error.code == "RUNTIME_INVALID_PARAMETERS"
+    AND fn::runtime_foundation_clear({ node_id: "n1", generation: 1, inconnu: 1 }).error.code == "RUNTIME_INVALID_PARAMETERS";
+
+-- test: le détenteur du bail efface l'empreinte, puis l'efface sans erreur une seconde fois
+RETURN fn::runtime_foundation_clear({ node_id: "n1", generation: 1 }).data == { cleared: true }
+    AND fn::runtime_foundation_get({}).data == NONE
+    AND fn::runtime_foundation_clear({ node_id: "n1", generation: 1 }).data == { cleared: false };
+
+-- préparation: le détenteur du bail réenregistre le socle
+RETURN fn::runtime_foundation_record({ checksum: string::repeat("c", 64), host: "lyxal_server", node_id: "n1", generation: 1 });
 
 -- test: après la libération du bail, l'enregistrement est de nouveau refusé
 RETURN fn::runtime_lease_release({ kind: "installation", key: "foundation", node_id: "n1", generation: 1 }).data.released == true

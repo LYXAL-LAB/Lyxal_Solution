@@ -3,7 +3,7 @@
 //! Les tests vérifient le battement d'un nœud démarré, le retrait de sa ligne et de ses lignes
 //! `runtime_worker` / `runtime_health` à l'arrêt, la purge des nœuds disparus, l'installation du
 //! socle sous un seul bail par deux nœuds, et la sonde « dégradé » d'un nœud dont le socle a été
-//! remplacé par un autre binaire.
+//! remplacé par un autre binaire ; un remplacement interrompu ne laisse aucune empreinte.
 
 use crate::common;
 use lyxal_runtime::health::{HealthStatus, ModuleHealthCheck};
@@ -49,16 +49,30 @@ async fn install(
     node: &str,
     extra: Option<&str>,
 ) -> FoundationInstallation {
+    let extra = extra.map(|table| format!("DEFINE TABLE OVERWRITE {table} SCHEMALESS;"));
+    try_install(client, host, node, extra.as_deref())
+        .await
+        .expect("installation du socle")
+}
+
+/// Comme `install`, avec le contenu SurrealQL du module d'essai donné tel quel (une ressource
+/// qui échoue simule une installation interrompue).
+async fn try_install(
+    client: &Surreal<Any>,
+    host: &str,
+    node: &str,
+    extra: Option<&str>,
+) -> Result<FoundationInstallation, lyxal_runtime::RuntimeError> {
     let modules = common::foundation_modules();
     let mut batch: Vec<(&ModuleManifest, &dyn ResourceProvider)> = modules
         .iter()
         .map(|(m, p)| (m, p as &dyn ResourceProvider))
         .collect();
-    let extra_module = extra.map(|table| {
+    let extra_module = extra.map(|content| {
         let provider = common::MemoryProvider::new().add_resource(
             "schema/extra.surql",
             ResourceKind::Schema,
-            &format!("DEFINE TABLE OVERWRITE {table} SCHEMALESS;"),
+            content,
         );
         let manifest = ModuleManifest {
             manifest_version: CURRENT_MANIFEST_VERSION,
@@ -76,9 +90,7 @@ async fn install(
     if let Some((manifest, provider)) = &extra_module {
         batch.push((manifest, provider as &dyn ResourceProvider));
     }
-    install_foundation(client, &common::host(host), &NodeId::new(node), &batch)
-        .await
-        .expect("installation du socle")
+    install_foundation(client, &common::host(host), &NodeId::new(node), &batch).await
 }
 
 async fn count(client: &Surreal<Any>, table: &str, node: &str) -> i64 {
@@ -307,6 +319,35 @@ async fn a_blank_database_receives_the_foundation_and_its_checksum() {
 }
 
 #[tokio::test]
+async fn an_interrupted_replacement_leaves_no_checksum_and_is_repaired_at_the_next_start() {
+    let client = common::blank_db("p4_interrupted", "p4_interrupted").await;
+    let own = install(&client, "p4_host_a", "node-a", None).await;
+
+    // Un autre binaire remplace le socle et s'arrête en cours de route (une ressource échoue,
+    // après celles déjà importées) : l'ancienne empreinte ne doit pas rester en place.
+    let failed = try_install(
+        &client,
+        "p4_host_b",
+        "node-b",
+        Some("THROW 'installation interrompue';"),
+    )
+    .await;
+    assert!(failed.is_err());
+    let presence = PresenceStore::new(client.clone());
+    assert_eq!(presence.foundation().await.unwrap(), None);
+
+    // Le binaire précédent redémarre : il ne prend pas la base pour à jour, il réinstalle son
+    // socle et réenregistre son empreinte.
+    let repaired = install(&client, "p4_host_a", "node-a", None).await;
+    assert!(repaired.installed);
+    assert_eq!(repaired.checksum, own.checksum);
+    assert_eq!(
+        presence.foundation().await.unwrap().map(|f| f.checksum),
+        Some(own.checksum)
+    );
+}
+
+#[tokio::test]
 async fn a_foundation_replaced_by_another_binary_degrades_the_running_node() {
     let client = common::blank_db("p4_replaced", "p4_replaced").await;
     let own = install(&client, "p4_host_a", "node-a", None).await;
@@ -331,10 +372,16 @@ async fn a_foundation_replaced_by_another_binary_degrades_the_running_node() {
     assert_ne!(other.checksum, own.checksum);
     run(&client, "CREATE p4_extra_item SET label = 'x';").await;
 
-    // Le premier nœud le voit à son battement : sa sonde passe à « dégradé » et nomme l'hôte.
+    // Le premier nœud le voit à son battement : sa sonde passe à « dégradé » et nomme l'hôte
+    // (un battement pris pendant le remplacement voit la base sans empreinte, aussi « dégradé »).
     let mut result = probe.check(&ctx).await.unwrap();
     for _ in 0..100 {
-        if result.status == HealthStatus::Degraded {
+        if result.status == HealthStatus::Degraded
+            && result
+                .message
+                .as_deref()
+                .is_some_and(|m| m.contains("p4_host_b"))
+        {
             break;
         }
         tokio::time::sleep(Duration::from_millis(20)).await;

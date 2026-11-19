@@ -57,6 +57,12 @@ DEFINE FUNCTION OVERWRITE fn::runtime_node_remove($params: object) {
     };
     LET $p = $report.value;
 
+    -- Tables en PERMISSIONS NONE : une session d'accès (utilisateur, jeton) ne voit aucune ligne et
+    -- sa suppression serait filtrée sans erreur ; elle est refusée au lieu d'annoncer un succès
+    IF $access != NONE {
+        RETURN fn::error_result("RUNTIME_WRITE_FORBIDDEN", $p.language, { table: "runtime_node" });
+    };
+
     LET $workers = DELETE runtime_worker WHERE node_id = $p.node_id RETURN BEFORE;
     LET $health = DELETE runtime_health WHERE node_id = $p.node_id RETURN BEFORE;
     LET $node = DELETE type::record("runtime_node", $p.node_id) RETURN BEFORE;
@@ -66,7 +72,7 @@ DEFINE FUNCTION OVERWRITE fn::runtime_node_remove($params: object) {
         workers: array::len($workers),
         health: array::len($health)
     });
-} COMMENT "Retire un nœud arrêté ({ node_id }) : sa ligne de présence et ses lignes runtime_worker et runtime_health. { node_id, removed, workers, health } ; removed est faux si aucune ligne n'a été supprimée (nœud inconnu, ou suppression refusée par les permissions)."
+} COMMENT "Retire un nœud arrêté ({ node_id }) : sa ligne de présence et ses lignes runtime_worker et runtime_health. { node_id, removed, workers, health } ; removed est faux pour un nœud inconnu. Appel hors de la session système : RUNTIME_WRITE_FORBIDDEN."
 PERMISSIONS FULL;
 
 DEFINE FUNCTION OVERWRITE fn::runtime_node_list($params: object) {
@@ -105,6 +111,12 @@ DEFINE FUNCTION OVERWRITE fn::runtime_node_purge($params: object) {
     };
     LET $p = $report.value;
 
+    -- Tables en PERMISSIONS NONE : une session d'accès (utilisateur, jeton) ne voit aucune ligne et
+    -- sa suppression serait filtrée sans erreur ; elle est refusée au lieu d'annoncer un succès
+    IF $access != NONE {
+        RETURN fn::error_result("RUNTIME_WRITE_FORBIDDEN", $p.language, { table: "runtime_node" });
+    };
+
     LET $limit = time::now() - $p.older_than;
     -- Nœuds sans battement depuis older_than, avec leurs lignes
     -- (« $stale CONTAINS node_id » et non « node_id IN $stale » : en 3.3.4, un UPDATE ou un DELETE
@@ -122,5 +134,5 @@ DEFINE FUNCTION OVERWRITE fn::runtime_node_purge($params: object) {
         workers: array::len($workers) + array::len($orphan_workers),
         health: array::len($health) + array::len($orphan_health)
     });
-} COMMENT "Purge les nœuds sans battement depuis older_than (7 j par défaut, 1 min au moins) avec leurs lignes runtime_worker et runtime_health, et les lignes runtime_worker et runtime_health aussi anciennes dont le nœud n'a plus de ligne de présence. { nodes, workers, health } : nombres de lignes supprimées."
+} COMMENT "Purge les nœuds sans battement depuis older_than (7 j par défaut, 1 min au moins) avec leurs lignes runtime_worker et runtime_health, et les lignes runtime_worker et runtime_health aussi anciennes dont le nœud n'a plus de ligne de présence. { nodes, workers, health } : nombres de lignes supprimées. Appel hors de la session système : RUNTIME_WRITE_FORBIDDEN."
 PERMISSIONS FULL;

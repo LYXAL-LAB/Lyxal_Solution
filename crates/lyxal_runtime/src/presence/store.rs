@@ -2,9 +2,9 @@ use crate::error::RuntimeError;
 use crate::lock::node_id::NodeId;
 use crate::presence::host_id::HostId;
 use crate::store::dto::{
-    ListParams, RuntimeFoundation, RuntimeFoundationRecordParams, RuntimeNode,
-    RuntimeNodeListParams, RuntimeNodePurgeParams, RuntimeNodePurged, RuntimeNodeRemoveParams,
-    RuntimeNodeRemoved, RuntimeNodeUpsertParams,
+    ListParams, RuntimeFoundation, RuntimeFoundationClearParams, RuntimeFoundationCleared,
+    RuntimeFoundationRecordParams, RuntimeNode, RuntimeNodeListParams, RuntimeNodePurgeParams,
+    RuntimeNodePurged, RuntimeNodeRemoveParams, RuntimeNodeRemoved, RuntimeNodeUpsertParams,
 };
 use crate::store::surreal::store_error;
 use lyxal_surreal::LyxalSurrealCall;
@@ -89,6 +89,38 @@ impl PresenceStore {
         self.call_fn("runtime_foundation_get", ListParams::default())
             .await
             .map_err(|e| store_error("runtime_foundation_get", e))
+    }
+
+    /// Efface l'empreinte du socle avant son remplacement, sous le bail d'installation
+    /// « foundation » détenu par `node_id` (génération `generation`) : une installation
+    /// interrompue laisse la base sans empreinte, et le prochain démarrage réinstalle le socle.
+    /// `RuntimeError::LeaseFenced` si le bail n'est plus détenu.
+    pub(crate) async fn clear_foundation(
+        &self,
+        node_id: &NodeId,
+        generation: u64,
+    ) -> Result<(), RuntimeError> {
+        let params = RuntimeFoundationClearParams {
+            node_id: node_id.to_string(),
+            generation: i64::try_from(generation).map_err(|_| RuntimeError::StoreFailed {
+                operation: "runtime_foundation_clear",
+                message: format!("génération hors bornes : {generation}"),
+            })?,
+        };
+        self.call_fn::<RuntimeFoundationCleared, _>("runtime_foundation_clear", params)
+            .await
+            .map(|_| ())
+            .map_err(|e| {
+                if e.is_business_code("RUNTIME_LEASE_FENCED") {
+                    RuntimeError::LeaseFenced {
+                        key: crate::schema::FOUNDATION_LEASE_KEY.to_string(),
+                        owner: node_id.to_string(),
+                        generation,
+                    }
+                } else {
+                    store_error("runtime_foundation_clear", e)
+                }
+            })
     }
 
     /// Enregistre le socle installé par `node_id` sous le bail d'installation « foundation »

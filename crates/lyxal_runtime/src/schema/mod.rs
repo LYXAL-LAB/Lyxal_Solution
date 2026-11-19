@@ -253,6 +253,9 @@ pub async fn install_foundation(
             None => (!bootstrapped, true),
         };
         if reinstall {
+            // L'empreinte en place est effacée avant la première écriture : une installation
+            // interrompue ne laisse jamais croire qu'un socle complet est en place
+            presence.clear_foundation(node, generation).await?;
             install().await?;
         }
         if record {
@@ -293,7 +296,8 @@ async fn foundation_functions_installed(client: &Surreal<Any>) -> Result<bool, R
              RETURN $functions.runtime_lease_acquire != NONE \
                 AND $functions.runtime_lease_release != NONE \
                 AND $functions.runtime_foundation_get != NONE \
-                AND $functions.runtime_foundation_record != NONE;",
+                AND $functions.runtime_foundation_record != NONE \
+                AND $functions.runtime_foundation_clear != NONE;",
         )
         .await
         .map_err(|e| failure(e.to_string()))?;

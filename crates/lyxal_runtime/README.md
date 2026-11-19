@@ -49,8 +49,10 @@ résultat, définitions d'erreurs), `lyxal_surreal` (transport), `lyxal_crypto` 
 * **Socle installé sous bail** : `lyxal_core`, `lyxal_error` et le schéma du runtime sont
   installés sous le bail d'installation de clé réservée `foundation`, et leur empreinte est
   enregistrée (`runtime_foundation:current`). Une base qui porte déjà l'empreinte du binaire
-  n'est pas réinstallée ; un binaire d'une autre empreinte réinstalle son socle, et les nœuds de
-  l'autre binaire le voient à leur battement (sonde « dégradé »).
+  n'est pas réinstallée ; un binaire d'une autre empreinte efface l'empreinte en place, réinstalle
+  son socle puis enregistre la sienne, et les nœuds de l'autre binaire le voient à leur battement
+  (sonde « dégradé »). Un remplacement interrompu laisse la base sans empreinte : le démarrage
+  suivant réinstalle le socle.
 * **Présence des nœuds** : chaque nœud démarré écrit son hôte et ses modules dans `runtime_node`
   au démarrage puis toutes les 10 s, et retire sa ligne à l'arrêt propre, avec ses lignes
   `runtime_worker` et `runtime_health`. Un nœud sans battement depuis 7 jours est purgé avec ces
@@ -131,11 +133,13 @@ et du socle le font par le moteur `fn::validation_object_execute` (clé inconnue
 | Workers | `fn::runtime_worker_upsert`, `_get`, `_list` |
 | Journal | `fn::runtime_event_append`, `fn::runtime_event_list` |
 | Présence | `fn::runtime_node_upsert` (`{ node_id, host, modules, foundation_checksum }` : battement, `started_at` gardé), `_remove` (`{ node_id }` : la ligne et les lignes `runtime_worker` et `runtime_health` du nœud), `_list` (`{ alive_within }`, 30 s par défaut : nœuds du plus récent au plus ancien, avec `alive`), `_purge` (`{ older_than }`, 7 j par défaut : nœuds disparus avec leurs lignes, et lignes aussi anciennes restées sans nœud) |
-| Socle | `fn::runtime_foundation_record` (`{ checksum, host, node_id, generation }`, garde du bail `foundation` : `RUNTIME_LEASE_FENCED`), `fn::runtime_foundation_get` |
+| Socle | `fn::runtime_foundation_record` (`{ checksum, host, node_id, generation }`, garde du bail `foundation` : `RUNTIME_LEASE_FENCED`), `fn::runtime_foundation_clear` (`{ node_id, generation }`, même garde : efface l'empreinte avant un remplacement), `fn::runtime_foundation_get` |
 
 Une écriture refusée par les permissions de table (session autre que la session système) rend
 `RUNTIME_WRITE_FORBIDDEN` au lieu d'un succès (`fn::runtime_node_upsert`,
-`fn::runtime_foundation_record`) ; `fn::runtime_node_remove` rend alors `removed: false`.
+`fn::runtime_foundation_record`) ; `fn::runtime_node_remove`, `fn::runtime_node_purge` et
+`fn::runtime_foundation_clear`, dont la suppression filtrée ne se distinguerait pas d'une
+suppression sans ligne, refusent d'emblée toute session d'accès (`RUNTIME_WRITE_FORBIDDEN`).
 
 `fn::runtime_migration_record` écrit d'abord sur le bail pour se protéger ; un bail perdu lève
 `RUNTIME_LEASE_FENCED` par `THROW` afin d'annuler toute la transaction (exception documentée,
