@@ -44,3 +44,6 @@ scratch/
 claude-skills-main/
 *.pdb
 
+
+# Fichiers compilés de Python (créés à chaque lancement des scripts)
+__pycache__/
