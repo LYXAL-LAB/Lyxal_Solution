@@ -34,7 +34,11 @@ event_outbox ─── fn::event_fanout ───► event_delivery (une par abo
 
 1. **Publication** : l'événement est écrit dans `event_outbox`, puis ventilé immédiatement
    (`auto_fanout`, défaut). Un événement resté `pending` (fan-out interrompu) est ventilé par
-   `fn::event_recover_pending_fanouts`, appelée à chaque tour du worker.
+   `fn::event_recover_pending_fanouts`, appelée à chaque tour du worker. Deux hôtes (ou deux
+   nœuds) qui reprennent les mêmes événements en même temps écrivent les mêmes livraisons : sur
+   un serveur SurrealDB, l'une des deux transactions échoue par un conflit d'écriture
+   transitoire. `EventStore::recover_pending_fanouts` rejoue alors l'appel (8 fois au plus) ;
+   la ventilation étant idempotente, le rejeu ne crée que les livraisons manquantes.
 2. **Récupération** : le chef de l'hôte lit les livraisons éligibles **de son hôte**,
    c'est-à-dire non résolues, au verrou expiré et au retry échu. La ventilation recopie l'hôte
    de l'abonnement sur chaque livraison ; les livraisons des autres hôtes ne sont jamais lues.
@@ -81,13 +85,14 @@ autres.
 * **Renouvellement** : une tâche de fond, liée à la vie du worker, appelle
   `fn::event_lease_renew` toutes les `lease_renew_interval`. Un échec met fin au terme : le
   jeton d'annulation du terme est annulé et toutes les files sont abandonnées.
-* **Fencing** : les fonctions qui écrivent dans le flux (`assign_seq`, `flush_batch`,
-  `dead_letter_transfer`) commencent par une écriture conditionnelle sur le bail de l'hôte :
+* **Fencing** : les fonctions qui écrivent dans le flux (`assign_seq`, `delivery_failure`,
+  `flush_batch`, `dead_letter_transfer`) commencent par une écriture conditionnelle sur le bail
+  de l'hôte :
   même nœud, même génération, bail non libéré, non expiré. Sinon elles lèvent
   `EVENT_STALE_LEADER_FENCED` et toute la transaction est annulée. Un ancien leader ne peut donc
   rien écrire après avoir perdu son bail.
-* **Propriété** : dans la même transaction, elles vérifient que l'abonnement (ou, pour la dead
-  letter, la livraison) appartient à l'hôte du bail ; sinon `EVENT_SUBSCRIPTION_NOT_OWNED`, sans
+* **Propriété** : dans la même transaction, elles vérifient que l'abonnement (ou, pour l'échec
+  et la dead letter, la livraison) appartient à l'hôte du bail ; sinon `EVENT_SUBSCRIPTION_NOT_OWNED`, sans
   autre écriture. Le chef d'un hôte n'écrit jamais dans le flux d'un autre hôte.
 * **Arrêt propre** : le worker enregistre une dernière fois les résolutions déjà acquittées,
   puis libère le bail (`fn::event_lease_release`) pour qu'un autre nœud le reprenne sans

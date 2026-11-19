@@ -106,6 +106,17 @@ impl LyxalSurrealCall for LeaseStore {
     }
 }
 
+/// Nombre maximal de rejeux d'un appel interrompu par un conflit d'écriture transitoire.
+const MAX_CONFLICT_RETRIES: u32 = 8;
+
+/// Attente aléatoire croissante avant un rejeu, pour désynchroniser les nœuds concurrents.
+async fn conflict_backoff(attempt: u32) {
+    let upper = 10 + 20 * u64::from(attempt);
+    // Les bits de poids faible d'un UUID v7 sont tirés au hasard
+    let jitter = (uuid::Uuid::now_v7().as_u128() as u64) % upper;
+    tokio::time::sleep(Duration::from_millis(5 + jitter)).await;
+}
+
 fn ttl_seconds(ttl: Duration) -> i64 {
     i64::try_from(ttl.as_secs().max(1))
         .unwrap_or(86_400)
@@ -124,6 +135,32 @@ impl LeaseStore {
         Self { client }
     }
 
+    /// Appel d'une fonction de bail, rejoué en cas de conflit d'écriture transitoire : sur un
+    /// serveur SurrealDB, deux nœuds qui écrivent le même bail en même temps (deux hôtes qui
+    /// démarrent ensemble, un concurrent qui demande le bail pendant que son détenteur le
+    /// prolonge) font échouer l'une des deux transactions. Le rejeu lit l'état validé par l'autre
+    /// et rend la réponse ordinaire (bail détenu par un autre nœud, prolongé, libéré).
+    async fn call_with_conflict_retry<T, P>(
+        &self,
+        function: &'static str,
+        params: P,
+    ) -> Result<T, LyxalSurrealError>
+    where
+        T: SurrealValue + Send,
+        P: SurrealValue + Clone + Send + 'static,
+    {
+        let mut attempt = 0;
+        loop {
+            match self.call_fn(function, params.clone()).await {
+                Err(e) if e.is_transient_conflict() && attempt < MAX_CONFLICT_RETRIES => {
+                    attempt += 1;
+                    conflict_backoff(attempt).await;
+                }
+                other => return other,
+            }
+        }
+    }
+
     pub(crate) async fn acquire(
         &self,
         kind: LeaseKind,
@@ -132,7 +169,7 @@ impl LeaseStore {
         ttl: Duration,
     ) -> Result<LeaseOutcome, LyxalSurrealError> {
         let result: LeaseAcquireResult = self
-            .call_fn(
+            .call_with_conflict_retry(
                 "runtime_lease_acquire",
                 LeaseAcquireParams {
                     kind: kind.as_str().to_string(),
@@ -160,7 +197,7 @@ impl LeaseStore {
         ttl: Duration,
     ) -> Result<Option<LeaseRow>, RuntimeError> {
         let result: LeaseRenewResult = self
-            .call_fn(
+            .call_with_conflict_retry(
                 "runtime_lease_renew",
                 LeaseRenewParams {
                     kind: kind.as_str().to_string(),
@@ -187,7 +224,7 @@ impl LeaseStore {
         lease_generation: u64,
     ) -> Result<bool, RuntimeError> {
         let result: LeaseReleaseResult = self
-            .call_fn(
+            .call_with_conflict_retry(
                 "runtime_lease_release",
                 LeaseReleaseParams {
                     kind: kind.as_str().to_string(),

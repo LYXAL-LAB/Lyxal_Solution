@@ -15,7 +15,10 @@ l'objet d'un `implementation_plan.md` validé par le CTO avant tout développeme
   le second, `DuplicateHandler`) et le champ `handler_name` de l'abonnement ne sert pas au choix
   du handler. Plusieurs hôtes écoutant un même type fonctionnent déjà (un abonnement par hôte).
   À lever avant le premier cas dans `lyxal-groupware` (décision H9 (a) du plan « plusieurs
-  hôtes sur une même base », `crates/lyxal_runtime/implementation_plan.md`).
+  hôtes sur une même base », exécuté).
+- [ ] Rôle du filtre `instance_id` du worker (décision H9 (b)) : il ne sépare pas les hôtes (les
+  événements émis par la base portent le contexte `default`, les hôtes le laissent vide) ;
+  le garder avec un usage défini, ou le retirer.
 
 ---
 

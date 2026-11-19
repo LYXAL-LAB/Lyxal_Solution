@@ -46,10 +46,32 @@ pub fn foundation_modules() -> Vec<(lyxal_runtime::manifest::ModuleManifest, Dir
         .collect()
 }
 
+/// Base vierge d'un serveur SurrealDB réel (`ws://`), en session `Root` : `LYXAL_SURREAL_WS_URL`,
+/// `LYXAL_SURREAL_USER`, `LYXAL_SURREAL_PASS` (`scripts/ci/test_all.sh`). Chaque appel ouvre sa
+/// propre connexion.
+pub async fn remote_db(ns: &str, db: &str) -> surrealdb::Surreal<surrealdb::engine::any::Any> {
+    let url = std::env::var("LYXAL_SURREAL_WS_URL").expect("LYXAL_SURREAL_WS_URL");
+    let username = std::env::var("LYXAL_SURREAL_USER").expect("LYXAL_SURREAL_USER");
+    let password = std::env::var("LYXAL_SURREAL_PASS").expect("LYXAL_SURREAL_PASS");
+    let client = connect(url.as_str()).await.expect("connexion ws://");
+    client
+        .signin(surrealdb::opt::auth::Root { username, password })
+        .await
+        .expect("session root");
+    client.use_ns(ns).use_db(db).await.expect("use_ns/use_db");
+    client
+}
+
 /// Crée une base mémoire isolée et y installe `lyxal_core` et `lyxal_error` par le runtime,
 /// depuis leurs manifestes, phase par phase (`schema::install_batch`).
 pub async fn setup_db(ns: &str, db: &str) -> surrealdb::Surreal<surrealdb::engine::any::Any> {
     let client = blank_db(ns, db).await;
+    install_base(&client).await;
+    client
+}
+
+/// Installe `lyxal_core`, `lyxal_error` et le schéma du runtime dans la base de `client`.
+pub async fn install_base(client: &surrealdb::Surreal<surrealdb::engine::any::Any>) {
     let modules = foundation_modules();
     let batch: Vec<(
         &lyxal_runtime::manifest::ModuleManifest,
@@ -58,13 +80,12 @@ pub async fn setup_db(ns: &str, db: &str) -> surrealdb::Surreal<surrealdb::engin
         .iter()
         .map(|(m, p)| (m, p as &dyn lyxal_runtime::resource::ResourceProvider))
         .collect();
-    lyxal_runtime::schema::install_batch(&client, &batch)
+    lyxal_runtime::schema::install_batch(client, &batch)
         .await
         .expect("installation de lyxal_core et lyxal_error");
-    lyxal_runtime::schema::install_runtime_schema(&client)
+    lyxal_runtime::schema::install_runtime_schema(client)
         .await
         .expect("installation du schéma du runtime");
-    client
 }
 
 /// Fournisseur de ressources en mémoire pour les tests : chaque fichier ajouté est aussi

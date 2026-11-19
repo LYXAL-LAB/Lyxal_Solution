@@ -39,13 +39,15 @@ Activer ce Skill dès qu'une mission implique :
 - Contexte d'exécution [`ModuleContext`](../../../crates/lyxal_runtime/src/context.rs) : fournit `module_id()` et des propriétés de configuration posées par l'hôte (`with_property(key, value)`, `get_property(key)`, `has_property(key)`).
 - Machine à états [`LifecycleManager`](../../../crates/lyxal_runtime/src/lifecycle.rs) :
   - Transitions strictes : `Registered` $\rightarrow$ `Installing` $\rightarrow$ `Installed` $\rightarrow$ `Starting` $\rightarrow$ `Running` $\rightarrow$ `Stopping` $\rightarrow$ `Stopped` (ou `Failed` en cas d'erreur/timeout).
-  - Une transition non permise par `ModuleState::can_transition_to` est refusée (`RUNTIME_INVALID_STATE_TRANSITION`) ; une release déjà installée n'est pas réinstallée par `ModuleInstaller` (`AlreadyInstalled`).
+  - Une transition non permise par `ModuleState::can_transition_to` est refusée (`RUNTIME_INVALID_STATE_TRANSITION`) ; une release déjà installée n'est pas réinstallée par `ModuleInstaller` (`AlreadyInstalled`) : le module passe à `Installed` (`LifecycleManager::mark_installed`) sans que son hook soit rejoué.
+  - Le hook `install` n'est appelé que par l'installateur (`install_package`, `install_packages`), sous bail d'installation, **une fois par release pour toute la base** ; `start_all` n'installe jamais (un module resté `Registered` fait échouer le démarrage). `install_all` reste pour les runtimes sans base (tests).
 
 #### Règles de contrôle
 1. **[OBLIGATOIRE] Synchronisation `manifest.toml` $\leftrightarrow$ `ModuleDescriptor`** : L'`id`, la `version`, les `dependencies` et les `capabilities` déclarés dans `ModuleDescriptorBuilder` doivent correspondre exactement à ceux du fichier `manifest.toml` du module.
 2. **[OBLIGATOIRE] Respect des Timeouts de Cycle de Vie** : `LifecycleManager` encadre `install`, `start` et `stop` dans un `tokio::time::timeout` (`install_timeout`, `start_timeout`, `stop_timeout` de `RuntimeConfig`). Les hooks `start()` et `stop()` ne doivent **jamais** bloquer indéfiniment ni exécuter une boucle infinie (les boucles continues appartiennent exclusivement à `LyxalWorker::run`).
 3. **[OBLIGATOIRE] Ordre Topologique de Démarrage** : [`LyxalRuntime::start_module`](../../../crates/lyxal_runtime/src/runtime.rs) vérifie que toutes les dépendances directes du module sont dans l'état `ModuleState::Running` avant d'autoriser `start()`. Aucun module ne doit contourner cette vérification.
-4. **[OBLIGATOIRE] Propagation franche des erreurs** : Toute défaillance lors de `install`, `start` ou `stop` doit retourner `Err(RuntimeError::...)` afin que `LifecycleManager` bascule l'état sur `ModuleState::Failed` (`RUNTIME_INSTALL_FAILURE`, `RUNTIME_START_FAILURE`, `RUNTIME_STOP_FAILURE`). Aucune variante générique n'existe : chaque erreur est une variante typée de `RuntimeError`, définie dans `error/runtime.surql`.
+4. **[OBLIGATOIRE] `install` = base, `start` = processus** : le hook `install` ne fait que des écritures en base, rejouables ; il n'est exécuté ni par un second hôte ni à un redémarrage. Tout réglage propre au processus (clés en mémoire, connexions, inscriptions locales) va dans `start`.
+5. **[OBLIGATOIRE] Propagation franche des erreurs** : Toute défaillance lors de `install`, `start` ou `stop` doit retourner `Err(RuntimeError::...)` afin que `LifecycleManager` bascule l'état sur `ModuleState::Failed` (`RUNTIME_INSTALL_FAILURE`, `RUNTIME_START_FAILURE`, `RUNTIME_STOP_FAILURE`). Aucune variante générique n'existe : chaque erreur est une variante typée de `RuntimeError`, définie dans `error/runtime.surql`.
 
 ---
 
@@ -103,7 +105,8 @@ Activer ce Skill dès qu'une mission implique :
 5. **[RECOMMANDATION] Choix de `WorkerCriticality` et `RestartPolicy`** :
    - Utiliser `WorkerCriticality::Required` uniquement si la perte définitive du worker (`WorkerState::Failed` / `TimedOut`) doit faire basculer la santé globale du module en `HealthStatus::Unhealthy` ; utiliser `WorkerCriticality::Optional` pour les tâches de nettoyage ou d'optimisation (qui dégradent le statut en `HealthStatus::Degraded`).
 6. **[OBLIGATOIRE] Fencing du Streaming Outbox & Reprise Post-Crash des Livraisons** :
-   - `EventWorker` opère sous bail distribué `event_stream_lease:outbox_leader` avec génération monotone et rejet immédiat `EVENT_STALE_LEADER_FENCED` en cas de split-brain.
+   - `EventWorker` est le chef des événements de **son hôte** (`EventWorkerConfig::new(host)`, rempli par le runtime depuis `RuntimeConfig`) : il opère sous le bail `event_stream_lease:<hôte>` avec génération monotone et rejet immédiat `EVENT_STALE_LEADER_FENCED` en cas de split-brain. Il ne lit que les livraisons de son hôte (`event_delivery.host`, recopié de `event_subscription.host`) ; chaque écriture durable vérifie aussi que l'abonnement appartient à l'hôte (`EVENT_SUBSCRIPTION_NOT_OWNED`).
+   - Un abonnement (`EventSubscription::new(…, host)`) est enregistré par l'hôte qui porte son handler ; réclamé par un autre hôte : `EVENT_SUBSCRIPTION_HOST_CONFLICT`. Hôte arrêté : ses livraisons attendent (`pending`, aucun essai compté, aucune dead letter) ; `EventEngineHealthCheck` (enregistrée par le runtime pour `lyxal_event`) passe à « dégradé » quand un hôte a des livraisons plus anciennes que `backlog_alert_after` (5 min) sans chef vivant. Déplacement : `fn::event_subscription_transfer`, refusé tant que l'ancien hôte a un chef vivant (`EVENT_HOST_ACTIVE`).
    - La boucle de consommation `fetch_and_enqueue_pending` reprend sans saut de séquence les livraisons non terminées dont le verrou `locked_until` est expiré, en reverrouillant atomiquement la livraison (`status = "processing"`, `locked_until = $now + 30s`) sans réassignation de séquence.
    - L'avancement de curseur passe obligatoirement par `fn::event_flush_batch` garantissant l'absence de trou (invariant de contiguïté stricte) et la barrière DLQ atomique avant confirmation.
 
@@ -126,6 +129,8 @@ Activer ce Skill dès qu'une mission implique :
    - `MigrationRunner` renouvelle le bail tous les `renew_interval` pendant l'exécution (`MigrationLockConfig::validate` refuse un intervalle nul ou supérieur à la durée du bail) et enregistre chaque état sous garde de bail (`fn::runtime_migration_record` avec `lease_key`, `node_id`, `generation`) : un bail perdu lève `RUNTIME_LEASE_FENCED` (`RuntimeError::LeaseFenced`).
 3. **[OBLIGATOIRE] Point d'attention sur les baux** :
    - Lors d'un audit de `crates/lyxal_runtime/src/lock/`, vérifier qu'aucune requête SurrealQL n'est écrite dans le Rust (tout passe par `fn::runtime_lease_*`), qu'aucune échéance n'est calculée avec l'horloge du nœud, et que toute erreur d'appel est propagée (un bail illisible ne doit jamais être vu comme libre).
+   - Sur un serveur SurrealDB, deux nœuds qui écrivent le même bail en même temps font échouer l'une des transactions (conflit d'écriture « can be retried »). Les appels `acquire`, `renew` et `release` sont rejoués sur ce seul conflit (`LeaseStore`, 8 rejeux au plus) ; toute autre erreur remonte. Même règle pour la reprise des ventilations de `lyxal_event` (`EventStore::recover_pending_fanouts`), idempotente.
+4. **[OBLIGATOIRE] Socle sous bail** : l'hôte installe `lyxal_core`, `lyxal_error` et le schéma du runtime par `lyxal_runtime::schema::install_foundation` (bail d'installation `foundation`, empreinte dans `runtime_foundation:current`), au démarrage et pour la commande de reprise des migrations. Un binaire d'empreinte différente réinstalle le socle ; la sonde du socle (`LyxalRuntime::foundation_health_check`) des autres nœuds passe à « dégradé ».
 
 ---
 
@@ -143,7 +148,19 @@ Activer ce Skill dès qu'une mission implique :
 
 ---
 
-### 6. Dépendances Cargo & Séparation Module vs Hôte
+### 6. Hôtes, nœuds et présence
+
+#### Contrats réels de référence
+- [`HostId`](../../../crates/lyxal_runtime/src/presence/host_id.rs) : nom fixe du binaire hôte (format d'un identifiant de module), égal à l'`id` de son manifeste d'hôte, le même pour toutes ses copies, jamais réglable par configuration ; `RuntimeConfig::new(host)`, `LyxalRuntime::host_id()`.
+- Nœud : `NodeId` tiré au sort au démarrage ; ligne `runtime_node` (hôte, modules démarrés, empreinte du socle) écrite par `start_all`, battement toutes les 10 s (worker `lyxal_runtime:presence`), retirée par `stop_all`, purgée après 7 jours ; `LyxalRuntime::nodes()` (`alive` : battement de moins de 30 s).
+- Réconciliateur strict : ne vise que les modules enregistrés dans ce runtime ; les autres modules de la base sont listés dans `ReconciliationPlan::foreign_modules`, sans action.
+
+#### Règles de contrôle
+1. **[OBLIGATOIRE] Un nom par binaire** : l'hôte passe son `HostId` à `RuntimeConfig::new`, à `EventEngineConfig::new`, au planificateur (`SchedulerEngine::new`) et à chaque `EventSubscription` qu'il enregistre ; une configuration du moteur d'événements construite pour un autre hôte est refusée au démarrage.
+2. **[OBLIGATOIRE] Tâches du planificateur** : une tâche `handler` n'est réservée que par un nœud qui a son handler, quelle que soit son attente ; les tâches `function` et `event` sont exécutées par tout hôte qui héberge `lyxal_scheduler`.
+3. **[OBLIGATOIRE] Preuve à deux hôtes** : tout changement du moteur d'événements, des baux ou du planificateur garde verts les essais à deux hôtes (`crates/lyxal_runtime/tests/it/two_hosts_shared_database_tests.rs`, dont l'essai `ws://` lancé par `scripts/ci/test_all.sh`, et `apps/lyxal-server/tests/it/two_hosts.rs`).
+
+### 7. Dépendances Cargo & Séparation Module vs Hôte
 
 1. **[OBLIGATOIRE] Règle de Séparation Module / Hôte ([`AGENTS.md` §5.8.5](../../AGENTS.md))** :
    - Un module métier (`crates/lyxal_*`) implémente les traits `LyxalModule`, `LyxalWorker`, `ModuleHealthCheck` et `EventConsumerModule`, mais **n'instancie jamais `LyxalRuntime`** en production (seuls `apps/lyxal-server`, la CLI ou les tests d'intégration du module instancient `LyxalRuntime`).
@@ -164,5 +181,5 @@ Lors de l'exécution de ce Skill, toujours produire un rapport structuré compor
 3. **Fichiers Concernés & Preuves** :
    - Liste des fichiers et lignes inspectés avec liens cliquables `[fichier](file:///...#Lxx-Lyy)`.
 4. **Tests d'Intégration Recommandés ou Exécutés** :
-   - Scénarios de test couvrant : cycle `install -> start -> stop`, annulation coopérative d'un worker sous `shutdown_timeout`, idempotence d'un handler rejoué (`attempt = 2`), et reprise `recover_pending_fanouts`.
+   - Scénarios de test couvrant : cycle `install -> start -> stop`, annulation coopérative d'un worker sous `shutdown_timeout`, idempotence d'un handler rejoué (`attempt = 2`), reprise `recover_pending_fanouts`, et deux hôtes sur une même base (livraison au bon hôte, hôte arrêté, hook `install` unique).
 

@@ -30,9 +30,19 @@ configuration (config/*.toml + variables LYXAL__*)
 arrêt (SIGINT / SIGTERM) → stop_all (workers puis modules, ordre inverse, puis retrait du nœud)
 ```
 
-L'`EventWorker` traite toutes les livraisons de la base de l'instance : les événements émis par
-la base (`DEFINE EVENT`) ne portent pas l'identifiant de l'instance hôte, et chaque instance a sa
-propre base.
+**Hôte `lyxal_server`.** Le nom d'hôte est une constante du binaire (`modules::HOST_ID`, égal à
+l'`id` de `manifest.toml`), la même pour toutes ses copies, sans clé de configuration
+(`application.instance_id` reste une étiquette de journal). Il est passé au runtime
+(`RuntimeConfig::new`), au moteur d'événements (`EventEngineConfig::new`), au planificateur
+(`SchedulerEngine::new`) et aux abonnements que l'hôte enregistre (`lyxal_notification`,
+`lyxal_pipeline_ingestion`). Plusieurs copies de `lyxal-server` se partagent le travail (un seul
+chef des événements pour l'hôte, un seul planificateur élu pour la base). Un autre hôte peut
+partager la même base (prévu : `lyxal-groupware`) : l'`EventWorker` de `lyxal-server` ne lit que
+les livraisons des abonnements de `lyxal_server` (bail `event_stream_lease:lyxal_server`), et les
+trois tâches de fond de l'hôte ne sont exécutées que par ses nœuds, seuls à en avoir le code ;
+`lyxal-server` arrêté, elles attendent son retour sans échec. Les deux hôtes se déploient du même
+commit. La commande `runtime migrations` installe le socle par le même chemin que le démarrage
+(`lyxal_runtime::schema::install_foundation`, sous bail).
 
 Un module déjà installé dans la même version n'est pas réinstallé et son hook `install` n'est
 pas rejoué ; une release de même version au contenu différent fait refuser le démarrage
@@ -355,7 +365,7 @@ cargo run -p lyxal-server
 | `GET /ready` | `204` si le serveur et la base sont opérationnels, sinon `503`. |
 | `GET /health` | Statuts des composants (serveur, base) et des modules (sondes `ModuleHealthCheck` évaluées par le runtime), sans détail interne ; `503` si un module est en panne. |
 | `GET /metrics` | Compteurs de requêtes et durée de fonctionnement. |
-| `GET /api/v1/system/modules` | Modules hébergés : identifiant, nom, version, état. |
+| `GET /api/v1/system/modules` | Hôte (`host`) et nœud (`node_id`) de ce processus ; modules hébergés (`modules` : identifiant, nom, version, état) ; nœuds vivants de la base, de tous les hôtes (`nodes` : `node_id`, `host`, `modules` démarrés, `started_at`, `seen_at`, `current` pour ce processus ; battement de moins de 30 s), du plus récent au plus ancien. |
 | 🔒 `GET /api/v1/system/migrations/interrupted` | Migrations interrompues ou abandonnées (`?module=` pour un seul module) : module, migration, version, script, nœud, état, début, dernière décision. |
 | 🔒 `POST /api/v1/system/migrations/resolve` | Décision sur une migration interrompue : `{ module, migration, action, reason }`, `action` valant `retry` (rejouée à la prochaine installation du module) ou `abandon` (installation refusée tant qu'un `retry` ne l'a pas remise à rejouer). |
 
@@ -674,5 +684,11 @@ dégradée). `tests/it/host_tasks.rs` vérifie les tâches de fond de l'hôte : 
 et planifications présentes après l'installation, sans doublon au redémarrage ; exécution
 déclenchée par le moteur réel (session expirée marquée, écriture abandonnée retirée, secret échu
 purgé ; nettoyage sans support : rien) ; déclenchement et reprise refusés à un administrateur de
-la plateforme, mise en pause acceptée.
+la plateforme, mise en pause acceptée. `tests/it/two_hosts.rs` démarre `lyxal-server` à côté
+d'un second hôte d'essai (`lyxal_peer` : `lyxal_scheduler` et ses dépendances, planificateur et
+exécuteur sans handler) sur la même base : modules trouvés installés, hook `install` non rejoué ;
+route des modules listant les nœuds vivants des deux hôtes ; les trois tâches de fond exécutées
+une fois chacune, en une tentative ; `lyxal-server` arrêté, les exécutions déclenchées attendent
+(`queued`, aucune tentative) pendant que le second hôte réserve dans la même file, puis sont
+faites au redémarrage de `lyxal-server`.
 `scripts/ci/ci_local.sh` rejoue la CI complète.

@@ -13,3 +13,12 @@ avant toute ligne de code (`.agents/AGENTS.md` §3).
 * Politique de chevauchement `terminate_other`.
 * Règles RRULE.
 * Tableau de bord Surrealist sur les `fn::scheduler_*`.
+
+## Plusieurs hôtes (décision H9)
+
+Une tâche `handler` n'est réservée que par un nœud qui a son code ; les files sont communes à
+tous les hôtes. Restent à traiter, chacun par son propre plan :
+
+* Files réservées à un hôte (une file servie seulement par les nœuds d'un hôte donné).
+* Exécuteur créé à chaud pour une file apparue après le démarrage du nœud (aujourd'hui, les
+  exécuteurs sont créés une fois, pour les files connues au démarrage).

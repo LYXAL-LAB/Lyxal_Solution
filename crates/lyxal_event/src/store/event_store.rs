@@ -1,3 +1,4 @@
+use crate::engine::progress::{conflict_backoff, MAX_CONFLICT_RETRIES};
 use crate::error::LyxalEventError;
 use crate::models::{EventDeadLetter, EventDelivery, EventSubscription, LyxalEventEnvelope};
 use async_trait::async_trait;
@@ -295,12 +296,25 @@ impl EventStore {
     }
 
     /// Reprend les fan-outs restés en statut 'pending'.
+    ///
+    /// Deux hôtes (ou deux nœuds) qui reprennent les mêmes événements en même temps écrivent les
+    /// mêmes livraisons : l'un des deux reçoit un conflit d'écriture transitoire. La ventilation
+    /// étant idempotente, l'appel est rejoué ; le rejeu ne crée que les livraisons manquantes.
     pub async fn recover_pending_fanouts(&self, limit: usize) -> Result<usize, LyxalEventError> {
-        let params = RecoverFanoutParams { limit };
-        let res: RecoverFanoutResult = self
-            .call_fn("event_recover_pending_fanouts", params)
-            .await?;
-        Ok(res.recovered_count)
+        let mut attempt = 0;
+        loop {
+            let params = RecoverFanoutParams { limit };
+            match self
+                .call_fn::<RecoverFanoutResult, _>("event_recover_pending_fanouts", params)
+                .await
+            {
+                Err(e) if e.is_transient_conflict() && attempt < MAX_CONFLICT_RETRIES => {
+                    attempt += 1;
+                    conflict_backoff(attempt).await;
+                }
+                result => return Ok(result?.recovered_count),
+            }
+        }
     }
 
     /// Rejoue une dead letter.

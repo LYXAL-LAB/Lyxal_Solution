@@ -132,8 +132,8 @@ Appelées par `EventWorker` et ses composants, jamais par un module.
 
 ### 2.3. Erreurs levées par `THROW`
 
-Les trois fonctions protégées par le bail de l'hôte (`event_delivery_assign_seq`,
-`event_dead_letter_transfer`, `event_flush_batch`) écrivent d'abord sur le bail pour se
+Les quatre fonctions protégées par le bail de l'hôte (`event_delivery_assign_seq`,
+`event_delivery_failure`, `event_dead_letter_transfer`, `event_flush_batch`) écrivent d'abord sur le bail pour se
 protéger. Le refus de propriété (`EVENT_SUBSCRIPTION_NOT_OWNED`), qui suit la garde sans autre
 écriture, est un résultat d'erreur ordinaire (`fn::error_result`). Un échec ultérieur doit annuler toute la transaction : il est donc levé par `THROW`,
 exception documentée au contrat `fn::error_result` (décision CTO Q2). Côté Rust, ces codes sont
