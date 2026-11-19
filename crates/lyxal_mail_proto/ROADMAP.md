@@ -1,0 +1,39 @@
+# Feuille de route — `lyxal_mail_proto`
+
+Évolutions à venir du crate (à créer). Son objet est décrit par le [`README.md`](README.md), la
+provenance de ses sources par [`SOURCES.md`](SOURCES.md). Le programme est décrit par
+`implementation_plan.md` à la racine du dépôt ; chaque lot a son propre plan, validé par le CTO
+avant toute ligne de code (`.agents/AGENTS.md` §3).
+
+## Lots du programme, dans l'ordre
+
+| Lot | Contenu pour ce crate | Source | Prérequis |
+| :- | :--- | :--- | :--- |
+| 4 — Socle courrier | Création du crate (`Cargo.toml` sous `AGPL-3.0-only`, exception nommée dans `deny.toml`) ; lecture MIME par `mail-parser` | `mail-parser` | lot 0 |
+| 5 — Réception SMTP | Syntaxe SMTP / LMTP et extensions | Stalwart `smtp-proto` | lots 2, 3, 4 |
+| 7 — Transport sûr et rapports | Formats des rapports DMARC et TLS-RPT | Stalwart `smtp-report` | lot 6 |
+| 8 — IMAP | Syntaxe IMAP4rev2 et rev1, extensions | Stalwart `imap-proto` | lots 1, 4 |
+| 9 — Recherche et POP3 | Syntaxe POP3 | Stalwart `pop3` | lot 8 |
+| 10 — Sieve | Interprète Sieve et extensions, syntaxe ManageSieve | Stalwart `sieve`, `managesieve` | lots 5, 8 |
+| 12 — JMAP courrier | Types JMAP (cœur, courrier) | Stalwart `jmap-proto` | lots 6, 8 |
+| 21 — Durcissement et conformité | Fuzzing des analyseurs, corrections | Bancs de Mox transposés | lots 12, 20 |
+| 22 — Essais réels et clôture | Audit `lyxal-audit`, `README.md` et `SOURCES.md` définitifs | — | lot 21, moyens P11 |
+
+## Chiffrement des boîtes (décision C7)
+
+Ce crate ne chiffre rien et ne lit aucune clé. Contrainte à tenir dès sa création : ses types
+ne supposent jamais que le contenu d'un message est lisible par le serveur (niveaux B et C du
+chiffrement, voir [`crates/lyxal_mail/ROADMAP.md`](../lyxal_mail/ROADMAP.md)).
+
+## Essais réels à faire
+
+Les tests automatiques n'appellent aucun service réel. Les essais réels se font sur ordre du
+CTO, avec les moyens qu'il fournit (décision P11) ; secrets rangés dans `lyxal_secrets`, jamais
+dans le dépôt ni dans une conversation. Chaque lot ajoute ici ses essais ; un essai réussi est
+retiré de la liste et noté dans le `README.md`.
+
+| Préalable (moyens P11) | Action | Résultat attendu |
+| :--- | :--- | :--- |
+| Boîtes d'essai chez Gmail, Outlook.com et Yahoo | Lire avec ce crate des messages réels reçus de ces fournisseurs (lot 4) | Aucun message refusé ; pièces jointes et jeux de caractères rendus à l'identique |
+| Logiciels réels : Thunderbird, Apple Mail, Outlook | Enregistrer leurs dialogues IMAP et SMTP contre le serveur d'essai (lots 5 et 8) | Toutes les commandes reçues sont reconnues ; aucune réponse refusée par le logiciel |
+| Scripts Sieve réels exportés d'un autre serveur | Compiler et exécuter à blanc (lot 10) | Scripts acceptés ou refusés avec une erreur précise |

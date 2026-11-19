@@ -8,7 +8,12 @@ Ce dossier regroupe les feuilles de route stratégiques et d'intégration transv
    - [`ROADMAP_LYXAL_SPACE.md`](./ROADMAP_LYXAL_SPACE.md) — Intégration de `lyxal_catalogue` et `lyxal_pipeline_ingestion` dans la console unifiée LYXAL SPACE (Étapes A, B, C, D).
 
 2. **Feuilles de Route des Modules** :
-   - [`ROADMAP_NOYAU.md`](./ROADMAP_NOYAU.md) — Ordre de création des crates du noyau technique à créer (`lyxal_auth`, `lyxal_i18n`, `lyxal_storage`, `lyxal_secrets`, `lyxal_scheduler`, `lyxal_notification`).
+   - [`ROADMAP_NOYAU.md`](./ROADMAP_NOYAU.md) — Ordre de création des crates du noyau technique à créer (programme courrier, agendas et contacts : `lyxal_mail_proto`, `lyxal_mail`, `lyxal_dav`, `lyxal_calendar`, `lyxal_contacts`, hôte `lyxal-groupware`).
+   - [`crates/lyxal_mail_proto/ROADMAP.md`](../../crates/lyxal_mail_proto/ROADMAP.md) — Syntaxes du courrier (à créer) : lots du programme, essais réels.
+   - [`crates/lyxal_mail/ROADMAP.md`](../../crates/lyxal_mail/ROADMAP.md) — Serveur de courrier (à créer) : lots du programme, chiffrement des boîtes (niveaux A, B, C), webmail et alias à venir, essais réels.
+   - [`crates/lyxal_dav/ROADMAP.md`](../../crates/lyxal_dav/ROADMAP.md) — Socle WebDAV, iCalendar et vCard (à créer) : lots du programme, essais réels.
+   - [`crates/lyxal_calendar/ROADMAP.md`](../../crates/lyxal_calendar/ROADMAP.md) — Agendas et CalDAV (à créer) : lots du programme, essais réels.
+   - [`crates/lyxal_contacts/ROADMAP.md`](../../crates/lyxal_contacts/ROADMAP.md) — Contacts et CardDAV (à créer) : lots du programme, essais réels.
    - [`crates/lyxal_core/ROADMAP.md`](../../crates/lyxal_core/ROADMAP.md) — Bibliothèque standard SurrealQL (aucune étape prévue).
    - [`crates/lyxal_crypto/ROADMAP.md`](../../crates/lyxal_crypto/ROADMAP.md) — Audit de sécurité externe avant la première mise en production.
    - [`crates/lyxal_surreal/ROADMAP.md`](../../crates/lyxal_surreal/ROADMAP.md) — Transport SurrealDB (aucune étape prévue).

@@ -1,0 +1,248 @@
+# Contrôle des licences de l'arbre des dépendances (cargo-deny, contrôle `licenses` seulement).
+#
+# Lancement : cargo deny check licenses     (scripts/ci/ci_local.sh et la CI le lancent)
+# Version épinglée de l'outil : voir scripts/ci/install_cargo_deny.sh.
+#
+# Décision C4 du lot 0 du programme courrier, agendas et contacts
+# (crates/lyxal_mail/implementation_plan.md). Les alertes de sécurité (`advisories`), les
+# interdictions (`bans`) et les sources (`sources`) ne sont pas contrôlées ici.
+#
+# Règle : la liste `allow` ne contient que des licences permissives, relevées dans l'arbre
+# réel (`cargo metadata`, 18 novembre 2026). Toute autre licence est refusée, sauf exception
+# nommée crate par crate plus bas. Ajouter une licence ou une exception est une décision du
+# CTO : elle se prend dans le plan du lot qui ajoute la dépendance.
+
+[graph]
+# Toutes les cibles et toutes les fonctionnalités : l'arbre contrôlé est le plus large.
+all-features = true
+
+[licenses]
+version = 2
+# Seuil de reconnaissance d'un texte de licence quand un crate ne déclare qu'un fichier.
+confidence-threshold = 0.93
+# Les dépendances de test (dev-dependencies) sont contrôlées aussi.
+include-dev = true
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "0BSD",
+    "Unlicense",
+    "CC0-1.0",
+    "BSL-1.0",              # Boost Software License (xxhash-rust, test) ; à ne pas confondre avec BUSL-1.1
+    "Unicode-3.0",          # données et bibliothèques ICU4X (lyxal_i18n)
+    "CDLA-Permissive-2.0",  # certificats racines (webpki-roots)
+]
+
+# --- Exceptions nommées : licences non permissives déjà présentes dans l'arbre ---
+
+# SurrealDB : Business Source License 1.1 (non libre ; usage encadré par ses conditions).
+# Seul `surrealdb-protocol` déclare l'identifiant ; les autres crates ne déclarent qu'un
+# fichier `LICENSE` (voir les clarifications plus bas).
+exceptions = [
+    { allow = ["BUSL-1.1"], crate = "surrealdb" },
+    { allow = ["BUSL-1.1"], crate = "surrealdb-catalog" },
+    { allow = ["BUSL-1.1"], crate = "surrealdb-cnf" },
+    { allow = ["BUSL-1.1"], crate = "surrealdb-collections" },
+    { allow = ["BUSL-1.1"], crate = "surrealdb-common" },
+    { allow = ["BUSL-1.1"], crate = "surrealdb-core" },
+    { allow = ["BUSL-1.1"], crate = "surrealdb-datastore" },
+    { allow = ["BUSL-1.1"], crate = "surrealdb-engine-api" },
+    { allow = ["BUSL-1.1"], crate = "surrealdb-engine-local" },
+    { allow = ["BUSL-1.1"], crate = "surrealdb-expr" },
+    { allow = ["BUSL-1.1"], crate = "surrealdb-iam" },
+    { allow = ["BUSL-1.1"], crate = "surrealdb-idx" },
+    { allow = ["BUSL-1.1"], crate = "surrealdb-keyspace-macro" },
+    { allow = ["BUSL-1.1"], crate = "surrealdb-kvs" },
+    { allow = ["BUSL-1.1"], crate = "surrealdb-kvs-any" },
+    { allow = ["BUSL-1.1"], crate = "surrealdb-kvs-mem" },
+    { allow = ["BUSL-1.1"], crate = "surrealdb-observe" },
+    { allow = ["BUSL-1.1"], crate = "surrealdb-parse-common" },
+    { allow = ["BUSL-1.1"], crate = "surrealdb-protocol" },
+    { allow = ["BUSL-1.1"], crate = "surrealdb-rpc" },
+    { allow = ["BUSL-1.1"], crate = "surrealdb-runtime" },
+    { allow = ["BUSL-1.1"], crate = "surrealdb-sql" },
+    { allow = ["BUSL-1.1"], crate = "surrealdb-strand" },
+    { allow = ["BUSL-1.1"], crate = "surrealdb-syn" },
+    { allow = ["BUSL-1.1"], crate = "surrealdb-types" },
+    { allow = ["BUSL-1.1"], crate = "surrealdb-types-derive" },
+
+    # Mozilla Public License 2.0 (copyleft limité au fichier).
+    { allow = ["MPL-2.0"], crate = "webauthn-rs" },               # lyxal_auth (clés d'accès)
+    { allow = ["MPL-2.0"], crate = "webauthn-rs-core" },
+    { allow = ["MPL-2.0"], crate = "webauthn-rs-proto" },
+    { allow = ["MPL-2.0"], crate = "webauthn-attestation-ca" },
+    { allow = ["MPL-2.0"], crate = "webauthn-authenticator-rs" }, # dépendance de test de lyxal_auth
+    { allow = ["MPL-2.0"], crate = "crypto-glue" },
+    { allow = ["MPL-2.0"], crate = "colored" },                   # dépendance de test (par s3s-fs)
+    { allow = ["MPL-2.0"], crate = "cssparser" },
+    { allow = ["MPL-2.0"], crate = "dtoa-short" },
+
+    # --- Programme courrier, agendas et contacts (décisions F4 et P2) ---
+    # Les six éléments ci-dessous déclareront `license = "AGPL-3.0-only"` dans leur propre
+    # `Cargo.toml` : ils seront dérivés de code AGPL (Stalwart, RustiCal). Ils n'existent pas
+    # encore comme paquets Cargo (dossiers sans `Cargo.toml` au lot 0) : chaque exception est
+    # décommentée par le lot qui crée le paquet, pas avant (cargo-deny signale une exception
+    # sans paquet). Aucun autre paquet du workspace ne doit recevoir cette exception :
+    # `lyxal-server` et les crates existants ne lient aucun crate AGPL (décision P3).
+    # { allow = ["AGPL-3.0-only"], crate = "lyxal_mail_proto" },   # lot 4
+    # { allow = ["AGPL-3.0-only"], crate = "lyxal_mail" },         # lot 3 (squelette), lot 4
+    # { allow = ["AGPL-3.0-only"], crate = "lyxal_dav" },          # lot 14
+    # { allow = ["AGPL-3.0-only"], crate = "lyxal_calendar" },     # lot 16
+    # { allow = ["AGPL-3.0-only"], crate = "lyxal_contacts" },     # lot 19
+    # { allow = ["AGPL-3.0-only"], crate = "lyxal-groupware" },    # lot 3 (hôte)
+    # Les dépendances AGPL ou GPL de ces crates (ex. `sieve-rs`, `caldata`, `vtimezones-rs`,
+    # si elles sont retenues) demanderont leur propre exception, nommée de la même façon.
+]
+
+# --- Clarifications : crates qui ne déclarent pas d'expression de licence ---
+
+# Crates SurrealDB 3.3.5 : leur `Cargo.toml` ne donne qu'un fichier `LICENSE` (texte de la
+# Business Source License 1.1 avec les paramètres de SurrealDB), que cargo-deny reconnaît avec
+# une confiance de 0,87, sous le seuil. L'empreinte fige ce texte : si une montée de version
+# le change, le contrôle échoue et la licence est relue.
+[[licenses.clarify]]
+crate = "surrealdb"
+expression = "BUSL-1.1"
+license-files = [{ path = "LICENSE", hash = 0xbb1191d7 }]
+
+[[licenses.clarify]]
+crate = "surrealdb-catalog"
+expression = "BUSL-1.1"
+license-files = [{ path = "LICENSE", hash = 0xbb1191d7 }]
+
+[[licenses.clarify]]
+crate = "surrealdb-cnf"
+expression = "BUSL-1.1"
+license-files = [{ path = "LICENSE", hash = 0xbb1191d7 }]
+
+[[licenses.clarify]]
+crate = "surrealdb-collections"
+expression = "BUSL-1.1"
+license-files = [{ path = "LICENSE", hash = 0xbb1191d7 }]
+
+[[licenses.clarify]]
+crate = "surrealdb-common"
+expression = "BUSL-1.1"
+license-files = [{ path = "LICENSE", hash = 0xbb1191d7 }]
+
+[[licenses.clarify]]
+crate = "surrealdb-core"
+expression = "BUSL-1.1"
+license-files = [{ path = "LICENSE", hash = 0xbb1191d7 }]
+
+[[licenses.clarify]]
+crate = "surrealdb-datastore"
+expression = "BUSL-1.1"
+license-files = [{ path = "LICENSE", hash = 0xbb1191d7 }]
+
+[[licenses.clarify]]
+crate = "surrealdb-engine-api"
+expression = "BUSL-1.1"
+license-files = [{ path = "LICENSE", hash = 0xbb1191d7 }]
+
+[[licenses.clarify]]
+crate = "surrealdb-engine-local"
+expression = "BUSL-1.1"
+license-files = [{ path = "LICENSE", hash = 0xbb1191d7 }]
+
+[[licenses.clarify]]
+crate = "surrealdb-expr"
+expression = "BUSL-1.1"
+license-files = [{ path = "LICENSE", hash = 0xbb1191d7 }]
+
+[[licenses.clarify]]
+crate = "surrealdb-iam"
+expression = "BUSL-1.1"
+license-files = [{ path = "LICENSE", hash = 0xbb1191d7 }]
+
+[[licenses.clarify]]
+crate = "surrealdb-idx"
+expression = "BUSL-1.1"
+license-files = [{ path = "LICENSE", hash = 0xbb1191d7 }]
+
+[[licenses.clarify]]
+crate = "surrealdb-keyspace-macro"
+expression = "BUSL-1.1"
+license-files = [{ path = "LICENSE", hash = 0xbb1191d7 }]
+
+[[licenses.clarify]]
+crate = "surrealdb-kvs"
+expression = "BUSL-1.1"
+license-files = [{ path = "LICENSE", hash = 0xbb1191d7 }]
+
+[[licenses.clarify]]
+crate = "surrealdb-kvs-any"
+expression = "BUSL-1.1"
+license-files = [{ path = "LICENSE", hash = 0xbb1191d7 }]
+
+[[licenses.clarify]]
+crate = "surrealdb-kvs-mem"
+expression = "BUSL-1.1"
+license-files = [{ path = "LICENSE", hash = 0xbb1191d7 }]
+
+[[licenses.clarify]]
+crate = "surrealdb-observe"
+expression = "BUSL-1.1"
+license-files = [{ path = "LICENSE", hash = 0xbb1191d7 }]
+
+[[licenses.clarify]]
+crate = "surrealdb-parse-common"
+expression = "BUSL-1.1"
+license-files = [{ path = "LICENSE", hash = 0xbb1191d7 }]
+
+[[licenses.clarify]]
+crate = "surrealdb-rpc"
+expression = "BUSL-1.1"
+license-files = [{ path = "LICENSE", hash = 0xbb1191d7 }]
+
+[[licenses.clarify]]
+crate = "surrealdb-runtime"
+expression = "BUSL-1.1"
+license-files = [{ path = "LICENSE", hash = 0xbb1191d7 }]
+
+[[licenses.clarify]]
+crate = "surrealdb-sql"
+expression = "BUSL-1.1"
+license-files = [{ path = "LICENSE", hash = 0xbb1191d7 }]
+
+[[licenses.clarify]]
+crate = "surrealdb-strand"
+expression = "BUSL-1.1"
+license-files = [{ path = "LICENSE", hash = 0xbb1191d7 }]
+
+[[licenses.clarify]]
+crate = "surrealdb-syn"
+expression = "BUSL-1.1"
+license-files = [{ path = "LICENSE", hash = 0xbb1191d7 }]
+
+[[licenses.clarify]]
+crate = "surrealdb-types"
+expression = "BUSL-1.1"
+license-files = [{ path = "LICENSE", hash = 0xbb1191d7 }]
+
+[[licenses.clarify]]
+crate = "surrealdb-types-derive"
+expression = "BUSL-1.1"
+license-files = [{ path = "LICENSE", hash = 0xbb1191d7 }]
+
+# Trois crates du workspace n'ont pas de champ `license` dans leur `Cargo.toml` (les autres
+# ont `license.workspace = true`, soit `MIT OR Apache-2.0`). Anomalie signalée au CTO au
+# lot 0 : la correction est d'ajouter `license.workspace = true` à ces trois manifestes, puis
+# de retirer ces trois clarifications.
+[[licenses.clarify]]
+crate = "lyxal_error"
+expression = "MIT OR Apache-2.0"
+license-files = []
+
+[[licenses.clarify]]
+crate = "lyxal_surreal"
+expression = "MIT OR Apache-2.0"
+license-files = []
+
+[[licenses.clarify]]
+crate = "lyxal_pipeline_ingestion"
+expression = "MIT OR Apache-2.0"
+license-files = []

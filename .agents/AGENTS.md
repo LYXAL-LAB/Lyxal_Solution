@@ -816,6 +816,11 @@ lyxal_storage (fichiers et documents stockés : buckets, fiches de fichiers, ét
 lyxal_secrets (coffre-fort des secrets applicatifs : fiches, versions scellées par lyxal_crypto sous une clé par organisation et une clé maîtresse propre, étiquettes, droits par opération, ticket de lecture tracé, journal chaîné, rescellement après rotation, alertes d'échéance et rotation des secrets en quatre étapes sans coupure, accès temporaires, demandes approuvées, protections et accès d'urgence, partages à usage unique, routes HTTP de l'hôte, procédures d'exploitation)
 lyxal_scheduler (tâches différées et périodiques : tâches déclarées par les modules installés, files, calendriers d'exceptions, planifications, exécutions réservées sous bail avec places par file et par organisation, nouvelles tentatives, chevauchement, rattrapage, rejeu de période, permission propre de la tâche pour tout ce qui la fait exécuter, journal et événements ; calcul des dates en Rust ; moteur : planificateur élu par le bail leader du runtime avec garde de génération, exécuteurs par file, handlers Rust inscrits par les modules, fonctions SurrealQL, publications différées ; routes HTTP de l'hôte, procédures d'exploitation)
 lyxal_notification (notifications sortantes : abonnés, sujets, préférences et heures calmes, parcours à étapes (attente, regroupement, limitation, conditions), gabarits dont les phrases sont des clés lyxal_i18n, intégrations par fournisseur avec identifiants dans lyxal_secrets et bascule, retours des fournisseurs et liste de suppression ; canaux e-mail (SMTP, Brevo, Mailgun, Postmark, Resend), SMS (Brevo, Twilio, Vonage), messageries d'équipe, appel signé d'une adresse web, fil dans l'application en temps réel et notifications push (Web Push, FCM, APNs) ; appels sortants contrôlés (SSRF) ; routes HTTP de l'hôte, procédures d'exploitation)
+lyxal_mail_proto (à créer — syntaxes du courrier sans base ni logique métier : SMTP, IMAP, POP3, ManageSieve, interprète Sieve, formats des rapports DMARC et TLS, types JMAP ; porté de Stalwart, licence AGPL-3.0-only)
+lyxal_mail (à créer — serveur de courrier : domaines, adresses, alias, boîtes, messages, files d'envoi et droits en SurrealQL ; serveurs SMTP, IMAP, POP3 et ManageSieve, filtres Sieve, anti-spam, DKIM / SPF / DMARC / ARC, MTA-STS / DANE / TLS-RPT, JMAP courrier ; licence AGPL-3.0-only)
+lyxal_dav (à créer — socle WebDAV sans base ni logique métier : XML WebDAV / CalDAV / CardDAV, réponses 207, préconditions, jetons de synchronisation, iCalendar et vCard ; licence AGPL-3.0-only)
+lyxal_calendar (à créer — agendas : événements, tâches, partage, disponibilités, planification iTIP / iMIP, serveur CalDAV ; dépend de lyxal_dav et de lyxal_mail ; licence AGPL-3.0-only)
+lyxal_contacts (à créer — carnets d'adresses et contacts, serveur CardDAV ; dépend de lyxal_dav ; licence AGPL-3.0-only)
 (ordre de création des crates « à créer » : docs/14-roadmap/ROADMAP_NOYAU.md)
         │
         ▼
@@ -831,6 +836,7 @@ lyxal_btp
         ▼
 UI / Process Host
 lyxal-server (hôte : LyxalRuntime, modules embarqués, API HTTP système)
+lyxal-groupware (à créer — hôte dédié du courrier, des agendas et des contacts : ports SMTP, IMAP, POP3 et ManageSieve, HTTP de CalDAV, CardDAV et JMAP ; seul binaire qui lie les crates AGPL)
 Console Web / Mobile
 CLI
 ```
