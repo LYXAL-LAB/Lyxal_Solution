@@ -137,6 +137,7 @@ pub async fn reconcile_publication(
             id: None,
             name: PUBLICATION_SUBSCRIPTION.to_string(),
             target_module: PUBLICATION_MODULE.to_string(),
+            host: super::HOST_ID.to_string(),
             event_pattern: "ingestion.manifest.approved".to_string(),
             handler_name: PUBLICATION_HANDLER.to_string(),
             is_active: publication,

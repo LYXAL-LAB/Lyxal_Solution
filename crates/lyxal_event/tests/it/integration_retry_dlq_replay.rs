@@ -75,6 +75,7 @@ async fn test_retry_dlq_and_replay_cycle() {
         "lyxal_accounting",
         "payment.processed",
         "record_ledger",
+        common::HOST,
     )
     .with_max_attempts(3);
     store.register_subscription(&sub).await.unwrap();
@@ -201,6 +202,7 @@ async fn test_oversized_error_still_reaches_dead_letter() {
         "lyxal_accounting",
         "payment.processed",
         "record_ledger",
+        common::HOST,
     )
     .with_max_attempts(2);
     store.register_subscription(&sub).await.unwrap();
@@ -252,6 +254,7 @@ async fn test_incomplete_delivery_goes_to_dead_letter() {
         "lyxal_accounting",
         "payment.processed",
         "record_ledger",
+        common::HOST,
     );
     store.register_subscription(&sub).await.unwrap();
     EventPublisher::new(store.clone(), "lyxal_billing", EventContext::default())
@@ -316,6 +319,7 @@ async fn test_purge_keeps_events_of_unresolved_deliveries() {
         "lyxal_accounting",
         "payment.processed",
         "record_ledger",
+        common::HOST,
     );
     store.register_subscription(&sub).await.unwrap();
     let publisher = EventPublisher::new(store.clone(), "lyxal_billing", EventContext::default());
@@ -380,6 +384,7 @@ async fn test_purge_never_creates_a_hole_before_the_cursor() {
             "lyxal_accounting",
             "payment.processed",
             "record_ledger",
+            common::HOST,
         ))
         .await
         .unwrap();
@@ -425,11 +430,12 @@ async fn test_purge_never_creates_a_hole_before_the_cursor() {
     let mut res = db
         .query(
             "LET $sub = (SELECT VALUE id FROM ONLY event_subscription LIMIT 1);
-             LET $lease = fn::event_lease_acquire({ node_id: 'node_purge', ttl_seconds: 60 });
+             LET $lease = fn::event_lease_acquire({ host: 'lyxal_test', node_id: 'node_purge', ttl_seconds: 60 });
              LET $pending = (SELECT VALUE id FROM ONLY event_delivery WHERE delivery_seq = 2 LIMIT 1);
              RETURN fn::event_flush_batch({
                  subscription: $sub,
                  target_cursor: 3,
+                 host: 'lyxal_test',
                  node_id: 'node_purge',
                  generation: $lease.data.generation,
                  delivered_ids: [$pending]
@@ -475,6 +481,7 @@ async fn test_orphan_delivery_goes_to_dead_letter() {
                 "lyxal_accounting",
                 "payment.processed",
                 "record_ledger",
+                common::HOST,
             ))
             .await
             .unwrap();

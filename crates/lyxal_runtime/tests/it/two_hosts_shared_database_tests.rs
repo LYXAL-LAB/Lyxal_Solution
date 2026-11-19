@@ -12,10 +12,9 @@
 //! hôte signale les modules de l'autre sans les viser, le refus d'une release de même version au
 //! contenu différent, et que le redémarrage ou l'arrêt d'un hôte laisse l'autre en marche.
 //!
-//! Le moteur d'événements est désactivé sur les deux hôtes : son worker est élu par un bail
-//! unique pour toute la base (`event_stream_lease:outbox_leader`) et ne sert que les handlers de
-//! son propre hôte, de sorte que les événements destinés aux handlers de l'autre hôte ne lui
-//! parviennent pas. Ce point relève du correctif de `lyxal_event`, pas de ce fichier.
+//! Le moteur d'événements est désactivé sur les deux hôtes : la livraison des événements à
+//! plusieurs hôtes (un chef des événements par hôte, `event_stream_lease:<hôte>`) est vérifiée par
+//! les tests de `lyxal_event` (`tests/it/integration_multi_host.rs`).
 
 use crate::common;
 use async_trait::async_trait;
@@ -195,7 +194,7 @@ impl Host {
         let runtime = Arc::new(
             LyxalRuntime::new(RuntimeConfig::new(common::host(host)))
                 .with_client(client.clone())
-                .with_event_config(EventEngineConfig::default().with_enabled(false))
+                .with_event_config(EventEngineConfig::new(&common::host(host)).with_enabled(false))
                 .with_store(store.clone())
                 .with_installation_lease_manager(Arc::new(SurrealInstallationLeaseManager::new(
                     client.clone(),

@@ -38,7 +38,7 @@ fn fast_presence() -> PresenceConfig {
 fn runtime(client: &Surreal<Any>) -> LyxalRuntime {
     LyxalRuntime::new(RuntimeConfig::new(common::host(HOST)).with_presence(fast_presence()))
         .with_client(client.clone())
-        .with_event_config(EventEngineConfig::default().with_enabled(false))
+        .with_event_config(EventEngineConfig::new(&common::host(HOST)).with_enabled(false))
 }
 
 /// Installe le socle de ce dépôt (`lyxal_core`, `lyxal_error`, schéma du runtime), plus un

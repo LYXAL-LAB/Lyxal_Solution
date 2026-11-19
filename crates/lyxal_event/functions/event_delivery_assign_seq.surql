@@ -2,7 +2,8 @@
 -- Function   : fn::event_delivery_assign_seq
 -- Module     : lyxal_event
 -- Description: Assigne de façon atomique un numéro de séquence contigu sans trou
---              et crée la livraison dans event_delivery sous protection de fencing.
+--              et crée la livraison dans event_delivery sous la garde du bail de l'hôte et
+--              le contrôle de propriété de l'abonnement.
 -- Contrat    : Retourne fn::result_ok($delivery)
 -- ============================================================================
 
@@ -17,6 +18,7 @@ DEFINE FUNCTION OVERWRITE fn::event_delivery_assign_seq(
         outbox_event: fn::validation_record_id($params.outbox_event, ["event_outbox"]),
         subscription: fn::validation_record_id($params.subscription, ["event_subscription"]),
         target_module: IF !fn::validation_required_string($params.target_module, 1, 64).valid { fn::validation_required_string($params.target_module, 1, 64) } ELSE { fn::validation_regex($params.target_module, "^[a-z][a-z0-9_]*$") },
+        host: fn::validation_regex($params.host, "^[a-z][a-z0-9_]{0,63}$"),
         node_id: fn::validation_required_string($params.node_id, 1, 128),
         generation: fn::validation_integer($params.generation, 1, NONE),
         context: fn::validation_object($params.context ?? {}),
@@ -31,6 +33,7 @@ DEFINE FUNCTION OVERWRITE fn::event_delivery_assign_seq(
     LET $outbox_event = $p.outbox_event;
     LET $subscription = $p.subscription;
     LET $target_module = $p.target_module;
+    LET $host = $p.host;
     LET $node_id = $p.node_id;
     LET $generation = $p.generation;
     LET $context = $p.context;
@@ -38,7 +41,8 @@ DEFINE FUNCTION OVERWRITE fn::event_delivery_assign_seq(
 
     LET $lock_duration = <duration> string::concat($lock_seconds, "s");
     LET $now = time::now();
-    LET $lease_rec = event_stream_lease:outbox_leader;
+    -- Bail du chef des événements de cet hôte (un bail par hôte)
+    LET $lease_rec = type::record("event_stream_lease", $host);
 
     -- 1. Garde transactionnelle de Fencing (Écriture conditionnelle sur le bail)
     LET $guard = (
@@ -54,6 +58,17 @@ DEFINE FUNCTION OVERWRITE fn::event_delivery_assign_seq(
 
     IF array::len($guard) == 0 {
         THROW "EVENT_STALE_LEADER_FENCED";
+    };
+
+    -- Contrôle de propriété, dans la même transaction que la garde : l'abonnement appartient à
+    -- l'hôte de ce bail (un chef n'écrit jamais dans le flux d'un abonnement d'un autre hôte)
+    LET $owner = (SELECT VALUE host FROM ONLY $subscription);
+    IF $owner != $host {
+        RETURN fn::error_result("EVENT_SUBSCRIPTION_NOT_OWNED", $params.language, {
+            subscription: <string> $subscription,
+            host: $host,
+            owner_host: $owner
+        });
     };
 
     -- 2. Idempotence : Vérifie si la livraison existe déjà pour cette paire (outbox_event, subscription)
@@ -136,6 +151,7 @@ DEFINE FUNCTION OVERWRITE fn::event_delivery_assign_seq(
         CREATE event_delivery CONTENT {
             outbox_event: $outbox_event,
             subscription: $subscription,
+            host: $host,
             target_module: $target_module,
             context: $context,
             status: "processing",
@@ -149,6 +165,6 @@ DEFINE FUNCTION OVERWRITE fn::event_delivery_assign_seq(
     );
 
     RETURN fn::result_ok($created[0]);
-} COMMENT "Attribue atomiquement une séquence contiguë et crée la livraison sous garde de fencing."
+} COMMENT "Attribue atomiquement une séquence contiguë et crée ou reverrouille la livraison ({ outbox_event, subscription, target_module, host, node_id, generation, context, lock_seconds }) sous la garde du bail de l'hôte (EVENT_STALE_LEADER_FENCED) ; abonnement d'un autre hôte : EVENT_SUBSCRIPTION_NOT_OWNED."
 PERMISSIONS FULL;
 

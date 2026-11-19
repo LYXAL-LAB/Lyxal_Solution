@@ -29,6 +29,7 @@ use lyxal_surreal::{Datetime, RecordId, SurrealValue};
 /// Paramètres d'acquisition du bail (`fn::event_lease_acquire`).
 #[derive(Debug, Clone, SurrealValue)]
 pub struct LeaseAcquireParams {
+    pub host: String,
     pub node_id: String,
     pub ttl_seconds: u64,
 }
@@ -45,6 +46,7 @@ pub struct LeaseAcquireResult {
 /// Paramètres de renouvellement du bail (`fn::event_lease_renew`).
 #[derive(Debug, Clone, SurrealValue)]
 pub struct LeaseRenewParams {
+    pub host: String,
     pub node_id: String,
     pub generation: u64,
     pub ttl_seconds: u64,
@@ -61,6 +63,7 @@ pub struct LeaseRenewResult {
 /// Paramètres de libération du bail (`fn::event_lease_release`).
 #[derive(Debug, Clone, SurrealValue)]
 pub struct LeaseReleaseParams {
+    pub host: String,
     pub node_id: String,
     pub generation: u64,
 }
@@ -81,6 +84,7 @@ pub struct DeliveryAssignSeqParams {
     pub outbox_event: RecordId,
     pub subscription: RecordId,
     pub target_module: String,
+    pub host: String,
     pub node_id: String,
     pub generation: u64,
     pub context: serde_json::Value,
@@ -96,6 +100,7 @@ pub struct DeliveryAssignSeqParams {
 pub struct FlushBatchParams {
     pub subscription: RecordId,
     pub target_cursor: u64,
+    pub host: String,
     pub node_id: String,
     pub generation: u64,
     pub delivered_ids: Vec<RecordId>,
@@ -123,6 +128,7 @@ pub struct FlushBatchResult {
 pub struct DeadLetterTransferParams {
     pub delivery_id: RecordId,
     pub error: String,
+    pub host: String,
     pub node_id: String,
     pub generation: u64,
 }
@@ -162,6 +168,8 @@ pub struct ProgressGetResult {
 /// Paramètres de récupération des livraisons en attente (`fn::event_delivery_fetch_pending`).
 #[derive(Debug, Clone, SurrealValue)]
 pub struct DeliveryFetchPendingParams {
+    /// Hôte dont le chef lit les livraisons : seules celles de cet hôte sont renvoyées.
+    pub host: String,
     pub limit: usize,
     pub instance_id: Option<String>,
     pub subscription: Option<RecordId>,
@@ -173,6 +181,11 @@ pub struct DeliveryFailureParams {
     pub delivery_id: RecordId,
     pub error: String,
     pub retry_delay_seconds: u64,
+    /// Hôte du chef qui écrit l'échec : la livraison doit lui appartenir.
+    pub host: String,
+    /// Nœud et génération du bail du chef (garde de fencing).
+    pub node_id: String,
+    pub generation: u64,
 }
 
 /// Enregistrement d'une livraison éligible renvoyé par `fn::event_delivery_fetch_pending`.
@@ -197,4 +210,48 @@ pub struct PendingDeliveryItem {
     pub causation_id: Option<crate::types::CausationId>,
     pub payload: Option<serde_json::Value>,
     pub metadata: Option<serde_json::Value>,
+}
+
+// ----------------------------------------------------------------------------
+// 7. Hôtes : changement d'hôte d'un abonnement et attente par hôte
+// ----------------------------------------------------------------------------
+
+/// Paramètres de `fn::event_subscription_transfer` : nouvel hôte d'un abonnement.
+#[derive(Debug, Clone, SurrealValue)]
+pub struct SubscriptionTransferParams {
+    pub name: String,
+    pub host: String,
+}
+
+/// Résultat de `fn::event_subscription_transfer`.
+#[derive(Debug, Clone, PartialEq, Eq, SurrealValue)]
+pub struct SubscriptionTransferResult {
+    pub name: String,
+    pub previous_host: String,
+    pub host: String,
+    /// Livraisons non soldées passées au nouvel hôte.
+    pub deliveries: u64,
+}
+
+/// Paramètres de `fn::event_backlog`.
+#[derive(Debug, Clone, SurrealValue)]
+pub struct EventBacklogParams {
+    /// Âge à partir duquel une livraison non soldée compte dans `waiting`.
+    pub older_than: surrealdb::types::Duration,
+}
+
+/// Livraisons non soldées d'un hôte, renvoyées par `fn::event_backlog`.
+#[derive(Debug, Clone, SurrealValue)]
+pub struct EventBacklog {
+    pub host: String,
+    /// Livraisons non soldées (`pending`, `processing`, `failed`).
+    pub pending: u64,
+    /// Parmi elles, celles créées avant `older_than`.
+    pub waiting: u64,
+    /// Création de la plus ancienne.
+    pub oldest: Option<Datetime>,
+    /// Le bail du chef des événements de l'hôte est vivant (heure de la base).
+    pub leader_alive: bool,
+    /// Nœud chef de l'hôte, s'il est vivant.
+    pub leader_node: Option<String>,
 }

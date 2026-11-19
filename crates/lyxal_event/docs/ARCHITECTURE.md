@@ -14,7 +14,7 @@ Module producteur
   ▼
 event_outbox ─── fn::event_fanout ───► event_delivery (une par abonnement actif concerné)
                                             │
-          EventWorker (leader, sous bail)   │ fn::event_delivery_fetch_pending
+  EventWorker (chef de l'hôte, sous bail)   │ fn::event_delivery_fetch_pending (host)
                                             ▼
               ┌──────────── une file par abonnement ─────────────┐
               │ OutboxFeeder   fn::event_delivery_assign_seq     │
@@ -35,8 +35,9 @@ event_outbox ─── fn::event_fanout ───► event_delivery (une par abo
 1. **Publication** : l'événement est écrit dans `event_outbox`, puis ventilé immédiatement
    (`auto_fanout`, défaut). Un événement resté `pending` (fan-out interrompu) est ventilé par
    `fn::event_recover_pending_fanouts`, appelée à chaque tour du worker.
-2. **Récupération** : le leader lit les livraisons éligibles, c'est-à-dire non résolues, au
-   verrou expiré et au retry échu.
+2. **Récupération** : le chef de l'hôte lit les livraisons éligibles **de son hôte**,
+   c'est-à-dire non résolues, au verrou expiré et au retry échu. La ventilation recopie l'hôte
+   de l'abonnement sur chaque livraison ; les livraisons des autres hôtes ne sont jamais lues.
 3. **Séquencement** : `fn::event_delivery_assign_seq` attribue la séquence suivante de
    l'abonnement et verrouille la livraison. Une livraison qui a déjà une séquence (reprise) la
    conserve.
@@ -54,10 +55,26 @@ mélangent jamais.
 
 ---
 
-## 2. Bail et fencing
+## 2. Hôtes, bail et fencing
 
-Un seul worker distribue à la fois : celui qui détient le bail
-`event_stream_lease:outbox_leader`.
+Un **hôte** est le rôle d'un binaire (`lyxal_server`, `lyxal_groupware`) : un nom fixe, le même
+pour toutes ses copies. Chaque abonnement appartient à un hôte (`event_subscription.host`, fixé
+à l'enregistrement par l'hôte qui porte le handler) ; plusieurs hôtes peuvent partager une même
+base. Pour chaque hôte, un seul worker distribue à la fois : celui qui détient le bail
+`event_stream_lease:<hôte>`. Les hôtes sont indépendants : un hôte arrêté ne bloque pas les
+autres.
+
+* **Enregistrement** : un abonnement déjà enregistré par un autre hôte est refusé
+  (`EVENT_SUBSCRIPTION_HOST_CONFLICT`) : deux binaires portent le même handler, erreur de
+  montage. Un type d'événement écouté sur deux hôtes passe par deux abonnements.
+* **Hôte arrêté** : ses livraisons restent `pending`, sans essai compté ni dead letter, aussi
+  longtemps qu'il le faut. `fn::event_backlog` donne, par hôte, les livraisons non soldées, la
+  plus ancienne et l'état du chef ; la sonde `EventEngineHealthCheck` de `lyxal_runtime` passe
+  à « dégradé » quand un hôte a des livraisons de plus de 5 minutes sans chef vivant.
+* **Changement d'hôte** : `fn::event_subscription_transfer` (exploitation) déplace
+  l'abonnement et ses livraisons non soldées vers un autre hôte, curseur et numéros conservés ;
+  refusé (`EVENT_HOST_ACTIVE`) tant que le bail de l'ancien hôte est vivant. Pas de bascule
+  automatique.
 
 * **Prise** : `fn::event_lease_acquire` réussit si le bail est libre, expiré ou libéré ; la
   `generation` augmente à chaque prise.
@@ -65,10 +82,13 @@ Un seul worker distribue à la fois : celui qui détient le bail
   `fn::event_lease_renew` toutes les `lease_renew_interval`. Un échec met fin au terme : le
   jeton d'annulation du terme est annulé et toutes les files sont abandonnées.
 * **Fencing** : les fonctions qui écrivent dans le flux (`assign_seq`, `flush_batch`,
-  `dead_letter_transfer`) commencent par une écriture conditionnelle sur le bail : même nœud,
-  même génération, bail non libéré, non expiré. Sinon elles lèvent `EVENT_STALE_LEADER_FENCED`
-  et toute la transaction est annulée. Un ancien leader ne peut donc rien écrire après avoir
-  perdu son bail.
+  `dead_letter_transfer`) commencent par une écriture conditionnelle sur le bail de l'hôte :
+  même nœud, même génération, bail non libéré, non expiré. Sinon elles lèvent
+  `EVENT_STALE_LEADER_FENCED` et toute la transaction est annulée. Un ancien leader ne peut donc
+  rien écrire après avoir perdu son bail.
+* **Propriété** : dans la même transaction, elles vérifient que l'abonnement (ou, pour la dead
+  letter, la livraison) appartient à l'hôte du bail ; sinon `EVENT_SUBSCRIPTION_NOT_OWNED`, sans
+  autre écriture. Le chef d'un hôte n'écrit jamais dans le flux d'un autre hôte.
 * **Arrêt propre** : le worker enregistre une dernière fois les résolutions déjà acquittées,
   puis libère le bail (`fn::event_lease_release`) pour qu'un autre nœud le reprenne sans
   attendre l'expiration.
@@ -108,7 +128,8 @@ Un seul worker distribue à la fois : celui qui détient le bail
   jamais inventée.
 * **Rejeu** : `fn::event_dead_letter_replay` remet la livraison en attente sans séquence ; elle
   en reçoit une nouvelle en fin de flux. Refusé tant que le curseur ne couvre pas l'ancienne
-  séquence (`EVENT_DEAD_LETTER_REPLAY_NOT_SETTLED`).
+  séquence (`EVENT_DEAD_LETTER_REPLAY_NOT_SETTLED`). La livraison rejouée prend l'hôte courant
+  de son abonnement (changé peut-être depuis la dead letter).
 
 ---
 
@@ -118,7 +139,8 @@ Un seul worker distribue à la fois : celui qui détient le bail
   `last_persisted_cursor`.
 * Une livraison en cours au moment du crash garde son verrou (`locked_until`, 30 s par
   défaut). À son expiration, le nouveau leader la récupère et la reverrouille **avec sa
-  séquence d'origine**, puis la redistribue. Le handler peut donc la recevoir deux fois : il
+  séquence d'origine**, puis la redistribue. Un autre nœud du même hôte reprend le bail à son
+  expiration ; les livraisons des autres hôtes ne sont pas concernées. Le handler peut donc la recevoir deux fois : il
   doit être idempotent.
 * Les acquittements reçus mais pas encore enregistrés sont perdus avec le processus : ces
   livraisons sont relivrées (at-least-once).
@@ -139,7 +161,7 @@ livraison n'est pas encore livrée.
 | Composant | Fichier | Rôle |
 | :--- | :--- | :--- |
 | `EventWorker` | `src/worker/worker.rs` | Boucle du leader : bail, récupération, files par abonnement, arrêt propre. |
-| `OutboxLeaseManager` | `src/engine/lease.rs` | Bail, génération, jeton d'annulation par terme. |
+| `OutboxLeaseManager` | `src/engine/lease.rs` | Bail de l'hôte, génération, jeton d'annulation par terme. |
 | `OutboxFeeder` | `src/engine/feeder.rs` | Séquencement, reprise du curseur, résolution des ACK / NACK, dead letters. |
 | `ReliableDispatcher`, `DispatchWindow` | `src/engine/dispatcher.rs`, `dispatch_window.rs` | Fenêtre des messages en vol, curseur contigu, délais d'ACK, retries. |
 | `HandlerConsumerBridge` | `src/engine/consumer_bridge.rs` | Exécution supervisée des handlers (délai, panique, annulation). |

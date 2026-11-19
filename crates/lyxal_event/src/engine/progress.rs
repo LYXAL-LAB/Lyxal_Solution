@@ -94,6 +94,7 @@ pub(crate) async fn conflict_backoff(attempt: u32) {
 pub struct SubscriptionProgressTracker {
     client: Surreal<Any>,
     subscription: RecordId,
+    host: String,
     node_id: String,
     generation: Arc<AtomicU64>,
     lease_cancellation: CancellationToken,
@@ -121,10 +122,12 @@ impl LyxalSurrealCall for SubscriptionProgressTracker {
 }
 
 impl SubscriptionProgressTracker {
-    /// Crée un nouveau tracker de progression pour un abonnement donné.
+    /// Crée un nouveau tracker de progression pour un abonnement de l'hôte `host`, écrit sous
+    /// le bail de cet hôte par le nœud `node_id`.
     pub fn new(
         client: Surreal<Any>,
         subscription: RecordId,
+        host: impl Into<String>,
         node_id: impl Into<String>,
         generation: Arc<AtomicU64>,
         lease_cancellation: CancellationToken,
@@ -132,6 +135,7 @@ impl SubscriptionProgressTracker {
         Self {
             client,
             subscription,
+            host: host.into(),
             node_id: node_id.into(),
             generation,
             lease_cancellation,
@@ -203,6 +207,7 @@ impl SubscriptionProgressTracker {
         let params = DeadLetterTransferParams {
             delivery_id: delivery_id.clone(),
             error: bounded_error_message(error_msg),
+            host: self.host.clone(),
             node_id: self.node_id.clone(),
             generation: gen,
         };
@@ -281,6 +286,7 @@ impl SubscriptionProgressTracker {
         let params = FlushBatchParams {
             subscription: self.subscription.clone(),
             target_cursor,
+            host: self.host.clone(),
             node_id: self.node_id.clone(),
             generation: gen,
             delivered_ids: self.delivered_ids.clone(),
@@ -396,7 +402,8 @@ mod tests {
         let client = surrealdb::engine::any::connect("mem://").await.unwrap();
         let cancel = CancellationToken::new();
         let gen = Arc::new(AtomicU64::new(1));
-        let mut tracker = SubscriptionProgressTracker::new(client, sub(), "test_node", gen, cancel);
+        let mut tracker =
+            SubscriptionProgressTracker::new(client, sub(), "test_host", "test_node", gen, cancel);
 
         assert_eq!(tracker.last_persisted_cursor(), 0);
         assert_eq!(tracker.pending_resolutions_count(), 0);
@@ -424,8 +431,14 @@ mod tests {
         let client = surrealdb::engine::any::connect("mem://").await.unwrap();
         let cancel = CancellationToken::new();
         let gen = Arc::new(AtomicU64::new(1));
-        let mut tracker =
-            SubscriptionProgressTracker::new(client, sub(), "test_node", gen, cancel.clone());
+        let mut tracker = SubscriptionProgressTracker::new(
+            client,
+            sub(),
+            "test_host",
+            "test_node",
+            gen,
+            cancel.clone(),
+        );
 
         cancel.cancel(); // Simulate lease revocation
 

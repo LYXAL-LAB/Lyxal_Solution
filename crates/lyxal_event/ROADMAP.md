@@ -8,6 +8,17 @@ l'objet d'un `implementation_plan.md` validé par le CTO avant tout développeme
 
 ---
 
+## Prochaine étape — plusieurs handlers d'un même type dans un même hôte
+
+- [ ] Deux modules d'un **même** hôte qui écoutent le même type d'événement : le registre de
+  handlers d'un processus n'accepte qu'un handler par type (`HandlerRegistry::register` refuse
+  le second, `DuplicateHandler`) et le champ `handler_name` de l'abonnement ne sert pas au choix
+  du handler. Plusieurs hôtes écoutant un même type fonctionnent déjà (un abonnement par hôte).
+  À lever avant le premier cas dans `lyxal-groupware` (décision H9 (a) du plan « plusieurs
+  hôtes sur une même base », `crates/lyxal_runtime/implementation_plan.md`).
+
+---
+
 ## Phase V2 — Observabilité, métriques et exploitation de la dead letter
 
 ### Métriques
@@ -30,7 +41,9 @@ l'objet d'un `implementation_plan.md` validé par le CTO avant tout développeme
 
 ### Alertes
 
-- [ ] Alerte si les livraisons en attente dépassent un seuil pendant une durée donnée.
+- [ ] Alerte si les livraisons en attente d'un hôte **dont le chef est vivant** dépassent un
+  seuil pendant une durée donnée (l'hôte sans chef est déjà signalé par la sonde
+  `EventEngineHealthCheck`).
 - [ ] Alerte à chaque nouvel événement en dead letter.
 
 ---

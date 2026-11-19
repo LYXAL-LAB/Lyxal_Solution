@@ -126,14 +126,31 @@ Un type d'événement ne peut avoir qu'un handler par registre.
 
 ### 2.3. Déclarer l'abonnement persistant
 
-Sans abonnement, le fan-out ne crée aucune livraison. Le module consommateur déclare le sien
-dans ses seeds, sans écraser un abonnement déjà réglé :
+Sans abonnement, le fan-out ne crée aucune livraison. Un abonnement appartient à l'**hôte** qui
+porte le handler (rôle du binaire, par exemple `lyxal_server`) : seul le chef des événements de
+cet hôte livrera ses événements. Il est déclaré par cet hôte, sans écraser un abonnement déjà
+réglé. En Rust, depuis l'hôte (`apps/lyxal-server/src/modules/`) :
+
+```rust
+event_store
+    .register_subscription(&EventSubscription::new(
+        "billing_mail_on_invoice_issued",
+        "lyxal_billing_mail",
+        "billing.invoice.issued",
+        "billing_mail.invoice_mailer",
+        HOST_ID,
+    ))
+    .await?;
+```
+
+ou en SurrealQL :
 
 ```surql
 IF array::len(SELECT id FROM event_subscription WHERE name = "billing_mail_on_invoice_issued") == 0 {
     LET $registered = fn::event_subscription_register({
         name: "billing_mail_on_invoice_issued",
         target_module: "lyxal_billing_mail",
+        host: "lyxal_server",
         event_pattern: "billing.invoice.issued",
         handler_name: "InvoiceMailer",
         max_attempts: 5
@@ -144,6 +161,9 @@ IF array::len(SELECT id FROM event_subscription WHERE name = "billing_mail_on_in
 };
 ```
 
+* `host` : hôte qui porte le handler, obligatoire. Un abonnement déjà enregistré par un autre
+  hôte est refusé (`EVENT_SUBSCRIPTION_HOST_CONFLICT`) ; un même type écouté par deux hôtes passe
+  par deux abonnements de noms différents.
 * `event_pattern` : type exact, préfixe (`billing.*`) ou `*`.
 * `max_attempts` : nombre d'envois d'une livraison avant dead letter (1 à 100).
 * Une livraison n'est créée que pour les événements publiés **après** l'enregistrement de
@@ -155,6 +175,10 @@ IF array::len(SELECT id FROM event_subscription WHERE name = "billing_mail_on_in
 
 * **Dead letters** : `fn::event_dead_letter_list` les liste ; `fn::event_dead_letter_replay`
   rejoue une livraison une fois la cause corrigée.
+* **Hôte arrêté** : ses livraisons attendent son retour. `fn::event_backlog` donne l'attente
+  par hôte et l'état de son chef ; la sonde `lyxal_event` du runtime passe à « dégradé » après
+  5 minutes. Pour confier durablement un abonnement à un autre hôte, ancien hôte arrêté :
+  `fn::event_subscription_transfer({ name, host })`.
 * **Purge** : `fn::event_purge_garbage({ retention_days })`, ou le service
   `EventGarbageCollectorService` du runtime.
 * **Métriques** : `EventWorker::metrics()` (livraisons envoyées, acquittées, en échec, en dead

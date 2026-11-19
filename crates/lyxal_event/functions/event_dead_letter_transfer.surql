@@ -17,6 +17,7 @@ DEFINE FUNCTION OVERWRITE fn::event_dead_letter_transfer(
     LET $checks = {
         delivery_id: fn::validation_record_id($params.delivery_id, ["event_delivery"]),
         error: fn::validation_required_string($params.error, 1, 4000),
+        host: fn::validation_regex($params.host, "^[a-z][a-z0-9_]{0,63}$"),
         node_id: fn::validation_required_string($params.node_id, 1, 128),
         generation: fn::validation_integer($params.generation, 1, NONE),
         language: fn::validation_language_code($params.language ?? "fr", false, NONE)
@@ -28,11 +29,13 @@ DEFINE FUNCTION OVERWRITE fn::event_dead_letter_transfer(
     LET $p = object::from_entries(array::map(object::entries($checks), |$e| [$e[0], $e[1].value]));
     LET $delivery_id = $p.delivery_id;
     LET $error_msg = $p.error;
+    LET $host = $p.host;
     LET $node_id = $p.node_id;
     LET $generation = $p.generation;
 
     LET $now = time::now();
-    LET $lease_rec = event_stream_lease:outbox_leader;
+    -- Bail du chef des événements de cet hôte (un bail par hôte)
+    LET $lease_rec = type::record("event_stream_lease", $host);
 
     -- 1. Garde transactionnelle de Fencing (Écriture conditionnelle sur le bail)
     LET $guard = (
@@ -54,6 +57,17 @@ DEFINE FUNCTION OVERWRITE fn::event_dead_letter_transfer(
     LET $del = (SELECT * FROM ONLY $delivery_id);
     IF $del == NONE {
         THROW "EVENT_DELIVERY_NOT_FOUND";
+    };
+
+    -- Contrôle de propriété, dans la même transaction que la garde : la livraison appartient à
+    -- l'hôte de ce bail (hôte inscrit sur la livraison, qui reste le sien quand l'abonnement a
+    -- été supprimé)
+    IF $del.host != $host {
+        RETURN fn::error_result("EVENT_SUBSCRIPTION_NOT_OWNED", $params.language, {
+            delivery: <string> $delivery_id,
+            host: $host,
+            owner_host: $del.host
+        });
     };
 
     -- 3. Construction de la clé DLQ déterministe
@@ -94,6 +108,6 @@ DEFINE FUNCTION OVERWRITE fn::event_dead_letter_transfer(
         dead_lettered: true,
         dlq_id: <string> $dlq_id
     });
-} COMMENT "Transfère une livraison en dead-letter de façon atomique et strictement idempotente."
+} COMMENT "Transfère une livraison en dead-letter ({ delivery_id, error, host, node_id, generation }) de façon atomique et strictement idempotente, sous la garde du bail de l'hôte (EVENT_STALE_LEADER_FENCED) ; livraison d'un autre hôte : EVENT_SUBSCRIPTION_NOT_OWNED."
 PERMISSIONS FULL;
 

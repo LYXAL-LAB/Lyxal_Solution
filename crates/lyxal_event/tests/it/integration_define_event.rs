@@ -49,6 +49,7 @@ async fn test_surrealdb_define_event_triggers_lyxal_event() {
         "lyxal_notification",
         "booking.created",
         "send_email",
+        common::HOST,
     );
     store.register_subscription(&sub).await.unwrap();
 

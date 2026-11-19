@@ -40,6 +40,8 @@ functions = [
     "functions/event_delivery_failure.surql",
     "functions/event_purge_garbage.surql",
     "functions/event_subscription_register.surql",
+    "functions/event_subscription_transfer.surql",
+    "functions/event_backlog.surql",
     "functions/event_outbox_get.surql",
     "functions/event_delivery_get.surql",
     "functions/event_dead_letter_list.surql",

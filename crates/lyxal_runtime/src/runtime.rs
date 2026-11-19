@@ -8,7 +8,8 @@ use crate::event::filter::RuntimeEventFilter;
 use crate::event::journal::RuntimeEventJournal;
 use crate::event::subscription::RuntimeEventSubscription;
 use crate::event_engine::{
-    EventConsumerModule, EventEngineConfig, EventGarbageCollectorService, EventWorkerService,
+    EventConsumerModule, EventEngineConfig, EventEngineHealthCheck, EventGarbageCollectorService,
+    EventWorkerService,
 };
 use crate::health::engine::{HealthConfig, HealthEngine};
 use crate::health::registry::HealthRegistry;
@@ -98,6 +99,8 @@ impl LyxalRuntime {
             WorkerSupervisor::new(worker_registry.clone(), node_id.clone())
                 .with_event_bus(event_bus.clone()),
         );
+        // Le moteur d'événements sert l'hôte du runtime
+        let event_config = EventEngineConfig::new(&config.host);
 
         Self {
             registry: Arc::new(ModuleRegistry::new()),
@@ -114,7 +117,7 @@ impl LyxalRuntime {
             worker_supervisor,
             worker_store: None,
             event_bus,
-            event_config: EventEngineConfig::default(),
+            event_config,
             event_registry: Arc::new(RwLock::new(HandlerRegistry::new())),
             event_consumers: Arc::new(RwLock::new(Vec::new())),
             event_store: None,
@@ -440,8 +443,19 @@ impl LyxalRuntime {
             }
         }
 
-        // 4. Instanciation du LYXAL Event Worker unique
+        // 4. Instanciation du LYXAL Event Worker unique, chef des événements de l'hôte du runtime :
+        //    une configuration construite pour un autre hôte est refusée (le worker servirait les
+        //    abonnements d'un autre binaire)
         let worker_config = self.event_config.worker_config.clone();
+        if worker_config.host != self.config.host.as_str() {
+            return Err(RuntimeError::EventEngineError {
+                message: format!(
+                    "le moteur d'événements est configuré pour l'hôte {} au lieu de l'hôte du runtime {}",
+                    worker_config.host,
+                    self.config.host.as_str()
+                ),
+            });
+        }
         let event_worker = Arc::new(EventWorker::new(
             store.clone(),
             registry,
@@ -463,6 +477,13 @@ impl LyxalRuntime {
             std::time::Duration::from_secs(5),
         )?);
         self.worker_registry.register(gc_service)?;
+
+        // Sonde de lyxal_event : hôtes dont les livraisons attendent sans chef vivant
+        self.health_registry
+            .register_check(Arc::new(EventEngineHealthCheck::new(
+                store.clone(),
+                self.event_config.backlog_alert_after,
+            )))?;
         self.event_workers_registered.store(true, Ordering::SeqCst);
 
         Ok(())

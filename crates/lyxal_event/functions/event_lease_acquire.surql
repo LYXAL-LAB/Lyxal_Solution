@@ -1,7 +1,8 @@
 -- ============================================================================
 -- Function   : fn::event_lease_acquire
 -- Module     : lyxal_event
--- Description: Tente d'acquérir le bail de streaming outbox pour le nœud demandeur.
+-- Description: Tente d'acquérir le bail du chef des événements d'un hôte
+--              (event_stream_lease:<hôte>) pour le nœud demandeur.
 --              Garantit l'attribution d'une génération monotone strictement croissante
 --              en cas de reprise de bail expiré ou libéré.
 -- Contrat    : Retourne fn::result_ok({ acquired: bool, generation: int, owner_node_id: string, expires_at: datetime })
@@ -15,6 +16,7 @@ DEFINE FUNCTION OVERWRITE fn::event_lease_acquire(
     -- par fn::validation_object_execute, dont le coût par appel pèserait sur le débit
     -- (décision CTO, reprise lyxal_event).
     LET $checks = {
+        host: fn::validation_regex($params.host, "^[a-z][a-z0-9_]{0,63}$"),
         node_id: fn::validation_required_string($params.node_id, 1, 128),
         ttl_seconds: fn::validation_integer(($params.ttl_seconds ?? 6), 1, 3600),
         language: fn::validation_language_code($params.language ?? "fr", false, NONE)
@@ -24,12 +26,14 @@ DEFINE FUNCTION OVERWRITE fn::event_lease_acquire(
         RETURN fn::error_result("EVENT_INVALID_PARAMETERS", $params.language, { fields: $invalid });
     };
     LET $p = object::from_entries(array::map(object::entries($checks), |$e| [$e[0], $e[1].value]));
+    LET $host = $p.host;
     LET $node_id = $p.node_id;
     LET $ttl_seconds = $p.ttl_seconds;
 
     LET $now = time::now();
     LET $new_expiry = $now + <duration> string::concat($ttl_seconds, "s");
-    LET $lease_rec = event_stream_lease:outbox_leader;
+    -- Bail du chef des événements de cet hôte (un bail par hôte)
+    LET $lease_rec = type::record("event_stream_lease", $host);
 
     LET $lease = (SELECT * FROM ONLY $lease_rec);
 
@@ -37,6 +41,7 @@ DEFINE FUNCTION OVERWRITE fn::event_lease_acquire(
     IF $lease == NONE {
         LET $created = (
             CREATE $lease_rec CONTENT {
+                host: $host,
                 generation: 1,
                 owner_node_id: $node_id,
                 acquired_at: $now,
@@ -45,14 +50,16 @@ DEFINE FUNCTION OVERWRITE fn::event_lease_acquire(
                 is_released: false
             }
         );
-        IF array::len($created) > 0 {
-            RETURN fn::result_ok({
-                acquired: true,
-                generation: 1,
-                owner_node_id: $node_id,
-                expires_at: $new_expiry
-            });
+        -- Écriture filtrée (session sans droit sur la table) : jamais de bail annoncé
+        IF array::len($created) == 0 {
+            RETURN fn::error_result("EVENT_WRITE_FORBIDDEN", $params.language, { table: "event_stream_lease" });
         };
+        RETURN fn::result_ok({
+            acquired: true,
+            generation: 1,
+            owner_node_id: $node_id,
+            expires_at: $new_expiry
+        });
     };
 
     -- 2. Cas ré-acquisition par le même nœud encore valide
@@ -99,5 +106,5 @@ DEFINE FUNCTION OVERWRITE fn::event_lease_acquire(
         owner_node_id: $lease.owner_node_id,
         expires_at: $lease.expires_at
     });
-} COMMENT "Tente d'acquérir le bail exclusif de streaming outbox avec incrément de génération."
+} COMMENT "Tente d'acquérir le bail du chef des événements de l'hôte demandé ({ host, node_id, ttl_seconds }) avec incrément de génération ; les baux des autres hôtes ne sont pas touchés."
 PERMISSIONS FULL;

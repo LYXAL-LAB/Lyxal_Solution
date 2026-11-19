@@ -58,9 +58,10 @@ impl From<LyxalSurrealError> for LeaseError {
     }
 }
 
-/// Gestionnaire de bail distribué pour le streaming outbox de Lyxal OS.
+/// Gestionnaire du bail du chef des événements d'un hôte (`event_stream_lease:<hôte>`).
 pub struct OutboxLeaseManager {
     client: Surreal<Any>,
+    host: String,
     node_id: String,
     ttl: Duration,
     pub(crate) generation: Arc<AtomicU64>,
@@ -78,10 +79,16 @@ impl LyxalSurrealCall for OutboxLeaseManager {
 }
 
 impl OutboxLeaseManager {
-    /// Crée une nouvelle instance du gestionnaire de bail.
-    pub fn new(client: Surreal<Any>, node_id: impl Into<String>, ttl: Duration) -> Self {
+    /// Crée le gestionnaire du bail de l'hôte `host` pour le nœud `node_id`.
+    pub fn new(
+        client: Surreal<Any>,
+        host: impl Into<String>,
+        node_id: impl Into<String>,
+        ttl: Duration,
+    ) -> Self {
         Self {
             client,
+            host: host.into(),
             node_id: node_id.into(),
             ttl,
             generation: Arc::new(AtomicU64::new(0)),
@@ -95,6 +102,11 @@ impl OutboxLeaseManager {
     pub fn set_leader_for_test(&self, is_leader: bool, generation: u64) {
         self.is_leader.store(is_leader, Ordering::SeqCst);
         self.generation.store(generation, Ordering::SeqCst);
+    }
+
+    /// Hôte dont ce gestionnaire tient le bail.
+    pub fn host(&self) -> &str {
+        &self.host
     }
 
     /// Identifiant unique du nœud local.
@@ -123,6 +135,7 @@ impl OutboxLeaseManager {
     /// Tente d'acquérir le leadership via la fonction SurrealQL canonique `fn::event_lease_acquire`.
     pub async fn acquire_lease(&self) -> Result<bool, LeaseError> {
         let params = LeaseAcquireParams {
+            host: self.host.clone(),
             node_id: self.node_id.clone(),
             ttl_seconds: self.ttl.as_secs().max(1),
         };
@@ -133,6 +146,7 @@ impl OutboxLeaseManager {
             self.generation.store(result.generation, Ordering::SeqCst);
             self.is_leader.store(true, Ordering::SeqCst);
             info!(
+                host = %self.host,
                 node_id = %self.node_id,
                 generation = result.generation,
                 "Bail de streaming outbox acquis avec succès"
@@ -160,6 +174,7 @@ impl OutboxLeaseManager {
 
         let current_gen = self.current_generation();
         let params = LeaseRenewParams {
+            host: self.host.clone(),
             node_id: self.node_id.clone(),
             generation: current_gen,
             ttl_seconds: self.ttl.as_secs().max(1),
@@ -192,6 +207,7 @@ impl OutboxLeaseManager {
         }
 
         let params = LeaseReleaseParams {
+            host: self.host.clone(),
             node_id: self.node_id.clone(),
             generation: current_gen,
         };
@@ -252,7 +268,8 @@ mod tests {
     #[tokio::test]
     async fn test_lease_manager_initial_state() {
         let client = surrealdb::engine::any::connect("mem://").await.unwrap();
-        let manager = OutboxLeaseManager::new(client, "test_node_1", Duration::from_secs(5));
+        let manager =
+            OutboxLeaseManager::new(client, "test_host", "test_node_1", Duration::from_secs(5));
 
         assert_eq!(manager.node_id(), "test_node_1");
         assert_eq!(manager.current_generation(), 0);
@@ -263,7 +280,8 @@ mod tests {
     #[tokio::test]
     async fn test_lease_manager_handle_lease_lost() {
         let client = surrealdb::engine::any::connect("mem://").await.unwrap();
-        let manager = OutboxLeaseManager::new(client, "test_node_1", Duration::from_secs(5));
+        let manager =
+            OutboxLeaseManager::new(client, "test_host", "test_node_1", Duration::from_secs(5));
 
         manager.is_leader.store(true, Ordering::SeqCst);
         manager.generation.store(42, Ordering::SeqCst);
@@ -277,7 +295,8 @@ mod tests {
     #[tokio::test]
     async fn test_lease_manager_cancellation_propagation() {
         let client = surrealdb::engine::any::connect("mem://").await.unwrap();
-        let manager = OutboxLeaseManager::new(client, "test_node_1", Duration::from_secs(5));
+        let manager =
+            OutboxLeaseManager::new(client, "test_host", "test_node_1", Duration::from_secs(5));
         let cancel = manager.cancellation_token();
 
         assert!(!cancel.is_cancelled());

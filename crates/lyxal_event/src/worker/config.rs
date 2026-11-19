@@ -2,8 +2,15 @@ use std::time::Duration;
 use uuid::Uuid;
 
 /// Configuration unifiée d'exécution du LYXAL Event Engine (`EventWorker`).
+///
+/// Construite par [`EventWorkerConfig::new`] : l'hôte est obligatoire, il n'y a pas de valeur par
+/// défaut (un worker sans hôte servirait les livraisons d'un autre binaire).
 #[derive(Debug, Clone)]
 pub struct EventWorkerConfig {
+    /// Hôte servi : rôle du binaire qui porte les handlers (ex. `lyxal_server`). Le worker ne
+    /// lit, ne numérote et ne solde que les livraisons des abonnements de cet hôte, sous le bail
+    /// `event_stream_lease:<hôte>`.
+    pub host: String,
     /// Identifiant unique du worker / nœud (pour le bail distribué).
     pub worker_id: String,
     /// Identifiant optionnel d'instance de cluster.
@@ -34,9 +41,13 @@ pub struct EventWorkerConfig {
     pub fanout_recovery_interval: Duration,
 }
 
-impl Default for EventWorkerConfig {
-    fn default() -> Self {
+impl EventWorkerConfig {
+    /// Configuration du worker de l'hôte `host`, avec les réglages par défaut (identifiant de
+    /// nœud tiré au sort, bail de 5 s renouvelé toutes les 2 s, lots de 50).
+    #[must_use]
+    pub fn new(host: impl Into<String>) -> Self {
         Self {
+            host: host.into(),
             worker_id: format!("event_worker_{}", Uuid::now_v7().simple()),
             instance_id: None,
             poll_interval: Duration::from_millis(100),
@@ -53,9 +64,7 @@ impl Default for EventWorkerConfig {
             fanout_recovery_interval: Duration::from_secs(5),
         }
     }
-}
 
-impl EventWorkerConfig {
     /// Définit un worker_id explicite.
     #[must_use]
     pub fn with_worker_id(mut self, id: impl Into<String>) -> Self {

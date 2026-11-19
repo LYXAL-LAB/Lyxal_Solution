@@ -52,6 +52,7 @@ async fn test_strict_multi_instance_isolation() {
         "lyxal_crypto",
         "tenant.secret_rotated",
         "notify_services",
+        common::HOST,
     );
     store.register_subscription(&sub).await.unwrap();
 

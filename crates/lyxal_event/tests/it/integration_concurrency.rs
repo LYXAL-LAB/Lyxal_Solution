@@ -67,6 +67,7 @@ async fn test_concurrent_workers_and_subscriptions_deliver_exactly_once() {
             format!("lyxal_consumer_{i}"),
             "benchmark.item",
             "handle_item",
+            common::HOST,
         );
         store.register_subscription(&sub).await.unwrap();
     }

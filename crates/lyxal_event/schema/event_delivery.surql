@@ -15,6 +15,10 @@ DEFINE FIELD OVERWRITE outbox_event ON TABLE event_delivery TYPE record<event_ou
 DEFINE FIELD OVERWRITE subscription ON TABLE event_delivery TYPE record<event_subscription>
     COMMENT "Référence à l'abonnement destinataire.";
 
+DEFINE FIELD OVERWRITE host ON TABLE event_delivery TYPE string
+    ASSERT string::matches($value, "^[a-z][a-z0-9_]{0,63}$")
+    COMMENT "Hôte de l'abonnement, recopié à la ventilation : seul le chef des événements de cet hôte lit et traite la livraison. Une livraison orpheline (abonnement supprimé) reste à cet hôte.";
+
 DEFINE FIELD OVERWRITE target_module ON TABLE event_delivery TYPE string
     COMMENT "Module consommateur cible recevant cette livraison.";
 
@@ -63,9 +67,9 @@ DEFINE FIELD OVERWRITE drop_reason ON TABLE event_delivery TYPE option<string>
 DEFINE FIELD OVERWRITE created_at ON TABLE event_delivery TYPE datetime DEFAULT time::now()
     COMMENT "Horodatage UTC de génération de la livraison (fan-out).";
 
--- Index d'éligibilité pour le claim par lot
+-- Index d'éligibilité pour la lecture par lot du chef d'un hôte (fn::event_delivery_fetch_pending)
 DEFINE INDEX OVERWRITE idx_delivery_claim_eligibility ON TABLE event_delivery
-    COLUMNS status, next_retry_at;
+    COLUMNS host, status, next_retry_at;
 
 -- Unicité de distribution strictement (outbox_event, subscription)
 DEFINE INDEX OVERWRITE idx_delivery_unique_fanout ON TABLE event_delivery

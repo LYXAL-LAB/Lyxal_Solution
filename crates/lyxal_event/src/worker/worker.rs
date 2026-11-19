@@ -93,13 +93,17 @@ impl EventWorker {
     /// Démarre la boucle de traitement supervisée jusqu'à annulation du CancellationToken.
     pub async fn run(&self, cancel: CancellationToken) -> Result<(), LyxalEventError> {
         info!(
+            host = %self.config.host,
             worker_id = %self.config.worker_id,
             "LYXAL Event Worker démarré"
         );
 
         let client = self.store.client().clone();
+        // Bail du chef des événements de cet hôte : un chef par hôte, qui ne sert que les
+        // livraisons des abonnements de son hôte
         let lease_manager = Arc::new(OutboxLeaseManager::new(
             client.clone(),
+            &self.config.host,
             &self.config.worker_id,
             self.config.lease_ttl,
         ));
@@ -393,6 +397,7 @@ impl EventWorker {
                 "Livraison orpheline : abonnement {} introuvable",
                 rec.subscription.to_sql()
             ),
+            host: lease_manager.host().to_string(),
             node_id: lease_manager.node_id().to_string(),
             generation: lease_manager.current_generation(),
         };
@@ -499,6 +504,7 @@ impl EventWorker {
 
         // 2. Récupère les livraisons éligibles via la fonction canonique SurrealQL
         let params = crate::engine::dto::DeliveryFetchPendingParams {
+            host: self.config.host.clone(),
             limit: self.config.batch_size,
             instance_id: self.config.instance_id.clone(),
             subscription: None,

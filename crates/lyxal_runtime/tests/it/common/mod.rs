@@ -16,6 +16,11 @@ pub fn runtime_config() -> lyxal_runtime::RuntimeConfig {
     lyxal_runtime::RuntimeConfig::new(host(TEST_HOST))
 }
 
+/// Configuration du moteur d'événements d'un runtime de test, pour l'hôte `TEST_HOST`.
+pub fn event_config() -> lyxal_runtime::EventEngineConfig {
+    lyxal_runtime::EventEngineConfig::new(&host(TEST_HOST))
+}
+
 /// Base mémoire vierge et isolée.
 pub async fn blank_db(ns: &str, db: &str) -> surrealdb::Surreal<surrealdb::engine::any::Any> {
     let client = connect("mem://").await.expect("connect mem://");

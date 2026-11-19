@@ -230,6 +230,7 @@ async fn build_in_memory_harness(
 
     let lease = Arc::new(OutboxLeaseManager::new(
         client.clone(),
+        common::HOST,
         "node_test",
         Duration::from_secs(5),
     ));
@@ -933,6 +934,7 @@ async fn test_scenario_15_simulated_crash_recovery_from_durable_cursor() {
     let mut tracker = SubscriptionProgressTracker::new(
         client.clone(),
         RecordId::new("event_subscription", "sub_crash"),
+        common::HOST,
         "node_1".to_string(),
         gen.clone(),
         cancel.clone(),
@@ -953,6 +955,7 @@ async fn test_scenario_15_simulated_crash_recovery_from_durable_cursor() {
     let new_tracker = SubscriptionProgressTracker::new(
         client,
         RecordId::new("event_subscription", "sub_crash"),
+        common::HOST,
         "node_2".to_string(),
         gen,
         cancel,
@@ -1046,6 +1049,7 @@ async fn test_scenario_18_mvcc_conflict_resilience() {
     let mut tracker1 = SubscriptionProgressTracker::new(
         client.clone(),
         RecordId::new("event_subscription", "sub_mvcc"),
+        common::HOST,
         "node_1".to_string(),
         gen_node1,
         cancel.clone(),
@@ -1053,6 +1057,7 @@ async fn test_scenario_18_mvcc_conflict_resilience() {
     let mut tracker2 = SubscriptionProgressTracker::new(
         client,
         RecordId::new("event_subscription", "sub_mvcc"),
+        common::HOST,
         "node_2".to_string(),
         gen_node2,
         cancel,
