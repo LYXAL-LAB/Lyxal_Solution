@@ -88,7 +88,7 @@ impl LyxalWorker for ListenerWorker {
         tracing::info!(
             listener = %listener.id,
             protocol = %listener.protocol,
-            tls = listener.tls.as_str(),
+            tls = listener.tls.mode().as_str(),
             addresses = %addresses(&listener.local),
             "écoute démarrée"
         );

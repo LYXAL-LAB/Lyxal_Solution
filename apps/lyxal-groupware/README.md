@@ -11,10 +11,11 @@ seul binaire de Lyxal OS qui lie des crates AGPL (`lyxal_mail`) et porte du code
 (provenance : [`SOURCES.md`](SOURCES.md)). Aucun paquet sous licence permissive ne dépend de lui
 (contrôle `scripts/ci/check_agpl_isolation.py`).
 
-**État : lot 3 du programme courrier, partie 3b.** Aucun protocole n'existe encore : chaque port
-de courrier répond par un **refus poli et standard** (« service indisponible, réessayez plus
-tard ») puis ferme. TLS implicite, STARTTLS, PROXY protocol et rechargement des certificats
-arrivent avec la partie 3c ; d'ici là, seules des écoutes SMTP en clair sont permises. Feuille de
+**État : lot 3 du programme courrier (hôte et socle réseau) réalisé.** Aucun protocole n'existe
+encore : chaque port de courrier répond par un **refus poli et standard** (« service
+indisponible, réessayez plus tard ») puis ferme, en clair ou après la poignée de main TLS selon
+l'écoute. L'hôte offre aux protocoles à venir le TLS implicite, la mise à niveau STARTTLS, le
+PROXY protocol, des certificats rechargés à chaud, les limites et le budget mémoire. Feuille de
 route : [`ROADMAP.md`](ROADMAP.md).
 
 Le démarrage commun aux hôtes (configuration en couches, base et refus de l'accès anonyme,
@@ -31,12 +32,14 @@ budget mémoire de [`lyxal_mail::net`](../../crates/lyxal_mail/README.md).
 2. Base : `connect_database` (même refus d'une base ouverte aux invités que `lyxal-server`).
 3. **Liaison de tous les ports avant toute installation** : chaque adresse de chaque écoute,
    puis le port HTTP. Un port indisponible arrête le démarrage (`GROUPWARE_BIND_FAILED`) :
-   rien n'est installé.
+   rien n'est installé. Puis chargement des certificats (§5) : un certificat illisible ou
+   invalide arrête aussi le démarrage (`GROUPWARE_TLS_CERTIFICATE_INVALID`).
 4. Runtime de l'hôte `lyxal_groupware` (nœud tiré au sort) : socle sous bail
    (`lyxal_core`, `lyxal_error`, schéma du runtime ; même empreinte que `lyxal-server` quand les
    deux binaires viennent du même commit), définitions `GROUPWARE_*` ; moteur d'événements de
    l'hôte (bail `event_stream_lease:lyxal_groupware`, aucun abonnement) ; sonde du socle ;
-   workers des écoutes et sonde de `lyxal_mail` ; `install_packages` ; `start_all`.
+   workers des écoutes, worker `mail.tls_reload` et sonde de `lyxal_mail` ; `install_packages` ;
+   `start_all`.
 5. Port HTTP de santé ; attente de SIGINT ou SIGTERM.
 
 Arrêt : santé « stopping » (`/ready` répond `503`, le répartiteur retire le nœud), puis
@@ -64,11 +67,12 @@ par `LYXAL_GROUPWARE__DATABASE__USERNAME` et `LYXAL_GROUPWARE__DATABASE__PASSWOR
 | Section | Réglages |
 | :--- | :--- |
 | `application` | `name`, `environment` |
-| `http` | `bind` (port de santé, `127.0.0.1:8090` par défaut : les routes ne demandent aucun jeton), `graceful_shutdown_seconds` |
+| `http` | `bind` (port de santé, `127.0.0.1:8090` par défaut : les routes ne demandent aucun jeton), `graceful_shutdown_seconds`, `tls` (`false` par défaut ; `true` : TLS avec les certificats de `[tls]`, ALPN `h2` et `http/1.1`), `proxy_networks` (en-tête PROXY exigé depuis ces réseaux, §5.3) |
 | `database` | `endpoint`, `namespace`, `database`, `connect_timeout_seconds` (même base que `lyxal-server`) |
 | `runtime` | délais d'installation, de démarrage et d'arrêt d'un module |
-| `limits` | voir §5 |
-| `[[listeners]]` | `id` (minuscules, chiffres, `_`, 32 caractères au plus, unique), `protocol` (`smtp`, `submission`, `imap`, `pop3`, `managesieve`), `bind` (une ou plusieurs adresses), `tls` (`none` ; `starttls` et `implicit` en 3c), `max_connections` (facultatif) |
+| `limits` | voir §6 |
+| `tls` | `default = { certificate, private_key }` (certificat par défaut), `[[tls.certificates]]` (`names`, `certificate`, `private_key`), `reload_interval_seconds` (60, de 5 à 86 400), `handshake_timeout_seconds` (30, de 1 à 300) ; voir §5 |
+| `[[listeners]]` | `id` (minuscules, chiffres, `_`, 32 caractères au plus, unique), `protocol` (`smtp`, `submission`, `imap`, `pop3`, `managesieve`), `bind` (une ou plusieurs adresses), `tls` (`none`, `starttls`, `implicit`), `tls_min_version` (`"1.2"` par défaut ou `"1.3"`, écoute chiffrée seulement), `proxy_networks` (réseaux des répartiteurs, §5.3), `max_connections` (facultatif) |
 | `observability` | `log_filter`, `json_logs`, `include_target`, `include_thread_ids`, `log_client_ip` (`network` par défaut, ou `full`) |
 
 Listes dans l'environnement (valeurs séparées par `,`) : `LIMITS__CONNECTIONS_PER_NETWORK`,
@@ -77,14 +81,15 @@ Listes dans l'environnement (valeurs séparées par `,`) : `LIMITS__CONNECTIONS_
 
 Validation au démarrage (`GROUPWARE_CONFIGURATION_INVALID`, réglage fautif nommé au journal) :
 identifiants d'écoute uniques et bien formés ; aucune adresse liée deux fois (port HTTP compris) ;
-au moins une adresse par écoute ; `tls = "none"` seulement, et seulement pour `smtp` (décision
-G7 : réception des autres serveurs, où STARTTLS reste facultatif) — les autres protocoles
-attendent le TLS (3c) ; réseaux lisibles ; bornes ci-dessous ; `drain_seconds` inférieur à
-`runtime.module_stop_timeout_seconds`.
+au moins une adresse par écoute ; modes TLS par protocole (§5.1) ; au moins un certificat
+déclaré dès qu'une écoute est chiffrée ; noms de certificat uniques et non vides ; réseaux
+lisibles ; bornes ci-dessous ; `drain_seconds` inférieur à `runtime.module_stop_timeout_seconds`.
 
-`default.toml` : port HTTP local, **aucune écoute de courrier**. `development.toml` : réception
-SMTP sur `127.0.0.1:2525`. `production.toml` : aucune écoute (le port 25 ne s'ouvre qu'au lot 5,
-avec la réception SMTP).
+`default.toml` : port HTTP local, **aucune écoute de courrier**. `development.toml` : les huit
+écoutes sur `127.0.0.1` et des ports non privilégiés (2525, 2587, 2465, 1143, 1993, 1110, 1995,
+4190), avec un certificat de développement **à fournir** (commande `openssl` en tête du
+fichier). `production.toml` : aucune écoute active ; exemples commentés (`[tls]`, port 25 au
+lot 5, 465 au lot 6, 993 derrière un répartiteur au lot 8).
 
 ## 4. Écoutes et acceptation
 
@@ -103,19 +108,88 @@ Pipeline, dans l'ordre :
 | Étape | Contrôle | Échec |
 | :- | :--- | :--- |
 | 1 | Plafond de l'écoute | fermeture immédiate, sans écriture |
-| 2 | `deny_networks`, puis `allow_networks` si non vide | refus `blocked` |
-| 3 | Sauf `exempt_networks` : connexions nouvelles par minute, puis connexions ouvertes, par réseau | refus `rate_limited` / `too_many_connections` |
-| 4 | Budget mémoire : réservation de base de la connexion | refus `memory_budget` |
-| 5 | Remise à la session du protocole (au lot 3 : refus « service indisponible ») | — |
+| 2 | PROXY : depuis un réseau de `proxy_networks`, en-tête v1 ou v2 exigé (§5.3) | fermeture, refus `proxy_header` compté |
+| 3 | `deny_networks`, puis `allow_networks` si non vide | refus `blocked` |
+| 4 | Sauf `exempt_networks` : connexions nouvelles par minute, puis connexions ouvertes, par réseau | refus `rate_limited` / `too_many_connections` |
+| 5 | Budget mémoire : réservation de base de la connexion | refus `memory_budget` |
+| 6 | TLS implicite : poignée de main sous délai | fermeture (alerte TLS envoyée par `rustls`) |
+| 7 | Remise à la session du protocole (au lot 3 : refus « service indisponible ») | — |
 
-Un refus écrit la ligne du protocole en clair (délai de 5 s) puis ferme : SMTP `421 4.7.0`
+Les étapes 3 et 4 s'appliquent à l'adresse du client : celle de l'en-tête PROXY s'il y en a un.
+
+Sur une écoute `none` ou `starttls`, un refus écrit la ligne du protocole en clair (délai de 5 s)
+puis ferme ; sur une écoute `implicit`, il ferme **sans** poignée de main (elle coûterait du
+calcul pour un client refusé) et sans écrire en clair. Lignes : SMTP `421 4.7.0`
 (limites, blocage) ou `421 4.3.2` (service indisponible, mémoire), IMAP `* BYE`, POP3 `-ERR`,
 ManageSieve `BYE`. Les lignes ne contiennent ni l'adresse du client ni le détail interne. Places,
 compteurs et réservations sont rendus à la fin de la connexion, quelle qu'en soit l'issue.
 Écriture bloquée (client qui ne lit plus) : connexion fermée après 60 s. Délais d'inactivité
 transmis aux sessions : SMTP 300 s, IMAP 1 800 s, POP3 600 s, ManageSieve 300 s.
 
-## 5. Limites (décisions G10, G11)
+## 5. TLS et PROXY
+
+### 5.1. Modes par écoute (décision G7)
+
+| Mode | Protocoles permis | Ports usuels |
+| :--- | :--- | :--- |
+| `implicit` (TLS dès la connexion, RFC 8314) | `submission`, `imap`, `pop3` | 465, 993, 995 |
+| `starttls` (mise à niveau en session, RFC 3207 et équivalents) | tous | 25, 587, 143, 110, 4190 |
+| `none` | `smtp` seulement (réception des autres serveurs, où STARTTLS reste facultatif pour l'expéditeur) | 25 |
+
+Une configuration `rustls::ServerConfig` par écoute chiffrée, construite par
+`lyxal_crypto::tls_server_config` seulement (règle 10 du §11.3 : fournisseur `aws-lc-rs`, TLS
+1.2 et 1.3 ou 1.3 seul selon `tls_min_version`, pas de 0-RTT, pas de certificat client), sur le
+**même** magasin de certificats pour toutes les écoutes ; poignée de main par
+`tokio_rustls::TlsAcceptor` (hôte seulement), sous `tls.handshake_timeout_seconds`. **ALPN** par
+écoute : `imap`, `pop3`, `managesieve` ; un client qui annonce un autre nom (par exemple `h2`)
+est refusé par une alerte TLS, ce qui bloque les attaques qui font passer une connexion d'un
+protocole vers un autre. SMTP et la soumission n'ont pas de nom ALPN enregistré : aucun n'est
+annoncé (un client sans ALPN est accepté partout).
+
+La session reçoit l'état TLS (`TlsState::Plain`, `Implicit` ou `Upgraded`, avec version, suite,
+nom SNI et ALPN). Sur une écoute `starttls`, `Session::start_tls(pending_input)` fait la mise à
+niveau (`HostTlsUpgrade`, même accepteur et même délai) ; **toute entrée déjà lue** après la
+commande STARTTLS est refusée (`NetError::PipelinedBeforeTls`, connexion fermée : injection de
+commandes en clair) ; sur une écoute `none`, ou une seconde fois, `NetError::TlsUnavailable`.
+
+### 5.2. Certificats (décision G8)
+
+Fichiers PEM lus par l'hôte (`lyxal_crypto` ne lit aucun fichier) : un certificat par défaut
+(client sans SNI, nom inconnu, adresse IP) et des certificats par nom (nom exact ou joker d'un
+niveau, `*.exemple.fr`), chaîne de 64 Kio et clé de 16 Kio au plus, clé non chiffrée. Un
+certificat qui ne couvre pas un de ses noms est refusé. **Le fichier de clé ne doit être lisible
+ni par le groupe ni par les autres comptes** (mode `& 0o077` nul, Unix ; liens symboliques suivis,
+ceux de certbot compris) ; la clé est lue dans un `SecretBytes` et n'apparaît jamais au journal.
+
+Le worker `lyxal_mail:mail.tls_reload` (criticité `Optional`) relit les fichiers toutes les
+`tls.reload_interval_seconds` ; un couple (chaîne, clé) dont l'empreinte BLAKE3 a changé est
+rechargé et **remplace l'ancien à chaud** : les nouvelles poignées de main voient le nouveau
+certificat, les connexions ouvertes gardent l'ancien. Un couple invalide (fichier illisible,
+PEM faux, clé qui ne correspond pas, nom non couvert, droits trop larges) est **ignoré** :
+l'ancien reste en service, l'erreur est journalisée avec le code
+`GROUPWARE_TLS_CERTIFICATE_INVALID` à chaque relecture, et la sonde passe à « dégradé » jusqu'au
+prochain passage sans erreur. Pas de signal `SIGHUP` (un seul mécanisme). Certificats du
+coffre-fort et ACME : lot 13.
+
+### 5.3. PROXY protocol (décision G9)
+
+Derrière un répartiteur de charge (HAProxy, répartiteur d'un hébergeur), `proxy_networks` déclare
+ses réseaux par écoute. Depuis ces réseaux, l'en-tête PROXY v1 (texte) ou v2 (binaire) est
+**exigé**, lu par `proxy-header` sous `limits.proxy_header_timeout_seconds` (5 s, de 1 à 60) ;
+absent, illisible, hors délai ou d'un transport autre que TCP : fermeture. Ailleurs, il n'est
+**jamais lu** (un client ne choisit pas son adresse : l'en-tête reste une donnée du protocole).
+L'adresse source de l'en-tête devient l'adresse du client (`ConnectionInfo.remote`,
+`via_proxy = true`), sur laquelle s'appliquent listes et limites ; la destination devient
+l'adresse locale ; une IPv4 transportée en IPv6 est ramenée à l'IPv4. En-tête `LOCAL` ou
+`UNKNOWN` (sonde du répartiteur) : adresse de la connexion gardée. Le PROXY se place avant le TLS
+(répartiteur en mode TCP).
+
+Le port HTTP suit la même règle avec `http.proxy_networks`, puis la poignée de main TLS si
+`http.tls` (`lyxal_host::http::serve_prepared`) ; l'adresse de l'en-tête est celle que voient
+les routes. `X-Forwarded-For` n'est pas lu : les routes de santé n'utilisent pas l'adresse du
+client (proxys de confiance du port HTTP : avec les routes du DAV et de JMAP, lot 15).
+
+## 6. Limites (décisions G10, G11)
 
 | Réglage | Défaut | Bornes |
 | :--- | -: | :--- |
@@ -126,6 +200,7 @@ transmis aux sessions : SMTP 300 s, IMAP 1 800 s, POP3 600 s, ManageSieve 300 s.
 | `memory_budget_bytes` | 512 Mio | 64 Mio au moins |
 | `connection_base_bytes` | 64 Kio | 4 Kio à 16 Mio |
 | `drain_seconds` | 30 | 1 à 300 |
+| `proxy_header_timeout_seconds` | 5 | 1 à 60 |
 
 Le budget a deux classes (réception SMTP, lecture), chacune gardant un quart du budget : les
 connexions réservent dans la classe « lecture », soit trois quarts du budget au plus.
@@ -134,22 +209,27 @@ connexions réservent dans la classe « lecture », soit trois quarts du budget 
 nœud. Avec plusieurs nœuds derrière un répartiteur, les limites s'additionnent. Bannissement
 automatique et liste de blocage en base : lot 5.
 
-## 6. Santé, mesures, journal
+## 7. Santé, mesures, journal
 
 * Port HTTP (`127.0.0.1:8090` par défaut) : `/live` (`204`), `/ready` (`204`, `503` au démarrage
   et à l'arrêt), `/health` (`host` : composants `groupware`, `database`, `http` ; `modules` :
   sondes du runtime, sans message interne ; `503` si un module est en panne) — mêmes routes que
   `lyxal-server`, par `lyxal_host` ; `/metrics` (JSON) : par écoute, connexions servies,
-  ouvertes, plafond, refus par raison, sessions en échec, erreurs d'acceptation ; budget mémoire
-  utilisé ; réseaux suivis. Aucune adresse IP.
-* Sonde `MailListenersHealthCheck` (`lyxal_mail`) : « dégradé » au-delà de 90 % du budget mémoire
-  ou du plafond d'une écoute ; « malade » porté par la supervision des workers.
+  ouvertes, plafond, refus par raison (en-têtes PROXY refusés compris), connexions venues par
+  PROXY, poignées de main TLS en échec, sessions en échec, erreurs d'acceptation ; budget mémoire
+  utilisé ; réseaux suivis ; certificats (nombre, rechargements réussis et refusés, état
+  « dégradé »). Aucune adresse IP.
+* Sonde `MailListenersHealthCheck` (`lyxal_mail`) : « dégradé » si le dernier rechargement des
+  certificats a échoué, au-delà de 90 % du budget mémoire ou du plafond d'une écoute ; « malade »
+  porté par la supervision des workers.
 * Journal (décision G13) : écoute démarrée et arrêtée (adresses locales, protocole, mode TLS),
-  refus (raison et **réseau masqué** : IPv4 `/24`, IPv6 `/48`, par `lyxal_host::net::log_network`).
+  refus (raison et **réseau masqué** : IPv4 `/24`, IPv6 `/48`, par `lyxal_host::net::log_network`),
+  poignée de main en échec (catégorie de l'erreur, réseau masqué), certificat chargé ou rechargé
+  (noms couverts, empreinte BLAKE3 de la chaîne, jamais la clé).
   L'adresse complète n'est écrite qu'au niveau `debug` et avec `log_client_ip = "full"`. Jamais
   d'adresse e-mail, d'identifiant, de contenu ni d'octets reçus.
 
-## 7. Erreurs (`error/groupware.surql`)
+## 8. Erreurs (`error/groupware.surql`)
 
 Master data rejouable (`IF !record::exists(...) THEN (CREATE ...) END;`), traductions fr / en,
 installées avec le socle (hors empreinte du socle), contrôlées contre `src/error.rs` par un test :
@@ -160,14 +240,14 @@ installées avec le socle (hors empreinte du socle), contrôlées contre `src/er
 | `GROUPWARE_DATABASE_UNAVAILABLE` | Base injoignable ou sonde en échec |
 | `GROUPWARE_MODULE_INSTALL_FAILED` | Installation d'un module hébergé impossible |
 | `GROUPWARE_BIND_FAILED` | Port de courrier ou port HTTP indisponible |
+| `GROUPWARE_TLS_CERTIFICATE_INVALID` | Certificat illisible ou invalide, nom non couvert, clé lisible par d'autres comptes : arrêt au démarrage ; au rechargement, l'ancien reste et la santé passe à « dégradé » |
 | `GROUPWARE_SHUTDOWN_SIGNAL_FAILED` | Signal d'arrêt indisponible |
 | `GROUPWARE_TELEMETRY_INIT_FAILED` | Journal non initialisé |
 
 Une erreur du runtime garde son code `RUNTIME_*`. Les erreurs du transport (`NetError` de
 `lyxal_mail`) restent internes : jamais renvoyées à un client ni écrites en base.
-`GROUPWARE_TLS_CERTIFICATE_INVALID` arrive avec les certificats (3c).
 
-## 8. Exploitation
+## 9. Exploitation
 
 * **Ports privilégiés** (25, 143, 993…, décision G14) : le programme tourne sous un compte sans
   droits, avec la capacité `CAP_NET_BIND_SERVICE` donnée par systemd
@@ -176,11 +256,14 @@ Une erreur du runtime garde son code `RUNTIME_*`. Les erreurs du transport (`Net
 * **Même commit que `lyxal-server`** : deux binaires d'un autre commit installeraient des
   releases différentes sous le même numéro (`RUNTIME_RELEASE_CHECKSUM_MISMATCH`) et l'un des deux
   verrait le socle « dégradé ».
+* **Certificats** : fichier de clé en mode 0600 ou 0400, propriété du compte du service ;
+  vérification par `openssl s_client -connect hôte:993 -servername mail.exemple.fr` (TLS
+  implicite) ou `openssl s_client -connect hôte:587 -starttls smtp` (STARTTLS).
 * Liste de mise en production : [`docs/PRODUCTION-CHECKLIST.md`](docs/PRODUCTION-CHECKLIST.md).
 * Image : `Dockerfile` (compte `lyxal` sans droits, port de santé 8090 ; ports de courrier à
   publier selon la configuration).
 
-## 9. Vérification
+## 10. Vérification
 
 ```bash
 cargo test -p lyxal-groupware
@@ -191,7 +274,21 @@ cargo test -p lyxal-groupware -- --ignored --exact two_hosts::groupware_beside_l
 Essais : configuration (fichiers livrés, préfixe `LYXAL_GROUPWARE__`, chaque refus) ; écoutes
 sur de vraies sockets (refus poli par protocole, plafond, limites par réseau partagées entre
 écoutes, cadence, réseaux exemptés, listes, budget épuisé, journal sans adresse complète) ;
+TLS implicite (TLS 1.2 et 1.3, certificat par nom et par défaut, ALPN négocié et ALPN étranger
+refusé, version minimale, poignée de main hors délai, refus sans poignée de main) ; STARTTLS par
+un protocole d'essai (mise à niveau, injection refusée, écoute sans STARTTLS, poignée de main en
+échec) ; PROXY v1 et v2 (réseau déclaré ou non, en-tête absent ou hors délai, limites appliquées
+à l'adresse de l'en-tête) ; rechargement à chaud (nouveau certificat, connexion ouverte
+inchangée, fichier invalide écarté puis corrigé, worker de relecture, clé lisible par d'autres
+refusée, nom non couvert refusé) ;
 cycle de vie complet (santé, mesures, arrêt avec drainage, session qui ignore l'arrêt abandonnée
 au délai, port déjà pris) ; **deux hôtes** avec le vrai `lyxal-server` (décision G16) sur base
 embarquée et sur `ws://` ; bout en bout du binaire (démarrage, routes HTTP, refus SMTP, arrêt par
 SIGTERM).
+
+Les essais TLS utilisent le client `openssl s_client` (outil OpenSSL requis sur la machine
+d'essai) : le garde-fou C12 refuse toute configuration `rustls`, même cliente, hors de
+`lyxal_crypto`. Certificats d'essai : ceux de `lyxal_crypto`
+(`crates/lyxal_crypto/tests/fixtures/tls_test_only/`, réservés aux tests), copiés par chaque
+essai dans un dossier temporaire avec des clés en mode 0600 ; chaînes vérifiées à date fixe
+(`-attime`, 1er janvier 2027).

@@ -17,7 +17,11 @@
 - [ ] `limits.drain_seconds` inférieur au délai d'arrêt laissé par le superviseur (systemd
       `TimeoutStopSec`, conteneur `stop_grace_period`) ;
 - [ ] arrêt `SIGTERM` testé (drainage des connexions) ;
-- [ ] certificats TLS : à partir du lot 3c (fichier de clé lisible par le seul compte du
-      service) ;
+- [ ] certificats TLS déclarés dans `[tls]` (défaut et noms servis) ; fichier de clé en mode
+      0600 ou 0400, propriété du compte du service (sinon refus au démarrage) ; renouvellement
+      (certbot) vérifié : nouveau certificat servi en moins de `tls.reload_interval_seconds`,
+      `/health` sans « dégradé » ; contrôle par `openssl s_client` (TLS implicite et STARTTLS) ;
+- [ ] derrière un répartiteur de charge : `proxy_networks` des écoutes limité à ses seules
+      adresses, répartiteur réglé pour envoyer l'en-tête PROXY (v1 ou v2) en mode TCP ;
 - [ ] licences contrôlées (`cargo deny check licenses`, `scripts/ci/check_agpl_isolation.py`) ;
       offre du code source (AGPL, article 13) tranchée par le CTO.

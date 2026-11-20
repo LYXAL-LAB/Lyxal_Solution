@@ -3,7 +3,8 @@
 //! journal sans adresse complète.
 
 use crate::support::{
-    config, eventually, first_line, greeting, mail_net, run_workers, smtp_listener, HoldHandler,
+    capture_logs, config, eventually, first_line, greeting, mail_net, run_workers, smtp_listener,
+    HoldHandler,
 };
 use lyxal_groupware::net::bind::bind_listeners;
 use lyxal_groupware::net::MailNet;
@@ -11,8 +12,7 @@ use lyxal_groupware::runtime::unavailable;
 use lyxal_mail::net::{refusal_line, MailProtocol, RefusalReason};
 use lyxal_runtime::health::{HealthStatus, ModuleHealthCheck};
 use lyxal_runtime::ModuleContext;
-use std::io::Write;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tokio::net::TcpStream;
 
 const LIMITS: &str = "[limits]\ndrain_seconds = 2\n";
@@ -26,8 +26,8 @@ fn line(protocol: MailProtocol, reason: RefusalReason) -> String {
 
 #[tokio::test]
 async fn every_protocol_answers_a_polite_unavailable_line() {
-    // La validation n'admet encore que SMTP en clair (TLS au lot 3c) : les autres protocoles
-    // sont posés directement sur des écoutes d'essai
+    // Les autres protocoles exigent TLS (G7) : ils sont posés en clair directement sur des
+    // écoutes d'essai, pour lire leur ligne de refus
     let mut config = config(
         "listeners",
         &format!("{LIMITS}{}", smtp_listener("smtp", "")),
@@ -45,7 +45,7 @@ async fn every_protocol_answers_a_polite_unavailable_line() {
         config.listeners.push(listener);
     }
     let bound = bind_listeners(&config).expect("liaison");
-    let net = MailNet::new(&config, bound, &unavailable);
+    let net = MailNet::new(&config, bound, None, &unavailable).expect("écoutes");
     let running = run_workers(&net);
 
     for (id, protocol) in [
@@ -113,32 +113,9 @@ async fn listener_cap_closes_without_a_word_and_degrades_the_probe() {
     running.stop().await;
 }
 
-/// Journal capturé dans un tampon.
-#[derive(Clone, Default)]
-struct Captured(Arc<Mutex<Vec<u8>>>);
-
-impl Write for Captured {
-    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
-        self.0.lock().unwrap().extend_from_slice(bytes);
-        Ok(bytes.len())
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        Ok(())
-    }
-}
-
 #[tokio::test]
 async fn refusals_are_logged_with_the_masked_network_only() {
-    let captured = Captured::default();
-    let writer = captured.clone();
-    let subscriber = tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::INFO)
-        .with_ansi(false)
-        .with_writer(move || writer.clone())
-        .finish();
-    // Essai sur un seul fil (`current_thread`) : les tâches des écoutes y écrivent aussi
-    let _guard = tracing::subscriber::set_default(subscriber);
+    let (captured, _logs) = capture_logs();
 
     let config = config(
         "listeners",
@@ -153,7 +130,7 @@ async fn refusals_are_logged_with_the_masked_network_only() {
     assert_eq!(reply, line(MailProtocol::Smtp, RefusalReason::Blocked));
     running.stop().await;
 
-    let log = String::from_utf8(captured.0.lock().unwrap().clone()).unwrap();
+    let log = captured.text();
     // L'adresse locale de l'écoute figure au démarrage ; la ligne du refus ne porte que le
     // réseau du client
     let refusal: Vec<&str> = log
@@ -196,7 +173,7 @@ async fn a_listener_stopped_then_started_again_keeps_its_port() {
         &format!("{LIMITS}{}", smtp_listener("smtp", "")),
     );
     let bound = bind_listeners(&config).expect("liaison");
-    let net = MailNet::new(&config, bound, &unavailable);
+    let net = MailNet::new(&config, bound, None, &unavailable).expect("écoutes");
     let address = net.local_addrs("smtp")[0];
 
     run_workers(&net).stop().await;

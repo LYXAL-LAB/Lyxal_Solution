@@ -12,7 +12,7 @@ use lyxal_mail::net::{MailProtocol, TlsMode};
 use serde::{Deserialize, Deserializer};
 use std::collections::BTreeSet;
 use std::net::SocketAddr;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 /// Préfixe des variables d'environnement de l'hôte.
@@ -28,6 +28,9 @@ pub struct GroupwareConfig {
     pub runtime: RuntimeTimeouts,
     #[serde(default)]
     pub limits: LimitsConfig,
+    /// Certificats des écoutes chiffrées et délais TLS.
+    #[serde(default)]
+    pub tls: TlsConfig,
     /// Écoutes de courrier ; aucune par défaut.
     #[serde(default)]
     pub listeners: Vec<ListenerConfig>,
@@ -49,6 +52,12 @@ pub struct HttpConfig {
     pub bind: SocketAddr,
     /// Délai laissé aux requêtes en cours à l'arrêt.
     pub graceful_shutdown_seconds: u64,
+    /// TLS sur le port HTTP (certificats de la section `[tls]`, ALPN `h2` et `http/1.1`).
+    #[serde(default)]
+    pub tls: bool,
+    /// Réseaux des répartiteurs : depuis eux, l'en-tête PROXY est exigé sur le port HTTP.
+    #[serde(default)]
+    pub proxy_networks: Vec<IpNetwork>,
 }
 
 /// Limites des connexions de courrier (décisions G10, G11), partagées par les écoutes du nœud.
@@ -76,6 +85,8 @@ pub struct LimitsConfig {
     pub exempt_networks: Vec<IpNetwork>,
     /// Délai de drainage des connexions à l'arrêt.
     pub drain_seconds: u64,
+    /// Délai de lecture de l'en-tête PROXY d'une connexion venue d'un répartiteur déclaré.
+    pub proxy_header_timeout_seconds: u64,
 }
 
 impl Default for LimitsConfig {
@@ -91,8 +102,81 @@ impl Default for LimitsConfig {
             allow_networks: Vec::new(),
             exempt_networks: Vec::new(),
             drain_seconds: 30,
+            proxy_header_timeout_seconds: 5,
         }
     }
+}
+
+/// Certificats (décision G8) : fichiers PEM (chaîne, clé) lus par l'hôte, relus quand leur contenu
+/// change. Le fichier de clé ne doit être lisible ni par le groupe ni par les autres.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields, default)]
+pub struct TlsConfig {
+    /// Certificat par défaut : client sans nom (SNI), nom inconnu ou adresse IP.
+    pub default: Option<CertificateFiles>,
+    /// Certificats par nom.
+    pub certificates: Vec<NamedCertificate>,
+    /// Intervalle de relecture des fichiers.
+    pub reload_interval_seconds: u64,
+    /// Délai de la poignée de main (TLS implicite et STARTTLS).
+    pub handshake_timeout_seconds: u64,
+}
+
+impl Default for TlsConfig {
+    fn default() -> Self {
+        Self {
+            default: None,
+            certificates: Vec::new(),
+            reload_interval_seconds: 60,
+            handshake_timeout_seconds: 30,
+        }
+    }
+}
+
+impl TlsConfig {
+    /// Vrai si au moins un certificat est déclaré.
+    pub fn has_certificates(&self) -> bool {
+        self.default.is_some() || !self.certificates.is_empty()
+    }
+}
+
+/// Chemins PEM d'un certificat : chaîne (certificat du serveur d'abord) et clé privée.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CertificateFiles {
+    pub certificate: PathBuf,
+    pub private_key: PathBuf,
+}
+
+/// Certificat servi pour des noms (SNI) : nom exact ou joker d'un niveau (`*.exemple.fr`).
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NamedCertificate {
+    pub names: Vec<String>,
+    pub certificate: PathBuf,
+    pub private_key: PathBuf,
+}
+
+impl NamedCertificate {
+    /// Chemins du certificat.
+    pub fn files(&self) -> CertificateFiles {
+        CertificateFiles {
+            certificate: self.certificate.clone(),
+            private_key: self.private_key.clone(),
+        }
+    }
+}
+
+/// Version TLS minimale d'une écoute.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
+pub enum TlsMinVersion {
+    /// TLS 1.2 et 1.3.
+    #[default]
+    #[serde(rename = "1.2")]
+    Tls12,
+    /// TLS 1.3 seulement.
+    #[serde(rename = "1.3")]
+    Tls13,
 }
 
 const MIB: u64 = 1024 * 1024;
@@ -112,6 +196,13 @@ pub struct ListenerConfig {
     /// Plafond de connexions simultanées propre à cette écoute.
     #[serde(default)]
     pub max_connections: Option<u32>,
+    /// Version TLS minimale (`"1.2"` par défaut, `"1.3"`), écoutes chiffrées seulement.
+    #[serde(default)]
+    pub tls_min_version: Option<TlsMinVersion>,
+    /// Réseaux des répartiteurs de charge : depuis eux, l'en-tête PROXY (v1 ou v2) est exigé ;
+    /// ailleurs il n'est jamais lu (décision G9).
+    #[serde(default)]
+    pub proxy_networks: Vec<IpNetwork>,
 }
 
 /// Journal : section `observability` commune aux hôtes, plus l'adresse des clients (G13).
@@ -177,7 +268,7 @@ fn tls_mode<'de, D: Deserializer<'de>>(deserializer: D) -> Result<TlsMode, D::Er
     }
 }
 
-/// Bornes des réglages (§6.7 à §6.9 du plan du lot 3).
+/// Bornes des réglages (`README.md` de l'hôte, §5 et §6).
 const MAX_CONNECTIONS: std::ops::RangeInclusive<u32> = 1..=65_536;
 const PER_NETWORK: std::ops::RangeInclusive<u64> = 1..=100_000;
 const PER_MINUTE: std::ops::RangeInclusive<u64> = 1..=1_000_000;
@@ -185,6 +276,9 @@ const TRACKED: std::ops::RangeInclusive<usize> = 1_000..=10_000_000;
 const MIN_MEMORY_BUDGET: u64 = 64 * MIB;
 const CONNECTION_BASE: std::ops::RangeInclusive<u64> = 4 * 1024..=16 * MIB;
 const DRAIN: std::ops::RangeInclusive<u64> = 1..=300;
+const PROXY_HEADER_TIMEOUT: std::ops::RangeInclusive<u64> = 1..=60;
+const HANDSHAKE_TIMEOUT: std::ops::RangeInclusive<u64> = 1..=300;
+const RELOAD_INTERVAL: std::ops::RangeInclusive<u64> = 5..=86_400;
 
 impl GroupwareConfig {
     /// Charge la configuration du dossier `config`.
@@ -236,7 +330,11 @@ impl GroupwareConfig {
         if self.http.graceful_shutdown_seconds == 0 {
             return invalid("http.graceful_shutdown_seconds doit être supérieur à zéro".into());
         }
+        if self.http.tls && !self.tls.has_certificates() {
+            return invalid("http.tls = true : aucun certificat déclaré (section [tls])".into());
+        }
         self.validate_limits()?;
+        self.validate_tls()?;
 
         let mut ids = BTreeSet::new();
         let mut addresses = BTreeSet::from([self.http.bind]);
@@ -266,18 +364,11 @@ impl GroupwareConfig {
                     ));
                 }
             }
-            // TLS implicite et STARTTLS : lot 3c (certificats). D'ici là, écoutes en clair
-            // seulement, et seulement pour la réception SMTP (décision G7).
-            if listener.tls != TlsMode::None {
+            validate_tls_mode(listener)?;
+            if listener.tls != TlsMode::None && !self.tls.has_certificates() {
                 return invalid(format!(
-                    "listeners.{id}.tls = « {} » : TLS pas encore disponible dans cette version (écoutes « none » seulement)",
+                    "listeners.{id}.tls = « {} » : aucun certificat déclaré (section [tls])",
                     listener.tls.as_str()
-                ));
-            }
-            if listener.protocol != MailProtocol::Smtp {
-                return invalid(format!(
-                    "listeners.{id} : protocole « {} » sans TLS refusé (seule la réception smtp peut être en clair)",
-                    listener.protocol
                 ));
             }
             if let Some(max) = listener.max_connections {
@@ -327,6 +418,9 @@ impl GroupwareConfig {
         if !DRAIN.contains(&limits.drain_seconds) {
             return invalid("limits.drain_seconds doit être compris entre 1 et 300");
         }
+        if !PROXY_HEADER_TIMEOUT.contains(&limits.proxy_header_timeout_seconds) {
+            return invalid("limits.proxy_header_timeout_seconds doit être compris entre 1 et 60");
+        }
         if limits.drain_seconds >= self.runtime.module_stop_timeout_seconds {
             return invalid(
                 "limits.drain_seconds doit être inférieur à runtime.module_stop_timeout_seconds",
@@ -335,8 +429,98 @@ impl GroupwareConfig {
         Ok(())
     }
 
+    fn validate_tls(&self) -> Result<(), GroupwareError> {
+        let tls = &self.tls;
+        let invalid = |message: String| Err(GroupwareError::Configuration { message });
+        if !RELOAD_INTERVAL.contains(&tls.reload_interval_seconds) {
+            return invalid(
+                "tls.reload_interval_seconds doit être compris entre 5 et 86400".into(),
+            );
+        }
+        if !HANDSHAKE_TIMEOUT.contains(&tls.handshake_timeout_seconds) {
+            return invalid(
+                "tls.handshake_timeout_seconds doit être compris entre 1 et 300".into(),
+            );
+        }
+        let mut names = BTreeSet::new();
+        for certificate in &tls.certificates {
+            if certificate.names.is_empty() {
+                return invalid(format!(
+                    "tls.certificates ({}) : au moins un nom",
+                    certificate.certificate.display()
+                ));
+            }
+            for name in &certificate.names {
+                if !names.insert(name.to_ascii_lowercase()) {
+                    return invalid(format!(
+                        "tls.certificates : nom « {name} » déclaré deux fois"
+                    ));
+                }
+            }
+        }
+        let empty_path = tls
+            .default
+            .iter()
+            .map(|files| (&files.certificate, &files.private_key))
+            .chain(
+                tls.certificates
+                    .iter()
+                    .map(|named| (&named.certificate, &named.private_key)),
+            )
+            .any(|(certificate, key)| {
+                certificate.as_os_str().is_empty() || key.as_os_str().is_empty()
+            });
+        if empty_path {
+            return invalid("tls : chemin de certificat ou de clé vide".into());
+        }
+        Ok(())
+    }
+
+    /// Délai de lecture de l'en-tête PROXY.
+    pub fn proxy_header_timeout(&self) -> Duration {
+        Duration::from_secs(self.limits.proxy_header_timeout_seconds)
+    }
+
+    /// Délai de la poignée de main TLS.
+    pub fn handshake_timeout(&self) -> Duration {
+        Duration::from_secs(self.tls.handshake_timeout_seconds)
+    }
+
     /// Délai de drainage des connexions à l'arrêt.
     pub fn drain(&self) -> Duration {
         Duration::from_secs(self.limits.drain_seconds)
     }
+}
+
+/// Règles TLS par protocole (décision G7) : `implicit` pour la soumission, IMAP et POP3 (RFC
+/// 8314 : ports 465, 993, 995) ; `starttls` pour tous (ports 25, 587, 143, 110, 4190) ; `none`
+/// pour la seule réception SMTP (port 25 : STARTTLS reste facultatif pour l'expéditeur). La
+/// version minimale ne se règle que sur une écoute chiffrée.
+fn validate_tls_mode(listener: &ListenerConfig) -> Result<(), GroupwareError> {
+    let id = &listener.id;
+    let protocol = listener.protocol;
+    let refused = match listener.tls {
+        TlsMode::None => (protocol != MailProtocol::Smtp).then(|| {
+            format!(
+                "listeners.{id} : protocole « {protocol} » sans TLS refusé (seule la réception smtp peut être en clair)"
+            )
+        }),
+        TlsMode::StartTls => None,
+        TlsMode::Implicit => {
+            matches!(protocol, MailProtocol::Smtp | MailProtocol::ManageSieve).then(|| {
+                format!(
+                    "listeners.{id} : TLS implicite non défini pour « {protocol} » (submission, imap et pop3 seulement ; utiliser starttls)"
+                )
+            })
+        }
+    };
+    if let Some(message) = refused {
+        return Err(GroupwareError::Configuration { message });
+    }
+    if listener.tls == TlsMode::None && listener.tls_min_version.is_some() {
+        return Err(GroupwareError::Configuration {
+            message: format!("listeners.{id}.tls_min_version : sans effet sur une écoute en clair"),
+        });
+    }
+    Ok(())
 }

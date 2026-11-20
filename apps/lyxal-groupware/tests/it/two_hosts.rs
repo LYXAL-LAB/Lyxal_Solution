@@ -210,6 +210,7 @@ async fn two_hosts(
         &config,
         groupware_client,
         bind_listeners(&config).expect("liaison"),
+        None,
     )
     .await
     .expect("démarrage de lyxal-groupware");
@@ -321,6 +322,7 @@ async fn two_hosts(
         &config,
         groupware_client,
         bind_listeners(&config).expect("liaison"),
+        None,
     )
     .await
     .expect("redémarrage de lyxal-groupware");

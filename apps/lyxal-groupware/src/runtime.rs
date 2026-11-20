@@ -9,6 +9,7 @@ use crate::config::GroupwareConfig;
 use crate::error::GroupwareError;
 use crate::modules;
 use crate::net::bind::BoundListener;
+use crate::net::certificates::Certificates;
 use crate::net::MailNet;
 use lyxal_mail::net::{MailProtocol, SessionHandler, UnavailableHandler};
 use lyxal_runtime::lock::SurrealInstallationLeaseManager;
@@ -33,13 +34,14 @@ pub fn unavailable(protocol: MailProtocol) -> Arc<dyn SessionHandler> {
 }
 
 /// Construit le runtime, installe le socle et les modules hébergés, inscrit les écoutes
-/// `listeners` (déjà liées), puis démarre le tout.
+/// `listeners` (déjà liées, servies avec les certificats `certificates`), puis démarre le tout.
 pub async fn start(
     config: &GroupwareConfig,
     client: &Surreal<Any>,
     listeners: Vec<BoundListener>,
+    certificates: Option<Arc<Certificates>>,
 ) -> Result<Started, GroupwareError> {
-    start_with(config, client, listeners, &unavailable).await
+    start_with(config, client, listeners, certificates, &unavailable).await
 }
 
 /// `start`, avec la session de chaque protocole donnée par `handler_for` (protocoles d'essai
@@ -48,6 +50,7 @@ pub async fn start_with(
     config: &GroupwareConfig,
     client: &Surreal<Any>,
     listeners: Vec<BoundListener>,
+    certificates: Option<Arc<Certificates>>,
     handler_for: &dyn Fn(MailProtocol) -> Arc<dyn SessionHandler>,
 ) -> Result<Started, GroupwareError> {
     let timeouts = &config.runtime;
@@ -75,8 +78,8 @@ pub async fn start_with(
         runtime.foundation_health_check(ModuleId::new(lyxal_host::modules::FOUNDATION[0])),
     ))?;
 
-    // Écoutes : un worker par écoute et la sonde de `lyxal_mail`
-    let mail = MailNet::new(config, listeners, handler_for);
+    // Écoutes : un worker par écoute, la relecture des certificats et la sonde de `lyxal_mail`
+    let mail = MailNet::new(config, listeners, certificates, handler_for)?;
     for worker in mail.workers()? {
         runtime.register_worker(worker)?;
     }
