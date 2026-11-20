@@ -1,7 +1,9 @@
 //! Consommateur des événements de `lyxal_auth` : `auth.verification.requested`,
 //! `auth.recovery.requested`, `auth.invitation.created` (contrat décrit au `README.md`), et les
 //! alertes de sécurité du double facteur (`auth.mfa.*`, `auth.passkey.clone_detected`,
-//! `auth.password.changed`), sans secret, envoyées par le parcours `auth_security_alert`.
+//! `auth.password.changed`) et des mots de passe d'application (`auth.app_password.created`,
+//! `auth.app_password.revoked` sauf révocation par le titulaire), sans secret, envoyées par le
+//! parcours `auth_security_alert`.
 //!
 //! Pour chaque événement : ouverture du secret sous le contexte du producteur (lié à
 //! l'événement), rescellement sous le contexte de la file, puis `fn::notification_trigger`
@@ -31,7 +33,7 @@ pub const AUTH_HANDLER: &str = "notification.auth_messages";
 /// Module consommateur.
 pub const CONSUMER_MODULE: &str = "lyxal_notification";
 /// Abonnements persistants : (nom, type d'événement).
-pub const AUTH_SUBSCRIPTIONS: [(&str, &str); 9] = [
+pub const AUTH_SUBSCRIPTIONS: [(&str, &str); 11] = [
     (
         "notification_auth_verification",
         VerificationRequested::EVENT_TYPE,
@@ -58,6 +60,14 @@ pub const AUTH_SUBSCRIPTIONS: [(&str, &str); 9] = [
     (
         "notification_auth_passkey_clone",
         PasskeyCloneDetected::EVENT_TYPE,
+    ),
+    (
+        "notification_auth_app_password_created",
+        AppPasswordCreated::EVENT_TYPE,
+    ),
+    (
+        "notification_auth_app_password_revoked",
+        AppPasswordRevoked::EVENT_TYPE,
     ),
 ];
 
@@ -193,7 +203,11 @@ pub struct SecurityAlertPayload {
     /// Nom de la passkey.
     #[serde(default)]
     pub label: Option<String>,
-    /// Motif (`owner`, `admin_reset`).
+    /// Nom de l'appareil d'un mot de passe d'application.
+    #[serde(default)]
+    pub name: Option<String>,
+    /// Motif (`owner`, `admin_reset` ; mots de passe d'application : `owner`, `admin`,
+    /// `recovery`, `mfa_reset`, `membership_removed`).
     #[serde(default)]
     pub reason: Option<String>,
     /// Codes de secours restants.
@@ -219,6 +233,7 @@ impl std::fmt::Debug for SecurityAlertPayload {
             )
             .field("method", &self.method)
             .field("label", &self.label)
+            .field("name", &self.name)
             .field("reason", &self.reason)
             .field("remaining", &self.remaining)
             .field("first", &self.first)
@@ -230,12 +245,17 @@ impl std::fmt::Debug for SecurityAlertPayload {
 pub trait SecurityAlert: Event {
     /// Nature (`mfa_enrolled`, `mfa_removed`, …).
     const ALERT: &'static str;
+    /// Motif pour lequel aucune alerte n'est envoyée (action faite par le titulaire lui-même).
+    const SILENT_REASON: Option<&'static str> = None;
     /// Champs de l'alerte.
     fn alert(&self) -> &SecurityAlertPayload;
 }
 
 macro_rules! security_alert {
     ($name:ident, $event:literal, $alert:literal, $doc:literal) => {
+        security_alert!($name, $event, $alert, $doc, None);
+    };
+    ($name:ident, $event:literal, $alert:literal, $doc:literal, $silent:expr) => {
         #[doc = $doc]
         #[derive(Debug, Clone, Serialize, Deserialize)]
         pub struct $name {
@@ -250,6 +270,7 @@ macro_rules! security_alert {
 
         impl SecurityAlert for $name {
             const ALERT: &'static str = $alert;
+            const SILENT_REASON: Option<&'static str> = $silent;
             fn alert(&self) -> &SecurityAlertPayload {
                 &self.alert
             }
@@ -293,6 +314,19 @@ security_alert!(
     "passkey_clone_detected",
     "`auth.passkey.clone_detected` : passkey possiblement clonée, refusée."
 );
+security_alert!(
+    AppPasswordCreated,
+    "auth.app_password.created",
+    "app_password_created",
+    "`auth.app_password.created` : mot de passe d'application créé."
+);
+security_alert!(
+    AppPasswordRevoked,
+    "auth.app_password.revoked",
+    "app_password_revoked",
+    "`auth.app_password.revoked` : mot de passe d'application révoqué (aucune alerte quand le titulaire l'a révoqué lui-même).",
+    Some("owner")
+);
 
 /// Handler des alertes de sécurité : déclenchement idempotent du parcours
 /// `auth_security_alert` (sans secret).
@@ -307,7 +341,8 @@ impl SecurityAlertHandler {
     }
 
     /// Déclenche l'alerte (idempotent par l'identifiant d'événement) ; rien pour le premier mot
-    /// de passe d'un compte ni sans adresse de destination.
+    /// de passe d'un compte, pour une action du titulaire lui-même (`SILENT_REASON`) ni sans
+    /// adresse de destination.
     pub async fn deliver<E: SecurityAlert>(
         &self,
         event: &E,
@@ -318,6 +353,9 @@ impl SecurityAlertHandler {
             return Ok(());
         };
         if alert.first == Some(true) {
+            return Ok(());
+        }
+        if E::SILENT_REASON.is_some() && alert.reason.as_deref() == E::SILENT_REASON {
             return Ok(());
         }
         self.store
@@ -339,7 +377,7 @@ impl SecurityAlertHandler {
                 payload: compact(serde_json::json!({
                     "alert": E::ALERT,
                     "method": alert.method,
-                    "label": alert.label,
+                    "label": alert.label.as_ref().or(alert.name.as_ref()),
                     "reason": alert.reason,
                     "remaining": alert.remaining
                 })),
@@ -534,6 +572,12 @@ impl<R: KeyResolver + 'static> EventConsumerModule for NotificationConsumer<R> {
             .map_err(error)?;
         registry
             .register::<PasskeyCloneDetected, _>(alerts())
+            .map_err(error)?;
+        registry
+            .register::<AppPasswordCreated, _>(alerts())
+            .map_err(error)?;
+        registry
+            .register::<AppPasswordRevoked, _>(alerts())
             .map_err(error)?;
         Ok(())
     }

@@ -2,6 +2,7 @@
 //! scellement, DNS) ; les règles restent dans les fonctions SurrealQL.
 
 pub mod access;
+pub mod app_password;
 pub mod domain;
 pub mod invitation;
 pub mod keys;
@@ -12,6 +13,10 @@ pub mod tokens;
 pub use access::{
     AccessConfig, AccessService, CodeProof, LoginActions, LoginOutcome, LoginRequest, MfaProof,
     ReauthProof,
+};
+pub use app_password::{
+    AppPasswordAttempt, AppPasswordIssued, AppPasswordLogin, AppPasswordService, AppPasswordTarget,
+    AppProtocol, LOGIN_CACHE_CAPACITY,
 };
 pub use domain::{DomainChallenge, DomainVerifier, HickoryTxtLookup, TxtLookup, CHALLENGE_PREFIX};
 pub use invitation::{

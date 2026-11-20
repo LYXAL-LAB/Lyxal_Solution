@@ -40,16 +40,16 @@ RETURN fn::notification_workflow_get({ workflow: "notification_workflow:auth_inv
     == [["email", notification_layout:default, ["notification.common.greeting", "notification.common.greeting_named", "notification.auth_invitation.subject", "notification.auth_invitation.intro", "notification.auth_invitation.intro_by", "notification.auth_invitation.action", "notification.auth_invitation.ignore"]]];
 
 -- test: toutes les clés des gabarits du système sont déclarées, avec un texte français (source) et un texte anglais
-RETURN array::len(SELECT VALUE id FROM i18n_key WHERE namespace = i18n_namespace:notification) == 29
-    AND array::len(SELECT VALUE id FROM i18n_translation WHERE key.namespace = i18n_namespace:notification AND locale = i18n_locale:⟨fr⟩ AND is_source) == 29
-    AND array::len(SELECT VALUE id FROM i18n_translation WHERE key.namespace = i18n_namespace:notification AND locale = i18n_locale:⟨en⟩) == 29
+RETURN array::len(SELECT VALUE id FROM i18n_key WHERE namespace = i18n_namespace:notification) == 31
+    AND array::len(SELECT VALUE id FROM i18n_translation WHERE key.namespace = i18n_namespace:notification AND locale = i18n_locale:⟨fr⟩ AND is_source) == 31
+    AND array::len(SELECT VALUE id FROM i18n_translation WHERE key.namespace = i18n_namespace:notification AND locale = i18n_locale:⟨en⟩) == 31
     AND array::distinct(array::flatten(SELECT VALUE keys FROM notification_template)).all(|$k| record::exists(type::record("i18n_key", $k)))
-    AND array::len(array::distinct(array::flatten(SELECT VALUE keys FROM notification_template))) == 29;
+    AND array::len(array::distinct(array::flatten(SELECT VALUE keys FROM notification_template))) == 31;
 
 -- test: l'alerte de sécurité a son gabarit et ses clés ; sa charge utile est contrôlée
 -- en tant que: plateforme
 RETURN fn::notification_workflow_get({ workflow: "notification_workflow:auth_security_alert" }).data.templates.map(|$t| [$t.step_key, array::len($t.keys)])
-    == [["email", 16]]
+    == [["email", 18]]
     AND fn::notification_trigger({ workflow_key: "auth_security_alert", idempotency_key: "alerte-invalide", to: { subscriber_id: "email:a@exemple.fr", email: "a@exemple.fr" }, payload: { alert: "inconnue" } }).error.code == "NOTIFICATION_PAYLOAD_INVALID";
 
 -- test: la mise en page par défaut contient l'emplacement du contenu

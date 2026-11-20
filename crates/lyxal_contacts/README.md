@@ -43,8 +43,8 @@ code de RustiCal (`AGPL-3.0-or-later`) s'y combine ; les parties reprises de sab
 | 20 — JMAP agendas et contacts | JSContact, méthodes JMAP |
 | 21, 22 — Durcissement, essais réels, clôture | Conformité, essais sur appareils réels, audit |
 
-Prérequis : lots 1 (mots de passe d'application), 3 (hôte), 14 et 15 (`lyxal_dav`). Le lot 19
-ne dépend pas du courrier (décision P9).
+Prérequis : lots 1 (mots de passe d'application, réalisé), 3 (hôte), 14 et 15 (`lyxal_dav`).
+Le lot 19 ne dépend pas du courrier (décision P9).
 
 ## Dépendances prévues
 

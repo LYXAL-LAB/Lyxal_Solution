@@ -26,6 +26,7 @@ use crate::models::{
     SessionReauthenticateParams, SessionRefreshParams, SessionRevokeAllParams, SessionRevokeParams,
     SessionSwitchParams, SetupStartParams,
 };
+use crate::services::app_password::AppPasswordService;
 use crate::services::keys::SigningKeyService;
 use crate::services::mfa::{MfaActor, MfaService, PasskeyChallenge, PasskeyConfig};
 use crate::services::password::{PasswordCheck, PasswordPolicy, PasswordService};
@@ -147,6 +148,7 @@ pub struct AccessService<R: KeyResolver> {
     keys: Arc<SigningKeyService<R>>,
     passwords: PasswordService<R>,
     mfa: MfaService<R>,
+    app_passwords: AppPasswordService<R>,
     config: AccessConfig,
 }
 
@@ -180,9 +182,16 @@ impl<R: KeyResolver + 'static> AccessService<R> {
                 rp_name: config.issuer.clone(),
             }),
         )?;
+        let app_passwords = AppPasswordService::new(
+            store.clone(),
+            keys.clone(),
+            config.namespace.clone(),
+            config.database.clone(),
+        );
         Ok(Self {
             passwords: PasswordService::new(crypto.clone()),
             mfa,
+            app_passwords,
             store,
             crypto,
             keys,
@@ -198,6 +207,12 @@ impl<R: KeyResolver + 'static> AccessService<R> {
     /// Service des seconds facteurs (enrôlement, liste, codes de secours).
     pub fn mfa(&self) -> &MfaService<R> {
         &self.mfa
+    }
+
+    /// Service des mots de passe d'application (création, vérification par l'hôte des
+    /// protocoles, renouvellement, révocation).
+    pub fn app_passwords(&self) -> &AppPasswordService<R> {
+        &self.app_passwords
     }
 
     /// Acteur d'une session interactive (gestion de ses facteurs).
@@ -338,6 +353,7 @@ impl<R: KeyResolver + 'static> AccessService<R> {
                     secret: sealed,
                     revoke_sessions: false,
                     except_session: None,
+                    revoke_app_passwords: false,
                 })
                 .await?;
         }
@@ -557,7 +573,8 @@ impl<R: KeyResolver + 'static> AccessService<R> {
             .required_actions;
         if pending.iter().any(|a| a == "update_password") {
             if let Some(password) = &actions.new_password {
-                self.set_password(&identity, password, true, None).await?;
+                self.set_password(&identity, password, true, None, false)
+                    .await?;
             }
         }
         if actions.accept_terms && pending.iter().any(|a| a == "accept_terms") {
@@ -643,8 +660,15 @@ impl<R: KeyResolver + 'static> AccessService<R> {
     ) -> AuthResult<()> {
         self.require_fresh(session).await?;
         self.verify_password_counted(identity, current).await?;
-        self.set_password(identity, new_password, true, Some(session.to_string()))
-            .await
+        // Changement volontaire : les mots de passe d'application restent (A6)
+        self.set_password(
+            identity,
+            new_password,
+            true,
+            Some(session.to_string()),
+            false,
+        )
+        .await
     }
 
     /// Session d'un compte de service (`client_credentials`), sans jeton de renouvellement.
@@ -767,7 +791,8 @@ impl<R: KeyResolver + 'static> AccessService<R> {
             .as_ref()
             .map(|id| id.to_sql())
             .ok_or(AuthError::Rejected("AUTH_CODE_INVALID"))?;
-        self.set_password(&identity, new_password, true, None)
+        // Récupération du compte : mots de passe d'application révoqués (A6)
+        self.set_password(&identity, new_password, true, None, true)
             .await?;
         self.store
             .flow_submit(FlowSubmitParams {
@@ -925,7 +950,8 @@ impl<R: KeyResolver + 'static> AccessService<R> {
             })
             .await?;
         let identity = completed.identity.to_sql();
-        self.set_password(&identity, password, false, None).await?;
+        self.set_password(&identity, password, false, None, false)
+            .await?;
         // Double facteur exigé (premier administrateur, organisation) : configure_mfa avant la session
         self.next_step(
             &identity,
@@ -1028,6 +1054,7 @@ impl<R: KeyResolver + 'static> AccessService<R> {
         password: &SecretString,
         revoke_sessions: bool,
         except_session: Option<String>,
+        revoke_app_passwords: bool,
     ) -> AuthResult<()> {
         let policy = self.password_policy().await?;
         let email = self.identity_email(identity).await?;
@@ -1046,6 +1073,7 @@ impl<R: KeyResolver + 'static> AccessService<R> {
                 secret: sealed,
                 revoke_sessions,
                 except_session,
+                revoke_app_passwords,
             })
             .await?;
         Ok(())

@@ -24,7 +24,7 @@ fn trigger(workflow: &str, key: &str, payload: &str) -> String {
 async fn system_emails_render_in_french_and_english() {
     let client = installed_client().await;
     // (clé, parcours, charge utile, phrase attendue en français, en anglais)
-    let cases: [(&str, &str, &str, &str, &str); 12] = [
+    let cases: [(&str, &str, &str, &str, &str); 14] = [
         (
             "verif",
             "auth_verification",
@@ -101,6 +101,20 @@ async fn system_emails_render_in_french_and_english() {
             "{ alert: 'recovery_code_used', remaining: 0 }",
             "Il ne vous en reste aucun.",
             "You have none left.",
+        ),
+        (
+            "app-cree",
+            "auth_security_alert",
+            "{ alert: 'app_password_created', label: 'iPhone de Claire' }",
+            "Un mot de passe d'application a été créé pour votre compte : « iPhone de Claire ».",
+            "An app password was created for your account: “iPhone de Claire”.",
+        ),
+        (
+            "app-revoque",
+            "auth_security_alert",
+            "{ alert: 'app_password_revoked', label: 'Portable', reason: 'admin' }",
+            "Le mot de passe d'application « Portable » de votre compte a été révoqué",
+            "The app password “Portable” on your account was revoked",
         ),
         (
             "clone",

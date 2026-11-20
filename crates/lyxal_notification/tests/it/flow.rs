@@ -486,3 +486,86 @@ async fn security_alert_from_auth_is_delivered_once() {
     );
     assert!(!received[0].data.contains("List-Unsubscribe"));
 }
+
+/// Alertes des mots de passe d'application publiées par `lyxal_auth` : création et révocation
+/// par un administrateur envoyées au titulaire ; aucune pour une révocation par le titulaire.
+#[tokio::test]
+async fn app_password_alerts_reach_the_holder_except_his_own_revocation() {
+    use lyxal_notification::{AppPasswordCreated, AppPasswordRevoked, SecurityAlertHandler};
+
+    let client = installed_client().await;
+    let engine = crypto();
+    client
+        .query(
+            "CREATE auth_organization:alpha CONTENT { slug: 'alpha', name: 'Alpha' };
+             CREATE auth_identity:titulaire CONTENT { schema: auth_identity_schema:default_v1, traits: { email: 'titulaire@exemple.fr', name: { first: 'Inès' } } };
+             CREATE auth_app_password:telephone CONTENT { identity: auth_identity:titulaire, organization: auth_organization:alpha, name: 'Téléphone', password_hash: string::repeat('a', 64), permissions: ['mail.mailbox.access'] };
+             CREATE auth_app_password:portable CONTENT { identity: auth_identity:titulaire, organization: auth_organization:alpha, name: 'Portable', password_hash: string::repeat('b', 64), permissions: ['mail.mailbox.access'] };
+             UPDATE auth_app_password:telephone SET revoked_at = time::now(), revoked_reason = 'admin';
+             UPDATE auth_app_password:portable SET revoked_at = time::now(), revoked_reason = 'owner', revoked_by = auth_identity:titulaire;",
+        )
+        .await
+        .expect("événements publiés")
+        .check()
+        .expect("publication");
+    let mut response = client
+        .query("SELECT <string> event_id AS event_id, payload FROM event_outbox WHERE event_type = 'auth.app_password.created' ORDER BY payload.name; SELECT <string> event_id AS event_id, payload FROM event_outbox WHERE event_type = 'auth.app_password.revoked' ORDER BY payload.name")
+        .await
+        .expect("événements");
+    let created: Vec<Published> = response.take(0).expect("créations");
+    let revoked: Vec<Published> = response.take(1).expect("révocations");
+    assert_eq!((created.len(), revoked.len()), (2, 2));
+    let handler = SecurityAlertHandler::new(NotificationStore::new(client.clone()));
+    // Création du téléphone (une alerte) ; création du portable ignorée ici pour compter juste
+    let event: AppPasswordCreated =
+        serde_json::from_value(created[1].payload.clone()).expect("contrat de la création");
+    assert_eq!(event.alert.name.as_deref(), Some("Téléphone"));
+    handler
+        .deliver(&event, &created[1].event_id)
+        .await
+        .expect("alerte de création");
+    // Révocation par le titulaire (portable) : aucune alerte ; par un administrateur : alerte
+    for published in &revoked {
+        let event: AppPasswordRevoked =
+            serde_json::from_value(published.payload.clone()).expect("contrat de la révocation");
+        handler
+            .deliver(&event, &published.event_id)
+            .await
+            .expect("alerte de révocation");
+    }
+
+    let server = TestSmtpServer::start().await;
+    let worker = worker(&client, &engine, &server).await;
+    let mut sent = Vec::new();
+    loop {
+        let outcomes = worker
+            .run_once(&CancellationToken::new())
+            .await
+            .expect("envoi");
+        if outcomes.is_empty() {
+            break;
+        }
+        sent.extend(outcomes);
+    }
+    assert_eq!(sent, vec![JobOutcome::Sent, JobOutcome::Sent]);
+    let bodies: Vec<String> = server
+        .received()
+        .iter()
+        .map(|message| decoded(&message.data))
+        .collect();
+    assert_eq!(bodies.len(), 2);
+    assert!(
+        bodies
+            .iter()
+            .any(|b| b.contains("mot de passe d'application a été créé")
+                && b.contains("« Téléphone »")),
+        "{bodies:?}"
+    );
+    assert!(
+        bodies
+            .iter()
+            .any(|b| b.contains("« Téléphone » de votre compte a été révoqué")),
+        "{bodies:?}"
+    );
+    assert!(!bodies.iter().any(|b| b.contains("Portable")), "{bodies:?}");
+}

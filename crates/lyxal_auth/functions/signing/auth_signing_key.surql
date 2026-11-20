@@ -122,6 +122,14 @@ DEFINE FUNCTION OVERWRITE fn::auth_purge($params: object) {
     IF array::len($claims) > 0 { DELETE $claims; };
     LET $issuances = (SELECT VALUE id FROM auth_code_issuance WHERE created_at <= $now - 1d LIMIT $p.limit);
     IF array::len($issuances) > 0 { DELETE $issuances; };
+    -- Mots de passe d'application révoqués ou expirés depuis plus que la conservation des sessions
+    -- (leurs sessions et leur journal suivent) ; journal des connexions plus vieux que log_days
+    LET $app_passwords = (SELECT VALUE id FROM auth_app_password
+        WHERE (revoked_at IS NOT NONE AND revoked_at <= $keep) OR (expires_at IS NOT NONE AND expires_at <= $keep) LIMIT $p.limit);
+    IF array::len($app_passwords) > 0 { DELETE $app_passwords; };
+    LET $log_until = $now - duration::from_days(fn::auth_policy_value({ theme: "app_password", key: "log_days", default: 90 }));
+    LET $app_password_uses = (SELECT VALUE id FROM auth_app_password_use WHERE last_seen_at <= $log_until ORDER BY last_seen_at ASC LIMIT $p.limit);
+    IF array::len($app_password_uses) > 0 { DELETE $app_password_uses; };
     -- Organisations et identités supprimées depuis plus que la durée de conservation : événement
     -- (identifiant seulement) puis suppression physique ; les références déclarées par chaque
     -- module (REFERENCE ON DELETE CASCADE / UNSET) suivent
@@ -162,7 +170,9 @@ DEFINE FUNCTION OVERWRITE fn::auth_purge($params: object) {
         pending_totp: array::len($pending),
         invitation_claims: array::len($claims),
         code_issuances: array::len($issuances),
+        app_passwords: array::len($app_passwords),
+        app_password_uses: array::len($app_password_uses),
         identities_purged: array::len($identities),
         organizations_purged: array::len($organizations)
     });
-} COMMENT "Purge par paquets ({ limit, session_retention_days }) : sessions expirées marquées, parcours et codes expirés, jetons usés ou expirés, sessions terminées au-delà de la conservation, compteurs d'échecs anciens, invitations expirées, TOTP non confirmés, demandes d'acceptation et journal d'émission des codes de plus d'un jour, identités et organisations supprimées au-delà de la durée de conservation (retention.deleted_days, événements auth.identity.purged et auth.organization.purged). Session système";
+} COMMENT "Purge par paquets ({ limit, session_retention_days }) : sessions expirées marquées, parcours et codes expirés, jetons usés ou expirés, sessions terminées au-delà de la conservation, compteurs d'échecs anciens, invitations expirées, TOTP non confirmés, demandes d'acceptation et journal d'émission des codes de plus d'un jour, mots de passe d'application révoqués ou expirés au-delà de la conservation des sessions, journal de leurs connexions au-delà de app_password.log_days, identités et organisations supprimées au-delà de la durée de conservation (retention.deleted_days, événements auth.identity.purged et auth.organization.purged). Session système";

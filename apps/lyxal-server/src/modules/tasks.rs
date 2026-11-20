@@ -121,6 +121,8 @@ impl TaskHandler for AuthPurgeHandler {
                     pending_totp,
                     invitation_claims,
                     code_issuances,
+                    app_passwords,
+                    app_password_uses,
                     identities_purged,
                     organizations_purged,
                 } = report;
@@ -135,6 +137,8 @@ impl TaskHandler for AuthPurgeHandler {
                         ("pending_totp", pending_totp),
                         ("invitation_claims", invitation_claims),
                         ("code_issuances", code_issuances),
+                        ("app_passwords", app_passwords),
+                        ("app_password_uses", app_password_uses),
                         ("identities_purged", identities_purged),
                         ("organizations_purged", organizations_purged),
                     ],

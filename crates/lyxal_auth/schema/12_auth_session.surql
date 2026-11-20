@@ -6,7 +6,8 @@
 -- Modèle : Kratos `sessions`, Rauthy. Le jeton d'accès désigne la session (`$auth`, claim `sid`) ;
 -- fn::auth_context et fn::auth_has_permission la relisent à chaque appel : une session révoquée
 -- perd ses droits dès l'opération suivante, même sur une connexion restée ouverte. Sujet : une
--- identité (session interactive ou clé d'API) ou une application (compte de service). Écriture
+-- identité (session interactive, clé d'API ou mot de passe d'application) ou une application
+-- (compte de service). Écriture
 -- par les fonctions système seulement (création, renouvellement, révocation).
 
 DEFINE TABLE OVERWRITE auth_session
@@ -36,15 +37,21 @@ DEFINE FIELD OVERWRITE application ON TABLE auth_session
 DEFINE FIELD OVERWRITE kind ON TABLE auth_session
     TYPE string
     DEFAULT "interactive"
-    ASSERT $value IN ["interactive", "service", "api_key"]
+    ASSERT $value IN ["interactive", "service", "api_key", "app_password"]
     READONLY
-    COMMENT "Nature : interactive, compte de service, clé d'API";
+    COMMENT "Nature : interactive, compte de service, clé d'API, mot de passe d'application";
 
 DEFINE FIELD OVERWRITE api_key ON TABLE auth_session
     TYPE option<record<auth_api_key>>
     REFERENCE ON DELETE CASCADE
     READONLY
     COMMENT "Clé d'API à l'origine d'une session api_key";
+
+DEFINE FIELD OVERWRITE app_password ON TABLE auth_session
+    TYPE option<record<auth_app_password>>
+    REFERENCE ON DELETE CASCADE
+    READONLY
+    COMMENT "Mot de passe d'application à l'origine d'une session app_password (partagée par ses connexions)";
 
 DEFINE FIELD OVERWRITE client ON TABLE auth_session
     TYPE object
@@ -130,3 +137,4 @@ DEFINE FIELD OVERWRITE revoked_reason ON TABLE auth_session
 
 DEFINE INDEX OVERWRITE auth_session_identity ON TABLE auth_session FIELDS identity, state;
 DEFINE INDEX OVERWRITE auth_session_expires ON TABLE auth_session FIELDS expires_at;
+DEFINE INDEX OVERWRITE auth_session_app_password ON TABLE auth_session FIELDS app_password, state;

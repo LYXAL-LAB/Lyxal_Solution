@@ -6,9 +6,9 @@ décidé par le CTO : **on ne réinvente pas la structure**. Le modèle de donn�
 fonctionnalités sont repris de projets mûrs, puis transcrits en SurrealDB et Rust selon les
 règles Lyxal (`.agents/AGENTS.md`). Aucun de ces projets n'est déployé à côté de Lyxal.
 
-Les tables de la V1 existent (README §1). Celles qui n'existent pas encore
-(`auth_session_device`, `auth_authorization_code`, `auth_identity_provider`,
-`auth_federated_identity`) relèvent de la V2 ([`ROADMAP.md`](ROADMAP.md)).
+Les tables de la V1 et celles des mots de passe d'application existent (README §1). Celles qui
+n'existent pas encore (`auth_session_device`, `auth_authorization_code`,
+`auth_identity_provider`, `auth_federated_identity`) relèvent de la V2 ([`ROADMAP.md`](ROADMAP.md)).
 
 ## 1. Sources et analyses détaillées
 
@@ -19,6 +19,8 @@ Les tables de la V1 existent (README §1). Celles qui n'existent pas encore
 | Keycloak | `main` (78 entités) | Apache-2.0 | Actions imposées (CGU, MFA, mot de passe), anti-force-brute, fédération d'identité, séparation partie secrète / publique des identifiants, typologie d'événements, organisations B2B | [`sources/kratos_keycloak.md`](sources/kratos_keycloak.md) |
 | Rauthy | 0.37.3, 54 tables, ~96 000 lignes Rust | Apache-2.0 | **Code Rust** du protocole : autorisation et PKCE, rotation des jetons de renouvellement, rotation des clés de signature (JWKS), cérémonies passkeys, anti-force-brute, fédération amont | [`sources/rauthy_kanidm.md`](sources/rauthy_kanidm.md) |
 | Kanidm | 1.13.0-dev | MPL-2.0 | Conception : sessions OAuth2 révoquées en cascade, politiques de compte par groupe, objets de clés par usage | [`sources/rauthy_kanidm.md`](sources/rauthy_kanidm.md) |
+| Stalwart | 1.1.1 (commit figé : `crates/lyxal_mail/SOURCES.md`) | AGPL-3.0-only (fichiers SELv2 exclus) | **Comportement seulement** (mots de passe d'application) : un moyen par appareil désigné par son identifiant et un secret aléatoire, expiration, refus de l'emprunt d'identité. **Aucun code repris** (aucun code AGPL dans un crate existant, §4.1 du programme courrier) | `crates/lyxal_mail/RECHERCHE_SOURCES.md` |
+| RustiCal | 0.19.1 (commit figé : `crates/lyxal_mail/SOURCES.md`) | AGPL-3.0-or-later | **Comportement seulement** (jetons d'application) : secret de forte entropie, empreinte rapide plutôt qu'un hachage lent, date de dernier usage. **Aucun code repris** | `crates/lyxal_calendar/RECHERCHE_SOURCES.md` |
 
 Règles de reprise :
 

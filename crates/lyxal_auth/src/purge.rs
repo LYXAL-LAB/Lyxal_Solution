@@ -8,7 +8,8 @@ use crate::models::{AuthPurgeParams, AuthPurgeResult};
 use crate::store::AuthStore;
 
 /// Purge : sessions expirées, parcours et codes expirés, jetons usés, compteurs d'échecs anciens,
-/// invitations expirées.
+/// invitations expirées, mots de passe d'application révoqués ou expirés et journal ancien de
+/// leurs connexions.
 pub struct AuthPurge {
     store: AuthStore,
     batch: i64,
@@ -37,6 +38,8 @@ impl AuthPurge {
             pending_totp: 0,
             invitation_claims: 0,
             code_issuances: 0,
+            app_passwords: 0,
+            app_password_uses: 0,
             identities_purged: 0,
             organizations_purged: 0,
         };
@@ -57,6 +60,8 @@ impl AuthPurge {
             report.pending_totp += result.pending_totp;
             report.invitation_claims += result.invitation_claims;
             report.code_issuances += result.code_issuances;
+            report.app_passwords += result.app_passwords;
+            report.app_password_uses += result.app_password_uses;
             report.identities_purged += result.identities_purged;
             report.organizations_purged += result.organizations_purged;
             let largest = [
@@ -67,6 +72,8 @@ impl AuthPurge {
                 result.pending_totp,
                 result.invitation_claims,
                 result.code_issuances,
+                result.app_passwords,
+                result.app_password_uses,
                 result.identities_purged,
                 result.organizations_purged,
             ]

@@ -37,7 +37,8 @@ schemas = [
     "schema/13_auth_relations.surql",
     "schema/14_auth_credential.surql",
     "schema/15_auth_flow.surql",
-    "schema/16_auth_token.surql"
+    "schema/16_auth_token.surql",
+    "schema/17_auth_app_password.surql"
 ]
 functions = [
     "functions/context/auth_context.surql",
@@ -55,6 +56,7 @@ functions = [
     "functions/flow/auth_registration.surql",
     "functions/session/auth_login_failure.surql",
     "functions/session/auth_session.surql",
+    "functions/app_password/auth_app_password.surql",
     "functions/application/auth_application.surql",
     "functions/signing/auth_signing_key.surql",
     "functions/mfa/auth_assurance.surql",
@@ -68,7 +70,8 @@ error_definitions = [
     "error/credentials/error_credentials.surql",
     "error/flows/error_flows.surql",
     "error/applications/error_applications.surql",
-    "error/mfa/error_mfa.surql"
+    "error/mfa/error_mfa.surql",
+    "error/app_passwords/error_app_passwords.surql"
 ]
 events = ["events/auth_events.surql"]
 seeds = ["seeds/auth_initial.surql"]

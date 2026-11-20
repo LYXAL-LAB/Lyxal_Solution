@@ -138,6 +138,7 @@ mod tests {
             recipient_name: Some(hidden[4].into()),
             method: None,
             label: None,
+            name: None,
             reason: None,
             remaining: None,
             first: None,

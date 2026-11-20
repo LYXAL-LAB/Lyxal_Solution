@@ -20,6 +20,7 @@ macro_rules! redacted_debug {
 pub(crate) use redacted_debug;
 
 mod access;
+mod app_password;
 mod context;
 mod domain;
 mod identity;
@@ -43,6 +44,12 @@ pub use access::{
     SessionRevokeAllParams, SessionRevokeParams, SessionRevoked, SessionSummary,
     SessionSwitchParams, SetupStartParams, SetupStarted, SigningKeyGetParams, SigningKeyRecord,
     SigningKeyRotateParams, SigningKeyRotated, SigningKeys,
+};
+pub use app_password::{
+    AppPasswordCreateParams, AppPasswordCreated, AppPasswordEligibleParams,
+    AppPasswordFailureParams, AppPasswordListParams, AppPasswordRevokeParams, AppPasswordRevoked,
+    AppPasswordSessionIssued, AppPasswordSessionRenewParams, AppPasswordSummary, AppPasswordUse,
+    AppPasswordUsesParams, AppPasswordVerifyParams, EligiblePermission,
 };
 pub use context::{AuthContext, ContextParams};
 pub use domain::{

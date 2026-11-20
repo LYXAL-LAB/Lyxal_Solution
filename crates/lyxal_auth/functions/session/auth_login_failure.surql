@@ -4,15 +4,41 @@
 -- ============================================================================
 -- Modèle : Keycloak `LOGIN_FAILURE`. Échecs comptés par identifiant (même inconnu : pas
 -- d'énumération) et par adresse IP, sur une fenêtre glissante ; au seuil, verrouillage
--- temporaire. Clés en BLAKE3 (calculées par l'hôte). Session système.
+-- temporaire. Clés en BLAKE3 (calculées par l'hôte). Session système. Les mots de passe
+-- d'application ont leurs propres natures de compteur (`app_password_ip`,
+-- `app_password_identifier`) : leurs essais ne verrouillent pas la connexion à la console.
 
 DEFINE FUNCTION OVERWRITE fn::auth_login_failure_status($params: object) -> object {
     LET $now = time::now();
+    LET $identifier_kind = $params.identifier_kind ?? "identifier";
+    LET $ip_kind = $params.ip_kind ?? "ip";
     LET $rows = (SELECT kind, locked_until FROM auth_login_failure
-        WHERE (kind = "identifier" AND key_hash = $params.identifier_hash) OR (kind = "ip" AND $params.ip_hash IS NOT NONE AND key_hash = $params.ip_hash));
+        WHERE (kind = $identifier_kind AND $params.identifier_hash IS NOT NONE AND key_hash = $params.identifier_hash)
+            OR (kind = $ip_kind AND $params.ip_hash IS NOT NONE AND key_hash = $params.ip_hash));
     LET $locked = array::filter($rows, |$r| $r.locked_until IS NOT NONE AND $r.locked_until > $now);
     RETURN { locked: array::len($locked) > 0, until: IF array::len($locked) = 0 { NONE } ELSE { array::max($locked.locked_until) } };
-} COMMENT "État de verrouillage ({ identifier_hash, ip_hash }) : { locked, until }";
+} COMMENT "État de verrouillage ({ identifier_hash, ip_hash, identifier_kind : identifier par défaut, ip_kind : ip par défaut }) : { locked, until }";
+
+-- ----------------------------------------------------------------------------
+-- fn::auth_login_failure_count : un échec compté sur une clé (interne)
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::auth_login_failure_count($params: object) -> object {
+    IF !fn::auth_session_valid({}).system { RETURN { code: "AUTH_PERMISSION_DENIED" }; };
+    LET $now = time::now();
+    LET $row = (SELECT * FROM ONLY auth_login_failure WHERE kind = $params.kind AND key_hash = $params.hash LIMIT 1);
+    -- Fenêtre écoulée : le compteur repart de zéro
+    LET $fresh = $row == NONE OR $row.window_start + $params.window <= $now;
+    LET $failures = IF $fresh { 1 } ELSE { $row.failures + 1 };
+    -- Sans limite (compteur seulement) : jamais de verrouillage
+    LET $locked_until = IF $params.limit IS NOT NONE AND $failures >= $params.limit { $now + $params.lock } ELSE { $row.locked_until };
+    IF $row == NONE {
+        CREATE auth_login_failure CONTENT { kind: $params.kind, key_hash: $params.hash, failures: $failures, window_start: $now, locked_until: $locked_until };
+    } ELSE {
+        UPDATE $row.id SET failures = $failures, window_start = IF $fresh { $now } ELSE { window_start }, locked_until = $locked_until;
+    };
+    RETURN { code: NONE, kind: $params.kind, failures: $failures, newly_locked: $params.limit IS NOT NONE AND $failures = $params.limit, locked_until: $locked_until };
+} COMMENT "Compte un échec sur une clé ({ kind, hash, window, lock : durées, limit : seuil de verrouillage, aucun pour un simple compteur }) dans une fenêtre glissante : { code, kind, failures, newly_locked, locked_until }. Session système";
 
 DEFINE FUNCTION OVERWRITE fn::auth_login_failure_check($params: object) {
     LET $report = fn::validation_object_execute($params, {
@@ -55,21 +81,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_login_failure_record($params: object) {
         ip: fn::auth_policy_value({ theme: "lockout", key: "ip_max_failures", default: 50 })
     };
     LET $keys = array::filter([["identifier", $p.identifier_hash], ["ip", $p.ip_hash]], |$k| $k[1] IS NOT NONE);
-    LET $results = array::map($keys, |$k| {
-        LET $kind = $k[0];
-        LET $hash = $k[1];
-        LET $row = (SELECT * FROM ONLY auth_login_failure WHERE kind = $kind AND key_hash = $hash LIMIT 1);
-        -- Fenêtre écoulée : le compteur repart de zéro
-        LET $fresh = $row == NONE OR $row.window_start + $window <= $now;
-        LET $failures = IF $fresh { 1 } ELSE { $row.failures + 1 };
-        LET $locked_until = IF $failures >= $limits[$kind] { $now + $lock } ELSE { $row.locked_until };
-        IF $row == NONE {
-            CREATE auth_login_failure CONTENT { kind: $kind, key_hash: $hash, failures: $failures, window_start: $now, locked_until: $locked_until };
-        } ELSE {
-            UPDATE $row.id SET failures = $failures, window_start = IF $fresh { $now } ELSE { window_start }, locked_until = $locked_until;
-        };
-        RETURN { kind: $kind, failures: $failures, newly_locked: $failures = $limits[$kind] };
-    });
+    LET $results = array::map($keys, |$k| fn::auth_login_failure_count({ kind: $k[0], hash: $k[1], window: $window, lock: $lock, limit: $limits[$k[0]] }));
     LET $identifier_locked = array::any($results, |$r| $r.kind = "identifier" AND $r.newly_locked);
     LET $published = fn::event_publish({
         event_id: rand::uuid::v7(),

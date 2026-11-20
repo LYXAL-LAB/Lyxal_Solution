@@ -488,14 +488,16 @@ DEFINE FUNCTION OVERWRITE fn::auth_mfa_reset($params: object) {
     -- Toutes les sessions de l'identité sont révoquées ; le double facteur sera reconfiguré
     LET $revoked = (UPDATE auth_session SET state = "revoked", revoked_at = time::now(), revoked_reason = "mfa_reset" WHERE identity = $p.identity AND state = "active" RETURN id);
     UPDATE auth_refresh_token SET state = "revoked" WHERE session IN $revoked AND state = "active";
+    -- Appareil perdu : ses mots de passe d'application sont révoqués avec les facteurs
+    LET $app_passwords = fn::auth_app_password_revoke_all({ identity: $p.identity, reason: "mfa_reset", revoked_by: $actor.identity });
     IF fn::auth_mfa_required({ identity: $p.identity, organization: NONE }) OR ($actor.organization IS NOT NONE AND fn::auth_mfa_required({ identity: $p.identity, organization: $actor.organization })) {
         IF (SELECT VALUE id FROM ONLY auth_required_action WHERE identity = $p.identity AND action = "configure_mfa" LIMIT 1) IS NONE {
             CREATE auth_required_action CONTENT { identity: $p.identity, action: "configure_mfa", reason: "mfa_reset" };
         };
     };
     fn::auth_mfa_publish({ event_type: "auth.mfa.removed", identity: $p.identity, data: { method: "all", label: NONE, reason: "admin_reset", removed: array::len($removed) } });
-    RETURN fn::result_ok({ identity: $p.identity, removed: array::len($removed), sessions_revoked: array::len($revoked) });
-} COMMENT "Remise à zéro des seconds facteurs d'une identité par un administrateur ({ session de l'administrateur, identity }) : action sensible ; auth.identity.manage, ou auth.member.manage dans l'organisation active dont l'identité est membre ; facteurs et codes supprimés, sessions révoquées, configure_mfa posée si le double facteur est exigé ; événement auth.mfa.removed. Session système";
+    RETURN fn::result_ok({ identity: $p.identity, removed: array::len($removed), sessions_revoked: array::len($revoked), app_passwords_revoked: $app_passwords });
+} COMMENT "Remise à zéro des seconds facteurs d'une identité par un administrateur ({ session de l'administrateur, identity }) : action sensible ; auth.identity.manage, ou auth.member.manage dans l'organisation active dont l'identité est membre ; facteurs et codes supprimés, sessions et mots de passe d'application révoqués, configure_mfa posée si le double facteur est exigé ; événement auth.mfa.removed. Session système";
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_mfa_passkey_flag : clé possiblement clonée (compteur qui recule)

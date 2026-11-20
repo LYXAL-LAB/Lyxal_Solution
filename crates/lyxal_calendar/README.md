@@ -49,8 +49,9 @@ Lyxal. Chaque élément porté est inscrit dans [`SOURCES.md`](SOURCES.md).
 | 20 — JMAP agendas et contacts | JSCalendar, méthodes JMAP |
 | 21, 22 — Durcissement, essais réels, clôture | Conformité, essais sur appareils réels, audit |
 
-Prérequis : lots 1 (mots de passe d'application), 3 (hôte), 14 et 15 (`lyxal_dav`) ; le lot 18
-exige le courrier (lots 5 et 6). Les lots 16 et 17 ne dépendent pas du courrier (décision P9).
+Prérequis : lots 1 (mots de passe d'application, réalisé), 3 (hôte), 14 et 15 (`lyxal_dav`) ;
+le lot 18 exige le courrier (lots 5 et 6). Les lots 16 et 17 ne dépendent pas du courrier
+(décision P9).
 
 ## Dépendances prévues
 

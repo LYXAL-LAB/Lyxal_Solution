@@ -37,11 +37,11 @@ pub mod webhook;
 pub mod worker;
 
 pub use consumer::{
-    auth_subscriber, AuthMessageHandler, InvitationCreated, MfaEnrolled, MfaRemoved,
-    NotificationConsumer, PasskeyCloneDetected, PasswordChanged, RecoveryCodeUsed,
-    RecoveryCodesGenerated, RecoveryRequested, SecurityAlert, SecurityAlertHandler,
-    SecurityAlertPayload, VerificationRequested, AUTH_HANDLER, AUTH_SUBSCRIPTIONS, CONSUMER_MODULE,
-    SECURITY_ALERT_WORKFLOW,
+    auth_subscriber, AppPasswordCreated, AppPasswordRevoked, AuthMessageHandler, InvitationCreated,
+    MfaEnrolled, MfaRemoved, NotificationConsumer, PasskeyCloneDetected, PasswordChanged,
+    RecoveryCodeUsed, RecoveryCodesGenerated, RecoveryRequested, SecurityAlert,
+    SecurityAlertHandler, SecurityAlertPayload, VerificationRequested, AUTH_HANDLER,
+    AUTH_SUBSCRIPTIONS, CONSUMER_MODULE, SECURITY_ALERT_WORKFLOW,
 };
 pub use error::{NotificationError, NotificationResult};
 pub use module::{

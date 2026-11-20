@@ -10,20 +10,24 @@ use surrealdb::Surreal;
 use crate::models::{
     AddressChangeConfirmParams, AddressChangeRequestParams, AddressChangeRequested, AddressChanged,
     AddressVerifyParams, ApiKeyCreateParams, ApiKeyCreated, ApiKeySessionParams,
-    ApplicationSecretAddParams, ApplicationSecretAdded, AssuranceCheckParams, AssuranceState,
-    AuthContext, AuthPurgeParams, AuthPurgeResult, AuthValue, CodeIssueParams, CodeIssued,
-    CodeVerified, CodeVerifyParams, ContextParams, CredentialUsed, DomainAddParams,
-    DomainGetParams, DomainVerifyParams, FactorRemoveParams, FactorRemoved, Flow, FlowGetParams,
-    FlowStartParams, FlowStateSaveParams, FlowStateTakeParams, FlowStateTaken, FlowSubmitParams,
-    Identity, IdentityCreateParams, IdentityGetParams, IdentityPermissions,
-    IdentityPermissionsParams, Invitation, InvitationAcceptParams, InvitationAccepted,
-    InvitationCreateParams, InvitationRevokeParams, LoginFailureParams, LoginFailureResetParams,
-    LoginFailureStatus, LoginRequirements, LoginRequirementsParams, MemberAddParams, MemberAdded,
-    MemberRemoveParams, MemberRemoved, MfaFactorListParams, MfaFactors, MfaFailureKeyParams,
-    MfaFailureParams, MfaFailureStatus, MfaReset, MfaResetParams, Organization,
-    OrganizationCreateParams, OrganizationDomain, OrganizationDomainCreated, OrganizationGetParams,
-    PasskeyFindParams, PasskeyFound, PasskeyListForParams, PasskeyRecord, PasskeyRenameParams,
-    PasskeyRenamed, PasskeySaveParams, PasskeySaved, PasskeyUpdateParams, PasswordCredential,
+    AppPasswordCreateParams, AppPasswordCreated, AppPasswordEligibleParams,
+    AppPasswordFailureParams, AppPasswordListParams, AppPasswordRevokeParams, AppPasswordRevoked,
+    AppPasswordSessionIssued, AppPasswordSessionRenewParams, AppPasswordSummary, AppPasswordUse,
+    AppPasswordUsesParams, AppPasswordVerifyParams, ApplicationSecretAddParams,
+    ApplicationSecretAdded, AssuranceCheckParams, AssuranceState, AuthContext, AuthPurgeParams,
+    AuthPurgeResult, AuthValue, CodeIssueParams, CodeIssued, CodeVerified, CodeVerifyParams,
+    ContextParams, CredentialUsed, DomainAddParams, DomainGetParams, DomainVerifyParams,
+    EligiblePermission, FactorRemoveParams, FactorRemoved, Flow, FlowGetParams, FlowStartParams,
+    FlowStateSaveParams, FlowStateTakeParams, FlowStateTaken, FlowSubmitParams, Identity,
+    IdentityCreateParams, IdentityGetParams, IdentityPermissions, IdentityPermissionsParams,
+    Invitation, InvitationAcceptParams, InvitationAccepted, InvitationCreateParams,
+    InvitationRevokeParams, LoginFailureParams, LoginFailureResetParams, LoginFailureStatus,
+    LoginRequirements, LoginRequirementsParams, MemberAddParams, MemberAdded, MemberRemoveParams,
+    MemberRemoved, MfaFactorListParams, MfaFactors, MfaFailureKeyParams, MfaFailureParams,
+    MfaFailureStatus, MfaReset, MfaResetParams, Organization, OrganizationCreateParams,
+    OrganizationDomain, OrganizationDomainCreated, OrganizationGetParams, PasskeyFindParams,
+    PasskeyFound, PasskeyListForParams, PasskeyRecord, PasskeyRenameParams, PasskeyRenamed,
+    PasskeySaveParams, PasskeySaved, PasskeyUpdateParams, PasswordCredential,
     PasswordCredentialParams, PasswordSet, PasswordSetParams, PermissionRegisterParams,
     PermissionRegistered, PolicyGetParams, RecoveryCodeUseParams, RecoveryCodeUsed,
     RecoveryCodesReplaceParams, RecoveryCodesReplaced, RegistrationCompleteParams,
@@ -646,5 +650,77 @@ impl AuthStore {
     /// `fn::auth_mfa_reset` : remise à zéro par un administrateur (session système).
     pub async fn mfa_reset(&self, params: MfaResetParams) -> Result<MfaReset, LyxalSurrealError> {
         self.call_fn("auth_mfa_reset", params).await
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Mots de passe d'application (lot 1 du programme courrier)
+    // ------------------------------------------------------------------------------------------
+
+    /// `fn::auth_app_password_create` : mot de passe d'application créé (session système).
+    pub async fn app_password_create(
+        &self,
+        params: AppPasswordCreateParams,
+    ) -> Result<AppPasswordCreated, LyxalSurrealError> {
+        self.call_fn("auth_app_password_create", params).await
+    }
+
+    /// `fn::auth_app_password_list` : mots de passe d'application visibles d'une identité.
+    pub async fn app_password_list(
+        &self,
+        params: AppPasswordListParams,
+    ) -> Result<Vec<AppPasswordSummary>, LyxalSurrealError> {
+        self.call_fn("auth_app_password_list", params).await
+    }
+
+    /// `fn::auth_app_password_uses` : journal regroupé des connexions d'un mot de passe.
+    pub async fn app_password_uses(
+        &self,
+        params: AppPasswordUsesParams,
+    ) -> Result<Vec<AppPasswordUse>, LyxalSurrealError> {
+        self.call_fn("auth_app_password_uses", params).await
+    }
+
+    /// `fn::auth_app_password_revoke` : révocation par le titulaire ou un administrateur
+    /// (session système).
+    pub async fn app_password_revoke(
+        &self,
+        params: AppPasswordRevokeParams,
+    ) -> Result<AppPasswordRevoked, LyxalSurrealError> {
+        self.call_fn("auth_app_password_revoke", params).await
+    }
+
+    /// `fn::auth_app_password_eligible` : permissions que l'appelant peut donner.
+    pub async fn app_password_eligible(
+        &self,
+        params: AppPasswordEligibleParams,
+    ) -> Result<Vec<EligiblePermission>, LyxalSurrealError> {
+        self.call_fn("auth_app_password_eligible", params).await
+    }
+
+    /// `fn::auth_app_password_verify` : connexion d'un logiciel vérifiée (session système).
+    pub async fn app_password_verify(
+        &self,
+        params: AppPasswordVerifyParams,
+    ) -> Result<AppPasswordSessionIssued, LyxalSurrealError> {
+        self.call_fn("auth_app_password_verify", params).await
+    }
+
+    /// `fn::auth_app_password_failure_record` : échec compté (session système).
+    pub async fn app_password_failure_record(
+        &self,
+        params: AppPasswordFailureParams,
+    ) -> Result<LoginFailureStatus, LyxalSurrealError> {
+        self.call_fn("auth_app_password_failure_record", params)
+            .await
+    }
+
+    /// `fn::auth_app_password_session_renew` : nouveau jeton d'une session `app_password`
+    /// (session système).
+    pub async fn app_password_session_renew(
+        &self,
+        params: AppPasswordSessionRenewParams,
+    ) -> Result<AppPasswordSessionIssued, LyxalSurrealError> {
+        self.call_fn("auth_app_password_session_renew", params)
+            .await
     }
 }

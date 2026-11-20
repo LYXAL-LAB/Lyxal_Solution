@@ -546,7 +546,9 @@ de même événement (idempotent par l'identifiant d'événement) pour l'abonné
 
 Alertes de sécurité (sans secret) : `auth.mfa.enrolled`, `auth.mfa.removed`,
 `auth.mfa.recovery_codes_generated`, `auth.mfa.recovery_code_used`, `auth.password.changed`
-(sauf le premier mot de passe d'un compte), `auth.passkey.clone_detected` → parcours critique
+(sauf le premier mot de passe d'un compte), `auth.passkey.clone_detected`,
+`auth.app_password.created`, `auth.app_password.revoked` (sauf une révocation faite par le
+titulaire lui-même, motif `owner` ; nom de l'appareil dans `payload.label`) → parcours critique
 `auth_security_alert` (une phrase par nature d'alerte, choisie par `payload.alert`), pour
 l'abonné `auth:<identité>` de l'installation (adresse, langue et prénom pris dans la charge
 utile), idempotent par l'identifiant d'événement.
@@ -621,7 +623,8 @@ données.
   `SecretCodec::seal_device_value` / `open_device_value` (`DeviceField`), `device_fingerprint`.
 * `NotificationConsumer` (`EventConsumerModule`) et `AuthMessageHandler` : secret illisible,
   charge utile invalide ou parcours absent → lettre morte ; base indisponible → rejoué.
-  `SecurityAlertHandler` : alertes de sécurité vers `auth_security_alert`. `auth_subscriber` :
+  `SecurityAlertHandler` : alertes de sécurité vers `auth_security_alert` (`SecurityAlert::SILENT_REASON` :
+  motif sans alerte, `owner` pour `AppPasswordRevoked`). `auth_subscriber` :
   abonné `auth:<identité>` ou `email:<adresse>` d'un événement `auth.*`.
 * `Renderer` : MiniJinja sans chargeur, variable affichée inconnue = erreur, échappement HTML
   automatique, budget d'exécution, mise en page autour du contenu ; rend tout `MessageSource`

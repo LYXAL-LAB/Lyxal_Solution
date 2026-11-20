@@ -1,4 +1,5 @@
-//! Routes de connexion `/auth/*` (`lyxal_auth`, lots 3 et 4 ; seconds facteurs : `auth_mfa.rs`). Réponses au contrat `LyxalResult`
+//! Routes de connexion `/auth/*` (`lyxal_auth`, lots 3 et 4 ; seconds facteurs : `auth_mfa.rs` ;
+//! mots de passe d'application : `auth_app_passwords.rs`). Réponses au contrat `LyxalResult`
 //! (`{ ok, data, error }`) ; les erreurs sont celles de la master data `AUTH_*`, sans détail sur
 //! l'existence d'un compte. Les routes protégées identifient l'appelant par son jeton d'accès
 //! (`Authorization: Bearer`) : signature vérifiée avec la clé de son emplacement, session
@@ -55,6 +56,7 @@ pub fn routes() -> Router<AppContext> {
         .route("/service/token", post(service_token))
         .route("/api-keys/exchange", post(api_key_exchange))
         .merge(super::auth_mfa::routes())
+        .merge(super::auth_app_passwords::routes())
         .layer(axum::middleware::map_response(no_store))
 }
 

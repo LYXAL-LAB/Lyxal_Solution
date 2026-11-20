@@ -169,6 +169,37 @@ DEFINE FIELD OVERWRITE retention.deleted_days ON TABLE auth_policy
     TYPE option<int>
     ASSERT $value IS NONE OR ($value >= 1 AND $value <= 365);
 
+DEFINE FIELD OVERWRITE app_password ON TABLE auth_policy
+    TYPE option<object>
+    COMMENT "Mots de passe d'application : { enabled, max_per_identity, max_lifetime_days, session_seconds } (une organisation ne peut que restreindre) ; installation seulement : { ip_max_failures, identifier_alert_failures, log_days }";
+
+DEFINE FIELD OVERWRITE app_password.enabled ON TABLE auth_policy
+    TYPE option<bool>;
+
+DEFINE FIELD OVERWRITE app_password.max_per_identity ON TABLE auth_policy
+    TYPE option<int>
+    ASSERT $value IS NONE OR ($value >= 1 AND $value <= 100);
+
+DEFINE FIELD OVERWRITE app_password.max_lifetime_days ON TABLE auth_policy
+    TYPE option<int>
+    ASSERT $value IS NONE OR ($value >= 1 AND $value <= 3650);
+
+DEFINE FIELD OVERWRITE app_password.session_seconds ON TABLE auth_policy
+    TYPE option<int>
+    ASSERT $value IS NONE OR ($value >= 900 AND $value <= 86400);
+
+DEFINE FIELD OVERWRITE app_password.ip_max_failures ON TABLE auth_policy
+    TYPE option<int>
+    ASSERT $value IS NONE OR ($value >= 5 AND $value <= 10000);
+
+DEFINE FIELD OVERWRITE app_password.identifier_alert_failures ON TABLE auth_policy
+    TYPE option<int>
+    ASSERT $value IS NONE OR ($value >= 10 AND $value <= 10000);
+
+DEFINE FIELD OVERWRITE app_password.log_days ON TABLE auth_policy
+    TYPE option<int>
+    ASSERT $value IS NONE OR ($value >= 7 AND $value <= 365);
+
 DEFINE FIELD OVERWRITE created_at ON TABLE auth_policy
     TYPE datetime
     DEFAULT time::now()

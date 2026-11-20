@@ -6,6 +6,7 @@
 -- Modèle : Logto `scopes` / `organization_scopes`. L'identifiant est le code lui-même
 -- (`auth_permission:⟨auth.member.read⟩`) : le contrôle des droits lit la portée d'une permission
 -- par accès direct. Chaque code a une seule portée. lyxal_auth n'en connaît pas le sens.
+-- Lus avec un défaut par les fonctions : `min_aal` absent vaut 1, `app_password` absent vaut faux.
 
 DEFINE TABLE OVERWRITE auth_permission
     TYPE NORMAL
@@ -39,6 +40,14 @@ DEFINE FIELD OVERWRITE min_aal ON TABLE auth_permission
     DEFAULT 1
     ASSERT $value >= 1 AND $value <= 2
     COMMENT "Niveau d'assurance minimal de la session pour exercer la permission (2 : double facteur)";
+
+-- Déclaré par le module propriétaire (écart E3 du lot 1) : lyxal_auth ne connaît pas les modules
+-- du courrier. Seule une permission d'organisation exerçable sans second facteur peut l'être.
+DEFINE FIELD OVERWRITE app_password ON TABLE auth_permission
+    TYPE bool
+    DEFAULT false
+    ASSERT !$value OR ($this.scope = "organization" AND ($this.min_aal ?? 1) = 1)
+    COMMENT "Permission utilisable par un mot de passe d'application (portée organisation, niveau d'assurance 1)";
 
 DEFINE FIELD OVERWRITE description ON TABLE auth_permission
     TYPE object
