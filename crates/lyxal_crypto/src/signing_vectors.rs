@@ -1,10 +1,11 @@
-// Tests of ES256 and RS256. The signatures are checked by an independent verifier (`ring`'s
-// verification, used in tests only: the crate offers no verification). RS256 is deterministic:
-// the test-only RSA-2048 key of `tests/fixtures/` (generated for these tests, never used
-// elsewhere) and its RS256 signature were produced by OpenSSL (Python `cryptography`).
+// Tests of ES256 and RS256 (K8, now computed by aws-lc-rs: same vectors as with ring). ES256
+// signatures are checked by the ECDSA verification of aws-lc-rs (the crate offers none). RS256 is
+// deterministic: the test-only RSA-2048 key of `tests/fixtures/` (generated for these tests,
+// never used elsewhere) and its RS256 signature were produced by OpenSSL (Python
+// `cryptography`); the signature produced here must be byte-identical.
 use super::*;
+use aws_lc_rs::signature::ECDSA_P256_SHA256_FIXED;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
-use ring::signature::{UnparsedPublicKey, ECDSA_P256_SHA256_FIXED, RSA_PKCS1_2048_8192_SHA256};
 
 const RSA_PKCS8_B64: &str = include_str!("../tests/fixtures/rsa2048_test_only.pkcs8.b64");
 const RSA_PUBLIC_PKCS1_B64: &str =
@@ -88,13 +89,23 @@ fn es256_import_of_a_known_key_pair() {
     assert!(UnparsedPublicKey::new(&ECDSA_P256_SHA256_FIXED, &public)
         .verify(b"vector", &signature)
         .is_ok());
-    // Public key inconsistent with the scalar: refused by ring's consistency check
+    // Public key inconsistent with the scalar: refused by AWS-LC's consistency check
     let mut wrong = public.clone();
     wrong[64] ^= 1;
     assert_eq!(
         EcdsaP256SigningKey::import_pkcs8(secret(&p256_pkcs8(&d, &wrong))).unwrap_err(),
         CryptoError::InvalidKeyEncoding
     );
+    // Without its public key (RFC 5915 [1] absent): the public point is recomputed from the
+    // scalar by AWS-LC
+    let mut bare = vec![
+        0x30, 0x41, 0x02, 0x01, 0x00, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02,
+        0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, 0x04, 0x27, 0x30, 0x25,
+        0x02, 0x01, 0x01, 0x04, 0x20,
+    ];
+    bare.extend_from_slice(&d);
+    let recomputed = EcdsaP256SigningKey::import_pkcs8(secret(&bare)).unwrap();
+    assert_eq!(recomputed.public_key_uncompressed().to_vec(), public);
 }
 
 #[test]
@@ -135,7 +146,7 @@ fn signing_keys_refuse_malformed_or_foreign_keys() {
 fn rs256_matches_the_openssl_signature_and_verifies() {
     let expected = hex::decode(RSA_SIGNATURE_HEX.trim()).unwrap();
     let public = STANDARD.decode(RSA_PUBLIC_PKCS1_B64.trim()).unwrap();
-    let verifier = UnparsedPublicKey::new(&RSA_PKCS1_2048_8192_SHA256, &public);
+    let verifier = RsaPublicKey::from_pkcs1_der(&public).unwrap();
     for key in [
         RsaSigningKey::import_pkcs8(secret(&rsa_der())).unwrap(),
         // Google service-account files carry the key as PEM
@@ -143,9 +154,11 @@ fn rs256_matches_the_openssl_signature_and_verifies() {
     ] {
         let signature = key.sign_rs256(RSA_MESSAGE).unwrap();
         assert_eq!(signature, expected);
-        assert!(verifier.verify(RSA_MESSAGE, &signature).is_ok());
+        assert!(verifier.verify_rs256(RSA_MESSAGE, &signature).unwrap());
         let other = key.sign_rs256(b"other").unwrap();
-        assert!(verifier.verify(RSA_MESSAGE, &other).is_err());
+        assert!(!verifier.verify_rs256(RSA_MESSAGE, &other).unwrap());
+        assert_eq!(key.public_key(), verifier);
+        assert_eq!(key.modulus_bits(), 2048);
         assert_eq!(format!("{key:?}"), "RsaSigningKey([REDACTED])");
     }
 }

@@ -98,6 +98,7 @@ impl<R: KeyResolver> CryptoEngine<R> {
 pub mod providers;
 pub use providers::{EnvironmentKeyProvider, FileKeyProvider, KeyGenerationPolicy};
 
+pub mod dkim;
 pub mod hmac;
 pub mod kdf;
 pub mod password;
@@ -106,6 +107,10 @@ pub mod stream;
 pub mod tls;
 pub mod totp;
 pub mod webpush;
+pub use dkim::{
+    DkimAlgorithm, DkimBodyHash, DkimBodyHasher, DkimCanonicalization, DkimHeaderCanonicalizer,
+    DkimKeyType, DkimPublicKey, DkimSignedData, DkimSigningKey, DKIM_MAX_SIGNED_DATA_BYTES,
+};
 pub use hmac::{
     sign_external_hmac_sha256, sign_hmac_sha256, sign_hmac_sha256_hex, verify_external_hmac_sha1,
     verify_external_hmac_sha256, verify_hmac_sha256, verify_hmac_sha256_hex,
@@ -118,7 +123,10 @@ pub use password::{
 /// Exact `rustls` version used by [`tls_server_config`], re-exported so that hosts build their
 /// `TlsAcceptor` on the same types. Hosts never build a TLS configuration themselves.
 pub use rustls;
-pub use signing::{EcdsaP256SigningKey, RsaSigningKey};
+pub use signing::{
+    EcdsaP256SigningKey, Ed25519PublicKey, Ed25519SigningKey, RsaModulusBits, RsaPublicKey,
+    RsaSigningKey,
+};
 pub use stream::{
     stream_ciphertext_len, StreamDecryptor, StreamEncryptor, StreamKey, StreamSpan,
     STREAM_HEADER_BYTES, STREAM_SEGMENT_BYTES, STREAM_TAG_BYTES,

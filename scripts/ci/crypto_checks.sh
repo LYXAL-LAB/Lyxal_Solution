@@ -4,6 +4,8 @@
 # - vecteurs du format d'enveloppe enc:v2 et du format de flux v1, recalculés par OpenSSL
 #   (bibliothèque Python `cryptography`, épinglée, dans un environnement virtuel dédié),
 #   indépendamment du crate ;
+# - signatures DKIM des vecteurs (RFC 8463, corpus de mail-auth, message signé pour Lyxal)
+#   vérifiées par OpenSSL avec une canonicalisation écrite indépendamment du crate ;
 # - garde-fou des dépendances cryptographiques (décision C12) : aucune crate cryptographique
 #   directe ni configuration TLS hors de lyxal_crypto.
 set -euo pipefail
@@ -28,3 +30,4 @@ if [ "$("${VENV}/bin/python" -I -c 'import cryptography; print(cryptography.__ve
 fi
 "${VENV}/bin/python" -I tools/check_fixtures.py
 "${VENV}/bin/python" -I tools/check_stream_fixtures.py
+"${VENV}/bin/python" -I tools/check_dkim_fixtures.py

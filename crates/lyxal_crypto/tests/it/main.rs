@@ -3,6 +3,7 @@
 //! Chaque fichier de ce dossier est un module : Cargo produit un seul exécutable de tests
 //! au lieu d'un par fichier (chaque exécutable embarque le moteur SurrealDB complet).
 
+mod dkim_vectors;
 mod encryption;
 mod envelope_v2_fixtures;
 mod file_v2;
@@ -19,6 +20,7 @@ mod protocol_v2;
 mod resource_boundaries;
 mod rotation_v2;
 mod secrets_v2;
+mod signatures;
 mod stream_proptests;
 mod stream_v1;
 mod tls_server;

@@ -18,8 +18,10 @@ s'ajouter, aucune n'est retirée), sans entrée, PHC, clé, chemin ni message de
 | ExternalHmacKey | import(SecretBytes) 1 à 1024 bytes, tels quels ; jamais générée | clé d'un protocole externe (webhooks), type distinct de HmacKey, aucun export brut |
 | PasswordHash | parse(&str) valide PHC et budgets ; hash_password construit un hash | expose_phc -> &str, needs_rehash -> bool |
 | TotpSecret | generate(&TotpConfig) -> Result via OsRng (20 bytes SHA-1, 32 SHA-256) ; import(SecretBytes) exige 16..=64 bytes | expose_secret -> &[u8] (stockage chiffré), to_base32 -> SecretString |
-| EcdsaP256SigningKey | import_pkcs8(SecretBytes) : PKCS#8 P-256 en DER ou PEM `PRIVATE KEY`, clé publique incluse ; generate -> Result (`ring::rand::SystemRandom`, aléa du système) | public_key_uncompressed -> [u8;65], sign_es256 -> Result<[u8;64]>, export_pkcs8 -> SecretBytes (rangement d'une clé VAPID générée dans le coffre-fort seulement) |
-| RsaSigningKey | import_pkcs8(SecretBytes) : PKCS#8 RSA 2048 à 4096 bits en DER ou PEM `PRIVATE KEY` ; jamais générée | sign_rs256 -> Result<Vec<u8>> ; aucun export |
+| EcdsaP256SigningKey | import_pkcs8(SecretBytes) : PKCS#8 P-256 en DER ou PEM `PRIVATE KEY`, clé publique incluse contrôlée (absente : recalculée depuis le scalaire) ; generate -> Result (aléa du système, AWS-LC) | public_key_uncompressed -> [u8;65], sign_es256 -> Result<[u8;64]>, export_pkcs8 -> SecretBytes (rangement d'une clé VAPID générée dans le coffre-fort seulement) |
+| RsaSigningKey | import_pkcs8(SecretBytes) : PKCS#8 RSA 2048 à 4096 bits en DER ou PEM `PRIVATE KEY` ; generate(RsaModulusBits) -> Result (aléa du système, AWS-LC) | sign_rs256 -> Result<Vec<u8>>, public_key -> RsaPublicKey, modulus_bits ; export_pkcs8 -> SecretBytes (PKCS#8 pour le coffre-fort seulement, C6) |
+| Ed25519SigningKey | import_pkcs8(SecretBytes) : PKCS#8 v1 ou v2 Ed25519 en DER ou PEM `PRIVATE KEY` ; generate -> Result (aléa du système, AWS-LC) | sign -> Result<[u8;64]>, public_key -> Ed25519PublicKey ; export_pkcs8 -> SecretBytes (PKCS#8 v2 pour le coffre-fort seulement, C6) |
+| DkimSigningKey | énumération `Rsa(RsaSigningKey)` / `Ed25519(Ed25519SigningKey)` | algorithm, sign(&DkimSignedData), public_key_record_bytes ; aucun export propre |
 | StreamKey | generate -> Result via OsRng (32 bytes, une clé par fichier) ; open(&CryptoEngine,&EncryptedEnvelope,&SecretContext) exige 32 bytes | seal -> EncryptedEnvelope (`enc:v2`) seulement ; aucun export brut |
 | StreamEncryptor / StreamDecryptor | new (clé de segments dérivée, tampon de clair effacés) | aucun accès à la clé ; voir « Chiffrement de fichiers en flux » |
 | TlsCertifiedKey | from_pem(&[u8], SecretBytes), from_der(Vec<Vec<u8>>, SecretBytes) ; clé vérifiée contre le certificat | aucun export ; clé tenue par `rustls` / `aws-lc-rs` en mémoire C (pas de ZeroizeOnDrop promis, SECURITY.md) |
@@ -130,7 +132,7 @@ signature imposée par un service extérieur ; les clés de la plateforme resten
 
 Vérification HMAC-SHA1 d'un protocole externe (signature `X-Twilio-Signature` des retours
 Twilio, décision K8 validée par le CTO le 17 novembre 2026) :
-`verify_external_hmac_sha1(&ExternalHmacKey,data,tag)->Result<bool>`, calculée par `ring`
+`verify_external_hmac_sha1(&ExternalHmacKey,data,tag)->Result<bool>`, calculée par `aws-lc-rs`
 (`HMAC_SHA1_FOR_LEGACY_USE_ONLY`) et comparée en temps constant ; tag exactement 20 octets,
 format invalide => InvalidTagEncoding, mismatch => false. **Vérification seulement** : aucune
 fonction de signature HMAC-SHA1 n'est offerte, et SHA-1 n'est jamais utilisé pour une donnée de
@@ -147,9 +149,11 @@ Les fonctions AES bas niveau, nonces choisis et helpers de HMAC à clés courtes
 ## Notifications push : ES256, RS256 et Web Push (décision K8)
 
 Extension validée par le CTO le 17 novembre 2026 (programme `lyxal_notification`, décisions K8 et
-G3), calculée par `ring` ; rien d'autre (aucune vérification de ces signatures, aucune autre
-courbe). Les clés sont gardées en octets PKCS#8 effacés à la libération et relues par `ring` à
-chaque signature (l'état transitoire de `ring` n'est pas effacé) ; aucun scalaire privé exposé.
+G3), calculée par `aws-lc-rs` (décision C1 du lot 2 du programme courrier : signatures et
+messages identiques, mêmes vecteurs) ; aucune vérification ES256, aucune autre courbe (la
+vérification RS256 est offerte par `RsaPublicKey`, section suivante). Les clés sont gardées en
+octets PKCS#8 effacés à la libération et relues par `aws-lc-rs` à chaque signature (l'objet
+transitoire d'AWS-LC vit en mémoire C) ; aucun scalaire privé exposé.
 Entrée de clé de 16 Kio au plus (`InputTooLarge`) ; clé illisible, d'une autre courbe ou d'un
 autre algorithme, PKCS#1 ou SEC1 nu, PEM d'une autre étiquette ou chiffré : `InvalidKeyEncoding`.
 
@@ -158,12 +162,14 @@ autre algorithme, PKCS#1 ou SEC1 nu, PEM d'une autre étiquette ou chiffré : `I
   Web Push et jetons du fournisseur APNs. `public_key_uncompressed` : point non compressé
   `0x04 || x || y` (paramètre `k` de VAPID, `applicationServerKey` des navigateurs).
   `export_pkcs8` existe seulement pour ranger dans le coffre-fort une paire VAPID générée par
-  l'hôte ; la copie appartient à l'appelant.
+  l'hôte ; la copie appartient à l'appelant. Une clé dont la clé publique incluse ne correspond
+  pas au scalaire est refusée (`InvalidKeyEncoding`) ; sans clé publique, celle-ci est recalculée
+  depuis le scalaire par AWS-LC.
 - `RsaSigningKey::sign_rs256(data) -> Result<Vec<u8>>` : JWS RS256 (RFC 7518 §3.3),
   RSASSA-PKCS1-v1_5 SHA-256, déterministe, longueur du module ; jeton du compte de service Google
   échangé contre un jeton d'accès FCM.
 - `webpush_encrypt(ua_public: &[u8;65], auth_secret: &[u8;16], plaintext) -> Result<Vec<u8>>` :
-  RFC 8291, codage `aes128gcm` de la RFC 8188 ; paire ECDH P-256 éphémère (`ring::agreement`) et
+  RFC 8291, codage `aes128gcm` de la RFC 8188 ; paire ECDH P-256 éphémère (`aws_lc_rs::agreement`) et
   sel de 16 octets (`OsRng`) neufs par message, HKDF-SHA256 (RFC 8291 §3.3–3.4 :
   `"WebPush: info" 0x00 || ua_public || as_public` sous `auth_secret`, puis
   `"Content-Encoding: aes128gcm" 0x00` et `"Content-Encoding: nonce" 0x00` sous le sel),
@@ -174,8 +180,8 @@ autre algorithme, PKCS#1 ou SEC1 nu, PEM d'une autre étiquette ou chiffré : `I
   limite de 4096 octets du corps entier imposée par les services push appartient à l'appelant.
 
 Tests : vecteur de la RFC 8291 annexe A (valeurs intermédiaires et message final, clé
-éphémère et sel injectés) ; déchiffrement par un navigateur simulé ; signatures ES256 et RS256
-vérifiées par la vérification de `ring` (tests seulement) ; import de la paire connue de la
+éphémère et sel injectés) ; déchiffrement par un navigateur simulé ; signatures ES256
+vérifiées par la vérification ECDSA d'`aws-lc-rs` (tests seulement), RS256 par `RsaPublicKey` ; import de la paire connue de la
 RFC 8291 ; signature RS256 égale à celle calculée par OpenSSL sur une clé RSA-2048 réservée aux
 tests (`tests/fixtures/`).
 
@@ -202,6 +208,98 @@ HMAC-SHA1 est utilisé dans ce module (exigé par la RFC 6238 et les application
 exposé comme primitive ; la seule autre utilisation est la vérification
 `verify_external_hmac_sha1` ci-dessus. Le rythme des essais, l'anti-rejeu par pas, le stockage chiffré
 du secret et les codes de secours appartiennent à l'hôte.
+
+## Signatures RSA et Ed25519 (P6 b, d)
+
+Extension validée par le CTO le 20 novembre 2026 (programme courrier, lot 2, décisions C1, C2,
+C3 et C6). Calculée par `aws-lc-rs`, seul moteur asymétrique du crate ; la crate `rsa` n'est
+jamais utilisée (faille « Marvin », RUSTSEC-2023-0071). Clés privées gardées en PKCS#8 effacé à
+la libération et relues par `aws-lc-rs` à chaque signature ; entrée de clé privée de 16 Kio au
+plus (`InputTooLarge`), DER ou PEM `PRIVATE KEY` ; clé publique DER de 2 Kio au plus.
+
+Résultat d'une vérification : `Ok(true)` signature valide ; `Ok(false)` signature fausse ;
+`Err(InvalidSignatureEncoding)` signature de mauvaise longueur (64 octets pour Ed25519, longueur
+du module pour RSA) ; `Err(InvalidKeyEncoding)` clé illisible ou trop longue ; `Err(KeyTooWeak)`
+clé RSA plus courte que le minimum de l'usage. Même découpage que `verify_hmac_sha256` (format
+invalide = erreur, mauvaise valeur = `false`).
+
+- `RsaModulusBits::{Rsa2048, Rsa3072, Rsa4096}`.
+- `RsaSigningKey::generate(RsaModulusBits) -> Result` : aléa du système (AWS-LC,
+  `RandomUnavailable` en cas d'échec) ; une clé de 4096 bits se génère hors de la boucle
+  asynchrone (`spawn_blocking`), comme Argon2id. `import_pkcs8(SecretBytes) -> Result` : 2048 à
+  4096 bits (sinon `InvalidKeyEncoding`). `sign_rs256(data) -> Result<Vec<u8>>`,
+  `public_key() -> RsaPublicKey`, `modulus_bits() -> u32`, `export_pkcs8() -> SecretBytes`
+  (PKCS#8 v1, rangement dans le coffre-fort `lyxal_secrets` seulement ; la copie appartient à
+  l'appelant).
+- `RsaPublicKey` (donnée publique : `Clone`, `PartialEq`, `Debug` lisible) :
+  `from_spki_der(&[u8])` (SubjectPublicKeyInfo, RFC 5280), `from_pkcs1_der(&[u8])` (RSAPublicKey,
+  RFC 8017) : chacune exige sa forme ; `to_spki_der() -> Vec<u8>`, `modulus_bits() -> u32` ;
+  `verify_rs256(data, signature) -> Result<bool>` : RSASSA-PKCS1-v1_5 SHA-256, clé de 2048 à
+  8192 bits (plus courte `KeyTooWeak`, plus longue `InvalidKeyEncoding`).
+- `Ed25519SigningKey` (RFC 8032, PKCS#8 v2 effacé) : `generate() -> Result` ;
+  `import_pkcs8(SecretBytes) -> Result` : PKCS#8 v1 (forme d'`openssl genpkey`) ou v2 (clé
+  publique contrôlée contre la clé privée), DER ou PEM ; `export_pkcs8() -> SecretBytes`
+  (PKCS#8 v2, coffre-fort seulement) ; `public_key() -> Ed25519PublicKey` ;
+  `sign(data) -> Result<[u8; 64]>` (Ed25519 « pur », déterministe).
+- `Ed25519PublicKey` (donnée publique, `Copy`) : `from_bytes(&[u8])` exactement 32 octets
+  (sinon `InvalidKeyEncoding` ; le point est décodé à la vérification : une clé qui n'est pas
+  un point donne `Ok(false)`), `as_bytes() -> &[u8; 32]`, `verify(data, signature) ->
+  Result<bool>`.
+
+Tests : RFC 8032 §7.1 (TEST 1, 2, 3, 1024, SHA(abc) : clé publique dérivée et signature
+identiques), Wycheproof `ed25519_test.json` et `rsa_signature_{2048,3072,4096}_sha256_test.json`
+(tous les cas : « valid » vérifie, « invalid » jamais) ; clés générées, exportées puis importées ;
+clé PKCS#8 v1 d'OpenSSL ; refus des clés faibles, PKCS#1, d'un autre algorithme ou incohérentes.
+
+## DKIM (P6 c)
+
+Extension validée par le CTO le 20 novembre 2026 (programme courrier, lot 2, décisions C4 et C5).
+`lyxal_crypto` fait tout ce qui décide des octets signés et la signature ; la lecture des balises
+`DKIM-Signature`, le choix des en-têtes selon `h=`, le DNS, `t=` / `x=`, `i=` / `d=`, la politique
+sur `l=` et les résultats appartiennent aux crates du courrier (lots 5 à 7). Canonicalisation
+portée de `mail-auth` 0.16.0 (`Apache-2.0 OR MIT`, [`SOURCES.md`](SOURCES.md)).
+
+- `DkimAlgorithm::{RsaSha256, Ed25519Sha256}` : `as_tag()` (`"rsa-sha256"`, `"ed25519-sha256"`),
+  `from_tag(&str) -> Option` (casse ASCII ignorée ; `rsa-sha1` et tout autre : `None`, RFC 8301).
+- `DkimCanonicalization::{Simple, Relaxed}` (RFC 6376 §3.4).
+- `DkimBodyHasher::new(DkimCanonicalization, length_limit: Option<u64>)`, `update(&[u8])`,
+  `finish() -> DkimBodyHash { digest: [u8; 32], canonical_length: u64 }` : SHA-256 du corps
+  canonicalisé, en morceaux de taille quelconque (même résultat quel que soit le découpage, CRLF
+  coupé compris). `length_limit` (valeur de `l=`, vérification seulement, jamais produite) borne
+  les octets **canonicalisés** hachés (RFC 6376 §3.5) ; `canonical_length` compte tout le corps
+  canonicalisé, pour comparer à `l=`. Fins de ligne : un LF isolé compte comme fin de ligne, un CR
+  isolé est retiré (comportement de `mail-auth`) ; le lot 5 refuse en amont les fins de ligne
+  isolées.
+- `DkimHeaderCanonicalizer::new(DkimCanonicalization)` ; `push_header(name, raw_value) ->
+  Result` : en-tête choisi par `h=`, nom brut (octets avant le premier `:`) et valeur brute
+  (après ce `:`, repliements compris, **sans** CRLF final) ; un en-tête absent n'est pas poussé.
+  `finish(signature_name, signature_raw_value) -> Result<DkimSignedData>` : en-tête de signature
+  (`DKIM-Signature`, ou `ARC-Message-Signature` / `ARC-Seal` au lot 7) ajouté en dernier, valeur
+  de chaque balise `b=` vidée (espaces qui l'entourent compris ; `bh=` et `B=` gardés : noms de
+  balises sensibles à la casse, RFC 6376 §3.2), sans CRLF final. Données signées de
+  `DKIM_MAX_SIGNED_DATA_BYTES` (256 Kio) au plus (`InputTooLarge`). `DkimSignedData::as_bytes()`.
+- `DkimSigningKey::{Rsa(RsaSigningKey), Ed25519(Ed25519SigningKey)}` (`Debug` masqué) :
+  `algorithm()`, `sign(&DkimSignedData) -> Result<Vec<u8>>` (RSA : RSASSA-PKCS1-v1_5 SHA-256 des
+  données, clé de 2048 bits au moins ; Ed25519 : Ed25519 de SHA-256(données), RFC 8463 §3),
+  `public_key_record_bytes() -> Vec<u8>` (valeur `p=` avant Base64 : SubjectPublicKeyInfo pour
+  RSA, 32 octets pour Ed25519).
+- `DkimKeyType::{Rsa, Ed25519}` (balise `k=`) ; `DkimPublicKey::from_record(DkimKeyType, p) ->
+  Result` : `p=` décodé ; RSA en SubjectPublicKeyInfo ou RSAPublicKey nu, **1024** à 4096 bits
+  (RFC 8301 §3.2 : seule place où 1024 bits est accepté ; plus courte `KeyTooWeak`, plus longue
+  ou illisible `InvalidKeyEncoding`) ; Ed25519 exactement 32 octets ; `p=` vide (clé révoquée)
+  `InvalidKeyEncoding`. `key_type()`, `verify(DkimAlgorithm, &DkimSignedData, signature) ->
+  Result<bool>` : `a=` différent de `k=` `AlgorithmMismatch`, signature de mauvaise longueur
+  `InvalidSignatureEncoding` (pour l'appelant : `permerror`), signature fausse `Ok(false)`
+  (`fail`).
+
+Tests : RFC 8463 annexe A (les deux signatures vérifient ; la clé Ed25519 de la RFC redonne
+exactement `b=`), corpus de `mail-auth` (simple/simple avec RSAPublicKey nu, relaxed/simple),
+message signé pour Lyxal par OpenSSL (le crate redonne les mêmes signatures RSA et Ed25519),
+cas de canonicalisation de `mail-auth` et référence ligne à ligne de la RFC 6376 sur tous les
+corps courts, propriétés (découpage indifférent, signature puis vérification pour les deux
+algorithmes et les quatre combinaisons), refus des clés et signatures mal formées ; oracle
+indépendant `tools/check_dkim_fixtures.py` (canonicalisation réécrite depuis la RFC, OpenSSL) ;
+cibles de fuzzing `dkim_canonicalize` et `dkim_public_key`.
 
 ## TLS serveur (P6 a)
 

@@ -7,9 +7,8 @@ Le crate n'est pas membre du workspace. Il est inscrit « à créer » dans `.ag
 plan de lot validé par le CTO (`.agents/AGENTS.md` §3).
 
 Le programme courrier, agendas et contacts (architecture, 23 lots, décisions F1 à F5 et P1 à P15
-du CTO) est décrit par `implementation_plan.md` à la racine du dépôt. Le plan du lot en cours
-(lot 0, cadre) est [`implementation_plan.md`](implementation_plan.md) ; il est supprimé une fois
-le lot fusionné.
+du CTO) est décrit par `implementation_plan.md` à la racine du dépôt. Chaque lot a son plan
+détaillé, placé dans le crate qu'il modifie et supprimé une fois le lot fusionné.
 
 ## Objet
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build and run six bounded coverage-guided campaigns, keeping actual exit status.
+"""Build and run eight bounded coverage-guided campaigns, keeping actual exit status.
 
 Requires cargo-fuzz, nightly and an execution context allowing LeakSanitizer to finish.
 Never suppresses sanitizer checks or treats an environment failure as a successful run.
@@ -15,8 +15,10 @@ import time
 
 CRATE = Path(__file__).resolve().parents[1]
 FUZZ = CRATE / "fuzz"
-TARGETS = ("envelope", "context", "phc", "rotation", "stream_open", "tls_pem")
-MAX_LEN = {"envelope": 1500000, "context": 1500000, "stream_open": 300000}
+TARGETS = ("envelope", "context", "phc", "rotation", "stream_open", "tls_pem",
+           "dkim_canonicalize", "dkim_public_key")
+MAX_LEN = {"envelope": 1500000, "context": 1500000, "stream_open": 300000,
+           "dkim_canonicalize": 300000}
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--seconds", type=int, default=1800)
 parser.add_argument("--segments", type=int, default=3,

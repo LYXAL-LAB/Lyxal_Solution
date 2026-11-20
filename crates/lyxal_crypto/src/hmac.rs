@@ -58,7 +58,7 @@ pub fn verify_external_hmac_sha256(
     verify_bytes(key.expose(), data, tag)
 }
 /// Verify exactly 20 tag bytes of HMAC-SHA1 under a third-party protocol key, in constant time
-/// (`ring`). Verification only, for a provider that still signs with SHA-1 (Twilio's
+/// (`aws-lc-rs`). Verification only, for a provider that still signs with SHA-1 (Twilio's
 /// `X-Twilio-Signature`, CTO decision K8): no signing function is offered. Mismatch is false;
 /// malformed length is an error.
 pub fn verify_external_hmac_sha1(
@@ -69,8 +69,9 @@ pub fn verify_external_hmac_sha1(
     if tag.len() != 20 {
         return Err(CryptoError::InvalidTagEncoding);
     }
-    let key = ring::hmac::Key::new(ring::hmac::HMAC_SHA1_FOR_LEGACY_USE_ONLY, key.expose());
-    Ok(ring::hmac::verify(&key, data, tag).is_ok())
+    let key =
+        aws_lc_rs::hmac::Key::new(aws_lc_rs::hmac::HMAC_SHA1_FOR_LEGACY_USE_ONLY, key.expose());
+    Ok(aws_lc_rs::hmac::verify(&key, data, tag).is_ok())
 }
 #[cfg(test)]
 mod vectors {

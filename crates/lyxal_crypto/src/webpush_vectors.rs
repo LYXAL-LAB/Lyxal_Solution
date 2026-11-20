@@ -4,7 +4,7 @@
 use super::*;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
-use ring::agreement::PublicKey;
+use aws_lc_rs::agreement::PublicKey;
 
 fn b64url(text: &str) -> Vec<u8> {
     URL_SAFE_NO_PAD.decode(text).unwrap()
@@ -66,8 +66,9 @@ fn browser_decrypt(ua_private: EphemeralPrivateKey, ua_public: &[u8; 65], auth: 
     let as_public = array::<65>(&body[21..86]);
     let ecdh = agree_ephemeral(
         ua_private,
-        &UnparsedPublicKey::new(&ECDH_P256, &as_public),
-        |shared| shared.to_vec(),
+        UnparsedPublicKey::new(&ECDH_P256, &as_public),
+        (),
+        |shared| Ok(shared.to_vec()),
     )
     .unwrap();
     let mut info = b"WebPush: info\0".to_vec();

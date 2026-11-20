@@ -1,8 +1,11 @@
 # Sécurité — garanties locales et préconditions de déploiement
 
-Cette bibliothèque n'est pas certifiée. RustCrypto fournit les primitives symétriques ; `rustls`
-et AWS-LC (`aws-lc-rs`, code C et assembleur issu de BoringSSL, appelé par FFI) font le TLS
-côté serveur ; le crate encadre leurs contrats. Aucun code unsafe propre n'est autorisé
+Cette bibliothèque n'est pas certifiée. RustCrypto fournit les primitives symétriques ; AWS-LC
+(`aws-lc-rs`, code C et assembleur issu de BoringSSL, appelé par FFI) est le seul moteur
+asymétrique (signatures RSA, ECDSA P-256 et Ed25519, génération de clés, ECDH du Web Push,
+HMAC-SHA1 des retours Twilio) et, avec `rustls`, fait le TLS côté serveur ; le crate encadre
+leurs contrats. La crate `rsa` n'est jamais utilisée (calcul en temps variable,
+RUSTSEC-2023-0071 « Marvin ») ; `ring` n'est plus une dépendance du crate. Aucun code unsafe propre n'est autorisé
 (`forbid(unsafe_code)`) ; les dépendances peuvent comporter des backends unsafe, C ou
 assembleur, dont les garanties sont distinctes (une faille mémoire d'AWS-LC est hors de ce
 `forbid`).
@@ -117,6 +120,44 @@ maîtresse ou d'organisation perdue rend les fichiers concernés illisibles : la
 clés de `lyxal_secrets` est vitale. Effacer la clé scellée d'un fichier le rend illisible, même
 dans les sauvegardes du stockage. Les tampons de clair et la clé de segments sont effacés à la
 libération ; les octets chiffrés écrits par l'appelant ne sont pas secrets.
+
+## Signatures et clés asymétriques
+
+Les clés privées (ES256, RS256, Ed25519, DKIM) sont gardées en PKCS#8 dans des tampons effacés à
+la libération, sans `Clone` ni sérialisation, `Debug` masqué ; chaque signature les relit dans un
+objet AWS-LC transitoire en **mémoire C**, libéré par `EVP_PKEY_free` (son effacement par AWS-LC
+n'est pas vérifié). `export_pkcs8` n'existe que pour ranger une clé générée dans le coffre-fort
+`lyxal_secrets` : la copie appartient à l'appelant. Les clés sont tirées de l'aléa du système par
+AWS-LC (`RAND_bytes`) ; une génération RSA de 4096 bits bloque le fil (à exécuter hors de la
+boucle asynchrone). RSA signe en temps constant (arithmétique d'AWS-LC) ; Ed25519 et RS256 sont
+déterministes (aucun aléa à la signature), ES256 tire un nonce neuf.
+
+Clés RSA : 2048 à 4096 bits pour signer ; 2048 à 8192 bits pour `verify_rs256` ; **1024** à 4096
+bits pour la vérification DKIM seulement (RFC 8301 §3.2 : beaucoup de domaines publient encore des
+clés de 1024 bits ; elles ne prouvent qu'une authenticité faible). Une vérification distingue le
+format invalide (erreur : `permerror`) de la signature fausse (`false` : `fail`). Une clé publique
+Ed25519 de 32 octets qui n'est pas un point valide n'est pas refusée à la lecture : elle ne vérifie
+aucune signature.
+
+## DKIM
+
+La canonicalisation (portée de `mail-auth`) et l'assemblage des données signées déterminent
+exactement les octets signés : un écart d'un octet avec les autres serveurs fait échouer des
+signatures, ou en accepterait de fausses. Ils sont couverts par les vecteurs RFC 8463, un corpus
+réel, une canonicalisation de référence écrite indépendamment (`tools/check_dkim_fixtures.py`),
+des propriétés et du fuzzing ; l'audit externe les inclut (ROADMAP). Limites à traiter par les
+crates du courrier (lot 5) :
+
+- **`l=`** : une signature avec `l=` laisse non signé ce qui suit les `l` premiers octets
+  canonicalisés ; un attaquant peut y ajouter du contenu. Le crate donne `canonical_length` ; le
+  refus ou le marquage d'un `l=` plus court que le corps appartient au vérificateur.
+- **Fins de ligne isolées** : un LF isolé compte comme fin de ligne et un CR isolé est retiré du
+  corps, comme `mail-auth` ; le serveur SMTP refuse en amont les fins de ligne isolées dans
+  `DATA` (« contrebande » SMTP).
+- **En-têtes** : le choix des en-têtes selon `h=` (du bas vers le haut, en-têtes absents
+  sur-signés), les dates `t=` / `x=`, l'alignement `i=` / `d=`, les balises en double et
+  `rsa-sha1` (refusé, RFC 8301) sont des règles du vérificateur. Les données signées sont bornées
+  à 256 Kio.
 
 ## TLS côté serveur
 

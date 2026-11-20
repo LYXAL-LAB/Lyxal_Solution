@@ -144,7 +144,9 @@ Le contrat complet est documenté dans `crates/lyxal_crypto/API_CONTRACT.md`.
 | **TOTP (RFC 6238)** | `totp` | `TotpSecret`, `TotpConfig`, `totp_generate()`, `totp_verify()`, `totp_uri()` |
 | **HMAC-SHA256** | `hmac` | `HmacKey`, `sign_hmac_sha256()`, `verify_hmac_sha256()` ; clé d'un protocole externe (webhooks) : `ExternalHmacKey`, `sign_external_hmac_sha256()`, `verify_external_hmac_sha256()` ; HMAC-SHA1 d'un protocole externe, **vérification seulement** (retours Twilio, K8) : `verify_external_hmac_sha1()` |
 | **HKDF-SHA256** | `kdf` | `hkdf_sha256()` (retourne `SecretBytes`) |
-| **ES256 / RS256** (jetons des services push, K8) | `signing` | `EcdsaP256SigningKey` (`import_pkcs8`, `generate`, `public_key_uncompressed`, `sign_es256`, `export_pkcs8` pour ranger une clé VAPID générée), `RsaSigningKey` (`import_pkcs8`, `sign_rs256`) ; **signature seulement** (aucune vérification offerte) |
+| **ES256** (jetons des services push, K8) | `signing` | `EcdsaP256SigningKey` (`import_pkcs8`, `generate`, `public_key_uncompressed`, `sign_es256`, `export_pkcs8` pour ranger une clé VAPID générée) ; **signature seulement** (aucune vérification ES256 offerte) |
+| **Signatures RSA et Ed25519** (RS256 des jetons push K8 ; P6 b, d) | `signing` | `RsaSigningKey` (`generate(RsaModulusBits)`, `import_pkcs8`, `sign_rs256`, `public_key`, `export_pkcs8` pour le coffre-fort), `RsaPublicKey` (`from_spki_der`, `from_pkcs1_der`, `verify_rs256`), `Ed25519SigningKey` (`generate`, `import_pkcs8`, `sign`, `public_key`, `export_pkcs8` pour le coffre-fort), `Ed25519PublicKey` (`from_bytes`, `verify`) ; calculées par `aws-lc-rs` |
+| **DKIM** (RFC 6376, 8301, 8463 ; P6 c) | `dkim` | `DkimBodyHasher` (empreinte `bh=` en flux), `DkimHeaderCanonicalizer` → `DkimSignedData` (en-têtes de `h=` puis en-tête de signature sans `b=`), `DkimSigningKey` (`sign`, `public_key_record_bytes`), `DkimPublicKey` (`from_record`, `verify`) ; `rsa-sha256` et `ed25519-sha256` |
 | **Chiffrement Web Push** (RFC 8291, K8) | `webpush` | `webpush_encrypt()` (`aes128gcm` : ECDH P-256 éphémère, HKDF-SHA256, AES-128-GCM), `WEBPUSH_MAX_PLAINTEXT_BYTES`, `WEBPUSH_OVERHEAD_BYTES` |
 | **Chiffrement de fichiers en flux** (format v1, P6 i) | `stream` | `StreamKey` (`generate`, `seal` / `open` par `enc:v2`), `StreamEncryptor` (`new`, `update`, `finish`), `StreamDecryptor` (`new`, `plan_range`, `decrypt_segment`), `stream_ciphertext_len()` ; format `STREAM_FORMAT_V1.md` |
 | **TLS côté serveur** (P6 a) | `tls` | `TlsCertifiedKey` (`from_pem`, `from_der`), `TlsCertificateStore` (certificats par nom SNI et par défaut, remplacement à chaud), `TlsServerOptions`, `tls_server_config()` (`rustls::ServerConfig`, fournisseur `aws-lc-rs`) ; `rustls` réexporté |
@@ -188,6 +190,10 @@ lyxal_crypto
 10. **TLS côté serveur** (décision C7) : toute configuration TLS est construite par `lyxal_crypto::tls_server_config` (TLS 1.2 minimum, pas de 0-RTT, pas de certificat client, fournisseur `aws-lc-rs` explicite) ; les certificats sont remis par `TlsCertifiedKey` et `TlsCertificateStore`. Les hôtes (`apps/*`) peuvent dépendre de `tokio-rustls` pour le seul transport (`TlsAcceptor`, `STARTTLS`), avec `lyxal_crypto::rustls`. Il est interdit d'appeler `rustls::ServerConfig::builder()` (arrêt par `panic!` quand les deux fournisseurs de `rustls` sont compilés) ou de construire une configuration `rustls` hors de `lyxal_crypto`.
 
 11. **Fichiers chiffrés** (décision C9) : un fichier de taille quelconque est chiffré par `StreamEncryptor` / `StreamDecryptor` (format `STREAM_FORMAT_V1.md`) sous une `StreamKey` propre au fichier, scellée par `enc:v2` et rangée dans la fiche du fichier, jamais dans le fichier. Une lecture en flux interrompt sa réponse (connexion fermée) dès qu'un segment échoue, jamais ne la termine comme réussie.
+
+12. **Signatures et clés asymétriques** (décisions C1, C2, C6) : signatures, vérifications et génération de clés RSA et Ed25519 par `lyxal_crypto::RsaSigningKey`, `RsaPublicKey`, `Ed25519SigningKey` et `Ed25519PublicKey` (moteur `aws-lc-rs`, seul moteur asymétrique ; la crate `rsa` n'est jamais utilisée, faille « Marvin »). Une clé privée ne sort de `lyxal_crypto` que par `export_pkcs8`, pour être rangée dans `lyxal_secrets`. Une vérification distingue le format invalide (erreur) de la signature fausse (`false`). Une génération RSA s'exécute hors de la boucle asynchrone (`spawn_blocking`).
+
+13. **DKIM** (décisions C4, C5) : les octets signés (canonicalisation `simple` / `relaxed`, empreinte du corps, données signées sans la valeur `b=`) et la signature ou vérification `rsa-sha256` / `ed25519-sha256` passent par `lyxal_crypto::dkim` (`DkimBodyHasher`, `DkimHeaderCanonicalizer`, `DkimSigningKey`, `DkimPublicKey`) ; la lecture des balises, le choix des en-têtes de `h=`, le DNS et la politique (`t=`, `x=`, `i=`, `l=`) appartiennent aux crates du courrier. Signature en RSA de 2048 bits au moins et en Ed25519 ; vérification RSA de 1024 à 4096 bits (RFC 8301) ; `rsa-sha1` refusé ; `l=` lu, jamais produit. Il est interdit d'utiliser la cryptographie de `mail-auth` ou de recopier la canonicalisation DKIM hors de `lyxal_crypto`.
 
 ### Contextes AAD Déterministes
 
@@ -237,12 +243,12 @@ Si un module métier identifie un besoin cryptographique non couvert par les pri
 
 Les primitives actuellement **HORS SCOPE** (et qui le resteront jusqu'à validation CTO d'un besoin produit réel) :
 
-* Ed25519 / X25519 (cryptographie asymétrique)
+* X25519 (échange de clés)
 * ChaCha20-Poly1305
 * Cryptographie post-quantique
 * KMS / HSM natif
 
-X25519, ChaCha20-Poly1305 et l'échange de clés hybride X25519MLKEM768 restent hors scope **comme primitives offertes aux modules**, mais sont permis **à l'intérieur de TLS**, négociés par `rustls` (décision C3).
+Ed25519 n'est plus hors scope : signature, vérification et génération de clés sont offertes par `lyxal_crypto` (P6 b, d ; décision C3). X25519, ChaCha20-Poly1305 et l'échange de clés hybride X25519MLKEM768 restent hors scope **comme primitives offertes aux modules**, mais sont permis **à l'intérieur de TLS**, négociés par `rustls` (décision C3).
 
 ```text
 Besoin crypto dans un module
@@ -579,6 +585,7 @@ Avant toute implémentation, Antigravity doit vérifier les points suivants.
 * [ ] Aucun `rand::thread_rng()` — uniquement `rand_core::OsRng`.
 * [ ] Aucune dépendance directe vers une crate cryptographique ni configuration TLS hors de `lyxal_crypto` (`scripts/ci/check_crypto_dependencies.py` ; `tokio-rustls` permis aux seuls hôtes) ; jamais `rustls::ServerConfig::builder()`.
 * [ ] Les fichiers chiffrés utilisent `StreamEncryptor` / `StreamDecryptor` avec une `StreamKey` par fichier scellée par `enc:v2` ; une lecture en flux interrompue au premier segment en échec.
+* [ ] Les signatures RSA / Ed25519 et DKIM passent par `lyxal_crypto` (`RsaSigningKey`, `Ed25519SigningKey`, `lyxal_crypto::dkim`) ; aucune clé privée exportée hors du rangement dans `lyxal_secrets` ; une vérification distingue erreur de format et signature fausse.
 * [ ] Si un besoin crypto non couvert est identifié : signalé au CTO, **aucune implémentation avant validation**.
 
 ## Zéro Dette (régime pré-production, `AGENTS.md` §0)
