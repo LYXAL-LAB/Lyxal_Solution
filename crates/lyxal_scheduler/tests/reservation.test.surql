@@ -184,11 +184,11 @@ RETURN [1, 2, 3, 4].map(|$n| fn::scheduler_retry_delay({ strategy: "exponential"
     LET $avail = (SELECT VALUE available_at FROM ONLY $a.id);
     -- Délai tiré au hasard (gigue) : l'heure est lue avant et après la réservation ; un délai
     -- échu entre les deux lectures admet les deux issues
-    LET $before = time::now();
+    LET $start = time::now();
     LET $c = fn::scheduler_run_claim({ queue: "default", node: "n3", host: "hote_essai", handlers: ["essai.rapport"] });
-    LET $after = time::now();
-    RETURN IF $avail > $after { $c.data.items = [] }
-        ELSE IF $avail <= $before { $c.data.items[0].attempt = 2 }
+    LET $end = time::now();
+    RETURN IF $avail > $end { $c.data.items = [] }
+        ELSE IF $avail <= $start { $c.data.items[0].attempt = 2 }
         ELSE { $c.data.items = [] OR $c.data.items[0].attempt = 2 };
 };
 
