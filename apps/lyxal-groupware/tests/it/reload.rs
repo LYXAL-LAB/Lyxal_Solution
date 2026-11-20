@@ -77,10 +77,7 @@ async fn served(address: std::net::SocketAddr, certificates: &TestCertificates) 
     )
     .await;
     assert!(client.success, "{client:?}");
-    client
-        .field("Peer certificate")
-        .expect("certificat")
-        .to_string()
+    client.peer_certificate().expect("certificat")
 }
 
 #[tokio::test]
@@ -95,7 +92,7 @@ async fn hot_reload_replaces_the_certificate_and_keeps_an_invalid_file_out() {
     let loaded = net.certificates().expect("certificats").clone();
     let probe = net.health_check();
     let ctx = ModuleContext::new(lyxal_mail::MODULE_ID);
-    assert_eq!(served(address, &certificates).await, "CN = p256");
+    assert_eq!(served(address, &certificates).await, "CN=p256");
 
     // Connexion ouverte avant le rechargement
     let mut open = s_client_process(
@@ -114,7 +111,7 @@ async fn hot_reload_replaces_the_certificate_and_keeps_an_invalid_file_out() {
     // Fichiers remplacés : nouvelles poignées de main avec le nouveau certificat
     certificates.serve("p256_next");
     assert_eq!(loaded.reload(), 1);
-    assert_eq!(served(address, &certificates).await, "CN = p256_next");
+    assert_eq!(served(address, &certificates).await, "CN=p256_next");
     assert_eq!(loaded.snapshot().reloaded, 1);
     // Contenu inchangé : rien n'est rechargé
     assert_eq!(loaded.reload(), 0);
@@ -138,7 +135,7 @@ async fn hot_reload_replaces_the_certificate_and_keeps_an_invalid_file_out() {
     assert_eq!(loaded.reload(), 0);
     assert!(loaded.degraded());
     assert_eq!(loaded.snapshot().failed, 1);
-    assert_eq!(served(address, &certificates).await, "CN = p256_next");
+    assert_eq!(served(address, &certificates).await, "CN=p256_next");
     let health = probe.check(&ctx).await.unwrap();
     assert_eq!(health.status, HealthStatus::Degraded);
     assert!(net.snapshot().certificates.expect("mesures").degraded);
@@ -151,7 +148,7 @@ async fn hot_reload_replaces_the_certificate_and_keeps_an_invalid_file_out() {
         probe.check(&ctx).await.unwrap().status,
         HealthStatus::Healthy
     );
-    assert_eq!(served(address, &certificates).await, "CN = p256");
+    assert_eq!(served(address, &certificates).await, "CN=p256");
     running.stop().await;
 
     let log = captured.text();
@@ -222,6 +219,6 @@ async fn the_reload_worker_picks_up_new_files() {
         );
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
-    assert_eq!(served(address, &certificates).await, "CN = p256_next");
+    assert_eq!(served(address, &certificates).await, "CN=p256_next");
     running.stop().await;
 }

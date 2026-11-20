@@ -304,6 +304,13 @@ impl SClient {
             .find_map(|line| line.strip_prefix(key)?.strip_prefix(':'))
             .map(str::trim)
     }
+
+    /// Sujet du certificat du serveur, écrit `CN=nom` quelle que soit la version d'OpenSSL
+    /// (`CN = nom` en 3.0, `CN=nom` à partir de 3.2).
+    pub fn peer_certificate(&self) -> Option<String> {
+        self.field("Peer certificate")
+            .map(|subject| subject.replace(" = ", "="))
+    }
 }
 
 /// Date de vérification des certificats d'essai, indépendante de l'horloge (1er janvier 2027).

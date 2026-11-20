@@ -98,7 +98,7 @@ async fn the_http_port_serves_tls_with_the_listener_certificates() {
     )
     .await;
     assert!(client.success, "{client:?}");
-    assert_eq!(client.field("Peer certificate"), Some("CN = p256"));
+    assert_eq!(client.peer_certificate().as_deref(), Some("CN=p256"));
     assert!(client.stdout.contains("HTTP/1.1 200"), "{client:?}");
     assert!(client.stdout.contains("127.0.0.1"), "{client:?}");
     stop.cancel();

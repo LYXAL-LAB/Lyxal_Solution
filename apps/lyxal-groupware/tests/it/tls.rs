@@ -48,7 +48,7 @@ async fn implicit_tls_serves_named_and_default_certificates_over_tls12_and_tls13
         .await;
         assert!(client.success, "{client:?}");
         assert_eq!(client.field("Protocol version"), Some(openssl_name));
-        assert_eq!(client.field("Peer certificate"), Some("CN = p256"));
+        assert_eq!(client.peer_certificate().as_deref(), Some("CN=p256"));
         assert_eq!(client.field("Verification"), Some("OK"));
         assert!(client.stdout.contains("220 session"), "{client:?}");
 
@@ -64,7 +64,7 @@ async fn implicit_tls_serves_named_and_default_certificates_over_tls12_and_tls13
     // Sans nom (SNI) : certificat par défaut ; sans ALPN : accepté, rien de négocié
     let client = s_client(address, &certificates, &["-noservername"], b"").await;
     assert!(client.success, "{client:?}");
-    assert_eq!(client.field("Peer certificate"), Some("CN = default"));
+    assert_eq!(client.peer_certificate().as_deref(), Some("CN=default"));
     let seen = handler.last();
     let info = implicit_info(&seen.tls);
     assert_eq!(info.server_name, None);

@@ -136,7 +136,7 @@ async fn starttls_upgrades_the_session() {
         )
         .await;
         assert!(client.success, "{client:?}");
-        assert_eq!(client.field("Peer certificate"), Some("CN = p256"));
+        assert_eq!(client.peer_certificate().as_deref(), Some("CN=p256"));
         assert!(client.stdout.contains("250 secured"), "{client:?}");
         match handler.last() {
             Outcome::Upgraded(TlsState::Upgraded(info)) => {
