@@ -149,4 +149,13 @@ pub enum CryptoError {
     #[doc = "invalid stream header or ciphertext length"]
     #[error("invalid stream header or ciphertext length")]
     InvalidStreamHeader,
+    #[doc = "invalid signature encoding"]
+    #[error("invalid signature encoding")]
+    InvalidSignatureEncoding,
+    #[doc = "key too weak for this use"]
+    #[error("key too weak for this use")]
+    KeyTooWeak,
+    #[doc = "signature algorithm does not match the key type"]
+    #[error("signature algorithm does not match the key type")]
+    AlgorithmMismatch,
 }

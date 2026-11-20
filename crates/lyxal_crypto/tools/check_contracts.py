@@ -33,8 +33,8 @@ def compile_source(source):
 
 
 types = ["SecretBytes", "SecretString", "EncryptionKey", "HmacKey", "PasswordHash", "TotpSecret",
-         "EcdsaP256SigningKey", "RsaSigningKey", "StreamKey", "StreamEncryptor", "StreamDecryptor",
-         "TlsCertifiedKey"]
+         "EcdsaP256SigningKey", "RsaSigningKey", "Ed25519SigningKey", "DkimSigningKey", "StreamKey",
+         "StreamEncryptor", "StreamDecryptor", "TlsCertifiedKey"]
 # The TLS private key lives in rustls / aws-lc-rs (C memory, SECURITY.md): no ZeroizeOnDrop claim.
 not_wiped = {"TlsCertifiedKey"}
 for name in types:

@@ -1,14 +1,15 @@
 //! Web Push message encryption (RFC 8291, CTO decision K8): `aes128gcm` content coding of
 //! RFC 8188 with a single record of size 4096 and the padding delimiter `0x02`. A fresh P-256
 //! ECDH key pair and a fresh 16-byte salt per message; HKDF-SHA256 as in RFC 8291 §3.3–3.4;
-//! AES-128-GCM. Computed by `ring` (`agreement`, `hkdf`, `aead`); the salt is drawn from
-//! `rand_core::OsRng`. Intermediate keys live in wiped buffers.
+//! AES-128-GCM. Computed by `aws-lc-rs` (`agreement`, `hkdf`, `aead`; CTO decision C1, behaviour
+//! unchanged); the salt is drawn from `rand_core::OsRng`. Intermediate keys live in wiped
+//! buffers.
 use crate::CryptoError;
+use aws_lc_rs::aead::{Aad, LessSafeKey, Nonce, UnboundKey, AES_128_GCM};
+use aws_lc_rs::agreement::{agree_ephemeral, EphemeralPrivateKey, UnparsedPublicKey, ECDH_P256};
+use aws_lc_rs::hkdf::{KeyType, Salt, HKDF_SHA256};
+use aws_lc_rs::rand::SystemRandom;
 use rand_core::{OsRng, RngCore};
-use ring::aead::{Aad, LessSafeKey, Nonce, UnboundKey, AES_128_GCM};
-use ring::agreement::{agree_ephemeral, EphemeralPrivateKey, UnparsedPublicKey, ECDH_P256};
-use ring::hkdf::{KeyType, Salt, HKDF_SHA256};
-use ring::rand::SystemRandom;
 use zeroize::Zeroizing;
 
 /// Record size written in the RFC 8188 header.
@@ -59,10 +60,10 @@ pub fn webpush_encrypt(
         .map_err(|_| CryptoError::EncryptionFailed)?;
     let ecdh_secret = agree_ephemeral(
         ephemeral,
-        &UnparsedPublicKey::new(&ECDH_P256, ua_public),
-        |shared| Zeroizing::new(shared.to_vec()),
-    )
-    .map_err(|_| CryptoError::InvalidKeyEncoding)?;
+        UnparsedPublicKey::new(&ECDH_P256, ua_public),
+        CryptoError::InvalidKeyEncoding,
+        |shared| Ok(Zeroizing::new(shared.to_vec())),
+    )?;
     let mut salt = [0u8; 16];
     OsRng
         .try_fill_bytes(&mut salt)

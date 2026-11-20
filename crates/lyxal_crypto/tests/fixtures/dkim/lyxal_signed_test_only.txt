@@ -1,0 +1,34 @@
+ed._domainkey.example.test v=DKIM1; k=ed25519; p=11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=
+rsa._domainkey.example.test v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAkAZjo3rPwdaIZ5lqsy4ujI04oBleqFJbrthV4C9zrNAptit+hYMWQqEZA2HtXMeZbLspYzEAj1HAyjfPibo4YreH4kUjZjWz76XxzmBlje1vbcsIp32WQo7Po9jMAI9OrUlQgYqnM7FW950TfRHHGTKFIolIb7+XwPdOjMVMouTp6mQcEiZJKH1JdCoUr6oTF/R3eWL4LrsPOm+J6gyikPz3xC07aDzRZEV9TpKxGg3UdeFz5FfMMidQpWcF6VxMR+huGNiVo0OcDCkNWfBKFTG+d/9pOVG7QyGysFQ7d59wjlI142jJdYhvIcVGEvAJIU5Ycoormf1jO65veCNtawIDAQAB
+
+DKIM-Signature: v=1; a=ed25519-sha256; c=simple/simple; d=example.test; s=ed;
+	t=1795165200; h=From : To : Subject : Date : Message-ID : From;
+	bh=L/s2nIBoH5Q/IrOioz/2GoSdiuz+ZeCNI8uBHJ8OSYM=;
+	b=HPqiQ3XFEfQ3KqpQO4+tjG2K3Xd75PxuleOge94SzjDuvnYYFFICeQB6yu8v
+	 QGrLUpVlWcdgfo9BBAhXhVVkCw==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=example.test; s=rsa;
+	t=1795165200; h=From : To : Subject : Date : Message-ID : From;
+	bh=dz9PJzHgYeFHw6CjbJou71bet/pvHRekutU9C19Yg5s=;
+	b=Bh3nmQ9dysd0kFp25dzXbXakiIXWg0IjmpAcyxI28LuFYwNv4+S38UYW9trN
+	 S3huBHXcc/JTI0aTYhswhZj3UM5YuJmQ6Ligyymn4wimuoRhjqruw0ZgvdHx
+	 ENgnAbs24inHBP+8QioD1tFSILbgrORcNgWcV558GSz/5ztovdZJSlGXnhH9
+	 43OilbiO1lNvb1d/Ci/8950/7D+YOHSN0ELd37AjSey8ASol5zSsWgV91E+6
+	 2JXCpar7muSXAwAV65GDVkurBRnKFKthCTb1NM/YOEKaHbwRIyAYbmmSEpah
+	 4RKchzbaJXvOU7E1TtY5t/eUQxOHOgDLjncTLS80HA==
+Received: from client.example.test (client.example.test [192.0.2.7])
+	by mx.example.test with ESMTPS; Fri, 20 Nov 2026 10:00:00 +0100
+From:  Test Sender	<sender@example.test>  
+To: recipient@example.net,
+    other@example.net
+SUBJECT : Essai  de   signature 	 DKIM
+Date: Fri, 20 Nov 2026 10:00:00 +0100
+Message-ID: <lyxal-dkim-test-only@example.test>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+Bonjour,
+
+Ceci est un message  de test		pour DKIM.   
+  Ligne qui commence par des espaces.
+
+

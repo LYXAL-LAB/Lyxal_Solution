@@ -999,7 +999,7 @@ messages du fil ; une organisation purgée par `lyxal_auth` emporte toutes ses d
   étape réussie par les autres, événement `notification.endpoint.removed` ; appareil déjà servi
   retiré ; clé VAPID ; liens rendus ; essai ; suppression avec l'abonné ; fonctions internes) ;
   tests Rust : cryptographie dans `lyxal_crypto` (vecteur RFC 8291, ES256 et RS256 vérifiés par
-  `ring` en test, signature RS256 égale à celle d'OpenSSL) ; Web Push, FCM et APNs contre de faux
+  `aws-lc-rs` en test, signature RS256 égale à celle d'OpenSSL) ; Web Push, FCM et APNs contre de faux
   services locaux (`tests/it/push.rs` : jeton VAPID, corps chiffré et en-têtes, refus d'un service
   inconnu, jeton d'accès FCM échangé, gardé puis renouvelé par l'horloge injectée, 401, APNs en
   HTTP/2 et jeton du fournisseur renouvelé à 50 minutes, appareils invalides) ; de bout en bout :

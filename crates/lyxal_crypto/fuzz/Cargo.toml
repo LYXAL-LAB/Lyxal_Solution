@@ -54,3 +54,17 @@ path = "fuzz_targets/tls_pem.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "dkim_canonicalize"
+path = "fuzz_targets/dkim_canonicalize.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "dkim_public_key"
+path = "fuzz_targets/dkim_public_key.rs"
+test = false
+doc = false
+bench = false

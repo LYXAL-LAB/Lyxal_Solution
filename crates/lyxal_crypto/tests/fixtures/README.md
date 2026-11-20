@@ -5,7 +5,10 @@ Tout ce dossier est réservé aux tests : aucune clé ni aucun certificat ne doi
 | Fichiers | Contenu |
 | :--- | :--- |
 | `rsa2048_test_only.*` | Clé RSA-2048 de test (PKCS#8 en Base64), sa clé publique et une signature RS256 calculée par OpenSSL (décision K8) |
-| `wycheproof/` | Vecteurs AES-GCM du projet Wycheproof et sa licence Apache-2.0 (provenance : [`SOURCES.md`](../../SOURCES.md)) |
+| `wycheproof/` | Vecteurs AES-GCM, RSASSA-PKCS1-v1_5 SHA-256 (2048, 3072, 4096 bits) et Ed25519 du projet Wycheproof et sa licence Apache-2.0 (provenance : [`SOURCES.md`](../../SOURCES.md)) |
+| `dkim/mail_auth/` | Corpus DKIM de `mail-auth` 0.16.0 (`001.txt` : message de la RFC 8463 annexe A ; `002.txt`, `003.txt`), copié tel quel avec ses licences `Apache-2.0 OR MIT` ; format : enregistrements DNS, ligne vide, message en fins de ligne LF |
+| `dkim/lyxal_signed_test_only.txt` | Message signé pour ces tests (même format) : `ed25519-sha256` simple/simple avec la clé de la RFC 8463, `rsa-sha256` relaxed/relaxed avec `rsa2048_test_only` ; signatures calculées par OpenSSL (Python `cryptography` 50.0.1) avec une canonicalisation écrite depuis la RFC 6376 (celle de `tools/check_dkim_fixtures.py`) |
+| `dkim/rsa768_test_only.spki.hex`, `dkim/rsa6144_test_only.spki.hex` | Clés publiques RSA (SubjectPublicKeyInfo en hexadécimal) trop courte et trop longue pour DKIM, générées par `openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:768` (resp. `6144`) puis `openssl pkey -pubout -outform DER` ; clés privées détruites |
 | `tls_test_only/` | Autorité de test (`ca.pem`, sa clé est détruite après génération) et certificats de serveur avec leurs clés, pour `tests/it/tls_server.rs` et la cible de fuzzing `tls_pem` |
 
 ## Certificats TLS de test

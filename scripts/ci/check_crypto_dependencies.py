@@ -11,7 +11,10 @@ lyxal_crypto. Ce contrôle échoue si :
 2. un fichier .rs hors de crates/lyxal_crypto appelle directement ring, aws-lc-rs, ou construit
    une configuration rustls (ServerConfig / ClientConfig::builder*) ;
 3. l'arbre normal de lyxal_crypto contient la crate rsa (faille « Marvin », décision C2) ou
-   ed25519-dalek (décision C1 : aws-lc-rs seul moteur asymétrique).
+   ed25519-dalek (décision C1 : aws-lc-rs seul moteur asymétrique) ;
+4. lyxal_crypto lui-même déclare une dépendance directe (de tout type) vers ring (décision C1 :
+   un seul moteur asymétrique, aws-lc-rs ; ring reste amené indirectement par rustls), rsa,
+   ed25519-dalek, mail-auth (canonicalisation DKIM portée, décision C4) ou openssl.
 
 Les crates de protocole qui amènent leur propre TLS (lettre, reqwest dans lyxal_notification)
 restent permises : ce sont des dépendances indirectes, validées en K10 / N4.
@@ -33,6 +36,8 @@ FORBIDDEN = {
 # Permis aux hôtes seulement (apps/*), pour le transport.
 HOST_ONLY = {"tokio-rustls"}
 FORBIDDEN_IN_TREE = {"rsa", "ed25519-dalek"}
+# Interdites même à lyxal_crypto, comme dépendances directes (normales, de test, de compilation).
+FORBIDDEN_IN_OWNER = {"ring", "rsa", "ed25519-dalek", "mail-auth", "openssl"}
 SOURCE_PATTERNS = [
     re.compile(r"\bring::"),
     re.compile(r"\baws_lc_rs::"),
@@ -53,6 +58,11 @@ for package in metadata["packages"]:
     manifest = Path(package["manifest_path"])
     source_roots.append(manifest.parent)
     if package["name"] == OWNER:
+        for dependency in package["dependencies"]:
+            if dependency["name"] in FORBIDDEN_IN_OWNER:
+                kind = dependency["kind"] or "normal"
+                failures.append(f"{OWNER} : dépendance {kind} directe interdite vers "
+                                f"« {dependency['name']} » (décisions C1, C2, C4)")
         continue
     is_host = manifest.parent.parent == ROOT / "apps"
     for dependency in package["dependencies"]:
@@ -92,4 +102,5 @@ if failures:
     sys.exit(1)
 print(f"PASS : {len(source_roots)} paquets du workspace, aucune crate cryptographique directe hors "
       f"de {OWNER} ({len(FORBIDDEN)} crates contrôlées) ; arbre de {OWNER} sans "
-      f"{', '.join(sorted(FORBIDDEN_IN_TREE))}")
+      f"{', '.join(sorted(FORBIDDEN_IN_TREE))} ; {OWNER} sans dépendance directe vers "
+      f"{', '.join(sorted(FORBIDDEN_IN_OWNER))}")

@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 rust-version = "1.85"
 license.workspace = true
-description = "Moteur de chiffrement AES-256-GCM, chiffrement de fichiers en flux, TLS côté serveur, hachage, HMAC, HKDF, Argon2id, signatures ES256 et RS256, chiffrement Web Push et gestion des clés du Noyau Technique Lyxal OS"
+description = "Moteur de chiffrement AES-256-GCM, chiffrement de fichiers en flux, TLS côté serveur, hachage, HMAC, HKDF, Argon2id, signatures RSA, Ed25519 et ES256, DKIM, chiffrement Web Push et gestion des clés du Noyau Technique Lyxal OS"
 
 [dependencies]
 aes-gcm = { version = "=0.10.3", features = ["zeroize"] }
@@ -24,10 +24,13 @@ hmac = "0.12"
 # HMAC-SHA1 du TOTP seulement (RFC 6238, applications d'authentification), dans src/totp.rs.
 sha1 = "0.10"
 hkdf = "0.12"
-# Extension K8 du CTO, déjà présent dans le dépôt par rustls : vérification HMAC-SHA1 des retours
-# Twilio (src/hmac.rs), signatures ES256 et RS256 des jetons push (src/signing.rs), chiffrement
-# Web Push RFC 8291 (src/webpush.rs).
-ring = "0.17"
+# Seul moteur asymétrique du crate (décisions C1, C2 du lot 2 du programme courrier), déjà
+# compilé dans chaque binaire du dépôt par surrealdb et rustls : signatures RSA (génération,
+# RS256, rsa-sha256 de DKIM) et Ed25519 (src/signing.rs, src/dkim.rs) ; extension K8 :
+# signatures ES256 et RS256 des jetons push, chiffrement Web Push RFC 8291 (src/webpush.rs),
+# vérification HMAC-SHA1 des retours Twilio (src/hmac.rs). `ring` n'est plus une dépendance du
+# crate ; la crate `rsa` n'est jamais utilisée (faille « Marvin »).
+aws-lc-rs = { version = "1.19", default-features = false, features = ["aws-lc-sys", "alloc", "ring-io", "prebuilt-nasm"] }
 # TLS côté serveur (lot 2 du programme courrier, P6 a ; décisions C1, C3, C7) : configuration
 # rustls construite ici seulement, fournisseur aws-lc-rs passé explicitement (jamais
 # `ServerConfig::builder()`, qui s'arrête par un panic! quand les deux fournisseurs de rustls
