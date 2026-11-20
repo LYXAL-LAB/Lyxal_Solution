@@ -102,6 +102,8 @@ pub mod hmac;
 pub mod kdf;
 pub mod password;
 pub mod signing;
+pub mod stream;
+pub mod tls;
 pub mod totp;
 pub mod webpush;
 pub use hmac::{
@@ -113,7 +115,17 @@ pub use password::{
     hash_password, verify_password, PasswordHash, PasswordVerification, MAX_PASSWORD_BYTES,
     MAX_PHC_BYTES,
 };
+/// Exact `rustls` version used by [`tls_server_config`], re-exported so that hosts build their
+/// `TlsAcceptor` on the same types. Hosts never build a TLS configuration themselves.
+pub use rustls;
 pub use signing::{EcdsaP256SigningKey, RsaSigningKey};
+pub use stream::{
+    stream_ciphertext_len, StreamDecryptor, StreamEncryptor, StreamKey, StreamSpan,
+    STREAM_HEADER_BYTES, STREAM_SEGMENT_BYTES, STREAM_TAG_BYTES,
+};
+pub use tls::{
+    tls_server_config, TlsCertificateStore, TlsCertifiedKey, TlsMinVersion, TlsServerOptions,
+};
 pub use totp::{
     totp_generate, totp_uri, totp_verify, TotpAlgorithm, TotpConfig, TotpSecret,
     MAX_TOTP_LABEL_BYTES, MAX_TOTP_SECRET_BYTES, MAX_TOTP_WINDOW, MIN_TOTP_SECRET_BYTES,

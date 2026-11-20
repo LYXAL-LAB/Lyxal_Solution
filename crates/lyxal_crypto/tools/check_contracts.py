@@ -33,12 +33,16 @@ def compile_source(source):
 
 
 types = ["SecretBytes", "SecretString", "EncryptionKey", "HmacKey", "PasswordHash", "TotpSecret",
-         "EcdsaP256SigningKey", "RsaSigningKey"]
+         "EcdsaP256SigningKey", "RsaSigningKey", "StreamKey", "StreamEncryptor", "StreamDecryptor",
+         "TlsCertifiedKey"]
+# The TLS private key lives in rustls / aws-lc-rs (C memory, SECURITY.md): no ZeroizeOnDrop claim.
+not_wiped = {"TlsCertifiedKey"}
 for name in types:
+    wiped = "" if name in not_wiped else " + zeroize::ZeroizeOnDrop"
     # Positive controls stop a missing dependency/name from masquerading as security.
     positive = f"""
 use lyxal_crypto::{name};
-fn positive<T: Send + Sync + Unpin + zeroize::ZeroizeOnDrop + std::fmt::Debug>() {{}}
+fn positive<T: Send + Sync + Unpin{wiped} + std::fmt::Debug>() {{}}
 fn identity(value: {name}) {{
     let _: &{name} = std::borrow::Borrow::borrow(&value);
     let _: {name} = value.into();

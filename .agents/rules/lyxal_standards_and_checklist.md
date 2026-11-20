@@ -146,6 +146,8 @@ Le contrat complet est documenté dans `crates/lyxal_crypto/API_CONTRACT.md`.
 | **HKDF-SHA256** | `kdf` | `hkdf_sha256()` (retourne `SecretBytes`) |
 | **ES256 / RS256** (jetons des services push, K8) | `signing` | `EcdsaP256SigningKey` (`import_pkcs8`, `generate`, `public_key_uncompressed`, `sign_es256`, `export_pkcs8` pour ranger une clé VAPID générée), `RsaSigningKey` (`import_pkcs8`, `sign_rs256`) ; **signature seulement** (aucune vérification offerte) |
 | **Chiffrement Web Push** (RFC 8291, K8) | `webpush` | `webpush_encrypt()` (`aes128gcm` : ECDH P-256 éphémère, HKDF-SHA256, AES-128-GCM), `WEBPUSH_MAX_PLAINTEXT_BYTES`, `WEBPUSH_OVERHEAD_BYTES` |
+| **Chiffrement de fichiers en flux** (format v1, P6 i) | `stream` | `StreamKey` (`generate`, `seal` / `open` par `enc:v2`), `StreamEncryptor` (`new`, `update`, `finish`), `StreamDecryptor` (`new`, `plan_range`, `decrypt_segment`), `stream_ciphertext_len()` ; format `STREAM_FORMAT_V1.md` |
+| **TLS côté serveur** (P6 a) | `tls` | `TlsCertifiedKey` (`from_pem`, `from_der`), `TlsCertificateStore` (certificats par nom SNI et par défaut, remplacement à chaud), `TlsServerOptions`, `tls_server_config()` (`rustls::ServerConfig`, fournisseur `aws-lc-rs`) ; `rustls` réexporté |
 | **Gestion de clés & Trousseaux** | `key`, `key_resolver`, `providers` | `EncryptionKey`, `KeyId`, `KeyRingBuilder`, `KeyRing`, `KeyUse`, `KeyResolver`, `StaticKeyResolver`, `EnvironmentKeyProvider`, `FileKeyProvider` |
 
 ### Chiffrement des Secrets
@@ -183,6 +185,10 @@ lyxal_crypto
 
 9. **Notifications push** (décision K8) : jetons VAPID et APNs signés par `lyxal_crypto::EcdsaP256SigningKey::sign_es256`, jeton du compte de service Google par `lyxal_crypto::RsaSigningKey::sign_rs256`, messages Web Push chiffrés par `lyxal_crypto::webpush_encrypt`. Il est interdit d'importer directement `ring`, `p256`, `rsa`, `jsonwebtoken`, `ece` ou toute autre crate de signature ou de chiffrement Web Push dans un module métier.
 
+10. **TLS côté serveur** (décision C7) : toute configuration TLS est construite par `lyxal_crypto::tls_server_config` (TLS 1.2 minimum, pas de 0-RTT, pas de certificat client, fournisseur `aws-lc-rs` explicite) ; les certificats sont remis par `TlsCertifiedKey` et `TlsCertificateStore`. Les hôtes (`apps/*`) peuvent dépendre de `tokio-rustls` pour le seul transport (`TlsAcceptor`, `STARTTLS`), avec `lyxal_crypto::rustls`. Il est interdit d'appeler `rustls::ServerConfig::builder()` (arrêt par `panic!` quand les deux fournisseurs de `rustls` sont compilés) ou de construire une configuration `rustls` hors de `lyxal_crypto`.
+
+11. **Fichiers chiffrés** (décision C9) : un fichier de taille quelconque est chiffré par `StreamEncryptor` / `StreamDecryptor` (format `STREAM_FORMAT_V1.md`) sous une `StreamKey` propre au fichier, scellée par `enc:v2` et rangée dans la fiche du fichier, jamais dans le fichier. Une lecture en flux interrompt sa réponse (connexion fermée) dès qu'un segment échoue, jamais ne la termine comme réussie.
+
 ### Contextes AAD Déterministes
 
 En mode lié (recommandé pour toute donnée multi-tenant et applicative), chaque valeur chiffrée doit dériver son AAD d'un `SecretContext` strict via `SecretContext::with_tenant` :
@@ -212,6 +218,7 @@ Ce format est documenté dans `crates/lyxal_crypto/ENVELOPE_FORMAT_V2.md`. L'anc
 Il est **strictement interdit** :
 
 * d'importer directement dans un module métier une crate crypto (`argon2`, `hmac`, `sha1`, `sha2`, `blake3`, `aes-gcm`, `hkdf`, `totp-rs`) si la primitive équivalente existe dans `lyxal_crypto` ;
+* de déclarer, dans un paquet du workspace autre que `lyxal_crypto`, une dépendance directe vers `aes`, `aes-gcm`, `argon2`, `aws-lc-rs`, `aws-lc-sys`, `blake3`, `chacha20poly1305`, `ece`, `ed25519-dalek`, `hkdf`, `hmac`, `jsonwebtoken`, `mail-auth`, `openssl`, `p256`, `ring`, `rsa`, `rustls`, `sha1`, `sha2`, `totp-rs` ou `tokio-rustls` (permis aux seuls hôtes `apps/*`, pour le transport) ; contrôlé en CI par `scripts/ci/check_crypto_dependencies.py` (décision C12), qui refuse aussi tout appel `ring::`, `aws_lc_rs::` ou `ServerConfig` / `ClientConfig::builder` hors de `lyxal_crypto` ;
 * de réimplémenter localement une primitive déjà fournie par `lyxal_crypto` ;
 * de créer une variante locale pour éviter d'appeler `lyxal_crypto`.
 
@@ -234,6 +241,8 @@ Les primitives actuellement **HORS SCOPE** (et qui le resteront jusqu'à validat
 * ChaCha20-Poly1305
 * Cryptographie post-quantique
 * KMS / HSM natif
+
+X25519, ChaCha20-Poly1305 et l'échange de clés hybride X25519MLKEM768 restent hors scope **comme primitives offertes aux modules**, mais sont permis **à l'intérieur de TLS**, négociés par `rustls` (décision C3).
 
 ```text
 Besoin crypto dans un module
@@ -568,6 +577,8 @@ Avant toute implémentation, Antigravity doit vérifier les points suivants.
 * [ ] Les secrets chiffrés utilisent `CryptoEngine::seal` / `open` avec `SecretContext` strict (`with_tenant` ou `global`) et `EncryptedEnvelope` (format `enc:v2`).
 * [ ] Aucun AAD vide n'est utilisé pour le chiffrement.
 * [ ] Aucun `rand::thread_rng()` — uniquement `rand_core::OsRng`.
+* [ ] Aucune dépendance directe vers une crate cryptographique ni configuration TLS hors de `lyxal_crypto` (`scripts/ci/check_crypto_dependencies.py` ; `tokio-rustls` permis aux seuls hôtes) ; jamais `rustls::ServerConfig::builder()`.
+* [ ] Les fichiers chiffrés utilisent `StreamEncryptor` / `StreamDecryptor` avec une `StreamKey` par fichier scellée par `enc:v2` ; une lecture en flux interrompue au premier segment en échec.
 * [ ] Si un besoin crypto non couvert est identifié : signalé au CTO, **aucune implémentation avant validation**.
 
 ## Zéro Dette (régime pré-production, `AGENTS.md` §0)

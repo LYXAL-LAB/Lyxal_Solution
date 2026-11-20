@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build and run four bounded coverage-guided campaigns, keeping actual exit status.
+"""Build and run six bounded coverage-guided campaigns, keeping actual exit status.
 
 Requires cargo-fuzz, nightly and an execution context allowing LeakSanitizer to finish.
 Never suppresses sanitizer checks or treats an environment failure as a successful run.
@@ -15,7 +15,8 @@ import time
 
 CRATE = Path(__file__).resolve().parents[1]
 FUZZ = CRATE / "fuzz"
-TARGETS = ("envelope", "context", "phc", "rotation")
+TARGETS = ("envelope", "context", "phc", "rotation", "stream_open", "tls_pem")
+MAX_LEN = {"envelope": 1500000, "context": 1500000, "stream_open": 300000}
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--seconds", type=int, default=1800)
 parser.add_argument("--segments", type=int, default=3,
@@ -40,7 +41,7 @@ def campaign(name):
     binary = FUZZ / "target/x86_64-unknown-linux-gnu/release" / name
     base_command = [str(binary), str(corpus),
                "-timeout=10", "-rss_limit_mb=2048", "-print_final_stats=1",
-               "-max_len=" + ("1500000" if name in ("envelope", "context") else "8192"),
+               "-max_len=" + str(MAX_LEN.get(name, 8192)),
                "-artifact_prefix=" + str(artifacts) + "/"]
     fingerprint = hashlib.sha256(binary.read_bytes()).hexdigest()
     for segment in range(args.segments):
@@ -61,6 +62,6 @@ def campaign(name):
     return 0
 
 
-with ThreadPoolExecutor(max_workers=4) as pool:
+with ThreadPoolExecutor(max_workers=len(TARGETS)) as pool:
     outcomes = list(pool.map(campaign, TARGETS))
 raise SystemExit(0 if all(code == 0 for code in outcomes) else 1)

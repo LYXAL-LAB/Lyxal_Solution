@@ -40,3 +40,17 @@ test = false
 doc = false
 bench = false
 
+
+[[bin]]
+name = "stream_open"
+path = "fuzz_targets/stream_open.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "tls_pem"
+path = "fuzz_targets/tls_pem.rs"
+test = false
+doc = false
+bench = false

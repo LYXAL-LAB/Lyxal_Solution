@@ -1,8 +1,11 @@
 # Sécurité — garanties locales et préconditions de déploiement
 
-Cette bibliothèque n'est pas certifiée. RustCrypto fournit les primitives ; le crate
-encadre leurs contrats. Aucun code unsafe propre n'est autorisé ; les dépendances
-peuvent comporter des backends unsafe/assembleur, dont les garanties sont distinctes.
+Cette bibliothèque n'est pas certifiée. RustCrypto fournit les primitives symétriques ; `rustls`
+et AWS-LC (`aws-lc-rs`, code C et assembleur issu de BoringSSL, appelé par FFI) font le TLS
+côté serveur ; le crate encadre leurs contrats. Aucun code unsafe propre n'est autorisé
+(`forbid(unsafe_code)`) ; les dépendances peuvent comporter des backends unsafe, C ou
+assembleur, dont les garanties sont distinctes (une faille mémoire d'AWS-LC est hors de ce
+`forbid`).
 
 ## Frontières de confiance
 
@@ -92,6 +95,42 @@ AES/GHASH/POLYVAL/Argon2 vérifiées sur le backend visé ; cela ne qualifie pas
 backends ARM ou autres. mem::forget, ManuallyDrop, fuite d'Arc, abort ou processus tué
 peuvent empêcher l'exécution des destructeurs. Aucune lecture après free ne sert de preuve.
 L'exposition explicite de plaintext/PHC rend l'appelant responsable de ses copies et logs.
+
+## Chiffrement de fichiers en flux (format v1)
+
+Chaque fichier a sa clé (`StreamKey`, 32 octets d'OsRng), scellée par `enc:v2` : **un
+scellement par fichier** sous la clé de l'organisation, compté dans le budget ci-dessus (2^24
+scellements recommandés par matériel ; 100 comptes recevant 50 000 messages par an et par compte
+imposent une rotation environ tous les trois ans). La rotation passe par `reencrypt_if_needed`
+sur les clés scellées, sans réécrire les fichiers. Les segments sont chiffrés sous une clé dérivée
+(HKDF-SHA256, sel de 32 octets propre au fichier) avec des nonces construits (préfixe aléatoire
+de 7 octets, rang, indicateur « dernier ») : jamais deux fois le même nonce sous une même clé de
+segments, 2^32 segments au plus par fichier.
+
+Un segment n'est rendu qu'après vérification de son tag, mais les segments **suivants** ne sont
+pas encore vérifiés : sur une erreur plus loin, l'appelant interrompt sa réponse (connexion IMAP
+ou HTTP fermée), jamais ne la termine comme réussie. Troncature, ajout, échange, segment d'un
+autre fichier, en-tête modifié et autre contexte sont détectés ; le rejeu d'une ancienne version
+complète du même fichier sous le même contexte ne l'est pas (hôte). Le format protège les octets
+rangés (disque, sauvegarde, S3), pas les champs en base ni le serveur en marche. Une clé
+maîtresse ou d'organisation perdue rend les fichiers concernés illisibles : la sauvegarde des
+clés de `lyxal_secrets` est vitale. Effacer la clé scellée d'un fichier le rend illisible, même
+dans les sauvegardes du stockage. Les tampons de clair et la clé de segments sont effacés à la
+libération ; les octets chiffrés écrits par l'appelant ne sont pas secrets.
+
+## TLS côté serveur
+
+La configuration est construite par `tls_server_config` seulement (garde-fou CI) : TLS 1.2 et 1.3,
+pas de 0-RTT (rejouable), pas de certificat client, aucun journal des clés de session,
+fournisseur `aws-lc-rs` explicite. La clé privée est remise à `rustls` / AWS-LC, qui la gardent
+en **mémoire C** : son effacement à la libération par AWS-LC n'est pas vérifié (connu pour
+BoringSSL). Les copies Rust faites par le crate (PEM décodé) sont effacées ; l'entrée
+`SecretBytes` aussi ; les `PrivateKeyDer` de `rustls-pki-types` n'implémentent pas
+`ZeroizeOnDrop` et ne sont construits qu'en emprunt sur ces tampons effacés. Le rechargement des
+certificats (fichiers de certbot, `lyxal_secrets`) appartient à l'hôte. Rustls n'offre ni
+TLS 1.0 / 1.1 ni suites CBC ni échange de clés RSA (RFC 8996, 9325) : de vieux clients ne
+peuvent pas se connecter. X25519, ChaCha20-Poly1305 et l'échange hybride X25519MLKEM768 sont
+négociés à l'intérieur de TLS seulement (C3), jamais offerts comme primitives aux modules.
 
 ## Validation et signalement
 

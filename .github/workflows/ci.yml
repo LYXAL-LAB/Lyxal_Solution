@@ -82,11 +82,14 @@ jobs:
   crypto:
     name: Cryptographie
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Le banc de contrats compile aws-lc-sys (rustls, TLS côté serveur) depuis le lot 2a.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - name: Installer Rust (version de rust-toolchain.toml)
         run: rustup show active-toolchain || rustup toolchain install
+      # Garde-fou des dépendances cryptographiques (C12), contrats d'API, vecteurs enc:v2 et
+      # du format de flux v1 recalculés par OpenSSL.
       - run: scripts/ci/crypto_checks.sh
 
   test:

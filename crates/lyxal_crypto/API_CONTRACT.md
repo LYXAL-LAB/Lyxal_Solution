@@ -1,8 +1,11 @@
 # Contrat public — API de `lyxal_crypto` / enc:v2
 
-API figée (`.agents/rules/lyxal_standards_and_checklist.md` §11.3), version Cargo 0.1.0.
-Le [protocole V2](ENVELOPE_FORMAT_V2.md) est la référence des octets persistants.
-Toutes les erreurs retournent `CryptoError`, sans entrée, PHC, clé ni chemin reflété.
+API figée (`.agents/rules/lyxal_standards_and_checklist.md` §11.3) : ajouts seulement, validés par le
+CTO ; version Cargo 0.1.0.
+Le [protocole V2](ENVELOPE_FORMAT_V2.md) et le [format de flux v1](STREAM_FORMAT_V1.md) sont les
+références des octets persistants.
+Toutes les erreurs retournent `CryptoError` (`#[non_exhaustive]` : de nouvelles variantes peuvent
+s'ajouter, aucune n'est retirée), sans entrée, PHC, clé, chemin ni message de `rustls` reflété.
 
 ## Types sensibles
 
@@ -17,12 +20,16 @@ Toutes les erreurs retournent `CryptoError`, sans entrée, PHC, clé ni chemin r
 | TotpSecret | generate(&TotpConfig) -> Result via OsRng (20 bytes SHA-1, 32 SHA-256) ; import(SecretBytes) exige 16..=64 bytes | expose_secret -> &[u8] (stockage chiffré), to_base32 -> SecretString |
 | EcdsaP256SigningKey | import_pkcs8(SecretBytes) : PKCS#8 P-256 en DER ou PEM `PRIVATE KEY`, clé publique incluse ; generate -> Result (`ring::rand::SystemRandom`, aléa du système) | public_key_uncompressed -> [u8;65], sign_es256 -> Result<[u8;64]>, export_pkcs8 -> SecretBytes (rangement d'une clé VAPID générée dans le coffre-fort seulement) |
 | RsaSigningKey | import_pkcs8(SecretBytes) : PKCS#8 RSA 2048 à 4096 bits en DER ou PEM `PRIVATE KEY` ; jamais générée | sign_rs256 -> Result<Vec<u8>> ; aucun export |
+| StreamKey | generate -> Result via OsRng (32 bytes, une clé par fichier) ; open(&CryptoEngine,&EncryptedEnvelope,&SecretContext) exige 32 bytes | seal -> EncryptedEnvelope (`enc:v2`) seulement ; aucun export brut |
+| StreamEncryptor / StreamDecryptor | new (clé de segments dérivée, tampon de clair effacés) | aucun accès à la clé ; voir « Chiffrement de fichiers en flux » |
+| TlsCertifiedKey | from_pem(&[u8], SecretBytes), from_der(Vec<Vec<u8>>, SecretBytes) ; clé vérifiée contre le certificat | aucun export ; clé tenue par `rustls` / `aws-lc-rs` en mémoire C (pas de ZeroizeOnDrop promis, SECURITY.md) |
 
 `Debug` donne exactement `<Type>([REDACTED])`. Ces types ne proposent ni Clone/Copy,
 Default, Display, Deref, comparaisons Eq/PartialEq/Ord, Hash, sérialisation implicite,
 ni conversions/emprunts personnalisés vers des buffers bruts. Les implémentations
 identitaires standard From<T> for T / Into<T> / Borrow<T> for T restent permises.
-Send, Sync, Unpin et ZeroizeOnDrop sont vérifiés par le banc de contrats.
+Send, Sync, Unpin et ZeroizeOnDrop sont vérifiés par le banc de contrats (ZeroizeOnDrop
+excepté pour TlsCertifiedKey).
 Aucune méthode publique Zeroize ne transforme une clé vivante en clé nulle.
 Les conversions nommées transfèrent l'allocation ; les données invalides sont effacées.
 Une exposition explicite autorise l'appelant à copier : ces copies lui appartiennent.
@@ -195,3 +202,107 @@ HMAC-SHA1 est utilisé dans ce module (exigé par la RFC 6238 et les application
 exposé comme primitive ; la seule autre utilisation est la vérification
 `verify_external_hmac_sha1` ci-dessus. Le rythme des essais, l'anti-rejeu par pas, le stockage chiffré
 du secret et les codes de secours appartiennent à l'hôte.
+
+## TLS serveur (P6 a)
+
+Extension validée par le CTO le 20 novembre 2026 (programme courrier, lot 2, décisions C3 et C7).
+`lyxal_crypto` construit **toute** la configuration TLS des serveurs ; les hôtes ne font que
+brancher les connexions (`tokio_rustls::TlsAcceptor`, `STARTTLS`) avec la version de `rustls`
+réexportée (`lyxal_crypto::rustls`). Aucune configuration TLS n'est construite ailleurs (garde-fou
+`scripts/ci/check_crypto_dependencies.py`). `lyxal_crypto` ne lit aucun fichier : les octets du
+certificat et de la clé viennent de l'hôte (fichiers de certbot ou `lyxal_secrets`), qui se charge
+aussi du rechargement.
+
+- `TlsCertifiedKey::from_pem(chain_pem, SecretBytes) -> Result` : chaîne PEM (blocs
+  `CERTIFICATE`, feuille d'abord, 10 au plus, 64 Kio au plus, autres blocs ignorés) et clé PEM
+  `PRIVATE KEY` (PKCS#8), `RSA PRIVATE KEY` (PKCS#1) ou `EC PRIVATE KEY` (SEC1, bloc
+  `EC PARAMETERS` ignoré), un seul bloc de clé, 16 Kio au plus.
+  `from_der(Vec<Vec<u8>>, SecretBytes) -> Result` : chaîne DER (mêmes bornes) et clé PKCS#8 DER.
+  Clés acceptées : RSA de 2048 bits ou plus, ECDSA P-256 et P-384, Ed25519. Erreurs : entrée trop
+  grande `InputTooLarge` ; chaîne vide, illisible ou de plus de 10 certificats
+  `InvalidCertificate` ; clé illisible, chiffrée (`ENCRYPTED PRIVATE KEY` ou en-têtes
+  `Proc-Type`), absente, en double, RSA de moins de 2048 bits, P-521 ou d'un autre algorithme
+  `InvalidKeyEncoding` ; clé d'un autre certificat `CertificateKeyMismatch`.
+- `TlsCertificateStore::new(Option<TlsCertifiedKey>) -> Arc<Self>` ; `set_default(Option<..>)` ;
+  `insert(server_name, TlsCertifiedKey) -> Result` (nom DNS, casse ASCII ignorée, ou joker
+  `*.domaine` avec au moins deux étiquettes après le joker ; adresse IP, nom invalide ou non
+  couvert par le certificat : `InvalidCertificate`) ; `remove(server_name) -> bool`. Choix à la
+  poignée de main : nom exact demandé (SNI), puis joker d'un seul niveau (`*.parent`), puis
+  certificat par défaut (client sans SNI, adresse IP, nom inconnu) ; aucun : la poignée de main
+  échoue par une alerte TLS, sans `panic!`. Remplacement atomique : les nouvelles poignées de main
+  voient le nouveau certificat, les connexions ouvertes gardent l'ancien. Le contrôle d'un joker
+  vérifie que le certificat couvre `lyxal-wildcard-probe.<domaine>`.
+- `TlsServerOptions { min_version: TlsMinVersion, alpn_protocols: Vec<Vec<u8>>,
+  session_cache_entries: usize }`, `Default` = `Tls12`, aucun ALPN, 4 096 entrées ;
+  `TlsMinVersion::{Tls12, Tls13}`.
+- `tls_server_config(Arc<TlsCertificateStore>, &TlsServerOptions) -> Result<Arc<ServerConfig>>` :
+  fournisseur `aws-lc-rs` passé à `ServerConfig::builder_with_provider` (jamais
+  `ServerConfig::builder()`, qui s'arrête par un `panic!` quand les deux fournisseurs de `rustls`
+  sont compilés, cas du workspace) ; TLS 1.3 et 1.2 (ou 1.3 seul) ; suites et groupes du
+  fournisseur (AES-GCM, ChaCha20-Poly1305 ; X25519MLKEM768, X25519, P-256, P-384 : C3) ; pas de
+  0-RTT (`max_early_data_size = 0`), pas de données avant la fin de la poignée de main, pas de
+  certificat client, aucun journal des clés de session ; cache de sessions de la taille demandée
+  (0 : aucune reprise de session). ALPN de plus de 8 noms ou nom vide ou de plus de 255 octets,
+  cache de plus de 65 536 entrées : `InputTooLarge`.
+
+Tests : poignées de main réelles en mémoire (client `rustls` de test vérifiant la chaîne contre une
+autorité de test) en TLS 1.2 et 1.3 avec des clés RSA, ECDSA P-256 / P-384 et Ed25519 ; refus d'un
+client TLS 1.2 par l'option `Tls13` ; ALPN ; SNI, joker et défaut ; échec propre sans certificat ;
+remplacement à chaud ; reprise de session ; clés et chaînes invalides ; non-régression du
+`panic!` de `ServerConfig::builder()` avec les deux fournisseurs actifs ; poignée de main de bout
+en bout par `tokio-rustls` (`TlsAcceptor`) sur un tube en mémoire.
+
+## Chiffrement de fichiers en flux (P6 i)
+
+Extension validée par le CTO le 20 novembre 2026 (programme courrier, lot 2, décisions C9 et
+C10). Format : [`STREAM_FORMAT_V1.md`](STREAM_FORMAT_V1.md) (référence des octets persistants).
+Une clé par fichier, tirée au hasard, scellée par `enc:v2` et rangée dans la fiche du fichier
+(jamais dans le fichier) ; contenu découpé en segments de 64 Kio, chacun AES-256-GCM, le dernier
+marqué « dernier » ; lecture d'une plage sans tout déchiffrer. Module synchrone : aucune
+dépendance `tokio` ni `futures` ; l'adaptateur asynchrone appartient au consommateur (lot 4).
+
+- Constantes : `STREAM_HEADER_BYTES` (47), `STREAM_SEGMENT_BYTES` (65 536), `STREAM_TAG_BYTES`
+  (16). `stream_ciphertext_len(plaintext_len) -> Result<u64>` : `47 + n + 16 × max(1, ⌈n / 65 536⌉)`,
+  `InputTooLarge` au-delà de 2^48 octets.
+- `StreamKey::generate() -> Result` (OsRng, `RandomUnavailable`) ;
+  `seal(&CryptoEngine, &SecretContext) -> Result<EncryptedEnvelope>` : un scellement `enc:v2` sous
+  la clé active (une invocation du budget de cette clé, SECURITY.md) ;
+  `StreamKey::open(&CryptoEngine, &EncryptedEnvelope, &SecretContext) -> Result` : authentifié,
+  exactement 32 octets (`InvalidKeyLength` sinon). Changer la clé de l'organisation revient à
+  resceller ces clés par `reencrypt_if_needed`, sans réécrire les fichiers.
+- `StreamEncryptor::new(&StreamKey, &SecretContext) -> Result<(Self, [u8; 47])>` : sel (32
+  octets) et préfixe de nonce (7 octets) neufs tirés par OsRng ; l'en-tête rendu s'écrit en
+  premier. `update(&[u8], &mut Vec<u8>) -> Result` ajoute à la sortie chaque segment complet
+  chiffré (un segment plein reste en attente tant qu'on ne sait pas s'il est le dernier) ;
+  `finish(self, &mut Vec<u8>) -> Result<u64>` chiffre le dernier segment et rend la taille du
+  clair. Plus de 2^48 octets : `InputTooLarge` ; après une erreur, tout appel est refusé
+  (`EncryptionFailed`).
+- `StreamDecryptor::new(&StreamKey, &SecretContext, header, ciphertext_len) -> Result` : en-tête
+  de 47 octets et taille totale du fichier chiffré (en-tête compris) connue de la fiche ; en-tête
+  mal formé ou taille incohérente `InvalidStreamHeader`, version inconnue `UnsupportedVersion`
+  (avant tout déchiffrement ; l'en-tête est authentifié par chaque segment). `plaintext_len()`,
+  `segment_count()` ; `plan_range(Range<u64>) -> Result<StreamSpan>` : segments et octets chiffrés
+  à lire pour une plage du clair, fin exclue (`StreamSpan { first_segment, last_segment,
+  ciphertext, skip_in_first, take }` ; plage vide : le segment de sa position ; début après la
+  fin ou fin au-delà du clair : `InputTooLarge`) ; `decrypt_segment(index, ciphertext) ->
+  Result<SecretBytes>` : rang hors du fichier ou longueur fausse `InvalidStreamHeader` ; segment
+  modifié, déplacé ou étranger, fichier tronqué ou prolongé, autre contexte ou autre clé
+  `AuthenticationFailed`. Le dernier segment est reconnu à son rang, déduit de la taille totale.
+- AAD = domaine `"lyxal:crypto:stream:v1:aes-256-gcm" 0x00` ‖ en-tête ‖ identité du
+  `SecretContext` (encodage `enc:v2` §3 sans `key_id`) : jamais vide.
+
+**Lecture en flux** : un segment rendu est authentique, mais les segments suivants ne sont pas
+encore vérifiés ; une altération plus loin est détectée au segment concerné. L'appelant doit alors
+**interrompre** sa réponse (fermer la connexion IMAP ou HTTP), jamais la terminer comme réussie.
+Comme pour `enc:v2`, le remplacement par une ancienne version complète du même fichier sous le
+même contexte n'est pas détecté (rejeu) ; il appartient à l'hôte.
+
+Le niveau A protège les octets rangés (disque, sauvegarde, stockage S3), pas les champs en base
+(objet, expéditeur, index) ; la déduplication des fichiers chiffrés devient impossible ; une clé
+d'organisation perdue rend ses fichiers illisibles (C10).
+
+Tests : vecteurs littéraux de `STREAM_FORMAT_V1.md` (calculés par OpenSSL, contrôlés par
+`tools/check_stream_fixtures.py` et par le crate), vecteurs Wycheproof AES-256-GCM de la primitive
+des segments, allers-retours aux frontières de segment (0, 1, 65 535, 65 536, 65 537 octets,
+plusieurs Mio), plages, altérations (bit modifié, troncature, échange, ajout, autre fichier, autre
+contexte, autre clé), propriétés `proptest`, cible de fuzzing `stream_open`.

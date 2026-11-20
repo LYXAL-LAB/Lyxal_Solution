@@ -91,9 +91,20 @@ impl SecretContext {
     pub(crate) fn aad(&self, key_id: &KeyId) -> Vec<u8> {
         let mut out = Vec::with_capacity(1465);
         out.extend_from_slice(PREFIX);
+        self.append_identity(&mut out, Some(key_id.as_str()));
+        out
+    }
+    /// Mode octet then `LP(...)` fields of enc:v2 §3, without the key ID: the identity bound by
+    /// the streaming format (STREAM_FORMAT_V1.md §4). Never empty (mode octet and LP fields).
+    pub(crate) fn identity(&self) -> Vec<u8> {
+        let mut out = Vec::with_capacity(1433);
+        self.append_identity(&mut out, None);
+        out
+    }
+    fn append_identity(&self, out: &mut Vec<u8>, key_id: Option<&str>) {
         let mut append = |mode: u8, fields: &[&str]| {
             out.push(mode);
-            for s in fields {
+            for s in key_id.iter().chain(fields) {
                 out.extend_from_slice(&(s.len() as u32).to_be_bytes());
                 out.extend_from_slice(s.as_bytes());
             }
@@ -105,13 +116,9 @@ impl SecretContext {
                 resource,
                 record_id,
                 field,
-            } => append(
-                1,
-                &[key_id.as_str(), tenant, module, resource, record_id, field],
-            ),
-            Domain::Global { purpose } => append(2, &[key_id.as_str(), purpose]),
+            } => append(1, &[tenant, module, resource, record_id, field]),
+            Domain::Global { purpose } => append(2, &[purpose]),
         }
-        out
     }
 }
 impl fmt::Debug for SecretContext {
