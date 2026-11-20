@@ -493,7 +493,7 @@ Taille estimée : **S** (environ 2 000 à 2 800 lignes Rust + SurrealQL, tests c
 
 ## 15. Décisions du CTO
 
-À valider par le CTO.
+Décisions A1 à A15 et écarts E1 à E3 **validés par le CTO** le 20 novembre 2026, tels que proposés ci-dessous.
 
 | N° | Question | Proposition |
 | :- | :--- | :--- |
