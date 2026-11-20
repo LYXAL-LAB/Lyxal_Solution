@@ -4,12 +4,14 @@
 use async_trait::async_trait;
 use lyxal_groupware::config::GroupwareConfig;
 use lyxal_groupware::net::bind::bind_listeners;
+use lyxal_groupware::net::certificates::Certificates;
 use lyxal_groupware::net::MailNet;
-use lyxal_mail::net::{MailProtocol, Session, SessionEnd, SessionHandler};
+use lyxal_mail::net::{ConnectionInfo, MailProtocol, Session, SessionEnd, SessionHandler};
 use lyxal_runtime::worker::{CancellationToken, WorkerContext};
 use lyxal_runtime::{ModuleContext, RuntimeError};
 use std::fs;
 use std::net::SocketAddr;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 use surrealdb::engine::any::{connect, Any};
@@ -79,7 +81,7 @@ pub async fn database(name: &str) -> Surreal<Any> {
 /// Écoutes de `config` liées et prêtes, avec la session `handler` pour tout protocole.
 pub fn mail_net(config: &GroupwareConfig, handler: Arc<dyn SessionHandler>) -> MailNet {
     let bound = bind_listeners(config).expect("liaison");
-    MailNet::new(config, bound, &move |_| handler.clone())
+    MailNet::new(config, bound, None, &move |_| handler.clone()).expect("écoutes")
 }
 
 /// Workers des écoutes lancés hors runtime ; annuler le jeton les arrête.
@@ -201,4 +203,237 @@ pub async fn eventually(what: &str, mut condition: impl FnMut() -> bool) {
         assert!(tokio::time::Instant::now() < deadline, "{what}");
         tokio::time::sleep(Duration::from_millis(20)).await;
     }
+}
+
+/// Certificats d'essai de `lyxal_crypto` (`crates/lyxal_crypto/tests/fixtures/tls_test_only/`,
+/// réservés aux tests, commandes de génération dans le `README.md` de ce dossier), copiés dans
+/// un dossier temporaire avec des clés en mode 0600 : `p256` et `p256_next` couvrent
+/// `mail.example.test`, `default` couvre `default.example.test`, `ca.pem` est leur autorité.
+pub struct TestCertificates {
+    directory: tempfile::TempDir,
+}
+
+impl TestCertificates {
+    pub fn new() -> Self {
+        let source = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../crates/lyxal_crypto/tests/fixtures/tls_test_only");
+        let directory = tempfile::tempdir().expect("tempdir");
+        for name in ["p256", "p256_next", "default"] {
+            for kind in ["chain", "key"] {
+                let file = format!("{name}.{kind}.pem");
+                fs::copy(source.join(&file), directory.path().join(&file)).expect("copie");
+            }
+        }
+        fs::copy(source.join("ca.pem"), directory.path().join("ca.pem")).expect("ca.pem");
+        let certificates = Self { directory };
+        for name in ["p256", "p256_next", "default"] {
+            certificates.set_mode(&format!("{name}.key.pem"), 0o600);
+        }
+        certificates.serve("p256");
+        certificates
+    }
+
+    pub fn path(&self, file: &str) -> PathBuf {
+        self.directory.path().join(file)
+    }
+
+    #[cfg(unix)]
+    pub fn set_mode(&self, file: &str, mode: u32) {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(self.path(file), fs::Permissions::from_mode(mode)).expect("droits");
+    }
+
+    #[cfg(not(unix))]
+    pub fn set_mode(&self, _file: &str, _mode: u32) {}
+
+    /// Section `[tls]` : `default` par défaut, `mail.example.test` servi depuis les fichiers
+    /// `served.*` (copie de `p256`, remplaçable par les essais de rechargement).
+    pub fn tls_section(&self) -> String {
+        format!(
+            "[tls]\nhandshake_timeout_seconds = 2\ndefault = {{ certificate = {:?}, private_key = {:?} }}\n\n[[tls.certificates]]\nnames = [\"mail.example.test\"]\ncertificate = {:?}\nprivate_key = {:?}\n",
+            self.path("default.chain.pem"),
+            self.path("default.key.pem"),
+            self.path("served.chain.pem"),
+            self.path("served.key.pem"),
+        )
+    }
+
+    /// Sert le couple `name` pour `mail.example.test` (fichiers `served.*`, clé en 0600).
+    pub fn serve(&self, name: &str) {
+        for kind in ["chain", "key"] {
+            fs::copy(
+                self.path(&format!("{name}.{kind}.pem")),
+                self.path(&format!("served.{kind}.pem")),
+            )
+            .expect("copie");
+        }
+        self.set_mode("served.key.pem", 0o600);
+    }
+}
+
+/// Écoutes de `config` liées, servies avec ses certificats.
+pub fn tls_net(config: &GroupwareConfig, handler: Arc<dyn SessionHandler>) -> MailNet {
+    let certificates = Certificates::load(&config.tls).expect("certificats");
+    let bound = bind_listeners(config).expect("liaison");
+    MailNet::new(config, bound, certificates, &move |_| handler.clone()).expect("écoutes")
+}
+
+/// Écoute de protocole `protocol` sur un port libre de `127.0.0.1`, en mode `tls`.
+pub fn listener(id: &str, protocol: &str, tls: &str, extra: &str) -> String {
+    format!(
+        "\n[[listeners]]\nid = \"{id}\"\nprotocol = \"{protocol}\"\nbind = [\"127.0.0.1:0\"]\ntls = \"{tls}\"\n{extra}\n"
+    )
+}
+
+/// Résultat d'un client `openssl s_client`.
+#[derive(Debug)]
+pub struct SClient {
+    /// Vrai si le client a terminé sans erreur (poignée de main et vérification réussies).
+    pub success: bool,
+    /// Données reçues du serveur.
+    pub stdout: String,
+    /// Paramètres de la connexion (`-brief`) et erreurs.
+    pub stderr: String,
+}
+
+impl SClient {
+    /// Valeur d'une ligne `Clé: valeur` de la sortie `-brief`.
+    pub fn field(&self, key: &str) -> Option<&str> {
+        self.stderr
+            .lines()
+            .find_map(|line| line.strip_prefix(key)?.strip_prefix(':'))
+            .map(str::trim)
+    }
+}
+
+/// Date de vérification des certificats d'essai, indépendante de l'horloge (1er janvier 2027).
+const VERIFY_AT: &str = "1798761600";
+
+/// Client TLS d'essai : `openssl s_client`. La configuration `rustls` d'un client ne se construit
+/// pas hors de `lyxal_crypto` (garde-fou C12, `scripts/ci/check_crypto_dependencies.py`) : les
+/// essais passent par l'outil OpenSSL, qui vérifie la chaîne contre l'autorité d'essai. Envoie
+/// `input`, puis attend la fermeture par le serveur.
+pub async fn s_client(
+    address: SocketAddr,
+    certificates: &TestCertificates,
+    args: &[&str],
+    input: &[u8],
+) -> SClient {
+    let mut child = s_client_process(address, certificates, args);
+    let mut stdin = child.stdin.take().expect("stdin");
+    stdin.write_all(input).await.expect("entrée");
+    drop(stdin);
+    let output = tokio::time::timeout(Duration::from_secs(20), child.wait_with_output())
+        .await
+        .expect("openssl s_client hors délai")
+        .expect("openssl s_client");
+    SClient {
+        success: output.status.success(),
+        stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
+        stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+    }
+}
+
+/// `openssl s_client` lancé, entrée et sorties en tubes.
+pub fn s_client_process(
+    address: SocketAddr,
+    certificates: &TestCertificates,
+    args: &[&str],
+) -> tokio::process::Child {
+    tokio::process::Command::new("openssl")
+        .args(["s_client", "-connect", &address.to_string(), "-brief"])
+        .args(["-CAfile", &certificates.path("ca.pem").to_string_lossy()])
+        .args(["-attime", VERIFY_AT, "-verify_return_error", "-ign_eof"])
+        .args(args)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .kill_on_drop(true)
+        .spawn()
+        .expect("openssl introuvable : l'outil OpenSSL est requis par les essais TLS")
+}
+
+/// Protocole d'essai : enregistre ce que la session sait de sa connexion, salue par
+/// `220 session <numéro>`, puis ferme.
+#[derive(Clone, Default)]
+pub struct RecordingHandler {
+    pub seen: Arc<std::sync::Mutex<Vec<ConnectionInfo>>>,
+}
+
+impl RecordingHandler {
+    pub fn last(&self) -> ConnectionInfo {
+        self.seen
+            .lock()
+            .unwrap()
+            .last()
+            .cloned()
+            .expect("aucune session")
+    }
+}
+
+#[async_trait]
+impl SessionHandler for RecordingHandler {
+    fn protocol(&self) -> MailProtocol {
+        MailProtocol::Imap
+    }
+
+    async fn handle(&self, mut session: Session) -> SessionEnd {
+        self.seen.lock().unwrap().push(session.info.clone());
+        let greeting = format!("220 session {}\r\n", session.info.session_id);
+        let stream = session.stream();
+        let _ = stream.write_all(greeting.as_bytes()).await;
+        let _ = stream.shutdown().await;
+        SessionEnd::Closed
+    }
+}
+
+/// Journal du fil courant capturé dans un tampon, tant que la garde vit.
+#[derive(Clone, Default)]
+pub struct Captured(Arc<std::sync::Mutex<Vec<u8>>>);
+
+impl std::io::Write for Captured {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        self.0.lock().unwrap().extend_from_slice(bytes);
+        Ok(bytes.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+impl Captured {
+    /// Texte capturé.
+    pub fn text(&self) -> String {
+        String::from_utf8(self.0.lock().unwrap().clone()).unwrap()
+    }
+}
+
+/// Gardes de la capture : abonné du fil courant et second abonné vivant.
+pub struct LogGuard {
+    _default: tracing::subscriber::DefaultGuard,
+    _other: tracing::Dispatch,
+}
+
+/// Capture le journal (niveau `info` et au-dessus) du fil courant. Essai sur un seul fil
+/// (`current_thread`) : les tâches des écoutes y écrivent aussi. Un second abonné reste vivant :
+/// avec un seul abonné inscrit, `tracing` calcule l'intérêt d'un point de journal d'après le fil
+/// qui le rencontre le premier (un autre essai, sans abonné) et le tiendrait pour muet ici.
+pub fn capture_logs() -> (Captured, LogGuard) {
+    let captured = Captured::default();
+    let writer = captured.clone();
+    let subscriber = tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .with_ansi(false)
+        .with_writer(move || writer.clone())
+        .finish();
+    let default = tracing::subscriber::set_default(subscriber);
+    let other = tracing::Dispatch::new(tracing::subscriber::NoSubscriber::default());
+    (
+        captured,
+        LogGuard {
+            _default: default,
+            _other: other,
+        },
+    )
 }

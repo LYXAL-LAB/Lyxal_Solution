@@ -1,5 +1,5 @@
 //! Configuration : fichiers livrés, variables `LYXAL_GROUPWARE__*`, et chaque refus de la
-//! validation (§7 du plan du lot 3).
+//! validation (`README.md` de l'hôte, §3).
 
 use crate::support::{smtp_listener, toml, try_config};
 use lyxal_groupware::config::{GroupwareConfig, LogClientIp};
@@ -40,9 +40,17 @@ fn shipped(environment: &str) -> GroupwareConfig {
 fn shipped_files_are_valid() {
     let development = shipped("development");
     assert_eq!(development.http.bind.to_string(), "127.0.0.1:8090");
-    assert_eq!(development.listeners.len(), 1);
+    assert_eq!(development.listeners.len(), 8);
     assert_eq!(development.listeners[0].protocol, MailProtocol::Smtp);
-    assert_eq!(development.listeners[0].tls, TlsMode::None);
+    assert_eq!(development.listeners[0].tls, TlsMode::StartTls);
+    assert!(development.tls.default.is_some());
+    for listener in &development.listeners {
+        assert!(listener
+            .bind
+            .iter()
+            .all(|address| address.ip().is_loopback()));
+        assert_ne!(listener.tls, TlsMode::None, "{}", listener.id);
+    }
     assert_eq!(development.limits.connections_per_network, [30, 90, 270]);
     assert_eq!(development.limits.connections_per_minute, [300, 900, 2700]);
     assert_eq!(development.limits.memory_budget_bytes, 512 * 1024 * 1024);
@@ -138,14 +146,34 @@ fn listener_settings_are_checked() {
             "\n[[listeners]]\nid = \"a\"\nprotocol = \"smtp\"\nbind = [\"127.0.0.1:2525\"]\ntls = \"none\"\n\n[[listeners]]\nid = \"b\"\nprotocol = \"smtp\"\nbind = [\"127.0.0.1:2525\"]\ntls = \"none\"\n",
             "liée deux fois",
         ),
-        // TLS (lot 3c) et protocole en clair (G7)
+        // TLS (G7) : certificat obligatoire, modes par protocole
         (
             "\n[[listeners]]\nid = \"imaps\"\nprotocol = \"imap\"\nbind = [\"127.0.0.1:0\"]\ntls = \"implicit\"\n",
-            "TLS pas encore disponible",
+            "aucun certificat déclaré",
         ),
         (
             "\n[[listeners]]\nid = \"submission\"\nprotocol = \"submission\"\nbind = [\"127.0.0.1:0\"]\ntls = \"starttls\"\n",
-            "TLS pas encore disponible",
+            "aucun certificat déclaré",
+        ),
+        (
+            "\n[[listeners]]\nid = \"smtps\"\nprotocol = \"smtp\"\nbind = [\"127.0.0.1:0\"]\ntls = \"implicit\"\n",
+            "TLS implicite non défini",
+        ),
+        (
+            "\n[[listeners]]\nid = \"sieve\"\nprotocol = \"managesieve\"\nbind = [\"127.0.0.1:0\"]\ntls = \"implicit\"\n",
+            "TLS implicite non défini",
+        ),
+        (
+            &smtp_listener("smtp", "tls_min_version = \"1.3\""),
+            "sans effet sur une écoute en clair",
+        ),
+        (
+            &smtp_listener("smtp", "tls_min_version = \"1.1\""),
+            "variant constructor 1.1",
+        ),
+        (
+            &smtp_listener("smtp", "proxy_networks = [\"proxy.local\"]"),
+            "proxy.local",
         ),
         (
             "\n[[listeners]]\nid = \"imap\"\nprotocol = \"imap\"\nbind = [\"127.0.0.1:0\"]\ntls = \"none\"\n",
@@ -165,7 +193,7 @@ fn listener_settings_are_checked() {
             "mode TLS inconnu",
         ),
         (
-            &smtp_listener("smtp", "proxy_networks = []"),
+            &smtp_listener("smtp", "proxy_header = true"),
             "unknown field",
         ),
     ];
@@ -213,5 +241,58 @@ fn limits_are_bounded() {
         };
         let message = refused(&extra);
         assert!(message.contains(expected), "{setting} : {message}");
+    }
+}
+
+const TLS: &str = "[tls]\ndefault = { certificate = \"/etc/lyxal/tls/mail.pem\", private_key = \"/etc/lyxal/tls/mail.key\" }\n";
+
+#[test]
+fn tls_listeners_are_accepted_with_a_certificate() {
+    let config = try_config(&toml(
+        "config",
+        &format!(
+            "[limits]\ndrain_seconds = 5\nproxy_header_timeout_seconds = 3\n{TLS}\n[[tls.certificates]]\nnames = [\"mail.example.test\", \"*.example.test\"]\ncertificate = \"/etc/lyxal/tls/mail.pem\"\nprivate_key = \"/etc/lyxal/tls/mail.key\"\n{}{}{}{}",
+            "\n[[listeners]]\nid = \"smtp\"\nprotocol = \"smtp\"\nbind = [\"127.0.0.1:0\"]\ntls = \"starttls\"\n",
+            "\n[[listeners]]\nid = \"submissions\"\nprotocol = \"submission\"\nbind = [\"127.0.0.1:0\"]\ntls = \"implicit\"\ntls_min_version = \"1.3\"\n",
+            "\n[[listeners]]\nid = \"imaps\"\nprotocol = \"imap\"\nbind = [\"127.0.0.1:0\"]\ntls = \"implicit\"\nproxy_networks = [\"10.0.0.0/8\", \"2001:db8::/32\"]\n",
+            "\n[[listeners]]\nid = \"sieve\"\nprotocol = \"managesieve\"\nbind = [\"127.0.0.1:0\"]\ntls = \"starttls\"\n",
+        ),
+    ))
+    .expect("configuration TLS valide");
+    assert_eq!(config.listeners.len(), 4);
+    assert_eq!(config.listeners[1].tls, TlsMode::Implicit);
+    assert_eq!(config.listeners[2].proxy_networks.len(), 2);
+    assert_eq!(config.tls.reload_interval_seconds, 60);
+    assert_eq!(config.tls.handshake_timeout_seconds, 30);
+    assert_eq!(config.tls.certificates[0].names.len(), 2);
+    assert_eq!(config.limits.proxy_header_timeout_seconds, 3);
+}
+
+#[test]
+fn tls_settings_are_checked() {
+    let cases = [
+        (format!("{TLS}reload_interval_seconds = 1\n"), "reload_interval_seconds"),
+        (format!("{TLS}handshake_timeout_seconds = 0\n"), "handshake_timeout_seconds"),
+        (
+            "[tls]\n[[tls.certificates]]\nnames = []\ncertificate = \"/a.pem\"\nprivate_key = \"/a.key\"\n".to_string(),
+            "au moins un nom",
+        ),
+        (
+            "[tls]\n[[tls.certificates]]\nnames = [\"a.example.test\"]\ncertificate = \"/a.pem\"\nprivate_key = \"/a.key\"\n\n[[tls.certificates]]\nnames = [\"A.example.test\"]\ncertificate = \"/b.pem\"\nprivate_key = \"/b.key\"\n".to_string(),
+            "déclaré deux fois",
+        ),
+        (
+            "[tls]\ndefault = { certificate = \"\", private_key = \"/a.key\" }\n".to_string(),
+            "chemin de certificat ou de clé vide",
+        ),
+        (format!("{TLS}inconnu = 1\n"), "unknown field"),
+        (
+            "[limits]\ndrain_seconds = 5\nproxy_header_timeout_seconds = 0\n".to_string(),
+            "proxy_header_timeout_seconds",
+        ),
+    ];
+    for (section, expected) in cases {
+        let message = refused(&section);
+        assert!(message.contains(expected), "{section} : {message}");
     }
 }

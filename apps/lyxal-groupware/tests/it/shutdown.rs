@@ -46,7 +46,7 @@ async fn host_starts_serves_health_and_drains_on_shutdown() {
     let client = database("lifecycle").await;
     let listeners = bind_listeners(&config).unwrap();
     let handler: Arc<dyn SessionHandler> = Arc::new(HoldHandler(MailProtocol::Smtp));
-    let started = runtime::start_with(&config, &client, listeners, &move |_| handler.clone())
+    let started = runtime::start_with(&config, &client, listeners, None, &move |_| handler.clone())
         .await
         .expect("démarrage");
     let runtime = started.runtime.clone();
@@ -64,7 +64,7 @@ async fn host_starts_serves_health_and_drains_on_shutdown() {
             "RETURN count(SELECT * FROM error_definition WHERE string::starts_with(code, 'GROUPWARE_'));"
         )
         .await,
-        6
+        7
     );
 
     // Santé et mesures
@@ -137,7 +137,7 @@ async fn session_ignoring_shutdown_is_abandoned_at_the_drain_deadline() {
     );
     let client = database("stubborn").await;
     let listeners = bind_listeners(&config).unwrap();
-    let started = runtime::start_with(&config, &client, listeners, &|_| {
+    let started = runtime::start_with(&config, &client, listeners, None, &|_| {
         Arc::new(StubbornHandler) as Arc<dyn SessionHandler>
     })
     .await

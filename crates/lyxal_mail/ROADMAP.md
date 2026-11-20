@@ -10,7 +10,6 @@ racine du dépôt ; chaque lot a son propre plan, validé par le CTO avant toute
 
 | Lot | Contenu pour ce crate | Sources principales | Prérequis |
 | :- | :--- | :--- | :--- |
-| 3c — TLS et PROXY | TLS implicite et STARTTLS (`TlsUpgrade` de l'hôte), certificats fournis par fichiers et rechargés à chaud, PROXY protocol v1 et v2, dans `apps/lyxal-groupware` (plan : `apps/lyxal-groupware/implementation_plan.md`) | Stalwart `common/network` | lots 2, 3b |
 | 4 — Socle courrier | Domaines, adresses, alias, boîtes, messages, quotas, droits, erreurs `MAIL_*`, événements ; **chiffrement au repos (niveau A)** ; drapeau « chiffré » réservé | Stalwart `email` (modèle), Mox `store` | lot 0 |
 | 5 — Réception SMTP | Serveur SMTP entrant, refus dès `RCPT TO`, SPF / DKIM / DMARC, `Authentication-Results`, antivirus, remise en boîte, événement `mail.message.received` ; ordre de remise fixé : antivirus → anti-spam → filtres → index → chiffrement | Stalwart `smtp/inbound` ; Mox `smtpserver` | lots 2, 3, 4 |
 | 6 — Envoi | File par destination, tentatives, envoi vers les MX, dépôt authentifié (587 / 465), signature DKIM, avis de non-remise, adresses de retour signées, contrat public de dépôt | Stalwart `smtp/queue`, `smtp/outbound` ; Mox `queue`, `smtpclient`, `dsn` ; KumoMTA | lots 1, 5 |

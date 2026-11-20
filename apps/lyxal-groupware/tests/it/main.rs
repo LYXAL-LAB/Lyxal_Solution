@@ -8,8 +8,13 @@
 
 mod binary;
 mod config;
+mod http_port;
 mod limits;
 mod listeners;
+mod proxy;
+mod reload;
 mod shutdown;
+mod starttls;
 mod support;
+mod tls;
 mod two_hosts;

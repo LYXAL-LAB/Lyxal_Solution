@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-//! Démarrage de l'hôte (§6.1 du plan du lot 3) : configuration et journal, base, liaison de tous
-//! les ports (écoutes de courrier et port HTTP) avant toute installation, runtime (socle,
-//! modules, écoutes), port HTTP de santé, puis attente du signal d'arrêt : santé « stopping »,
+//! Démarrage de l'hôte : configuration et journal, base, liaison de tous les ports (écoutes de
+//! courrier et port HTTP) et chargement des certificats avant toute installation, runtime
+//! (socle, modules, écoutes), port HTTP de santé, puis attente du signal d'arrêt : santé « stopping »,
 //! arrêt du runtime (écoutes drainées), port HTTP drainé.
 
 use crate::config::GroupwareConfig;
 use crate::error::GroupwareError;
 use crate::net::bind;
+use crate::net::certificates::Certificates;
 use crate::{http, runtime};
 use lyxal_host::health::{HealthRegistry, HealthState};
 use lyxal_host::{database, shutdown, telemetry};
@@ -49,11 +50,14 @@ async fn run_inner() -> Result<(), GroupwareError> {
         }
     };
 
-    // Tous les ports avant toute installation : un port indisponible arrête le démarrage
+    // Tous les ports avant toute installation : un port indisponible arrête le démarrage ; puis
+    // les certificats (un certificat invalide l'arrête aussi)
     let listeners = bind::bind_listeners(&config)?;
     let http_listener = lyxal_host::http::bind(&config.http.bind.to_string()).await?;
+    let certificates = Certificates::load(&config.tls)?;
 
-    let started = runtime::start(&config, &database, listeners).await?;
+    let prepare = http::prepare(&config, certificates.as_ref())?;
+    let started = runtime::start(&config, &database, listeners, certificates).await?;
     let runtime = started.runtime.clone();
     let router = http::router(health.clone(), runtime.clone(), started.mail.clone());
     health.set("http", HealthState::Healthy, None).await;
@@ -63,7 +67,7 @@ async fn run_inner() -> Result<(), GroupwareError> {
     let shutdown_health = health.clone();
     let mail = started.mail.clone();
     let graceful = Duration::from_secs(config.http.graceful_shutdown_seconds);
-    lyxal_host::http::serve(
+    lyxal_host::http::serve_prepared(
         http_listener,
         router,
         HTTP_WRITE_IDLE,
@@ -82,6 +86,7 @@ async fn run_inner() -> Result<(), GroupwareError> {
             // Les écoutes arrêtées gardent leurs ports : l'arrêt définitif les referme
             mail.close();
         },
+        prepare,
     )
     .await;
 

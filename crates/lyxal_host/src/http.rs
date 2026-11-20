@@ -18,7 +18,7 @@ use hyper::body::Incoming;
 use hyper::Request;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use hyper_util::server::conn::auto::Builder;
-use hyper_util::server::graceful::GracefulShutdown;
+use hyper_util::server::graceful::{GracefulShutdown, Watcher};
 use lyxal_runtime::health::{GlobalHealthStatus, HealthConfig, HealthStatus};
 use lyxal_runtime::reconciler::observer::RuntimeObserver;
 use lyxal_runtime::{LyxalRuntime, ModuleContext, RuntimeError};
@@ -26,10 +26,11 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 use std::future::Future;
 use std::net::SocketAddr;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncWrite};
-use tokio::net::TcpListener;
+use tokio::net::{TcpListener, TcpStream};
 use tokio_io_timeout::TimeoutStream;
 use tower::Service;
 
@@ -43,6 +44,23 @@ pub async fn bind(address: &str) -> Result<TcpListener, HostError> {
         })
 }
 
+/// Flux d'une connexion HTTP préparée par l'hôte (en-tête PROXY lu, poignée de main TLS faite).
+pub trait HttpStream: AsyncRead + AsyncWrite + Send + Unpin + 'static {}
+
+impl<T: AsyncRead + AsyncWrite + Send + Unpin + 'static> HttpStream for T {}
+
+/// Préparation d'une connexion acceptée avant le service HTTP : rend le flux à servir et
+/// l'adresse du client, ou `None` pour fermer la connexion (l'hôte compte et journalise le refus).
+pub type PrepareConnection = Arc<
+    dyn Fn(
+            TcpStream,
+            SocketAddr,
+        )
+            -> Pin<Box<dyn Future<Output = Option<(Box<dyn HttpStream>, SocketAddr)>> + Send>>
+        + Send
+        + Sync,
+>;
+
 /// Sert `router` sur `listener` jusqu'à la fin de `shutdown`, puis laisse `drain` aux requêtes en
 /// cours pour se terminer. L'adresse du client est transmise aux routes (`ConnectInfo`).
 pub async fn serve(
@@ -51,6 +69,20 @@ pub async fn serve(
     write_idle: Duration,
     drain: Duration,
     shutdown: impl Future<Output = ()>,
+) {
+    serve_prepared(listener, router, write_idle, drain, shutdown, None).await;
+}
+
+/// `serve`, chaque connexion passant d'abord par `prepare` (PROXY, TLS : `lyxal-groupware`).
+/// La préparation tourne dans la tâche de la connexion : un client lent ne bloque pas les
+/// autres.
+pub async fn serve_prepared(
+    listener: TcpListener,
+    router: Router,
+    write_idle: Duration,
+    drain: Duration,
+    shutdown: impl Future<Output = ()>,
+    prepare: Option<PrepareConnection>,
 ) {
     let graceful = GracefulShutdown::new();
     let mut shutdown = std::pin::pin!(shutdown);
@@ -67,13 +99,28 @@ pub async fn serve(
                         continue;
                     }
                 };
-                tokio::spawn(serve_connection(
-                    stream,
-                    remote,
-                    router.clone(),
-                    write_idle,
-                    &graceful,
-                ));
+                let watcher = graceful.watcher();
+                match &prepare {
+                    None => {
+                        tokio::spawn(serve_connection(
+                            stream,
+                            remote,
+                            router.clone(),
+                            write_idle,
+                            watcher,
+                        ));
+                    }
+                    Some(prepare) => {
+                        let prepared = prepare(stream, remote);
+                        let router = router.clone();
+                        tokio::spawn(async move {
+                            if let Some((stream, remote)) = prepared.await {
+                                serve_connection(stream, remote, router, write_idle, watcher)
+                                    .await;
+                            }
+                        });
+                    }
+                }
             }
             () = &mut shutdown => break,
         }
@@ -91,14 +138,14 @@ pub async fn serve(
 }
 
 /// Sert `router` sur une connexion déjà acceptée (`remote` : adresse du client), avec le délai
-/// d'écriture `write_idle`, sous la surveillance de `graceful` (arrêt gracieux). Le futur rendu
+/// d'écriture `write_idle`, sous la surveillance de `watcher` (arrêt gracieux). Le futur rendu
 /// se termine à la fermeture de la connexion ; l'appelant le confie à une tâche.
 pub fn serve_connection<S>(
     stream: S,
     remote: SocketAddr,
     router: Router,
     write_idle: Duration,
-    graceful: &GracefulShutdown,
+    watcher: Watcher,
 ) -> impl Future<Output = ()> + Send + 'static
 where
     S: AsyncRead + AsyncWrite + Send + Unpin + 'static,
@@ -109,7 +156,7 @@ where
         request.extensions_mut().insert(ConnectInfo(remote));
         router.clone().call(request)
     });
-    let connection = graceful.watch(
+    let connection = watcher.watch(
         Builder::new(TokioExecutor::new())
             .serve_connection_with_upgrades(TokioIo::new(Box::pin(stream)), service)
             .into_owned(),

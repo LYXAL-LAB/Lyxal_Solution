@@ -1,6 +1,6 @@
-# Production. Aucune écoute de courrier : le port 25 n'est pas ouvert sur Internet avant le lot 5
-# (réception SMTP), il ne répondrait qu'un refus poli. Les ports 465, 587, 993, 143, 995, 110 et 4190 arrivent
-# avec la prise en charge du TLS (lot 3c).
+# Production. Aucune écoute de courrier active : tant qu'aucun protocole n'existe (SMTP au lot 5,
+# IMAP au lot 8…), chaque port ne répondrait qu'un refus poli. Les écoutes ci-dessous sont à
+# décommenter avec le lot du protocole, et la section [tls] avec la première écoute chiffrée.
 
 [application]
 name = "Lyxal Groupware"
@@ -23,9 +23,36 @@ include_target = false
 include_thread_ids = false
 log_client_ip = "network"
 
-# Écoute de réception SMTP, à décommenter au lot 5 :
+# Certificats (fichiers PEM, par exemple ceux de certbot ; clé en mode 0600 ou 0400, lisible par
+# le seul compte du service), relus toutes les 60 s :
+# [tls]
+# default = { certificate = "/etc/lyxal/tls/mail.pem", private_key = "/etc/lyxal/tls/mail.key" }
+# reload_interval_seconds = 60
+# handshake_timeout_seconds = 30
+#
+# [[tls.certificates]]
+# names = ["mail.exemple.fr", "imap.exemple.fr"]
+# certificate = "/etc/letsencrypt/live/mail.exemple.fr/fullchain.pem"
+# private_key = "/etc/letsencrypt/live/mail.exemple.fr/privkey.pem"
+
+# Réception SMTP (lot 5) :
 # [[listeners]]
 # id = "smtp"
 # protocol = "smtp"
 # bind = ["0.0.0.0:25", "[::]:25"]
-# tls = "none"
+# tls = "starttls"
+#
+# Soumission (lot 6) :
+# [[listeners]]
+# id = "submissions"
+# protocol = "submission"
+# bind = ["[::]:465"]
+# tls = "implicit"
+#
+# IMAP (lot 8), derrière un répartiteur qui envoie l'en-tête PROXY :
+# [[listeners]]
+# id = "imaps"
+# protocol = "imap"
+# bind = ["[::]:993"]
+# tls = "implicit"
+# proxy_networks = ["10.0.0.0/8"]

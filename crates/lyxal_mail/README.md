@@ -3,7 +3,7 @@
 **État : squelette (lot 3 du programme courrier).** Le crate est membre du workspace et ne
 contient que du Rust : le contrat réseau des sessions (`lyxal_mail::net`), les limites appliquées
 à l'acceptation et les lignes de refus poli. Aucune table, aucune fonction SurrealQL, aucun code
-d'erreur `MAIL_*` : ils arrivent au lot 4 (écart E3 du plan du lot 3). Le module est installé et
+d'erreur `MAIL_*` : ils arrivent au lot 4 (décision du lot 3 : aucune table ni aucun code sans appelant). Le module est installé et
 démarré par l'hôte `apps/lyxal-groupware`, qui le porte par un `ManifestModule` et lui rattache
 ses écoutes (workers `lyxal_mail:mail.listener.<id>`). Inscrit au Noyau Technique dans
 `.agents/AGENTS.md` §6 et dans
@@ -17,7 +17,7 @@ Version `0.1.0` (régime pré-production, `.agents/AGENTS.md` §0).
 | :--- | :--- |
 | `Session`, `ConnectionInfo`, `SessionLimits`, `TlsState`, `TlsInfo` | Ce que l'hôte remet à un protocole pour chaque connexion acceptée : flux, adresses (après PROXY), état TLS, délais, jeton d'arrêt du nœud, mémoire réservée |
 | `SessionHandler`, `SessionEnd` | Ce qu'un protocole implémente (lots 5 à 10) |
-| `TlsUpgrade`, `Session::start_tls` | Mise à niveau STARTTLS offerte par l'hôte (seul détenteur de `tokio-rustls`) ; refus de toute entrée lue avant la mise à niveau (`NetError::PipelinedBeforeTls` : injection de commandes en clair) ; implémentation par l'hôte au lot 3c |
+| `TlsUpgrade`, `Session::start_tls` | Mise à niveau STARTTLS offerte par l'hôte (seul détenteur de `tokio-rustls`) ; refus de toute entrée lue avant la mise à niveau (`NetError::PipelinedBeforeTls` : injection de commandes en clair) ; implémentée par l'hôte (`HostTlsUpgrade` de `apps/lyxal-groupware`) |
 | `MailProtocol`, `TlsMode`, `NetError` | Protocole et mode TLS d'une écoute ; erreurs du transport (internes : jamais renvoyées à un client ni écrites en base) |
 | `ConnectionLimiter`, `InFlight` | Plafond de connexions simultanées d'une écoute ; place rendue à la libération (porté de Stalwart) |
 | `IpRateLimiter`, `WindowLimit` | Limites par réseau à fenêtres fixes, trois niveaux (IPv4 `/32`, `/26`, `/21` ; IPv6 `/64`, `/48`, `/32`) ; fenêtre sans fin pour les connexions ouvertes ; nombre de réseaux suivis borné (transposé de Mox) |
@@ -74,7 +74,7 @@ dans [`SOURCES.md`](SOURCES.md). Les conséquences de licence sont traitées par
 | Lot | Apport à ce crate |
 | :- | :--- |
 | 0 — Cadre | Ce dossier, les sources figées, le tri du code propriétaire, les mesures de SurrealDB |
-| 3 — Hôte et socle réseau | Squelette du module (fait : `lyxal_mail::net`) ; écoutes supervisées dans `apps/lyxal-groupware` ; TLS implicite, STARTTLS et PROXY à venir (3c) |
+| 3 — Hôte et socle réseau (réalisé) | Squelette du module (`lyxal_mail::net`) ; écoutes supervisées, TLS implicite, STARTTLS, certificats rechargés à chaud et PROXY protocol dans `apps/lyxal-groupware` |
 | 4 — Socle courrier | Domaines, adresses, alias, boîtes, messages, quotas, droits, erreurs, événements ; chiffrement au repos (niveau A) |
 | 5 — Réception SMTP | Serveur SMTP entrant, SPF / DKIM / DMARC, antivirus, remise en boîte |
 | 6 — Envoi | File par destination, envoi vers les MX, dépôt authentifié, signature DKIM, avis de non-remise |

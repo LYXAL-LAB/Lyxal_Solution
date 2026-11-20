@@ -112,6 +112,33 @@ IF !record::exists(error_definition:GROUPWARE_BIND_FAILED) THEN (
     }
 ) END;
 
+IF !record::exists(error_definition:GROUPWARE_TLS_CERTIFICATE_INVALID) THEN (
+    CREATE error_definition:GROUPWARE_TLS_CERTIFICATE_INVALID CONTENT {
+        code: "GROUPWARE_TLS_CERTIFICATE_INVALID",
+        module: "groupware",
+        domain: "tls",
+        category: "internal",
+        severity: "error",
+        message: "A TLS certificate could not be loaded",
+        default_language: "fr",
+        http_status: 500,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Certificat TLS invalide",
+                description: "Un certificat déclaré dans la section [tls] est illisible, invalide, ne couvre pas le nom pour lequel il est déclaré ou ne correspond pas à sa clé, ou bien le fichier de clé est lisible par le groupe ou les autres comptes. Au démarrage, l'hôte s'arrête ; au rechargement, l'ancien certificat reste en service et la santé passe à « dégradé ».",
+                resolution: "Corriger le fichier indiqué dans le journal (chaîne PEM, clé non chiffrée, droits 0600 sur la clé) ; il est relu automatiquement."
+            },
+            en: {
+                label: "Invalid TLS certificate",
+                description: "A TLS certificate could not be loaded.",
+                resolution: "Fix the file named in the log (PEM chain, unencrypted key, mode 0600 on the key); it is reloaded automatically."
+            }
+        }
+    }
+) END;
+
 IF !record::exists(error_definition:GROUPWARE_SHUTDOWN_SIGNAL_FAILED) THEN (
     CREATE error_definition:GROUPWARE_SHUTDOWN_SIGNAL_FAILED CONTENT {
         code: "GROUPWARE_SHUTDOWN_SIGNAL_FAILED",

@@ -36,6 +36,14 @@ pub enum GroupwareError {
     #[error("adresse d'écoute `{address}` indisponible : {message}")]
     Bind { address: String, message: String },
 
+    /// Certificat TLS illisible, invalide, ne couvrant pas son nom, ou clé lisible par d'autres
+    /// comptes. `source_name` : chemin du fichier ou nom servi, jamais le contenu de la clé.
+    #[error("certificat TLS `{source_name}` invalide : {message}")]
+    TlsCertificate {
+        source_name: String,
+        message: String,
+    },
+
     /// Attente du signal d'arrêt impossible.
     #[error("signal d'arrêt indisponible : {message}")]
     ShutdownSignal { message: String },
@@ -110,6 +118,15 @@ const BIND_FAILED: GroupwareErrorInfo = GroupwareErrorInfo {
     label: "Adresse d'écoute indisponible",
 };
 
+const TLS_CERTIFICATE_INVALID: GroupwareErrorInfo = GroupwareErrorInfo {
+    code: "GROUPWARE_TLS_CERTIFICATE_INVALID",
+    category: "internal",
+    http_status: 500,
+    retryable: false,
+    message: "A TLS certificate could not be loaded",
+    label: "Certificat TLS invalide",
+};
+
 const SHUTDOWN_SIGNAL_FAILED: GroupwareErrorInfo = GroupwareErrorInfo {
     code: "GROUPWARE_SHUTDOWN_SIGNAL_FAILED",
     category: "internal",
@@ -134,6 +151,7 @@ pub const GROUPWARE_ERROR_CATALOG: &[GroupwareErrorInfo] = &[
     DATABASE_UNAVAILABLE,
     MODULE_INSTALL_FAILED,
     BIND_FAILED,
+    TLS_CERTIFICATE_INVALID,
     SHUTDOWN_SIGNAL_FAILED,
     TELEMETRY_INIT_FAILED,
 ];
@@ -158,6 +176,7 @@ impl GroupwareError {
             Self::Database { .. } => DATABASE_UNAVAILABLE,
             Self::ModuleInstall { .. } => MODULE_INSTALL_FAILED,
             Self::Bind { .. } => BIND_FAILED,
+            Self::TlsCertificate { .. } => TLS_CERTIFICATE_INVALID,
             Self::ShutdownSignal { .. } => SHUTDOWN_SIGNAL_FAILED,
             Self::Telemetry { .. } => TELEMETRY_INIT_FAILED,
         }

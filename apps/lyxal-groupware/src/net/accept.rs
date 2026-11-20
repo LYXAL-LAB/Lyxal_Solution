@@ -1,26 +1,34 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-//! Pipeline d'acceptation d'une connexion (§6.3 du plan du lot 3), dans l'ordre : listes
-//! statiques, limites par réseau (cadence puis connexions ouvertes), budget mémoire, remise au
-//! handler du protocole. Le plafond de l'écoute est pris avant, dans la boucle d'acceptation.
-//! Un refus écrit la ligne du protocole en clair, sous délai, puis ferme. Les places, compteurs
-//! et réservations sont rendus à la fin de la tâche, quelle qu'en soit l'issue.
+//! Pipeline d'acceptation d'une connexion (`README.md` de l'hôte, §4), dans l'ordre : en-tête PROXY
+//! (depuis un réseau de répartiteur seulement), listes statiques, limites par réseau (cadence
+//! puis connexions ouvertes), budget mémoire, poignée de main TLS implicite, remise au handler
+//! du protocole. Le plafond de l'écoute est pris avant, dans la boucle d'acceptation. Les
+//! limites s'appliquent à l'adresse du client, celle de l'en-tête PROXY s'il y en a un.
+//!
+//! Un refus écrit la ligne du protocole en clair, sous délai, puis ferme ; sur une écoute à TLS
+//! implicite, il ferme sans poignée de main (elle coûterait du calcul pour un client refusé).
+//! Les places, compteurs et réservations sont rendus à la fin de la tâche, quelle qu'en soit
+//! l'issue.
 //!
 //! Écrit pour Lyxal OS sur le modèle de Stalwart (`common/src/network/listen.rs`,
 //! `build_session`) et de Mox (`smtpserver/server.go`, limites de connexion), sans code repris.
 
 use super::metrics::Refusal;
-use super::{bind, idle_timeout, Listener, WRITE_STALL};
+use super::proxy::{self, PlainStream};
+use super::tls::HostTlsUpgrade;
+use super::{bind, idle_timeout, Listener, ListenerTlsMode, WRITE_STALL};
 use crate::config::LogClientIp;
 use lyxal_host::net::{log_network, normalize_ip};
 use lyxal_mail::net::{
-    refusal_line, ConnectionInfo, InFlight, IpRateLimiter, MemoryClass, RefusalReason, Session,
-    SessionEnd, SessionLimits, TlsState, REFUSAL_WRITE_TIMEOUT,
+    refusal_line, BoxedStream, ConnectionInfo, InFlight, IpRateLimiter, MemoryClass, NetError,
+    RefusalReason, Session, SessionEnd, SessionLimits, TlsState, TlsUpgrade, REFUSAL_WRITE_TIMEOUT,
 };
+use proxy_header::io::ProxiedStream;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use std::time::Instant;
-use tokio::io::AsyncWriteExt;
+use tokio::io::{AsyncWrite, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio_io_timeout::TimeoutStream;
 use tokio_util::sync::CancellationToken;
@@ -48,9 +56,33 @@ pub(super) async fn serve(
 ) {
     let _place = place;
     bind::apply_connection_options(&stream);
-    let remote = SocketAddr::new(normalize_ip(remote.ip()), remote.port());
-    let ip = remote.ip();
+    let peer = SocketAddr::new(normalize_ip(remote.ip()), remote.port());
     let acceptance = &listener.acceptance;
+
+    // En-tête PROXY : exigé depuis un réseau de répartiteur, jamais lu ailleurs
+    let (stream, local, remote, via_proxy) = if listener
+        .proxy_networks
+        .iter()
+        .any(|net| net.contains(peer.ip()))
+    {
+        match proxy::read_header(stream, acceptance.proxy_header_timeout).await {
+            Ok((stream, Some(addresses))) => {
+                listener.metrics.proxied();
+                (stream, addresses.local, addresses.remote, true)
+            }
+            // `LOCAL` / `UNKNOWN` : sonde du répartiteur, adresse de la connexion gardée
+            Ok((stream, None)) => (stream, local, peer, false),
+            Err(error) => {
+                listener.metrics.refused(Refusal::ProxyHeader);
+                log_refusal(&listener, peer.ip(), Refusal::ProxyHeader);
+                tracing::debug!(listener = %listener.id, %error, "en-tête PROXY refusé");
+                return;
+            }
+        }
+    } else {
+        (ProxiedStream::unproxied(stream), local, peer, false)
+    };
+    let ip = remote.ip();
 
     // Listes statiques
     let denied = acceptance.deny.iter().any(|net| net.contains(ip))
@@ -83,10 +115,36 @@ pub(super) async fn serve(
         return refuse(&listener, stream, ip, RefusalReason::MemoryBudget).await;
     }
 
-    listener.metrics.accepted();
-    let session_id = acceptance.next_session_id();
     let mut timed = TimeoutStream::new(stream);
     timed.set_write_timeout(Some(WRITE_STALL));
+    let timed = Box::pin(timed);
+
+    // TLS : poignée de main implicite, ou mise à niveau offerte à la session
+    let (stream, tls, upgrade): (BoxedStream, TlsState, Option<Arc<dyn TlsUpgrade>>) =
+        match &listener.tls {
+            ListenerTlsMode::None => (Box::new(timed), TlsState::Plain, None),
+            ListenerTlsMode::StartTls(acceptor) => {
+                let failed = listener.clone();
+                let upgrade = HostTlsUpgrade::new(
+                    acceptor.clone(),
+                    Box::new(move |error| handshake_failed(&failed, ip, error)),
+                );
+                (Box::new(timed), TlsState::Plain, Some(Arc::new(upgrade)))
+            }
+            ListenerTlsMode::Implicit(acceptor) => {
+                let handshake = tokio::select! {
+                    handshake = acceptor.accept(timed) => handshake,
+                    () = shutdown.cancelled() => return,
+                };
+                match handshake {
+                    Ok((stream, info)) => (Box::new(stream), TlsState::Implicit(info), None),
+                    Err(error) => return handshake_failed(&listener, ip, &error),
+                }
+            }
+        };
+
+    listener.metrics.accepted();
+    let session_id = acceptance.next_session_id();
     let session = Session::new(
         ConnectionInfo {
             listener_id: listener.id.clone(),
@@ -94,8 +152,8 @@ pub(super) async fn serve(
             session_id,
             local,
             remote,
-            via_proxy: false,
-            tls: TlsState::Plain,
+            via_proxy,
+            tls,
         },
         SessionLimits {
             idle: idle_timeout(listener.protocol),
@@ -103,8 +161,8 @@ pub(super) async fn serve(
         },
         shutdown,
         memory,
-        Box::new(Box::pin(timed)),
-        None,
+        stream,
+        upgrade,
     );
     match listener.handler.handle(session).await {
         SessionEnd::Closed | SessionEnd::ClosedOnShutdown => {}
@@ -121,11 +179,36 @@ pub(super) async fn serve(
     }
 }
 
-/// Refus poli : ligne du protocole en clair, sous délai, puis fermeture.
-async fn refuse(listener: &Listener, mut stream: TcpStream, ip: IpAddr, reason: RefusalReason) {
+/// Poignée de main TLS en échec ou hors délai : comptée et journalisée (catégorie de l'erreur,
+/// réseau masqué), la connexion est fermée.
+fn handshake_failed(listener: &Listener, ip: IpAddr, error: &NetError) {
+    listener.metrics.tls_handshake_failed();
+    tracing::info!(
+        listener = %listener.id,
+        protocol = %listener.protocol,
+        network = %log_network(ip),
+        %error,
+        "poignée de main TLS en échec"
+    );
+}
+
+/// Refus : ligne du protocole en clair sous délai puis fermeture ; fermeture seule sur une
+/// écoute à TLS implicite.
+async fn refuse(listener: &Listener, mut stream: PlainStream, ip: IpAddr, reason: RefusalReason) {
     listener.metrics.refused(Refusal::Polite(reason));
     log_refusal(listener, ip, Refusal::Polite(reason));
-    let line = refusal_line(listener.protocol, reason);
+    if matches!(listener.tls, ListenerTlsMode::Implicit(_)) {
+        return;
+    }
+    write_refusal(
+        listener,
+        &mut stream,
+        refusal_line(listener.protocol, reason),
+    )
+    .await;
+}
+
+async fn write_refusal<S: AsyncWrite + Unpin>(listener: &Listener, stream: &mut S, line: &[u8]) {
     let write = async {
         stream.write_all(line).await?;
         stream.shutdown().await

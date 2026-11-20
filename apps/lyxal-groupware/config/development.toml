@@ -1,9 +1,57 @@
-# Développement : écoutes sur 127.0.0.1, ports non privilégiés. Les écoutes chiffrées (TLS
-# implicite : 2465, 1993, 1995 ; STARTTLS : 2587, 1143, 1110, 4190) arrivent avec la prise en
-# charge du TLS (lot 3c) : d'ici là, seule la réception SMTP en clair est permise.
+# Développement : écoutes sur 127.0.0.1, ports non privilégiés. Certificat de développement à
+# fournir (fichiers relatifs au dossier de lancement ; clé en mode 0600), par exemple :
+#   mkdir -p config/tls && openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes \
+#     -days 30 -subj "/CN=localhost" -addext "subjectAltName=DNS:localhost" \
+#     -keyout config/tls/development.key.pem -out config/tls/development.chain.pem \
+#     && chmod 600 config/tls/development.key.pem
+
+[tls]
+default = { certificate = "config/tls/development.chain.pem", private_key = "config/tls/development.key.pem" }
 
 [[listeners]]
 id = "smtp"
 protocol = "smtp"
 bind = ["127.0.0.1:2525"]
-tls = "none"
+tls = "starttls"
+
+[[listeners]]
+id = "submission"
+protocol = "submission"
+bind = ["127.0.0.1:2587"]
+tls = "starttls"
+
+[[listeners]]
+id = "submissions"
+protocol = "submission"
+bind = ["127.0.0.1:2465"]
+tls = "implicit"
+
+[[listeners]]
+id = "imap"
+protocol = "imap"
+bind = ["127.0.0.1:1143"]
+tls = "starttls"
+
+[[listeners]]
+id = "imaps"
+protocol = "imap"
+bind = ["127.0.0.1:1993"]
+tls = "implicit"
+
+[[listeners]]
+id = "pop3"
+protocol = "pop3"
+bind = ["127.0.0.1:1110"]
+tls = "starttls"
+
+[[listeners]]
+id = "pop3s"
+protocol = "pop3"
+bind = ["127.0.0.1:1995"]
+tls = "implicit"
+
+[[listeners]]
+id = "managesieve"
+protocol = "managesieve"
+bind = ["127.0.0.1:4190"]
+tls = "starttls"
