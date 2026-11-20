@@ -980,4 +980,4 @@ seulement : la configuration refuse `starttls` / `implicit` tant que 3c n'est pa
   `deny.toml` nommées.
 * [ ] **Validation CTO** : écarts E1 à E7, décisions G1 à G16.
 
-À valider par le CTO.
+Validé par le CTO le 20 novembre 2026 (décisions G1 à G16 telles que recommandées).
