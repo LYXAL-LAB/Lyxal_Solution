@@ -168,8 +168,8 @@ async fn ready(State(state): State<HostHealth>) -> StatusCode {
 
 #[derive(Serialize)]
 struct HealthResponse {
-    /// Composants de l'hôte (processus, base de données).
-    server: HealthSnapshot,
+    /// Composants de l'hôte (processus, base de données, port HTTP…).
+    host: HealthSnapshot,
     /// Santé des modules, évaluée par le runtime (`ModuleHealthCheck`), sans le message des
     /// sondes (détail interne).
     modules: ModulesHealth,
@@ -185,7 +185,7 @@ async fn health<E>(State(state): State<HostHealth>) -> Result<Response, E>
 where
     E: From<RuntimeError> + IntoResponse,
 {
-    let server = state.registry.snapshot().await;
+    let host = state.registry.snapshot().await;
     let observer = RuntimeObserver::new(
         state.runtime.store(),
         state.runtime.registry(),
@@ -197,7 +197,7 @@ where
         .health_engine(HealthConfig::default())
         .check_all(&actual, &ModuleContext::new(state.host))
         .await;
-    let serving = matches!(server.state, HealthState::Healthy | HealthState::Degraded)
+    let serving = matches!(host.state, HealthState::Healthy | HealthState::Degraded)
         && modules.global_status != GlobalHealthStatus::Unhealthy;
     let status = if serving {
         StatusCode::OK
@@ -212,5 +212,5 @@ where
             .map(|(id, result)| (id.to_string(), result.status))
             .collect(),
     };
-    Ok((status, Json(HealthResponse { server, modules })).into_response())
+    Ok((status, Json(HealthResponse { host, modules })).into_response())
 }

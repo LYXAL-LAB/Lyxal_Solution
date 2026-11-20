@@ -195,11 +195,21 @@ passage de `fetch_sources.sh`.
 
 ## 3. Éléments portés
 
-Aucun à ce jour (crate à créer). Chaque lot ajoute ses lignes.
+Chaque lot ajoute ses lignes. Les éléments portés dans l'hôte `apps/lyxal-groupware` sont
+inscrits dans son propre registre (`apps/lyxal-groupware/SOURCES.md`).
 
 | Élément de Lyxal (fichier ou dossier) | Projet | Commit | Licence | Chemin d'origine | Nature (porté / modèle) | Lot |
 | :--- | :--- | :--- | :--- | :--- | :--- | :- |
-| — | — | — | — | — | — | — |
+| `src/net/limit.rs` (`ConnectionLimiter`, `InFlight`) | Stalwart | `3adead9` | `AGPL-3.0-only OR LicenseRef-SEL`, option AGPL retenue | `crates/common/src/network/limiter.rs` (`ConcurrencyLimiter`, `InFlight`) | porté (plafond seul ; prise de place atomique ; limites par compte et débits non repris) | 3 |
+| `src/net/memory.rs` (`MemoryBudget`, `MemoryReservation`, `ReservationScope`) | Stalwart | `3adead9` | `AGPL-3.0-only OR LicenseRef-SEL`, option AGPL retenue | `crates/common/src/network/memory.rs` | porté (plafond global porté par le budget ; somme réservée jamais au-delà du budget ; seuil souple non repris) | 3 |
+| `src/net/ratelimit.rs` (`IpRateLimiter`, `WindowLimit`) et ses essais | Mox | `b32f0de` | MIT (avis : `LICENSES/MIT-Mox.txt`) | `ratelimit/ratelimit.go`, `ratelimit/ratelimit_test.go` | porté (transposé de Go ; réseaux suivis bornés, sans `panic!`, IPv4 transportée ramenée à l'IPv4, compteurs à zéro retirés) | 3 |
+| `src/net/session.rs` (contrat des sessions) | Stalwart | `3adead9` | `AGPL-3.0-only OR LicenseRef-SEL` | `crates/common/src/network/mod.rs` (`SessionData`, `SessionStream`, `SessionResult::UpgradeTls`) | modèle | 3 |
+| Valeurs des limites par réseau (30 / 90 / 270 ouvertes, 300 / 900 / 2 700 par minute) | Mox | `b32f0de` | MIT | `smtpserver/server.go` (`limiterConnections`, `limiterConnectionRate`) | modèle (valeurs par défaut de l'hôte) | 3 |
+
+Chaque fichier porté garde son en-tête `SPDX-FileCopyrightText` d'origine, déclare sa licence
+retenue (`AGPL-3.0-only` pour Stalwart, `MIT` pour Mox) et décrit ses modifications pour Lyxal
+OS. Textes des licences : `LICENSES/AGPL-3.0-only.txt` (copie de `LICENSES/AGPL-3.0-only.txt` de
+Stalwart au commit figé), `LICENSES/MIT-Mox.txt` (copie de `LICENSE.MIT` de Mox).
 
 « Porté » : code repris et adapté. « Modèle » : fonctionnement repris, code réécrit. Les
 mentions de droit d'auteur et de licence des fichiers portés sont conservées dans les fichiers.

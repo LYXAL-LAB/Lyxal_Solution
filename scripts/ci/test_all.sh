@@ -4,7 +4,7 @@
 # Démarre deux serveurs en mémoire, avec des identifiants générés pour cette exécution :
 #   - serveur de recette sur 127.0.0.1:8001 (tests « serveur réel » de lyxal_pipeline_ingestion) ;
 #   - serveur ws:// pour les tests de connexion distante de lyxal_surreal et lyxal_auth, et
-#     l'essai de deux hôtes sur une même base de lyxal_runtime.
+#     les essais de deux hôtes sur une même base de lyxal_runtime et de lyxal-groupware.
 set -euo pipefail
 
 cd "$(dirname "$0")/../.."
@@ -67,4 +67,5 @@ cargo test --workspace --no-fail-fast
 cargo test --workspace -- --ignored --exact \
     call_tests::test_remote_ws_root_signin_and_call_fn \
     access::real_server_refuses_a_revoked_token_on_an_open_connection \
-    two_hosts_shared_database_tests::two_hosts_lifecycle_with_events_on_a_remote_server
+    two_hosts_shared_database_tests::two_hosts_lifecycle_with_events_on_a_remote_server \
+    two_hosts::groupware_beside_lyxal_server_on_a_remote_server

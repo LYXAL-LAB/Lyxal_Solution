@@ -1,0 +1,19 @@
+[package]
+name = "lyxal_mail"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+# Code porté de Stalwart (AGPL-3.0-only OR LicenseRef-SEL, option AGPL retenue) : décision P2.
+# Le fichier transposé de Mox garde sa licence MIT (avis dans LICENSES/MIT-Mox.txt).
+license = "AGPL-3.0-only"
+publish = false
+description = "Serveur de courrier de Lyxal OS (squelette du lot 3 : contrat réseau des sessions, limites par réseau, plafond de connexions, budget mémoire, refus poli)"
+
+[dependencies]
+async-trait.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["io-util"] }
+tokio-util.workspace = true
+
+[dev-dependencies]
+proptest = "1.5"

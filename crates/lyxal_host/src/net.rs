@@ -1,5 +1,5 @@
 //! Adresse réelle du client derrière des proxys inverses de confiance (réglage de l'hôte, ex.
-//! `server.trusted_proxies` de `lyxal-server`).
+//! `server.trusted_proxies` de `lyxal-server`), et réseau d'un client pour le journal.
 //!
 //! L'adresse est lue dans `X-Forwarded-For` seulement si la connexion vient d'un proxy de
 //! confiance : on prend l'adresse la plus à droite qui n'est pas elle-même un proxy de confiance
@@ -93,6 +93,25 @@ impl<'de> Deserialize<'de> for IpNetwork {
     }
 }
 
+/// Réseau de `ip` pour le journal, sans l'adresse complète (donnée personnelle) : IPv4 masquée
+/// à `/24`, IPv6 à `/48` (`192.0.2.0/24`, `2001:db8:1::/48`). Une IPv4 transportée en IPv6 est
+/// ramenée à l'IPv4. Règle de la décision G13 du programme courrier, appliquée en Rust parce
+/// qu'un journal ne peut pas appeler la base à chaque ligne. `fn::security_redact_ip` de
+/// `lyxal_core` garde, lui, les deux premiers octets d'une IPv4 (`/16`) et trois groupes d'une
+/// IPv6 (`/48`).
+pub fn log_network(ip: IpAddr) -> String {
+    match normalize_ip(ip) {
+        IpAddr::V4(v4) => {
+            let [a, b, c, _] = v4.octets();
+            format!("{a}.{b}.{c}.0/24")
+        }
+        IpAddr::V6(v6) => {
+            let masked = u128::from(v6) & (u128::MAX << 80);
+            format!("{}/48", std::net::Ipv6Addr::from(masked))
+        }
+    }
+}
+
 /// Adresse du client : `peer` (adresse de la connexion), ou, si `peer` est un proxy de
 /// confiance, l'adresse la plus à droite de `forwarded_for` qui n'en est pas un.
 pub fn client_ip(peer: IpAddr, forwarded_for: Option<&str>, trusted: &[IpNetwork]) -> IpAddr {
@@ -146,6 +165,14 @@ mod tests {
         let v6: Vec<IpNetwork> = nets(&["2001:db8::/32"]);
         assert!(v6[0].contains(ip("2001:db8:1::5")));
         assert!(!v6[0].contains(ip("2001:db9::5")));
+    }
+
+    #[test]
+    fn log_network_masks_the_client_address() {
+        assert_eq!(log_network(ip("203.0.113.77")), "203.0.113.0/24");
+        assert_eq!(log_network(ip("::ffff:203.0.113.77")), "203.0.113.0/24");
+        assert_eq!(log_network(ip("2001:db8:1:2:3:4:5:6")), "2001:db8:1::/48");
+        assert_eq!(log_network(ip("::1")), "::/48");
     }
 
     #[test]

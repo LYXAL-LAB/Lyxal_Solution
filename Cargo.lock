@@ -3924,6 +3924,34 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "112b39cec0b298b6c1999fee3e31427f74f676e4cb9879ed1a121b43661a4154"
 
 [[package]]
+name = "lyxal-groupware"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "axum 0.7.9",
+ "config",
+ "lyxal-server",
+ "lyxal_crypto",
+ "lyxal_error",
+ "lyxal_host",
+ "lyxal_mail",
+ "lyxal_runtime",
+ "serde",
+ "serde_json",
+ "socket2",
+ "surrealdb",
+ "tempfile",
+ "thiserror 1.0.69",
+ "tokio",
+ "tokio-io-timeout",
+ "tokio-util",
+ "tower 0.4.13",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "lyxal-server"
 version = "0.1.0"
 dependencies = [
@@ -4099,6 +4127,17 @@ dependencies = [
  "surrealdb",
  "thiserror 1.0.69",
  "tokio",
+]
+
+[[package]]
+name = "lyxal_mail"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "proptest",
+ "thiserror 1.0.69",
+ "tokio",
+ "tokio-util",
 ]
 
 [[package]]
