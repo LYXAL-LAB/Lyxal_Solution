@@ -8,6 +8,7 @@
 //! comptée. La route système des modules liste les nœuds vivants des deux hôtes.
 
 use axum::http::StatusCode;
+use lyxal_host::health::HealthRegistry;
 use lyxal_runtime::lock::{SurrealInstallationLeaseManager, SurrealLeaderLeaseManager};
 use lyxal_runtime::{
     EventEngineConfig, HostId, LyxalRuntime, ModuleId, ModuleState, RuntimeConfig,
@@ -21,7 +22,7 @@ use lyxal_scheduler::{
     SchedulerLeaderWorker, SchedulerStore,
 };
 use lyxal_server::modules::tasks::{HostTask, HOST_TASKS};
-use lyxal_server::{health::HealthRegistry, modules, runtime};
+use lyxal_server::{modules, runtime};
 use serde_json::Value;
 use std::sync::Arc;
 use std::time::Duration;

@@ -63,7 +63,7 @@ async fn a_client_that_stops_reading_is_disconnected() {
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("écoute");
     let address = listener.local_addr().expect("adresse");
     let (stop, stopped) = tokio::sync::oneshot::channel::<()>();
-    let server = tokio::spawn(lyxal_server::serve::serve(
+    let server = tokio::spawn(lyxal_host::http::serve(
         listener,
         router(),
         Duration::from_secs(1),

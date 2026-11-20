@@ -14,60 +14,17 @@ pub mod tasks;
 
 use crate::config::AppConfig;
 use crate::error::ServerError;
-use async_trait::async_trait;
-use lyxal_runtime::manifest::ManifestParser;
-use lyxal_runtime::resource::{EmbeddedResourceProvider, ResourceProvider};
+use lyxal_host::modules::{manifest, EmbeddedModule, ManifestModule};
+use lyxal_runtime::resource::EmbeddedResourceProvider;
 use lyxal_runtime::{
-    FoundationInstallation, HostId, LyxalModule, LyxalRuntime, ModuleContext, ModuleDescriptor,
-    ModuleManifest, ModulePackage, NodeId, RuntimeError,
+    FoundationInstallation, HostId, LyxalModule, LyxalRuntime, ModuleManifest, ModulePackage,
+    NodeId,
 };
 use std::sync::Arc;
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
-/// Module embarqué : son manifeste et les fichiers déclarés dans `[resources]`.
-pub struct EmbeddedModule {
-    pub id: &'static str,
-    pub manifest: &'static str,
-    pub files: &'static [(&'static str, &'static str)],
-}
-
 include!(concat!(env!("OUT_DIR"), "/embedded_modules.rs"));
-
-/// Modules du socle, installés avant le runtime, dont il a besoin pour sa propre persistance.
-pub const FOUNDATION: [&str; 2] = ["lyxal_core", "lyxal_error"];
-
-/// Module sans code Rust (SurrealQL uniquement) : son descripteur vient de son manifeste et ses
-/// hooks n'ont rien à faire, l'installation de ses ressources étant assurée par le runtime.
-pub struct ManifestModule {
-    descriptor: ModuleDescriptor,
-}
-
-#[async_trait]
-impl LyxalModule for ManifestModule {
-    fn descriptor(&self) -> &ModuleDescriptor {
-        &self.descriptor
-    }
-
-    async fn install(&self, _ctx: &ModuleContext) -> Result<(), RuntimeError> {
-        Ok(())
-    }
-
-    async fn start(&self, _ctx: &ModuleContext) -> Result<(), RuntimeError> {
-        Ok(())
-    }
-
-    async fn stop(&self, _ctx: &ModuleContext) -> Result<(), RuntimeError> {
-        Ok(())
-    }
-}
-
-fn manifest(module: &EmbeddedModule) -> Result<ModuleManifest, ServerError> {
-    ManifestParser::parse_str(module.manifest).map_err(|source| ServerError::ModuleInstall {
-        module: module.id.to_string(),
-        message: source.to_string(),
-    })
-}
 
 /// Nom de l'hôte : le rôle de ce binaire, le même pour toutes ses copies, égal à l'`id` de son
 /// manifeste. Constante du code, non réglable par configuration.
@@ -99,32 +56,14 @@ const SERVER_MODULE: EmbeddedModule = EmbeddedModule {
     ],
 };
 
-/// Manifeste de l'hôte limité à ses seeds (`seeds`), ou sans eux : ses définitions d'erreurs
-/// s'installent juste après le socle, ses seeds après les modules hébergés dont ils ont besoin.
-fn server_manifest(seeds: bool) -> Result<ModuleManifest, ServerError> {
-    let mut manifest = manifest(&SERVER_MODULE)?;
-    if seeds {
-        manifest.resources.error_definitions.clear();
-    } else {
-        manifest.resources.seeds.clear();
-    }
-    Ok(manifest)
-}
-
 /// Installe les seeds de l'hôte (droit d'administration de l'installation, tâches de fond et
 /// leurs permissions), après l'installation des modules hébergés. Rejouable.
 pub async fn install_host_seeds(client: &Surreal<Any>) -> Result<(), ServerError> {
-    lyxal_runtime::schema::install_resources(
-        client,
-        &server_manifest(true)?,
-        &EmbeddedResourceProvider::new(SERVER_MODULE.files),
-    )
-    .await?;
-    Ok(())
+    Ok(lyxal_host::modules::install_host_seeds(client, &SERVER_MODULE).await?)
 }
 
 /// Installe le socle (`lyxal_core`, `lyxal_error`, schéma du runtime) sous le bail d'installation
-/// du socle, au nom du nœud `node`, puis les définitions d'erreurs de l'hôte. Rejouable.
+/// du socle, au nom du nœud `node`, puis les définitions d'erreurs `SERVER_*`. Rejouable.
 ///
 /// Le socle est commun à tous les hôtes d'une même base : son empreinte ne couvre pas les
 /// définitions `SERVER_*`, propres à ce binaire et installées à part.
@@ -132,29 +71,14 @@ pub async fn install_foundation(
     client: &Surreal<Any>,
     node: &NodeId,
 ) -> Result<FoundationInstallation, ServerError> {
-    let mut manifests = Vec::new();
-    for module in EMBEDDED_MODULES
-        .iter()
-        .filter(|m| FOUNDATION.contains(&m.id))
-    {
-        manifests.push((
-            manifest(module)?,
-            EmbeddedResourceProvider::new(module.files),
-        ));
-    }
-    let batch: Vec<(&ModuleManifest, &dyn ResourceProvider)> = manifests
-        .iter()
-        .map(|(m, p)| (m, p as &dyn ResourceProvider))
-        .collect();
-    let foundation =
-        lyxal_runtime::schema::install_foundation(client, &host_id()?, node, &batch).await?;
-    lyxal_runtime::schema::install_resources(
+    Ok(lyxal_host::modules::install_foundation(
         client,
-        &server_manifest(false)?,
-        &EmbeddedResourceProvider::new(SERVER_MODULE.files),
+        &host_id()?,
+        node,
+        EMBEDDED_MODULES,
+        &SERVER_MODULE,
     )
-    .await?;
-    Ok(foundation)
+    .await?)
 }
 
 /// Packages de tous les modules hébergés, avec leur implémentation `LyxalModule` (sur la session
@@ -202,9 +126,7 @@ fn implementation(
     if id == ingestion::MODULE_ID {
         return Ok(ingestion::module());
     }
-    Ok(Arc::new(ManifestModule {
-        descriptor: manifest.to_descriptor()?,
-    }))
+    Ok(Arc::new(ManifestModule::new(manifest)?))
 }
 
 /// Services des modules hébergés à compléter après leur installation.

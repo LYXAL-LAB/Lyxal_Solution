@@ -6,13 +6,12 @@
 
 use axum::body::{to_bytes, Body};
 use axum::http::{Request, StatusCode};
+use lyxal_host::{health::HealthRegistry, metrics::Metrics};
 use lyxal_runtime::LyxalRuntime;
 use lyxal_server::{
     config::AppConfig,
     context::AppContext,
-    health::HealthRegistry,
     http::build_router,
-    metrics::Metrics,
     modules::auth::{self, AuthHost},
     runtime,
 };

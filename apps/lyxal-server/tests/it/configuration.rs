@@ -361,14 +361,14 @@ async fn surreal_server(allow_guests: bool) -> (SurrealServer, String) {
     (server, format!("ws://{address}"))
 }
 
-fn remote_config(endpoint: String) -> lyxal_server::config::DatabaseConfig {
-    lyxal_server::config::DatabaseConfig {
+fn remote_config(endpoint: String) -> lyxal_host::config::DatabaseConfig {
+    lyxal_host::config::DatabaseConfig {
         endpoint,
         namespace: "test".into(),
         database: "test".into(),
         username: Some("root".into()),
         password: Some(
-            lyxal_server::config::SecretPassword::new("root-de-test".into()).expect("secret"),
+            lyxal_host::config::SecretPassword::new("root-de-test".into()).expect("secret"),
         ),
         connect_timeout_seconds: 5,
     }
@@ -379,20 +379,20 @@ fn remote_config(endpoint: String) -> lyxal_server::config::DatabaseConfig {
 #[tokio::test]
 async fn database_accepting_guests_is_refused() {
     let (_open, endpoint) = surreal_server(true).await;
-    let error = lyxal_server::database::connect_database(&remote_config(endpoint))
+    let error = lyxal_host::database::connect_database(&remote_config(endpoint))
         .await
         .expect_err("invités acceptés : refus");
     assert!(error.to_string().contains("--allow-guests"), "{error}");
 
     let (_closed, endpoint) = surreal_server(false).await;
-    lyxal_server::database::connect_database(&remote_config(endpoint))
+    lyxal_host::database::connect_database(&remote_config(endpoint))
         .await
         .expect("invités refusés : connexion acceptée");
 }
 
 #[tokio::test]
 async fn remote_database_without_credentials_is_refused() {
-    let config = lyxal_server::config::DatabaseConfig {
+    let config = lyxal_host::config::DatabaseConfig {
         endpoint: "ws://127.0.0.1:9".into(),
         namespace: "test".into(),
         database: "test".into(),
@@ -400,7 +400,7 @@ async fn remote_database_without_credentials_is_refused() {
         password: None,
         connect_timeout_seconds: 1,
     };
-    let error = lyxal_server::database::connect_database(&config)
+    let error = lyxal_host::database::connect_database(&config)
         .await
         .expect_err("ws:// sans identifiants refusé");
     assert!(

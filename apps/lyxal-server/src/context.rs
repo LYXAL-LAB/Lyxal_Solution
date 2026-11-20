@@ -1,8 +1,9 @@
+use crate::config::AppConfig;
 use crate::modules::auth::AuthHost;
 use crate::modules::notification::NotificationHost;
 use crate::modules::scheduler::SchedulerHost;
 use crate::modules::secrets::SecretsHost;
-use crate::{config::AppConfig, database::Database, health::HealthRegistry, metrics::Metrics};
+use lyxal_host::{database::Database, health::HealthRegistry, metrics::Metrics};
 use lyxal_runtime::LyxalRuntime;
 use lyxal_storage::{Backends, ContentScanner};
 use std::sync::Arc;

@@ -24,9 +24,10 @@
 //! Sans argument, le binaire démarre le serveur.
 
 use crate::config::AppConfig;
+use crate::crypto;
 use crate::error::ServerError;
 use crate::modules::auth::{self, AuthHost};
-use crate::{crypto, database};
+use lyxal_host::database;
 use lyxal_i18n::{
     CheckReport, Exchange, ExportOptions, FileFormat, I18nStore, ImportOptions, ImportReport,
 };

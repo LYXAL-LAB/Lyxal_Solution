@@ -1,10 +1,12 @@
-use crate::error::ServerError;
+//! Signal d'arrêt de l'hôte : SIGINT, ou SIGTERM sous Unix.
 
-pub async fn signal() -> Result<(), ServerError> {
+use crate::HostError;
+
+pub async fn signal() -> Result<(), HostError> {
     let ctrl_c = async {
         tokio::signal::ctrl_c()
             .await
-            .map_err(|error| ServerError::ShutdownSignal {
+            .map_err(|error| HostError::ShutdownSignal {
                 message: error.to_string(),
             })
     };
@@ -13,15 +15,15 @@ pub async fn signal() -> Result<(), ServerError> {
     let terminate = async {
         use tokio::signal::unix::{signal, SignalKind};
         let mut stream =
-            signal(SignalKind::terminate()).map_err(|error| ServerError::ShutdownSignal {
+            signal(SignalKind::terminate()).map_err(|error| HostError::ShutdownSignal {
                 message: error.to_string(),
             })?;
         stream.recv().await;
-        Ok::<(), ServerError>(())
+        Ok::<(), HostError>(())
     };
 
     #[cfg(not(unix))]
-    let terminate = std::future::pending::<Result<(), ServerError>>();
+    let terminate = std::future::pending::<Result<(), HostError>>();
 
     tokio::select! {
         result = ctrl_c => result,

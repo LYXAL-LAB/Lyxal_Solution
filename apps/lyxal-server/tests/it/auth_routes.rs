@@ -5,10 +5,8 @@
 use axum::body::{to_bytes, Body};
 use axum::http::{Request, StatusCode};
 use lyxal_crypto::{CryptoEngine, EncryptionKey, KeyId, KeyRingBuilder, KeyUse, StaticKeyResolver};
-use lyxal_server::{
-    context::AppContext, health::HealthRegistry, http::build_router, metrics::Metrics,
-    modules::auth, runtime,
-};
+use lyxal_host::{health::HealthRegistry, metrics::Metrics};
+use lyxal_server::{context::AppContext, http::build_router, modules::auth, runtime};
 use serde_json::{json, Value};
 use std::sync::Arc;
 

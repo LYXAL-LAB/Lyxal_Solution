@@ -3936,12 +3936,12 @@ dependencies = [
  "config",
  "futures",
  "http",
- "hyper",
  "hyper-util",
  "lyxal_auth",
  "lyxal_crypto",
  "lyxal_error",
  "lyxal_event",
+ "lyxal_host",
  "lyxal_i18n",
  "lyxal_notification",
  "lyxal_pipeline_ingestion",
@@ -3959,12 +3959,9 @@ dependencies = [
  "tempfile",
  "thiserror 1.0.69",
  "tokio",
- "tokio-io-timeout",
- "toml",
  "tower 0.4.13",
  "tower-http 0.5.2",
  "tracing",
- "tracing-subscriber",
  "uuid",
  "zeroize",
 ]
@@ -4056,6 +4053,32 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+]
+
+[[package]]
+name = "lyxal_host"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum 0.7.9",
+ "bytes",
+ "chrono",
+ "config",
+ "futures",
+ "hyper",
+ "hyper-util",
+ "lyxal_runtime",
+ "lyxal_surreal",
+ "serde",
+ "surrealdb",
+ "tempfile",
+ "thiserror 1.0.69",
+ "tokio",
+ "tokio-io-timeout",
+ "toml",
+ "tower 0.4.13",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

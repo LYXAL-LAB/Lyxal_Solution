@@ -6,6 +6,7 @@
 
 use axum::body::{to_bytes, Body};
 use axum::http::{Request, StatusCode};
+use lyxal_host::{health::HealthRegistry, metrics::Metrics};
 use lyxal_scheduler::models::{
     Overlap, Run, RunRefParams, RunState, ScheduleListParams, ScheduleTriggerParams,
     SchedulerRecordId,
@@ -16,10 +17,7 @@ use lyxal_secrets::SecretsStore;
 use lyxal_server::modules::tasks::{
     HostTask, AUTH_PURGE, HOST_TASKS, SECRETS_MAINTENANCE, STORAGE_CLEANUP,
 };
-use lyxal_server::{
-    context::AppContext, health::HealthRegistry, http::build_router, metrics::Metrics,
-    modules::auth, runtime,
-};
+use lyxal_server::{context::AppContext, http::build_router, modules::auth, runtime};
 use lyxal_storage::models::{BucketCreateParams, ObjectBeginParams};
 use lyxal_storage::StorageStore;
 use lyxal_surreal::ToSql;

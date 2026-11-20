@@ -8,11 +8,9 @@ use axum::body::{to_bytes, Body};
 use axum::http::{HeaderMap, Request, StatusCode};
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
+use lyxal_host::{health::HealthRegistry, metrics::Metrics};
 use lyxal_notification::models::UnsubscribeTarget;
-use lyxal_server::{
-    config::AppConfig, context::AppContext, health::HealthRegistry, http::build_router,
-    metrics::Metrics, runtime,
-};
+use lyxal_server::{config::AppConfig, context::AppContext, http::build_router, runtime};
 use lyxal_surreal::RecordId;
 use std::fs;
 use std::sync::Arc;

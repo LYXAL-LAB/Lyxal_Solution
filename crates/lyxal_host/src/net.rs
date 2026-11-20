@@ -1,4 +1,5 @@
-//! Adresse réelle du client derrière des proxys inverses de confiance (`server.trusted_proxies`).
+//! Adresse réelle du client derrière des proxys inverses de confiance (réglage de l'hôte, ex.
+//! `server.trusted_proxies` de `lyxal-server`).
 //!
 //! L'adresse est lue dans `X-Forwarded-For` seulement si la connexion vient d'un proxy de
 //! confiance : on prend l'adresse la plus à droite qui n'est pas elle-même un proxy de confiance
@@ -20,7 +21,7 @@ pub struct IpNetwork {
 impl IpNetwork {
     /// Vrai si `ip` appartient au réseau (même famille d'adresses, même préfixe).
     pub fn contains(&self, ip: IpAddr) -> bool {
-        match (self.address, normalize(ip)) {
+        match (self.address, normalize_ip(ip)) {
             (IpAddr::V4(net), IpAddr::V4(ip)) => {
                 prefix_matches(&net.octets(), &ip.octets(), self.prefix)
             }
@@ -33,7 +34,7 @@ impl IpNetwork {
 }
 
 /// Adresse IPv4 transportée en IPv6 (`::ffff:a.b.c.d`) ramenée à l'IPv4.
-fn normalize(ip: IpAddr) -> IpAddr {
+pub fn normalize_ip(ip: IpAddr) -> IpAddr {
     match ip {
         IpAddr::V6(v6) => v6
             .to_ipv4_mapped()
@@ -65,7 +66,7 @@ impl FromStr for IpNetwork {
             Some((address, prefix)) => (address, Some(prefix)),
             None => (text.trim(), None),
         };
-        let address = normalize(IpAddr::from_str(address).map_err(|_| invalid())?);
+        let address = normalize_ip(IpAddr::from_str(address).map_err(|_| invalid())?);
         let max = if address.is_ipv4() { 32 } else { 128 };
         let prefix = match prefix {
             Some(prefix) => prefix.parse::<u8>().map_err(|_| invalid())?,
@@ -95,7 +96,7 @@ impl<'de> Deserialize<'de> for IpNetwork {
 /// Adresse du client : `peer` (adresse de la connexion), ou, si `peer` est un proxy de
 /// confiance, l'adresse la plus à droite de `forwarded_for` qui n'en est pas un.
 pub fn client_ip(peer: IpAddr, forwarded_for: Option<&str>, trusted: &[IpNetwork]) -> IpAddr {
-    let peer = normalize(peer);
+    let peer = normalize_ip(peer);
     let is_trusted = |ip: IpAddr| trusted.iter().any(|net| net.contains(ip));
     if !is_trusted(peer) {
         return peer;
@@ -106,7 +107,7 @@ pub fn client_ip(peer: IpAddr, forwarded_for: Option<&str>, trusted: &[IpNetwork
     let mut hops = Vec::new();
     for hop in header.split(',') {
         match IpAddr::from_str(hop.trim()) {
-            Ok(ip) => hops.push(normalize(ip)),
+            Ok(ip) => hops.push(normalize_ip(ip)),
             // En-tête illisible : on ne s'y fie pas
             Err(_) => return peer,
         }

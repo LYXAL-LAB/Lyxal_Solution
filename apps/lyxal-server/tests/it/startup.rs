@@ -3,11 +3,8 @@
 
 use axum::body::{to_bytes, Body};
 use axum::http::{Request, StatusCode};
-use lyxal_server::{
-    config::AppConfig,
-    health::{HealthRegistry, HealthState},
-    runtime,
-};
+use lyxal_host::health::{HealthRegistry, HealthState};
+use lyxal_server::{config::AppConfig, runtime};
 use std::fs;
 use std::sync::Arc;
 use surrealdb::engine::any::{connect, Any};
