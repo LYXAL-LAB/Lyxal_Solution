@@ -67,7 +67,18 @@ IF !record::exists(auth_policy:installation) THEN (
         code: { ttl_seconds: 900, max_attempts: 5 },
         refresh: { ttl_seconds: 43200 },
         flow: { ttl_seconds: 900 },
-        retention: { deleted_days: 30 }
+        retention: { deleted_days: 30 },
+        -- Mots de passe d'application (A11) : activés, 20 par personne et par organisation, sans
+        -- durée maximale ; session partagée de 12 h ; blocage de l'adresse IP à 20 échecs ;
+        -- événement à 50 échecs par identifiant ; journal gardé 90 jours
+        app_password: {
+            enabled: true,
+            max_per_identity: 20,
+            session_seconds: 43200,
+            ip_max_failures: 20,
+            identifier_alert_failures: 50,
+            log_days: 90
+        }
     }
 ) END;
 

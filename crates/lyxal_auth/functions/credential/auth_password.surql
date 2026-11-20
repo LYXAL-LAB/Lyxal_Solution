@@ -48,6 +48,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_password_set($params: object) {
             identity: { pipeline: [{ rule: "record", options: { expected_table: "auth_identity" } }], required: true },
             secret: { pipeline: [{ rule: "required_string", options: { min_length: 16, max_length: 16384 } }, { rule: "starts_with", options: { prefixes: ["enc:v2:"], case_sensitive: true, trim_value: false } }], required: true },
             revoke_sessions: { pipeline: [{ rule: "boolean" }], default: false },
+            revoke_app_passwords: { pipeline: [{ rule: "boolean" }], default: false },
             except_session: { pipeline: [{ rule: "record", options: { expected_table: "auth_session" } }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
@@ -71,8 +72,12 @@ DEFINE FUNCTION OVERWRITE fn::auth_password_set($params: object) {
         (UPDATE auth_session SET state = "revoked", revoked_at = time::now(), revoked_reason = "password_changed"
             WHERE identity = $p.identity AND state = "active" AND ($p.except_session IS NONE OR id != $p.except_session) RETURN id)
     } ELSE { [] };
-    RETURN fn::result_ok({ credential: $saved.id, sessions_revoked: array::len($revoked) });
-} COMMENT "Enregistre l'empreinte scellée du mot de passe ({ identity, secret enc:v2, revoke_sessions, except_session }) : historique et politique contrôlés en Rust, action update_password levée, autres sessions révoquées si demandé. Session système";
+    -- Récupération du compte : mots de passe d'application révoqués (pas pour un changement volontaire)
+    LET $app_passwords = IF $p.revoke_app_passwords {
+        fn::auth_app_password_revoke_all({ identity: $p.identity, reason: "recovery" })
+    } ELSE { 0 };
+    RETURN fn::result_ok({ credential: $saved.id, sessions_revoked: array::len($revoked), app_passwords_revoked: $app_passwords });
+} COMMENT "Enregistre l'empreinte scellée du mot de passe ({ identity, secret enc:v2, revoke_sessions, except_session, revoke_app_passwords : vrai pour une récupération du compte }) : historique et politique contrôlés en Rust, action update_password levée, autres sessions révoquées si demandé, mots de passe d'application révoqués si demandé. Session système";
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_required_action_add / _list / _complete

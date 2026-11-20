@@ -354,3 +354,55 @@ THEN {
     });
     IF !$published.ok { THROW $published.error.code; };
 };
+
+-- ----------------------------------------------------------------------------
+-- Mots de passe d'application : alertes au titulaire (lyxal_notification), révocations d'office
+-- ----------------------------------------------------------------------------
+
+-- fn::auth_mfa_publish annule la mutation si la publication échoue
+DEFINE EVENT OVERWRITE auth_app_password_created_event ON TABLE auth_app_password
+WHEN $event = "CREATE"
+THEN {
+    fn::auth_mfa_publish({ event_type: "auth.app_password.created", identity: $after.identity, data: {
+        app_password_id: <string> $after.id,
+        organization_id: <string> $after.organization,
+        name: $after.name,
+        permissions: $after.permissions,
+        expires_at: $after.expires_at
+    } });
+};
+
+-- Révocation : ses sessions sont révoquées dans la même transaction (refus dès l'opération
+-- suivante, même sur une connexion ouverte)
+DEFINE EVENT OVERWRITE auth_app_password_revoked_event ON TABLE auth_app_password
+WHEN $event = "UPDATE" AND $before.revoked_at IS NONE AND $after.revoked_at IS NOT NONE
+THEN {
+    UPDATE auth_session SET state = "revoked", revoked_at = time::now(), revoked_reason = "app_password_revoked"
+        WHERE app_password = $after.id AND state = "active";
+    fn::auth_mfa_publish({ event_type: "auth.app_password.revoked", identity: $after.identity, data: {
+        app_password_id: <string> $after.id,
+        organization_id: <string> $after.organization,
+        name: $after.name,
+        reason: $after.revoked_reason,
+        revoked_by: IF $after.revoked_by IS NONE { NONE } ELSE { <string> $after.revoked_by }
+    } });
+};
+
+-- Sortie de l'organisation : mots de passe de cette identité dans cette organisation révoqués
+-- (pas à la purge d'une identité ou d'une organisation, qui les supprime)
+DEFINE EVENT OVERWRITE auth_member_removed_app_passwords ON TABLE auth_member_of
+WHEN $event = "DELETE"
+THEN {
+    IF record::exists($before.in) AND record::exists($before.out) {
+        fn::auth_app_password_revoke_all({ identity: $before.in, organization: $before.out, reason: "membership_removed" });
+    };
+};
+
+-- Mots de passe d'application désactivés par une politique : sessions app_password de sa portée
+-- révoquées ; les mots de passe restent (les réactiver les rend utilisables)
+DEFINE EVENT OVERWRITE auth_policy_app_password_disabled ON TABLE auth_policy
+WHEN $event IN ["CREATE", "UPDATE"] AND $after.app_password.enabled = false AND ($before.app_password.enabled ?? true) != false
+THEN {
+    UPDATE auth_session SET state = "revoked", revoked_at = time::now(), revoked_reason = "app_password_disabled"
+        WHERE kind = "app_password" AND state = "active" AND ($after.tenant IS NONE OR organization = $after.tenant);
+};

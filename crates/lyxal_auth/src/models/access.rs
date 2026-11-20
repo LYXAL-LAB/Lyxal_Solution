@@ -59,6 +59,9 @@ pub struct PasswordSetParams {
     pub revoke_sessions: bool,
     /// Session conservée.
     pub except_session: Option<String>,
+    /// Révoquer les mots de passe d'application (récupération du compte ; jamais pour un
+    /// changement volontaire).
+    pub revoke_app_passwords: bool,
 }
 
 impl std::fmt::Debug for PasswordSetParams {
@@ -66,6 +69,7 @@ impl std::fmt::Debug for PasswordSetParams {
         f.debug_struct("PasswordSetParams")
             .field("identity", &self.identity)
             .field("revoke_sessions", &self.revoke_sessions)
+            .field("revoke_app_passwords", &self.revoke_app_passwords)
             .finish_non_exhaustive()
     }
 }
@@ -77,6 +81,8 @@ pub struct PasswordSet {
     pub credential: AuthRecordId,
     /// Sessions révoquées.
     pub sessions_revoked: i64,
+    /// Mots de passe d'application révoqués.
+    pub app_passwords_revoked: i64,
 }
 
 /// Paramètres de `fn::auth_flow_start`.
@@ -763,6 +769,10 @@ pub struct AuthPurgeResult {
     pub invitation_claims: i64,
     /// Émissions de codes anciennes supprimées.
     pub code_issuances: i64,
+    /// Mots de passe d'application révoqués ou expirés supprimés.
+    pub app_passwords: i64,
+    /// Lignes anciennes du journal des mots de passe d'application supprimées.
+    pub app_password_uses: i64,
     /// Identités supprimées purgées.
     pub identities_purged: i64,
     /// Organisations supprimées purgées.

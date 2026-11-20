@@ -27,6 +27,9 @@ pub struct PermissionRegisterParams {
     pub description: AuthValue,
     /// Niveau d'assurance minimal (1 défaut, 2 : double facteur exigé).
     pub min_aal: Option<i64>,
+    /// Utilisable par un mot de passe d'application (permission d'organisation d'AAL 1 ;
+    /// faux par défaut).
+    pub app_password: Option<bool>,
 }
 
 /// Résultat de `fn::auth_permission_register`.

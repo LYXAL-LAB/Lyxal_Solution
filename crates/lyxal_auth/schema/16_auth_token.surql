@@ -46,7 +46,7 @@ DEFINE TABLE OVERWRITE auth_login_failure
     PERMISSIONS NONE
     COMMENT "Compteurs d'échecs de connexion (empreintes, session système seulement)";
 
-DEFINE FIELD OVERWRITE kind ON TABLE auth_login_failure TYPE string ASSERT $value IN ["identifier", "ip", "mfa"] READONLY COMMENT "Clé comptée (mfa : échecs du second facteur par identité)";
+DEFINE FIELD OVERWRITE kind ON TABLE auth_login_failure TYPE string ASSERT $value IN ["identifier", "ip", "mfa", "app_password_ip", "app_password_identifier"] READONLY COMMENT "Clé comptée (mfa : échecs du second facteur par identité ; app_password_* : mots de passe d'application, séparés de la connexion à la console)";
 DEFINE FIELD OVERWRITE key_hash ON TABLE auth_login_failure TYPE string ASSERT string::len($value) = 64 READONLY COMMENT "BLAKE3 de l'identifiant normalisé, de l'adresse IP ou de l'identité (mfa)";
 DEFINE FIELD OVERWRITE failures ON TABLE auth_login_failure TYPE int DEFAULT 0 COMMENT "Échecs dans la fenêtre";
 DEFINE FIELD OVERWRITE window_start ON TABLE auth_login_failure TYPE datetime DEFAULT time::now() COMMENT "Début de la fenêtre";

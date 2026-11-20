@@ -1,4 +1,5 @@
 mod auth;
+mod auth_app_passwords;
 mod auth_mfa;
 mod handlers;
 mod middleware;

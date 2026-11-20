@@ -15,7 +15,7 @@
 DEFINE FUNCTION OVERWRITE fn::auth_session_valid($params: object) -> object {
     IF $session.ac == NONE AND $auth == NONE { RETURN { valid: true, system: true, code: NONE }; };
     IF $auth == NONE OR !type::is_record($auth, "auth_session") { RETURN { valid: false, system: false, code: "AUTH_SESSION_REQUIRED" }; };
-    LET $s = (SELECT state, created_at, idle_expires_at, expires_at, identity, application, api_key FROM ONLY $auth);
+    LET $s = (SELECT state, created_at, idle_expires_at, expires_at, identity, application, api_key, app_password FROM ONLY $auth);
     IF $s == NONE { RETURN { valid: false, system: false, code: "AUTH_SESSION_REVOKED" }; };
     IF $s.state = "revoked" { RETURN { valid: false, system: false, code: "AUTH_SESSION_REVOKED" }; };
     IF $s.state != "active" OR $s.expires_at <= time::now() OR $s.idle_expires_at <= time::now() {
@@ -37,9 +37,17 @@ DEFINE FUNCTION OVERWRITE fn::auth_session_valid($params: object) -> object {
             RETURN { valid: false, system: false, code: "AUTH_SESSION_REVOKED" };
         };
     };
+    -- Mot de passe d'application révoqué ou expiré : refus dès l'opération suivante, même sur une
+    -- connexion IMAP restée ouverte
+    IF $s.app_password IS NOT NONE {
+        LET $app = (SELECT revoked_at, expires_at FROM ONLY $s.app_password);
+        IF $app == NONE OR $app.revoked_at IS NOT NONE OR ($app.expires_at IS NOT NONE AND $app.expires_at <= time::now()) {
+            RETURN { valid: false, system: false, code: "AUTH_SESSION_REVOKED" };
+        };
+    };
     IF !type::is_int($token.pv) OR $token.pv < $subject.permissions_version { RETURN { valid: false, system: false, code: "AUTH_SESSION_STALE" }; };
     RETURN { valid: true, system: false, code: NONE };
-} COMMENT "Indique si la session du jeton est utilisable (active, non expirée, sujet actif — identité ou application —, postérieure à not_before, clé d'API valide, droits à jour) ; { valid, system, code }";
+} COMMENT "Indique si la session du jeton est utilisable (active, non expirée, sujet actif — identité ou application —, postérieure à not_before, clé d'API ou mot de passe d'application valide, droits à jour) ; { valid, system, code }";
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_context : identité, session, organisation active, permissions, AAL

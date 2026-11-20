@@ -142,6 +142,7 @@ async fn permission_registration_is_create_only() {
     let store = installed_store().await;
     let params = || PermissionRegisterParams {
         min_aal: None,
+        app_password: None,
         code: "notification.read".into(),
         module: "lyxal_notification".into(),
         scope: PermissionScope::Organization,

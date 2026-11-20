@@ -21,9 +21,11 @@ pub use error::{AuthError, AuthResult};
 pub use module::{AuthHealthCheck, AuthModule, MODULE_ID};
 pub use purge::AuthPurge;
 pub use services::{
-    access_name, invitation_seal_context, AccessConfig, AccessService, CodeProof, DomainChallenge,
-    DomainVerifier, HickoryTxtLookup, InvitationRequest, InvitationService, IssuedTokens,
-    LoginActions, LoginOutcome, LoginRequest, MfaActor, MfaProof, MfaService, PasskeyChallenge,
-    PasskeyConfig, PasskeyLogin, ReauthProof, SigningKeyService, TotpEnrollment, TxtLookup,
+    access_name, invitation_seal_context, AccessConfig, AccessService, AppPasswordAttempt,
+    AppPasswordIssued, AppPasswordLogin, AppPasswordService, AppPasswordTarget, AppProtocol,
+    CodeProof, DomainChallenge, DomainVerifier, HickoryTxtLookup, InvitationRequest,
+    InvitationService, IssuedTokens, LoginActions, LoginOutcome, LoginRequest, MfaActor, MfaProof,
+    MfaService, PasskeyChallenge, PasskeyConfig, PasskeyLogin, ReauthProof, SigningKeyService,
+    TotpEnrollment, TxtLookup,
 };
 pub use store::AuthStore;

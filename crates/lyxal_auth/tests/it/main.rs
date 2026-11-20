@@ -4,6 +4,7 @@
 //! accepté par l'accès SurrealDB, refusé après révocation), sonde de santé.
 
 mod access;
+mod app_passwords;
 mod domains;
 mod invitations;
 mod mfa;

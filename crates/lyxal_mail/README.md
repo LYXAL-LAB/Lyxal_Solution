@@ -60,8 +60,8 @@ dans [`SOURCES.md`](SOURCES.md). Les conséquences de licence sont traitées par
 | 13 — Administration du courrier | Routes HTTP, certificats automatiques, configuration automatique |
 | 21, 22 — Durcissement, essais réels, clôture | Fuzzing, charge, conformité, essais sur domaine et appareils réels, audit |
 
-Les lots 1 (mots de passe d'application, dans `lyxal_auth`) et 2 (extensions de `lyxal_crypto`)
-sont des prérequis.
+Les lots 1 (mots de passe d'application, dans `lyxal_auth` : réalisé) et 2 (extensions de
+`lyxal_crypto`) sont des prérequis.
 
 ## Dépendances prévues
 

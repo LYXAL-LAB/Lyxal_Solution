@@ -499,4 +499,6 @@ pub struct MfaReset {
     pub removed: i64,
     /// Sessions révoquées.
     pub sessions_revoked: i64,
+    /// Mots de passe d'application révoqués (motif `mfa_reset`).
+    pub app_passwords_revoked: i64,
 }

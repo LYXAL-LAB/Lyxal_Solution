@@ -445,6 +445,14 @@ compte de service ne gère pas le compte (`AUTH_PERMISSION_DENIED`).
 | `POST /session/reauthenticate/options` 🔒 | — | défi passkey de réauthentification |
 | `POST /session/reauthenticate` 🔒 | `method` (`password`, `totp`, `recovery_code`, `passkey`), `code` ou `flow` + `response` | nouveau jeton (AAL2 par un second facteur) |
 | `POST /identities/{identity}/mfa/reset` 🔒✱ | — | remise à zéro des seconds facteurs d'une identité par un administrateur |
+| `GET /app-passwords` 🔒 | — | ses mots de passe d'application (sans secret, état `active`, `expired` ou `revoked`, dernier usage) |
+| `GET /app-passwords/permissions` 🔒 | — | permissions qu'il peut donner à un mot de passe d'application (détenues dans l'organisation active et déclarées utilisables par leur module) |
+| `POST /app-passwords` 🔒✱ | `name`, `permissions`, `expires_at` (RFC 3339, facultatif) | `201` : `app_password`, `username` (identifiant à saisir dans le logiciel) et `password`, rendu **une seule fois** |
+| `DELETE /app-passwords/{id}` 🔒 | — | révoque un de ses mots de passe d'application (`revoked`) |
+| `DELETE /app-passwords` 🔒 | — | révoque tous ses mots de passe d'application de l'organisation active |
+| `GET /app-passwords/{id}/uses?limit=` 🔒 | — | journal des connexions (protocole, adresse IP, logiciel, première et dernière connexion, nombre) |
+| `GET /identities/{identity}/app-passwords` 🔒 | — | administrateur (`auth.identity.manage`, ou `auth.member.manage` pour ceux de son organisation active) : mots de passe d'une identité |
+| `DELETE /identities/{identity}/app-passwords/{id}`, `DELETE /identities/{identity}/app-passwords` 🔒✱ | — | administrateur : révocation d'un mot de passe ou de tous (`revoked`) |
 
 ✱ : action sensible — AAL la plus haute disponible et authentification de moins de 15 min
 (politique), sinon `AUTH_AAL_INSUFFICIENT` ou `AUTH_REAUTHENTICATION_REQUIRED` (avec les
@@ -452,7 +460,16 @@ méthodes de réauthentification) ; `/password`, `/address-change` et `DELETE /s
 le sont aussi. Le double facteur exigé (politique, organisation, rôle — `platform_admin` par
 défaut) répond `status: action_required` avec `configure_mfa` : l'interface enrôle alors un TOTP
 ou une passkey avec `login_flow`, puis reprend `POST /flows/{flow}/actions`. Les identifiants
-placés dans le chemin (`auth_flow:…`, `auth_session:…`) sont encodés en pourcentage.
+placés dans le chemin (`auth_flow:…`, `auth_session:…`, `auth_app_password:…`) sont encodés en
+pourcentage.
+
+Mots de passe d'application (`lyxal_auth` README §3 ter) : ils servent aux logiciels de
+courrier, d'agenda et de contacts, par les serveurs des protocoles de `lyxal-groupware` (à
+venir) ; **aucune** authentification HTTP Basic n'est ajoutée à `lyxal-server` : un mot de passe
+d'application n'ouvre pas l'API de la plateforme. Les listes et le journal sont lus au nom de
+l'appelant (règles des tables) ; création et révocation passent par la session système, qui
+transmet l'acteur dont la base revérifie les droits, l'AAL et l'ancienneté. Révoquer ses
+propres mots de passe n'est pas une action sensible ; en révoquer pour quelqu'un d'autre l'est.
 
 Jetons : `access_token` (JWT HS256, `expires_in` secondes), `refresh_token` (opaque, usage
 unique), `session`, `organization`, `permissions`.
@@ -657,7 +674,10 @@ tous les modules, routes système, `fn::error_result` de `lyxal_error` intact, r
 base installée (une release par module), rejeu des
 ressources de chaque module, définitions `SERVER_*`, corps des réponses d'erreur, routes
 `/api/v1/auth/*` de bout en bout (premier administrateur, connexion, sessions, déconnexion,
-service absent), routes `/api/v1/system/migrations/*` (liste, abandon puis reprise par un administrateur de la plateforme, refus sans jeton, sans droit, sur requête illisible, migration non interrompue, bail d'installation détenu ailleurs, auteur et motif au journal du runtime), commandes `runtime migrations` serveur arrêté (`tests/it/runtime_cli.rs` : un module d'essai déclarant une migration est hébergé avec les modules embarqués ; migration laissée « en cours », démarrage de l'hôte refusé, liste, refus sur motif invalide et bail détenu ailleurs, abandon puis démarrage encore refusé, reprise puis démarrage réussi et migration rejouée, rien à décider sur une installation saine ou jamais démarrée, auteur `cli:<instance>` au journal ; les fonctions des commandes sont appelées sur la base embarquée du test, sans passer par la lecture de la configuration). `tests/scheduler_http.rs` parcourt les routes `/api/v1/scheduler/*` avec le
+service absent ; mots de passe d'application : création refusée sans authentification récente
+puis acceptée après réauthentification, mot de passe rendu une seule fois et `no-store`, liste
+sans secret, journal, révocations par le titulaire et les administrateurs, autre organisation et
+simple membre refusés, jeton de clé d'API refusé), routes `/api/v1/system/migrations/*` (liste, abandon puis reprise par un administrateur de la plateforme, refus sans jeton, sans droit, sur requête illisible, migration non interrompue, bail d'installation détenu ailleurs, auteur et motif au journal du runtime), commandes `runtime migrations` serveur arrêté (`tests/it/runtime_cli.rs` : un module d'essai déclarant une migration est hébergé avec les modules embarqués ; migration laissée « en cours », démarrage de l'hôte refusé, liste, refus sur motif invalide et bail détenu ailleurs, abandon puis démarrage encore refusé, reprise puis démarrage réussi et migration rejouée, rien à décider sur une installation saine ou jamais démarrée, auteur `cli:<instance>` au journal ; les fonctions des commandes sont appelées sur la base embarquée du test, sans passer par la lecture de la configuration). `tests/scheduler_http.rs` parcourt les routes `/api/v1/scheduler/*` avec le
 moteur réel (handler d'essai inscrit par le test) : planification contrôlée, prévision,
 déclenchement, rejeu, exécution différée exécutée puis annulée et relancée, droits, `no-store`,
 absence des routes du moteur. `tests/notification_http.rs` parcourt les routes de désabonnement

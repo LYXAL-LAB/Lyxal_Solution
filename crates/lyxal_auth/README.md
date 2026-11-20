@@ -1,13 +1,15 @@
 # Lyxal Auth
 
 Module du Noyau Technique de Lyxal OS : **identités, organisations, rôles, permissions,
-invitations, contrôle des droits, connexion, sessions, jetons et double facteur**. Toutes les règles vivent dans
+invitations, contrôle des droits, connexion, sessions, jetons, double facteur et mots de passe
+d'application**. Toutes les règles vivent dans
 SurrealDB (fonctions `fn::auth_*`) ; le crate Rust fournit les appels typés et ce qui relève du
 système (aléa, mots de passe, signature des jetons, empreintes, scellement, DNS). Modèle repris de Logto, Kratos, Keycloak, Rauthy et Kanidm
 ([`MODELE_SOURCES.md`](MODELE_SOURCES.md)).
 
 État : lots 2 (fondations), 3 (connexion, sessions, jetons, parcours, applications) et 4 (double
-facteur, niveau d'assurance) du programme `lyxal_auth` V1. Suite : [`ROADMAP.md`](ROADMAP.md).
+facteur, niveau d'assurance) du programme `lyxal_auth` V1 ; lot 1 du programme courrier, agendas
+et contacts (mots de passe d'application, §3 ter). Suite : [`ROADMAP.md`](ROADMAP.md).
 
 ## 1. Modèle (SurrealDB multi-modèle)
 
@@ -19,13 +21,13 @@ facteur, niveau d'assurance) du programme `lyxal_auth` V1. Suite : [`ROADMAP.md`
 | `auth_identity` | document | identité : traits, état, `not_before`, `permissions_version` |
 | `auth_credential_identifier` | document | identifiant de connexion normalisé, **unique pour l'installation** (un e-mail = une identité) |
 | `auth_address` | document | adresses de vérification et de récupération |
-| `auth_permission` | document | permission déclarée par un module (identifiant = code, une seule portée) |
+| `auth_permission` | document | permission déclarée par un module (identifiant = code, une seule portée) ; niveau d'assurance minimal ; `app_password` : utilisable par un mot de passe d'application (portée organisation et AAL 1 seulement), posé par le module propriétaire |
 | `auth_role` | document | rôle de l'installation ou propre à une organisation ; portée `installation` / `organization` |
 | `auth_organization_invitation` | document | invitation expirante ; seule l'empreinte BLAKE3 du jeton est conservée, illisible hors session système |
 | `auth_invitation_claim` | document | demande d'acceptation (empreinte du jeton présenté) vérifiée par un événement de la base, qui crée l'adhésion et écrit l'issue |
 | `auth_code_issuance` | document | journal des émissions de codes (plafond d'envoi par adresse et usage), purgé après un jour |
-| `auth_policy` | document | politique (mots de passe, verrouillage, sessions, codes, renouvellement, double facteur — exigé, méthodes, rôles qui l'exigent, essais, nombre de codes de secours, ancienneté d'une action sensible —, invitations, inscription) de l'installation et surcharges par organisation |
-| `auth_session` | document | session relue à chaque contrôle des droits : sujet identité **ou** application, nature (`interactive`, `service`, `api_key`), organisation active, appareil (`client`), emplacement de la clé du jeton, expirations absolue et d'inactivité, niveau d'assurance (`aal`), méthodes (`amr`), dernière authentification (`authenticated_at`) |
+| `auth_policy` | document | politique (mots de passe, verrouillage, sessions, codes, renouvellement, double facteur — exigé, méthodes, rôles qui l'exigent, essais, nombre de codes de secours, ancienneté d'une action sensible —, invitations, inscription, mots de passe d'application) de l'installation et surcharges par organisation |
+| `auth_session` | document | session relue à chaque contrôle des droits : sujet identité **ou** application, nature (`interactive`, `service`, `api_key`, `app_password`), organisation active, appareil (`client`), emplacement de la clé du jeton, expirations absolue et d'inactivité, niveau d'assurance (`aal`), méthodes (`amr`), dernière authentification (`authenticated_at`) |
 | `auth_credential` | document | moyens d'authentification : mot de passe (empreinte Argon2id scellée, historique), TOTP (secret scellé, en attente puis actif, dernier pas utilisé), passkeys (clé publique sérialisée par `webauthn-rs`, nom, identifiant WebAuthn unique pour l'installation) ; partie secrète illisible hors session système |
 | `auth_recovery_code` | document | codes de secours (empreinte HMAC illisible), une génération à la fois, usage unique |
 | `auth_required_action` | document | action imposée avant toute session (`verify_email`, `update_password`, `accept_terms`) |
@@ -33,11 +35,13 @@ facteur, niveau d'assurance) du programme `lyxal_auth` V1. Suite : [`ROADMAP.md`
 | `auth_one_time_code` | document | code à 6 chiffres (HMAC-SHA256 avec la clé `code_pepper`) et lien (BLAKE3), tentatives limitées, usage unique |
 | `auth_pending_address_change` | document | changement d'adresse en attente de confirmation |
 | `auth_refresh_token` | document | jeton de renouvellement (empreinte BLAKE3), famille, usage unique, réutilisation détectée |
-| `auth_login_failure` | document | échecs de connexion par identifiant et par adresse IP (empreintes), verrouillage temporaire |
+| `auth_login_failure` | document | échecs de connexion par identifiant et par adresse IP (empreintes), verrouillage temporaire ; compteurs séparés pour les mots de passe d'application (`app_password_ip`, `app_password_identifier`) |
 | `auth_signing_key` | document | clés de signature des jetons (emplacements `a` / `b`) et clé `code_pepper`, scellées, garde de réutilisation d'un emplacement |
 | `auth_application` | document | application (`spa`, `native`, `machine`) de l'installation ou d'une organisation, `client_id`, durées des jetons |
 | `auth_application_secret` | document | secret client (empreinte), plusieurs par application (rotation sans coupure) |
 | `auth_api_key` | document | clé d'API personnelle (empreinte), permissions limitées à celles du propriétaire |
+| `auth_app_password` | document | mot de passe d'application (empreinte HMAC illisible) : titulaire, organisation, nom de l'appareil, permissions choisies, expiration, dernier usage, révocation définitive (motif, auteur) ; écriture par la session système seulement |
+| `auth_app_password_use` | document | journal regroupé des connexions : une ligne par mot de passe, protocole et adresse IP (logiciel, première et dernière connexion, nombre) |
 | `auth_member_of` | **relation** identité → organisation | adhésion |
 | `auth_has_role` | **relation** identité, adhésion ou application → rôle | rôle d'installation (identité, application sans organisation) ou d'organisation (adhésion, supprimé avec elle ; application de l'organisation) |
 | `auth_role_includes` | **relation** rôle → rôle | rôles composites, sans cycle |
@@ -57,6 +61,8 @@ l'organisation), un index unique ignorant les valeurs absentes.
   (`pv`) dépassée → aucun droit, même sur une connexion WebSocket restée ouverte.
 * Session d'application (compte de service, clé d'API) : application active, session postérieure
   à son `not_before`, version des droits à jour ; mêmes codes `AUTH_SESSION_*`.
+* Session d'un mot de passe d'application : refusée dès que ce mot de passe est révoqué ou expiré
+  (`AUTH_SESSION_REVOKED`), même sur une connexion restée ouverte.
 * Session système (root de l'hôte) : tous les droits.
 * Tout retrait de droit (adhésion supprimée ou suspendue, rôle retiré, permission ou inclusion
   retirée d'un rôle) incrémente `permissions_version` des identités concernées par un événement
@@ -94,6 +100,10 @@ IF !record::exists(auth_permission:⟨notification.read⟩) THEN (
     CREATE auth_permission:⟨notification.read⟩ CONTENT { code: "notification.read", module: "lyxal_notification", scope: "organization", description: { fr: "…", en: "…" } }
 ) END;
 ```
+
+Une permission que les logiciels de courrier, d'agenda ou de contacts doivent pouvoir exercer
+par un mot de passe d'application (§3 ter) est déclarée avec `app_password: true` (portée
+organisation, AAL 1 ; `fn::auth_permission_register` le contrôle).
 
 ## 3. Connexion, sessions et jetons
 
@@ -149,7 +159,9 @@ IF !record::exists(auth_permission:⟨notification.read⟩) THEN (
   bilan ; l'hôte la fait exécuter toutes les 15 min par `lyxal_scheduler`, tâche `auth.purge`
   qu'il déclare lui-même, `lyxal_auth` ne dépendant pas du planificateur) : parcours,
   codes, sessions et jetons expirés, compteurs d'échecs, invitations expirées, TOTP jamais
-  confirmés, demandes d'acceptation et journal d'émission des codes de plus d'un jour.
+  confirmés, demandes d'acceptation et journal d'émission des codes de plus d'un jour, mots de
+  passe d'application révoqués ou expirés depuis plus de 30 jours, journal de leurs connexions
+  plus vieux que `app_password.log_days`.
 * **Purge des supprimés** : une organisation ou une identité passée à l'état `deleted` reçoit
   `deleted_at` (posé par la base) ; après la durée de conservation de l'installation
   (`retention.deleted_days`, 30 jours par défaut, de 1 à 365), la purge publie
@@ -204,6 +216,77 @@ IF !record::exists(auth_permission:⟨notification.read⟩) THEN (
   code de secours, changement de mot de passe et clé clonée publie un événement adressé au
   titulaire, envoyé par `lyxal_notification`.
 
+## 3 ter. Mots de passe d'application
+
+Un logiciel de courrier, d'agenda ou de contacts (Thunderbird, Apple Mail, Outlook, DAVx⁵…)
+envoie un identifiant et un mot de passe à chaque connexion et ne sait pas répondre à un second
+facteur. L'utilisateur crée donc, depuis son compte, un mot de passe propre à chaque appareil,
+limité à quelques droits d'une organisation, révocable à tout moment. Modèle (comportement
+seulement) : Stalwart et RustiCal ([`MODELE_SOURCES.md`](MODELE_SOURCES.md)). Ce module fournit
+la création, la gestion et la vérification ; les serveurs des protocoles (`lyxal-groupware`,
+lots 3 et suivants du programme courrier) appellent la vérification.
+
+* **Mot de passe** : 20 signes tirés par `OsRng` dans un alphabet sans ambiguïté
+  (`23456789abcdefghjkmnpqrstuvwxyz`, environ 99 bits), affichés en 4 groupes de 5
+  (`7kq2m-x9tab-hc4wp-3nrfe`), rendus **une seule fois**. À la saisie, majuscules, espaces et
+  tirets sont ignorés ; tout autre caractère ou une longueur fausse est refusé sans recherche en
+  base (l'échec est compté). Empreinte : HMAC-SHA256 (clé `code_pepper`) de
+  `lyxal_auth.app_password:` suivi de la forme normalisée, cherchée par son index unique ; pas
+  d'Argon2id (un tirage de 99 bits ne se devine pas, et chaque requête d'agenda le vérifierait).
+* **Identifiant** : l'adresse e-mail de connexion du compte ; elle doit désigner le titulaire du
+  mot de passe (pas d'emprunt d'identité).
+* **Création** (action sensible) : session **interactive**, AAL la plus haute disponible et
+  authentification de moins de 15 min ; organisation active exigée
+  (`AUTH_APP_PASSWORD_ORGANIZATION_REQUIRED`) ; permissions non vides, détenues dans cette
+  organisation (droits recalculés en base) **et** déclarées utilisables par leur module
+  (`auth_permission.app_password`), donc jamais `auth.*` ni une permission d'AAL 2
+  (`AUTH_APP_PASSWORD_PERMISSION_NOT_ALLOWED`, liste dans les détails) ; nombre maximal de
+  mots de passe actifs par personne et par organisation (`AUTH_APP_PASSWORD_LIMIT_REACHED`) ;
+  expiration facultative, au plus la durée maximale de la politique, qui s'applique si aucune
+  n'est donnée (`AUTH_APP_PASSWORD_EXPIRY_TOO_LONG`). Alerte au titulaire.
+* **Connexion** (hôte des protocoles, session système) : connexion chiffrée exigée
+  (`AUTH_APP_PASSWORD_INSECURE_TRANSPORT`, avant tout calcul) ; adresse IP bloquée refusée
+  (`AUTH_TOO_MANY_ATTEMPTS`) ; mot de passe inconnu ou présenté avec l'identifiant d'une autre
+  identité : échec compté (`AUTH_APP_PASSWORD_INVALID`) ; mot de passe révoqué ou expiré :
+  refusé **sans** compter (un ancien appareil ne bloque pas l'adresse d'un bureau) ;
+  désactivés par la politique (`AUTH_APP_PASSWORD_DISABLED`) ; identité ou organisation
+  inactive, adhésion suspendue : refus sans révocation. Droits = permissions du mot de passe ∩
+  permissions déclarées utilisables ∩ permissions encore détenues ; aucune :
+  `AUTH_APP_PASSWORD_NO_PERMISSION` (le mot de passe est gardé, le droit peut revenir).
+* **Session `app_password`** : AAL 1, `amr` `[app_password]`, sans jeton de renouvellement,
+  **une par mot de passe**, partagée par ses connexions (reprise s'il lui reste plus de 5 min,
+  sinon nouvelle ; durée `app_password.session_seconds`, 12 h par défaut) ; jeton d'accès de
+  15 min, accepté par l'accès SurrealDB `lyxal_auth_a|b` : l'hôte ouvre une connexion
+  SurrealDB au nom de l'utilisateur, le logiciel n'envoie que son mot de passe.
+  **Renouvellement** sans le mot de passe pour une connexion longue (IMAP en veille), droits
+  recalculés ; session expirée : `AUTH_SESSION_EXPIRED`, le logiciel se reconnecte. Le mot de
+  passe n'ouvre ni la console, ni l'API de `lyxal-server`, ni la gestion du compte.
+* **Essais** : par adresse IP (empreinte), au-delà de `app_password.ip_max_failures` (20)
+  échecs dans la fenêtre `lockout.window_seconds`, adresse bloquée `lockout.lock_seconds` pour
+  les mots de passe d'application seulement (événement `auth.app_password.ip_locked`) ; par
+  identifiant, compté **sans jamais bloquer** (sinon un tiers couperait la messagerie de
+  quelqu'un), événement `auth.app_password.failed` au seuil `identifier_alert_failures` (50), une
+  fois par fenêtre. Ces compteurs sont séparés de ceux de la console.
+* **Journal** : une ligne par mot de passe, protocole et adresse IP (adresse en clair, logiciel,
+  première et dernière connexion, nombre), gardée `app_password.log_days` (90 jours) ; aucun
+  événement par connexion.
+* **Révocation** (définitive, garde de la base) : par le titulaire (pas une action sensible), par
+  un administrateur (`auth.identity.manage`, ou `auth.member.manage` pour les mots de passe de
+  son organisation active ; action sensible) ; d'office à la récupération du compte, à la remise
+  à zéro du double facteur et à la sortie de l'organisation — pas au changement volontaire du
+  mot de passe principal. Ses sessions sont révoquées dans la même transaction. Alerte au
+  titulaire sauf quand il l'a faite lui-même.
+* **Politique** (thème `app_password`) : `enabled` (oui), `max_per_identity` (20),
+  `max_lifetime_days` (aucune), `session_seconds` (12 h) : une organisation ne peut que
+  restreindre (activés si l'installation **et** l'organisation les activent, plafonds au plus
+  petit) ; `ip_max_failures`, `identifier_alert_failures`, `log_days` : installation seulement.
+  Les désactiver révoque les sessions `app_password` de leur portée et garde les mots de passe.
+* **Mémoire courte** (`AppPasswordService`) : une vérification réussie est gardée jusqu'à une
+  minute avant l'expiration de son jeton, par empreinte, identifiant, protocole et adresse IP
+  (10 000 entrées au plus, les plus anciennes sortent ; aucun échec gardé), pour HTTP Basic qui
+  renvoie le mot de passe à chaque requête. La révocation reste effective à l'opération suivante
+  (la base relit la session) ; une révocation par le service oublie aussitôt ses entrées.
+
 ## 4. Fonctions publiques
 
 | Domaine | Fonctions |
@@ -224,6 +307,7 @@ IF !record::exists(auth_permission:⟨notification.read⟩) THEN (
 | Clés de signature, purge | `auth_signing_key_get_active`, `auth_signing_key_rotate`, `auth_purge` |
 | Double facteur | `auth_mfa_factor_list`, `auth_mfa_totp_begin`, `_secret_get`, `_activate`, `_step_use`, `auth_mfa_passkey_save`, `_find`, `_list_for`, `_update`, `_rename`, `_flag`, `auth_mfa_recovery_codes_replace`, `auth_mfa_recovery_code_use`, `auth_mfa_factor_remove`, `auth_mfa_reset`, `auth_mfa_failure_check`, `_record`, `_reset`, `auth_mfa_actor`, `auth_mfa_enrolled`, `auth_mfa_publish`, `auth_mfa_required`, `auth_mfa_methods` |
 | Assurance, réauthentification | `auth_login_requirements`, `auth_assurance_check`, `auth_assurance_state`, `auth_session_reauthenticate`, `auth_flow_state_save`, `auth_flow_state_take` |
+| Mots de passe d'application | `auth_app_password_create`, `_list`, `_uses`, `_revoke`, `_eligible` (permissions que l'appelant peut donner), `_verify`, `_session_renew`, `_failure_record` ; internes : `auth_app_password_allowed`, `_session_open`, `_log`, `_revoke_all`, `auth_login_failure_count` |
 
 Les fonctions de parcours, de session, de clés, de purge et d'écriture des seconds facteurs sont
 réservées à la **session système** de l'hôte : elles reçoivent des empreintes et des résultats
@@ -246,11 +330,15 @@ une identité ou une organisation **invisible** pour l'appelant est détecté pa
 `auth.address.changed`, `auth.application.created`, `auth.api_key.created`,
 `auth.api_key.revoked`, `auth.mfa.enrolled`, `auth.mfa.removed`,
 `auth.mfa.recovery_codes_generated`, `auth.mfa.recovery_code_used`, `auth.mfa.failed`
-(empreinte de l'identité), `auth.passkey.clone_detected`, `auth.session.reauthenticated` —
+(empreinte de l'identité), `auth.passkey.clone_detected`, `auth.session.reauthenticated`,
+`auth.app_password.created`, `auth.app_password.revoked` (motif, auteur),
+`auth.app_password.ip_locked` (empreinte de l'adresse), `auth.app_password.failed` (empreinte
+de l'identifiant, au seuil) —
 publiés dans la transaction de la mutation. Aucun code, jeton, secret ni mot de passe en clair
 dans une charge utile ; les alertes de sécurité (`auth.mfa.*` sauf `failed`,
-`auth.passkey.clone_detected`, `auth.password.changed`) portent `recipient_email`,
-`recipient_locale` et `recipient_name`.
+`auth.passkey.clone_detected`, `auth.password.changed`, `auth.app_password.created`,
+`auth.app_password.revoked`) portent `recipient_email`, `recipient_locale` et `recipient_name`.
+Aucun mot de passe d'application ni son empreinte dans une charge utile.
 
 `auth.invitation.created` suit le contrat de `lyxal_notification` (son `README.md` §4) : le lien
 d'acceptation y voyage **scellé** (`enc:v2`) sous le contexte
@@ -282,25 +370,37 @@ transaction : il n'est jamais enregistré.
   `AccessService` l'orchestre : connexion en deux temps (`LoginOutcome::MfaRequired`,
   `complete_login_mfa`), connexion par passkey, réauthentification (`ReauthProof`), acteurs
   (`session_actor`, `login_actor`), exigence d'action sensible (`require_fresh`).
+* `AppPasswordService` (`AccessService::app_passwords()`) : `create` (mot de passe tiré par
+  `OsRng`, rendu une fois dans `AppPasswordIssued`), `authenticate` (`AppPasswordAttempt` :
+  identifiant, mot de passe, `AppProtocol`, appareil, logiciel, connexion chiffrée →
+  `AppPasswordLogin` : jeton d'accès, session, mot de passe), `renew`, `revoke`
+  (`AppPasswordTarget`) ; mémoire courte bornée sous `tokio::sync::Mutex`, sans tâche de fond.
+  C'est l'API de l'hôte des protocoles ; tout refus est une `AuthError` (`AUTH_*`), que l'hôte
+  traduit en échec du protocole sans détail.
 * `PasswordService`, jetons (`access_token`, jetons opaques et empreintes) dans `services/`.
 * `AuthModule` (`LyxalModule`), `AuthHealthCheck` (`ModuleHealthCheck`, « dégradé » si l'hôte ne
   sert pas la connexion), `AuthPurge` (opération de purge ; aucun `LyxalWorker`).
 
-Hébergé par `lyxal-server` (`build.rs`, `src/modules/auth.rs`) : routes `/api/v1/auth/*`,
+Hébergé par `lyxal-server` (`build.rs`, `src/modules/auth.rs`) : routes `/api/v1/auth/*` (dont
+la gestion des mots de passe d'application ; aucune authentification HTTP Basic sur l'hôte),
 commandes `admin setup` et `auth rotate-signing-key` (README du serveur).
 
 ## 7. Vérification
 
 * Banc SurrealQL `tests/*.test.surql` (contexte, socle, organisations, identités, rôles,
   membres, invitations, domaines, politique, mots de passe, parcours, sessions, applications,
-  clés, seconds facteurs, assurance), exécuté par `scripts/ci/test_lyxal_modules.py`.
+  clés, seconds facteurs, assurance, mots de passe d'application), exécuté par
+  `scripts/ci/test_lyxal_modules.py`.
 * Tests Rust `tests/it/` sur le moteur embarqué : jeton accepté par l'accès SurrealDB puis
   refusé après révocation, verrouillage, réutilisation d'un jeton de renouvellement,
   récupération par le code scellé de l'événement, actions imposées, compte de service, clé
   d'API, rotation ; premier administrateur obligé de configurer un TOTP, TOTP et codes de
   secours (anti-rejeu, usage unique), parcours échoué, passkeys avec l'authentificateur logiciel
   de `webauthn-rs` (second facteur, rejeu refusé, connexion sans mot de passe),
-  réauthentification.
+  réauthentification ; mots de passe d'application (jeton accepté par l'accès SurrealDB et
+  limité aux permissions du mot de passe, mémoire courte, connexion non chiffrée et saisie au
+  mauvais format refusées, renouvellement après retrait d'un droit, révocation effective sur la
+  même connexion).
 * Serveur SurrealDB 3.3.4 réel (`scripts/ci/test_all.sh`) : jeton accepté sur une connexion
   WebSocket, puis plus aucun droit sur **cette même connexion** après révocation.
 * `scripts/ci/ci_local.sh`.
