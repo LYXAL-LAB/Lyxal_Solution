@@ -795,7 +795,8 @@ impl ModuleHealthCheck for BookingHealthCheck {
 * **Identité d'hôte** : chaque binaire hôte a un nom fixe, inscrit dans son code et égal à l'`id` de son manifeste d'hôte (`lyxal_server`, plus tard `lyxal_groupware`), le même pour toutes ses copies et jamais réglable par configuration (`HostId`, passé à `RuntimeConfig::new`, à `EventEngineConfig::new`, au planificateur et aux abonnements). Chaque processus est un **nœud** (identifiant tiré au sort au démarrage) qui se déclare dans `runtime_node` (hôte, modules démarrés, empreinte du socle), avec un battement toutes les 10 s ; la ligne est retirée à l'arrêt propre et purgée après 7 jours sans battement.
 * **Plusieurs hôtes sur une base** : chaque hôte ne traite que les événements de ses abonnements (§5.6.4) et que les tâches `handler` dont il a le code ; les tâches `function` et `event` du planificateur sont exécutées par n'importe quel hôte, et un seul planificateur est élu pour toute la base. Un socle remplacé par un binaire d'une autre empreinte met l'autre hôte en « dégradé ».
 * **Réconciliation stricte par hôte** : en mode strict, le réconciliateur ne vise que les modules enregistrés dans son propre runtime ; les modules installés par un autre hôte sont listés dans `ReconciliationPlan::foreign_modules` (avec les hôtes vivants qui les déclarent), sans aucune action. Une action sur un module non enregistré échoue (`UnknownModule`), elle n'est jamais comptée comme exécutée.
-* Les modules hébergés sont **embarqués dans le binaire** : `build.rs` du serveur lit le `manifest.toml` de chaque module et inclut exactement les fichiers de `[resources]` (compilation en échec si un fichier manque). Héberger un module = l'inscrire dans `build.rs` et, s'il a du code Rust, déclarer son `LyxalModule` et ses services dans `apps/lyxal-server/src/modules/` ; un module sans code Rust est porté par un `ManifestModule` construit depuis son manifeste.
+* **Code commun des hôtes** : le démarrage partagé par les hôtes (configuration en couches, connexion à la base et refus de l'accès anonyme, socle sous bail et définitions d'erreurs de l'hôte, modules embarqués, santé `/live` `/ready` `/health`, journal, signal d'arrêt, adresse réelle du client, service HTTP) vit dans `crates/lyxal_host` (`MIT OR Apache-2.0`, code Lyxal seulement, jamais de code porté AGPL ou GPL) ; ses erreurs sont sans code et chaque hôte les traduit dans les siennes.
+* Les modules hébergés sont **embarqués dans le binaire** : `build.rs` du serveur lit le `manifest.toml` de chaque module et inclut exactement les fichiers de `[resources]` (`lyxal_host::build::embed_modules` ; compilation en échec si un fichier manque). Héberger un module = l'inscrire dans `build.rs` et, s'il a du code Rust, déclarer son `LyxalModule` et ses services dans `apps/lyxal-server/src/modules/` ; un module sans code Rust est porté par un `ManifestModule` construit depuis son manifeste.
 * Les erreurs de l'hôte sont préfixées `SERVER_` et répondent au contrat `LyxalResult` (`{ ok, data, error }`), sans détail interne pour le client.
 
 ---
@@ -843,6 +844,7 @@ lyxal_btp
         │
         ▼
 UI / Process Host
+lyxal_host (bibliothèque des hôtes : démarrage commun, base, santé, journal, arrêt, HTTP, modules embarqués ; MIT OR Apache-2.0)
 lyxal-server (hôte : LyxalRuntime, modules embarqués, API HTTP système)
 lyxal-groupware (à créer — hôte dédié du courrier, des agendas et des contacts : ports SMTP, IMAP, POP3 et ManageSieve, HTTP de CalDAV, CardDAV et JMAP ; seul binaire qui lie les crates AGPL)
 Console Web / Mobile

@@ -82,7 +82,7 @@ pub async fn start_with(
 
     // Sonde du socle, rattachée à `lyxal_core` : « dégradé » si un autre binaire l'a remplacé
     runtime.health_registry().register_check(Arc::new(
-        runtime.foundation_health_check(ModuleId::new(modules::FOUNDATION[0])),
+        runtime.foundation_health_check(ModuleId::new(lyxal_host::modules::FOUNDATION[0])),
     ))?;
 
     let services = modules::register_services(&runtime, client, config).await?;

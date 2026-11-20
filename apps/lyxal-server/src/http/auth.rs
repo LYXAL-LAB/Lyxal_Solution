@@ -356,7 +356,7 @@ fn is_refusal(error: &ApiError) -> bool {
 }
 
 /// Contexte client : adresse (derrière un proxy de confiance, lue dans `X-Forwarded-For`, cf.
-/// `crate::net`) et agent utilisateur.
+/// `lyxal_host::net`) et agent utilisateur.
 pub(super) fn client_info(
     context: &AppContext,
     headers: &HeaderMap,
@@ -365,7 +365,7 @@ pub(super) fn client_info(
     let forwarded_for = headers.get("x-forwarded-for").and_then(|v| v.to_str().ok());
     ClientInfo {
         ip: address.map(|ConnectInfo(address)| {
-            crate::net::client_ip(
+            lyxal_host::net::client_ip(
                 address.ip(),
                 forwarded_for,
                 &context.config.server.trusted_proxies,

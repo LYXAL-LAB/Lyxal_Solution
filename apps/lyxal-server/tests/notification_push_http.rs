@@ -14,13 +14,13 @@ use lyxal_crypto::{
     CryptoEngine, EcdsaP256SigningKey, EncryptionKey, KeyId, KeyRingBuilder, KeyUse, SecretBytes,
     StaticKeyResolver,
 };
+use lyxal_host::{health::HealthRegistry, metrics::Metrics};
 use lyxal_notification::{device_fingerprint, DeviceField, SecretCodec, SECRETS_CONSUMER};
 use lyxal_secrets::models::SecretCreateParams;
 use lyxal_secrets::{ClientRead, SecretsStore};
 use lyxal_server::modules::notification::NotificationHost;
 use lyxal_server::{
-    config::AppConfig, context::AppContext, health::HealthRegistry, http::build_router,
-    metrics::Metrics, modules::auth, runtime,
+    config::AppConfig, context::AppContext, http::build_router, modules::auth, runtime,
 };
 use serde_json::{json, Value};
 use std::fs;

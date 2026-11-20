@@ -1,12 +1,13 @@
 use crate::error::ServerError;
-use lyxal_surreal::SecretString;
-use serde::{Deserialize, Deserializer};
+use lyxal_host::config::{
+    load_layered, DatabaseConfig, ObservabilityConfig, RuntimeTimeouts, SecretPassword,
+};
+use lyxal_host::net::IpNetwork;
+use serde::Deserialize;
 use std::{
     collections::BTreeMap,
-    fmt,
     net::IpAddr,
     path::{Path, PathBuf},
-    sync::Arc,
 };
 
 #[derive(Clone, Debug, Deserialize)]
@@ -15,7 +16,7 @@ pub struct AppConfig {
     pub application: ApplicationConfig,
     pub server: ServerConfig,
     pub database: DatabaseConfig,
-    pub runtime: RuntimeConfig,
+    pub runtime: RuntimeTimeouts,
     pub observability: ObservabilityConfig,
     pub cors: CorsConfig,
     #[serde(default)]
@@ -216,76 +217,7 @@ pub struct ServerConfig {
     /// client n'est lue dans `X-Forwarded-For` que pour une connexion venant de l'un d'eux. Vide
     /// par défaut : adresse de la connexion.
     #[serde(default)]
-    pub trusted_proxies: Vec<crate::net::IpNetwork>,
-}
-
-#[derive(Clone, Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-/// Identifiants Root : jamais dans les fichiers de configuration, uniquement par
-/// `LYXAL__DATABASE__USERNAME` et `LYXAL__DATABASE__PASSWORD`.
-pub struct DatabaseConfig {
-    pub endpoint: String,
-    pub namespace: String,
-    pub database: String,
-    pub username: Option<String>,
-    pub password: Option<SecretPassword>,
-    pub connect_timeout_seconds: u64,
-}
-
-/// Secret lu dans la configuration (mot de passe de la base, clé de signature) : masqué dans
-/// `Debug`, effacé de la mémoire à la libération (`lyxal_crypto::SecretString`).
-#[derive(Clone)]
-pub struct SecretPassword(Arc<SecretString>);
-
-impl SecretPassword {
-    pub fn new(text: String) -> Result<Self, ServerError> {
-        SecretString::new(text)
-            .map(|secret| Self(Arc::new(secret)))
-            .map_err(|error| ServerError::Configuration {
-                message: format!("database.password : {error}"),
-            })
-    }
-
-    /// Copie protégée du secret, pour une utilisation unique.
-    pub fn to_secret(&self) -> Result<SecretString, ServerError> {
-        SecretString::new(self.0.expose_secret().to_owned()).map_err(|error| {
-            ServerError::Configuration {
-                message: format!("database.password : {error}"),
-            }
-        })
-    }
-}
-
-impl fmt::Debug for SecretPassword {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("[REDACTED]")
-    }
-}
-
-impl<'de> Deserialize<'de> for SecretPassword {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let text = String::deserialize(deserializer)?;
-        SecretString::new(text)
-            .map(|secret| Self(Arc::new(secret)))
-            .map_err(serde::de::Error::custom)
-    }
-}
-
-#[derive(Clone, Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct RuntimeConfig {
-    pub module_install_timeout_seconds: u64,
-    pub module_start_timeout_seconds: u64,
-    pub module_stop_timeout_seconds: u64,
-}
-
-#[derive(Clone, Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct ObservabilityConfig {
-    pub log_filter: String,
-    pub json_logs: bool,
-    pub include_target: bool,
-    pub include_thread_ids: bool,
+    pub trusted_proxies: Vec<IpNetwork>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -298,58 +230,6 @@ pub struct CorsConfig {
     pub allowed_headers: Vec<String>,
 }
 
-/// La clé secrète d'un support S3 ne se lit que dans l'environnement : présente dans un fichier
-/// de configuration, elle arrête le démarrage.
-fn refuse_storage_secret_in_files(
-    files: config::ConfigBuilder<config::builder::DefaultState>,
-) -> Result<(), ServerError> {
-    let files = files.build().map_err(|error| ServerError::Configuration {
-        message: error.to_string(),
-    })?;
-    let Ok(backends) = files.get_table("storage.s3") else {
-        return Ok(());
-    };
-    for (name, backend) in backends {
-        let in_file = backend
-            .into_table()
-            .is_ok_and(|fields| fields.contains_key("secret_access_key"));
-        if in_file {
-            return Err(ServerError::Configuration {
-                message: format!(
-                    "storage.s3.{name}.secret_access_key ne doit pas figurer dans un fichier : \
-                     LYXAL__STORAGE__S3__{}__SECRET_ACCESS_KEY seulement",
-                    name.to_uppercase()
-                ),
-            });
-        }
-    }
-    Ok(())
-}
-
-/// Les clés maîtresses du coffre-fort ne se lisent que dans l'environnement : présentes dans un
-/// fichier de configuration, elles arrêtent le démarrage.
-fn refuse_secrets_keys_in_files(
-    files: config::ConfigBuilder<config::builder::DefaultState>,
-) -> Result<(), ServerError> {
-    let files = files.build().map_err(|error| ServerError::Configuration {
-        message: error.to_string(),
-    })?;
-    let Ok(secrets) = files.get_table("secrets") else {
-        return Ok(());
-    };
-    for key in ["master_key", "previous_master_key"] {
-        if secrets.contains_key(key) {
-            return Err(ServerError::Configuration {
-                message: format!(
-                    "secrets.{key} ne doit pas figurer dans un fichier : LYXAL__SECRETS__{} seulement",
-                    key.to_uppercase()
-                ),
-            });
-        }
-    }
-    Ok(())
-}
-
 impl AppConfig {
     pub fn load() -> Result<Self, ServerError> {
         Self::load_from("config")
@@ -359,44 +239,31 @@ impl AppConfig {
         Self::load_with_environment(directory, None)
     }
 
-    /// Charge la configuration ; `variables` remplace les variables d'environnement du
-    /// processus (tests).
+    /// Charge la configuration (`<directory>/default.toml`, `<directory>/<LYXAL_ENV>.toml`, puis
+    /// variables `LYXAL__*`) ; `variables` remplace les variables d'environnement du processus
+    /// (tests). La clé secrète d'un support S3 et les clés maîtresses du coffre-fort ne se lisent
+    /// que dans l'environnement : présentes dans un fichier, elles arrêtent le démarrage.
     pub fn load_with_environment(
         directory: impl AsRef<Path>,
         variables: Option<config::Map<String, String>>,
     ) -> Result<Self, ServerError> {
-        let directory = directory.as_ref();
-        let environment = std::env::var("LYXAL_ENV").unwrap_or_else(|_| "development".into());
-
-        let files = config::Config::builder()
-            .add_source(config::File::from(directory.join("default.toml")).required(true))
-            .add_source(
-                config::File::from(directory.join(format!("{environment}.toml"))).required(false),
-            );
-        refuse_storage_secret_in_files(files.clone())?;
-        refuse_secrets_keys_in_files(files.clone())?;
-
-        let builder = files.add_source(
-            config::Environment::with_prefix("LYXAL")
-                .source(variables)
-                .prefix_separator("__")
-                .separator("__")
-                .try_parsing(true)
-                .list_separator(",")
-                // Seules ces clés sont des listes ; les autres restent des chaînes
-                .with_list_parse_key("server.trusted_proxies")
-                .with_list_parse_key("cors.allowed_origins")
-                .with_list_parse_key("cors.allowed_methods")
-                .with_list_parse_key("cors.allowed_headers"),
-        );
-
-        let value: Self = builder
-            .build()
-            .and_then(config::Config::try_deserialize)
-            .map_err(|error| ServerError::Configuration {
-                message: error.to_string(),
-            })?;
-
+        let value: Self = load_layered(
+            directory.as_ref(),
+            "LYXAL",
+            &[
+                "storage.s3.*.secret_access_key",
+                "secrets.master_key",
+                "secrets.previous_master_key",
+            ],
+            // Seules ces clés sont des listes ; les autres restent des chaînes
+            &[
+                "server.trusted_proxies",
+                "cors.allowed_origins",
+                "cors.allowed_methods",
+                "cors.allowed_headers",
+            ],
+            variables,
+        )?;
         value.validate()?;
         Ok(value)
     }

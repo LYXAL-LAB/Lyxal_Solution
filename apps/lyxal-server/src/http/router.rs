@@ -1,13 +1,14 @@
 use super::{
     auth, handlers, middleware, notification, scheduler, secrets, storage, system, uploads,
 };
-use crate::{config::CorsConfig, context::AppContext, error::ServerError};
+use crate::{config::CorsConfig, context::AppContext, error::ServerError, modules};
 use axum::{
     http::{HeaderName, HeaderValue, Method},
     middleware::from_fn_with_state,
     routing::{get, post},
     Router,
 };
+use lyxal_host::http::{health_routes, HostHealth};
 use std::{str::FromStr, time::Duration};
 use tower::ServiceBuilder;
 use tower_http::{
@@ -35,12 +36,17 @@ pub fn build_router(context: AppContext) -> Result<Router, ServerError> {
         .nest("/scheduler", scheduler::routes())
         .nest("/notification", notification::routes());
 
+    // Santé de l'hôte : `/live`, `/ready`, `/health` (composants et sondes du runtime)
+    let health = HostHealth::new(
+        context.health.clone(),
+        context.runtime.clone(),
+        modules::HOST_ID,
+    );
+
     // Limite du corps et délai total : toutes les routes, sauf les fichiers
     let general = Router::new()
         .route("/", get(handlers::root))
-        .route("/live", get(handlers::live))
-        .route("/ready", get(handlers::ready))
-        .route("/health", get(handlers::health))
+        .merge(health_routes::<AppContext, ServerError>(health))
         .route("/metrics", get(handlers::metrics))
         .nest("/api/v1", api)
         .layer(

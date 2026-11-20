@@ -1,3 +1,5 @@
+//! Mesures des requêtes HTTP de l'hôte (`/metrics`).
+
 use serde::Serialize;
 use std::sync::{
     atomic::{AtomicU64, Ordering},

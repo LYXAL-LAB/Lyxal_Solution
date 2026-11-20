@@ -5,10 +5,8 @@
 
 use axum::body::{to_bytes, Body};
 use axum::http::{HeaderMap, Request, StatusCode};
-use lyxal_server::{
-    context::AppContext, health::HealthRegistry, http::build_router, metrics::Metrics,
-    modules::auth, runtime,
-};
+use lyxal_host::{health::HealthRegistry, metrics::Metrics};
+use lyxal_server::{context::AppContext, http::build_router, modules::auth, runtime};
 use serde_json::Value;
 use std::sync::Arc;
 
@@ -554,7 +552,7 @@ async fn a_bucket_on_an_s3_backend_is_served_by_the_same_routes() {
             region: "us-east-1".to_string(),
             bucket: "lyxal-test".to_string(),
             access_key_id: "lyxal-test-access".to_string(),
-            secret_access_key: lyxal_server::config::SecretPassword::new(
+            secret_access_key: lyxal_host::config::SecretPassword::new(
                 "lyxal-test-secret-0123456789".to_string(),
             )
             .expect("clé secrète"),

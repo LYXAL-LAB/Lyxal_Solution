@@ -11,9 +11,9 @@ use axum::http::{HeaderMap, Request, StatusCode};
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 use lyxal_crypto::{CryptoEngine, EncryptionKey, KeyId, KeyRingBuilder, KeyUse, StaticKeyResolver};
+use lyxal_host::{health::HealthRegistry, metrics::Metrics};
 use lyxal_server::{
-    config::AppConfig, context::AppContext, health::HealthRegistry, http::build_router,
-    metrics::Metrics, modules::auth, runtime,
+    config::AppConfig, context::AppContext, http::build_router, modules::auth, runtime,
 };
 use serde_json::{json, Value};
 use std::fs;

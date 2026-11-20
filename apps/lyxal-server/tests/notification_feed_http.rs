@@ -16,14 +16,14 @@ use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 use futures::StreamExt;
 use lyxal_crypto::{CryptoEngine, EncryptionKey, KeyId, KeyRingBuilder, KeyUse, StaticKeyResolver};
+use lyxal_host::{health::HealthRegistry, metrics::Metrics};
 use lyxal_notification::{NotificationChannelWorker, NotificationStore, SendWorkerSettings};
 use lyxal_runtime::types::ModuleId;
 use lyxal_runtime::worker::{CancellationToken, LyxalWorker, WorkerContext, WorkerId};
 use lyxal_runtime::ModuleContext;
 use lyxal_server::modules::notification_feed::{FeedHub, FeedHubWorker, FeedSettings, FeedTicks};
 use lyxal_server::{
-    config::AppConfig, context::AppContext, health::HealthRegistry, http::build_router,
-    metrics::Metrics, modules::auth, runtime,
+    config::AppConfig, context::AppContext, http::build_router, modules::auth, runtime,
 };
 use serde_json::{json, Value};
 use std::fs;

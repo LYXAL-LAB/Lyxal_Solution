@@ -15,6 +15,7 @@ use lyxal_crypto::{
     sign_hmac_sha256_hex, CryptoEngine, EncryptionKey, HmacKey, KeyId, KeyRingBuilder, KeyUse,
     SecretBytes, StaticKeyResolver,
 };
+use lyxal_host::{health::HealthRegistry, metrics::Metrics};
 use lyxal_notification::models::{IntegrationSaveParams, IntegrationSettings};
 use lyxal_notification::{
     EmailDispatcher, EmailProviders, NotificationStore, StaticResolver, SECRETS_CONSUMER,
@@ -23,8 +24,7 @@ use lyxal_secrets::models::{SecretCreateParams, Stage};
 use lyxal_secrets::{ClientWrite, SecretsStore};
 use lyxal_server::modules::notification::NotificationHost;
 use lyxal_server::{
-    config::AppConfig, context::AppContext, health::HealthRegistry, http::build_router,
-    metrics::Metrics, modules::auth, runtime,
+    config::AppConfig, context::AppContext, http::build_router, modules::auth, runtime,
 };
 use lyxal_surreal::ToSql;
 use serde_json::{json, Value};

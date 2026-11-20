@@ -1,3 +1,5 @@
+//! Santé des composants de l'hôte (processus, base…), agrégée en un état.
+
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use std::{collections::BTreeMap, sync::Arc};

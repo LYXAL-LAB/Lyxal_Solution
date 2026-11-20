@@ -11,6 +11,7 @@ use axum::{
     Json,
 };
 use lyxal_error::{LyxalError, LyxalResult};
+use lyxal_host::HostError;
 use serde_json::json;
 use thiserror::Error;
 
@@ -45,6 +46,22 @@ pub enum ServerError {
 
     #[error("requête illisible : {message}")]
     InvalidRequest { message: String },
+}
+
+/// Erreur du code commun des hôtes (`lyxal_host`), traduite dans le code `SERVER_*`
+/// correspondant ; une erreur du runtime garde son code `RUNTIME_*`.
+impl From<HostError> for ServerError {
+    fn from(error: HostError) -> Self {
+        match error {
+            HostError::Configuration { message } => Self::Configuration { message },
+            HostError::Database { message } => Self::Database { message },
+            HostError::ModuleInstall { module, message } => Self::ModuleInstall { module, message },
+            HostError::Bind { address, message } => Self::Bind { address, message },
+            HostError::ShutdownSignal { message } => Self::ShutdownSignal { message },
+            HostError::Telemetry { message } => Self::Telemetry { message },
+            HostError::Runtime(error) => Self::Runtime(error),
+        }
+    }
 }
 
 /// Description d'une erreur de l'hôte, identique à sa définition dans `error/server.surql`.
@@ -255,6 +272,49 @@ mod tests {
             definitions.matches("CREATE error_definition:").count(),
             SERVER_ERROR_CATALOG.len()
         );
+    }
+
+    /// Les erreurs du code commun des hôtes gardent leur code `SERVER_*` et leur message.
+    #[test]
+    fn host_errors_keep_their_server_codes() {
+        let message = || "détail".to_string();
+        for (error, code) in [
+            (
+                HostError::Configuration { message: message() },
+                "SERVER_CONFIGURATION_INVALID",
+            ),
+            (
+                HostError::Database { message: message() },
+                "SERVER_DATABASE_UNAVAILABLE",
+            ),
+            (
+                HostError::ModuleInstall {
+                    module: "lyxal_core".into(),
+                    message: message(),
+                },
+                "SERVER_MODULE_INSTALL_FAILED",
+            ),
+            (
+                HostError::Bind {
+                    address: "127.0.0.1:1".into(),
+                    message: message(),
+                },
+                "SERVER_BIND_FAILED",
+            ),
+            (
+                HostError::ShutdownSignal { message: message() },
+                "SERVER_SHUTDOWN_SIGNAL_FAILED",
+            ),
+            (
+                HostError::Telemetry { message: message() },
+                "SERVER_TELEMETRY_INIT_FAILED",
+            ),
+        ] {
+            let text = error.to_string();
+            let server = ServerError::from(error);
+            assert_eq!(server.code(), code);
+            assert_eq!(server.to_string(), text);
+        }
     }
 
     #[tokio::test]

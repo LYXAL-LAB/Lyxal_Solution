@@ -4,6 +4,14 @@
 à SurrealDB, installe et démarre les modules par `lyxal_runtime`, puis sert l'API HTTP système.
 Il ne contient aucune logique métier (`AGENTS.md` §5.8.5).
 
+Le code commun aux hôtes (chargement de la configuration en couches, connexion à la base et refus
+de l'accès anonyme, santé et routes `/live`, `/ready`, `/health`, journal, signal d'arrêt,
+adresse réelle du client, service HTTP avec délai d'écriture, modules embarqués et installation
+du socle, aide de `build.rs`) est dans [`lyxal_host`](../../crates/lyxal_host/README.md) ;
+`lyxal-server` garde ses routes, son contexte (`AppContext`), ses modules et leurs services, sa
+configuration, sa ligne de commande et ses erreurs `SERVER_*` (les erreurs de `lyxal_host` y
+sont traduites dans le code `SERVER_*` correspondant).
+
 Version `0.1.0` (régime pré-production, `.agents/AGENTS.md` §0). Cible : SurrealDB 3.3.4,
 SDK `surrealdb` 3.3.
 
@@ -56,12 +64,12 @@ ou de démarrage arrête le serveur.
 ## 2. Modules hébergés
 
 `build.rs` lit le `manifest.toml` de chaque module hébergé et **embarque dans le binaire** le
-manifeste et les fichiers déclarés dans `[resources]`. La compilation échoue si un fichier
+manifeste et les fichiers déclarés dans `[resources]` (`lyxal_host::build::embed_modules`). La compilation échoue si un fichier
 déclaré manque.
 
 | Module | Inclus | Implémentation |
 | :--- | :--- | :--- |
-| `lyxal_core` | toujours | `ManifestModule` (SurrealQL seul) |
+| `lyxal_core` | toujours | `ManifestModule` de `lyxal_host` (SurrealQL seul) |
 | `lyxal_error` | toujours | `ManifestModule` |
 | `lyxal_event` | toujours | `ManifestModule` ; moteur démarré par le runtime |
 | `lyxal_auth` | toujours | `AuthModule`, `AuthHealthCheck` ; purge `AuthPurge` exécutée par le planificateur (tâche `auth.purge`) |
@@ -229,8 +237,8 @@ fichier, par exemple `plans/2026/a.pdf`) :
   d'une requête ; la taille est bornée par le bucket (100 Mo par défaut, 5 Go au plus), vérifiée
   pendant l'écriture. Un envoi ou une lecture du support qui ne transmet plus rien pendant
   `storage.idle_timeout_seconds` est coupé. Ce même délai est le délai d'écriture de toute
-  connexion du serveur (`src/serve.rs`) : un client qui cesse de lire sa réponse est déconnecté,
-  ce qui libère le fichier ouvert et sa place dans la limite de requêtes simultanées.
+  connexion du serveur (`lyxal_host::http::serve`) : un client qui cesse de lire sa réponse est
+  déconnecté, ce qui libère le fichier ouvert et sa place dans la limite de requêtes simultanées.
 * **Envoi reprenable** (protocole tus 1.0, pour les gros fichiers) : après une coupure, le
   client demande la position (`HEAD`) et reprend (`PATCH`). Toute requête, sauf `OPTIONS`, porte
   `Tus-Resumable: 1.0.0` (sinon `412`). Seul l'appelant qui a ouvert l'envoi le poursuit. Une
