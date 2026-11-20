@@ -96,6 +96,9 @@ impl LyxalWorker for ListenerWorker {
         let sessions_shutdown = CancellationToken::new();
         let mut sessions = JoinSet::new();
         let mut backoff = ACCEPT_BACKOFF;
+        // Socket interrogée en premier, avancée après chaque acceptation : aucune adresse de
+        // l'écoute ne peut affamer les autres
+        let mut next = 0;
         loop {
             tokio::select! {
                 biased;
@@ -108,8 +111,9 @@ impl LyxalWorker for ListenerWorker {
                         }
                     }
                 }
-                (index, accepted) = accept_any(&sockets) => match accepted {
+                (index, accepted) = accept_any(&sockets, next) => match accepted {
                     Ok((stream, remote)) => {
+                        next = (index + 1) % sockets.len().max(1);
                         backoff = ACCEPT_BACKOFF;
                         let Some(place) = listener.limiter.try_acquire() else {
                             // Plafond de l'écoute : fermeture immédiate, sans écriture
@@ -144,13 +148,10 @@ impl LyxalWorker for ListenerWorker {
             }
         }
 
-        // Arrêt : plus aucune acceptation, sockets refermées, sessions prévenues puis drainées
+        // Arrêt : plus aucune acceptation, sessions prévenues puis drainées. Les sockets restent
+        // liées (un redémarrage du worker reprend le même port) ; l'hôte les referme à son arrêt
+        // définitif (`MailNet::close`).
         drop(sockets);
-        listener
-            .sockets
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .take();
         sessions_shutdown.cancel();
         let open = sessions.len();
         let drain = listener.acceptance.drain;
@@ -172,11 +173,17 @@ impl LyxalWorker for ListenerWorker {
     }
 }
 
-/// Première connexion acceptée sur l'une des sockets, avec l'indice de la socket.
-async fn accept_any(sockets: &[TcpListener]) -> (usize, io::Result<(TcpStream, SocketAddr)>) {
+/// Première connexion acceptée sur l'une des sockets, en commençant par la socket `start` puis
+/// dans l'ordre circulaire, avec l'indice de la socket.
+async fn accept_any(
+    sockets: &[TcpListener],
+    start: usize,
+) -> (usize, io::Result<(TcpStream, SocketAddr)>) {
     poll_fn(|cx| {
-        for (index, socket) in sockets.iter().enumerate() {
-            if let Poll::Ready(accepted) = socket.poll_accept(cx) {
+        let count = sockets.len();
+        for offset in 0..count {
+            let index = (start + offset) % count;
+            if let Poll::Ready(accepted) = sockets[index].poll_accept(cx) {
                 return Poll::Ready((index, accepted));
             }
         }
@@ -201,4 +208,37 @@ fn addresses(local: &[SocketAddr]) -> String {
         .map(SocketAddr::to_string)
         .collect::<Vec<_>>()
         .join(", ")
+}
+
+#[cfg(test)]
+#[allow(clippy::expect_used)]
+mod tests {
+    use super::accept_any;
+    use tokio::net::{TcpListener, TcpStream};
+
+    #[tokio::test]
+    async fn sockets_are_served_in_turn() {
+        // Deux sockets avec chacune deux connexions en attente : les acceptations alternent au
+        // lieu de vider la première
+        let sockets = [
+            TcpListener::bind("127.0.0.1:0").await.expect("liaison"),
+            TcpListener::bind("127.0.0.1:0").await.expect("liaison"),
+        ];
+        let mut clients = Vec::new();
+        for socket in &sockets {
+            let address = socket.local_addr().expect("adresse");
+            for _ in 0..2 {
+                clients.push(TcpStream::connect(address).await.expect("connexion"));
+            }
+        }
+        let mut next = 0;
+        let mut order = Vec::new();
+        for _ in 0..4 {
+            let (index, accepted) = accept_any(&sockets, next).await;
+            accepted.expect("acceptation");
+            order.push(index);
+            next = (index + 1) % sockets.len();
+        }
+        assert_eq!(order, [0, 1, 0, 1]);
+    }
 }

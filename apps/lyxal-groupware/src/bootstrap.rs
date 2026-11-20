@@ -61,6 +61,7 @@ async fn run_inner() -> Result<(), GroupwareError> {
     tracing::info!(address = %config.http.bind, "port HTTP de santé prêt");
 
     let shutdown_health = health.clone();
+    let mail = started.mail.clone();
     let graceful = Duration::from_secs(config.http.graceful_shutdown_seconds);
     lyxal_host::http::serve(
         http_listener,
@@ -78,6 +79,8 @@ async fn run_inner() -> Result<(), GroupwareError> {
             if let Err(error) = runtime.stop_all().await {
                 tracing::error!(%error, "arrêt des modules incomplet");
             }
+            // Les écoutes arrêtées gardent leurs ports : l'arrêt définitif les referme
+            mail.close();
         },
     )
     .await;

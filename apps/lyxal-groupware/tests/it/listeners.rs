@@ -186,3 +186,22 @@ async fn a_connection_reset_by_the_client_does_not_stop_the_listener() {
     assert_eq!(reply, line(MailProtocol::Smtp, RefusalReason::Unavailable));
     running.stop().await;
 }
+
+#[tokio::test]
+async fn a_listener_stopped_then_started_again_keeps_its_port() {
+    // Arrêt puis redémarrage d'une écoute par le runtime (`stop_worker` puis `start_worker`) :
+    // les sockets liées au démarrage de l'hôte restent ouvertes et la reprise sert le même port
+    let config = config(
+        "listeners",
+        &format!("{LIMITS}{}", smtp_listener("smtp", "")),
+    );
+    let bound = bind_listeners(&config).expect("liaison");
+    let net = MailNet::new(&config, bound, &unavailable);
+    let address = net.local_addrs("smtp")[0];
+
+    run_workers(&net).stop().await;
+    let running = run_workers(&net);
+    let (_stream, reply) = greeting(address).await;
+    assert_eq!(reply, line(MailProtocol::Smtp, RefusalReason::Unavailable));
+    running.stop().await;
+}

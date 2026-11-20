@@ -104,8 +104,8 @@ pub(crate) struct Listener {
     protocol: MailProtocol,
     tls: TlsMode,
     local: Vec<SocketAddr>,
-    /// Sockets liées au démarrage, gardées à travers les redémarrages du worker (aucune fenêtre
-    /// où le port serait libre) et refermées à son arrêt.
+    /// Sockets liées au démarrage, gardées à travers les arrêts et redémarrages du worker (aucune
+    /// fenêtre où le port serait libre) et refermées à l'arrêt de l'hôte (`MailNet::close`).
     sockets: Mutex<Option<Arc<Vec<TcpListener>>>>,
     limiter: ConnectionLimiter,
     handler: Arc<dyn SessionHandler>,
@@ -177,6 +177,18 @@ impl MailNet {
                 Ok(Arc::new(ListenerWorker::new(listener.clone())?) as Arc<dyn LyxalWorker>)
             })
             .collect()
+    }
+
+    /// Referme les sockets de toutes les écoutes : arrêt définitif de l'hôte, après l'arrêt des
+    /// workers. Un worker relancé ensuite échoue au lieu de servir un port refermé.
+    pub fn close(&self) {
+        for listener in &self.listeners {
+            listener
+                .sockets
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .take();
+        }
     }
 
     /// Sonde de santé des écoutes, rattachée au module `lyxal_mail`.

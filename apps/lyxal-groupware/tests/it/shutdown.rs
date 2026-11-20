@@ -112,6 +112,9 @@ async fn host_starts_serves_health_and_drains_on_shutdown() {
     });
     assert_eq!(first_line(&mut session).await, "421 bye");
     stop.await.unwrap().expect("arrêt");
+    // Comme l'hôte (`bootstrap`) : les écoutes arrêtées gardent leurs ports, l'arrêt définitif
+    // les referme
+    started.mail.close();
     assert!(
         stopping.elapsed() < Duration::from_secs(10),
         "arrêt trop long"
