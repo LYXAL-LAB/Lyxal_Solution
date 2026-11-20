@@ -22,8 +22,8 @@ l'altère (bit, troncature, ajout) selon ses premiers octets et exige l'échec d
 de serveur contre un certificat de test valide.
 `dkim_canonicalize` découpe l'entrée en en-têtes et corps (séparateur 0x00), canonicalise les
 en-têtes (le dernier est l'en-tête de signature) et exige la même empreinte du corps quel que
-soit le découpage des morceaux. `dkim_public_key` lit une valeur `p=` hostile (RSA ou Ed25519) et
-une signature : aucune erreur autre que le format ou l'algorithme.
+soit le découpage des morceaux. `dkim_public_key` lit une valeur `p=` hostile (RSA ou Ed25519), précédée de sa longueur sur
+deux octets, et une signature : aucune erreur autre que le format ou l'algorithme.
 Le modèle rotation vérifie les états et migrations avec des clés fictives.
 Les seeds versionnés incluent une enveloppe littérale, des profils PHC valides/excessifs, le
 vecteur S1 du format de flux, une chaîne et une clé de test TLS, un message DKIM et les clés
