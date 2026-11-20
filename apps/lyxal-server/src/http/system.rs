@@ -1,5 +1,6 @@
-//! Routes d'administration de l'installation `/system/migrations/*` : liste des migrations
-//! interrompues et décision de reprise ou d'abandon (`lyxal_runtime`).
+//! Routes d'administration de l'installation : modules hébergés et nœuds vivants
+//! (`/system/modules`), liste des migrations interrompues et décision de reprise ou d'abandon
+//! (`/system/migrations/*`) (`lyxal_runtime`).
 //!
 //! `lyxal_runtime` est sous `lyxal_auth` dans la hiérarchie : ses fonctions ne contrôlent aucun
 //! droit et ses tables ne sont lisibles que par la session système. L'hôte identifie donc
@@ -24,9 +25,10 @@ use lyxal_auth::AuthError;
 use lyxal_runtime::migration::{
     MigrationInterruptedParams, MigrationResolveAction, MigrationResolveParams,
 };
+use lyxal_runtime::ModuleState;
 use lyxal_surreal::{SurrealValue, ToSql};
-use serde::Deserialize;
-use serde_json::Value;
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
 use std::collections::HashMap;
 
 /// Droit d'administration de l'installation (`seeds/server_permissions.surql`).
@@ -75,6 +77,86 @@ fn data<T: SurrealValue>(value: T) -> Value {
 /// Exécute une route et rend sa réponse ou son erreur, jamais mise en cache.
 async fn respond(context: &AppContext, headers: &HeaderMap, result: ApiResult) -> Response {
     auth::no_store(auth::respond(context, headers, result).await).await
+}
+
+/// Module hébergé par ce processus et son état.
+#[derive(Serialize)]
+struct ModuleStatus {
+    id: String,
+    name: String,
+    version: String,
+    state: Option<ModuleState>,
+}
+
+/// Nœud vivant de la base (`runtime_node`, battement récent), quel que soit son hôte.
+#[derive(Serialize)]
+struct NodeStatus {
+    node_id: String,
+    host: String,
+    /// Modules démarrés par le nœud.
+    modules: Vec<String>,
+    started_at: Value,
+    seen_at: Value,
+    /// Le nœud est ce processus.
+    current: bool,
+}
+
+/// `GET /system/modules` : `{ host, node_id, modules, nodes }` — hôte et nœud de ce processus,
+/// modules qu'il héberge et leur état, nœuds vivants de la base (tous hôtes, du battement le plus
+/// récent au plus ancien).
+pub async fn modules(
+    State(context): State<AppContext>,
+    Query(query): Query<HashMap<String, String>>,
+    headers: HeaderMap,
+) -> Response {
+    let result = async {
+        administrator(&context, &headers).await?;
+        if !query.is_empty() {
+            return Err(invalid("paramètre d'adresse inconnu"));
+        }
+        let runtime = &context.runtime;
+        let mut modules: Vec<ModuleStatus> = runtime
+            .modules()
+            .iter()
+            .map(|module| {
+                let descriptor = module.descriptor();
+                ModuleStatus {
+                    id: descriptor.id.to_string(),
+                    name: descriptor.name.clone(),
+                    version: descriptor.version.to_string(),
+                    state: runtime.module_state(&descriptor.id),
+                }
+            })
+            .collect();
+        modules.sort_by(|a, b| a.id.cmp(&b.id));
+        let current = runtime.node_id().to_string();
+        let nodes: Vec<NodeStatus> = runtime
+            .nodes()
+            .await
+            .map_err(ServerError::Runtime)?
+            .into_iter()
+            .filter(|node| node.alive == Some(true))
+            .map(|node| NodeStatus {
+                current: node.node_id == current,
+                node_id: node.node_id,
+                host: node.host,
+                modules: node.modules,
+                started_at: data(node.started_at),
+                seen_at: data(node.seen_at),
+            })
+            .collect();
+        ok(
+            StatusCode::OK,
+            json!({
+                "host": runtime.host_id().to_string(),
+                "node_id": current,
+                "modules": modules,
+                "nodes": nodes,
+            }),
+        )
+    }
+    .await;
+    respond(&context, &headers, result).await
 }
 
 /// `GET /system/migrations/interrupted[?module=<module>]`.

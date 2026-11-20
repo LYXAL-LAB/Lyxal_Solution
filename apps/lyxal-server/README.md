@@ -365,13 +365,16 @@ cargo run -p lyxal-server
 | `GET /ready` | `204` si le serveur et la base sont opérationnels, sinon `503`. |
 | `GET /health` | Statuts des composants (serveur, base) et des modules (sondes `ModuleHealthCheck` évaluées par le runtime), sans détail interne ; `503` si un module est en panne. |
 | `GET /metrics` | Compteurs de requêtes et durée de fonctionnement. |
-| `GET /api/v1/system/modules` | Hôte (`host`) et nœud (`node_id`) de ce processus ; modules hébergés (`modules` : identifiant, nom, version, état) ; nœuds vivants de la base, de tous les hôtes (`nodes` : `node_id`, `host`, `modules` démarrés, `started_at`, `seen_at`, `current` pour ce processus ; battement de moins de 30 s), du plus récent au plus ancien. |
+| 🔒 `GET /api/v1/system/modules` | Hôte (`host`) et nœud (`node_id`) de ce processus ; modules hébergés (`modules` : identifiant, nom, version, état) ; nœuds vivants de la base, de tous les hôtes (`nodes` : `node_id`, `host`, `modules` démarrés, `started_at`, `seen_at`, `current` pour ce processus ; battement de moins de 30 s), du plus récent au plus ancien. |
 | 🔒 `GET /api/v1/system/migrations/interrupted` | Migrations interrompues ou abandonnées (`?module=` pour un seul module) : module, migration, version, script, nœud, état, début, dernière décision. |
 | 🔒 `POST /api/v1/system/migrations/resolve` | Décision sur une migration interrompue : `{ module, migration, action, reason }`, `action` valant `retry` (rejouée à la prochaine installation du module) ou `abandon` (installation refusée tant qu'un `retry` ne l'a pas remise à rejouer). |
 
 **Administration de l'installation** (`src/http/system.rs`, `seeds/server_permissions.surql`).
-Les deux routes `/api/v1/system/migrations/*` exposent la reprise guidée d'une migration
-interrompue de `lyxal_runtime` (procédure et refus : `crates/lyxal_runtime/README.md` §4.1).
+Les trois routes 🔒 `/api/v1/system/*` demandent le droit `server.installation.manage`.
+`/api/v1/system/modules` décrit les modules hébergés et les nœuds vivants (sans paramètre
+d'adresse ; données dans `data`). Les deux routes `/api/v1/system/migrations/*` exposent la
+reprise guidée d'une migration interrompue de `lyxal_runtime` (procédure et refus :
+`crates/lyxal_runtime/README.md` §4.1).
 `lyxal_runtime` est sous `lyxal_auth` : il ne contrôle aucun droit et ses tables ne sont lisibles
 que par la session système. L'hôte déclare donc le droit `server.installation.manage` (portée
 installation, attribué au rôle `platform_admin`) et, pour chaque requête, contrôle le jeton

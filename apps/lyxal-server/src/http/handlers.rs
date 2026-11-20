@@ -6,10 +6,8 @@ use crate::{
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use lyxal_runtime::health::{GlobalHealthStatus, HealthConfig, HealthStatus};
 use lyxal_runtime::reconciler::observer::RuntimeObserver;
-use lyxal_runtime::{ModuleContext, ModuleState};
-use lyxal_surreal::SurrealValue;
+use lyxal_runtime::ModuleContext;
 use serde::Serialize;
-use serde_json::Value;
 
 #[derive(Serialize)]
 pub struct RootResponse {
@@ -88,82 +86,4 @@ pub async fn health(State(context): State<AppContext>) -> Result<impl IntoRespon
 
 pub async fn metrics(State(context): State<AppContext>) -> Json<crate::metrics::MetricsSnapshot> {
     Json(context.metrics.snapshot())
-}
-
-#[derive(Serialize)]
-pub struct ModuleStatus {
-    id: String,
-    name: String,
-    version: String,
-    state: Option<ModuleState>,
-}
-
-/// Nœud vivant de la base (`runtime_node`, battement récent), quel que soit son hôte.
-#[derive(Serialize)]
-pub struct NodeStatus {
-    node_id: String,
-    host: String,
-    /// Modules démarrés par le nœud.
-    modules: Vec<String>,
-    started_at: Value,
-    seen_at: Value,
-    /// Le nœud est ce processus.
-    current: bool,
-}
-
-#[derive(Serialize)]
-pub struct ModulesResponse {
-    /// Hôte de ce binaire (`lyxal_server`).
-    host: String,
-    /// Nœud de ce processus.
-    node_id: String,
-    /// Modules hébergés par ce processus et leur état.
-    modules: Vec<ModuleStatus>,
-    /// Nœuds vivants de la base, de tous les hôtes, du battement le plus récent au plus ancien.
-    nodes: Vec<NodeStatus>,
-}
-
-fn date(value: lyxal_surreal::Datetime) -> Value {
-    value.into_value().into_json_value()
-}
-
-pub async fn modules(
-    State(context): State<AppContext>,
-) -> Result<Json<ModulesResponse>, ServerError> {
-    let runtime = &context.runtime;
-    let mut modules: Vec<ModuleStatus> = runtime
-        .modules()
-        .iter()
-        .map(|module| {
-            let descriptor = module.descriptor();
-            ModuleStatus {
-                id: descriptor.id.to_string(),
-                name: descriptor.name.clone(),
-                version: descriptor.version.to_string(),
-                state: runtime.module_state(&descriptor.id),
-            }
-        })
-        .collect();
-    modules.sort_by(|a, b| a.id.cmp(&b.id));
-    let current = runtime.node_id().to_string();
-    let nodes = runtime
-        .nodes()
-        .await?
-        .into_iter()
-        .filter(|node| node.alive == Some(true))
-        .map(|node| NodeStatus {
-            current: node.node_id == current,
-            node_id: node.node_id,
-            host: node.host,
-            modules: node.modules,
-            started_at: date(node.started_at),
-            seen_at: date(node.seen_at),
-        })
-        .collect();
-    Ok(Json(ModulesResponse {
-        host: runtime.host_id().to_string(),
-        node_id: current,
-        modules,
-        nodes,
-    }))
 }

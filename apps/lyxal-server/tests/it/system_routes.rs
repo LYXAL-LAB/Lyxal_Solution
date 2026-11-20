@@ -1,14 +1,20 @@
-//! Routes d'administration de l'installation `/api/v1/system/migrations/*` : liste des migrations
-//! interrompues et décision de reprise ou d'abandon, réservées au droit
-//! `server.installation.manage` ; refus sans jeton, sans droit, sur requête illisible, quand la
-//! migration n'est pas interrompue et quand le bail d'installation est détenu ailleurs ; auteur
-//! de la décision tracé au journal du runtime.
+//! Routes d'administration de l'installation, réservées au droit `server.installation.manage` :
+//! modules hébergés et nœuds vivants (`/api/v1/system/modules`), liste des migrations
+//! interrompues et décision de reprise ou d'abandon (`/api/v1/system/migrations/*`) ; refus sans
+//! jeton, sans droit, sur requête illisible, quand la migration n'est pas interrompue et quand le
+//! bail d'installation est détenu ailleurs ; auteur de la décision tracé au journal du runtime.
 
 use axum::body::{to_bytes, Body};
 use axum::http::{Request, StatusCode};
+use lyxal_runtime::LyxalRuntime;
 use lyxal_server::{
-    context::AppContext, health::HealthRegistry, http::build_router, metrics::Metrics,
-    modules::auth, runtime,
+    config::AppConfig,
+    context::AppContext,
+    health::HealthRegistry,
+    http::build_router,
+    metrics::Metrics,
+    modules::auth::{self, AuthHost},
+    runtime,
 };
 use serde_json::{json, Value};
 use std::sync::Arc;
@@ -20,6 +26,71 @@ use crate::startup::{config_with, database};
 
 const INTERRUPTED: &str = "/api/v1/system/migrations/interrupted";
 const RESOLVE: &str = "/api/v1/system/migrations/resolve";
+pub(crate) const MODULES: &str = "/api/v1/system/modules";
+
+/// Section `[auth]` de la configuration de test : service d'authentification de l'hôte.
+pub(crate) const AUTH: &str = "[auth]\npublic_url = \"https://lyxal.test/\"\n";
+
+/// Routeur de l'hôte avec son service d'authentification (configuration complétée par
+/// [`AUTH`]).
+pub(crate) async fn router_with_auth(
+    config: Arc<AppConfig>,
+    client: &Surreal<Any>,
+    runtime: Arc<LyxalRuntime>,
+    health: HealthRegistry,
+) -> (axum::Router, Arc<AuthHost>) {
+    let host = auth::host(client, &config, Some(crypto()))
+        .expect("service")
+        .expect("service configuré");
+    auth::complete_services(Some(&host)).await.expect("clés");
+    let router = build_router(AppContext::new(
+        config,
+        Arc::new(client.clone()),
+        health,
+        Metrics::default(),
+        runtime,
+        Some(host.clone()),
+        Default::default(),
+    ))
+    .expect("routeur");
+    (router, host)
+}
+
+/// Jeton d'accès du compte de service `client_id`.
+async fn service_token(host: &AuthHost, client_id: &str) -> String {
+    host.access
+        .internal_service_token(client_id)
+        .await
+        .expect("jeton")
+        .access_token
+        .expose_secret()
+        .to_string()
+}
+
+/// Compte de service administrateur de la plateforme (`auth_application:plateforme`, rôle
+/// `platform_admin` auquel le seed de l'hôte attribue `server.installation.manage`) et son jeton.
+pub(crate) async fn platform_admin(client: &Surreal<Any>, host: &AuthHost) -> String {
+    run(
+        client,
+        r#"CREATE auth_application:plateforme CONTENT { client_id: "lyxal-test-systeme-admin", name: "Plateforme", type: "machine", redirect_uris: [], state: "active", permissions_version: 1 };
+           RELATE auth_application:plateforme->auth_has_role->auth_role:platform_admin SET granted_at = time::now();"#,
+    )
+    .await;
+    service_token(host, "lyxal-test-systeme-admin").await
+}
+
+/// Compte de service d'une organisation, sans droit d'administration de l'installation, et son
+/// jeton.
+async fn neighbour(client: &Surreal<Any>, host: &AuthHost) -> String {
+    run(
+        client,
+        r#"CREATE auth_organization:alpha CONTENT { slug: "alpha", name: "Alpha BTP" };
+           CREATE auth_application:voisin CONTENT { tenant: auth_organization:alpha, client_id: "lyxal-test-systeme-voisin", name: "Voisin", type: "machine", redirect_uris: [], state: "active", permissions_version: 1 };
+           RELATE auth_application:voisin->auth_has_role->auth_role:organization_admin SET granted_at = time::now();"#,
+    )
+    .await;
+    service_token(host, "lyxal-test-systeme-voisin").await
+}
 
 async fn run(client: &Surreal<Any>, query: &str) {
     client
@@ -36,7 +107,7 @@ async fn value(client: &Surreal<Any>, query: &str) -> Value {
     value.into_json_value()
 }
 
-async fn send(
+pub(crate) async fn send(
     router: &axum::Router,
     method: &str,
     uri: &str,
@@ -93,53 +164,26 @@ async fn migration_status(client: &Surreal<Any>) -> Value {
 
 #[tokio::test]
 async fn interrupted_migrations_are_listed_and_resolved_by_an_installation_administrator() {
-    let config = Arc::new(config_with(
-        "system_routes",
-        "[auth]\npublic_url = \"https://lyxal.test/\"\n",
-    ));
+    let config = Arc::new(config_with("system_routes", AUTH));
     let client = database("system_routes").await;
     let started = runtime::start(&config, &client).await.expect("démarrage");
-    let host = auth::host(&client, &config, Some(crypto()))
-        .expect("service")
-        .expect("service configuré");
-    auth::complete_services(Some(&host)).await.expect("clés");
-    let router = build_router(AppContext::new(
-        config.clone(),
-        Arc::new(client.clone()),
-        HealthRegistry::default(),
-        Metrics::default(),
-        started.runtime.clone(),
-        Some(host.clone()),
-        Default::default(),
-    ))
-    .expect("routeur");
-
-    // Administrateur de la plateforme (le seed de l'hôte lui attribue le droit), compte sans
-    // droit, et migration d'un module laissée « en cours » par un nœud arrêté
-    run(
+    let (router, host) = router_with_auth(
+        config,
         &client,
-        r#"CREATE auth_application:plateforme CONTENT { client_id: "lyxal-test-systeme-admin", name: "Plateforme", type: "machine", redirect_uris: [], state: "active", permissions_version: 1 };
-           RELATE auth_application:plateforme->auth_has_role->auth_role:platform_admin SET granted_at = time::now();
-           CREATE auth_organization:alpha CONTENT { slug: "alpha", name: "Alpha BTP" };
-           CREATE auth_application:voisin CONTENT { tenant: auth_organization:alpha, client_id: "lyxal-test-systeme-voisin", name: "Voisin", type: "machine", redirect_uris: [], state: "active", permissions_version: 1 };
-           RELATE auth_application:voisin->auth_has_role->auth_role:organization_admin SET granted_at = time::now();
-           fn::runtime_migration_record({ module_id: "lyxal_essai", migration_id: "0001_initial", module_version: "0.1.0", checksum: string::repeat("a", 64), status: "Applying", applied_at: 0, duration_ms: 0, script: "migrations/0001_initial.surql", node_id: "node-arrete" });"#,
+        started.runtime.clone(),
+        HealthRegistry::default(),
     )
     .await;
-    let token = |client_id: &'static str| {
-        let host = host.clone();
-        async move {
-            host.access
-                .internal_service_token(client_id)
-                .await
-                .expect("jeton")
-                .access_token
-                .expose_secret()
-                .to_string()
-        }
-    };
-    let admin = token("lyxal-test-systeme-admin").await;
-    let neighbour = token("lyxal-test-systeme-voisin").await;
+
+    // Administrateur de la plateforme, compte sans droit, et migration d'un module laissée
+    // « en cours » par un nœud arrêté
+    let admin = platform_admin(&client, &host).await;
+    let neighbour = neighbour(&client, &host).await;
+    run(
+        &client,
+        r#"fn::runtime_migration_record({ module_id: "lyxal_essai", migration_id: "0001_initial", module_version: "0.1.0", checksum: string::repeat("a", 64), status: "Applying", applied_at: 0, duration_ms: 0, script: "migrations/0001_initial.surql", node_id: "node-arrete" });"#,
+    )
+    .await;
 
     // --- Sans jeton, sans droit : refusé, rien n'est lu ni écrit ---------------------------
     for (method, uri, body) in [
@@ -327,6 +371,73 @@ async fn interrupted_migrations_are_listed_and_resolved_by_an_installation_admin
     assert_eq!(traces[0]["reason"], "état partiel à examiner");
     assert_eq!(traces[1]["action"], "retry");
     assert_eq!(traces[1]["reason"], "base vérifiée");
+
+    started.runtime.stop_all().await.expect("arrêt");
+}
+
+#[tokio::test]
+async fn hosted_modules_and_live_nodes_are_listed_to_an_installation_administrator() {
+    let config = Arc::new(config_with("system_modules", AUTH));
+    let client = database("system_modules").await;
+    let started = runtime::start(&config, &client).await.expect("démarrage");
+    let (router, host) = router_with_auth(
+        config,
+        &client,
+        started.runtime.clone(),
+        HealthRegistry::default(),
+    )
+    .await;
+    let admin = platform_admin(&client, &host).await;
+    let neighbour = neighbour(&client, &host).await;
+
+    // --- Sans jeton, sans droit : refusé, rien n'est lu ----------------------------------
+    let (status, reply) = send(&router, "GET", MODULES, None, None).await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED, "{reply}");
+    assert_eq!(reply["ok"], false);
+    assert_eq!(reply["error"]["code"], "AUTH_SESSION_REQUIRED", "{reply}");
+    let (status, reply) = send(&router, "GET", MODULES, Some(&neighbour), None).await;
+    assert_eq!(status, StatusCode::FORBIDDEN, "{reply}");
+    assert_eq!(reply["ok"], false);
+    assert!(reply["data"].is_null(), "{reply}");
+    assert_eq!(reply["error"]["code"], "AUTH_PERMISSION_DENIED", "{reply}");
+
+    // --- Paramètre inconnu ----------------------------------------------------------------
+    let (status, reply) = send(
+        &router,
+        "GET",
+        &format!("{MODULES}?inconnu=1"),
+        Some(&admin),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST, "{reply}");
+    assert_eq!(reply["error"]["code"], "SERVER_INVALID_REQUEST", "{reply}");
+
+    // --- Administrateur : hôte, nœud de ce processus, modules et nœuds vivants -------------
+    let (status, reply) = send(&router, "GET", MODULES, Some(&admin), None).await;
+    assert_eq!(status, StatusCode::OK, "{reply}");
+    assert_eq!(reply["ok"], true);
+    assert!(reply["error"].is_null(), "{reply}");
+    let data = &reply["data"];
+    assert_eq!(data["host"], "lyxal_server", "{reply}");
+    let node = started.runtime.node_id().to_string();
+    assert_eq!(data["node_id"], node.as_str(), "{reply}");
+    let current = data["nodes"]
+        .as_array()
+        .expect("nœuds")
+        .iter()
+        .find(|n| n["node_id"] == node.as_str())
+        .unwrap_or_else(|| panic!("nœud courant absent : {reply}"));
+    assert_eq!(current["host"], "lyxal_server");
+    assert_eq!(current["current"], true);
+    assert!(
+        data["modules"]
+            .as_array()
+            .expect("modules")
+            .iter()
+            .any(|m| m["id"] == "lyxal_auth" && m["state"] == "Running"),
+        "{reply}"
+    );
 
     started.runtime.stop_all().await.expect("arrêt");
 }

@@ -5,16 +5,15 @@ use axum::body::{to_bytes, Body};
 use axum::http::{Request, StatusCode};
 use lyxal_server::{
     config::AppConfig,
-    context::AppContext,
     health::{HealthRegistry, HealthState},
-    http::build_router,
-    metrics::Metrics,
     runtime,
 };
 use std::fs;
 use std::sync::Arc;
 use surrealdb::engine::any::{connect, Any};
 use surrealdb::Surreal;
+
+use crate::system_routes::{platform_admin, router_with_auth, send, AUTH, MODULES};
 
 fn config(database: &str) -> AppConfig {
     config_with(database, "")
@@ -96,7 +95,7 @@ async fn get(router: &axum::Router, uri: &str) -> (StatusCode, serde_json::Value
 
 #[tokio::test]
 async fn server_installs_and_starts_hosted_modules() {
-    let config = Arc::new(config("startup"));
+    let config = Arc::new(config_with("startup", AUTH));
     let client = database("startup").await;
     let runtime = runtime::start(&config, &client)
         .await
@@ -106,22 +105,16 @@ async fn server_installs_and_starts_hosted_modules() {
     let health = HealthRegistry::default();
     health.set("server", HealthState::Healthy, None).await;
     health.set("database", HealthState::Healthy, None).await;
-    let context = AppContext::new(
-        config.clone(),
-        Arc::new(client.clone()),
-        health,
-        Metrics::default(),
-        runtime.clone(),
-        None,
-        Default::default(),
-    );
-    let router = build_router(context).expect("routeur");
+    let (router, host) = router_with_auth(config, &client, runtime.clone(), health).await;
 
     assert_eq!(get(&router, "/live").await.0, StatusCode::NO_CONTENT);
     assert_eq!(get(&router, "/ready").await.0, StatusCode::NO_CONTENT);
 
-    let (status, system) = get(&router, "/api/v1/system/modules").await;
-    assert_eq!(status, StatusCode::OK, "{system}");
+    // Route d'administration de l'installation : jeton d'un administrateur de la plateforme
+    let admin = platform_admin(&client, &host).await;
+    let (status, reply) = send(&router, "GET", MODULES, Some(&admin), None).await;
+    assert_eq!(status, StatusCode::OK, "{reply}");
+    let system = &reply["data"];
     // Hôte et nœud de ce processus ; seul nœud vivant de la base, avec ses modules démarrés
     assert_eq!(system["host"], "lyxal_server", "{system}");
     let node = runtime.node_id().to_string();

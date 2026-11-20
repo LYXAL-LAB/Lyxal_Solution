@@ -7,8 +7,7 @@
 //! `lyxal-server` est arrêté ; elles attendent alors son retour, sans échec ni tentative
 //! comptée. La route système des modules liste les nœuds vivants des deux hôtes.
 
-use axum::body::{to_bytes, Body};
-use axum::http::{Request, StatusCode};
+use axum::http::StatusCode;
 use lyxal_runtime::lock::{SurrealInstallationLeaseManager, SurrealLeaderLeaseManager};
 use lyxal_runtime::{
     EventEngineConfig, HostId, LyxalRuntime, ModuleId, ModuleState, RuntimeConfig,
@@ -22,10 +21,7 @@ use lyxal_scheduler::{
     SchedulerLeaderWorker, SchedulerStore,
 };
 use lyxal_server::modules::tasks::{HostTask, HOST_TASKS};
-use lyxal_server::{
-    context::AppContext, health::HealthRegistry, http::build_router, metrics::Metrics, modules,
-    runtime,
-};
+use lyxal_server::{health::HealthRegistry, modules, runtime};
 use serde_json::Value;
 use std::sync::Arc;
 use std::time::Duration;
@@ -34,6 +30,7 @@ use surrealdb::Surreal;
 
 use crate::host_tasks::schedule_of;
 use crate::startup::{config_with, database};
+use crate::system_routes::{platform_admin, router_with_auth, send, AUTH, MODULES};
 
 /// Hôte d'essai, à côté de `lyxal_server`.
 const PEER: &str = "lyxal_peer";
@@ -160,30 +157,22 @@ async fn completed_once(store: &SchedulerStore, task: HostTask, run: &SchedulerR
     panic!("l'exécution de {} n'a pas abouti", task.task);
 }
 
+/// Route système des modules, appelée par un administrateur de la plateforme : `data` de la
+/// réponse.
 async fn system_modules(started: &runtime::Started, client: &Surreal<Any>) -> Value {
-    let config = Arc::new(config_with("two_hosts_route", ""));
-    let router = build_router(AppContext::new(
+    // Même base que les deux hôtes : la session de l'appelant y est ouverte
+    let config = Arc::new(config_with("two_hosts_tasks", AUTH));
+    let (router, host) = router_with_auth(
         config,
-        Arc::new(client.clone()),
-        HealthRegistry::default(),
-        Metrics::default(),
+        client,
         started.runtime.clone(),
-        None,
-        Default::default(),
-    ))
-    .expect("routeur");
-    let request = Request::builder()
-        .uri("/api/v1/system/modules")
-        .body(Body::empty())
-        .expect("requête");
-    let response = tower::ServiceExt::oneshot(router, request)
-        .await
-        .expect("réponse");
-    assert_eq!(response.status(), StatusCode::OK);
-    let bytes = to_bytes(response.into_body(), 1024 * 1024)
-        .await
-        .expect("corps");
-    serde_json::from_slice(&bytes).expect("json")
+        HealthRegistry::default(),
+    )
+    .await;
+    let admin = platform_admin(client, &host).await;
+    let (status, reply) = send(&router, "GET", MODULES, Some(&admin), None).await;
+    assert_eq!(status, StatusCode::OK, "{reply}");
+    reply["data"].clone()
 }
 
 #[tokio::test]

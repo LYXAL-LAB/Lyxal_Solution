@@ -21,7 +21,7 @@ use tower_http::{
 pub fn build_router(context: AppContext) -> Result<Router, ServerError> {
     let api = Router::new()
         .route("/system/info", get(handlers::root))
-        .route("/system/modules", get(handlers::modules))
+        .route("/system/modules", get(system::modules))
         .route(
             "/system/migrations/interrupted",
             get(system::migrations_interrupted),
