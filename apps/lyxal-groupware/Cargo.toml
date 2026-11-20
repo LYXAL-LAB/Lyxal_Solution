@@ -1,0 +1,51 @@
+[package]
+name = "lyxal-groupware"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+# Hôte du courrier, des agendas et des contacts : lie des crates AGPL (`lyxal_mail`) et porte du
+# code de Stalwart (décision P2) ; seul binaire de Lyxal OS sous AGPL (décision P3).
+license = "AGPL-3.0-only"
+publish = false
+description = "Hôte dédié du courrier, des agendas et des contacts de Lyxal OS (écoutes réseau supervisées)"
+
+[lib]
+name = "lyxal_groupware"
+path = "src/lib.rs"
+
+[[bin]]
+name = "lyxal-groupware"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+async-trait.workspace = true
+axum.workspace = true
+config.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+surrealdb.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["net", "io-util"] }
+tokio-util.workspace = true
+tracing.workspace = true
+lyxal_error.workspace = true
+lyxal_host = { workspace = true, features = ["host"] }
+lyxal_mail.workspace = true
+lyxal_runtime.workspace = true
+# Options des sockets d'écoute (SO_REUSEADDR, SO_REUSEPORT, file d'attente, keepalive)
+socket2 = { version = "0.6", features = ["all"] }
+# Délai d'écriture d'une connexion (client qui ne lit plus), comme lyxal_host pour HTTP
+tokio-io-timeout = "1.2"
+
+[build-dependencies]
+lyxal_host = { workspace = true, features = ["build"] }
+
+[dev-dependencies]
+tempfile.workspace = true
+tower = { workspace = true, features = ["util"] }
+tracing-subscriber.workspace = true
+# Essais à deux hôtes (décision G16) : le vrai lyxal-server, dans ce sens seulement (code MIT
+# dans un banc AGPL) ; lyxal-server ne dépend jamais de ce paquet.
+lyxal-server = { path = "../lyxal-server" }
+lyxal_crypto.workspace = true

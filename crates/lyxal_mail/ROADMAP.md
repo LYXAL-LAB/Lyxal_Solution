@@ -1,6 +1,6 @@
 # Feuille de route — `lyxal_mail`
 
-Évolutions à venir du crate (à créer). Son objet est décrit par le [`README.md`](README.md), les
+Évolutions à venir du crate (squelette au lot 3). Son objet est décrit par le [`README.md`](README.md), les
 études et les mesures par [`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md), la provenance des
 sources par [`SOURCES.md`](SOURCES.md). Le programme est décrit par `implementation_plan.md` à la
 racine du dépôt ; chaque lot a son propre plan, validé par le CTO avant toute ligne de code
@@ -10,7 +10,7 @@ racine du dépôt ; chaque lot a son propre plan, validé par le CTO avant toute
 
 | Lot | Contenu pour ce crate | Sources principales | Prérequis |
 | :- | :--- | :--- | :--- |
-| 3 — Hôte et socle réseau | Squelette du module ; écoutes supervisées, TLS (certificat fourni), limites par IP, délais, budget mémoire, DNS dans `apps/lyxal-groupware` | Stalwart `common/network` ; Mox | lots 0, 2 ; **correctifs du runtime et du moteur d'événements** relevés au lot 0 (deux hôtes sur une base) |
+| 3c — TLS et PROXY | TLS implicite et STARTTLS (`TlsUpgrade` de l'hôte), certificats fournis par fichiers et rechargés à chaud, PROXY protocol v1 et v2, dans `apps/lyxal-groupware` (plan : `apps/lyxal-groupware/implementation_plan.md`) | Stalwart `common/network` | lots 2, 3b |
 | 4 — Socle courrier | Domaines, adresses, alias, boîtes, messages, quotas, droits, erreurs `MAIL_*`, événements ; **chiffrement au repos (niveau A)** ; drapeau « chiffré » réservé | Stalwart `email` (modèle), Mox `store` | lot 0 |
 | 5 — Réception SMTP | Serveur SMTP entrant, refus dès `RCPT TO`, SPF / DKIM / DMARC, `Authentication-Results`, antivirus, remise en boîte, événement `mail.message.received` ; ordre de remise fixé : antivirus → anti-spam → filtres → index → chiffrement | Stalwart `smtp/inbound` ; Mox `smtpserver` | lots 2, 3, 4 |
 | 6 — Envoi | File par destination, tentatives, envoi vers les MX, dépôt authentifié (587 / 465), signature DKIM, avis de non-remise, adresses de retour signées, contrat public de dépôt | Stalwart `smtp/queue`, `smtp/outbound` ; Mox `queue`, `smtpclient`, `dsn` ; KumoMTA | lots 1, 5 |
@@ -37,9 +37,11 @@ Mesures et essais détaillés dans [`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md
   dossier. L'index plein texte de SurrealDB 3.3.4 répond vite sur un mot, mais combiner un mot
   fréquent, un dossier et un tri par date est lent : à mesurer de nouveau avec le moteur de
   recherche retenu au lot 9.
-* **Deux hôtes sur une base (avant le lot 3).** Le moteur d'événements élit un seul worker pour
-  toute la base, qui ne sert que les handlers de son propre hôte : un correctif du runtime et de
-  `lyxal_event` a son propre plan avant le lot 3.
+* **Résolveur DNS (lot 5).** `hickory-resolver` 0.26, une instance par nœud, construit au lot 5
+  avec les contrôles SPF, DKIM et DMARC de `mail-auth` (écart E2 du lot 3).
+* **Liste de blocage et bannissement (lot 5).** Table de `lyxal_mail`, entrées validées par
+  `fn::validation_ip` / `fn::validation_cidr` ; limites partagées entre nœuds à décider (au lot 3,
+  les compteurs par réseau sont en mémoire, par nœud).
 
 ## Chiffrement des boîtes (décision C7)
 

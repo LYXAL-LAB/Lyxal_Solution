@@ -1,10 +1,36 @@
-# `lyxal_mail` — serveur de courrier (à créer)
+# `lyxal_mail` — serveur de courrier (squelette)
 
-**État : à créer.** Ce dossier ne contient que des documents : pas de `Cargo.toml`, pas de code.
-Le crate n'est pas membre du workspace. Il est inscrit « à créer » dans `.agents/AGENTS.md` §6
-(Noyau Technique, après `lyxal_notification`) et dans
-[`docs/14-roadmap/ROADMAP_NOYAU.md`](../../docs/14-roadmap/ROADMAP_NOYAU.md). Aucun code avant le
-plan de lot validé par le CTO (`.agents/AGENTS.md` §3).
+**État : squelette (lot 3 du programme courrier).** Le crate est membre du workspace et ne
+contient que du Rust : le contrat réseau des sessions (`lyxal_mail::net`), les limites appliquées
+à l'acceptation et les lignes de refus poli. Aucune table, aucune fonction SurrealQL, aucun code
+d'erreur `MAIL_*` : ils arrivent au lot 4 (écart E3 du plan du lot 3). Le module est installé et
+démarré par l'hôte `apps/lyxal-groupware`, qui le porte par un `ManifestModule` et lui rattache
+ses écoutes (workers `lyxal_mail:mail.listener.<id>`). Inscrit au Noyau Technique dans
+`.agents/AGENTS.md` §6 et dans
+[`docs/14-roadmap/ROADMAP_NOYAU.md`](../../docs/14-roadmap/ROADMAP_NOYAU.md).
+
+Version `0.1.0` (régime pré-production, `.agents/AGENTS.md` §0).
+
+## État actuel : `lyxal_mail::net`
+
+| Élément | Rôle |
+| :--- | :--- |
+| `Session`, `ConnectionInfo`, `SessionLimits`, `TlsState`, `TlsInfo` | Ce que l'hôte remet à un protocole pour chaque connexion acceptée : flux, adresses (après PROXY), état TLS, délais, jeton d'arrêt du nœud, mémoire réservée |
+| `SessionHandler`, `SessionEnd` | Ce qu'un protocole implémente (lots 5 à 10) |
+| `TlsUpgrade`, `Session::start_tls` | Mise à niveau STARTTLS offerte par l'hôte (seul détenteur de `tokio-rustls`) ; refus de toute entrée lue avant la mise à niveau (`NetError::PipelinedBeforeTls` : injection de commandes en clair) ; implémentation par l'hôte au lot 3c |
+| `MailProtocol`, `TlsMode`, `NetError` | Protocole et mode TLS d'une écoute ; erreurs du transport (internes : jamais renvoyées à un client ni écrites en base) |
+| `ConnectionLimiter`, `InFlight` | Plafond de connexions simultanées d'une écoute ; place rendue à la libération (porté de Stalwart) |
+| `IpRateLimiter`, `WindowLimit` | Limites par réseau à fenêtres fixes, trois niveaux (IPv4 `/32`, `/26`, `/21` ; IPv6 `/64`, `/48`, `/32`) ; fenêtre sans fin pour les connexions ouvertes ; nombre de réseaux suivis borné (transposé de Mox) |
+| `MemoryBudget`, `MemoryReservation`, `MemoryClass` | Budget mémoire du processus en deux classes (réception SMTP, lecture), plancher d'un quart par classe, réservations par pas de 64 Kio rendues à la libération, portée annulable ; la somme réservée ne dépasse jamais le budget (porté de Stalwart) |
+| `refusal_line`, `RefusalReason`, `UnavailableHandler` | Ligne de refus poli par protocole (`421` SMTP, `* BYE` IMAP, `-ERR` POP3, `BYE` ManageSieve), sans donnée du client ; handler « service indisponible » des protocoles pas encore écrits (retiré au lot 10) |
+
+Dépendances au lot 3 : `tokio`, `tokio-util`, `async-trait`, `thiserror` ; aucun crate Lyxal,
+aucune crate cryptographique.
+
+Vérification : `cargo test -p lyxal_mail` (limiteur par réseau avec les cas d'essai de Mox
+transposés, plafond rendu même sur annulation, budget mémoire dont une propriété `proptest`,
+lignes de refus, mise à niveau STARTTLS refusée sur entrée déjà lue). L'usage réel (sockets,
+runtime) est essayé par `cargo test -p lyxal-groupware`.
 
 Le programme courrier, agendas et contacts (architecture, 23 lots, décisions F1 à F5 et P1 à P15
 du CTO) est décrit par `implementation_plan.md` à la racine du dépôt. Chaque lot a son plan
@@ -31,10 +57,12 @@ gardent une référence et des métadonnées. Les syntaxes des protocoles sont d
 
 ## Licence
 
-Le crate déclarera `license = "AGPL-3.0-only"` dans son propre `Cargo.toml` (décision P2), et
+Le crate déclare `license = "AGPL-3.0-only"` dans son propre `Cargo.toml` (décision P2), et
 non la licence `MIT OR Apache-2.0` du workspace : une grande partie de son code est portée de
 Stalwart (`AGPL-3.0-only OR LicenseRef-SEL`, option AGPL retenue). Les parties reprises de Mox
-(MIT) et d'autres projets permissifs gardent leurs mentions. Les fichiers et extraits de
+(MIT) et d'autres projets permissifs gardent leurs mentions (`LICENSES/` : texte de l'AGPL-3.0
+et avis MIT de Mox). Aucun paquet du workspace sous licence permissive ne dépend de ce crate
+(contrôle `scripts/ci/check_agpl_isolation.py`). Les fichiers et extraits de
 Stalwart sous `LicenseRef-SEL` seule (licence Entreprise, propriétaire) ne sont jamais utilisés
 (décision F5) : les fonctions correspondantes, dont les organisations multiples et leurs quotas,
 sont écrites pour Lyxal sur `lyxal_auth` et `lyxal_storage`. Chaque élément porté est inscrit
@@ -46,7 +74,7 @@ dans [`SOURCES.md`](SOURCES.md). Les conséquences de licence sont traitées par
 | Lot | Apport à ce crate |
 | :- | :--- |
 | 0 — Cadre | Ce dossier, les sources figées, le tri du code propriétaire, les mesures de SurrealDB |
-| 3 — Hôte et socle réseau | Squelette du module ; écoutes supervisées dans `apps/lyxal-groupware` |
+| 3 — Hôte et socle réseau | Squelette du module (fait : `lyxal_mail::net`) ; écoutes supervisées dans `apps/lyxal-groupware` ; TLS implicite, STARTTLS et PROXY à venir (3c) |
 | 4 — Socle courrier | Domaines, adresses, alias, boîtes, messages, quotas, droits, erreurs, événements ; chiffrement au repos (niveau A) |
 | 5 — Réception SMTP | Serveur SMTP entrant, SPF / DKIM / DMARC, antivirus, remise en boîte |
 | 6 — Envoi | File par destination, envoi vers les MX, dépôt authentifié, signature DKIM, avis de non-remise |

@@ -18,6 +18,7 @@ step() { printf '\n========== %s ==========\n' "$1"; }
 step "Formatage";            cargo fmt --all -- --check
 step "Clippy";               scripts/ci/clippy.sh
 step "Licences des dépendances"; scripts/ci/install_cargo_deny.sh; cargo deny check licenses
+step "Isolement des paquets AGPL"; python3 -I scripts/ci/check_agpl_isolation.py
 step "Test du tri des sources"; python3 -I scripts/sources/tests/test_strip_sel.py
 step "SurrealQL";            scripts/ci/validate_surql.sh
 step "Auto-test du banc lyxal_core"; python3 -I scripts/ci/test_lyxal_core_selftest.py

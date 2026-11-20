@@ -1,0 +1,31 @@
+# Production. Aucune écoute de courrier : le port 25 n'est pas ouvert sur Internet avant le lot 5
+# (réception SMTP), il ne répondrait qu'un refus poli. Les ports 465, 587, 993, 143, 995, 110 et 4190 arrivent
+# avec la prise en charge du TLS (lot 3c).
+
+[application]
+name = "Lyxal Groupware"
+environment = "production"
+
+[http]
+bind = "127.0.0.1:8090"
+graceful_shutdown_seconds = 30
+
+[database]
+endpoint = "wss://db.interne:8000"
+namespace = "lyxal"
+database = "system"
+connect_timeout_seconds = 15
+
+[observability]
+log_filter = "info"
+json_logs = true
+include_target = false
+include_thread_ids = false
+log_client_ip = "network"
+
+# Écoute de réception SMTP, à décommenter au lot 5 :
+# [[listeners]]
+# id = "smtp"
+# protocol = "smtp"
+# bind = ["0.0.0.0:25", "[::]:25"]
+# tls = "none"

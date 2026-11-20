@@ -1,0 +1,15 @@
+# Module lyxal_mail, hébergé par l'hôte lyxal-groupware (décision P3). Lot 3 : squelette en Rust
+# seul (contrat réseau des sessions, limites, budget mémoire) ; aucune ressource SurrealQL (écart
+# E3) : la première table vient au lot 4. Porté dans l'hôte par un ManifestModule, auquel sont
+# rattachés les workers des écoutes (`lyxal_mail:mail.listener.<id>`).
+manifest_version = 1
+id = "lyxal_mail"
+name = "Lyxal Mail"
+version = "0.1.0"
+description = "Serveur de courrier de Lyxal OS (squelette : écoutes supervisées par l'hôte lyxal-groupware)"
+capabilities = ["mail"]
+
+[runtime]
+min_version = ">=0.1.0"
+
+[resources]

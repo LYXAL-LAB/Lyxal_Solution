@@ -35,15 +35,14 @@ Un crate créé est retiré de ce document : son état est alors décrit par son
 
 ## Crates à créer : programme courrier, agendas et contacts
 
-Cinq crates et un hôte, inscrits « à créer » dans `.agents/AGENTS.md` §6 après
-`lyxal_notification`. Le programme (architecture, sources, 23 lots, décisions F1 à F5 et P1 à
+Cinq crates, inscrits dans `.agents/AGENTS.md` §6 après `lyxal_notification` ; l'hôte dédié
+`apps/lyxal-groupware` est créé (lot 3, son état est décrit par son `README.md`). Le programme (architecture, sources, 23 lots, décisions F1 à F5 et P1 à
 P15 du CTO) est décrit par `implementation_plan.md` à la racine du dépôt ; chaque lot a son
 propre plan, validé avant tout code. L'ordre de création est celui des lots :
 
 | Rang | Élément | Créé par le lot | Complété par les lots | Dossier |
 | :-: | :--- | :--- | :--- | :--- |
-| 1 | `apps/lyxal-groupware` (hôte dédié, décision P3) | 3 — hôte et socle réseau | 5, 6, 8, 10, 12, 13, 15 et suivants (écoutes) | à créer au lot 3 |
-| 2 | `lyxal_mail` (squelette au lot 3, module au lot 4) | 3 et 4 — socle courrier | 5 à 13 (réception, envoi, IMAP, recherche, Sieve, anti-spam, JMAP, administration) | [`crates/lyxal_mail`](../../crates/lyxal_mail/README.md) |
+| 2 | `lyxal_mail` (squelette créé au lot 3 : contrat réseau, limites, budget mémoire ; module au lot 4) | 3 et 4 — socle courrier | 5 à 13 (réception, envoi, IMAP, recherche, Sieve, anti-spam, JMAP, administration) | [`crates/lyxal_mail`](../../crates/lyxal_mail/README.md) |
 | 3 | `lyxal_mail_proto` | 4 — socle courrier | 5, 7, 8, 9, 10, 12 (syntaxes portées) | [`crates/lyxal_mail_proto`](../../crates/lyxal_mail_proto/README.md) |
 | 4 | `lyxal_dav` | 14 — formats agenda et contact | 15 (socle WebDAV) | [`crates/lyxal_dav`](../../crates/lyxal_dav/README.md) |
 | 5 | `lyxal_calendar` | 16 — CalDAV | 17, 18, 20 (tâches, partage, planification, JMAP) | [`crates/lyxal_calendar`](../../crates/lyxal_calendar/README.md) |
@@ -55,9 +54,10 @@ d'application, dans `lyxal_auth`) ; le lot 2 (extensions de `lyxal_crypto`). Les
 19 ne dépendent pas du courrier : le CTO peut les avancer après le lot 3 (décision P9). Les
 lots 21 et 22 (durcissement, essais réels, clôture) portent sur les cinq crates.
 
-Au lot 0, chaque dossier ne contient que des documents (`README.md`, `SOURCES.md`,
-`ROADMAP.md`, et `RECHERCHE_SOURCES.md` pour `lyxal_mail` et `lyxal_calendar`) : pas de
-`Cargo.toml`, pas de code. Ces crates ne sont pas membres du workspace.
+Depuis le lot 0, chaque dossier contient ses documents (`README.md`, `SOURCES.md`,
+`ROADMAP.md`, et `RECHERCHE_SOURCES.md` pour `lyxal_mail` et `lyxal_calendar`). `lyxal_mail` est
+membre du workspace depuis le lot 3 (squelette Rust, licence `AGPL-3.0-only`) ; les quatre autres
+crates n'ont encore ni `Cargo.toml` ni code.
 
 Règles propres à ce programme (décisions F4, F5, P2, P3) :
 

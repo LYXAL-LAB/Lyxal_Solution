@@ -1,0 +1,9 @@
+# Développement : écoutes sur 127.0.0.1, ports non privilégiés. Les écoutes chiffrées (TLS
+# implicite : 2465, 1993, 1995 ; STARTTLS : 2587, 1143, 1110, 4190) arrivent avec la prise en
+# charge du TLS (lot 3c) : d'ici là, seule la réception SMTP en clair est permise.
+
+[[listeners]]
+id = "smtp"
+protocol = "smtp"
+bind = ["127.0.0.1:2525"]
+tls = "none"

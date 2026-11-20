@@ -1,0 +1,42 @@
+# Configuration de base de lyxal-groupware, complétée par config/<LYXAL_ENV>.toml puis par les
+# variables LYXAL_GROUPWARE__<SECTION>__<CLÉ>. Identifiants de la base : variables
+# LYXAL_GROUPWARE__DATABASE__USERNAME et LYXAL_GROUPWARE__DATABASE__PASSWORD seulement.
+# Aucune écoute de courrier par défaut.
+
+[application]
+name = "Lyxal Groupware"
+environment = "development"
+
+[http]                       # santé et mesures : /live, /ready, /health, /metrics
+bind = "127.0.0.1:8090"
+graceful_shutdown_seconds = 30
+
+[database]                   # même base que lyxal-server
+endpoint = "ws://127.0.0.1:8000"
+namespace = "lyxal"
+database = "system"
+connect_timeout_seconds = 15
+
+[runtime]
+module_install_timeout_seconds = 120
+module_start_timeout_seconds = 30
+module_stop_timeout_seconds = 45
+
+[limits]
+memory_budget_bytes = 536870912          # 512 Mio
+connection_base_bytes = 65536            # 64 Kio par connexion
+max_connections = 4096                   # par écoute
+connections_per_network = [30, 90, 270]  # ouvertes : /32, /26, /21 (IPv6 : /64, /48, /32)
+connections_per_minute = [300, 900, 2700]
+max_tracked_networks = 100000
+deny_networks = []
+allow_networks = []
+exempt_networks = []
+drain_seconds = 30
+
+[observability]
+log_filter = "info,lyxal_groupware=debug"
+json_logs = false
+include_target = true
+include_thread_ids = false
+log_client_ip = "network"

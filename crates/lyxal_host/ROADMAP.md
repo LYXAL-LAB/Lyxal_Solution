@@ -6,21 +6,20 @@ validé (`.agents/AGENTS.md` §3).
 
 | Étape | Thème | Dépendances |
 | :--- | :--- | :--- |
-| 1 | Second hôte `lyxal-groupware` | lot 3 du programme courrier (3b, 3c) |
+| 1 | Port HTTP de `lyxal-groupware` derrière PROXY ou TLS | lot 3 du programme courrier (3c) |
 
 ---
 
-## 1. Second hôte `lyxal-groupware`
+## 1. Port HTTP de `lyxal-groupware` derrière PROXY ou TLS
 
-Plan : `apps/lyxal-groupware/implementation_plan.md` (lot 3 du programme courrier, demandes de
-fusion 3b et 3c). `lyxal-groupware` démarre par `lyxal_host` comme `lyxal-server`.
+Plan : `apps/lyxal-groupware/implementation_plan.md` (lot 3 du programme courrier, demande de
+fusion 3c). `lyxal-groupware` démarre déjà par `lyxal_host` comme `lyxal-server`
+(`load_layered` au préfixe `LYXAL_GROUPWARE`, `connect_database`, `install_foundation` avec les
+définitions `GROUPWARE_*`, `health_routes`, `serve`, `shutdown`, `telemetry`,
+`build::embed_modules`, `net::log_network`).
 
 Critères d'acceptation :
 
-- [ ] `lyxal-groupware` utilise `load_layered` (préfixe `LYXAL_GROUPWARE`), `connect_database`,
-      `install_foundation` (définitions `GROUPWARE_*`), `health_routes`, `serve`, `shutdown`,
-      `telemetry` et `build::embed_modules`, sans recopie ;
 - [ ] `serve_connection` sert le port HTTP de l'hôte sur un flux déjà passé par PROXY ou TLS ;
-- [ ] `net::log_network` : adresse d'un client masquée à son réseau pour le journal (IPv4 `/24`,
-      IPv6 `/48`), ajoutée avec son premier appelant ;
-- [ ] aucun code porté AGPL ou GPL dans ce crate (relecture et contrôle de CI de l'isolement AGPL).
+- [ ] aucun code porté AGPL ou GPL dans ce crate (relecture ; le contrôle de CI
+      `scripts/ci/check_agpl_isolation.py` garantit déjà qu'il ne dépend d'aucun paquet AGPL).

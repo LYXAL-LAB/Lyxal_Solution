@@ -2,7 +2,9 @@
 
 `lyxal-server` est le binaire qui fait tourner Lyxal OS : il charge la configuration, se connecte
 à SurrealDB, installe et démarre les modules par `lyxal_runtime`, puis sert l'API HTTP système.
-Il ne contient aucune logique métier (`AGENTS.md` §5.8.5).
+Il ne contient aucune logique métier (`AGENTS.md` §5.8.5). Il partage sa base avec le second
+hôte, [`lyxal-groupware`](../lyxal-groupware/README.md) (courrier, agendas, contacts), et ne lie
+aucun paquet AGPL (`scripts/ci/check_agpl_isolation.py`).
 
 Le code commun aux hôtes (chargement de la configuration en couches, connexion à la base et refus
 de l'accès anonyme, santé et routes `/live`, `/ready`, `/health`, journal, signal d'arrêt,
@@ -371,7 +373,7 @@ cargo run -p lyxal-server
 | `GET /`, `GET /api/v1/system/info` | Nom, version, environnement, instance. |
 | `GET /live` | `204` tant que le processus répond. |
 | `GET /ready` | `204` si le serveur et la base sont opérationnels, sinon `503`. |
-| `GET /health` | Statuts des composants (serveur, base) et des modules (sondes `ModuleHealthCheck` évaluées par le runtime), sans détail interne ; `503` si un module est en panne. |
+| `GET /health` | `{ host, modules }` : statuts des composants de l'hôte (serveur, base) et des modules (sondes `ModuleHealthCheck` évaluées par le runtime), sans détail interne ; `503` si un module est en panne. Même contrat que `lyxal-groupware` (`lyxal_host`). |
 | `GET /metrics` | Compteurs de requêtes et durée de fonctionnement. |
 | 🔒 `GET /api/v1/system/modules` | Hôte (`host`) et nœud (`node_id`) de ce processus ; modules hébergés (`modules` : identifiant, nom, version, état) ; nœuds vivants de la base, de tous les hôtes (`nodes` : `node_id`, `host`, `modules` démarrés, `started_at`, `seen_at`, `current` pour ce processus ; battement de moins de 30 s), du plus récent au plus ancien. |
 | 🔒 `GET /api/v1/system/migrations/interrupted` | Migrations interrompues ou abandonnées (`?module=` pour un seul module) : module, migration, version, script, nœud, état, début, dernière décision. |
