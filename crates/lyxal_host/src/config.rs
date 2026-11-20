@@ -122,8 +122,12 @@ pub fn load_layered<T: DeserializeOwned>(
         .source(variables)
         .prefix_separator("__")
         .separator("__")
-        .try_parsing(true)
-        .list_separator(",");
+        .try_parsing(true);
+    // Sans clé de liste déclarée, `config` découperait toute valeur en liste : le séparateur
+    // n'est posé que pour les clés de `list_keys`, les autres valeurs restent des chaînes.
+    if !list_keys.is_empty() {
+        environment_source = environment_source.list_separator(",");
+    }
     for key in list_keys {
         environment_source = environment_source.with_list_parse_key(key);
     }
@@ -223,6 +227,20 @@ mod tests {
         .expect("configuration");
         assert_eq!(sample.section.name, "environnement");
         assert_eq!(sample.section.items, ["a", "b"]);
+    }
+
+    #[test]
+    fn without_list_keys_environment_values_stay_strings() {
+        let directory = config_directory("[section]\nname = \"fichier\"\n");
+        let sample: Sample = load_layered(
+            directory.path(),
+            "ESSAI",
+            &[],
+            &[],
+            variables(&[("ESSAI__SECTION__NAME", "environnement")]),
+        )
+        .expect("configuration");
+        assert_eq!(sample.section.name, "environnement");
     }
 
     #[test]
