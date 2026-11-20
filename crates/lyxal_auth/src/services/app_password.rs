@@ -24,7 +24,8 @@ use crate::error::{AuthError, AuthResult};
 use crate::models::{
     AppPasswordCreateParams, AppPasswordFailureParams, AppPasswordRevokeParams,
     AppPasswordSessionIssued, AppPasswordSessionRenewParams, AppPasswordSummary,
-    AppPasswordVerifyParams, AuthDatetime, AuthRecordId, ClientInfo, SessionCaller, SessionIssued,
+    AppPasswordVerifyParams, AuthDatetime, AuthRecordId, ClientInfo, SessionCaller,
+    SessionCheckParams, SessionIssued,
 };
 use crate::services::keys::SigningKeyService;
 use crate::services::tokens::access_token;
@@ -177,6 +178,8 @@ pub enum AppPasswordTarget {
 
 struct CachedLogin {
     valid_until: Instant,
+    /// Émission du jeton : la durée restante est rendue à chaque lecture.
+    issued_at: Instant,
     order: u64,
     login: AppPasswordLogin,
 }
@@ -192,7 +195,8 @@ struct LoginCache {
 }
 
 impl LoginCache {
-    fn get(&mut self, key: &str) -> Option<&AppPasswordLogin> {
+    /// Vérification gardée et durée de validité restante de son jeton (secondes).
+    fn get(&mut self, key: &str) -> Option<(&AppPasswordLogin, i64)> {
         let expired = self
             .entries
             .get(key)
@@ -200,7 +204,13 @@ impl LoginCache {
         if expired {
             self.remove(key);
         }
-        self.entries.get(key).map(|entry| &entry.login)
+        self.entries.get(key).map(|entry| {
+            let elapsed = i64::try_from(entry.issued_at.elapsed().as_secs()).unwrap_or(i64::MAX);
+            (
+                &entry.login,
+                entry.login.expires_in.saturating_sub(elapsed).max(0),
+            )
+        })
     }
 
     fn insert(&mut self, key: String, login: AppPasswordLogin, valid_for: Duration) {
@@ -217,10 +227,12 @@ impl LoginCache {
         let order = self.next;
         self.next += 1;
         self.arrivals.insert(order, key.clone());
+        let now = Instant::now();
         self.entries.insert(
             key,
             CachedLogin {
-                valid_until: Instant::now() + valid_for,
+                valid_until: now + valid_for,
+                issued_at: now,
                 order,
                 login,
             },
@@ -369,8 +381,26 @@ impl<R: KeyResolver + 'static> AppPasswordService<R> {
             )
             .as_bytes(),
         );
-        if let Some(login) = self.cache.lock().await.get(&cache_key) {
-            return login.duplicate();
+        // Vérification gardée : la session est revérifiée par la base (révocation, droits
+        // modifiés) ; obsolète ou révoquée, l'entrée est oubliée et la connexion refaite, ce qui
+        // réémet un jeton aux droits recalculés
+        let cached = match self.cache.lock().await.get(&cache_key) {
+            Some((login, remaining)) => Some((login.duplicate()?, remaining)),
+            None => None,
+        };
+        if let Some((mut login, remaining)) = cached {
+            let current = self
+                .store
+                .session_check(SessionCheckParams {
+                    session: login.session.session.to_sql(),
+                    pv: login.session.version,
+                })
+                .await;
+            if current.is_ok() {
+                login.expires_in = remaining;
+                return Ok(login);
+            }
+            self.cache.lock().await.remove(&cache_key);
         }
         let issued = self
             .store

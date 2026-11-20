@@ -373,3 +373,68 @@ async fn renewal_reflects_a_withdrawn_right_without_the_password() {
     assert_eq!(revoked, 1);
     assert_eq!(access.app_passwords().cached_logins().await, 0);
 }
+
+#[tokio::test]
+async fn a_cached_login_is_refreshed_when_its_session_is_stale_and_reports_its_remaining_lifetime()
+{
+    let store = installed_store().await;
+    let access = service(&store).await;
+    let caller = member(&store).await;
+    let issued = access
+        .app_passwords()
+        .create(
+            &caller,
+            "Téléphone",
+            vec!["calendar.access".into(), "mail.mailbox.access".into()],
+            None,
+        )
+        .await
+        .expect("création");
+    let password = issued.password.expose_secret().to_string();
+    let first = access
+        .app_passwords()
+        .authenticate(attempt(&password, "203.0.113.9", true))
+        .await
+        .expect("connexion");
+    assert_eq!(first.expires_in, 900);
+
+    // Vérification gardée lue plus tard : le jeton rendu est le même, avec sa durée restante
+    tokio::time::sleep(std::time::Duration::from_millis(1_100)).await;
+    let cached = access
+        .app_passwords()
+        .authenticate(attempt(&password, "203.0.113.9", true))
+        .await
+        .expect("connexion gardée");
+    assert_eq!(
+        cached.access_token.expose_secret(),
+        first.access_token.expose_secret()
+    );
+    assert!(
+        cached.expires_in < first.expires_in,
+        "durée restante rendue : {}",
+        cached.expires_in
+    );
+
+    // Droit retiré : le jeton gardé devient obsolète ; la connexion suivante n'est pas servie
+    // par la mémoire, elle réémet un jeton utilisable aux droits recalculés
+    store
+        .client()
+        .query("DELETE auth_role_grants WHERE in = auth_role:messagerie AND out = auth_permission:⟨calendar.access⟩")
+        .await
+        .expect("retrait")
+        .check()
+        .expect("retrait accepté");
+    let refreshed = access
+        .app_passwords()
+        .authenticate(attempt(&password, "203.0.113.9", true))
+        .await
+        .expect("connexion après retrait");
+    assert_ne!(
+        refreshed.access_token.expose_secret(),
+        first.access_token.expose_secret()
+    );
+    assert_eq!(refreshed.session.permissions, vec!["mail.mailbox.access"]);
+    let connection = user_connection(&store, &refreshed.access_token).await;
+    assert!(allowed(&connection, "mail.mailbox.access").await);
+    assert!(!allowed(&connection, "calendar.access").await);
+}
