@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 rust-version = "1.85"
 license.workspace = true
-description = "Moteur de chiffrement AES-256-GCM, hachage, HMAC, HKDF, Argon2id, signatures ES256 et RS256, chiffrement Web Push et gestion des clés du Noyau Technique Lyxal OS"
+description = "Moteur de chiffrement AES-256-GCM, chiffrement de fichiers en flux, TLS côté serveur, hachage, HMAC, HKDF, Argon2id, signatures ES256 et RS256, chiffrement Web Push et gestion des clés du Noyau Technique Lyxal OS"
 
 [dependencies]
 aes-gcm = { version = "=0.10.3", features = ["zeroize"] }
@@ -28,7 +28,22 @@ hkdf = "0.12"
 # Twilio (src/hmac.rs), signatures ES256 et RS256 des jetons push (src/signing.rs), chiffrement
 # Web Push RFC 8291 (src/webpush.rs).
 ring = "0.17"
+# TLS côté serveur (lot 2 du programme courrier, P6 a ; décisions C1, C3, C7) : configuration
+# rustls construite ici seulement, fournisseur aws-lc-rs passé explicitement (jamais
+# `ServerConfig::builder()`, qui s'arrête par un panic! quand les deux fournisseurs de rustls
+# sont actifs, cas du workspace). Déjà dans l'arbre par surrealdb, reqwest et lettre.
+rustls = { version = "0.23.46", default-features = false, features = ["std", "tls12", "aws_lc_rs"] }
+rustls-pki-types = { version = "1.15", features = ["std"] }
 
 [dev-dependencies]
 tempfile = { workspace = true }
 proptest = "1.5"
+# Lecture des vecteurs Wycheproof (tests/fixtures/wycheproof/) du chemin AES-256-GCM du flux.
+serde_json = { workspace = true }
+# Tests TLS seulement : le fournisseur `ring` de rustls est activé ici pour reproduire la
+# configuration du workspace (deux fournisseurs actifs) dans le test de non-régression du
+# panic! de `ServerConfig::builder()` ; tokio-rustls pour une poignée de main de bout en bout
+# comme l'hôte la fera (TlsAcceptor), sans réseau (tokio::io::duplex).
+rustls = { version = "0.23.46", default-features = false, features = ["std", "tls12", "aws_lc_rs", "ring"] }
+tokio = { workspace = true, features = ["io-util"] }
+tokio-rustls = { version = "0.26.4", default-features = false, features = ["tls12", "aws_lc_rs"] }

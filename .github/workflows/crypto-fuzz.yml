@@ -1,6 +1,6 @@
-# Fuzzing de lyxal_crypto (4 cibles : envelope, context, phc, rotation ; LeakSanitizer actif).
-# Campagne courte sur toute PR qui modifie le crate, campagne longue chaque semaine ou à la
-# demande. Outillage épinglé dans scripts/ci/crypto_fuzz.sh.
+# Fuzzing de lyxal_crypto (6 cibles : envelope, context, phc, rotation, stream_open, tls_pem ;
+# LeakSanitizer actif). Campagne courte sur toute PR qui modifie le crate, campagne longue
+# chaque semaine ou à la demande. Outillage épinglé dans scripts/ci/crypto_fuzz.sh.
 name: Fuzzing lyxal_crypto
 
 on:

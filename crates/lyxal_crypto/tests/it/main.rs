@@ -19,4 +19,7 @@ mod protocol_v2;
 mod resource_boundaries;
 mod rotation_v2;
 mod secrets_v2;
+mod stream_proptests;
+mod stream_v1;
+mod tls_server;
 mod totp_vectors;

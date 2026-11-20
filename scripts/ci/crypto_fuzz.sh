@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Campagne de fuzzing de lyxal_crypto (4 cibles, LeakSanitizer actif) : outillage épinglé,
+# Campagne de fuzzing de lyxal_crypto (6 cibles, LeakSanitizer actif) : outillage épinglé,
 # installé s'il manque. Usage : scripts/ci/crypto_fuzz.sh [secondes par cible, défaut 60]
 set -euo pipefail
 

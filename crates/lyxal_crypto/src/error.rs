@@ -140,4 +140,13 @@ pub enum CryptoError {
     #[doc = "allocation failed"]
     #[error("allocation failed")]
     AllocationFailed,
+    #[doc = "invalid certificate"]
+    #[error("invalid certificate")]
+    InvalidCertificate,
+    #[doc = "private key does not match the certificate"]
+    #[error("private key does not match the certificate")]
+    CertificateKeyMismatch,
+    #[doc = "invalid stream header or ciphertext length"]
+    #[error("invalid stream header or ciphertext length")]
+    InvalidStreamHeader,
 }
