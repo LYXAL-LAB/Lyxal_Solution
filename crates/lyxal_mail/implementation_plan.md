@@ -700,6 +700,24 @@ usage) ; `apps/lyxal-groupware/README.md` (modules, configuration) ; `.agents/AG
 | **M19** | Cache en mémoire des clés « fichiers » | **Pas de cache** au lot 4 (règle actuelle de `lyxal_secrets`) ; mesure en 4c ; un cache court, effacé à l'expiration, ne viendrait que sur nouvelle décision |
 | **M20** | Découpage | Quatre demandes de fusion 4a à 4d sous ce plan (§17) |
 
+## 22. Complément : vitesse et contrat d'adhésion (4e, avant 4d)
+
+Les mesures de 4c (README, « Mesures du lot 4c ») montrent que les seuils C5 ne sont pas tenus :
+dépôt à 11 par seconde, page de 50 messages en 1,85 s sous la session d'un membre, conflits du
+compteur par compte. Ce complément est livré avant 4d, en deux demandes de fusion.
+
+| Décision | Contenu |
+| :- | :--- |
+| **P1** | Droits contrôlés **une fois par appel** dans chaque fonction publique `fn::mail_*` (`fn::mail_can` sur le compte visé), puis lectures et écritures du module sans réévaluer la permission de table ligne à ligne. Les permissions de table restent posées (défense en profondeur pour les écritures directes) ; les lectures des fonctions publiques passent par un chemin qui ne les réévalue pas. Essais : un membre ne lit ni n'écrit jamais le compte d'un autre, par chaque fonction publique ; mesure de la page de 50 sous la session d'un membre (cible 100 ms sur 2 000 messages, puis 100 000). |
+| **P2** | Moteur de `lyxal_core` accéléré (`fn::validation_object_execute`, `fn::sanitize_object_execute`, `fn::security_object_execute`, `fn::utils_engine_*`, et le tri `fn::utils_collection_sort_by` en temps n log n) sans changer son contrat ; mesures avant / après dans le README de `lyxal_core`. Aucune validation propre au courrier (§5.7.8). |
+| **P3** | Compteur unique par compte (M6) gardé ; contention remesurée après P1 et P2 (4 écrivains). Repli du §19 (compteur par dossier et journal du compte) seulement si la mesure reste mauvaise, sur nouvelle décision. |
+| **P4** | Contrat public `fn::auth_organization_member_check({ organization, identity })` dans `lyxal_auth` (adhésion active ou non, sous les droits de l'appelant) ; `fn::mail_account_create` l'utilise au lieu de lire `auth_member_of`. |
+
+Découpage : **4e-1** `lyxal_core` (P2) ; **4e-2** `lyxal_auth` et `lyxal_mail` (P1, P3, P4),
+puis 4d.
+
+Validé par le CTO le 21 novembre 2026 (décisions P1 à P4 telles que recommandées).
+
 ## Checklist (`.agents/rules/lyxal_standards_and_checklist.md` §13)
 
 * [ ] **Architecture** : modèle et règles dans `lyxal_mail` ; chiffrement dans `lyxal_storage` ;
