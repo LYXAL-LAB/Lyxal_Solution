@@ -14,6 +14,7 @@ use mail_parser::{
     Address, AddressList, DateTime, HeaderForm, HeaderName, MessageParser, MessagePart, MessageRef,
     PartFlags, PartId, PartKind, Source, TextList,
 };
+use std::collections::HashSet;
 use time::{Date, Month, OffsetDateTime, PrimitiveDateTime, Time, UtcOffset};
 
 use super::{
@@ -304,7 +305,8 @@ impl Context {
         }
         part.is_attachment = !node.embedded
             && match &part.body {
-                PartBody::Multipart(_) => false,
+                // Un `multipart` n'est une pièce jointe que s'il est déclaré comme telle
+                PartBody::Multipart(_) => part.disposition.as_deref() == Some("attachment"),
                 PartBody::Message(_) => true,
                 PartBody::Single => {
                     part.disposition.as_deref() == Some("attachment")
@@ -434,13 +436,16 @@ fn identifiers<'a>(values: impl IntoIterator<Item = &'a str>) -> Vec<String> {
 
 /// Clés de fil : `In-Reply-To`, puis `References` du plus récent au plus ancien.
 fn thread_keys(envelope: &Envelope) -> ThreadKeys {
+    // Ensemble des identifiants déjà rangés : déduplication en temps linéaire, quel que soit le
+    // nombre de `References` (contenu choisi par l'expéditeur)
+    let mut seen: HashSet<&str> = HashSet::new();
     let mut ancestors: Vec<String> = Vec::new();
     for id in envelope
         .in_reply_to
         .iter()
         .chain(envelope.references.iter().rev())
     {
-        if Some(id) != envelope.message_id.as_ref() && !ancestors.contains(id) {
+        if Some(id) != envelope.message_id.as_ref() && seen.insert(id.as_str()) {
             ancestors.push(id.clone());
         }
     }
@@ -501,6 +506,25 @@ mod tests {
         };
         let keys = thread_keys(&envelope);
         assert_eq!(keys.ancestors, vec!["p", "r2", "r1"]);
+    }
+
+    /// Des dizaines de milliers de `References` distinctes se lisent en temps linéaire : la
+    /// déduplication ne reparcourt pas les ancêtres déjà rangés.
+    #[test]
+    fn deduplique_de_tres_nombreux_ancetres_en_temps_lineaire() {
+        let references: Vec<String> = (0..60_000).map(|i| format!("id{i}@exemple.test")).collect();
+        let envelope = Envelope {
+            references,
+            ..Envelope::default()
+        };
+        let started = std::time::Instant::now();
+        let keys = thread_keys(&envelope);
+        assert_eq!(keys.ancestors.len(), 60_000);
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(1),
+            "déduplication en {:?}",
+            started.elapsed()
+        );
     }
 
     #[test]

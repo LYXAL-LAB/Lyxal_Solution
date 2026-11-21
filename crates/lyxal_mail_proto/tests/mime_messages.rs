@@ -561,3 +561,40 @@ fn base64(bytes: &[u8]) -> String {
     }
     out
 }
+
+/// Un `multipart` joint avec `Content-Disposition: attachment` est une pièce jointe ; ses parties
+/// ne le sont pas pour autant.
+#[test]
+fn un_multipart_joint_explicitement_est_une_piece_jointe() {
+    let raw = crlf(
+        "From: a@exemple.test\n\
+         Subject: s\n\
+         MIME-Version: 1.0\n\
+         Content-Type: multipart/mixed; boundary=\"ext\"\n\
+         \n\
+         --ext\n\
+         Content-Type: text/plain\n\
+         \n\
+         Bonjour\n\
+         --ext\n\
+         Content-Type: multipart/alternative; boundary=\"alt\"\n\
+         Content-Disposition: attachment\n\
+         \n\
+         --alt\n\
+         Content-Type: text/plain\n\
+         \n\
+         texte\n\
+         --alt\n\
+         Content-Type: text/html\n\
+         \n\
+         <p>texte</p>\n\
+         --alt--\n\
+         --ext--\n",
+    );
+    let message = read(&raw);
+    let parts = children(&message.structure);
+    assert!(!parts[0].is_attachment);
+    assert!(parts[1].is_attachment, "multipart joint : {:?}", parts[1]);
+    assert!(children(&parts[1]).iter().all(|part| !part.is_attachment));
+    assert!(message.has_attachment);
+}

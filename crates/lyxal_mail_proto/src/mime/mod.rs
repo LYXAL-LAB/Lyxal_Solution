@@ -205,7 +205,8 @@ pub struct BodyPart {
     /// `message/global` (comme `BODYSTRUCTURE` d'IMAP).
     pub lines: Option<u64>,
     /// Vrai si la partie est une pièce jointe : disposition `attachment`, message joint, ou nom
-    /// de fichier sans disposition `inline`. Toujours faux dans un message joint.
+    /// de fichier sans disposition `inline` ; un `multipart`, par sa seule disposition
+    /// `attachment`. Toujours faux dans un message joint.
     pub is_attachment: bool,
     /// Vrai si la partie a été lue avec une réparation (frontière absente ou trouvée en milieu
     /// de ligne, en-tête sans ligne vide, `multipart` non fermé, message joint encodé au-delà de

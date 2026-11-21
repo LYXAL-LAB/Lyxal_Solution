@@ -33,7 +33,7 @@ aperçu, décision M8) :
 | `thread` | `Message-ID` et ancêtres sans doublon, du plus proche au plus lointain (`In-Reply-To`, puis `References` de la fin vers le début) |
 | `base_subject` | Sujet de base (RFC 5256 §2.1) : préfixes de réponse et de transfert retirés par `mail-parser` (`thread_name`), blancs ramenés à une espace |
 | `sent_at` | Date de `Date` (`time::OffsetDateTime`), `None` si absente ou illisible |
-| `has_attachment` | Au moins une pièce jointe : disposition `attachment`, message joint, ou nom de fichier sans disposition `inline` (parties des messages joints exclues) |
+| `has_attachment` | Au moins une pièce jointe : disposition `attachment`, message joint, ou nom de fichier sans disposition `inline` ; un `multipart` par sa seule disposition `attachment` (parties des messages joints exclues) |
 | `is_report` | Partie racine `multipart/report` (avis de non-remise : pas de rapprochement de fil par le sujet) |
 
 `parse` ne rejette presque rien : un message reçu se garde même mal formé (frontière absente,
