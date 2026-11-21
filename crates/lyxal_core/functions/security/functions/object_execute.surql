@@ -25,9 +25,9 @@ DEFINE FUNCTION OVERWRITE fn::security_object_execute(
     $max_steps: int
 ) -> object {
     LET $normalized = fn::utils_engine_schema($schema, fn::security_step_catalog(), $max_steps);
-    RETURN fn::security_step_result(
-        fn::utils_engine_run_object(fn::utils_engine_state($value, "", NONE), $normalized, |$current, $step| fn::security_step_apply($current, $step))
-    );
+    LET $outcome = fn::utils_engine_run_object(fn::utils_engine_state($value, "", NONE), $normalized, |$current, $step| fn::security_step_apply($current, $step));
+    LET $result = fn::security_step_result($outcome);
+    RETURN $result;
 }
 COMMENT "Applique un schéma du moteur dont les pipelines utilisent le catalogue security à un objet, champ par champ (ex. masquer email et téléphone, détecter une injection dans un commentaire) ; renvoie { value, findings, score, decisions, allowed, errors }."
 PERMISSIONS FULL;

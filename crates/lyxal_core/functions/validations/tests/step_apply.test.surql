@@ -13,3 +13,6 @@ RETURN fn::validation_step_apply(fn::utils_engine_state("x", "f", NONE), { rule:
 -- test: règle inconnue
 -- attendu-erreur: CORE_UNSUPPORTED_OPTION
 RETURN fn::validation_step_apply(fn::utils_engine_state(1, "", NONE), { rule: "inconnue", options: {} });
+
+-- test: aiguillage : une règle de chaque groupe d'initiales atteinte
+RETURN ["age_range", "array_without_null", "bic", "bytes", "card_pan", "currency_code", "date", "duration", "email", "even", "filesize", "gtin", "http_method", "iban", "ip", "latitude", "lyxal_permission_name", "mime_type", "number", "object_no_null", "odd", "phone", "positive_number", "record_id", "required_string", "siren", "surql_record_string", "time_of_day", "ulid", "uuid", "weekday"].all(|$rule| fn::validation_step_apply(fn::utils_engine_state(NONE, "f", NONE), { rule: $rule, options: {} }).path == "f");

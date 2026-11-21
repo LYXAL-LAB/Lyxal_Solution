@@ -28,3 +28,10 @@ RETURN fn::sanitize_step_apply(fn::utils_engine_state(NONE, "", NONE), { rule: "
 -- test: règle inconnue
 -- attendu-erreur: CORE_UNSUPPORTED_OPTION
 RETURN fn::sanitize_step_apply(fn::utils_engine_state("a", "", NONE), { rule: "inconnue", options: {} });
+
+-- test: aiguillage : une règle de chaque groupe d'initiales atteinte
+RETURN ["absolute_url", "ascii", "capitalize", "currency", "date", "default", "decimal", "e164", "email_local", "float", "html", "integer", "lowercase", "markdown_tables", "negative", "null_to_none", "object_or_empty", "percentage", "query", "relative_url", "safe_path", "strip_svg", "timestamp", "uppercase", "url"].all(|$rule| fn::sanitize_step_apply(fn::utils_engine_state(NONE, "f", NONE), { rule: $rule, options: {} }).path == "f");
+
+-- test: règle d'une valeur non textuelle
+-- attendu-erreur: CORE_UNSUPPORTED_OPTION
+RETURN fn::sanitize_step_apply(fn::utils_engine_state("a", "", NONE), { rule: 5, options: {} });

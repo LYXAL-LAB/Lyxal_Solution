@@ -26,44 +26,54 @@ DEFINE FUNCTION OVERWRITE fn::utils_engine_pipeline(
     $max_steps: int
 ) -> array<object> {
     IF $max_steps < 1 OR array::len($steps) > $max_steps { THROW "CORE_INVALID_ARGUMENT"; };
-    LET $rules = array::map($catalog, |$entry| $entry.rule);
-    IF array::any($rules, |$rule| $rule IN ["each", "object", "when", "one_of"]) { THROW "CORE_INVALID_ARGUMENT"; };
-    RETURN array::map($steps, |$raw| {
+    LET $rules = $catalog.rule;
+    IF $rules CONTAINSANY ["each", "object", "when", "one_of"] { THROW "CORE_INVALID_ARGUMENT"; };
+    -- Catalogue de plus de 32 règles réduit à celles dont le nom figure dans le texte des étapes
+    -- (une étape imbriquée y figure aussi) ; gardé entier si un nom n'est pas fait de [a-z0-9_]
+    LET $whole = array::len($rules) <= 32 OR !string::matches(<string> $rules, "^\\[('[a-z0-9_]+'(, )?)*\\]$");
+    LET $text = IF $whole { "" } ELSE { string::lowercase(<string> $steps) };
+    LET $used = IF $whole { $catalog } ELSE { $catalog[WHERE string::contains($text, rule)] };
+    LET $normalized = array::map($steps, |$raw| {
         IF !type::is_object($raw) OR !type::is_string($raw.rule) { THROW "CORE_INVALID_ARGUMENT"; };
         LET $step = fn::utils_engine_step($raw.rule, $raw.value, $raw.options);
+        LET $rule = $step.rule;
         LET $options = $step.options;
-        IF $step.rule NOT IN ["each", "object", "when", "one_of"] AND $step.rule IN $rules
-            AND array::any(array::find($catalog, |$entry| $entry.rule = $step.rule).required ?? [], |$key| $options[$key] IS NONE)
-        { THROW "CORE_INVALID_ARGUMENT"; };
-        RETURN IF $step.rule = "each" {
+        IF $rule = "each" {
             IF !type::is_array($options.pipeline) { THROW "CORE_INVALID_ARGUMENT"; };
-            object::extend($step, { options: { pipeline: fn::utils_engine_pipeline($options.pipeline, $catalog, $max_steps) } })
-        } ELSE IF $step.rule = "object" {
+            LET $pipeline = fn::utils_engine_pipeline($options.pipeline, $used, $max_steps);
+            RETURN { rule: $rule, value: $step.value, options: { pipeline: $pipeline } };
+        };
+        IF $rule = "object" {
             IF !type::is_object($options.schema) { THROW "CORE_INVALID_ARGUMENT"; };
-            object::extend($step, { options: { schema: fn::utils_engine_schema($options.schema, $catalog, $max_steps) } })
-        } ELSE IF $step.rule = "when" {
+            LET $schema = fn::utils_engine_schema($options.schema, $used, $max_steps);
+            RETURN { rule: $rule, value: $step.value, options: { schema: $schema } };
+        };
+        IF $rule = "when" {
             IF !type::is_array($options.then)
                 OR ($options.else IS NOT NONE AND !type::is_array($options.else))
                 OR ($options.field IS NOT NONE AND !type::is_string($options.field))
                 OR ($options.in IS NONE AND $options.equals IS NONE)
                 OR ($options.in IS NOT NONE AND !type::is_array($options.in))
             { THROW "CORE_INVALID_ARGUMENT"; };
-            object::extend($step, { options: object::extend($options, {
-                then: fn::utils_engine_pipeline($options.then, $catalog, $max_steps),
-                else: fn::utils_engine_pipeline($options.else ?? [], $catalog, $max_steps)
-            }) })
-        } ELSE IF $step.rule = "one_of" {
-            IF !type::is_array($options.pipelines) OR array::len($options.pipelines) < 2 { THROW "CORE_INVALID_ARGUMENT"; };
-            object::extend($step, { options: { pipelines: array::map($options.pipelines, |$pipeline| {
-                IF !type::is_array($pipeline) { THROW "CORE_INVALID_ARGUMENT"; };
-                RETURN fn::utils_engine_pipeline($pipeline, $catalog, $max_steps);
-            }) } })
-        } ELSE IF $step.rule IN $rules {
-            $step
-        } ELSE {
-            THROW "CORE_UNSUPPORTED_OPTION"
+            LET $then = fn::utils_engine_pipeline($options.then, $used, $max_steps);
+            LET $else = fn::utils_engine_pipeline($options.else ?? [], $used, $max_steps);
+            RETURN { rule: $rule, value: $step.value, options: object::extend($options, { then: $then, else: $else }) };
         };
+        IF $rule = "one_of" {
+            IF !type::is_array($options.pipelines) OR array::len($options.pipelines) < 2 { THROW "CORE_INVALID_ARGUMENT"; };
+            LET $pipelines = array::map($options.pipelines, |$pipeline| {
+                IF !type::is_array($pipeline) { THROW "CORE_INVALID_ARGUMENT"; };
+                LET $branch = fn::utils_engine_pipeline($pipeline, $used, $max_steps);
+                RETURN $branch;
+            });
+            RETURN { rule: $rule, value: $step.value, options: { pipelines: $pipelines } };
+        };
+        LET $entries = $used[WHERE rule = $rule];
+        IF array::is_empty($entries) { THROW "CORE_UNSUPPORTED_OPTION"; };
+        IF array::any($entries[0].required ?? [], |$key| $options[$key] IS NONE) { THROW "CORE_INVALID_ARGUMENT"; };
+        RETURN $step;
     });
+    RETURN $normalized;
 }
 COMMENT "Contrôle et normalise un pipeline : chaque étape est un objet { rule, value, options } dont la règle figure au catalogue du domaine ({ rule, cost, required }) ou parmi les règles du moteur (each, object, when, one_of, contrôlées récursivement). Au plus $max_steps étapes par niveau."
 PERMISSIONS FULL;

@@ -16,12 +16,13 @@
 DEFINE FUNCTION OVERWRITE fn::utils_engine_report(
     $state: object
 ) -> object {
+    LET $by_field = fn::utils_engine_by_field($state.issues);
     RETURN {
         valid: array::len($state.issues) = 0,
         value: $state.value,
         errors: $state.issues,
         warnings: $state.warnings,
-        by_field: fn::utils_engine_by_field($state.issues)
+        by_field: $by_field
     };
 }
 COMMENT "Rapport d'exécution { valid, value, errors, warnings, by_field } à partir d'un état ; by_field regroupe les codes d'erreur par chemin (« $ » pour la racine)."

@@ -25,9 +25,9 @@ DEFINE FUNCTION OVERWRITE fn::validation_pipeline_execute(
     $max_steps: int
 ) -> object {
     LET $steps = fn::utils_engine_pipeline($pipeline, fn::validation_step_catalog(), $max_steps);
-    RETURN fn::utils_engine_report(
-        fn::utils_engine_run(fn::utils_engine_state($value, "", NONE), $steps, |$current, $step| fn::validation_step_apply($current, $step))
-    );
+    LET $outcome = fn::utils_engine_run(fn::utils_engine_state($value, "", NONE), $steps, |$current, $step| fn::validation_step_apply($current, $step));
+    LET $report = fn::utils_engine_report($outcome);
+    RETURN $report;
 }
 COMMENT "Valide une valeur avec un pipeline d'étapes { rule, options } du catalogue (fn::validation_step_catalog), exécuté par le moteur unique (règles each, object, when et one_of disponibles). Renvoie le rapport { valid, value, errors, warnings, by_field } ; une donnée invalide ne lève jamais."
 PERMISSIONS FULL;
