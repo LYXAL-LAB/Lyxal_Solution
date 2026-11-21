@@ -40,23 +40,23 @@ Mesures et essais détaillés dans [`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md
 
 ## Points relevés au lot 4c, à décider avant les protocoles
 
-Mesures : [`README.md`](README.md), section « Mesures du lot 4c ».
+Mesures : [`README.md`](README.md), section « Mesures ».
 
-* **Permissions de table à l'échelle (plan du lot 4, §19).** Sous une session de membre,
-  SurrealDB 3.3.4 évalue les permissions de `mail_message` sur chaque ligne de la plage d'index
-  lue, avant d'appliquer `LIMIT` : une page, une plage d'UID ou une synchronisation coûtent
-  autant que le dossier ou le compte entier (environ 0,4 ms par message). Repli prévu par le
-  plan : contrôle une fois par fonction (`fn::mail_can`), puis lecture sous la session système
-  du service de l'hôte ; à décider par le CTO avant le lot 8 (IMAP).
-* **Coût du moteur de validation de `lyxal_core` (§5.7.8).** La validation des paramètres de
-  `fn::mail_message_create` (enveloppe typée comprise) coûte environ 85 ms, contre environ 6 ms
-  pour l'écriture et ses événements : la remise plafonne vers une dizaine de messages par
-  seconde et par connexion, loin des 300 par seconde de la décision C5. Besoin signalé au CTO :
-  accélération du moteur dans `lyxal_core`, ou règle propre au chemin de dépôt du service.
-* **Contention du compteur de modifications du compte (décision M6).** Plusieurs écrivains dans
-  un même compte se heurtent sur sa fiche (conflits de transaction rejoués) ; repli décrit au
-  §19 du plan (compteur par dossier et journal des changements du compte) si le service Rust du
-  lot 4d ne tient pas le débit.
+* **Permissions de table à l'échelle (plan du lot 4, §19 ; décision P1).** Sous une session de
+  membre, SurrealDB 3.3.4 évalue les permissions de `mail_message` sur chaque ligne de la plage
+  d'index lue, avant d'appliquer `LIMIT` : une page, une plage d'UID ou une synchronisation
+  coûtent autant que le dossier ou le compte entier (environ 0,9 ms par message). De plus, dans
+  une fonction, une requête n'applique pas `LIMIT` au parcours d'index (stratégie
+  `compute-only`) : environ 10 µs par message même sans permission. Mécanisme de P1 en cours de
+  décision : identifiants de messages ordonnés (`mail_message:[dossier, uid]`, plage
+  d'identifiants bornée, coût constant mesuré) ; à arrêter avant le lot 8 (IMAP).
+* **Débit de remise (§5.7.8, décision P2).** Moteur de `lyxal_core` accéléré : remise d'environ
+  25 ms (36 par seconde et par connexion), encore loin des 300 par seconde de la décision C5 ;
+  changement d'un drapeau sous le seuil.
+* **Contention du compteur de modifications du compte (décisions M6, P3).** Quatre écrivains
+  dans un même compte : débit total de 38 remises par seconde, mais environ un tiers des remises
+  encore refusées après trois rejeux pour conflit de transaction. Repli décrit au §19 du plan
+  (compteur par dossier et journal des changements du compte) à décider sur cette mesure.
 * **Domaines internationaux et parties locales UTF-8 (décision M10).** Lot 4 en ASCII
   seulement ; conversion IDNA et validation d'une partie locale UTF-8 (`SMTPUTF8`) : besoin
   d'extension de `lyxal_core` signalé, à instruire avant le lot 5.

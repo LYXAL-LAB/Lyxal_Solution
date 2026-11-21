@@ -294,7 +294,7 @@ lots 3 et suivants du programme courrier) appellent la vérification.
 | Contexte | `auth_context`, `auth_has_permission`, `auth_session_valid`, `auth_shares_organization`, `auth_org_admin_can_manage`, `auth_org_admin_first_identifier`, `auth_org_admin_first_address` |
 | Organisations | `auth_organization_create` (avec administrateur), `_get`, `_list`, `_update`, `_set_state` |
 | Domaines | `auth_organization_domain_add`, `_get`, `_verify` (session système), `_update`, `_remove`, `_list` |
-| Membres | `auth_organization_member_add`, `_remove`, `_set_state`, `_list`, `auth_membership_create`, `auth_is_last_admin` |
+| Membres | `auth_organization_member_add`, `_remove`, `_set_state`, `_list`, `_check` (contrat d'adhésion des autres modules : `{ member, state }`, droits contrôlés avant la lecture : session système, `auth.organization.manage`, `auth.member.read` dans l'organisation ou l'identité elle-même), `auth_membership_create`, `auth_is_last_admin` |
 | Identités | `auth_identity_schema_save`, `_get`, `auth_identity_create`, `_get`, `_list`, `_update_traits`, `_set_state`, `auth_identity_derive` |
 | Permissions | `auth_permission_register` (création seule), `_update`, `_list` |
 | Rôles | `auth_role_create`, `_update`, `_list`, `_permission_set`, `_permission_grant`, `_include_set`, `auth_role_assign`, `_unassign`, `auth_role_can_manage`, `auth_role_target`, `auth_role_holders`, `auth_identity_permissions` |

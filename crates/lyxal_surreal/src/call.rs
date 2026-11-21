@@ -94,13 +94,15 @@ pub trait LyxalSurrealCall {
 /// SurrealDB marque l'erreur comme levée (`thrown`) et préfixe son message par
 /// `An error occurred: `. Levée dans un `DEFINE EVENT`, elle arrive en erreur interne au message
 /// `Error while processing event <nom>: An error occurred: <CODE>…`, reconnue seulement avec ce
-/// marqueur de `THROW`.
+/// marqueur de `THROW` ; un événement déclenché par l'écriture d'un autre événement ajoute un
+/// préfixe `Error while processing event <nom>: ` par niveau.
 pub fn thrown_code(thrown: bool, message: &str) -> Option<&str> {
-    let text = if let Some(event) = message.strip_prefix("Error while processing event ") {
-        event
-            .split_once(": ")?
-            .1
-            .strip_prefix("An error occurred: ")?
+    let text = if message.starts_with("Error while processing event ") {
+        let mut inner = message;
+        while let Some(event) = inner.strip_prefix("Error while processing event ") {
+            inner = event.split_once(": ")?.1;
+        }
+        inner.strip_prefix("An error occurred: ")?
     } else if thrown {
         message
             .strip_prefix("An error occurred: ")
@@ -152,6 +154,14 @@ mod tests {
             ),
             Some("AUTH_ROLE_SCOPE_MISMATCH")
         );
+        // Événement déclenché par l'écriture d'un autre événement : un préfixe par niveau
+        assert_eq!(
+            thrown_code(
+                false,
+                "Error while processing event mail_account_guard: Error while processing event mail_mailbox_guard: An error occurred: MAIL_WRITE_FORBIDDEN"
+            ),
+            Some("MAIL_WRITE_FORBIDDEN")
+        );
     }
 
     #[test]
@@ -174,6 +184,13 @@ mod tests {
             thrown_code(
                 false,
                 "Error while processing event guard: Found AUTH_X for field `state`"
+            ),
+            None
+        );
+        assert_eq!(
+            thrown_code(
+                false,
+                "Error while processing event outer: Error while processing event inner: Found AUTH_X for field `state`"
             ),
             None
         );

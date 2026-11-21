@@ -29,8 +29,11 @@ DEFINE FUNCTION OVERWRITE fn::mail_account_create($params: object) {
     IF $domain.state != "active" { RETURN fn::error_result("MAIL_DOMAIN_DISABLED", $p.language, { domain: <string> $domain.id }); };
     LET $normalized = fn::mail_address_normalize($p.local_part, $domain.name);
     IF !$normalized.valid { RETURN fn::error_result("MAIL_INVALID_PARAMETERS", $p.language, { fields: { local_part: ["format"] } }); };
-    -- L'identité est membre actif de l'organisation (adhésion lisible par son administrateur)
-    IF array::len(SELECT VALUE id FROM auth_member_of WHERE in = $p.identity AND out = $domain.tenant AND state = "active" LIMIT 1) = 0 {
+    -- L'identité est membre actif de l'organisation : contrat public de lyxal_auth, sous les
+    -- droits de l'appelant (lecture des membres de l'organisation)
+    LET $membership = fn::auth_organization_member_check({ organization: <string> $domain.tenant, identity: <string> $p.identity, language: $p.language });
+    IF !$membership.ok { RETURN fn::error_result("MAIL_PERMISSION_DENIED", $p.language, {}); };
+    IF !$membership.data.member {
         RETURN fn::error_result("MAIL_ACCOUNT_NOT_MEMBER", $p.language, { identity: <string> $p.identity });
     };
     IF array::len(SELECT VALUE id FROM mail_account WHERE tenant = $domain.tenant AND identity = $p.identity LIMIT 1) > 0 {
