@@ -9,3 +9,6 @@ RETURN fn::utils_engine_run(fn::utils_engine_state(" a ", "", NONE), fn::utils_e
 
 -- test: pipeline vide
 RETURN fn::utils_engine_run(fn::utils_engine_state(1, "", NONE), fn::utils_engine_pipeline([], [{ rule: "trim", cost: 1 }, { rule: "min", cost: 3 }], 10), |$s, $step| IF $step.rule = "trim" { object::extend($s, { value: string::trim($s.value) }) } ELSE IF string::len($s.value) < $step.value { fn::utils_engine_issue($s, "min", "CORE_VALIDATION_TOO_SHORT", { min: $step.value }) } ELSE { $s }).value == 1;
+
+-- test: règle du moteur et règle du domaine mêlées
+RETURN { LET $state = fn::utils_engine_run(fn::utils_engine_state(" ab ", "", NONE), fn::utils_engine_pipeline([{ rule: "when", options: { equals: " ab ", then: [{ rule: "trim" }] } }, { rule: "min", value: 3 }, { rule: "trim" }], [{ rule: "trim", cost: 1 }, { rule: "min", cost: 3 }], 10), |$s, $step| IF $step.rule = "trim" { object::extend($s, { value: string::trim($s.value) }) } ELSE IF string::len($s.value) < $step.value { fn::utils_engine_issue($s, "min", "CORE_VALIDATION_TOO_SHORT", { min: $step.value }) } ELSE { $s }); RETURN $state.value == "ab" AND $state.issues[0].code == "CORE_VALIDATION_TOO_SHORT" AND $state.stop; };

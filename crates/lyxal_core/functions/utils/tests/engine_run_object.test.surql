@@ -24,3 +24,9 @@ RETURN fn::utils_engine_run_object(fn::utils_engine_state({ name: "Al", extra: 1
 
 -- test: chemins imbriqués
 RETURN fn::utils_engine_run_object(fn::utils_engine_state({ name: "A" }, "contact", NONE), fn::utils_engine_schema({ name: "contact", fields: { name: { pipeline: [{ rule: "trim" }, { rule: "min", value: 2 }], required: true }, note: { pipeline: [{ rule: "trim" }], nullable: true }, lang: { default: "fr" } } }, [{ rule: "trim", cost: 1 }, { rule: "min", cost: 3 }], 10), |$s, $step| IF $step.rule = "trim" { object::extend($s, { value: string::trim($s.value) }) } ELSE IF string::len($s.value) < $step.value { fn::utils_engine_issue($s, "min", "CORE_VALIDATION_TOO_SHORT", { min: $step.value }) } ELSE { $s }).issues[0].path == "contact.name";
+
+-- test: clés inconnues conservées avec leurs valeurs, NULL compris
+RETURN fn::utils_engine_run_object(fn::utils_engine_state({ name: " Al ", z: NULL, extra: [1] }, "", NONE), fn::utils_engine_schema({ unknown_keys: "keep", fields: { name: { pipeline: [{ rule: "trim" }] }, lang: { default: "fr" } } }, [{ rule: "trim", cost: 1 }, { rule: "min", cost: 3 }], 10), |$s, $step| IF $step.rule = "trim" { object::extend($s, { value: string::trim($s.value) }) } ELSE IF string::len($s.value) < $step.value { fn::utils_engine_issue($s, "min", "CORE_VALIDATION_TOO_SHORT", { min: $step.value }) } ELSE { $s }).value == { name: "Al", lang: "fr", z: NULL, extra: [1] };
+
+-- test: plusieurs clés inconnues rejetées
+RETURN fn::utils_engine_run_object(fn::utils_engine_state({ b: 1, name: "Al", a: 2 }, "p", NONE), fn::utils_engine_schema({ fields: { name: { pipeline: [{ rule: "trim" }] } } }, [{ rule: "trim", cost: 1 }], 10), |$s, $step| IF $step.rule = "trim" { object::extend($s, { value: string::trim($s.value) }) } ELSE IF string::len($s.value) < $step.value { fn::utils_engine_issue($s, "min", "CORE_VALIDATION_TOO_SHORT", { min: $step.value }) } ELSE { $s }).issues.path == ["p.a", "p.b"];

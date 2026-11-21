@@ -26,31 +26,42 @@ DEFINE FUNCTION OVERWRITE fn::utils_engine_run_step(
     $step: object,
     $apply: function
 ) -> object {
-    IF $step.rule = "each" {
-        IF $state.value IS NONE { RETURN $state; };
-        IF !type::is_array($state.value) { THROW "CORE_INVALID_ARGUMENT"; };
-        LET $items = array::map($state.value, |$item, $index|
-            fn::utils_engine_run(fn::utils_engine_state($item, $state.path + "[" + <string> $index + "]", $state.parent), $step.options.pipeline, $apply)
-        );
+    LET $rule = $step.rule;
+    IF $rule = "each" {
+        LET $items = $state.value;
+        IF $items IS NONE { RETURN $state; };
+        IF !type::is_array($items) { THROW "CORE_INVALID_ARGUMENT"; };
+        LET $path = $state.path;
+        LET $siblings = $state.parent;
+        LET $pipeline = $step.options.pipeline;
+        LET $outcomes = array::map($items, |$item, $index| {
+            LET $start = fn::utils_engine_state($item, $path + "[" + <string> $index + "]", $siblings);
+            RETURN fn::utils_engine_run($start, $pipeline, $apply);
+        });
+        LET $issues = array::flatten($outcomes.issues);
+        LET $warnings = array::flatten($outcomes.warnings);
+        LET $records = array::flatten($outcomes.records);
         RETURN object::extend($state, {
-            value: array::map($items, |$item| $item.value),
-            issues: array::concat($state.issues, array::flatten(array::map($items, |$item| $item.issues))),
-            warnings: array::concat($state.warnings, array::flatten(array::map($items, |$item| $item.warnings))),
-            records: array::concat($state.records, array::flatten(array::map($items, |$item| $item.records))),
-            stop: array::any($items, |$item| $item.stop)
+            value: $outcomes.value,
+            issues: array::concat($state.issues, $issues),
+            warnings: array::concat($state.warnings, $warnings),
+            records: array::concat($state.records, $records),
+            stop: array::any($outcomes.stop)
         });
     };
-    IF $step.rule = "object" {
+    IF $rule = "object" {
         IF $state.value IS NONE { RETURN $state; };
         IF !type::is_object($state.value) { THROW "CORE_INVALID_ARGUMENT"; };
-        RETURN fn::utils_engine_run_object($state, $step.options.schema, $apply);
+        LET $outcome = fn::utils_engine_run_object($state, $step.options.schema, $apply);
+        RETURN $outcome;
     };
-    IF $step.rule = "when" {
+    IF $rule = "when" {
         LET $subject = IF $step.options.field IS NONE { $state.value } ELSE { $state.parent[$step.options.field] };
         LET $matched = IF $step.options.in IS NOT NONE { $subject IN $step.options.in } ELSE { $subject == $step.options.equals };
-        RETURN fn::utils_engine_run($state, IF $matched { $step.options.then } ELSE { $step.options.else }, $apply);
+        LET $outcome = fn::utils_engine_run($state, IF $matched { $step.options.then } ELSE { $step.options.else }, $apply);
+        RETURN $outcome;
     };
-    IF $step.rule = "one_of" {
+    IF $rule = "one_of" {
         LET $outcome = array::fold($step.options.pipelines, { winner: NONE, attempts: 0 }, |$acc, $pipeline| {
             IF $acc.winner IS NOT NONE { RETURN $acc; };
             LET $attempt = fn::utils_engine_run(object::extend($state, { issues: [], warnings: [], records: [], stop: false }), $pipeline, $apply);
@@ -62,7 +73,8 @@ DEFINE FUNCTION OVERWRITE fn::utils_engine_run_step(
             object::extend($outcome.winner, { issues: $state.issues, warnings: array::concat($state.warnings, $outcome.winner.warnings), records: array::concat($state.records, $outcome.winner.records) })
         };
     };
-    RETURN $apply($state, $step);
+    LET $outcome = $apply($state, $step);
+    RETURN $outcome;
 }
 COMMENT "Exécute une étape : les règles du moteur sont traitées ici (each : chaque élément d'un tableau ; object : schéma imbriqué ; when : branche selon la valeur ou le champ voisin options.field, comparé à options.equals ou options.in ; one_of : branches essayées dans l'ordre, arrêt à la première sans erreur, sinon CORE_VALIDATION_COMBINATION) ; toute autre règle est confiée à la closure $apply du domaine."
 PERMISSIONS FULL;

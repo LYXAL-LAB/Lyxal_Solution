@@ -4,7 +4,10 @@
 -- Fichier  : crates/lyxal_core/functions/utils/functions/collection_sort_by.surql
 -- Fonction : fn::utils_collection_sort_by
 --
--- Trie une collection d'objets selon une clé.
+-- Trie une collection d'objets selon une clé, en ordre croissant (asc) ou
+-- décroissant (desc), en temps n log n (tri natif). Tri stable : les éléments
+-- de même clé gardent leur ordre. Éléments sans clé (NONE ou NULL) en fin,
+-- dans leur ordre d'origine.
 --
 -- Paramètres
 --   $value     : array<object>
@@ -21,43 +24,17 @@ DEFINE FUNCTION OVERWRITE fn::utils_collection_sort_by(
     $key: string,
     $direction: string
 ) -> array<object> {
-    LET $clean_direction = string::lowercase(
-        string::trim($direction)
-    );
-
-    RETURN IF $clean_direction = "asc" {
-        array::fold(
-            $value,
-            [],
-            |$sorted, $item| {
-                LET $ik = $item[$key];
-                IF $ik IS NONE OR type::is_null($ik) {
-                    array::append($sorted, $item)
-                } ELSE {
-                    LET $head = array::filter($sorted, |$x| $x[$key] IS NOT NONE AND !type::is_null($x[$key]) AND $x[$key] <= $ik);
-                    LET $tail = array::filter($sorted, |$x| $x[$key] IS NONE OR type::is_null($x[$key]) OR $x[$key] > $ik);
-                    array::concat(array::append($head, $item), $tail)
-                }
-            }
-        )
-    } ELSE IF $clean_direction = "desc" {
-        array::fold(
-            $value,
-            [],
-            |$sorted, $item| {
-                LET $ik = $item[$key];
-                IF $ik IS NONE OR type::is_null($ik) {
-                    array::append($sorted, $item)
-                } ELSE {
-                    LET $head = array::filter($sorted, |$x| $x[$key] IS NOT NONE AND !type::is_null($x[$key]) AND $x[$key] >= $ik);
-                    LET $tail = array::filter($sorted, |$x| $x[$key] IS NONE OR type::is_null($x[$key]) OR $x[$key] < $ik);
-                    array::concat(array::append($head, $item), $tail)
-                }
-            }
-        )
-    } ELSE {
-        THROW "CORE_UNSUPPORTED_OPTION"
-    };
+    LET $clean_direction = string::lowercase(string::trim($direction));
+    IF $clean_direction NOT IN ["asc", "desc"] { THROW "CORE_UNSUPPORTED_OPTION"; };
+    -- Tri natif (n log n) de triplets [clé, rang, élément] : le rang départage les clés égales dans
+    -- l'ordre d'origine (rang opposé en ordre décroissant), l'élément n'est jamais comparé
+    LET $sign = IF $clean_direction = "asc" { 1 } ELSE { -1 };
+    LET $decorated = array::map($value, |$item, $index| [$item[$key], $sign * $index, $item]);
+    LET $keyed = $decorated[WHERE $this[0] IS NOT NONE AND !type::is_null($this[0])];
+    LET $sorted = IF $clean_direction = "asc" { array::sort::asc($keyed) } ELSE { array::sort::desc($keyed) };
+    -- Éléments sans clé (NONE ou NULL) en fin, dans l'ordre d'origine
+    LET $missing = $decorated[WHERE $this[0] IS NONE OR type::is_null($this[0])];
+    RETURN array::map(array::concat($sorted, $missing), |$entry| $entry[2]);
 }
-COMMENT "Trie une collection d'objets selon une clé."
+COMMENT "Trie une collection d'objets selon une clé, en ordre croissant (asc) ou décroissant (desc) ; tri stable (les éléments de même clé gardent leur ordre) ; éléments sans clé (NONE ou NULL) en fin, dans leur ordre d'origine."
 PERMISSIONS FULL;

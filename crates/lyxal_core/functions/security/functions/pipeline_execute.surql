@@ -24,9 +24,9 @@ DEFINE FUNCTION OVERWRITE fn::security_pipeline_execute(
     $max_steps: int
 ) -> object {
     LET $steps = fn::utils_engine_pipeline($pipeline, fn::security_step_catalog(), $max_steps);
-    RETURN fn::security_step_result(
-        fn::utils_engine_run(fn::utils_engine_state($value, "", NONE), $steps, |$current, $step| fn::security_step_apply($current, $step))
-    );
+    LET $outcome = fn::utils_engine_run(fn::utils_engine_state($value, "", NONE), $steps, |$current, $step| fn::security_step_apply($current, $step));
+    LET $result = fn::security_step_result($outcome);
+    RETURN $result;
 }
 COMMENT "Applique un pipeline security (masquage, empreintes, détections, contrôles de permission) à une valeur avec le moteur unique ; renvoie { value, findings, score, decisions, allowed, errors } (fn::security_step_result)."
 PERMISSIONS FULL;

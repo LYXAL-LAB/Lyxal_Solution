@@ -44,3 +44,21 @@ RETURN fn::utils_engine_pipeline([{ rule: "pad", options: { width: 3 } }], [{ ru
 -- test: catalogue masquant une règle du moteur
 -- attendu-erreur: CORE_INVALID_ARGUMENT
 RETURN fn::utils_engine_pipeline([], [{ rule: "each" }], 10);
+
+-- test: grand catalogue : règle imbriquée retrouvée
+RETURN fn::utils_engine_pipeline([{ rule: "each", options: { pipeline: [{ rule: " PAD ", options: { width: 2 } }] } }], array::concat((<array> (0..40)).map(|$i| { rule: "r" + <string> $i, cost: 1 }), [{ rule: "trim", cost: 1 }, { rule: "pad", required: ["width"] }]), 10)[0].options.pipeline[0] == { rule: "pad", value: NONE, options: { width: 2 } };
+
+-- test: grand catalogue : option obligatoire absente dans une étape imbriquée
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::utils_engine_pipeline([{ rule: "each", options: { pipeline: [{ rule: "pad" }] } }], array::concat((<array> (0..40)).map(|$i| { rule: "r" + <string> $i, cost: 1 }), [{ rule: "pad", required: ["width"] }]), 10);
+
+-- test: grand catalogue : règle imbriquée inconnue
+-- attendu-erreur: CORE_UNSUPPORTED_OPTION
+RETURN fn::utils_engine_pipeline([{ rule: "one_of", options: { pipelines: [[{ rule: "r1" }], [{ rule: "upper" }]] } }], (<array> (0..40)).map(|$i| { rule: "r" + <string> $i, cost: 1 }), 10);
+
+-- test: grand catalogue : nom de règle hors [a-z0-9_] retrouvé
+RETURN fn::utils_engine_pipeline([{ rule: "each", options: { pipeline: [{ rule: " X Y " }] } }], array::concat((<array> (0..40)).map(|$i| { rule: "r" + <string> $i, cost: 1 }), [{ rule: "x y" }]), 10)[0].options.pipeline[0].rule == "x y";
+
+-- test: grand catalogue masquant une règle du moteur
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::utils_engine_pipeline([{ rule: "r1" }], array::concat((<array> (0..40)).map(|$i| { rule: "r" + <string> $i, cost: 1 }), [{ rule: "when" }]), 10);

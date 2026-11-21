@@ -227,6 +227,48 @@ LET $clean = fn::sanitize_object_execute($report.value, { fields: { email: { pip
 * **Mesure** : `fn::utils_engine_benchmark_sample`, `_run`, `_stats` (taux de réussite, min, max, moyenne, p50, p95, p99, débit), `_compare` (régression sur la moyenne ou le p95), `_report`.
 * **Requête et réponse d'exécution** : `fn::utils_engine_request` et `fn::utils_engine_response`.
 
+### Coût d'exécution
+
+SurrealQL est interprété : chaque comparaison, appel de closure ou de fonction coûte de l'ordre
+de la microseconde, et lire une variable en recopie la valeur (un catalogue de 177 règles coûte
+environ 65 µs à chaque lecture). Le moteur limite donc le travail, sans changer son contrat :
+
+* **Catalogue réduit** : `fn::utils_engine_schema` et `fn::utils_engine_pipeline` ne transmettent
+  aux pipelines imbriqués qu'un catalogue réduit aux règles dont le nom figure dans le texte du
+  schéma ou des étapes (catalogue de plus de 32 règles, noms faits de `[a-z0-9_]` ; sinon le
+  catalogue entier). Une règle citée y figure toujours : contrôles et erreurs sont inchangés.
+* **Définitions identiques normalisées une fois** : dans un schéma, deux champs de même
+  définition (même représentation SurrealQL, types compris) partagent une normalisation ; une
+  définition dont le texte contient « | » (fermeture possible) est toujours normalisée seule.
+* **Aiguillage en deux niveaux** dans `fn::validation_step_apply` et `fn::sanitize_step_apply` :
+  initiale de la règle, puis règle (une quinzaine de comparaisons au plus, au lieu de 177).
+* **Opérations natives** plutôt que des closures (projections `$etats.issues`, filtres
+  `[WHERE …]`, `array::complement`, `array::transpose`), valeurs lues une fois, appels imbriqués
+  placés dans des `LET` ; une règle du domaine va directement à la closure `$apply`.
+* **Tri** : `fn::utils_collection_sort_by` trie nativement (`array::sort::asc` / `desc`, n log n)
+  des triplets `[clé, rang, élément]` ; le rang garde l'ordre d'origine des clés égales (tri
+  stable) ; les éléments sans clé (NONE ou NULL) restent en fin, dans leur ordre d'origine.
+
+Mesures (`scripts/bench/core/bench_core_engine.py`, SurrealDB 3.3.4 en mémoire, machine de
+développement à 4 cœurs, durée d'un appel mesurée dans le serveur, médiane de 30 appels, 3 pour
+le tri de l'ancienne version) ; « avant » : `--ref a1d358f0f`.
+
+| Cas | Avant | Après |
+| :--- | ---: | ---: |
+| `fn::validation_object_execute`, 3 champs | 6,9 ms | 2,3 ms |
+| `fn::validation_object_execute`, paramètres de `fn::mail_message_create` (schéma du module courrier, enveloppe typée comprise) | 100 ms | 17,4 ms |
+| `fn::validation_pipeline_execute`, tableau de 3 chaînes (`each`) | 4,6 ms | 1,6 ms |
+| `fn::sanitize_object_execute`, 2 champs | 2,7 ms | 1,4 ms |
+| `fn::security_object_execute`, 2 champs | 2,2 ms | 1,4 ms |
+| `fn::utils_collection_sort_by`, 1 000 objets | 6 900 ms | 15 ms |
+| `fn::utils_collection_sort_by`, 10 000 objets | plus de 180 s (arrêté) | 160 ms |
+
+La validation des paramètres de dépôt d'un message reste au-dessus de 10 ms : environ 8 ms de
+normalisation du schéma (25 pipelines distincts) et 9 ms d'exécution (une centaine d'états et
+d'étapes, chacun recopiant sa valeur et l'objet parent), soit 40 à 60 µs par étape. Aller
+au-delà demanderait de ne plus normaliser le schéma à chaque appel (schéma normalisé gardé par
+le module appelant), ce que le contrat actuel ne prévoit pas.
+
 ---
 
 ## Utilisation par les modules

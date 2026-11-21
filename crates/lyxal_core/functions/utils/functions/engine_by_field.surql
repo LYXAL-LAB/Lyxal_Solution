@@ -15,10 +15,9 @@
 DEFINE FUNCTION OVERWRITE fn::utils_engine_by_field(
     $issues: array<object>
 ) -> object {
-    RETURN object::from_entries(array::map(array::distinct(array::map($issues, |$issue| $issue.path)), |$path| [
-        IF $path = "" { "$" } ELSE { $path },
-        array::map(array::filter($issues, |$issue| $issue.path = $path), |$issue| $issue.code)
-    ]));
+    LET $paths = array::distinct($issues.path);
+    LET $entries = array::map($paths, |$path| [IF $path = "" { "$" } ELSE { $path }, $issues[WHERE path = $path].code]);
+    RETURN object::from_entries($entries);
 }
 COMMENT "Regroupe les codes d'erreurs par chemin { <chemin>: [codes] } ; la racine (chemin vide) est notée « $ »."
 PERMISSIONS FULL;

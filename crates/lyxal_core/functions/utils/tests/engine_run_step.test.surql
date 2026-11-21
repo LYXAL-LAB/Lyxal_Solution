@@ -40,3 +40,9 @@ RETURN fn::utils_engine_run(fn::utils_engine_state({ contact: { name: " Al " } }
 -- test: each sur une valeur qui n'est pas un tableau
 -- attendu-erreur: CORE_INVALID_ARGUMENT
 RETURN fn::utils_engine_run(fn::utils_engine_state("a", "", NONE), fn::utils_engine_pipeline([{ rule: "each", options: { pipeline: [] } }], [{ rule: "trim", cost: 1 }, { rule: "min", cost: 3 }], 10), |$s, $step| IF $step.rule = "trim" { object::extend($s, { value: string::trim($s.value) }) } ELSE IF string::len($s.value) < $step.value { fn::utils_engine_issue($s, "min", "CORE_VALIDATION_TOO_SHORT", { min: $step.value }) } ELSE { $s });
+
+-- test: each : erreurs de plusieurs éléments, chemins indexés et arrêt
+RETURN { LET $state = fn::utils_engine_run_step(fn::utils_engine_state([" ab ", "a", "b"], "l", NONE), { rule: "each", options: { pipeline: [{ rule: "trim" }, { rule: "min", value: 2 }] } }, |$s, $step| IF $step.rule = "trim" { object::extend($s, { value: string::trim($s.value) }) } ELSE IF string::len($s.value) < $step.value { fn::utils_engine_issue($s, "min", "CORE_VALIDATION_TOO_SHORT", { min: $step.value }) } ELSE { $s }); RETURN $state.value == ["ab", "a", "b"] AND $state.issues.path == ["l[1]", "l[2]"] AND $state.stop; };
+
+-- test: each sans erreur : pas d'arrêt
+RETURN fn::utils_engine_run_step(fn::utils_engine_state([" ab "], "l", NONE), { rule: "each", options: { pipeline: [{ rule: "trim" }] } }, |$s, $step| IF $step.rule = "trim" { object::extend($s, { value: string::trim($s.value) }) } ELSE IF string::len($s.value) < $step.value { fn::utils_engine_issue($s, "min", "CORE_VALIDATION_TOO_SHORT", { min: $step.value }) } ELSE { $s }).stop == false;
