@@ -50,10 +50,13 @@ fermée) ; modules arrêtés, nœud retiré de `runtime_node` ; enfin le port HT
 ## 2. Modules hébergés
 
 `build.rs` embarque (`lyxal_host::build::embed_modules`) : `lyxal_core`, `lyxal_error`,
-`lyxal_event`, `lyxal_mail` (écart E6 : les autres modules arrivent avec le premier lot qui s'en
-sert). Tous sont portés par un `ManifestModule` ; les écoutes sont des workers rattachés à
-`lyxal_mail`. Un module installé par `lyxal-server` est trouvé installé (aucun hook `install`
-rejoué) ; `lyxal_mail` n'est installé que par cet hôte et apparaît dans
+`lyxal_event`, `lyxal_auth`, `lyxal_secrets`, `lyxal_storage` et `lyxal_mail` (chaque module
+ajouté aux dépendances de `lyxal_mail` est hébergé dans le même lot ; les autres modules arrivent
+avec le premier lot qui s'en sert). Tous sont portés par un `ManifestModule` (les hooks `install`
+de `lyxal_auth`, `lyxal_secrets` et `lyxal_storage` n'écrivent rien ; leurs services Rust, la clé
+maîtresse et les supports de stockage arrivent au lot 4d) ; les écoutes sont des workers
+rattachés à `lyxal_mail`. Un module installé par `lyxal-server` est trouvé installé (aucun hook
+`install` rejoué) ; `lyxal_mail` n'est installé que par cet hôte et apparaît dans
 `ReconciliationPlan::foreign_modules` de `lyxal-server`.
 
 ## 3. Configuration
