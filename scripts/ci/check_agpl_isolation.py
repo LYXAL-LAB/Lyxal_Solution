@@ -2,7 +2,7 @@
 """Isolement des paquets AGPL (décisions P3 et G16 du programme courrier).
 
 Règle : seuls les paquets du courrier, des agendas et des contacts (`lyxal_mail`,
-`lyxal-groupware`, plus tard `lyxal_mail_proto`, `lyxal_dav`, `lyxal_calendar`,
+`lyxal_mail_proto`, `lyxal-groupware`, plus tard `lyxal_dav`, `lyxal_calendar`,
 `lyxal_contacts`) sont sous AGPL. Aucun paquet du workspace sous licence permissive
 (`MIT OR Apache-2.0`) ne doit dépendre, même pour ses tests ou sa compilation, d'un paquet sous
 licence GPL ou AGPL : `lyxal-server` et les crates du Noyau ne lient aucun code AGPL. Le sens

@@ -32,6 +32,12 @@
 //!    crm     analytics    ai
 //! ```
 
+// `LyxalSurrealError` (erreur commune de `lyxal_surreal`, 272 octets) est rendue par les
+// fonctions de ce crate ; Clippy de Rust 1.98 les signale (`result_large_err`), 1.97 ne le
+// faisait pas. Même règle que `lyxal_surreal` et `lyxal_error` : réduire cette erreur serait un
+// changement de contrat.
+#![allow(clippy::result_large_err)]
+
 pub mod engine;
 pub mod error;
 pub mod gc;

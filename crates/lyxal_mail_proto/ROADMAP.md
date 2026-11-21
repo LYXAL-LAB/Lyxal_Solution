@@ -1,7 +1,7 @@
 # Feuille de route — `lyxal_mail_proto`
 
-Évolutions à venir du crate (à créer). Son objet est décrit par le [`README.md`](README.md), la
-provenance de ses sources par [`SOURCES.md`](SOURCES.md). Le programme est décrit par
+Évolutions à venir du crate. Son état (lecture MIME, lot 4) est décrit par le
+[`README.md`](README.md), la provenance de ses sources par [`SOURCES.md`](SOURCES.md). Le programme est décrit par
 `implementation_plan.md` à la racine du dépôt ; chaque lot a son propre plan, validé par le CTO
 avant toute ligne de code (`.agents/AGENTS.md` §3).
 
@@ -9,7 +9,6 @@ avant toute ligne de code (`.agents/AGENTS.md` §3).
 
 | Lot | Contenu pour ce crate | Source | Prérequis |
 | :- | :--- | :--- | :--- |
-| 4 — Socle courrier | Création du crate (`Cargo.toml` sous `AGPL-3.0-only`, exception nommée dans `deny.toml`) ; lecture MIME par `mail-parser` | `mail-parser` | lot 0 |
 | 5 — Réception SMTP | Syntaxe SMTP / LMTP et extensions | Stalwart `smtp-proto` | lots 2, 3, 4 |
 | 7 — Transport sûr et rapports | Formats des rapports DMARC et TLS-RPT | Stalwart `smtp-report` | lot 6 |
 | 8 — IMAP | Syntaxe IMAP4rev2 et rev1, extensions | Stalwart `imap-proto` | lots 1, 4 |
@@ -18,6 +17,14 @@ avant toute ligne de code (`.agents/AGENTS.md` §3).
 | 12 — JMAP courrier | Types JMAP (cœur, courrier) | Stalwart `jmap-proto` | lots 6, 8 |
 | 21 — Durcissement et conformité | Fuzzing des analyseurs, corrections | Bancs de Mox transposés | lots 12, 20 |
 | 22 — Essais réels et clôture | Audit `lyxal-audit`, `README.md` et `SOURCES.md` définitifs | — | lot 21, moyens P11 |
+
+## Lecture MIME : points ouverts (lot 4)
+
+* **Sujet de base** : celui de `mail-parser` (`thread_name`) ; à comparer à la RFC 5256 §2.1
+  (suffixe `(fwd)`, crochets `[...]` en tête) au lot 8 (`THREAD`, `SORT`).
+* **Dates** : seule la date de `Date` est lue (`sent_at`) ; la date de réception est celle du
+  dépôt (`lyxal_mail`).
+* **Fuzzing** : cible `fuzz/` préparée, lancée au lot 21.
 
 ## Chiffrement des boîtes (décision C7)
 
@@ -34,6 +41,6 @@ retiré de la liste et noté dans le `README.md`.
 
 | Préalable (moyens P11) | Action | Résultat attendu |
 | :--- | :--- | :--- |
-| Boîtes d'essai chez Gmail, Outlook.com et Yahoo | Lire avec ce crate des messages réels reçus de ces fournisseurs (lot 4) | Aucun message refusé ; pièces jointes et jeux de caractères rendus à l'identique |
+| Boîtes d'essai chez Gmail, Outlook.com et Yahoo | Lire avec ce crate des messages réels reçus de ces fournisseurs (lecture MIME du lot 4) | Aucun message refusé ; pièces jointes et jeux de caractères rendus à l'identique |
 | Logiciels réels : Thunderbird, Apple Mail, Outlook | Enregistrer leurs dialogues IMAP et SMTP contre le serveur d'essai (lots 5 et 8) | Toutes les commandes reçues sont reconnues ; aucune réponse refusée par le logiciel |
 | Scripts Sieve réels exportés d'un autre serveur | Compiler et exécuter à blanc (lot 10) | Scripts acceptés ou refusés avec une erreur précise |

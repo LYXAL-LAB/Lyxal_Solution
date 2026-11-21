@@ -1,0 +1,21 @@
+[package]
+name = "lyxal_mail_proto"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+# Crate du programme courrier (décision P2) : recevra le code porté de Stalwart
+# (AGPL-3.0-only OR LicenseRef-SEL, option AGPL retenue) à partir du lot 5.
+# Corpus de messages d'essai repris de mail-parser : MIT (avis dans LICENSES/MIT-mail-parser.txt).
+license = "AGPL-3.0-only"
+publish = false
+description = "Syntaxes du courrier de Lyxal OS, sans base ni logique métier (lot 4 : lecture MIME par mail-parser)"
+
+[dependencies]
+# Lecture MIME (Apache-2.0 OR MIT). `full_encoding` : jeux de caractères hérités à plusieurs
+# octets (Shift_JIS, GBK, Big5, EUC-KR...) par encoding_rs.
+mail-parser = { version = "=1.0.1", default-features = false, features = ["full_encoding"] }
+thiserror.workspace = true
+time = { version = "0.3", default-features = false, features = ["std"] }
+
+[dev-dependencies]
+proptest = "1.5"

@@ -1,0 +1,29 @@
+# Cibles de fuzzing de lyxal_mail_proto (cargo-fuzz), préparées au lot 4, lancées au lot 21 :
+#   cargo +nightly fuzz run mime_parse      (depuis crates/lyxal_mail_proto)
+# Paquet hors du workspace (son propre `[workspace]`) : ni la CI ni `cargo build --workspace` ne
+# le compilent.
+[package]
+name = "lyxal_mail_proto-fuzz"
+version = "0.0.0"
+edition = "2021"
+license = "AGPL-3.0-only"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "=0.4.13"
+lyxal_mail_proto = { path = ".." }
+
+[[bin]]
+name = "mime_parse"
+path = "fuzz_targets/mime_parse.rs"
+test = false
+doc = false
+bench = false
+
+[workspace]
+members = ["."]
+resolver = "2"
+

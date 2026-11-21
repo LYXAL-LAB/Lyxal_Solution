@@ -12,6 +12,12 @@
 //! file, handlers Rust inscrits par les modules (`TaskHandler`), façade `SchedulerClient`, module
 //! `LyxalModule`, sonde de santé et forme texte des identifiants d'exécution (`RunRef`).
 
+// `LyxalSurrealError` (erreur commune de `lyxal_surreal`, 272 octets) est rendue par les
+// fonctions de ce crate ; Clippy de Rust 1.98 les signale (`result_large_err`), 1.97 ne le
+// faisait pas. Même règle que `lyxal_surreal` et `lyxal_error` : réduire cette erreur serait un
+// changement de contrat.
+#![allow(clippy::result_large_err)]
+
 pub mod client;
 pub mod engine;
 pub mod error;
