@@ -569,3 +569,26 @@ async fn a_takeover_during_an_assembly_stops_the_first_assembler() {
         (ObjectState::Pending, true)
     );
 }
+
+/// Envois reprenables ouverts en même temps dans une même portée : ils écrivent le même
+/// compteur de volume, un conflit de transaction est réessayé au lieu d'échouer.
+#[tokio::test]
+async fn simultaneous_upload_creations_all_open() {
+    let bench = bench(Kind::Memory).await;
+    let bucket = bench.bucket("videos").await;
+    let creations = (0..8).map(|i| {
+        let service = bench.service.clone();
+        let bucket = bucket.clone();
+        async move {
+            service
+                .upload_create(upload(&bucket, &format!("film-{i}.bin"), 1_000 + i))
+                .await
+        }
+    });
+    for result in futures::future::join_all(creations).await {
+        if let Err(error) = result {
+            panic!("ouverture simultanée : {error}");
+        }
+    }
+    assert_eq!(count(&bench, "storage_object").await, 8);
+}
