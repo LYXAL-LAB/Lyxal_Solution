@@ -57,7 +57,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_message_create($params: object) {
     LET $p = $report.value;
     LET $mailbox = (SELECT id, account, uid_next FROM ONLY $p.mailbox);
     IF $mailbox == NONE { RETURN fn::error_result("MAIL_MAILBOX_NOT_FOUND", $p.language, { mailbox: <string> $p.mailbox }); };
-    LET $account = (SELECT id, tenant, state, used_bytes, quota_bytes, quota_exceeded_at FROM ONLY $mailbox.account);
+    LET $account = (SELECT id, tenant, identity, state, used_bytes, quota_bytes, quota_exceeded_at FROM ONLY $mailbox.account);
     IF $account.state != "active" { RETURN fn::error_result(IF $account.state = "deleting" { "MAIL_ACCOUNT_DELETING" } ELSE { "MAIL_ACCOUNT_DISABLED" }, $p.language, {}); };
     LET $content = (SELECT id, account, state, size, refs, protection FROM ONLY $p.content);
     IF $content == NONE OR $content.account != $account.id { RETURN fn::error_result("MAIL_CONTENT_NOT_FOUND", $p.language, { content: <string> $p.content }); };
@@ -80,15 +80,15 @@ DEFINE FUNCTION OVERWRITE fn::mail_message_create($params: object) {
     IF $mailbox.uid_next > 4294967295 { RETURN fn::error_result("MAIL_MAILBOX_UID_EXHAUSTED", $p.language, {}); };
     LET $thread = fn::mail_thread_assign({ account: $account.id, message_id: $p.message_id, in_reply_to: $p.in_reply_to, references: $p.references, base_subject: $p.base_subject, is_report: $p.is_report });
     LET $modseq = fn::mail_modseq_next($account.id);
-    LET $created = (CREATE ONLY mail_message CONTENT {
-        tenant: $account.tenant, account: $account.id, mailbox: $mailbox.id, content: $content.id,
+    LET $created = (CREATE ONLY fn::mail_message_key($mailbox.id, $mailbox.uid_next) CONTENT {
+        tenant: $account.tenant, account: $account.id, owner: $account.identity, mailbox: $mailbox.id, content: $content.id, protection: $content.protection, email_id: <string> rand::uuid::v7(),
         uid: $mailbox.uid_next, modseq: $modseq, create_modseq: $modseq, thread: $thread.thread, thread_orphan: $thread.orphan,
         received_at: $p.received_at, sent_at: $p.sent_at, size: $content.size,
         seen: $flags.seen, answered: $flags.answered, flagged: $flags.flagged, deleted: $flags.deleted, draft: $flags.draft, keywords: $flags.keywords,
         message_id: $p.message_id, base_subject: $p.base_subject, has_attachment: $p.has_attachment, envelope: $p.envelope, structure: $p.structure
     });
     IF $created == NONE { RETURN fn::error_result("MAIL_WRITE_FORBIDDEN", $p.language, { table: "mail_message" }); };
-    RETURN fn::result_ok(object::extend($created, { protection: $content.protection }));
+    RETURN fn::result_ok($created);
 } COMMENT "Inscrit un message ({ content (stocké, jamais inscrit), mailbox, received_at, sent_at, seen, answered, flagged, deleted, draft, keywords, message_id, in_reply_to, references, base_subject, is_report (avis de non-remise), envelope, structure, has_attachment }) : UID suivant du dossier, numéro de modification suivant du compte, fil (décision M7), compteurs et lecteurs du contenu ; enveloppe et structure exigées pour un contenu platform (MAIL_MESSAGE_MALFORMED) ; MAIL_MESSAGE_TOO_LARGE, MAIL_KEYWORD_LIMIT, MAIL_MAILBOX_UID_EXHAUSTED ; quota contrôlé : MAIL_QUOTA_EXCEEDED, et mail.quota.exceeded au premier refus. Droit : titulaire du compte, compte de service";
 
 -- ----------------------------------------------------------------------------
@@ -107,8 +107,9 @@ DEFINE FUNCTION OVERWRITE fn::mail_message_get($params: object) {
         RETURN fn::error_result("MAIL_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
     LET $p = $report.value;
-    LET $message = (SELECT *, content.protection AS protection, content.key_fingerprint AS key_fingerprint FROM ONLY $p.message);
-    IF $message == NONE { RETURN fn::error_result("MAIL_MESSAGE_NOT_FOUND", $p.language, { message: <string> $p.message }); };
+    LET $message = (SELECT *, content.key_fingerprint AS key_fingerprint FROM ONLY $p.message);
+    -- Contrôle complet une fois par appel (la permission de la fiche est un contrôle allégé)
+    IF $message == NONE OR !fn::mail_can({ action: "mailbox", tenant: $message.tenant, account: $message.account }) { RETURN fn::error_result("MAIL_MESSAGE_NOT_FOUND", $p.language, { message: <string> $p.message }); };
     RETURN fn::result_ok($message);
 } COMMENT "Message ({ message }) : métadonnées, drapeaux, fil, enveloppe, structure, et protection du contenu (protection, key_fingerprint, décision M15). Droit : titulaire du compte";
 
@@ -139,25 +140,22 @@ DEFINE FUNCTION OVERWRITE fn::mail_message_list($params: object) {
         RETURN fn::error_result("MAIL_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: IF $report.valid { { before: ["before_or_uid_range"] } } ELSE { $report.by_field } });
     };
     LET $p = $report.value;
-    LET $mailbox = (SELECT id FROM ONLY $p.mailbox);
+    LET $mailbox = (SELECT id, account, uid_next, total, received_min, received_max FROM ONLY $p.mailbox);
     IF $mailbox == NONE { RETURN fn::error_result("MAIL_MAILBOX_NOT_FOUND", $p.language, { mailbox: <string> $p.mailbox }); };
     LET $by_uid = $p.uid_min IS NOT NONE OR $p.uid_max IS NOT NONE;
+    -- Plages d'identifiants bornées (décision P1) : seules les fiches lues sont parcourues
     LET $rows = IF $by_uid {
-        (SELECT *, content.protection AS protection FROM mail_message
-            WHERE mailbox = $mailbox.id AND uid >= ($p.uid_min ?? 1) AND uid <= ($p.uid_max ?? 4294967295)
-            ORDER BY uid LIMIT $p.limit + 1)
+        fn::mail_message_uid_page($mailbox.id, $p.uid_min ?? 1, math::min([$p.uid_max ?? 4294967295, $mailbox.uid_next - 1]), $p.limit + 1)
     } ELSE {
-        -- Date décroissante, identifiant pour départager deux messages de même date
-        (SELECT *, content.protection AS protection FROM mail_message
-            WHERE mailbox = $mailbox.id AND ($p.before IS NONE OR received_at < $p.before.received_at OR (received_at = $p.before.received_at AND id < $p.before.id))
-            ORDER BY received_at DESC, id DESC LIMIT $p.limit + 1)
+        -- Date décroissante, UID pour départager deux messages de même date
+        fn::mail_message_date_page($mailbox, $p.before, $p.limit + 1)
     };
     LET $page = array::slice($rows, 0, $p.limit);
     LET $items = IF $p.fields = "full" { $page } ELSE { array::map($page, |$m| object::remove($m, ["envelope", "structure"])) };
     LET $last = array::last($page);
     LET $next = IF array::len($rows) <= $p.limit { NONE } ELSE IF $by_uid { { uid_min: $last.uid + 1 } } ELSE { { before: { received_at: $last.received_at, id: <string> $last.id } } };
     RETURN fn::result_ok({ items: $items, next: $next });
-} COMMENT "Messages d'un dossier ({ mailbox, before ({ received_at, id } : curseur), ou uid_min / uid_max (plage d'UID), limit (50, 1 000 au plus), fields (summary : sans enveloppe ni structure ; full) }) : par date de réception décroissante (identifiant pour départager), ou par UID croissant ; jamais par décalage ; { items, next (curseur suivant, NONE à la fin) }, protection du contenu comprise. Droit : titulaire du compte";
+} COMMENT "Messages d'un dossier ({ mailbox, before ({ received_at, id } : curseur), ou uid_min / uid_max (plage d'UID), limit (50, 1 000 au plus), fields (summary : sans enveloppe ni structure ; full) }) : par date de réception décroissante (identifiant pour départager), ou par UID croissant ; jamais par décalage ; lectures par plages d'identifiants bornées (seules les fiches rendues sont parcourues) ; { items, next (curseur suivant, NONE à la fin) }, protection du contenu comprise. Droit : titulaire du compte";
 
 -- ----------------------------------------------------------------------------
 -- fn::mail_message_changes
@@ -298,15 +296,30 @@ DEFINE FUNCTION OVERWRITE fn::mail_message_move($params: object) {
     LET $count = array::len($rows);
     IF $count = 0 { RETURN fn::result_ok({ moved: [] }); };
     IF $target.uid_next + $count - 1 > 4294967295 { RETURN fn::error_result("MAIL_MAILBOX_UID_EXHAUSTED", $p.language, {}); };
-    LET $modseq = fn::mail_modseq_next($loaded.account.id);
-    -- Même fiche (même identifiant), nouvel UID dans le dossier cible, dans l'ordre des UID sources
+    -- Dossier et UID font partie de l'identifiant (décision P1) : pour chaque message, dans l'ordre
+    -- des UID sources, l'ancienne fiche est retirée (pierre tombale à la source, numéro de
+    -- modification suivant du compte, contenu libéré s'il n'a plus de lecteur) puis la nouvelle
+    -- inscrite dans le dossier cible sous ce même numéro, sur le même contenu (qui redevient
+    -- stocké), avec le même email_id (identifiant JMAP), le même fil et les mêmes drapeaux. Le
+    -- volume du compte ne change pas : le quota n'est pas recompté.
     LET $moved = array::map(<array> (0..$count), |$i| {
-        LET $done = (UPDATE ONLY $rows[$i].id SET mailbox = $target.id, uid = $target.uid_next + $i, modseq = $modseq RETURN VALUE id);
-        RETURN IF $done IS NONE { NONE } ELSE { { id: $rows[$i].id, from_uid: $rows[$i].uid, uid: $target.uid_next + $i, modseq: $modseq } };
+        LET $source = $rows[$i];
+        LET $gone = (DELETE ONLY $source.id RETURN BEFORE);
+        IF $gone == NONE { RETURN NONE; };
+        LET $modseq = (SELECT VALUE modseq FROM ONLY $source.account);
+        LET $uid = $target.uid_next + $i;
+        LET $created = (CREATE ONLY fn::mail_message_key($target.id, $uid) CONTENT {
+            tenant: $source.tenant, account: $source.account, owner: $source.owner, mailbox: $target.id, content: $source.content, protection: $source.protection, email_id: $source.email_id,
+            uid: $uid, modseq: $modseq, create_modseq: $modseq, thread: $source.thread, thread_orphan: $source.thread_orphan,
+            received_at: $source.received_at, sent_at: $source.sent_at, size: $source.size,
+            seen: $source.seen, answered: $source.answered, flagged: $source.flagged, deleted: $source.deleted, draft: $source.draft, keywords: $source.keywords,
+            message_id: $source.message_id, base_subject: $source.base_subject, has_attachment: $source.has_attachment, envelope: $source.envelope, structure: $source.structure
+        });
+        RETURN IF $created == NONE { NONE } ELSE { { id: $created.id, from: $source.id, from_uid: $source.uid, uid: $uid, modseq: $modseq } };
     });
     IF array::any($moved, |$m| $m IS NONE) { RETURN fn::error_result("MAIL_WRITE_FORBIDDEN", $p.language, { table: "mail_message" }); };
     RETURN fn::result_ok({ moved: $moved });
-} COMMENT "Déplace des messages d'un même compte ({ messages (500 au plus), mailbox }) : même fiche (même identifiant JMAP), nouvel UID dans le dossier cible, pierre tombale dans le dossier source, un numéro de modification pour l'appel ; un message déjà dans le dossier cible reste inchangé et n'est pas rendu ; { moved : [{ id, from_uid, uid, modseq }] } ; MAIL_MAILBOX_UID_EXHAUSTED. Droit : titulaire du compte";
+} COMMENT "Déplace des messages d'un même compte ({ messages (500 au plus), mailbox }) : nouvelle fiche dans le dossier cible (nouvel UID, donc nouvel identifiant ; même email_id JMAP, même contenu, même fil, mêmes drapeaux), ancienne fiche retirée avec sa pierre tombale dans le dossier source, dans la même transaction ; un numéro de modification par message, commun à la pierre tombale et à la nouvelle fiche ; un message déjà dans le dossier cible reste inchangé et n'est pas rendu ; { moved : [{ id (nouvel identifiant), from (ancien), from_uid, uid, modseq }] } ; MAIL_MAILBOX_UID_EXHAUSTED. Droit : titulaire du compte";
 
 -- ----------------------------------------------------------------------------
 -- fn::mail_message_copy
@@ -343,8 +356,8 @@ DEFINE FUNCTION OVERWRITE fn::mail_message_copy($params: object) {
     LET $rows = $loaded.rows;
     LET $copied = array::map(<array> (0..$count), |$i| {
         LET $source = $rows[$i];
-        LET $created = (CREATE ONLY mail_message CONTENT {
-            tenant: $source.tenant, account: $source.account, mailbox: $target.id, content: $source.content,
+        LET $created = (CREATE ONLY fn::mail_message_key($target.id, $target.uid_next + $i) CONTENT {
+            tenant: $source.tenant, account: $source.account, owner: $source.owner, mailbox: $target.id, content: $source.content, protection: $source.protection, email_id: <string> rand::uuid::v7(),
             uid: $target.uid_next + $i, modseq: $modseq, create_modseq: $modseq, thread: $source.thread, thread_orphan: $source.thread_orphan,
             received_at: $source.received_at, sent_at: $source.sent_at, size: $source.size,
             seen: $source.seen, answered: $source.answered, flagged: $source.flagged, deleted: $source.deleted, draft: $source.draft, keywords: $source.keywords,
@@ -464,7 +477,11 @@ DEFINE FUNCTION OVERWRITE fn::mail_flags_apply($message: object, $add: array<str
 
 DEFINE FUNCTION OVERWRITE fn::mail_messages_load($ids: array) -> object {
     -- Ordre des UID (dans chaque dossier) : un déplacement ou une copie garde l'ordre des sources
-    LET $rows = (SELECT * FROM $ids ORDER BY mailbox, uid);
+    LET $read = (SELECT * FROM $ids ORDER BY mailbox, uid);
+    -- Contrôle complet une fois par compte (un seul d'ordinaire) ; la permission de la fiche est un
+    -- contrôle allégé (règle de lecture des tables)
+    LET $allowed = array::filter(array::distinct($read.account), |$a| fn::mail_can({ action: "mailbox", tenant: (array::find($read, |$m| $m.account = $a)).tenant, account: $a }));
+    LET $rows = array::filter($read, |$m| $m.account IN $allowed);
     IF array::len($rows) != array::len($ids) {
         RETURN { code: "MAIL_MESSAGE_NOT_FOUND", details: { messages: array::map(array::complement($ids, $rows.id), |$m| <string> $m) } };
     };
@@ -474,3 +491,53 @@ DEFINE FUNCTION OVERWRITE fn::mail_messages_load($ids: array) -> object {
     IF $account.state != "active" { RETURN { code: IF $account.state = "deleting" { "MAIL_ACCOUNT_DELETING" } ELSE { "MAIL_ACCOUNT_DISABLED" }, details: {} }; };
     RETURN { code: NONE, rows: $rows, account: $account };
 } COMMENT "Interne : messages d'un lot ($ids) lus sous les droits de l'appelant : { code: NONE, rows, account }, ou { code, details } : MAIL_MESSAGE_NOT_FOUND (identifiants absents ou invisibles), MAIL_INVALID_PARAMETERS (plusieurs comptes), MAIL_ACCOUNT_DISABLED, MAIL_ACCOUNT_DELETING";
+
+-- ----------------------------------------------------------------------------
+-- Pages par plages d'identifiants bornées (internes, décision P1)
+-- ----------------------------------------------------------------------------
+-- Une plage sans borne haute, même avec LIMIT, parcourt toute la table dans une fonction
+-- (SurrealDB 3.3.4) : chaque lecture est bornée des deux côtés, et la fenêtre suivante est
+-- dimensionnée sur la densité observée (fenêtre vide : huit fois plus large), jusqu'à avoir
+-- $want fiches ou atteindre la borne. Les UID effacés ne coûtent rien (une plage ne parcourt que
+-- les fiches qui existent).
+
+DEFINE FUNCTION OVERWRITE fn::mail_message_uid_page($mailbox: record<mail_mailbox>, $from: int, $to: int, $want: int) -> array {
+    LET $state = array::fold(<array> (0..40), { rows: [], from: $from, span: $want, done: $from > $to OR $want < 1 }, |$acc, $step| {
+        IF $acc.done { RETURN $acc; };
+        LET $end = math::min([$acc.from + $acc.span, $to + 1]);
+        LET $got = (SELECT * FROM type::record("mail_message", fn::mail_message_key_text($mailbox, $acc.from)..fn::mail_message_key_text($mailbox, $end))
+            WHERE mailbox = $mailbox ORDER BY uid);
+        LET $rows = array::concat($acc.rows, $got);
+        LET $missing = $want - array::len($rows);
+        LET $span = IF array::len($got) = 0 { $acc.span * 8 } ELSE { math::max([1, <int> math::ceil(<float> $missing * <float> $acc.span / <float> array::len($got) * 2.0)]) };
+        RETURN { rows: $rows, from: $end, span: $span, done: $missing <= 0 OR $end > $to };
+    });
+    RETURN array::slice($state.rows, 0, $want);
+} COMMENT "Interne : jusqu'à $want messages du dossier $mailbox d'UID compris entre $from et $to, par UID croissant, protection du contenu comprise, lus par plages d'identifiants bornées (seules les fiches de chaque fenêtre sont parcourues, permissions de la table comprises)";
+
+DEFINE FUNCTION OVERWRITE fn::mail_message_date_page($mailbox: object, $cursor: any, $want: int) -> array {
+    IF $want < 1 OR $mailbox.total < 1 OR $mailbox.received_min IS NONE { RETURN []; };
+    LET $low = time::micros($mailbox.received_min);
+    LET $top = time::micros($mailbox.received_max) + 1;
+    -- Borne haute exclue : le curseur (date, UID tiré de l'identifiant), sinon après le plus récent
+    LET $start = IF $cursor IS NONE { { micros: $top, uid: 0 } } ELSE {
+        { micros: time::micros($cursor.received_at), uid: <int> array::last(string::split(<string> record::id($cursor.id), "_")) - 10000000000 }
+    };
+    -- Première fenêtre : densité moyenne du dossier, un cinquième de plus que la taille voulue (chaque fiche lue de trop coûte sa permission)
+    LET $span0 = math::max([1, <int> math::ceil(<float> ($top - $low) * <float> $want * 1.2 / <float> $mailbox.total)]);
+    LET $state = array::fold(<array> (0..40), { keys: [], high: fn::mail_message_date_key_text($mailbox.id, $start.micros, $start.uid), at: $start.micros, span: $span0, done: $start.micros < $low }, |$acc, $step| {
+        IF $acc.done { RETURN $acc; };
+        LET $from = math::max([$low, $acc.at - $acc.span]);
+        LET $got = (SELECT id, message FROM type::record("mail_message_date", fn::mail_message_date_key_text($mailbox.id, $from, 0)..$acc.high)
+            WHERE mailbox = $mailbox.id ORDER BY id DESC);
+        LET $keys = array::concat($acc.keys, $got.message);
+        LET $missing = $want - array::len($keys);
+        LET $span = IF array::len($got) = 0 { $acc.span * 8 } ELSE { math::max([1, <int> math::ceil(<float> $missing * <float> $acc.span / <float> array::len($got) * 2.0)]) };
+        RETURN { keys: $keys, high: fn::mail_message_date_key_text($mailbox.id, $from, 0), at: $from, span: $span, done: $missing <= 0 OR $from <= $low };
+    });
+    LET $ids = array::slice($state.keys, 0, $want);
+    IF array::len($ids) = 0 { RETURN []; };
+    LET $rows = (SELECT * FROM $ids);
+    -- Ordre de la vue (date décroissante, puis UID décroissant)
+    RETURN array::filter(array::map($ids, |$id| array::find($rows, |$row| $row.id = $id)), |$row| $row IS NOT NONE);
+} COMMENT "Interne : jusqu'à $want messages du dossier ($mailbox : id, total, received_min, received_max) par date interne décroissante puis UID décroissant, avant le curseur $cursor ({ received_at, id } ; NONE : depuis le plus récent), protection du contenu comprise ; lus par plages bornées de la vue mail_message_date (fenêtres de dates dimensionnées sur la densité du dossier), puis par identifiants : seules les fiches lues sont parcourues, permissions des tables comprises";

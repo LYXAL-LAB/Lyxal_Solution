@@ -124,3 +124,26 @@ DEFINE FUNCTION OVERWRITE fn::mail_content_release($content: record<mail_content
     };
     RETURN NONE;
 } COMMENT "Interne : un message cesse de lire ce contenu ($content) ; au dernier lecteur, le contenu passe à released : il est retiré avec son fichier par la maintenance (fn::mail_content_expire), dans une même transaction. Appelée par l'événement des messages";
+
+-- ----------------------------------------------------------------------------
+-- Identifiants ordonnés des messages (internes, décision P1)
+-- ----------------------------------------------------------------------------
+-- SurrealDB 3.3.4 n'applique pas LIMIT au parcours d'un index dans une fonction, et évalue la
+-- permission d'une table sur chaque ligne parcourue : une page lue par index coûte autant que le
+-- dossier. Une plage d'identifiants d'enregistrement bornée ne parcourt que les fiches qu'elle
+-- contient. Les clés sont des textes de largeur fixe (entiers décalés, sans remplissage) :
+-- <clé du dossier>_<10^10 + UID> pour mail_message,
+-- <clé du dossier>_<10^16 + date interne en µs>_<10^10 + UID> pour mail_message_date.
+
+DEFINE FUNCTION OVERWRITE fn::mail_message_key_text($mailbox: record<mail_mailbox>, $uid: int) -> string {
+    RETURN string::concat(<string> record::id($mailbox), "_", <string> (10000000000 + $uid));
+} COMMENT "Interne : clé (texte) de l'identifiant du message d'UID $uid (0 à 4 294 967 296 : bornes de plage comprises) dans le dossier $mailbox ; l'ordre des clés est celui des UID";
+
+DEFINE FUNCTION OVERWRITE fn::mail_message_key($mailbox: record<mail_mailbox>, $uid: int) -> record<mail_message> {
+    RETURN type::record("mail_message", fn::mail_message_key_text($mailbox, $uid));
+} COMMENT "Interne : identifiant du message d'UID $uid dans le dossier $mailbox (mail_message:⟨<clé du dossier>_<10^10 + UID>⟩), posé à l'inscription et vérifié par la garde";
+
+DEFINE FUNCTION OVERWRITE fn::mail_message_date_key_text($mailbox: record<mail_mailbox>, $micros: int, $uid: int) -> string {
+    RETURN string::concat(<string> record::id($mailbox), "_", <string> (10000000000000000 + $micros), "_", <string> (10000000000 + $uid));
+} COMMENT "Interne : clé (texte) de la vue par date d'un message (date interne en microsecondes depuis 1970, $micros ; UID, $uid) dans le dossier $mailbox ; l'ordre des clés est celui des dates, puis des UID";
+

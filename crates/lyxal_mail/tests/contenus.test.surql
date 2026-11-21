@@ -328,7 +328,7 @@ RETURN fn::mail_message_copy({ messages: [fn::essai_id("q1")], mailbox: fn::essa
 {
     LET $account = type::record(fn::essai_id("jean"));
     LET $content = (SELECT VALUE id FROM ONLY mail_content WHERE account = $account AND state = "stored" AND refs = 0 LIMIT 1);
-    CREATE mail_message CONTENT { tenant: auth_organization:alpha, account: $account, mailbox: type::record(fn::essai_id("jean_inbox")), content: $content,
+    CREATE fn::mail_message_key(type::record(fn::essai_id("jean_inbox")), 100) CONTENT { tenant: auth_organization:alpha, account: $account, owner: auth_identity:jean, mailbox: type::record(fn::essai_id("jean_inbox")), content: $content,
         uid: 100, modseq: 1000, create_modseq: 1000, thread: "t", received_at: time::now(), size: 300 };
 };
 

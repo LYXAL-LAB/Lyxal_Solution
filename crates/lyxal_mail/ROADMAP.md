@@ -38,23 +38,25 @@ Mesures et essais détaillés dans [`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md
   `fn::validation_ip` / `fn::validation_cidr` ; limites partagées entre nœuds à décider (au lot 3,
   les compteurs par réseau sont en mémoire, par nœud).
 
-## Points relevés au lot 4c, à décider avant les protocoles
+## Points relevés aux lots 4c et 4e, à décider avant les protocoles
 
 Mesures : [`README.md`](README.md), section « Mesures ».
 
-* **Permissions de table à l'échelle (plan du lot 4, §19 ; décision P1).** Sous une session de
-  membre, SurrealDB 3.3.4 évalue les permissions de `mail_message` sur chaque ligne de la plage
-  d'index lue, avant d'appliquer `LIMIT` : une page, une plage d'UID ou une synchronisation
-  coûtent autant que le dossier ou le compte entier (environ 0,9 ms par message). De plus, dans
-  une fonction, une requête n'applique pas `LIMIT` au parcours d'index (stratégie
-  `compute-only`) : environ 10 µs par message même sans permission. Mécanisme de P1 en cours de
-  décision : identifiants de messages ordonnés (`mail_message:[dossier, uid]`, plage
-  d'identifiants bornée, coût constant mesuré) ; à arrêter avant le lot 8 (IMAP).
+* **Vue par date pour JMAP (lot 12).** `mail_message_date` sert les pages par date du lot 4 ;
+  `Email/query` (tri par date dans tout le compte, filtres) et `Email/changes` sur `email_id`
+  (un déplacement change l'identifiant de la fiche, pas `email_id`) se décident au lot 12.
+* **Effacement des messages `\Deleted` d'un grand dossier.** `fn::mail_message_expunge` sans liste
+  lit les messages `\Deleted` par l'index `(dossier, deleted)` : coût non mesuré sur une grande
+  boîte, à mesurer au lot 8.
 * **Débit de remise (§5.7.8, décision P2).** Moteur de `lyxal_core` accéléré : remise d'environ
-  25 ms (36 par seconde et par connexion), encore loin des 300 par seconde de la décision C5 ;
-  changement d'un drapeau sous le seuil.
+  27 ms (environ 35 par seconde et par connexion, dont 39 ms de validation sous la session
+  système), encore loin des 300 par seconde de la décision C5 ; changement d'un drapeau sous le
+  seuil.
+* **Plage de 1 000 UID sous la session d'un membre.** Environ 0,3 ms de plus par fiche que sous
+  la session système, non expliqué par la règle de lecture (13 µs) : à analyser avant le lot 8
+  (`FETCH` de grandes plages).
 * **Contention du compteur de modifications du compte (décisions M6, P3).** Quatre écrivains
-  dans un même compte : débit total de 38 remises par seconde, mais environ un tiers des remises
+  dans un même compte : débit total de 35 remises par seconde, mais environ un tiers des remises
   encore refusées après trois rejeux pour conflit de transaction. Repli décrit au §19 du plan
   (compteur par dossier et journal des changements du compte) à décider sur cette mesure.
 * **Domaines internationaux et parties locales UTF-8 (décision M10).** Lot 4 en ASCII

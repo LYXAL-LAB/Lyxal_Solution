@@ -86,6 +86,16 @@ DEFINE FIELD OVERWRITE highest_modseq ON TABLE mail_mailbox
     PERMISSIONS FOR update WHERE fn::mail_can({ action: "worker" })
     COMMENT "Plus haut numéro de modification des messages du dossier, effacements compris (HIGHESTMODSEQ)";
 
+DEFINE FIELD OVERWRITE received_min ON TABLE mail_mailbox
+    TYPE option<datetime>
+    PERMISSIONS FOR update WHERE fn::mail_can({ action: "worker" })
+    COMMENT "Plus ancienne date interne inscrite dans le dossier (jamais avancée par un effacement), tenue par les événements : borne de la lecture par date (fn::mail_message_date_page)";
+
+DEFINE FIELD OVERWRITE received_max ON TABLE mail_mailbox
+    TYPE option<datetime>
+    PERMISSIONS FOR update WHERE fn::mail_can({ action: "worker" })
+    COMMENT "Plus récente date interne inscrite dans le dossier (jamais reculée par un effacement), tenue par les événements";
+
 DEFINE FIELD OVERWRITE total ON TABLE mail_mailbox
     TYPE int
     DEFAULT 0

@@ -115,17 +115,17 @@
     LET $ids = (SELECT VALUE id FROM mail_message WHERE account = type::record(fn::essai_id("jean")) ORDER BY uid);
     UPDATE passe:ids SET since1 = (SELECT VALUE modseq FROM ONLY type::record(fn::essai_id("jean"))), ids = $ids.map(|$i| <string> $i);
     fn::mail_message_flags_set({ messages: [<string> $ids[0]], add: ["$seen"] });
-    fn::mail_message_move({ messages: [<string> $ids[1]], mailbox: fn::essai_id("jean_archive") });
+    UPDATE passe:ids SET moved = <string> fn::mail_message_move({ messages: [<string> $ids[1]], mailbox: fn::essai_id("jean_archive") }).data.moved[0].id;
     fn::mail_message_expunge({ mailbox: fn::essai_id("jean_inbox"), messages: [<string> $ids[2]] });
     fn::mail_mailbox_delete({ mailbox: fn::essai_id("projets") });
 };
 
--- test: changements du compte : drapeau et déplacement modifiés, effacement et départ du dossier source, dossier supprimé
+-- test: changements du compte : drapeau modifié, message déplacé inscrit (nouvelle fiche), effacement et départ du dossier source, dossier supprimé
 -- en tant que: jean
 {
     LET $p = (SELECT * FROM ONLY passe:ids);
     LET $changes = fn::mail_message_changes({ account: $p.jean, since: $p.since1 }).data;
-    RETURN $changes.changed.id == [type::record($p.ids[0]), type::record($p.ids[1])]
+    RETURN $changes.changed.id == [type::record($p.ids[0]), type::record($p.moved)]
         AND $changes.changed[0].seen == true AND $changes.changed[1].mailbox == type::record($p.jean_archive) AND $changes.changed[1].uid == 1
         AND $changes.removed.map(|$r| [$r.kind, $r.mailbox, $r.uid, $r.object]) == [
             ["message", $p.jean_inbox, 2, $p.ids[1]], ["message", $p.jean_inbox, 3, $p.ids[2]], ["mailbox", $p.projets, NONE, $p.projets]
@@ -143,7 +143,7 @@
     LET $box = fn::mail_mailbox_get({ mailbox: $p.jean_inbox }).data;
     RETURN $inbox.changed.id == [type::record($p.ids[0])] AND $inbox.removed.uid == [2, 3]
         AND $inbox.highest_modseq == $box.highest_modseq AND $box.highest_modseq == $inbox.removed[1].modseq
-        AND $archive.changed.id == [type::record($p.ids[1])] AND $archive.removed == [];
+        AND $archive.changed.id == [type::record($p.moved)] AND $archive.removed == [];
 };
 
 -- test: pages : limit coupe entre deux numéros de modification, highest_modseq sert de point de reprise

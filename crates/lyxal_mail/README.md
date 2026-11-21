@@ -31,8 +31,9 @@ CASCADE`) : une organisation supprimée emporte tout son courrier.
 | `mail_address` | Adresse d'un compte ou alias vers 1 à 50 comptes de l'organisation ; partie locale ASCII en minuscules |
 | `mail_mailbox` | Dossier : chemin (`/`), parent, rôle SPECIAL-USE, abonnement, ordre, UIDVALIDITY, prochain UID, compteurs (total, non lus, volume, `HIGHESTMODSEQ`) |
 | `mail_content` | Contenu d'un message (fichier `.eml` de `lyxal_storage`) : clé `<compte>/<UUID v7>.eml`, fiche de stockage, état `pending` → `stored` → `released`, taille, `protection` (`platform` ; `openpgp`, `client` réservés, M15), lecteurs (`refs`) |
-| `mail_message` | Message d'un dossier (un seul, M5) : UID, numéros de modification, fil immuable (M7), dates, drapeaux système en booléens, mots-clés en minuscules triés, `Message-ID`, sujet de base, enveloppe typée et structure MIME facultatives (M8) |
+| `mail_message` | Message d'un dossier (un seul, M5), d'identifiant ordonné `mail_message:⟨<clé du dossier>_<10^10 + UID>⟩` (décision P1) : UID, identifiant JMAP (`email_id`, gardé par un déplacement), numéros de modification, fil immuable (M7), dates, drapeaux système en booléens, mots-clés en minuscules triés, `Message-ID`, sujet de base, enveloppe typée et structure MIME facultatives (M8) |
 | `mail_tombstone` | Effacements (message effacé ou déplacé hors d'un dossier, dossier supprimé) avec leur numéro de modification, pour `QRESYNC` et `Email/changes` |
+| `mail_message_date` | Vue des messages d'un dossier par date interne, d'identifiant ordonné `⟨<clé du dossier>_<10^16 + µs>_<10^10 + UID>⟩`, tenue par les événements des messages, fermée à l'écriture directe (pages par date) |
 
 ### Droits (`fn::mail_can`, seed `seeds/mail_auth.surql`)
 
@@ -46,6 +47,20 @@ CASCADE`) : une organisation supprimée emporte tout son courrier.
 Une fiche invisible est « introuvable ». Les fonctions qui touchent aux fichiers (lien d'un
 contenu, maintenance) passent par les fonctions publiques de `lyxal_storage` : elles s'exécutent
 sous la session système de l'hôte (ou un compte de service qui a aussi `storage.worker`).
+
+**Règle de lecture par fiche (décision P1).** `mail_message`, `mail_message_date` et
+`mail_tombstone` portent l'organisation et le titulaire du compte (`tenant`, `owner`, recopiés et
+gardés ; le titulaire d'un compte ne change jamais : l'identité ne se remplace pas, et une
+identité supprimée met le compte en suppression). Leur permission `select`, même texte sur les
+trois tables, compare ces champs à la session lue par chemins : session active et non expirée,
+sujet actif, session postérieure à son `not_before`, version des droits du jeton à jour (un
+membre retiré de l'organisation, un rôle ou une permission retirés : refus dès l'écriture qui
+l'incrémente), puis titulaire dans son organisation active avec `mail.mailbox.access`, ou compte
+de service (`mail.worker`). Même portée que `fn::mail_can` pour une boîte, sans appel de fonction
+(13 µs par fiche au lieu de 360 µs) ; l'administrateur ne lit jamais une fiche d'une boîte (M11).
+Les fonctions publiques contrôlent en plus `fn::mail_can` une fois par appel (dossier, compte ou
+message visé). Les écritures gardent le contrôle complet. `mail_message.protection` est recopiée
+du contenu : une page ne lit pas le contenu.
 
 ### Gardes et compteurs (`events/mail_guards.surql`, `functions/mail_guard.surql`)
 
@@ -69,16 +84,28 @@ compte de service). Le domaine de `lyxal_auth` est lu par son contrat public
 | Réglages, domaines | `mail_settings_get`, `mail_settings_set`, `mail_domain_create`, `_get`, `_list`, `_update`, `_delete` |
 | Comptes, adresses | `mail_account_create` (compte, adresse principale, six dossiers), `_get`, `_list`, `_update`, `_delete` ; `mail_quota_get` ; `mail_address_create`, `_update`, `_delete`, `_list`, `_resolve` |
 | Dossiers | `mail_mailbox_create`, `_get`, `_list`, `_update` (renommage, déplacement, sous-dossiers réécrits), `_delete` |
-| Messages | `mail_message_create`, `_get`, `_list` (curseur de date ou plage d'UID), `_changes` (depuis un numéro de modification, effacements compris), `_flags_set` (`CONDSTORE`), `_move` (un message déjà dans le dossier cible reste inchangé), `_copy`, `_expunge` ; `mail_thread_get` |
+| Messages | `mail_message_create`, `_get`, `_list` (curseur de date ou plage d'UID), `_changes` (depuis un numéro de modification, effacements compris), `_flags_set` (`CONDSTORE`), `_move` (nouvelle fiche dans le dossier cible, ancienne retirée, même `email_id` ; un message déjà dans le dossier cible reste inchangé), `_copy`, `_expunge` ; `mail_thread_get` |
 | Contenus, maintenance | `mail_content_begin`, `_attach`, `_open`, `_expire` ; `mail_tombstone_purge` ; `mail_account_purge_step` |
 
 Toutes : `$params: object`, entrées par le moteur de `lyxal_core`, `fn::result_ok` /
 `fn::error_result`, écriture principale vérifiée (`MAIL_WRITE_FORBIDDEN`), listes par curseur.
+**Lectures bornées (décision P1).** Dans une fonction, SurrealDB 3.3.4 n'applique pas `LIMIT` au
+parcours d'un index et évalue la permission de la table sur chaque ligne parcourue : les pages
+(`mail_message_list`) se lisent donc par plages d'identifiants bornées des deux côtés, qui ne
+parcourent que les fiches qu'elles contiennent, permissions des tables comprises (aucune
+lecture hors des permissions). Pages par UID : fenêtres d'UID ; pages par date : fenêtres de
+dates de la vue `mail_message_date`, dimensionnées sur la densité du dossier (bornes
+`received_min`, `received_max`), puis lecture des messages par identifiants. Un UID effacé ne
+coûte rien. Les changements depuis un numéro de modification ne parcourent que les fiches
+changées (index `(compte, modseq)`). Clés texte de largeur fixe, car le moteur de validation de
+`lyxal_core` ne lit pas un identifiant tableau (`mail_message:[dossier, uid]`).
 Fonctions internes (`COMMENT` « Interne ») : `fn::mail_can`, `fn::mail_settings_effective`,
 `fn::mail_session_account`, `fn::mail_address_normalize`, `fn::mail_modseq_next`,
 `fn::mail_thread_assign`, `fn::mail_content_release`, `fn::mail_content_remove`,
 `fn::mail_write_refusal`, `fn::mail_counters_apply`, `fn::mail_keywords_rule`,
-`fn::mail_messages_rule`, `fn::mail_flags_apply`, `fn::mail_messages_load`.
+`fn::mail_messages_rule`, `fn::mail_flags_apply`, `fn::mail_messages_load`,
+`fn::mail_message_key`, `fn::mail_message_key_text`, `fn::mail_message_date_key_text`,
+`fn::mail_message_uid_page`, `fn::mail_message_date_page`.
 
 ### Erreurs et événements
 
@@ -92,59 +119,58 @@ quota ou le dernier changement de quota). Aucun événement par message au lot 4
 ### Banc SurrealQL
 
 `tests/*.test.surql` (`scripts/ci/test_lyxal_modules.py`) : `reglages`, `domaines`, `comptes`,
-`adresses`, `dossiers`, `messages`, `synchronisation`, `contenus`, `droits`, `organisations` —
+`adresses`, `dossiers`, `messages`, `synchronisation`, `contenus`, `droits`, `plages`, `organisations` —
 chaque fonction appelée ; sessions système, compte de service, administrateur, titulaire, autre
 membre, autre organisation ; écritures filtrées (`MAIL_WRITE_FORBIDDEN`) ; écritures directes
-refusées par les gardes ; compteurs égaux au contenu réel ; suppression d'une organisation.
+refusées par les gardes ; compteurs égaux au contenu réel ; suppression d'une organisation ;
+`plages` : identifiants ordonnés, pages par UID à travers des UID effacés, pages par date à
+travers des dates éloignées et des égalités, aucune fiche d'un autre compte lue par une plage
+d'identifiants (autre membre, autre organisation, administrateur), vue par date fermée à
+l'écriture directe, identifiant et UID gardés.
 
 ## Mesures (`scripts/bench/mailbox/bench_mail_module.py`)
 
 Mesures du 21 novembre 2026, SurrealDB 3.3.4 en mémoire, machine de développement à 4 cœurs,
-boîte de 2 000 messages (`--messages 2000 --delivery 100 --repeat 15`), temps vus par le client
-sur une connexion gardée ouverte, moteur de `lyxal_core` accéléré (décision P2), droits encore
-évalués par les permissions des tables (décision P1 non livrée). Les temps sous la session
-système comprennent environ 20 ms d'authentification Basic par requête (`RETURN 1`), ceux d'un
-membre moins de 1 ms (jeton). Seuils de la décision C5 (lot 0).
+boîtes de 2 000 et 100 000 messages (`--delivery 100 --repeat 15 --fast-load` : boîte chargée par
+écriture directe de la session système, gardes et compteurs compris), temps vus par le client
+sur une connexion gardée ouverte, moteur de `lyxal_core` accéléré (décision P2), lectures par
+plages d'identifiants bornées et règle de lecture par fiche allégée (décision P1). Les temps sous
+la session système comprennent environ 20 ms d'authentification Basic par requête (`RETURN 1`),
+ceux d'un membre moins de 1 ms (jeton). Seuils de la décision C5 (lot 0).
 
-| Mesure | Session de membre (p50 / p95) | Session système (p50 / p95) | Seuil C5 |
-| :--- | :-: | :-: | :-: |
-| Remise (`fn::mail_message_create`) | 27 / 33 ms, 36 par seconde | 45 / 59 ms, 21 par seconde ; compte de service 25 / 30 ms, 39 par seconde | 300 par seconde : **non tenu** |
-| Changement de drapeau (`_flags_set`, un message) | 14 / 16 ms | — | 20 ms : **tenu** |
-| Première page de 50 messages (`_list`) | 1 847 / 1 904 ms | 57 / 60 ms | 100 ms : **non tenu** (membre) |
-| Plage de 1 000 UID | 2 272 / 2 344 ms | 116 / 128 ms | — |
-| Changements du compte (1 000 drapeaux, 200 effacements) | 959 / 966 ms | 60 / 63 ms | 100 ms : **non tenu** (membre) |
-| Changements d'un dossier | 947 / 957 ms | 63 / 64 ms | 100 ms : **non tenu** (membre) |
+| Mesure (p50 / p95) | Membre, 2 000 | Membre, 100 000 | Système, 2 000 / 100 000 (p50) | Seuil C5 |
+| :--- | :-: | :-: | :-: | :-: |
+| Première page de 50 messages, par date | 51 / 52 ms | 54 / 67 ms | 49 / 51 ms | 100 ms : **tenu** |
+| Page de 50 messages, par UID | 38 / 44 ms | 39 / 46 ms | 43 / 45 ms | 100 ms : **tenu** |
+| Changements du compte (1 000 drapeaux, 200 effacements) | 69 / 70 ms | 73 / 80 ms | 62 / 62 ms | 100 ms : **tenu** |
+| Changements d'un dossier | 73 / 74 ms | 76 / 78 ms | 63 / 64 ms | 100 ms : **tenu** |
+| Plage de 1 000 UID | 489 / 565 ms | 504 / 547 ms | 193 / 223 ms | — |
+| Changement de drapeau (`_flags_set`, un message) | 15 / 16 ms | 13 / 18 ms | — | 20 ms : **tenu** |
+| Remise (`fn::mail_message_create`) | 28 / 31 ms, 35,6 par seconde | 28 / 35 ms, 34,4 par seconde | 45 / 44 ms (validation seule : 38 à 40 ms) | 300 par seconde : **non tenu** |
 
-**Coût des permissions de table** (risque du §19 du plan) : sous une session de membre,
-SurrealDB 3.3.4 évalue la permission de `mail_message` sur chaque ligne de la plage d'index lue,
-avant `LIMIT` (environ 0,9 ms par message à 2 000 messages : `fn::mail_can` lit le compte puis
-`fn::auth_has_permission`) ; une page, une plage d'UID ou une synchronisation coûtent autant que
-le dossier ou le compte entier. Décision P1 (droits contrôlés une fois par appel) : mécanisme en
-cours de décision (`ROADMAP.md`).
+**Coût par fiche lue.** La règle de lecture des tables `mail_message`, `mail_message_date` et
+`mail_tombstone` lit la session et son sujet par chemins et compare des champs recopiés sur la
+fiche (`tenant`, `owner`) : environ 13 µs par fiche dans une clause `PERMISSIONS` (mesure isolée
+sur 1 000 fiches), contre environ 360 µs pour `fn::mail_can` et 90 µs pour une fonction faite de
+requêtes ; en situation, 1 200 changements coûtent environ 10 ms de plus à un membre qu'à la
+session système. Les coûts ne dépendent pas de la taille de la boîte : une plage d'identifiants
+bornée ne parcourt que les fiches qu'elle contient. Les fonctions publiques contrôlent en plus
+`fn::mail_can` une fois par appel (dossier, compte ou message visé). Avant P1, une page de 50 sur
+2 000 messages prenait 1 847 ms à un membre, et 1 200 changements 959 ms.
 
-**Lectures dans une fonction : coût proportionnel au dossier, même sans permission.** Dans le
-corps d'une fonction ou d'un événement, SurrealDB 3.3.4 exécute une requête avec la stratégie
-`compute-only`, qui ne pousse pas `LIMIT` dans le parcours d'index : environ 10 µs par message du
-dossier dans une fonction (page de 50 sous la session système : environ 210 ms à 20 000 messages,
-950 ms à 100 000, contre 2 ms pour la même requête au premier niveau). Une plage d'identifiants
-d'enregistrement bornée (`table:[dossier, 1]..[dossier, 52]`) reste constante (0,4 ms dans une
-fonction sur 20 000 lignes).
-
-**Validation par `lyxal_core`** : depuis l'accélération du moteur (P2), la remise passe d'environ
-100 ms à 25 ms pour un membre (36 remises par seconde et par connexion, contre 10,5 avant P2) et
-le changement d'un drapeau de 28 à 14 ms.
+**Plage de 1 000 UID** : environ 0,3 ms de plus par fiche pour un membre que pour la session
+système, non expliqué par la règle de lecture (13 µs) ; non analysé (aucun seuil C5).
 
 **Contention du compteur de modifications du compte (décisions M6, P3)** : quatre clients qui
-remettent en même temps dans un même compte (25 messages chacun), conflits de transaction rejoués
-trois fois au plus comme le fera le service Rust : 117 conflits et 32 remises encore refusées,
-37,8 remises par seconde au total (un dossier) ; 111 conflits, 30 refus, 38,0 par seconde (quatre
-dossiers). Le débit total quadruple avec P2, mais la proportion de remises refusées après trois
-rejeux reste la même (environ un tiers) : le compteur unique du compte sérialise toujours ses
-écritures. Repli du §19 du plan (compteur par dossier et journal des changements du compte) :
-à décider sur cette mesure (décision P3).
+remettent en même temps dans un même compte (25 messages chacun), conflits de transaction
+rejoués trois fois au plus : 101 à 115 conflits et 30 à 35 remises refusées pour 100, 34 à 36
+remises par seconde au total, dans un dossier comme dans quatre, sur 2 000 comme sur 100 000
+messages. Environ un tiers des remises restent refusées après trois rejeux : le compteur unique
+du compte sérialise ses écritures. Repli du §19 du plan à décider sur cette mesure.
 
 Cohérence vérifiée en fin de banc : compteurs du compte égaux aux messages, UID uniques dans le
-dossier. Non mesuré : coût d'un scellement de clé de fichier par message (Rust, lot 4d).
+dossier, une fiche de la vue par date par message. Non mesuré : coût d'un scellement de clé de
+fichier par message (Rust, lot 4d).
 
 ## État actuel : `lyxal_mail::net`
 
