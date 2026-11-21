@@ -724,4 +724,4 @@ usage) ; `apps/lyxal-groupware/README.md` (modules, configuration) ; `.agents/AG
 * [ ] **Provenance** : `SOURCES.md` des deux crates ; aucune partie `LicenseRef-SEL`.
 * [ ] **Validation CTO** : ce plan, décisions M1 à M20.
 
-À valider par le CTO.
+Validé par le CTO le 21 novembre 2026 (décisions M1 à M20 telles que recommandées).
