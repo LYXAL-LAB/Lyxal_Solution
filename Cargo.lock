@@ -4286,6 +4286,7 @@ dependencies = [
  "lyxal_auth",
  "lyxal_crypto",
  "lyxal_runtime",
+ "lyxal_secrets",
  "lyxal_surreal",
  "object_store",
  "s3s",

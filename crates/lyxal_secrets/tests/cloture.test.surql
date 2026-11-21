@@ -41,7 +41,7 @@
     CREATE auth_identity:gestion CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "gestion@lyxal.test" } };
     RELATE auth_identity:gestion->auth_member_of->auth_organization:alpha;
     CREATE auth_session:gestion CONTENT { identity: auth_identity:gestion, organization: auth_organization:alpha, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
-    fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", key_id: "k1", wrapped: "enc:v2:m1:K1" });
+    fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", purpose: "secrets", key_id: "k1", wrapped: "enc:v2:m1:K1" });
     LET $db = fn::secrets_secret_create({ tenant: "auth_organization:alpha", path: "infra/db", kind: "password" }).data.id;
     fn::secrets_version_add({ secret: <string> $db, number: 1, envelope: "enc:v2:k1:AAAA", key_id: "k1" });
     fn::secrets_version_add({ secret: <string> $db, number: 2, envelope: "enc:v2:k1:BBBB", key_id: "k1" });

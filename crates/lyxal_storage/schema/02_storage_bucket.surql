@@ -5,7 +5,8 @@
 -- ============================================================================
 -- Un bucket appartient à l'installation ou à une organisation. Son nom est unique dans sa
 -- portée. Il n'est supprimé que vide, sauf avec son organisation (garde storage_object_bucket_guard).
--- Ses octets sont sur un support nommé, sous le préfixe <portée>/<clé du bucket>.
+-- Ses octets sont sur un support nommé, sous le préfixe <portée>/<clé du bucket>. Un bucket
+-- chiffré (fixé à la création) chiffre chaque fichier au repos par une clé propre au fichier.
 
 DEFINE TABLE OVERWRITE storage_bucket
     TYPE NORMAL
@@ -54,6 +55,12 @@ DEFINE FIELD OVERWRITE backend ON TABLE storage_bucket
     READONLY
     ASSERT fn::validation_snake_case_name($value, 1, 64).value == $value
     COMMENT "Nom du support qui porte les octets du bucket, fixé à la création";
+
+DEFINE FIELD OVERWRITE encrypted ON TABLE storage_bucket
+    TYPE bool
+    DEFAULT false
+    READONLY
+    COMMENT "Bucket chiffré, fixé à la création : chaque fichier est chiffré au repos (lyxal_crypto, flux v1) par une clé propre, scellée par la clé « fichiers » de l'organisation (lyxal_secrets) ; aucune écriture sans service de clés, aucun envoi reprenable";
 
 DEFINE FIELD OVERWRITE readonly ON TABLE storage_bucket
     TYPE bool

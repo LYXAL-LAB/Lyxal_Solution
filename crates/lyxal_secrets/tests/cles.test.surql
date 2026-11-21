@@ -1,7 +1,8 @@
 -- lyxal-test: assertions
--- Clés des organisations : aucun accès utilisateur, une seule clé active, création concurrente,
--- rotation, rescellement par une nouvelle clé maîtresse, destruction, liste de rescellement,
--- journal ; lectures refusées journalisées au nom de l'appelant.
+-- Clés des organisations : aucun accès utilisateur, une seule clé active par usage, création
+-- concurrente, rotation, rescellement par une nouvelle clé maîtresse, destruction, liste de
+-- rescellement, journal ; clés « fichiers » (trousseau séparé, clés retirées, destruction sur
+-- l'avis de l'hôte) ; lectures refusées journalisées au nom de l'appelant.
 --
 -- identité admin: { "id": "auth_session:admin", "pv": 1, "permissions": ["secrets.secret.list", "secrets.secret.write", "secrets.secret.delete", "secrets.secret.restore", "secrets.secret.purge", "secrets.audit.read", "secrets.settings.manage", "secrets.value.read"] }
 -- identité redacteur: { "id": "auth_session:redacteur", "pv": 1, "permissions": ["secrets.secret.list", "secrets.secret.write"] }
@@ -38,30 +39,33 @@
 
 -- test: première clé de l'organisation, rangée scellée
 {
-    LET $r = fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", key_id: "alpha-1", wrapped: "enc:v2:m1:K1" });
-    LET $ring = fn::secrets_tenant_key_ring({ tenant: "auth_organization:alpha" }).data.items;
+    LET $r = fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", purpose: "secrets", key_id: "alpha-1", wrapped: "enc:v2:m1:K1" });
+    LET $ring = fn::secrets_tenant_key_ring({ tenant: "auth_organization:alpha", purpose: "secrets" }).data.items;
     RETURN $r.ok AND $r.data.state = "active" AND $r.data.retired IS NONE
         AND $ring = [{ key_id: "alpha-1", wrapped: "enc:v2:m1:K1", state: "active" }]
         AND fn::secrets_keys_trusted();
 };
 
 -- test: seconde première clé refusée (une seule clé active)
-RETURN fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", key_id: "alpha-x", wrapped: "enc:v2:m1:KX" }).error.code = "SECRETS_TENANT_KEY_CONFLICT"
-    AND fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", key_id: "alpha-x", wrapped: "enc:v2:m1:KX", replaces: "inconnue" }).error.code = "SECRETS_TENANT_KEY_CONFLICT";
+RETURN fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", purpose: "secrets", key_id: "alpha-x", wrapped: "enc:v2:m1:KX" }).error.code = "SECRETS_TENANT_KEY_CONFLICT"
+    AND fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", purpose: "secrets", key_id: "alpha-x", wrapped: "enc:v2:m1:KX", replaces: "inconnue" }).error.code = "SECRETS_TENANT_KEY_CONFLICT";
 
 -- test: aucun accès utilisateur à la clé scellée, même administrateur ; identifiant et état visibles
 -- en tant que: admin
 RETURN (SELECT VALUE key_id FROM secrets_tenant_key) = ["alpha-1"] AND (SELECT VALUE state FROM secrets_tenant_key) = ["active"]
     AND (SELECT VALUE wrapped FROM secrets_tenant_key).all(|$w| $w IS NONE)
-    AND fn::secrets_tenant_key_ring({ tenant: "auth_organization:alpha" }).error.code = "SECRETS_PERMISSION_DENIED"
-    AND fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", key_id: "pirate", wrapped: "enc:v2:m1:P" }).error.code = "SECRETS_PERMISSION_DENIED"
+    AND fn::secrets_tenant_key_ring({ tenant: "auth_organization:alpha", purpose: "secrets" }).error.code = "SECRETS_PERMISSION_DENIED"
+    AND fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", purpose: "secrets", key_id: "pirate", wrapped: "enc:v2:m1:P" }).error.code = "SECRETS_PERMISSION_DENIED"
     AND fn::secrets_rewrap_list({ master_key_id: "m1" }).error.code = "SECRETS_PERMISSION_DENIED"
+    AND fn::secrets_tenant_key_ring({ tenant: "auth_organization:alpha", purpose: "files" }).error.code = "SECRETS_PERMISSION_DENIED"
+    AND fn::secrets_tenant_key_retired({ purpose: "files" }).error.code = "SECRETS_PERMISSION_DENIED"
+    AND fn::secrets_tenant_key_destroy({ key_id: "alpha-1", in_use: false }).error.code = "SECRETS_PERMISSION_DENIED"
     AND !fn::secrets_keys_trusted();
 
 -- test: écriture directe dans la table refusée à un utilisateur (rien n'est écrit)
 -- en tant que: admin
 {
-    CREATE secrets_tenant_key CONTENT { tenant: auth_organization:alpha, key_id: "pirate", wrapped: "enc:v2:m1:P" };
+    CREATE secrets_tenant_key CONTENT { tenant: auth_organization:alpha, purpose: "secrets", key_id: "pirate", wrapped: "enc:v2:m1:P" };
     RETURN true;
 };
 
@@ -85,8 +89,8 @@ RETURN fn::secrets_tenant_key_rotate_allowed({ tenant: "auth_organization:alpha"
 
 -- test: rotation : nouvelle clé active, l'ancienne relit seulement
 {
-    LET $r = fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", key_id: "alpha-2", wrapped: "enc:v2:m1:K2", replaces: "alpha-1", requested_by: "auth_identity:admin" });
-    LET $ring = fn::secrets_tenant_key_ring({ tenant: "auth_organization:alpha" }).data.items;
+    LET $r = fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", purpose: "secrets", key_id: "alpha-2", wrapped: "enc:v2:m1:K2", replaces: "alpha-1", requested_by: "auth_identity:admin" });
+    LET $ring = fn::secrets_tenant_key_ring({ tenant: "auth_organization:alpha", purpose: "secrets" }).data.items;
     RETURN $r.data.retired = "alpha-1" AND $ring.key_id = ["alpha-1", "alpha-2"] AND $ring.state = ["decrypt_only", "active"]
         AND (SELECT VALUE requested_by FROM ONLY secrets_tenant_key WHERE key_id = "alpha-2" LIMIT 1) = "auth_identity:admin";
 };
@@ -111,7 +115,7 @@ RETURN fn::secrets_tenant_key_destroy({ key_id: "alpha-1" }).error.code = "SECRE
     LET $d = fn::secrets_tenant_key_destroy({ key_id: "alpha-1" });
     LET $k = (SELECT state, wrapped, destroyed_at FROM ONLY secrets_tenant_key WHERE key_id = "alpha-1" LIMIT 1);
     RETURN $l.versions = [] AND $l.unused = ["alpha-1"] AND $d.data.destroyed AND $k.state = "destroyed" AND $k.wrapped IS NONE
-        AND fn::secrets_tenant_key_ring({ tenant: "auth_organization:alpha" }).data.items.key_id = ["alpha-2"];
+        AND fn::secrets_tenant_key_ring({ tenant: "auth_organization:alpha", purpose: "secrets" }).data.items.key_id = ["alpha-2"];
 };
 
 -- test: rescellement par une nouvelle clé maîtresse ; écriture conditionnelle
@@ -135,6 +139,52 @@ RETURN fn::secrets_tenant_key_destroy({ key_id: "alpha-1" }).error.code = "SECRE
 -- attendu-erreur: SECRETS_TENANT_KEY_UNAVAILABLE
 UPDATE secrets_tenant_key SET state = "decrypt_only", wrapped = "enc:v2:m2:R" WHERE key_id = "alpha-1";
 
+-- test: clés « fichiers » : une clé active par usage, trousseaux séparés ; usage obligatoire
+{
+    LET $f = fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", purpose: "files", key_id: "alpha-f1", wrapped: "enc:v2:m2:F1" });
+    LET $files = fn::secrets_tenant_key_ring({ tenant: "auth_organization:alpha", purpose: "files" }).data.items;
+    LET $secrets = fn::secrets_tenant_key_ring({ tenant: "auth_organization:alpha", purpose: "secrets" }).data.items;
+    RETURN $f.ok AND $f.data.retired IS NONE AND $files.key_id = ["alpha-f1"] AND $secrets.key_id = ["alpha-2"]
+        AND (SELECT VALUE purpose FROM ONLY secrets_tenant_key WHERE key_id = "alpha-f1" LIMIT 1) = "files"
+        AND fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", purpose: "files", key_id: "alpha-fx", wrapped: "enc:v2:m2:FX" }).error.code = "SECRETS_TENANT_KEY_CONFLICT"
+        AND fn::secrets_tenant_key_ring({ tenant: "auth_organization:alpha" }).error.code = "SECRETS_INVALID_PARAMETERS"
+        AND fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", purpose: "autre", key_id: "alpha-fy", wrapped: "enc:v2:m2:FY" }).error.code = "SECRETS_INVALID_PARAMETERS";
+};
+
+-- test: rotation de la clé « fichiers » ; clés retirées par usage ; rescellement de tous les usages
+{
+    LET $r = fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", purpose: "files", key_id: "alpha-f2", wrapped: "enc:v2:m2:F2", replaces: "alpha-f1" });
+    LET $retired = fn::secrets_tenant_key_retired({ purpose: "files" }).data.items;
+    LET $work = fn::secrets_rewrap_list({ master_key_id: "m1" }).data;
+    RETURN $r.data.retired = "alpha-f1" AND $retired.key_id = ["alpha-f1"]
+        AND $retired[0].tenant = auth_organization:alpha AND $retired[0].retired_at IS NOT NONE
+        AND fn::secrets_tenant_key_retired({ purpose: "secrets" }).data.items = []
+        AND fn::secrets_tenant_key_retired({ purpose: "files", start: 1 }).data.items = []
+        AND array::sort($work.keys.purpose) = ["files", "files", "secrets"]
+        AND $work.unused = [];
+};
+
+-- test: destruction d'une clé « fichiers » sur l'avis de l'hôte (in_use obligatoire)
+RETURN fn::secrets_tenant_key_destroy({ key_id: "alpha-f1" }).error.code = "SECRETS_TENANT_KEY_CONFLICT"
+    AND fn::secrets_tenant_key_destroy({ key_id: "alpha-f1", in_use: true }).error.details.in_use = true
+    AND fn::secrets_tenant_key_destroy({ key_id: "alpha-f2", in_use: false }).error.code = "SECRETS_TENANT_KEY_UNAVAILABLE"
+    AND fn::secrets_tenant_key_destroy({ key_id: "alpha-f1", in_use: false }).data.destroyed
+    AND fn::secrets_tenant_key_retired({ purpose: "files" }).data.items = []
+    AND fn::secrets_tenant_key_ring({ tenant: "auth_organization:alpha", purpose: "files" }).data.items.key_id = ["alpha-f2"];
+
+-- test: une clé « secrets » ne se détruit pas sur l'avis de l'hôte
+{
+    fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", purpose: "secrets", key_id: "alpha-3", wrapped: "enc:v2:m2:K3", replaces: "alpha-2" });
+    RETURN fn::secrets_tenant_key_destroy({ key_id: "alpha-2", in_use: false }).error.code = "SECRETS_INVALID_PARAMETERS"
+        AND (SELECT VALUE state FROM ONLY secrets_tenant_key WHERE key_id = "alpha-2" LIMIT 1) = "decrypt_only";
+};
+
+-- test: journal des clés « fichiers » : usage rendu, aucune matière de clé
+{
+    LET $e = (SELECT VALUE event FROM secrets_audit WHERE scope_key = "alpha" AND event.details.purpose = "files" ORDER BY seq ASC);
+    RETURN $e.action = ["key.create", "key.retire", "key.create", "key.destroy"] AND !string::contains(<string> $e, "enc:v2");
+};
+
 -- test: lecture refusée journalisée au nom de l'appelant, session système seulement
 {
     LET $s = <string> (SELECT VALUE id_secret FROM ONLY passe:s);
@@ -151,7 +201,7 @@ RETURN fn::secrets_audit_denied({ secret: <string> (SELECT VALUE id_secret FROM 
 
 -- test: organisation supprimée : ses clés partent avec elle
 {
-    fn::secrets_tenant_key_create({ tenant: "auth_organization:beta", key_id: "beta-1", wrapped: "enc:v2:m2:B1" });
+    fn::secrets_tenant_key_create({ tenant: "auth_organization:beta", purpose: "secrets", key_id: "beta-1", wrapped: "enc:v2:m2:B1" });
     DELETE auth_organization:beta;
     RETURN array::len(SELECT * FROM secrets_tenant_key WHERE key_id = "beta-1") = 0;
 };

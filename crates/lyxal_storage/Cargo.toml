@@ -9,6 +9,8 @@ description = "Fichiers et documents stockés de Lyxal OS : buckets, fiches de f
 lyxal_surreal = { workspace = true }
 lyxal_runtime = { workspace = true }
 lyxal_crypto = { workspace = true }
+# Clés des fichiers chiffrés : scellées par la clé « fichiers » de l'organisation (FileKeys)
+lyxal_secrets = { workspace = true }
 async-trait = { workspace = true }
 surrealdb = { workspace = true }
 thiserror = { workspace = true }

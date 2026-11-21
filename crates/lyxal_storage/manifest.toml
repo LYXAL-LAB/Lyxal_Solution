@@ -2,7 +2,7 @@ manifest_version = 1
 id = "lyxal_storage"
 name = "Lyxal Storage"
 version = "0.1.0"
-description = "Fichiers et documents stockés de Lyxal OS : buckets, fiches de fichiers, états, droits et quotas"
+description = "Fichiers et documents stockés de Lyxal OS : buckets (dont chiffrés), fiches de fichiers, états, droits, quotas et compteurs de volume"
 capabilities = ["database", "events", "storage"]
 
 [runtime]
@@ -24,13 +24,18 @@ version = ">=0.1.0"
 id = "lyxal_auth"
 version = ">=0.1.0"
 
+[[dependencies]]
+id = "lyxal_secrets"
+version = ">=0.1.0"
+
 [resources]
 schemas = [
     "schema/01_storage_settings.surql",
     "schema/02_storage_bucket.surql",
     "schema/03_storage_object.surql",
     "schema/04_storage_reclaim.surql",
-    "schema/05_storage_upload_part.surql"
+    "schema/05_storage_upload_part.surql",
+    "schema/06_storage_usage.surql"
 ]
 functions = [
     "functions/storage_access.surql",

@@ -54,11 +54,20 @@ pub(super) async fn service(
     headers: &HeaderMap,
 ) -> Result<StorageService, ApiError> {
     let (_, session) = auth::caller_session(context, headers).await?;
-    let service = StorageService::new(StorageStore::new(session), context.storage.backends.clone());
-    Ok(match &context.storage.scanner {
-        Some(scanner) => service.with_scanner(scanner.clone()),
-        None => service,
-    })
+    let mut service =
+        StorageService::new(StorageStore::new(session), context.storage.backends.clone());
+    if let Some(scanner) = &context.storage.scanner {
+        service = service.with_scanner(scanner.clone());
+    }
+    // Buckets chiffrés : la clé scellée d'une fiche est lue par la session système, après le
+    // contrôle des droits de l'appelant sur la fiche
+    if let Some(keys) = &context.storage.file_keys {
+        service = service.with_file_keys(
+            keys.clone(),
+            StorageStore::new(context.database.as_ref().clone()),
+        );
+    }
+    Ok(service)
 }
 
 fn bucket_id(bucket: &str) -> String {

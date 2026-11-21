@@ -41,7 +41,7 @@
     CREATE auth_identity:partageur CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "partageur@lyxal.test" } };
     RELATE auth_identity:partageur->auth_member_of->auth_organization:alpha;
     CREATE auth_session:partageur CONTENT { identity: auth_identity:partageur, organization: auth_organization:alpha, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
-    fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", key_id: "k1", wrapped: "enc:v2:m1:K1" });
+    fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", purpose: "secrets", key_id: "k1", wrapped: "enc:v2:m1:K1" });
     LET $s = fn::secrets_secret_create({ tenant: "auth_organization:alpha", path: "api/brevo", kind: "api_key", visibility: "revealable" }).data.id;
     fn::secrets_version_add({ secret: <string> $s, number: 1, envelope: "enc:v2:k1:AAAA", key_id: "k1" });
     CREATE passe:ids SET secret = $s, empreinte = "aa" + string::repeat("0", 62);

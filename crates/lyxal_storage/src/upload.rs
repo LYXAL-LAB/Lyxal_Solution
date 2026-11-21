@@ -24,7 +24,7 @@ use crate::models::{
     ClaimedUpload, ObjectBeginParams, ObjectRefParams, ObjectState, PartName, StoredObject,
     UploadClaimParams, UploadPartAddParams, UploadRefParams, UploadReleaseParams, UploadStatus,
 };
-use crate::service::{StorageService, WriteTarget, PART_SIZE};
+use crate::service::{retry_conflicts, StorageService, WriteTarget, PART_SIZE};
 use crate::store::StorageStore;
 
 /// Durée de la réservation de l'assemblage, en secondes : au-delà, un assemblage interrompu
@@ -118,17 +118,16 @@ impl StorageService {
         let declared_size = i64::try_from(request.size).map_err(|_| {
             StorageError::ContentMismatch("taille annoncée trop grande".to_string())
         })?;
-        let begun = self
-            .store
-            .object_begin(ObjectBeginParams {
-                bucket: request.bucket,
-                key: request.key,
-                filename: request.filename,
-                declared_type: request.content_type,
-                declared_size: Some(declared_size),
-                resumable: true,
-            })
-            .await?;
+        let params = ObjectBeginParams {
+            bucket: request.bucket,
+            key: request.key,
+            filename: request.filename,
+            declared_type: request.content_type,
+            declared_size: Some(declared_size),
+            resumable: true,
+        };
+        // Compteurs de volume communs à la portée : conflit possible avec une autre écriture
+        let begun = retry_conflicts(|| self.store.object_begin(params.clone())).await?;
         self.upload_status(&begun.id.to_sql()).await
     }
 
@@ -365,10 +364,12 @@ impl StorageService {
             .then(move |path| reader.clone().read(path))
             .try_flatten()
             .boxed();
+        // Envoi reprenable : jamais dans un bucket chiffré (refusé à l'ouverture)
         self.write_and_commit(
             target,
             Some(position(claimed.length)),
             Some(claimed.claim),
+            None,
             content,
         )
         .await

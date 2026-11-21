@@ -218,3 +218,30 @@ IF !record::exists(error_definition:STORAGE_OPERATION_CANCELLED) THEN (
         }
     }
 ) END;
+
+IF !record::exists(error_definition:STORAGE_ENCRYPTION_UNAVAILABLE) THEN (
+    CREATE error_definition:STORAGE_ENCRYPTION_UNAVAILABLE CONTENT {
+        code: "STORAGE_ENCRYPTION_UNAVAILABLE",
+        module: "storage",
+        domain: "supports",
+        category: "dependency",
+        severity: "error",
+        message: "File encryption unavailable",
+        default_language: "fr",
+        http_status: 503,
+        retryable: true,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Chiffrement des fichiers indisponible",
+                description: "Le bucket est chiffré, mais le service de clés du serveur n'est pas disponible (clé maîtresse du coffre-fort absente, ou clé de l'organisation illisible) : aucun fichier n'y est écrit ni lu, et jamais en clair.",
+                resolution: "Réessayez plus tard ; si l'erreur persiste, vérifiez la clé maîtresse du coffre-fort (LYXAL__SECRETS__MASTER_KEY) et la sonde de santé du coffre-fort."
+            },
+            en: {
+                label: "File encryption unavailable",
+                description: "The bucket is encrypted but the server key service is unavailable (vault master key missing, or organisation key unreadable): no file is written to or read from it, and never in clear.",
+                resolution: "Try again later; if the error persists, check the vault master key (LYXAL__SECRETS__MASTER_KEY) and the vault health probe."
+            }
+        }
+    }
+) END;

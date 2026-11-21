@@ -17,6 +17,7 @@ DEFINE FUNCTION OVERWRITE fn::storage_bucket_create($params: object) {
             allowed_types: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: true } }, { rule: "array_length", options: { max_length: 100 } }, { rule: "each", options: { pipeline: [{ rule: "mime_type" }] } }], default: [] },
             readonly: { pipeline: [{ rule: "boolean" }], default: false },
             backend: { pipeline: [{ rule: "snake_case_name", options: { min_length: 1, max_length: 64 } }], default: "default" },
+            encrypted: { pipeline: [{ rule: "boolean" }], default: false },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -28,11 +29,12 @@ DEFINE FUNCTION OVERWRITE fn::storage_bucket_create($params: object) {
     IF !fn::storage_can({ action: "manage", tenant: $p.tenant }) { RETURN fn::error_result("STORAGE_PERMISSION_DENIED", $p.language, {}); };
     LET $inserted = (INSERT IGNORE INTO storage_bucket {
         tenant: $p.tenant, name: $p.name, description: $p.description, max_object_size: $p.max_object_size,
-        allowed_types: array::distinct($p.allowed_types), readonly: $p.readonly, backend: $p.backend
+        allowed_types: array::distinct($p.allowed_types), readonly: $p.readonly, backend: $p.backend,
+        encrypted: $p.encrypted
     });
     IF array::len($inserted) = 0 { RETURN fn::error_result("STORAGE_BUCKET_EXISTS", $p.language, { name: $p.name }); };
     RETURN fn::result_ok($inserted[0]);
-} COMMENT "Crée un bucket ({ name, tenant, description, max_object_size, allowed_types, readonly, backend }) ; nom unique dans sa portée (STORAGE_BUCKET_EXISTS) ; allowed_types vide : tous les types ; backend : nom du support (default), fixé à la création. Droit : gestion";
+} COMMENT "Crée un bucket ({ name, tenant, description, max_object_size, allowed_types, readonly, backend, encrypted }) ; nom unique dans sa portée (STORAGE_BUCKET_EXISTS) ; allowed_types vide : tous les types ; backend : nom du support (default) et encrypted : bucket chiffré (faux par défaut), fixés à la création. Droit : gestion";
 
 -- ----------------------------------------------------------------------------
 -- fn::storage_bucket_update
@@ -65,7 +67,7 @@ DEFINE FUNCTION OVERWRITE fn::storage_bucket_update($params: object) {
         readonly = $p.readonly ?? readonly);
     IF $updated == NONE { RETURN fn::error_result("STORAGE_WRITE_FORBIDDEN", $p.language, { table: "storage_bucket" }); };
     RETURN fn::result_ok($updated);
-} COMMENT "Modifie un bucket ({ bucket, description, max_object_size, allowed_types, readonly, clear }) : un champ absent est conservé, clear (description, max_object_size) efface ; le nom et le support ne changent pas. Droit : gestion";
+} COMMENT "Modifie un bucket ({ bucket, description, max_object_size, allowed_types, readonly, clear }) : un champ absent est conservé, clear (description, max_object_size) efface ; le nom, le support et le chiffrement ne changent pas. Droit : gestion";
 
 -- ----------------------------------------------------------------------------
 -- fn::storage_bucket_get
@@ -85,9 +87,9 @@ DEFINE FUNCTION OVERWRITE fn::storage_bucket_get($params: object) {
     LET $p = $report.value;
     LET $bucket = (SELECT * FROM ONLY $p.bucket);
     IF $bucket == NONE { RETURN fn::error_result("STORAGE_BUCKET_NOT_FOUND", $p.language, { bucket: <string> $p.bucket }); };
-    LET $sizes = (SELECT VALUE size FROM storage_object WHERE bucket = $bucket.id AND state IN ["available", "quarantined"]);
-    RETURN fn::result_ok(object::extend($bucket, { usage: { objects: array::len($sizes), bytes: math::sum($sizes) } }));
-} COMMENT "Bucket ({ bucket }) et son volume (usage : { objects, bytes } des fichiers disponibles ou en quarantaine). Droit : lecture";
+    LET $usage = fn::storage_scope_usage({ tenant: $bucket.tenant, bucket: $bucket.id });
+    RETURN fn::result_ok(object::extend($bucket, { usage: { objects: $usage.objects, bytes: $usage.bytes } }));
+} COMMENT "Bucket ({ bucket }) et son volume, lu dans les compteurs tenus à jour (usage : { objects, bytes } des fichiers disponibles ou en quarantaine). Droit : lecture";
 
 -- ----------------------------------------------------------------------------
 -- fn::storage_bucket_list

@@ -6,7 +6,9 @@
 -- Un fichier est repéré par son bucket et sa clé, comme la valeur `file` de SurrealDB. Les octets
 -- sont sur le support ; la fiche fait foi. États : pending (écriture en cours, jamais servi),
 -- available, quarantined, deleted (octets à retirer par le worker). Les modules consommateurs
--- référencent une fiche par un champ `record<storage_object>` déclaré REFERENCE.
+-- référencent une fiche par un champ `record<storage_object>` déclaré REFERENCE. Dans un bucket
+-- chiffré, la fiche porte la clé du fichier scellée (content_key, illisible hors session système
+-- et worker) ; l'empreinte et la taille stockée sont celles des octets chiffrés.
 
 DEFINE TABLE OVERWRITE storage_object
     TYPE NORMAL
@@ -89,7 +91,26 @@ DEFINE FIELD OVERWRITE size ON TABLE storage_object
 DEFINE FIELD OVERWRITE blake3 ON TABLE storage_object
     TYPE option<string>
     ASSERT $value IS NONE OR fn::validation_checksum($value, "blake3").value == $value
-    COMMENT "Empreinte BLAKE3 du contenu (64 caractères hexadécimaux), posée à la fin de l'écriture";
+    COMMENT "Empreinte BLAKE3 des octets stockés (64 caractères hexadécimaux : le chiffré dans un bucket chiffré, jamais le clair), posée à la fin de l'écriture";
+
+DEFINE FIELD OVERWRITE content_key ON TABLE storage_object
+    TYPE option<string>
+    ASSERT $value IS NONE OR (string::starts_with($value, "enc:v2:") AND string::len($value) <= 4096)
+    PERMISSIONS FOR select WHERE fn::storage_can({ action: "worker" })
+    COMMENT "Bucket chiffré : clé du fichier scellée par la clé « fichiers » de l'organisation (enc:v2), posée à la fin de l'écriture, rescellée après une rotation ; illisible hors session système et worker ; effacée avec la fiche";
+
+DEFINE FIELD OVERWRITE content_key_id ON TABLE storage_object
+    TYPE option<string>
+    VALUE IF $this.content_key IS NONE { NONE } ELSE { string::split($this.content_key, ":")[2] }
+    COMMENT "Clé « fichiers » de l'organisation qui scelle la clé du fichier (rotation) ; NONE : fichier en clair";
+
+DEFINE FIELD OVERWRITE stored_size ON TABLE storage_object
+    TYPE option<int>
+    VALUE IF $this.size IS NONE { NONE } ELSE IF $this.content_key IS NONE { $this.size } ELSE {
+        -- Flux chiffré v1 : en-tête de 47 octets, puis chaque segment de 64 Kio suivi de son étiquette de 16 octets
+        47 + $this.size + 16 * math::max([1, ($this.size + 65535) / 65536])
+    }
+    COMMENT "Taille des octets stockés sur le support : la taille réelle, ou celle du flux chiffré dans un bucket chiffré";
 
 DEFINE FIELD OVERWRITE state ON TABLE storage_object
     TYPE string
@@ -147,3 +168,4 @@ DEFINE FIELD OVERWRITE updated_at ON TABLE storage_object
 DEFINE INDEX OVERWRITE storage_object_slot ON TABLE storage_object FIELDS bucket, slot UNIQUE;
 DEFINE INDEX OVERWRITE storage_object_scope ON TABLE storage_object FIELDS scope_key, state;
 DEFINE INDEX OVERWRITE storage_object_state ON TABLE storage_object FIELDS state;
+DEFINE INDEX OVERWRITE storage_object_content_key ON TABLE storage_object FIELDS content_key_id;

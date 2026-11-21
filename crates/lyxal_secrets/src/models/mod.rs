@@ -29,13 +29,13 @@ pub use audit::{
     AuditVerifyParams,
 };
 pub use caller::{CallerContext, CallerContextParams};
-pub(crate) use keys::{
-    RewrapKey, RewrapList, RewrapVersion, TenantKeyCreateParams, TenantKeyRewrapParams,
-    TenantKeyRing,
-};
 pub use keys::{
-    RewrapListParams, RotateAllowed, TenantKeyCreated, TenantKeyDestroyParams, TenantKeyDestroyed,
-    TenantKeyRewrapped, TenantKeyState, TenantRef,
+    KeyPurpose, RetiredKey, RewrapListParams, RotateAllowed, TenantKeyCreated,
+    TenantKeyDestroyParams, TenantKeyDestroyed, TenantKeyRewrapped, TenantKeyState, TenantRef,
+};
+pub(crate) use keys::{
+    RetiredKeys, RewrapKey, RewrapList, RewrapVersion, TenantKeyCreateParams,
+    TenantKeyRetiredParams, TenantKeyRewrapParams, TenantKeyRing, TenantKeyRingParams,
 };
 pub(crate) use read::ReadEnvelope;
 pub use read::{ReadBeginParams, ReadTicket, ReadTicketRef};

@@ -2,18 +2,20 @@
 //! exécuter par `lyxal_scheduler`, tâche `secrets.maintenance`) :
 //!
 //! 1. purge des secrets supprimés dont la date de purge est passée (et des tickets échus) ;
-//! 2. rescellement, par la clé active de leur organisation, des versions scellées par une clé
-//!    retirée (rotation de clé d'organisation) ;
-//! 3. rescellement, par la clé maîtresse active, des clés d'organisation scellées par l'ancienne
-//!    (rotation de la clé maîtresse du coffre-fort) ;
-//! 4. destruction des clés d'organisation retirées que plus aucune version n'utilise ;
+//! 2. rescellement, par la clé « secrets » active de leur organisation, des versions scellées
+//!    par une clé retirée (rotation de clé d'organisation) ;
+//! 3. rescellement, par la clé maîtresse active, des clés d'organisation de tous usages scellées
+//!    par l'ancienne (rotation de la clé maîtresse du coffre-fort) ;
+//! 4. destruction des clés « secrets » retirées que plus aucune version n'utilise (une clé
+//!    « fichiers » retirée est détruite par l'hôte, après le rescellement des clés de fichiers
+//!    qu'elle scelle : `FileKeys`) ;
 //! 5. échéances signalées une seule fois (échéance proche, passée, rotation due) ;
 //! 6. rotations : démarrage des rotations dues des secrets qu'un rotateur gère (le rappel n'est
 //!    posé qu'une fois la rotation démarrée, ou si le démarrage échoue sans espoir de nouvel
 //!    essai), puis avancée des rotations en cours dont l'essai est échu, réservées une à une
 //!    juste avant d'être traitées (reprise à l'étape atteinte) ;
-//! 7. rotation des clés d'organisation plus anciennes que la période de leur portée (avant le
-//!    rescellement, qui suit au même passage) ;
+//! 7. rotation des clés d'organisation (« secrets » et « fichiers ») plus anciennes que la
+//!    période de leur portée pour leur usage (avant le rescellement, qui suit au même passage) ;
 //! 8. accès avancés : demandes sans réponse expirées, accès finis ou retirés depuis plus de 30
 //!    jours retirés de la table (leur trace reste au journal) ;
 //! 9. partages à usage unique : partages échus expirés (copie effacée), partages finis depuis
@@ -33,9 +35,9 @@ use std::collections::HashMap;
 use crate::error::{SecretsError, SecretsResult};
 use crate::keys::{MasterKeys, Scope, TenantKeys, TenantRing};
 use crate::models::{
-    AccessDueParams, DueKind, DueListParams, DueMarkParams, PurgeDueParams, RewrapListParams,
-    RewrapVersion, RotationBeginParams, RotationClaimParams, RotationState, SecretGetParams,
-    ShareDueParams, TenantKeyDestroyParams, VersionResealParams,
+    AccessDueParams, DueKind, DueListParams, DueMarkParams, KeyPurpose, PurgeDueParams,
+    RewrapListParams, RewrapVersion, RotationBeginParams, RotationClaimParams, RotationState,
+    SecretGetParams, ShareDueParams, TenantKeyDestroyParams, VersionResealParams,
 };
 use crate::rotation::{RotationOutcome, RotationRunner, RotatorRegistry};
 use crate::store::SecretsStore;
@@ -90,7 +92,7 @@ impl SecretsMaintenance {
     ) -> Self {
         Self {
             runner: RotationRunner::new(system.clone(), master.clone(), rotators),
-            keys: TenantKeys::new(system, master),
+            keys: TenantKeys::new(system, master, KeyPurpose::Secrets),
             batch: batch.clamp(1, 1000),
         }
     }
@@ -188,6 +190,7 @@ impl SecretsMaintenance {
                 match system
                     .tenant_key_destroy(TenantKeyDestroyParams {
                         key_id: key_id.clone(),
+                        in_use: None,
                     })
                     .await
                 {
@@ -300,7 +303,12 @@ impl SecretsMaintenance {
                         return Ok(());
                     }
                     let rotated = match Scope::from_record(key.tenant.as_ref()) {
-                        Ok(scope) => self.keys.rotate(&scope, None).await,
+                        Ok(scope) => {
+                            self.keys
+                                .for_purpose(key.purpose)
+                                .rotate(&scope, None)
+                                .await
+                        }
                         Err(error) => Err(error),
                     };
                     match rotated {

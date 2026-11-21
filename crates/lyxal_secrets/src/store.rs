@@ -17,16 +17,17 @@ use crate::models::{
     PolicyDeleted, PolicyList, PolicyListParams, PolicySetParams, PurgeDueParams, PurgeReport,
     ReadBeginParams, ReadEnvelope, ReadTicket, ReadTicketRef, RequestAccessParams,
     RequestApplyParams, RequestChangeParams, RequestDecisionParams, RequestList, RequestListParams,
-    RequestRefParams, RequestRejectParams, Resealed, RewrapList, RewrapListParams, RotateAllowed,
-    RotationBeginParams, RotationCheckParams, RotationCheckResult, RotationClaimParams,
-    RotationClaimed, RotationFailParams, RotationGetParams, RotationLeaseParams, RotationList,
-    RotationRecord, RotationRefParams, RotationStepParams, SecretCreateParams, SecretGetParams,
-    SecretList, SecretListParams, SecretPurged, SecretRecord, SecretRefParams, SecretUpdateParams,
-    SecretVersion, SettingsGetParams, SettingsSetParams, SettingsView, Share, ShareConsumeParams,
-    ShareConsumed, ShareCreateParams, ShareDueParams, ShareDueReport, ShareFailed, ShareList,
-    ShareListParams, ShareLoaded, ShareRefParams, StoredSettings, TenantKeyCreateParams,
-    TenantKeyCreated, TenantKeyDestroyParams, TenantKeyDestroyed, TenantKeyRewrapParams,
-    TenantKeyRewrapped, TenantKeyRing, TenantRef, VersionAddParams, VersionAdded,
+    RequestRefParams, RequestRejectParams, Resealed, RetiredKeys, RewrapList, RewrapListParams,
+    RotateAllowed, RotationBeginParams, RotationCheckParams, RotationCheckResult,
+    RotationClaimParams, RotationClaimed, RotationFailParams, RotationGetParams,
+    RotationLeaseParams, RotationList, RotationRecord, RotationRefParams, RotationStepParams,
+    SecretCreateParams, SecretGetParams, SecretList, SecretListParams, SecretPurged, SecretRecord,
+    SecretRefParams, SecretUpdateParams, SecretVersion, SettingsGetParams, SettingsSetParams,
+    SettingsView, Share, ShareConsumeParams, ShareConsumed, ShareCreateParams, ShareDueParams,
+    ShareDueReport, ShareFailed, ShareList, ShareListParams, ShareLoaded, ShareRefParams,
+    StoredSettings, TenantKeyCreateParams, TenantKeyCreated, TenantKeyDestroyParams,
+    TenantKeyDestroyed, TenantKeyRetiredParams, TenantKeyRewrapParams, TenantKeyRewrapped,
+    TenantKeyRing, TenantKeyRingParams, TenantRef, VersionAddParams, VersionAdded,
     VersionLabelParams, VersionList, VersionListParams, VersionRefParams, VersionResealParams,
 };
 
@@ -177,8 +178,9 @@ impl SecretsStore {
         self.call_fn("secrets_purge_due", params).await
     }
 
-    /// `fn::secrets_tenant_key_ring` : clés scellées d'une portée (session système).
-    pub(crate) async fn tenant_key_ring(&self, params: TenantRef) -> Call<TenantKeyRing> {
+    /// `fn::secrets_tenant_key_ring` : clés scellées d'une portée pour un usage (session
+    /// système).
+    pub(crate) async fn tenant_key_ring(&self, params: TenantKeyRingParams) -> Call<TenantKeyRing> {
         self.call_fn("secrets_tenant_key_ring", params).await
     }
 
@@ -210,6 +212,14 @@ impl SecretsStore {
         params: TenantKeyDestroyParams,
     ) -> Call<TenantKeyDestroyed> {
         self.call_fn("secrets_tenant_key_destroy", params).await
+    }
+
+    /// `fn::secrets_tenant_key_retired` : clés retirées d'un usage (session système).
+    pub(crate) async fn tenant_key_retired(
+        &self,
+        params: TenantKeyRetiredParams,
+    ) -> Call<RetiredKeys> {
+        self.call_fn("secrets_tenant_key_retired", params).await
     }
 
     /// `fn::secrets_rewrap_list` : travail de rescellement (session système).

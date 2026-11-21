@@ -158,8 +158,8 @@ pub async fn register_services(
     let crypto = crate::crypto::application_crypto(&config.crypto)?;
     let auth = auth::register_services(runtime, client, config, crypto.clone())?;
     i18n::register_services(runtime, client)?;
-    let storage = storage::register_services(runtime, client, config)?;
     let secrets = secrets::register_services(runtime, client, config)?;
+    let storage = storage::register_services(runtime, client, config, secrets.file_keys())?;
     let scheduler = scheduler::register_services(runtime, client, config)?;
     tasks::register_handlers(
         &mut scheduler.handlers(),

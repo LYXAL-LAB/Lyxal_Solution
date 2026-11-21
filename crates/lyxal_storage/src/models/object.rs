@@ -55,8 +55,15 @@ pub struct StoredObject {
     pub content_type: Option<String>,
     /// Taille réelle en octets, posée à la fin de l'écriture.
     pub size: Option<i64>,
-    /// Empreinte BLAKE3 du contenu, posée à la fin de l'écriture.
+    /// Taille des octets stockés : la taille réelle, ou celle du flux chiffré dans un bucket
+    /// chiffré.
+    pub stored_size: Option<i64>,
+    /// Empreinte BLAKE3 des octets stockés (le chiffré dans un bucket chiffré), posée à la fin de
+    /// l'écriture.
     pub blake3: Option<String>,
+    /// Clé « fichiers » de l'organisation qui scelle la clé du fichier (absente : fichier en
+    /// clair). La clé scellée elle-même n'est lue que par la session système.
+    pub content_key_id: Option<String>,
     /// État.
     pub state: ObjectState,
     /// Support qui porte les octets.
@@ -101,6 +108,10 @@ pub struct ObjectBeginParams {
 pub struct BegunObject {
     /// Fiche.
     pub id: StorageRecordId,
+    /// Organisation (absente pour l'installation).
+    pub tenant: Option<StorageRecordId>,
+    /// Bucket chiffré : le contenu doit être chiffré et sa clé scellée remise à la fin.
+    pub encrypted: bool,
     /// Support qui porte les octets.
     pub backend: String,
     /// Emplacement des octets sur le support.
@@ -116,7 +127,7 @@ pub struct BegunObject {
 }
 
 /// Paramètres de `fn::storage_object_commit`.
-#[derive(Debug, Clone, SurrealValue)]
+#[derive(Clone, SurrealValue)]
 pub struct ObjectCommitParams {
     /// Fiche (`storage_object:<clé>`).
     pub object: String,
@@ -124,8 +135,10 @@ pub struct ObjectCommitParams {
     pub size: i64,
     /// Type MIME réel.
     pub content_type: String,
-    /// Empreinte BLAKE3 du contenu (64 caractères hexadécimaux).
+    /// Empreinte BLAKE3 des octets stockés (64 caractères hexadécimaux).
     pub blake3: String,
+    /// Bucket chiffré : clé du fichier scellée (`enc:v2`).
+    pub content_key: Option<String>,
     /// Envoi reprenable : jeton de la réservation d'assemblage.
     pub claim: Option<super::upload::PartName>,
 }
@@ -210,4 +223,20 @@ pub struct ScopeUsage {
     pub reserved_bytes: i64,
     /// Quota de la portée (absent : sans quota).
     pub quota_bytes: Option<i64>,
+}
+
+impl std::fmt::Debug for ObjectCommitParams {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ObjectCommitParams")
+            .field("object", &self.object)
+            .field("size", &self.size)
+            .field("content_type", &self.content_type)
+            .field("blake3", &self.blake3)
+            .field(
+                "content_key",
+                &self.content_key.as_ref().map(|_| "[REDACTED]"),
+            )
+            .field("claim", &self.claim)
+            .finish()
+    }
 }

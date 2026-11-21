@@ -2,15 +2,16 @@
 //!
 //! ```text
 //! clé maîtresse du coffre-fort (MasterKeys : active, et l'ancienne en lecture seule pendant une rotation)
-//!    └── clé de chaque organisation : 32 octets tirés par rand_core::OsRng dans un SecretBytes,
-//!        scellés par la clé maîtresse et rangés dans secrets_tenant_key
-//!           └── chaque version : scellée par la clé de son organisation
+//!    └── clés de chaque organisation, une par usage : 32 octets tirés par rand_core::OsRng dans
+//!        un SecretBytes, scellés par la clé maîtresse et rangés dans secrets_tenant_key
+//!           ├── usage « secrets » : chaque version d'un secret
+//!           └── usage « files » : la clé de chaque fichier chiffré d'un module de l'hôte (FileKeys)
 //! ```
 //!
-//! Le trousseau d'une organisation est reconstruit à chaque opération (`EncryptionKey::import`,
-//! `KeyRingBuilder`, `StaticKeyResolver`, `CryptoEngine`) depuis ses clés `active` et
-//! `decrypt_only`, ouvertes par la clé maîtresse : aucune clé d'organisation n'est gardée en
-//! mémoire au-delà de l'opération.
+//! Le trousseau d'une organisation pour un usage est reconstruit à chaque opération
+//! (`EncryptionKey::import`, `KeyRingBuilder`, `StaticKeyResolver`, `CryptoEngine`) depuis ses
+//! clés `active` et `decrypt_only`, ouvertes par la clé maîtresse : aucune clé d'organisation
+//! n'est gardée en mémoire au-delà de l'opération.
 
 use lyxal_crypto::{
     CryptoEngine, CryptoError, EncryptedEnvelope, EncryptionKey, KeyId, KeyRing, KeyRingBuilder,
@@ -24,7 +25,8 @@ use surrealdb::types::RecordIdKey;
 
 use crate::error::{SecretsError, SecretsResult};
 use crate::models::{
-    RewrapKey, TenantKeyCreateParams, TenantKeyCreated, TenantKeyState, TenantRef,
+    KeyPurpose, RewrapKey, TenantKeyCreateParams, TenantKeyCreated, TenantKeyRingParams,
+    TenantKeyState,
 };
 use crate::module::MODULE_ID;
 use crate::store::SecretsStore;
@@ -164,10 +166,16 @@ impl Scope {
         self.tenant.as_deref()
     }
 
-    fn tenant_ref(&self) -> TenantRef {
-        TenantRef {
+    fn ring_params(&self, purpose: KeyPurpose) -> TenantKeyRingParams {
+        TenantKeyRingParams {
             tenant: self.tenant.clone(),
+            purpose,
         }
+    }
+
+    /// Organisation du contexte de scellement (`<clé>` ou `lyxal_installation`).
+    pub(crate) fn context_tenant(&self) -> &str {
+        &self.context
     }
 
     /// Contexte de scellement d'une version (`<clé du secret>:<numéro>`).
@@ -198,26 +206,33 @@ impl Scope {
         )?)
     }
 
-    /// Contexte de scellement d'une clé d'organisation par la clé maîtresse.
-    fn key_context(&self, key_id: &str) -> SecretsResult<SecretContext> {
+    /// Contexte de scellement d'une clé d'organisation par la clé maîtresse : le champ nomme
+    /// l'usage (`key_secrets`, `key_files`), une clé rangée sous un usage ne s'ouvre pas sous un
+    /// autre.
+    fn key_context(&self, key_id: &str, purpose: KeyPurpose) -> SecretsResult<SecretContext> {
         Ok(SecretContext::with_tenant(
             &self.context,
             MODULE_ID,
             TENANT_KEY_RESOURCE,
             key_id,
-            "key",
+            &format!("key_{}", purpose.as_str()),
         )?)
     }
 
-    /// Nouvel identifiant de clé : portée et 64 bits aléatoires (`[A-Za-z0-9._-]{1,64}`).
-    fn new_key_id(&self) -> SecretsResult<KeyId> {
+    /// Nouvel identifiant de clé : portée, usage des clés « fichiers » et 64 bits aléatoires
+    /// (`[A-Za-z0-9._-]{1,64}`).
+    fn new_key_id(&self, purpose: KeyPurpose) -> SecretsResult<KeyId> {
         let mut random = [0u8; 8];
         OsRng
             .try_fill_bytes(&mut random)
             .map_err(|_| CryptoError::RandomUnavailable)?;
         let label: String = self.context.chars().take(40).collect();
+        let usage = match purpose {
+            KeyPurpose::Secrets => "",
+            KeyPurpose::Files => "files-",
+        };
         Ok(KeyId::parse(&format!(
-            "{label}-{:016x}",
+            "{label}-{usage}{:016x}",
             u64::from_be_bytes(random)
         ))?)
     }
@@ -233,6 +248,11 @@ impl TenantRing {
     /// Clé active de l'organisation.
     pub(crate) fn active_id(&self) -> &KeyId {
         &self.active
+    }
+
+    /// Moteur du trousseau (clés de fichiers : `StreamKey::seal`, `StreamKey::open`).
+    pub(crate) fn engine(&self) -> &CryptoEngine<StaticKeyResolver> {
+        &self.engine
     }
 
     /// Valeur scellée par la clé active.
@@ -287,16 +307,34 @@ impl fmt::Debug for TenantRing {
     }
 }
 
-/// Clés des organisations, lues et écrites par la session système.
+/// Clés des organisations pour un usage, lues et écrites par la session système.
 #[derive(Clone)]
 pub(crate) struct TenantKeys {
     system: SecretsStore,
     master: Option<MasterKeys>,
+    purpose: KeyPurpose,
 }
 
 impl TenantKeys {
-    pub(crate) fn new(system: SecretsStore, master: Option<MasterKeys>) -> Self {
-        Self { system, master }
+    pub(crate) fn new(
+        system: SecretsStore,
+        master: Option<MasterKeys>,
+        purpose: KeyPurpose,
+    ) -> Self {
+        Self {
+            system,
+            master,
+            purpose,
+        }
+    }
+
+    /// Mêmes session et clé maîtresse, pour un autre usage.
+    pub(crate) fn for_purpose(&self, purpose: KeyPurpose) -> Self {
+        Self {
+            system: self.system.clone(),
+            master: self.master.clone(),
+            purpose,
+        }
     }
 
     /// Store de la session système.
@@ -309,10 +347,14 @@ impl TenantKeys {
         self.master.as_ref().ok_or(SecretsError::CryptoUnavailable)
     }
 
-    /// Trousseau d'une portée, s'il existe une clé.
+    /// Trousseau d'une portée pour l'usage de ces clés, s'il existe une clé.
     pub(crate) async fn ring(&self, scope: &Scope) -> SecretsResult<Option<TenantRing>> {
         let master = self.master()?;
-        let entries = self.system.tenant_key_ring(scope.tenant_ref()).await?.items;
+        let entries = self
+            .system
+            .tenant_key_ring(scope.ring_params(self.purpose))
+            .await?
+            .items;
         if entries.is_empty() {
             return Ok(None);
         }
@@ -325,7 +367,7 @@ impl TenantKeys {
             let wrapped = EncryptedEnvelope::parse(&entry.wrapped).map_err(unavailable)?;
             let material = master
                 .engine
-                .open(&wrapped, &scope.key_context(&entry.key_id)?)
+                .open(&wrapped, &scope.key_context(&entry.key_id, self.purpose)?)
                 .map_err(unavailable)?;
             let key = EncryptionKey::import(material).map_err(unavailable)?;
             let use_ = match entry.state {
@@ -345,8 +387,8 @@ impl TenantKeys {
         }))
     }
 
-    /// Trousseau d'une portée ; sa première clé est créée à la première valeur écrite (R2). Une
-    /// création concurrente perdue relit le trousseau.
+    /// Trousseau d'une portée ; sa première clé est créée à la première valeur écrite (R2) ou au
+    /// premier fichier chiffré. Une création concurrente perdue relit le trousseau.
     pub(crate) async fn active_ring(&self, scope: &Scope) -> SecretsResult<TenantRing> {
         if let Some(ring) = self.ring(scope).await? {
             return Ok(ring);
@@ -370,7 +412,7 @@ impl TenantKeys {
         self.master()?;
         let active = self
             .system
-            .tenant_key_ring(scope.tenant_ref())
+            .tenant_key_ring(scope.ring_params(self.purpose))
             .await?
             .items
             .into_iter()
@@ -387,20 +429,22 @@ impl TenantKeys {
         requested_by: Option<String>,
     ) -> SecretsResult<TenantKeyCreated> {
         let master = self.master()?;
-        let key_id = scope.new_key_id()?;
+        let key_id = scope.new_key_id(self.purpose)?;
         let mut material = vec![0u8; KEY_BYTES];
         OsRng
             .try_fill_bytes(&mut material)
             .map_err(|_| CryptoError::RandomUnavailable)?;
         let material = SecretBytes::new(material)?;
-        let wrapped = master
-            .engine
-            .seal(&material, &scope.key_context(key_id.as_str())?)?;
+        let wrapped = master.engine.seal(
+            &material,
+            &scope.key_context(key_id.as_str(), self.purpose)?,
+        )?;
         drop(material);
         Ok(self
             .system
             .tenant_key_create(TenantKeyCreateParams {
                 tenant: scope.tenant.clone(),
+                purpose: self.purpose,
                 key_id: key_id.as_str().to_string(),
                 wrapped: wrapped.encode(),
                 replaces,
@@ -419,7 +463,7 @@ impl TenantKeys {
         let expected = wrapped.key_id().as_str().to_string();
         let sealed = match master
             .engine
-            .reencrypt_if_needed(&wrapped, &scope.key_context(&key.key_id)?)
+            .reencrypt_if_needed(&wrapped, &scope.key_context(&key.key_id, key.purpose)?)
             .map_err(unavailable)?
         {
             ReencryptResult::Current => return Ok(false),

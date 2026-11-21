@@ -44,7 +44,7 @@ impl StorageModule {
         let descriptor = ModuleDescriptorBuilder::new(ModuleId::new(MODULE_ID), "0.1.0")
             .name("Lyxal Storage")
             .description(
-                "Fichiers et documents stockés : buckets, fiches de fichiers, états, droits et quotas",
+                "Fichiers et documents stockés de Lyxal OS : buckets (dont chiffrés), fiches de fichiers, états, droits, quotas et compteurs de volume",
             )
             .capability("database")
             .capability("events")
@@ -53,6 +53,7 @@ impl StorageModule {
             .dependency(ModuleId::new("lyxal_error"))
             .dependency(ModuleId::new("lyxal_event"))
             .dependency(ModuleId::new("lyxal_auth"))
+            .dependency(ModuleId::new("lyxal_secrets"))
             .build();
         Self { descriptor }
     }
@@ -179,5 +180,22 @@ impl ModuleHealthCheck for StorageHealthCheck {
             elapsed(),
             Some("supports de stockage joignables".to_string()),
         ))
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::expect_used)]
+mod tests {
+    use super::*;
+    use lyxal_runtime::manifest::ManifestParser;
+
+    /// Le descripteur Rust est celui que le runtime tire de `manifest.toml` : l'ordre
+    /// d'installation (manifeste) et les contrôles de démarrage (descripteur) voient les mêmes
+    /// dépendances.
+    #[test]
+    fn descriptor_matches_manifest() {
+        let from_manifest = ManifestParser::parse_to_descriptor(include_str!("../manifest.toml"))
+            .expect("manifeste");
+        assert_eq!(StorageModule::new().descriptor(), &from_manifest);
     }
 }

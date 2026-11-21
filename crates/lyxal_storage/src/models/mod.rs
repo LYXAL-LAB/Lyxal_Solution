@@ -3,6 +3,7 @@
 //! `lyxal_core`).
 
 mod bucket;
+mod keys;
 mod object;
 mod settings;
 mod types;
@@ -12,6 +13,10 @@ mod worker;
 pub use bucket::{
     Bucket, BucketCreateParams, BucketDeleted, BucketDetails, BucketList, BucketListParams,
     BucketRefParams, BucketUpdateParams, BucketUsage,
+};
+pub(crate) use keys::{ObjectKey, RekeyItem, RekeyList, RekeyParams};
+pub use keys::{
+    RekeyListParams, Rekeyed, UsageCounts, UsageMismatch, UsageReport, UsageVerifyParams,
 };
 pub use object::{
     BegunObject, ObjectBeginParams, ObjectCommitParams, ObjectGetParams, ObjectList,

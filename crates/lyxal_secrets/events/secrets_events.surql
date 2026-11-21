@@ -31,6 +31,7 @@ THEN {
             default_visibility: $after.default_visibility,
             expiry_warning_days: $after.expiry_warning_days,
             tenant_key_rotation_days: $after.tenant_key_rotation_days,
+            files_key_rotation_days: $after.files_key_rotation_days,
             grant_default_duration: $after.grant_default_duration,
             grant_max_duration: $after.grant_max_duration,
             request_ttl: $after.request_ttl,
@@ -256,6 +257,7 @@ THEN {
         action: $action,
         details: {
             key_id: $after.key_id,
+            purpose: $after.purpose,
             master_key_id: $after.master_key_id,
             master_key_id_before: IF $action = "key.rewrap" { $before.master_key_id } ELSE { NONE },
             requested_by: $after.requested_by

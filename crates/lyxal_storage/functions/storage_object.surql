@@ -24,7 +24,7 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_limits($params: object) -> option<o
     IF $params.content_type IS NOT NONE AND array::len($bucket.allowed_types) > 0 AND $params.content_type NOTINSIDE $bucket.allowed_types {
         RETURN { code: "STORAGE_OBJECT_TYPE_REFUSED", details: { content_type: $params.content_type, allowed_types: $bucket.allowed_types } };
     };
-    IF $settings.quota_bytes IS NOT NONE {
+    IF $settings.quota_bytes IS NOT NONE AND ($params.quota ?? true) {
         LET $usage = fn::storage_scope_usage({ tenant: $bucket.tenant, except: $params.except });
         LET $wanted = $usage.bytes + $usage.reserved + ($params.size ?? 0);
         IF $wanted > $settings.quota_bytes {
@@ -32,7 +32,7 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_limits($params: object) -> option<o
         };
     };
     RETURN NONE;
-} COMMENT "Interne : règles du bucket, types refusés des réglages et quota de sa portée pour un fichier ({ bucket, size, content_type, except }) ; NONE, ou { code, details } de l'erreur STORAGE_* à rendre";
+} COMMENT "Interne : règles du bucket, types refusés des réglages et quota de sa portée pour un fichier ({ bucket, size, content_type, except, quota : faux pour ne pas contrôler le quota }) ; NONE, ou { code, details } de l'erreur STORAGE_* à rendre";
 
 -- ----------------------------------------------------------------------------
 -- fn::storage_object_is_author (interne)
@@ -53,7 +53,7 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_update_refusal($before: object, $af
     LET $worker = fn::storage_can({ action: "worker" });
     IF $before.state = $after.state {
         -- Hors transition, seul le worker touche aux champs posés par les fonctions
-        LET $fixed = ["owner", "owner_application", "declared_type", "declared_size", "content_type", "size", "blake3", "quarantine_reason", "pending_expires_at", "deleted_at", "purge_after"];
+        LET $fixed = ["owner", "owner_application", "declared_type", "declared_size", "content_type", "size", "blake3", "content_key", "quarantine_reason", "pending_expires_at", "deleted_at", "purge_after"];
         IF !$worker AND array::any($fixed, |$f| $before[$f] != $after[$f]) { RETURN "STORAGE_PERMISSION_DENIED"; };
         -- Assemblage d'un envoi reprenable : réservé par son auteur ou par le worker
         RETURN IF !$worker AND ($before.upload_claimed_until != $after.upload_claimed_until OR $before.upload_claim != $after.upload_claim) AND !fn::storage_object_is_author($before) { "STORAGE_PERMISSION_DENIED" } ELSE { NONE };
@@ -75,8 +75,11 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_update_refusal($before: object, $af
         -- Envoi reprenable : terminé sous une réservation d'assemblage en cours
         IF $before.resumable AND !fn::storage_upload_claimed($before) { RETURN "STORAGE_UPLOAD_BUSY"; };
         IF $after.size IS NONE OR $after.content_type IS NONE OR $after.blake3 IS NONE { RETURN "STORAGE_OBJECT_STATE_INVALID"; };
+        -- Bucket chiffré : clé du fichier scellée obligatoire ; bucket en clair : aucune
+        IF $bucket.encrypted != ($after.content_key IS NOT NONE) { RETURN "STORAGE_OBJECT_STATE_INVALID"; };
         IF $bucket.readonly { RETURN "STORAGE_BUCKET_READONLY"; };
-        RETURN fn::storage_object_limits({ bucket: $bucket, size: $after.size, content_type: $after.content_type, except: $after.id }).code;
+        -- Quota : contrôlé par l'événement storage_object_usage, après la mise à jour des compteurs
+        RETURN fn::storage_object_limits({ bucket: $bucket, size: $after.size, content_type: $after.content_type, quota: false }).code;
     };
     IF $after.state = "quarantined" {
         RETURN IF $worker { NONE } ELSE { "STORAGE_PERMISSION_DENIED" };
@@ -91,7 +94,7 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_update_refusal($before: object, $af
         RETURN "STORAGE_PERMISSION_DENIED";
     };
     RETURN NONE;
-} COMMENT "Interne : garde d'une modification de fiche ($before, $after), appelée par l'événement storage_object_update_guard ; NONE, ou le code STORAGE_* du refus. Transitions permises, droits de l'appelant (worker, auteur de l'écriture), délai, contenu, règles du bucket, références, conservation";
+} COMMENT "Interne : garde d'une modification de fiche ($before, $after), appelée par l'événement storage_object_update_guard ; NONE, ou le code STORAGE_* du refus. Transitions permises, droits de l'appelant (worker, auteur de l'écriture), délai, contenu (clé scellée exigée dans un bucket chiffré, refusée ailleurs), règles du bucket, références, conservation ; le quota est contrôlé par l'événement storage_object_usage";
 
 -- ----------------------------------------------------------------------------
 -- fn::storage_object_begin
@@ -121,6 +124,11 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_begin($params: object) {
     LET $bucket = (SELECT * FROM ONLY $p.bucket);
     IF $bucket == NONE { RETURN fn::error_result("STORAGE_BUCKET_NOT_FOUND", $p.language, { bucket: <string> $p.bucket }); };
     IF !fn::storage_can({ action: "write", tenant: $bucket.tenant }) { RETURN fn::error_result("STORAGE_PERMISSION_DENIED", $p.language, {}); };
+    -- Bucket chiffré : les parties d'un envoi reprenable seraient rangées en clair avant
+    -- l'assemblage ; un fichier y est écrit en un seul flux
+    IF $p.resumable AND $bucket.encrypted {
+        RETURN fn::error_result("STORAGE_INVALID_PARAMETERS", $p.language, { fields: { resumable: ["encrypted_bucket"] } });
+    };
     IF $bucket.readonly { RETURN fn::error_result("STORAGE_BUCKET_READONLY", $p.language, { bucket: $bucket.name }); };
     -- Adresse occupée par un fichier non supprimé : refus (pas de remplacement)
     IF array::len(SELECT VALUE id FROM storage_object WHERE bucket = $bucket.id AND slot = $p.key) > 0 {
@@ -138,8 +146,8 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_begin($params: object) {
         state: "pending", pending_expires_at: time::now() + duration::from_secs(IF $p.resumable { $settings.upload_ttl_seconds } ELSE { $settings.pending_ttl_seconds })
     });
     IF $created == NONE { RETURN fn::error_result("STORAGE_WRITE_FORBIDDEN", $p.language, { table: "storage_object" }); };
-    RETURN fn::result_ok(object::extend($created, { max_size: $bucket.max_object_size ?? $settings.max_object_size }));
-} COMMENT "Ouvre l'écriture d'un fichier ({ bucket, key, filename, declared_type, declared_size, resumable }) : fiche créée à l'état pending avec son délai (resumable : envoi reprenable, taille obligatoire, délai upload_ttl_seconds), rendue avec max_size (taille maximale acceptée, pour arrêter une écriture qui dépasse) ; refus si le bucket est en lecture seule, si l'adresse est occupée (STORAGE_OBJECT_EXISTS), ou si la taille, le type ou le quota annoncés dépassent les règles. Droit : écriture";
+    RETURN fn::result_ok(object::extend($created, { max_size: $bucket.max_object_size ?? $settings.max_object_size, encrypted: $bucket.encrypted }));
+} COMMENT "Ouvre l'écriture d'un fichier ({ bucket, key, filename, declared_type, declared_size, resumable }) : fiche créée à l'état pending avec son délai (resumable : envoi reprenable, taille obligatoire, délai upload_ttl_seconds, refusé dans un bucket chiffré), rendue avec max_size (taille maximale acceptée, pour arrêter une écriture qui dépasse) et encrypted (bucket chiffré : le fichier doit être chiffré et sa clé scellée remise à la fin) ; refus si le bucket est en lecture seule, si l'adresse est occupée (STORAGE_OBJECT_EXISTS), ou si la taille, le type ou le quota annoncés dépassent les règles. Droit : écriture";
 
 -- ----------------------------------------------------------------------------
 -- fn::storage_object_commit
@@ -152,6 +160,7 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_commit($params: object) {
             size: { pipeline: [{ rule: "integer", options: { min_value: 0 } }], required: true },
             content_type: { pipeline: [{ rule: "mime_type" }], required: true },
             blake3: { pipeline: [{ rule: "checksum", options: { algorithm: "blake3" } }], required: true },
+            content_key: { pipeline: [{ rule: "required_string", options: { min_length: 8, max_length: 4096 } }, { rule: "starts_with", options: { prefixes: ["enc:v2:"], case_sensitive: true, trim_value: false } }] },
             claim: { pipeline: [{ rule: "uuid" }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
@@ -180,15 +189,22 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_commit($params: object) {
         RETURN fn::error_result("STORAGE_UPLOAD_BUSY", $p.language, {});
     };
     LET $bucket = (SELECT * FROM ONLY $object.bucket);
+    -- Bucket chiffré : la clé scellée du fichier est remise avec la fin de l'écriture ; ailleurs, aucune
+    IF $bucket.encrypted AND $p.content_key IS NONE {
+        RETURN fn::error_result("STORAGE_INVALID_PARAMETERS", $p.language, { fields: { content_key: ["required"] } });
+    };
+    IF !$bucket.encrypted AND $p.content_key IS NOT NONE {
+        RETURN fn::error_result("STORAGE_INVALID_PARAMETERS", $p.language, { fields: { content_key: ["not_allowed"] } });
+    };
     -- Bucket passé en lecture seule depuis l'ouverture de l'écriture : plus aucune écriture
     IF $bucket.readonly { RETURN fn::error_result("STORAGE_BUCKET_READONLY", $p.language, { bucket: $bucket.name }); };
     LET $refusal = fn::storage_object_limits({ bucket: $bucket, size: $p.size, content_type: $p.content_type, except: $object.id });
     IF $refusal IS NOT NONE { RETURN fn::error_result($refusal.code, $p.language, $refusal.details); };
     LET $updated = (UPDATE ONLY $object.id SET size = $p.size, content_type = $p.content_type, blake3 = $p.blake3,
-        state = "available", pending_expires_at = NONE, upload_claim = NONE);
+        content_key = $p.content_key, state = "available", pending_expires_at = NONE, upload_claim = NONE);
     IF $updated == NONE { RETURN fn::error_result("STORAGE_WRITE_FORBIDDEN", $p.language, { table: "storage_object" }); };
     RETURN fn::result_ok($updated);
-} COMMENT "Termine l'écriture d'un fichier ({ object, size, content_type, blake3, claim (envoi reprenable : jeton de la réservation d'assemblage, STORAGE_UPLOAD_BUSY s'il n'est plus celui en cours) }) : taille, type réel et empreinte enregistrés, état available ; la taille, le type et le quota réels sont revérifiés ; refus si la fiche n'est plus pending, si son délai est passé ou si le bucket est passé en lecture seule. Droit : worker, ou l'appelant qui a ouvert l'écriture (son identité, ou son application pour un compte de service)";
+} COMMENT "Termine l'écriture d'un fichier ({ object, size, content_type, blake3, content_key (bucket chiffré : clé du fichier scellée, enc:v2, obligatoire ; refusée ailleurs), claim (envoi reprenable : jeton de la réservation d'assemblage, STORAGE_UPLOAD_BUSY s'il n'est plus celui en cours) }) : taille réelle, type réel, empreinte des octets stockés et clé scellée enregistrés, état available ; la taille, le type et le quota réels sont revérifiés ; refus si la fiche n'est plus pending, si son délai est passé ou si le bucket est passé en lecture seule. Droit : worker, ou l'appelant qui a ouvert l'écriture (son identité, ou son application pour un compte de service)";
 
 -- ----------------------------------------------------------------------------
 -- fn::storage_object_get

@@ -14,7 +14,7 @@ use crate::error::ServerError;
 use lyxal_crypto::{EnvironmentKeyProvider, KeyId, ResolvedKey};
 use lyxal_runtime::{LyxalModule, LyxalRuntime};
 use lyxal_secrets::{
-    MasterKeys, RotatorRegistry, SecretsClient, SecretsHealthCheck, SecretsMaintenance,
+    FileKeys, MasterKeys, RotatorRegistry, SecretsClient, SecretsHealthCheck, SecretsMaintenance,
     SecretsModule, SecretsService, SecretsStore,
 };
 use std::sync::Arc;
@@ -72,6 +72,13 @@ impl SecretsHost {
             self.rotators.clone(),
             MAINTENANCE_BATCH,
         )
+    }
+
+    /// Clés de fichiers des buckets chiffrés de `lyxal_storage` : scellées par la clé « fichiers »
+    /// de chaque organisation, sur la session système et le trousseau maître (absent : aucun
+    /// fichier chiffré n'est écrit ni lu).
+    pub fn file_keys(&self) -> FileKeys {
+        FileKeys::new(self.store.clone(), self.master.clone())
     }
 
     /// Vrai si la clé maîtresse du coffre-fort est configurée.

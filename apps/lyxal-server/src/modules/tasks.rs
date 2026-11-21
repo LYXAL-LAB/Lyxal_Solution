@@ -183,6 +183,8 @@ impl TaskHandler for StorageCleanupHandler {
                     assembled,
                     purged,
                     reclaimed,
+                    rekeyed,
+                    retired_keys_destroyed,
                     failed,
                 } = report;
                 Ok(output(
@@ -191,6 +193,8 @@ impl TaskHandler for StorageCleanupHandler {
                         ("assembled", count(assembled)),
                         ("purged", count(purged)),
                         ("reclaimed", count(reclaimed)),
+                        ("rekeyed", count(rekeyed)),
+                        ("retired_keys_destroyed", count(retired_keys_destroyed)),
                         ("failed", count(failed)),
                     ],
                     &ctx,
