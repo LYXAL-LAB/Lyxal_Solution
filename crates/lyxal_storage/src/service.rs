@@ -5,21 +5,31 @@
 //! `fn::storage_object_commit` rend le fichier disponible. Aucune transaction ne couvre la base
 //! et le support : en cas d'échec, les octets déjà écrits sont retirés et la fiche est supprimée ;
 //! une écriture interrompue par l'arrêt du serveur est retirée par le nettoyage à la fin de son délai.
+//!
+//! Bucket chiffré : le clair passe par la reconnaissance du type réel et l'antivirus, puis par le
+//! chiffrement en flux (`encryption`), et l'empreinte est celle du chiffré ; la lecture ne lit et
+//! ne déchiffre que les segments de la plage demandée. Sans service de clés, rien n'est écrit ni
+//! lu (`STORAGE_ENCRYPTION_UNAVAILABLE`), jamais en clair.
 
 use bytes::Bytes;
 use futures::stream::BoxStream;
 use futures::{Stream, StreamExt};
 use lyxal_crypto::hash::Blake3Hasher;
-use lyxal_surreal::ToSql;
+use lyxal_crypto::{StreamDecryptor, STREAM_HEADER_BYTES};
+use lyxal_secrets::SealedFileKey;
+use lyxal_surreal::{LyxalSurrealError, ToSql};
 use object_store::{GetOptions, GetRange, ObjectStore, ObjectStoreExt, WriteMultipart};
+use std::future::Future;
 use std::ops::Range;
 use std::sync::Arc;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::backend::{location, Backends};
 use crate::content::{detect, HEAD_SIZE};
+use crate::encryption::{decrypting_stream, EncryptingWriter, FileEncryption};
 use crate::error::{StorageError, StorageResult};
 use crate::models::{
-    ObjectBeginParams, ObjectCommitParams, ObjectGetParams, ObjectRefParams, PartName,
+    BegunObject, ObjectBeginParams, ObjectCommitParams, ObjectGetParams, ObjectRefParams, PartName,
     StorageRecordId, StoredObject,
 };
 use crate::scanner::{ContentScanner, ScanVerdict};
@@ -27,6 +37,39 @@ use crate::store::StorageStore;
 
 /// Taille d'une partie écrite sur le support : rien n'est gardé en mémoire au-delà.
 pub const PART_SIZE: usize = 8 * 1024 * 1024;
+
+/// Essais d'une écriture de fiche refusée pour conflit de transaction : les compteurs de volume
+/// d'une portée sont écrits par toutes ses écritures, des écritures simultanées peuvent se
+/// heurter.
+const CONFLICT_ATTEMPTS: u32 = 6;
+
+/// Attente avant un nouvel essai : croissante, avec une part tirée de l'horloge pour que des
+/// écritures heurtées ne se heurtent pas de nouveau au même instant.
+fn conflict_pause(attempt: u32) -> Duration {
+    let jitter = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |elapsed| elapsed.subsec_nanos() % 20_000_000);
+    Duration::from_millis(u64::from(attempt) * 10) + Duration::from_nanos(u64::from(jitter))
+}
+
+/// Appel rejoué tant qu'il échoue sur un conflit de transaction (annulé par la base, sans
+/// effet), six essais au plus ; toute autre erreur est rendue telle quelle.
+pub(crate) async fn retry_conflicts<T, F, Fut>(mut call: F) -> Result<T, LyxalSurrealError>
+where
+    F: FnMut() -> Fut,
+    Fut: Future<Output = Result<T, LyxalSurrealError>>,
+{
+    let mut attempt = 1;
+    loop {
+        match call().await {
+            Err(error) if attempt < CONFLICT_ATTEMPTS && error.is_transient_conflict() => {
+                tokio::time::sleep(conflict_pause(attempt)).await;
+                attempt += 1;
+            }
+            other => return other,
+        }
+    }
+}
 
 /// Fichier à écrire.
 #[derive(Debug, Clone)]
@@ -85,16 +128,18 @@ pub struct StorageService {
     pub(crate) store: StorageStore,
     pub(crate) backends: Arc<Backends>,
     pub(crate) scanner: Option<Arc<dyn ContentScanner>>,
+    pub(crate) encryption: Option<FileEncryption>,
 }
 
 impl StorageService {
     /// Service sur la session du store (elle détermine les droits) et les supports de l'hôte,
-    /// sans antivirus.
+    /// sans antivirus ni service de clés (un bucket chiffré n'est alors ni écrit ni lu).
     pub fn new(store: StorageStore, backends: Arc<Backends>) -> Self {
         Self {
             store,
             backends,
             scanner: None,
+            encryption: None,
         }
     }
 
@@ -102,6 +147,28 @@ impl StorageService {
     pub fn with_scanner(mut self, scanner: Arc<dyn ContentScanner>) -> Self {
         self.scanner = Some(scanner);
         self
+    }
+
+    /// Service de clés des buckets chiffrés : clés de fichiers scellées par le coffre-fort
+    /// (`FileKeys`), clé scellée d'une fiche lue par la session système de l'hôte (`system`).
+    /// Sans effet sur les buckets en clair.
+    pub fn with_file_keys(mut self, keys: lyxal_secrets::FileKeys, system: StorageStore) -> Self {
+        self.encryption = Some(FileEncryption::new(keys, system));
+        self
+    }
+
+    /// Service de clés disponible (clé maîtresse du coffre-fort présente), ou
+    /// `STORAGE_ENCRYPTION_UNAVAILABLE`.
+    fn encryption(&self) -> StorageResult<&FileEncryption> {
+        self.encryption
+            .as_ref()
+            .filter(|encryption| encryption.is_available())
+            .ok_or_else(|| {
+                StorageError::EncryptionUnavailable(
+                    "service de clés des fichiers absent (clé maîtresse du coffre-fort)"
+                        .to_string(),
+                )
+            })
     }
 
     /// Vrai si au moins un support est configuré : sans support, rien ne peut être écrit ni lu.
@@ -128,17 +195,15 @@ impl StorageService {
         let declared_size = request.size.map(i64::try_from).transpose().map_err(|_| {
             StorageError::ContentMismatch("taille annoncée trop grande".to_string())
         })?;
-        let begun = self
-            .store
-            .object_begin(ObjectBeginParams {
-                bucket: request.bucket,
-                key: request.key,
-                filename: request.filename,
-                declared_type: request.content_type,
-                declared_size,
-                resumable: false,
-            })
-            .await?;
+        let params = ObjectBeginParams {
+            bucket: request.bucket,
+            key: request.key,
+            filename: request.filename,
+            declared_type: request.content_type,
+            declared_size,
+            resumable: false,
+        };
+        let begun = retry_conflicts(|| self.store.object_begin(params.clone())).await?;
         let target = WriteTarget {
             id: &begun.id,
             backend: &begun.backend,
@@ -151,45 +216,71 @@ impl StorageService {
                 StorageError::ContentMismatch(format!("flux interrompu : {error}"))
             })
         });
-        let committed = self
-            .write_and_commit(&target, request.size, None, content)
-            .await;
+        let committed = match self.encryption_for(&begun).await {
+            Ok(encryption) => {
+                self.write_and_commit(&target, request.size, None, encryption, content)
+                    .await
+            }
+            Err(error) => Err(error),
+        };
         if committed.is_err() {
             self.abandon(&target).await;
         }
         committed
     }
 
-    /// Écrit le contenu à l'emplacement du fichier, puis rend le fichier disponible.
+    /// Chiffrement d'un fichier d'un bucket chiffré : clé neuve scellée et chiffreur ; aucun
+    /// pour un bucket en clair. Sans service de clés : `STORAGE_ENCRYPTION_UNAVAILABLE`.
+    async fn encryption_for(
+        &self,
+        begun: &BegunObject,
+    ) -> StorageResult<Option<(EncryptingWriter, SealedFileKey)>> {
+        if !begun.encrypted {
+            return Ok(None);
+        }
+        Ok(Some(
+            self.encryption()?
+                .writer(begun.tenant.as_ref(), &begun.id)
+                .await?,
+        ))
+    }
+
+    /// Écrit le contenu à l'emplacement du fichier (chiffré si `encryption` est donné), puis
+    /// rend le fichier disponible.
     pub(crate) async fn write_and_commit<S>(
         &self,
         target: &WriteTarget<'_>,
         declared_size: Option<u64>,
         claim: Option<PartName>,
+        encryption: Option<(EncryptingWriter, SealedFileKey)>,
         content: S,
     ) -> StorageResult<StoredObject>
     where
         S: Stream<Item = StorageResult<Bytes>> + Send,
     {
         let backend = self.backends.get(target.backend)?;
+        let (encryptor, content_key) = match encryption {
+            Some((encryptor, sealed)) => (Some(encryptor), Some(sealed.as_str().to_string())),
+            None => (None, None),
+        };
         let written = write(
             backend.store().as_ref(),
             self.scanner.as_deref(),
             target,
             declared_size,
+            encryptor,
             content,
         )
         .await?;
-        Ok(self
-            .store
-            .object_commit(ObjectCommitParams {
-                object: target.id.to_sql(),
-                size: written.size,
-                content_type: written.content_type,
-                blake3: written.blake3,
-                claim,
-            })
-            .await?)
+        let params = ObjectCommitParams {
+            object: target.id.to_sql(),
+            size: written.size,
+            content_type: written.content_type,
+            blake3: written.blake3,
+            content_key,
+            claim,
+        };
+        Ok(retry_conflicts(|| self.store.object_commit(params.clone())).await?)
     }
 
     /// Retire du support les octets d'une écriture en échec ; un échec est journalisé.
@@ -209,12 +300,10 @@ impl StorageService {
     /// est journalisé ; le nettoyage retire alors l'écriture à la fin de son délai.
     async fn abandon(&self, target: &WriteTarget<'_>) {
         self.remove_written(target).await;
-        let deleted = self
-            .store
-            .object_delete(ObjectRefParams {
-                object: target.id.to_sql(),
-            })
-            .await;
+        let params = ObjectRefParams {
+            object: target.id.to_sql(),
+        };
+        let deleted = retry_conflicts(|| self.store.object_delete(params.clone())).await;
         if let Err(error) = deleted {
             tracing::warn!(object = %target.id.to_sql(), error = %error, "fiche d'une écriture en échec non supprimée");
         }
@@ -225,13 +314,19 @@ impl StorageService {
         Ok(self.store.object_open(params).await?)
     }
 
-    /// Ouvre un fichier disponible en lecture, en entier ou sur une plage d'octets.
+    /// Ouvre un fichier disponible en lecture, en entier ou sur une plage d'octets. Fichier
+    /// chiffré : seuls les segments de la plage sont lus et déchiffrés ; un segment en échec met
+    /// fin au flux par une erreur (`STORAGE_INTEGRITY_FAILED`), que l'appelant ne doit jamais
+    /// présenter comme une fin normale.
     pub async fn open(
         &self,
         params: ObjectGetParams,
         range: Option<ByteRange>,
     ) -> StorageResult<OpenedObject> {
         let object = self.store.object_open(params).await?;
+        if object.content_key_id.is_some() {
+            return self.open_encrypted(object, range).await;
+        }
         let size = object.size.and_then(|size| u64::try_from(size).ok());
         let range = match (range, size) {
             (Some(range), Some(size)) => Some(range.resolve(size)?),
@@ -255,6 +350,73 @@ impl StorageService {
         })
     }
 
+    /// Fichier chiffré ouvert : clé ouverte par le coffre-fort, en-tête lu, plage traduite en
+    /// segments, segments lus en flux et déchiffrés.
+    async fn open_encrypted(
+        &self,
+        object: StoredObject,
+        range: Option<ByteRange>,
+    ) -> StorageResult<OpenedObject> {
+        let encryption = self.encryption()?;
+        let integrity = |message: &str| StorageError::IntegrityFailed(message.to_string());
+        let size = object
+            .size
+            .and_then(|size| u64::try_from(size).ok())
+            .ok_or_else(|| integrity("taille absente de la fiche"))?;
+        let stored = object
+            .stored_size
+            .and_then(|size| u64::try_from(size).ok())
+            .ok_or_else(|| integrity("taille stockée absente de la fiche"))?;
+        let (key, context) = encryption
+            .open_key(object.tenant.as_ref(), &object.id)
+            .await?;
+        let backend = self.backends.get(&object.backend)?.store();
+        let path = location(&object.path)?;
+        let header = backend
+            .get_opts(
+                &path,
+                GetOptions {
+                    range: Some(GetRange::Bounded(0..STREAM_HEADER_BYTES as u64)),
+                    ..GetOptions::default()
+                },
+            )
+            .await?
+            .bytes()
+            .await?;
+        let decryptor = StreamDecryptor::new(&key, &context, &header, stored)
+            .map_err(|_| integrity("en-tête du fichier chiffré illisible"))?;
+        drop(key);
+        if decryptor.plaintext_len() != size {
+            return Err(integrity(
+                "taille du fichier chiffré différente de sa fiche",
+            ));
+        }
+        let range = match range {
+            Some(range) => range.resolve(size)?,
+            None => 0..size,
+        };
+        let span = decryptor
+            .plan_range(range.clone())
+            .map_err(|_| StorageError::RangeNotSatisfiable(size))?;
+        let ciphertext = backend
+            .get_opts(
+                &path,
+                GetOptions {
+                    range: Some(GetRange::Bounded(span.ciphertext.clone())),
+                    ..GetOptions::default()
+                },
+            )
+            .await?
+            .into_stream()
+            .map(|chunk| chunk.map_err(StorageError::from))
+            .boxed();
+        Ok(OpenedObject {
+            object,
+            range,
+            content: decrypting_stream(decryptor, span, ciphertext),
+        })
+    }
+
     /// Supprime un fichier : sa fiche passe à l'état supprimé, ses octets sont retirés par le
     /// worker après le délai de conservation.
     pub async fn delete(&self, object: &str) -> StorageResult<StoredObject> {
@@ -266,13 +428,15 @@ impl StorageService {
             .await?)
     }
 
-    /// Relit les octets d'un fichier et compare leur taille et leur empreinte à sa fiche.
+    /// Relit les octets stockés d'un fichier et compare leur taille et leur empreinte à sa fiche
+    /// (le chiffré d'un fichier chiffré, sans le déchiffrer).
     pub async fn verify(&self, object: &str) -> StorageResult<StoredObject> {
         let object = self
             .store
             .object_get(ObjectGetParams::by_id(object))
             .await?;
-        let (Some(expected_size), Some(expected_hash)) = (object.size, object.blake3.as_deref())
+        let (Some(expected_size), Some(expected_hash)) =
+            (object.stored_size, object.blake3.as_deref())
         else {
             return Err(StorageError::IntegrityFailed(
                 "la fiche n'a ni taille ni empreinte (écriture non terminée)".to_string(),
@@ -323,22 +487,33 @@ pub(crate) struct WriteTarget<'a> {
     pub declared_type: Option<&'a str>,
 }
 
-/// Contenu écrit : taille, empreinte et type réel.
+/// Contenu écrit : taille réelle, empreinte des octets stockés et type réel.
 struct Written {
     size: i64,
     blake3: String,
     content_type: String,
 }
 
-/// Écrit le flux par parties ; chaque morceau est compté, haché et, si un antivirus est
-/// branché, transmis à son analyse, dans le même passage. Rend la taille, l'empreinte et le type
-/// réel du contenu. En cas d'échec ou de menace reconnue, l'écriture est abandonnée sur le
-/// support.
+/// Octets à ranger sur le support : comptés dans l'empreinte, puis confiés à l'écriture par
+/// parties (rien pour un morceau vide).
+fn store_bytes(hasher: &mut Blake3Hasher, writer: &mut WriteMultipart, bytes: Bytes) {
+    if !bytes.is_empty() {
+        hasher.update(&bytes);
+        writer.put(bytes);
+    }
+}
+
+/// Écrit le flux par parties ; chaque morceau est compté, examiné (type réel) et, si un
+/// antivirus est branché, transmis à son analyse, sur le clair, dans le même passage ; puis
+/// chiffré si `encryptor` est donné ; l'empreinte est celle des octets rangés. Rend la taille
+/// réelle, l'empreinte et le type réel du contenu. En cas d'échec ou de menace reconnue,
+/// l'écriture est abandonnée sur le support.
 async fn write<S>(
     backend: &dyn ObjectStore,
     scanner: Option<&dyn ContentScanner>,
     target: &WriteTarget<'_>,
     declared_size: Option<u64>,
+    mut encryptor: Option<EncryptingWriter>,
     content: S,
 ) -> StorageResult<Written>
 where
@@ -355,6 +530,9 @@ where
     let mut head: Vec<u8> = Vec::new();
     let mut size: u64 = 0;
     let mut content = std::pin::pin!(content);
+    if let Some(encryptor) = encryptor.as_mut() {
+        store_bytes(&mut hasher, &mut writer, encryptor.header());
+    }
     let failure = loop {
         let chunk = match content.next().await {
             None => break None,
@@ -368,7 +546,6 @@ where
                 declared_size.map_or(max_size, |declared| declared.min(max_size))
             )));
         }
-        hasher.update(&chunk);
         if head.len() < HEAD_SIZE {
             let wanted = (HEAD_SIZE - head.len()).min(chunk.len());
             head.extend_from_slice(&chunk[..wanted]);
@@ -378,11 +555,18 @@ where
                 break Some(error);
             }
         }
+        let stored = match encryptor.as_mut() {
+            Some(encryptor) => match encryptor.update(&chunk) {
+                Ok(encrypted) => encrypted,
+                Err(error) => break Some(error),
+            },
+            None => chunk,
+        };
         // Une seule partie en cours d'envoi : la mémoire reste bornée à deux parties
         if let Err(error) = writer.wait_for_capacity(1).await {
             break Some(error.into());
         }
-        writer.put(chunk);
+        store_bytes(&mut hasher, &mut writer, stored);
     };
     let failure = failure.or_else(|| {
         declared_size
@@ -404,6 +588,17 @@ where
             Err(error) => Some(error),
         },
         (None, None) => None,
+    };
+    // Dernier segment chiffré, après le verdict de l'antivirus
+    let failure = match (failure, encryptor.as_mut()) {
+        (None, Some(encryptor)) => match encryptor.finish() {
+            Ok(last) => {
+                store_bytes(&mut hasher, &mut writer, last);
+                None
+            }
+            Err(error) => Some(error),
+        },
+        (failure, _) => failure,
     };
     if let Some(error) = failure {
         if let Err(abort) = writer.abort().await {

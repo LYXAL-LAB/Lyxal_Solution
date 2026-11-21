@@ -94,6 +94,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_settings_effective($params: object) -> obj
         default_visibility: $own.default_visibility ?? $base.default_visibility ?? "restricted",
         expiry_warning_days: $own.expiry_warning_days ?? $base.expiry_warning_days ?? 30,
         tenant_key_rotation_days: $own.tenant_key_rotation_days ?? $base.tenant_key_rotation_days ?? 365,
+        files_key_rotation_days: $own.files_key_rotation_days ?? $base.files_key_rotation_days ?? 365,
         grant_default_duration: $own.grant_default_duration ?? $base.grant_default_duration ?? 8h,
         grant_max_duration: $own.grant_max_duration ?? $base.grant_max_duration ?? 90d,
         request_ttl: $own.request_ttl ?? $base.request_ttl ?? 7d,
@@ -102,7 +103,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_settings_effective($params: object) -> obj
         share_max_ttl: $own.share_max_ttl ?? $base.share_max_ttl ?? 7d,
         share_max_views: $own.share_max_views ?? $base.share_max_views ?? 10
     };
-} COMMENT "Réglages effectifs ({ tenant }) : organisation, sinon installation, sinon valeurs par défaut (10 versions, 30 jours avant purge, 64 Kio, visibilité restricted, alerte 30 jours avant l'échéance, rotation de la clé d'organisation tous les 365 jours, 0 : désactivée ; accès temporaire de 8 h par défaut, 90 jours au plus ; demande sans réponse expirée après 7 jours ; 1 approbation pour une demande d'accès ; partage de 24 h par défaut, 7 jours et 10 ouvertures au plus). La protection contre la purge s'applique si l'organisation ou l'installation l'a activée";
+} COMMENT "Réglages effectifs ({ tenant }) : organisation, sinon installation, sinon valeurs par défaut (10 versions, 30 jours avant purge, 64 Kio, visibilité restricted, alerte 30 jours avant l'échéance, rotation des clés d'organisation « secrets » et « fichiers » tous les 365 jours, 0 : désactivée ; accès temporaire de 8 h par défaut, 90 jours au plus ; demande sans réponse expirée après 7 jours ; 1 approbation pour une demande d'accès ; partage de 24 h par défaut, 7 jours et 10 ouvertures au plus). La protection contre la purge s'applique si l'organisation ou l'installation l'a activée";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_tenant_string (interne)

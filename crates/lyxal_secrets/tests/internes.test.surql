@@ -37,7 +37,7 @@
 
 -- préparation: un secret d'alpha avec une version
 {
-    fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", key_id: "k1", wrapped: "enc:v2:m1:K1" });
+    fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", purpose: "secrets", key_id: "k1", wrapped: "enc:v2:m1:K1" });
     LET $s = fn::secrets_secret_create({ tenant: "auth_organization:alpha", path: "interne", kind: "token" }).data.id;
     fn::secrets_version_add({ secret: <string> $s, number: 1, envelope: "enc:v2:k1:I1", key_id: "k1" });
     CREATE passe:s SET id_secret = $s;

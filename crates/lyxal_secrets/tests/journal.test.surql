@@ -38,7 +38,7 @@
 
 -- préparation: opérations d'alpha (réglages, fiche, versions, étiquette, lecture, suppression, restauration)
 {
-    fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", key_id: "k1", wrapped: "enc:v2:m1:K1" });
+    fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", purpose: "secrets", key_id: "k1", wrapped: "enc:v2:m1:K1" });
     fn::secrets_settings_set({ tenant: "auth_organization:alpha", max_versions: 5 });
     LET $s = fn::secrets_secret_create({ tenant: "auth_organization:alpha", path: "smtp", kind: "password", consumers: ["lyxal_notification"] }).data.id;
     fn::secrets_version_add({ secret: <string> $s, number: 1, envelope: "enc:v2:k1:SECRETVALEUR1", key_id: "k1" });

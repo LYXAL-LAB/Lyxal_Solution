@@ -32,8 +32,10 @@ pub struct StoredSettings {
     pub default_visibility: Option<String>,
     /// Alerte avant échéance, en jours.
     pub expiry_warning_days: Option<i64>,
-    /// Rotation automatique des clés d'organisation, en jours (0 : désactivée).
+    /// Rotation automatique de la clé « secrets » de l'organisation, en jours (0 : désactivée).
     pub tenant_key_rotation_days: Option<i64>,
+    /// Rotation automatique de la clé « fichiers » de l'organisation, en jours (0 : désactivée).
+    pub files_key_rotation_days: Option<i64>,
     /// Durée par défaut d'un accès temporaire.
     pub grant_default_duration: Option<SecretsDuration>,
     /// Durée maximale d'un accès temporaire.
@@ -67,8 +69,12 @@ pub struct EffectiveSettings {
     pub default_visibility: String,
     /// Alerte avant échéance, en jours.
     pub expiry_warning_days: i64,
-    /// Rotation automatique des clés d'organisation, en jours (0 : désactivée ; défaut 365).
+    /// Rotation automatique de la clé « secrets » de l'organisation, en jours (0 : désactivée ;
+    /// défaut 365).
     pub tenant_key_rotation_days: i64,
+    /// Rotation automatique de la clé « fichiers » de l'organisation, en jours (0 : désactivée ;
+    /// défaut 365).
+    pub files_key_rotation_days: i64,
     /// Durée par défaut d'un accès temporaire (défaut 8 heures).
     pub grant_default_duration: SecretsDuration,
     /// Durée maximale d'un accès temporaire (défaut 90 jours).
@@ -112,8 +118,12 @@ pub struct SettingsSetParams {
     pub default_visibility: Option<String>,
     /// Alerte avant échéance, en jours.
     pub expiry_warning_days: Option<i64>,
-    /// Rotation automatique des clés d'organisation, en jours (30 à 3650 ; 0 : désactivée).
+    /// Rotation automatique de la clé « secrets » de l'organisation, en jours (30 à 3650 ; 0 :
+    /// désactivée).
     pub tenant_key_rotation_days: Option<i64>,
+    /// Rotation automatique de la clé « fichiers » de l'organisation, en jours (30 à 3650 ; 0 :
+    /// désactivée).
+    pub files_key_rotation_days: Option<i64>,
     /// Durée par défaut d'un accès temporaire (5 minutes à 90 jours).
     pub grant_default_duration: Option<SecretsDuration>,
     /// Durée maximale d'un accès temporaire (5 minutes à 90 jours).
@@ -128,6 +138,7 @@ pub struct SettingsSetParams {
     pub share_max_ttl: Option<SecretsDuration>,
     /// Ouvertures permises au plus pour un partage (1 à 10).
     pub share_max_views: Option<i64>,
-    /// Champs à effacer (dont `tenant_key_rotation_days` : retour au défaut de 365 jours).
+    /// Champs à effacer (dont `tenant_key_rotation_days` et `files_key_rotation_days` : retour au
+    /// défaut de 365 jours).
     pub clear: Vec<String>,
 }

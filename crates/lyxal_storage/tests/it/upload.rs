@@ -556,6 +556,7 @@ async fn a_takeover_during_an_assembly_stops_the_first_assembler() {
             size: 16,
             content_type: "text/plain".to_string(),
             blake3: lyxal_crypto::hash::blake3_hex(b"plan de chantier"),
+            content_key: None,
             claim: Some(first.claim),
         })
         .await

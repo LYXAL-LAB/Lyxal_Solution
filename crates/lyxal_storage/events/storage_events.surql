@@ -1,7 +1,7 @@
 -- ============================================================================
 -- EVENTS : lyxal_storage
 -- MODULE : lyxal_storage
--- RÔLE   : Garde des transitions d'état et des parties d'envoi, préfixes à retirer, publication des événements storage.*
+-- RÔLE   : Garde des transitions d'état et des parties d'envoi, compteurs de volume, préfixes à retirer, publication des événements storage.*
 -- ============================================================================
 -- Publiés par la base dans la transaction de la mutation (.agents/AGENTS.md §5.6.1) ; une
 -- publication refusée fait échouer la mutation. Jamais de contenu.
@@ -23,8 +23,24 @@ THEN {
 DEFINE EVENT OVERWRITE storage_object_created_guard ON TABLE storage_object
 WHEN $event = "CREATE"
 THEN {
-    LET $bucket = (SELECT tenant, backend FROM ONLY $after.bucket);
+    LET $bucket = (SELECT tenant, backend, encrypted FROM ONLY $after.bucket);
     IF $after.state != "pending" OR $after.tenant != $bucket.tenant OR $after.backend != $bucket.backend { THROW "STORAGE_OBJECT_STATE_INVALID"; };
+    -- La clé scellée n'est posée qu'à la fin de l'écriture ; pas d'envoi reprenable dans un bucket chiffré
+    IF $after.content_key IS NOT NONE OR ($after.resumable AND $bucket.encrypted) { THROW "STORAGE_OBJECT_STATE_INVALID"; };
+};
+
+-- ----------------------------------------------------------------------------
+-- Compteurs de volume par portée et par bucket (storage_usage), quota
+-- ----------------------------------------------------------------------------
+-- Tenus dans la transaction de chaque écriture d'une fiche, quelle qu'en soit l'origine
+-- (fonctions, écriture directe, expiration, purge, suppression en cascade) ; un volume qui
+-- augmente au-delà du quota de la portée fait échouer l'écriture.
+
+DEFINE EVENT OVERWRITE storage_object_usage ON TABLE storage_object
+WHEN $event IN ["CREATE", "UPDATE", "DELETE"]
+THEN {
+    LET $refusal = fn::storage_usage_apply($before, $after);
+    IF $refusal IS NOT NONE { THROW $refusal; };
 };
 
 -- ----------------------------------------------------------------------------

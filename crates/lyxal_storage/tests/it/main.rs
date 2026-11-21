@@ -1,9 +1,11 @@
 //! Tests d'intégration de `lyxal_storage` sur le moteur SurrealDB embarqué et les supports
 //! mémoire et disque : écriture et lecture en flux, empreinte, échecs nettoyés, vérification
-//! d'intégrité, envoi reprenable, nettoyage, sonde de santé, appels typés du store.
+//! d'intégrité, buckets chiffrés, envoi reprenable, nettoyage, sonde de santé, appels typés du
+//! store.
 
 mod cleanup;
 mod content;
+mod encryption;
 mod real_s3;
 mod service;
 mod store;

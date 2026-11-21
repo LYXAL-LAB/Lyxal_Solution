@@ -46,8 +46,8 @@
         RELATE (type::record("auth_identity", $n))->auth_member_of->auth_organization:alpha;
         CREATE type::record("auth_session", $n) CONTENT { identity: type::record("auth_identity", $n), organization: auth_organization:alpha, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
     };
-    fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", key_id: "k1", wrapped: "enc:v2:m1:K1" });
-    fn::secrets_tenant_key_create({ tenant: "auth_organization:beta", key_id: "kb", wrapped: "enc:v2:m1:KB" });
+    fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", purpose: "secrets", key_id: "k1", wrapped: "enc:v2:m1:K1" });
+    fn::secrets_tenant_key_create({ tenant: "auth_organization:beta", purpose: "secrets", key_id: "kb", wrapped: "enc:v2:m1:KB" });
     LET $brevo = fn::secrets_secret_create({ tenant: "auth_organization:alpha", path: "api/brevo", kind: "api_key", visibility: "revealable" }).data.id;
     LET $stripe = fn::secrets_secret_create({ tenant: "auth_organization:alpha", path: "api/stripe", kind: "api_key", visibility: "revealable" }).data.id;
     LET $db = fn::secrets_secret_create({ tenant: "auth_organization:alpha", path: "infra/db", kind: "password" }).data.id;

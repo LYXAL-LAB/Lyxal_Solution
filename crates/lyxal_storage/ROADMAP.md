@@ -6,9 +6,10 @@ sans `implementation_plan.md` validé par le CTO (`.agents/AGENTS.md` §3).
 
 | Thème | Évolution |
 | :--- | :--- |
-| Montée en charge | compteurs de volume tenus à jour par portée et par bucket (aujourd'hui recomptés à chaque écriture quand un quota est réglé) ; listes paginées par la base ; position d'un envoi reprenable tenue sans recompter ses parties |
+| Montée en charge | listes paginées par la base ; position d'un envoi reprenable tenue sans recompter ses parties ; option « bucket sans événements » si le volume des événements `storage.object.*` d'un bucket très actif (courrier) le demande |
 | Droits | droits par bucket (aujourd'hui un bucket de l'installation, comme celui de l'ingestion, demande `storage.installation.manage`) ; buckets publics (lisibles sans session) |
 | Envoi reprenable | taille inconnue au départ, envoi de plusieurs morceaux en parallèle, contrôle d'empreinte par morceau (extensions tus `creation-defer-length`, `concatenation`, `checksum`) ; refus d'un type interdit dès la première partie reçue ; assemblage sans recopie sur S3 |
 | Contrôle du contenu | nouvelle analyse des fichiers déjà stockés quand les signatures de l'antivirus changent, avec mise en quarantaine (`fn::storage_object_quarantine`) ; vérification périodique de l'intégrité de tous les fichiers (aujourd'hui à la demande, `StorageService::verify`) |
 | Supports | téléchargement par liens signés servis par le support S3 (aujourd'hui tout téléchargement passe par l'hôte) ; retrait actif des envois en plusieurs parties abandonnés sur S3 (aujourd'hui effacés par le service) ; déplacement des fichiers d'un bucket vers un autre support ; identifiants des supports par `lyxal_secrets` ; bascule vers les buckets de SurrealDB quand ils ne seront plus expérimentaux |
-| Fichiers | versions d'un fichier ; déduplication par empreinte (impossible pour les fichiers chiffrés : une clé par fichier) ; chiffrement des fichiers au repos : la primitive existe dans `lyxal_crypto` (`StreamKey`, `StreamEncryptor`, `StreamDecryptor`, format `STREAM_FORMAT_V1.md`, clé de chaque fichier scellée par `enc:v2` et rangée dans sa fiche), son branchement (option « compartiment chiffré » proposée, adaptateur asynchrone) est décidé au lot 4 du programme courrier (décision C11) |
+| Fichiers | versions d'un fichier ; déduplication par empreinte (hors buckets chiffrés : une clé par fichier) |
+| Chiffrement | envoi reprenable dans un bucket chiffré (parties chiffrées à leur réception) ; cache court des clés « fichiers » en mémoire, sur décision (M19) après mesure |

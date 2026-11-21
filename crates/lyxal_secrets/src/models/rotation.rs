@@ -241,6 +241,8 @@ pub struct DueTenantKey {
     pub tenant: Option<SecretsRecordId>,
     /// Portée : `installation` ou clé de l'organisation.
     pub scope_key: String,
+    /// Usage de la clé.
+    pub purpose: super::keys::KeyPurpose,
     /// Clé active.
     pub key_id: String,
     /// Création.

@@ -5,13 +5,41 @@
 use lyxal_surreal::SurrealValue;
 use std::fmt;
 
-use super::types::SecretsRecordId;
+use super::types::{SecretsDatetime, SecretsRecordId};
 
 /// Portée d'une clé : organisation, ou installation.
 #[derive(Debug, Clone, Default, SurrealValue)]
 pub struct TenantRef {
     /// Organisation (`auth_organization:<clé>`), absente pour l'installation.
     pub tenant: Option<String>,
+}
+
+/// Usage d'une clé d'organisation : chaque usage a sa clé active, son budget de scellements et
+/// sa rotation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SurrealValue)]
+#[surreal(untagged, rename_all = "snake_case")]
+pub enum KeyPurpose {
+    /// Scelle les versions des secrets du coffre-fort.
+    Secrets,
+    /// Scelle les clés des fichiers chiffrés d'un module de l'hôte (`FileKeys`).
+    Files,
+}
+
+impl KeyPurpose {
+    /// Nom de l'usage, tel qu'il est enregistré.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Secrets => "secrets",
+            Self::Files => "files",
+        }
+    }
+}
+
+/// Paramètres de `fn::secrets_tenant_key_ring`.
+#[derive(Debug, Clone, SurrealValue)]
+pub(crate) struct TenantKeyRingParams {
+    pub tenant: Option<String>,
+    pub purpose: KeyPurpose,
 }
 
 /// État d'une clé d'organisation utilisable.
@@ -52,6 +80,7 @@ pub(crate) struct TenantKeyRing {
 #[derive(Clone, SurrealValue)]
 pub(crate) struct TenantKeyCreateParams {
     pub tenant: Option<String>,
+    pub purpose: KeyPurpose,
     pub key_id: String,
     pub wrapped: String,
     pub replaces: Option<String>,
@@ -62,6 +91,7 @@ impl fmt::Debug for TenantKeyCreateParams {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("TenantKeyCreateParams")
             .field("tenant", &self.tenant)
+            .field("purpose", &self.purpose)
             .field("key_id", &self.key_id)
             .field("wrapped", &"[REDACTED]")
             .field("replaces", &self.replaces)
@@ -122,6 +152,36 @@ pub struct TenantKeyRewrapped {
 pub struct TenantKeyDestroyParams {
     /// Clé à détruire (en lecture seule, plus utilisée).
     pub key_id: String,
+    /// Clé « fichiers » seulement (obligatoire) : vrai si le module qui range les fichiers en a
+    /// encore une fiche scellée par elle, ou une écriture en cours qui a pu l'utiliser. Absent
+    /// pour une clé « secrets ».
+    pub in_use: Option<bool>,
+}
+
+/// Paramètres de `fn::secrets_tenant_key_retired`.
+#[derive(Debug, Clone, SurrealValue)]
+pub(crate) struct TenantKeyRetiredParams {
+    pub purpose: KeyPurpose,
+    pub limit: i64,
+    pub start: i64,
+}
+
+/// Clé d'organisation retirée (lecture seule), en attente de rescellement de ce qu'elle scelle
+/// puis de destruction.
+#[derive(Debug, Clone, SurrealValue)]
+pub struct RetiredKey {
+    /// Identifiant de la clé.
+    pub key_id: String,
+    /// Organisation (absente pour l'installation).
+    pub tenant: Option<SecretsRecordId>,
+    /// Passage en lecture seule : tout ce qu'elle scelle a été scellé avant cette date.
+    pub retired_at: SecretsDatetime,
+}
+
+/// Résultat de `fn::secrets_tenant_key_retired`.
+#[derive(Debug, Clone, SurrealValue)]
+pub(crate) struct RetiredKeys {
+    pub items: Vec<RetiredKey>,
 }
 
 /// Résultat de `fn::secrets_tenant_key_destroy`.
@@ -172,6 +232,7 @@ impl fmt::Debug for RewrapVersion {
 pub(crate) struct RewrapKey {
     pub key_id: String,
     pub tenant: Option<SecretsRecordId>,
+    pub purpose: KeyPurpose,
     pub wrapped: String,
     pub master_key_id: Option<String>,
 }
@@ -180,6 +241,7 @@ impl fmt::Debug for RewrapKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RewrapKey")
             .field("key_id", &self.key_id)
+            .field("purpose", &self.purpose)
             .field("wrapped", &"[REDACTED]")
             .field("master_key_id", &self.master_key_id)
             .finish()

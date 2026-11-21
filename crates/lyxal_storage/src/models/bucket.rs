@@ -23,6 +23,8 @@ pub struct Bucket {
     pub allowed_types: Vec<String>,
     /// Nom du support qui porte les octets.
     pub backend: String,
+    /// Bucket chiffré : chaque fichier est chiffré au repos par une clé propre.
+    pub encrypted: bool,
     /// Lecture seule.
     pub readonly: bool,
     /// Création.
@@ -48,10 +50,13 @@ pub struct BucketCreateParams {
     pub readonly: bool,
     /// Nom du support, fixé à la création.
     pub backend: String,
+    /// Bucket chiffré, fixé à la création : chaque fichier est chiffré au repos, sa clé scellée
+    /// par la clé « fichiers » de l'organisation (`lyxal_secrets`).
+    pub encrypted: bool,
 }
 
 impl BucketCreateParams {
-    /// Bucket de ce nom sur le support `default`, sans restriction.
+    /// Bucket de ce nom sur le support `default`, sans restriction, en clair.
     pub fn named(tenant: Option<String>, name: impl Into<String>) -> Self {
         Self {
             tenant,
@@ -61,6 +66,7 @@ impl BucketCreateParams {
             allowed_types: Vec::new(),
             readonly: false,
             backend: "default".to_string(),
+            encrypted: false,
         }
     }
 }
@@ -110,13 +116,15 @@ pub struct BucketDetails {
     pub name: String,
     /// Nom du support.
     pub backend: String,
+    /// Bucket chiffré.
+    pub encrypted: bool,
     /// Lecture seule.
     pub readonly: bool,
     /// Taille maximale d'un fichier, en octets.
     pub max_object_size: Option<i64>,
     /// Types MIME acceptés.
     pub allowed_types: Vec<String>,
-    /// Volume.
+    /// Volume, lu dans les compteurs tenus à jour.
     pub usage: BucketUsage,
 }
 

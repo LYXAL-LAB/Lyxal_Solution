@@ -38,7 +38,7 @@
 
 -- préparation: secret d'alpha
 {
-    fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", key_id: "k1", wrapped: "enc:v2:m1:K1" });
+    fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", purpose: "secrets", key_id: "k1", wrapped: "enc:v2:m1:K1" });
     LET $s = fn::secrets_secret_create({ tenant: "auth_organization:alpha", path: "api/brevo", kind: "api_key", rotation_period: 90d }).data.id;
     CREATE passe:s SET id_secret = $s;
 };
@@ -179,7 +179,7 @@ RETURN (SELECT VALUE envelope FROM ONLY secrets_version WHERE secret = (SELECT V
 
 -- préparation: rotation de la clé d'alpha (k1 relit seulement, k2 scelle)
 {
-    fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", key_id: "k2", wrapped: "enc:v2:m1:K2", replaces: "k1" });
+    fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", purpose: "secrets", key_id: "k2", wrapped: "enc:v2:m1:K2", replaces: "k1" });
 };
 
 -- test: version scellée par une clé qui n'est plus active : refusée

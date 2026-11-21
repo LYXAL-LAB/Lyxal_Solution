@@ -31,29 +31,51 @@ routes `/api/v1/secrets/*` au nom de l'appelant : valeurs seulement dans les cor
 
 ```text
 clé maîtresse du coffre-fort (LYXAL__SECRETS__MASTER_KEY ; ancienne clé en lecture seule pendant une rotation)
-   └── clé de chaque organisation : 32 octets tirés par rand_core::OsRng (SecretBytes),
-       scellés par la clé maîtresse et rangés dans secrets_tenant_key
-          └── chaque version : scellée par la clé de son organisation
+   └── clés de chaque organisation, une par usage : 32 octets tirés par rand_core::OsRng
+       (SecretBytes), scellés par la clé maîtresse et rangés dans secrets_tenant_key
+          ├── usage « secrets » : chaque version, scellée par la clé de son organisation
+          └── usage « files » : la clé de chaque fichier chiffré d'un module de l'hôte
+              (lyxal_storage, bucket chiffré), par FileKeys
 ```
 
 * La clé maîtresse est propre au coffre-fort, distincte de la clé applicative partagée de
   l'hôte (`MasterKeys` : clé active et, pendant une rotation, l'ancienne en `DecryptOnly`).
-* La clé d'une organisation (ou de l'installation) est créée à la première valeur écrite ; son
-  identifiant (`<organisation>-<16 chiffres hexadécimaux>`) figure dans chaque enveloppe.
-  Contexte de scellement : `SecretContext::with_tenant(<organisation> ou "lyxal_installation",
-  "lyxal_secrets", "secrets_tenant_key", <identifiant de clé>, "key")`.
+* Une organisation (ou l'installation) a une clé active **par usage** (`purpose`) : `secrets`,
+  créée à la première valeur écrite, et `files`, créée au premier fichier chiffré. Budget de
+  scellements, rotation et cloisonnement séparés : la clé des fichiers scelle une clé par
+  fichier (un message de courrier, par exemple) sans consommer le budget de celle des secrets.
+  Identifiant : `<organisation>-<16 chiffres hexadécimaux>` (`<organisation>-files-<…>` pour
+  l'usage `files`), présent dans chaque enveloppe. Contexte de scellement :
+  `SecretContext::with_tenant(<organisation> ou "lyxal_installation", "lyxal_secrets",
+  "secrets_tenant_key", <identifiant de clé>, "key_<usage>")` : une clé rangée sous un usage ne
+  s'ouvre pas sous un autre.
 * Contexte de scellement d'une version : `SecretContext::with_tenant(<organisation> ou
   "lyxal_installation", "lyxal_secrets", "secrets_version", "<clé du secret>:<numéro>",
   "value")`. Une enveloppe recopiée vers un autre secret, une autre version ou une autre
   organisation ne s'ouvre pas (`SECRETS_VALUE_CORRUPTED`).
-* Le trousseau d'une organisation est reconstruit à chaque opération (`EncryptionKey::import`,
-  `KeyRingBuilder`, `StaticKeyResolver`, `CryptoEngine`) depuis ses clés `active` et
-  `decrypt_only` ; aucune clé d'organisation n'est gardée en mémoire au-delà de l'opération.
-* **Rotation de la clé d'une organisation** (sur demande, droit `secrets.settings.manage`) :
-  nouvelle clé active, l'ancienne ne sert plus qu'à relire ; la maintenance rescelle toutes les
-  versions (`reencrypt_if_needed`, puis `fn::secrets_version_reseal`), puis détruit l'ancienne.
+* Le trousseau d'une organisation pour un usage est reconstruit à chaque opération
+  (`EncryptionKey::import`, `KeyRingBuilder`, `StaticKeyResolver`, `CryptoEngine`) depuis ses
+  clés `active` et `decrypt_only` ; aucune clé d'organisation n'est gardée en mémoire au-delà de
+  l'opération (y compris pour les clés de fichiers : pas de cache, décision M19 du lot 4 du
+  courrier).
+* **Clés de fichiers** (`FileKeys`, session système) : `seal(organisation, &StreamKey,
+  &SecretContext)` scelle la clé d'un fichier par la clé « fichiers » active (créée au premier
+  fichier) ; `open` la rouvre (clé détruite : `SECRETS_TENANT_KEY_UNAVAILABLE` ; enveloppe
+  recopiée d'un autre fichier ou d'une autre organisation : `SECRETS_VALUE_CORRUPTED`) ;
+  `reseal` la rescelle par la clé active après une rotation. Le contexte (identité de la fiche du
+  fichier) est fourni par le module qui range les fichiers ; le coffre-fort ne lit aucune de ses
+  tables.
+* **Rotation de la clé « secrets » d'une organisation** (sur demande, droit
+  `secrets.settings.manage`, ou à échéance de `tenant_key_rotation_days`) : nouvelle clé
+  active, l'ancienne ne sert plus qu'à relire ; la maintenance rescelle toutes les versions
+  (`reencrypt_if_needed`, puis `fn::secrets_version_reseal`), puis détruit l'ancienne.
+* **Rotation de la clé « fichiers »** (à échéance de `files_key_rotation_days`, 365 jours par
+  défaut) : la maintenance la remplace ; l'hôte (nettoyage de `lyxal_storage`) liste les clés
+  retirées (`fn::secrets_tenant_key_retired`), rescelle les clés de fichiers qu'elles scellent,
+  puis les fait détruire en disant qu'elles ne servent plus (`fn::secrets_tenant_key_destroy`,
+  `in_use` faux).
 * **Rotation de la clé maîtresse** : la nouvelle est fournie comme clé active, l'ancienne à côté
-  en lecture seule ; la maintenance rescelle les clés des organisations
+  en lecture seule ; la maintenance rescelle les clés des organisations de tous usages
   (`fn::secrets_tenant_key_rewrap`) ; la sonde annonce la fin, puis l'ancienne est retirée.
 * Une organisation supprimée emporte ses clés et ses secrets (`REFERENCE ON DELETE CASCADE`).
 * Sans clé maîtresse, le module est dégradé : les fiches restent consultables, aucune valeur
@@ -73,7 +95,8 @@ clé maîtresse du coffre-fort (LYXAL__SECRETS__MASTER_KEY ; ancienne clé en le
 | `SecretsService::propose` | nouvelle valeur d'un secret protégé : scellée et écrite en version `proposed` (jamais servie avant l'application), puis demande de changement ouverte au nom de l'appelant |
 | `SecretsService::rotate_now`, `check_rotation` | rotation immédiate (dont l'urgence ; sans rotateur, l'urgence coupe la version courante et la rotation échoue aussitôt, `SECRETS_ROTATOR_UNAVAILABLE`) ; essai sans bascule de la valeur en service, outil du worker et de la session système (pas de route HTTP) |
 | `SecretsClient` | lecture et écriture des modules de l'hôte par organisation et chemin, session système, module annoncé comme consommateur |
-| `SecretsMaintenance` | maintenance, une opération (`run`) interrompue entre deux éléments à l'arrêt ; aucun `LyxalWorker` : l'hôte la fait exécuter toutes les 10 min par `lyxal_scheduler` (tâche `secrets.maintenance` qu'il déclare lui-même, `lyxal_secrets` ne dépendant pas du planificateur) : purge à échéance, alertes d'échéance et rappels de rotation, démarrage des rotations dues qu'un rotateur sait faire, rotation des clés d'organisation échues, avancement des rotations réservées, expiration des demandes et retrait des accès finis, expiration des partages, rescellement des versions puis des clés d'organisation, destruction des clés inutilisées ; bilan `MaintenanceReport` |
+| `FileKeys`, `SealedFileKey` | clés des fichiers chiffrés des modules de l'hôte (session système) : `seal`, `open`, `reseal`, `retired` (clés « fichiers » retirées), `destroy` (sur l'avis de l'hôte : `in_use`) ; `context_tenant` (organisation du contexte de scellement) ; enveloppe au `Debug` masqué |
+| `SecretsMaintenance` | maintenance, une opération (`run`) interrompue entre deux éléments à l'arrêt ; aucun `LyxalWorker` : l'hôte la fait exécuter toutes les 10 min par `lyxal_scheduler` (tâche `secrets.maintenance` qu'il déclare lui-même, `lyxal_secrets` ne dépendant pas du planificateur) : purge à échéance, alertes d'échéance et rappels de rotation, démarrage des rotations dues qu'un rotateur sait faire, rotation des clés d'organisation échues (« secrets » et « fichiers »), avancement des rotations réservées, expiration des demandes et retrait des accès finis, expiration des partages, rescellement des versions puis des clés d'organisation, destruction des clés « secrets » inutilisées ; bilan `MaintenanceReport` |
 | `SecretsModule`, `SecretsHealthCheck` | descripteur du module ; sonde : base joignable, clé maîtresse présente, clés scellées par une clé maîtresse absente du trousseau (dégradé), rescellements en attente |
 | `SecretsError` | code `SECRETS_*` de la base, ou cause constatée par le service (`SECRETS_CRYPTO_UNAVAILABLE`, `SECRETS_VALUE_TOO_LARGE`, `SECRETS_VALUE_CORRUPTED`, `SECRETS_TENANT_KEY_UNAVAILABLE`) ; jamais de valeur |
 
@@ -85,7 +108,7 @@ masqué.
 
 | Table | Rôle |
 | :--- | :--- |
-| `secrets_settings` | réglages de l'installation, surchargés par organisation : versions conservées (10), délai avant purge (30 jours, de 7 à 90), protection contre la purge (irréversible), taille maximale d'une valeur (64 Kio, 1 Mio au plus), visibilité par défaut (`restricted`), alerte avant échéance (30 jours), rotation de la clé d'organisation (365 jours, de 30 à 3650, 0 : désactivée), durée d'un accès temporaire (8 h par défaut, 90 jours au plus), expiration d'une demande sans réponse (7 jours), approbations d'une demande d'accès (1), durée d'un partage (24 h par défaut, 7 jours au plus) et ouvertures (10 au plus) |
+| `secrets_settings` | réglages de l'installation, surchargés par organisation : versions conservées (10), délai avant purge (30 jours, de 7 à 90), protection contre la purge (irréversible), taille maximale d'une valeur (64 Kio, 1 Mio au plus), visibilité par défaut (`restricted`), alerte avant échéance (30 jours), rotation des clés d'organisation « secrets » et « fichiers » (`tenant_key_rotation_days`, `files_key_rotation_days` : 365 jours, de 30 à 3650, 0 : désactivée), durée d'un accès temporaire (8 h par défaut, 90 jours au plus), expiration d'une demande sans réponse (7 jours), approbations d'une demande d'accès (1), durée d'un partage (24 h par défaut, 7 jours au plus) et ouvertures (10 au plus) |
 | `secrets_secret` | fiche d'un secret, sans valeur : chemin unique par organisation (`notification/smtp/password`), type, description, propriétaire, contact, consommateurs prévus, étiquettes libres, métadonnées, visibilité, échéance, période et prochaine date de rotation, dernière rotation, alertes déjà envoyées, dernier essai sans bascule, état, étiquettes de version |
 | `secrets_version` | version : numéro, enveloppe scellée (illisible pour tout utilisateur), identifiant de clé, noms des clés d'une valeur JSON, état |
 | `secrets_read_ticket` | ticket de lecture : usage unique, 60 secondes |
@@ -95,7 +118,7 @@ masqué.
 | `secrets_request` | demande d'accès (`access`) ou de changement d'un secret protégé (`change` : `value`, `rollback`, `disable`, `delete`, `destroy`) : demandeur, objet, motif, approbations requises et reçues, état (`pending`, `approved`, `rejected`, `cancelled`, `expired`, `applying`, `applied`), échéance ; une demande de changement ouverte par secret |
 | `secrets_policy` | protection d'un secret ou d'un dossier : approbations requises (1 à 5), opérations protégées, durée maximale d'un accès demandé |
 | `secrets_share` | partage à usage unique : copie scellée (illisible), empreinte de la clé du lien (illisible), hachage du mot de passe facultatif (illisible), source (secret et version, ou texte), ouvertures permises et faites, essais faux, réservé à l'organisation ou non, échéance, état (`active`, `consumed`, `expired`, `revoked`, `destroyed`) |
-| `secrets_tenant_key` | clé d'une organisation ou de l'installation, scellée par la clé maîtresse : identifiant, clé maîtresse qui la scelle, état (`active`, une seule par portée ; `decrypt_only` ; `destroyed`, matière effacée) ; identifiant et état lisibles par l'écriture, la liste et les accès temporaires d'écriture de l'organisation, clé scellée illisible, aucune écriture utilisateur |
+| `secrets_tenant_key` | clé d'une organisation ou de l'installation, scellée par la clé maîtresse : usage (`secrets` ou `files`), identifiant, clé maîtresse qui la scelle, état (`active`, une seule par portée et par usage ; `decrypt_only` ; `destroyed`, matière effacée) ; identifiant et état lisibles par l'écriture, la liste et les accès temporaires d'écriture de l'organisation, clé scellée illisible, aucune écriture utilisateur |
 
 Aucune table n'a de `CHANGEFEED` ni d'historique natif : une version détruite disparaît vraiment.
 
@@ -214,7 +237,7 @@ Aucune table n'a de `CHANGEFEED` ni d'historique natif : une version détruite d
 | Versions | `secrets_version_add`, `_list`, `_label`, `_disable`, `_enable`, `_destroy`, `_reseal` |
 | Lecture | `secrets_read_begin`, `secrets_read_envelope` (session système) |
 | Journal | `secrets_audit_list`, `secrets_audit_verify`, `secrets_audit_denied` (session système) |
-| Clés | `secrets_tenant_key_ring`, `_create`, `_rewrap`, `_destroy`, `secrets_rewrap_list` (session système ou worker) ; `secrets_tenant_key_rotate_allowed` (droit de réglage) |
+| Clés | `secrets_tenant_key_ring`, `_create` (par usage), `_rewrap`, `_destroy` (clé « fichiers » : `in_use` fourni par l'hôte), `_retired` (clés retirées d'un usage), `secrets_rewrap_list` (session système ou worker) ; `secrets_tenant_key_rotate_allowed` (droit de réglage) |
 | Rotation | `secrets_rotation_begin`, `_cancel`, `_get` ; `_claim`, `_step`, `_finish`, `_fail`, `_check_record` (worker ou session système) |
 | Accès | `secrets_grant_create`, `_revoke`, `_list`, `secrets_access_emergency` |
 | Demandes | `secrets_request_access`, `_change`, `_approve`, `_reject`, `_cancel`, `_apply`, `_get`, `_list` |
@@ -256,7 +279,7 @@ version ou étiquettes, échéance, rotation et code d'erreur, auteur ; jamais d
 
 Banc SurrealQL (`tests/*.test.surql`, exécuté par `scripts/ci/test_lyxal_modules.py`) : fiches,
 versions, lecture (dont double facteur), journal (dont falsification), droits, réglages,
-fonctions internes, clés des organisations et refus journalisés, échéances et rotations, accès, demandes, protections et urgence, partages, sondes de l'audit de clôture ; 245 assertions.
+fonctions internes, clés des organisations (dont clés « fichiers » : trousseau séparé, clés retirées, destruction sur l'avis de l'hôte) et refus journalisés, échéances et rotations (dont celle des clés « fichiers »), accès, demandes, protections et urgence, partages, sondes de l'audit de clôture ; 256 assertions.
 
 Tests Rust (`tests/it/`, base embarquée, sessions de personnes et de programmes par jetons de
 test) : valeur écrite puis relue, 64 Kio acceptés et au-delà refusés, enveloppe recopiée ou
@@ -269,5 +292,8 @@ rotation planifiée des clés d'organisation, réservation périmée reprise par
 maintenance pendant une rotation, accès temporaires d'une personne et d'un programme, valeur proposée
 servie seulement après approbations et application, changement d'urgence, maintenance des demandes, partages (ouverture épuisée, clé et mot de passe faux,
 destruction au cinquième essai, lien réservé à l'organisation ou à l'installation, retrait, échéance), version `pending` d'un
-autre auteur jamais mise en service, `LIVE SELECT` sans enveloppe ; 45 tests et 1 test unitaire. Hôte :
+autre auteur jamais mise en service, `LIVE SELECT` sans enveloppe ; clés de fichiers (clé
+« fichiers » distincte de la clé « secrets », scellement lié au fichier et à l'organisation, sans
+clé maîtresse, rotation puis rescellement et destruction sur l'avis de l'hôte, rotation de la clé
+maîtresse) ; 49 tests et 1 test unitaire. Hôte :
 `apps/lyxal-server/tests/secrets_http.rs` (routes HTTP de bout en bout) et `apps/lyxal-server/tests/secrets.rs`.

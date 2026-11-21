@@ -4,7 +4,9 @@
 -- ============================================================================
 -- Réservées à la session système ou au worker (service Rust de l'hôte), sauf
 -- fn::secrets_tenant_key_rotate_allowed, qui contrôle le droit d'une personne de demander une
--- rotation. La clé elle-même n'est jamais visible en clair ici : seulement scellée.
+-- rotation. La clé elle-même n'est jamais visible en clair ici : seulement scellée. Chaque clé a
+-- un usage (purpose) : secrets (versions des secrets) ou files (clés des fichiers chiffrés d'un
+-- module de l'hôte, FileKeys) ; une clé active par portée et par usage.
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_keys_trusted (interne)
@@ -30,6 +32,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_tenant_key_ring($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
             tenant: { pipeline: [{ rule: "record", options: { expected_table: "auth_organization" } }] },
+            purpose: { pipeline: [{ rule: "enum", options: { allowed: ["secrets", "files"], case_sensitive: true } }], required: true },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -42,9 +45,9 @@ DEFINE FUNCTION OVERWRITE fn::secrets_tenant_key_ring($params: object) {
     LET $scope = IF $p.tenant IS NONE { "installation" } ELSE { <string> record::id($p.tenant) };
     RETURN fn::result_ok({
         items: (SELECT key_id, wrapped, state FROM secrets_tenant_key
-            WHERE scope_key = $scope AND state IN ["active", "decrypt_only"] ORDER BY created_at ASC)
+            WHERE scope_key = $scope AND purpose = $p.purpose AND state IN ["active", "decrypt_only"] ORDER BY created_at ASC)
     });
-} COMMENT "Trousseau scellé d'une portée ({ tenant }) : clés active et decrypt_only, scellées par la clé maîtresse : { items: [{ key_id, wrapped, state }] }. Session système ou worker";
+} COMMENT "Trousseau scellé d'une portée pour un usage ({ tenant, purpose : secrets ou files }) : clés active et decrypt_only, scellées par la clé maîtresse : { items: [{ key_id, wrapped, state }] }. Session système ou worker";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_tenant_key_create
@@ -55,6 +58,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_tenant_key_create($params: object) {
         fields: {
             tenant: { pipeline: [{ rule: "record", options: { expected_table: "auth_organization" } }] },
             key_id: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 64 } }], required: true },
+            purpose: { pipeline: [{ rule: "enum", options: { allowed: ["secrets", "files"], case_sensitive: true } }], required: true },
             wrapped: { pipeline: [{ rule: "required_string", options: { min_length: 8, max_length: 4096 } }, { rule: "starts_with", options: { prefixes: ["enc:v2:"], case_sensitive: true, trim_value: false } }], required: true },
             replaces: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 64 } }] },
             requested_by: { pipeline: [{ rule: "record", options: { expected_table: "auth_identity" } }] },
@@ -68,7 +72,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_tenant_key_create($params: object) {
     LET $p = $report.value;
     IF !fn::secrets_keys_trusted() { RETURN fn::error_result("SECRETS_PERMISSION_DENIED", $p.language, {}); };
     LET $scope = IF $p.tenant IS NONE { "installation" } ELSE { <string> record::id($p.tenant) };
-    LET $active = (SELECT id, key_id FROM ONLY secrets_tenant_key WHERE scope_key = $scope AND state = "active" LIMIT 1);
+    LET $active = (SELECT id, key_id FROM ONLY secrets_tenant_key WHERE scope_key = $scope AND purpose = $p.purpose AND state = "active" LIMIT 1);
     -- Écriture conditionnelle : première clé (replaces absent) ou remplacement de la clé active attendue
     IF ($p.replaces IS NONE AND $active IS NOT NONE) OR ($p.replaces IS NOT NONE AND $active.key_id != $p.replaces) {
         RETURN fn::error_result("SECRETS_TENANT_KEY_CONFLICT", $p.language, { active: $active.key_id, replaces: $p.replaces });
@@ -78,6 +82,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_tenant_key_create($params: object) {
     };
     LET $created = (INSERT IGNORE INTO secrets_tenant_key {
         tenant: $p.tenant,
+        purpose: $p.purpose,
         key_id: $p.key_id,
         wrapped: $p.wrapped,
         requested_by: IF $p.requested_by IS NONE { NONE } ELSE { <string> $p.requested_by }
@@ -85,7 +90,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_tenant_key_create($params: object) {
     -- Index : une autre création concurrente a gagné
     IF array::len($created) = 0 { THROW "SECRETS_TENANT_KEY_CONFLICT"; };
     RETURN fn::result_ok({ key_id: $created[0].key_id, state: $created[0].state, retired: $active.key_id });
-} COMMENT "Range une clé d'organisation scellée ({ tenant, key_id, wrapped, replaces, requested_by }) : première clé (replaces absent, aucune clé active) ou rotation (replaces = clé active attendue, qui passe en decrypt_only). Création concurrente : SECRETS_TENANT_KEY_CONFLICT, le service relit le trousseau. Session système ou worker";
+} COMMENT "Range une clé d'organisation scellée ({ tenant, purpose : secrets ou files, key_id, wrapped, replaces, requested_by }) : première clé de l'usage (replaces absent, aucune clé active) ou rotation (replaces = clé active attendue de l'usage, qui passe en decrypt_only). Création concurrente : SECRETS_TENANT_KEY_CONFLICT, le service relit le trousseau. Session système ou worker";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_tenant_key_rotate_allowed
@@ -145,6 +150,7 @@ DEFINE FUNCTION OVERWRITE fn::secrets_tenant_key_destroy($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
             key_id: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 64 } }], required: true },
+            in_use: { pipeline: [{ rule: "boolean" }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -154,13 +160,49 @@ DEFINE FUNCTION OVERWRITE fn::secrets_tenant_key_destroy($params: object) {
     };
     LET $p = $report.value;
     IF !fn::secrets_keys_trusted() { RETURN fn::error_result("SECRETS_PERMISSION_DENIED", $p.language, {}); };
-    LET $key = (SELECT id, scope_key, state FROM ONLY secrets_tenant_key WHERE key_id = $p.key_id LIMIT 1);
+    LET $key = (SELECT id, scope_key, purpose, state FROM ONLY secrets_tenant_key WHERE key_id = $p.key_id LIMIT 1);
     IF $key == NONE OR $key.state != "decrypt_only" { RETURN fn::error_result("SECRETS_TENANT_KEY_UNAVAILABLE", $p.language, { key_id: $p.key_id, state: $key.state }); };
-    LET $used = (SELECT VALUE id FROM secrets_version WHERE scope_key = $key.scope_key AND key_id = $p.key_id LIMIT 1);
-    IF array::len($used) > 0 { RETURN fn::error_result("SECRETS_TENANT_KEY_CONFLICT", $p.language, { key_id: $p.key_id, in_use: true }); };
-    UPDATE $key.id SET state = "destroyed", wrapped = NONE, destroyed_at = time::now();
+    -- Clé « secrets » : le coffre-fort sait si une version l'utilise encore. Clé « fichiers » : seul
+    -- le module qui range les fichiers le sait ; l'hôte le dit (in_use), le coffre-fort ne lit
+    -- aucune table de ce module
+    IF $key.purpose = "secrets" AND $p.in_use IS NOT NONE {
+        RETURN fn::error_result("SECRETS_INVALID_PARAMETERS", $p.language, { fields: { in_use: ["not_allowed"] } });
+    };
+    LET $used = IF $key.purpose = "files" {
+        $p.in_use ?? true
+    } ELSE {
+        array::len(SELECT VALUE id FROM secrets_version WHERE scope_key = $key.scope_key AND key_id = $p.key_id LIMIT 1) > 0
+    };
+    IF $used { RETURN fn::error_result("SECRETS_TENANT_KEY_CONFLICT", $p.language, { key_id: $p.key_id, in_use: true }); };
+    LET $destroyed = (UPDATE ONLY $key.id SET state = "destroyed", wrapped = NONE, destroyed_at = time::now());
+    IF $destroyed == NONE { RETURN fn::error_result("SECRETS_WRITE_FORBIDDEN", $p.language, { table: "secrets_tenant_key" }); };
     RETURN fn::result_ok({ key_id: $p.key_id, destroyed: true });
-} COMMENT "Détruit une ancienne clé d'organisation ({ key_id }) : seulement en decrypt_only et quand plus aucune version ne l'utilise ; matière effacée. Session système ou worker";
+} COMMENT "Détruit une ancienne clé d'organisation ({ key_id, in_use }) : seulement en decrypt_only et quand plus rien ne l'utilise ; matière effacée. Clé « secrets » : plus aucune version (in_use refusé) ; clé « fichiers » : in_use = false fourni par l'hôte d'après le module qui range les fichiers (absent : refus). Session système ou worker";
+
+-- ----------------------------------------------------------------------------
+-- fn::secrets_tenant_key_retired
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::secrets_tenant_key_retired($params: object) {
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            purpose: { pipeline: [{ rule: "enum", options: { allowed: ["secrets", "files"], case_sensitive: true } }], required: true },
+            limit: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 1000 } }], default: 100 },
+            start: { pipeline: [{ rule: "integer", options: { min_value: 0 } }], default: 0 },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 20);
+    IF !$report.valid {
+        RETURN fn::error_result("SECRETS_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
+    };
+    LET $p = $report.value;
+    IF !fn::secrets_keys_trusted() { RETURN fn::error_result("SECRETS_PERMISSION_DENIED", $p.language, {}); };
+    RETURN fn::result_ok({
+        items: (SELECT key_id, tenant, retired_at FROM secrets_tenant_key
+            WHERE purpose = $p.purpose AND state = "decrypt_only" ORDER BY retired_at, key_id LIMIT $p.limit START $p.start)
+    });
+} COMMENT "Clés retirées d'un usage ({ purpose : secrets ou files, limit, start : clés en échec à passer }), de la plus anciennement retirée à la plus récente : { items: [{ key_id, tenant, retired_at }] } ; pour l'usage files, l'hôte rescelle les clés de fichiers qu'elles scellent puis les détruit (fn::secrets_tenant_key_destroy avec in_use). Session système ou worker";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_rewrap_list
@@ -182,15 +224,16 @@ DEFINE FUNCTION OVERWRITE fn::secrets_rewrap_list($params: object) {
     };
     LET $p = $report.value;
     IF !fn::secrets_keys_trusted() { RETURN fn::error_result("SECRETS_PERMISSION_DENIED", $p.language, {}); };
-    LET $retired = (SELECT key_id, scope_key, tenant FROM secrets_tenant_key WHERE state = "decrypt_only");
+    LET $retired = (SELECT key_id, scope_key, tenant FROM secrets_tenant_key WHERE purpose = "secrets" AND state = "decrypt_only");
     LET $retired_ids = $retired.key_id;
     -- Versions encore scellées par une clé retirée
     LET $versions = (SELECT secret, tenant, number, key_id, envelope FROM secrets_version
         WHERE state != "destroyed" AND key_id IN $retired_ids ORDER BY id LIMIT $p.limit START $p.skip_versions);
-    -- Clés d'organisation scellées par une autre clé maîtresse que l'active
-    LET $keys = (SELECT key_id, tenant, wrapped, master_key_id FROM secrets_tenant_key
+    -- Clés d'organisation (tous usages) scellées par une autre clé maîtresse que l'active
+    LET $keys = (SELECT key_id, tenant, purpose, wrapped, master_key_id FROM secrets_tenant_key
         WHERE state IN ["active", "decrypt_only"] AND master_key_id != $p.master_key_id ORDER BY id LIMIT $p.limit START $p.skip_keys);
-    -- Clés retirées que plus aucune version n'utilise
+    -- Clés « secrets » retirées que plus aucune version n'utilise (les clés « fichiers » sont
+    -- détruites par l'hôte : fn::secrets_tenant_key_retired)
     LET $unused = array::filter($retired, |$k| array::len(SELECT VALUE id FROM secrets_version WHERE scope_key = $k.scope_key AND key_id = $k.key_id LIMIT 1) = 0);
     RETURN fn::result_ok({ versions: $versions, keys: $keys, unused: $unused.key_id });
-} COMMENT "Travail de rescellement ({ master_key_id : clé maîtresse active, limit, skip_versions, skip_keys : éléments en échec à passer, pour qu'ils n'empêchent pas le reste }) : versions scellées par une clé retirée (avec leur enveloppe), clés d'organisation scellées par une autre clé maîtresse, clés retirées inutilisées (à détruire). Session système ou worker";
+} COMMENT "Travail de rescellement ({ master_key_id : clé maîtresse active, limit, skip_versions, skip_keys : éléments en échec à passer, pour qu'ils n'empêchent pas le reste }) : versions scellées par une clé « secrets » retirée (avec leur enveloppe), clés d'organisation de tous usages scellées par une autre clé maîtresse (avec leur usage), clés « secrets » retirées inutilisées (à détruire). Session système ou worker";

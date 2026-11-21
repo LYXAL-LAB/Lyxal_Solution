@@ -11,12 +11,13 @@ use surrealdb::Surreal;
 use crate::models::{
     BatchParams, BegunObject, Bucket, BucketCreateParams, BucketDeleted, BucketDetails, BucketList,
     BucketListParams, BucketRefParams, BucketUpdateParams, ClaimedUpload, Expired,
-    ObjectBeginParams, ObjectCommitParams, ObjectGetParams, ObjectList, ObjectListParams,
-    ObjectRefParams, ObjectUsageParams, PageParams, PurgeList, Purged, QuarantineParams,
-    ReclaimDone, ReclaimDoneParams, ReclaimList, ScopeUsage, SettingsGetParams, SettingsSetParams,
-    SettingsView, StoredObject, StoredSettings, UploadClaimParams, UploadPartAddParams,
-    UploadPartList, UploadReadyList, UploadRefParams, UploadReleaseParams, UploadReleased,
-    UploadStatus,
+    ObjectBeginParams, ObjectCommitParams, ObjectGetParams, ObjectKey, ObjectList,
+    ObjectListParams, ObjectRefParams, ObjectUsageParams, PageParams, PurgeList, Purged,
+    QuarantineParams, ReclaimDone, ReclaimDoneParams, ReclaimList, RekeyList, RekeyListParams,
+    RekeyParams, Rekeyed, ScopeUsage, SettingsGetParams, SettingsSetParams, SettingsView,
+    StoredObject, StoredSettings, UploadClaimParams, UploadPartAddParams, UploadPartList,
+    UploadReadyList, UploadRefParams, UploadReleaseParams, UploadReleased, UploadStatus,
+    UsageReport, UsageVerifyParams,
 };
 
 /// Store de `lyxal_storage` sur un client SurrealDB (`Surreal<Any>`).
@@ -169,5 +170,28 @@ impl StorageStore {
     /// `fn::storage_reclaim_done` : ligne d'un préfixe retirée après ses octets.
     pub async fn reclaim_done(&self, params: ReclaimDoneParams) -> Call<ReclaimDone> {
         self.call_fn("storage_reclaim_done", params).await
+    }
+
+    /// `fn::storage_object_key_get` : clé scellée d'un fichier (session système ou worker).
+    pub(crate) async fn object_key_get(&self, params: ObjectRefParams) -> Call<ObjectKey> {
+        self.call_fn("storage_object_key_get", params).await
+    }
+
+    /// `fn::storage_object_rekey_list` : fiches dont la clé est scellée par une clé « fichiers »
+    /// retirée (session système ou worker).
+    pub(crate) async fn object_rekey_list(&self, params: RekeyListParams) -> Call<RekeyList> {
+        self.call_fn("storage_object_rekey_list", params).await
+    }
+
+    /// `fn::storage_object_rekey` : clé d'un fichier rescellée rangée (session système ou
+    /// worker).
+    pub(crate) async fn object_rekey(&self, params: RekeyParams) -> Call<Rekeyed> {
+        self.call_fn("storage_object_rekey", params).await
+    }
+
+    /// `fn::storage_usage_verify` : compteurs de volume d'une portée comparés aux fiches
+    /// (worker).
+    pub async fn usage_verify(&self, params: UsageVerifyParams) -> Call<UsageReport> {
+        self.call_fn("storage_usage_verify", params).await
     }
 }

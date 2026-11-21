@@ -60,7 +60,12 @@ DEFINE FIELD OVERWRITE expiry_warning_days ON TABLE secrets_settings
 DEFINE FIELD OVERWRITE tenant_key_rotation_days ON TABLE secrets_settings
     TYPE option<int>
     ASSERT $value IS NONE OR $value = 0 OR ($value >= 30 AND $value <= 3650)
-    COMMENT "Rotation automatique de la clé d'organisation, en jours (30 à 3650 ; 0 : désactivée ; défaut 365)";
+    COMMENT "Rotation automatique de la clé « secrets » de l'organisation, en jours (30 à 3650 ; 0 : désactivée ; défaut 365)";
+
+DEFINE FIELD OVERWRITE files_key_rotation_days ON TABLE secrets_settings
+    TYPE option<int>
+    ASSERT $value IS NONE OR $value = 0 OR ($value >= 30 AND $value <= 3650)
+    COMMENT "Rotation automatique de la clé « fichiers » de l'organisation, en jours (30 à 3650 ; 0 : désactivée ; défaut 365)";
 
 DEFINE FIELD OVERWRITE grant_default_duration ON TABLE secrets_settings
     TYPE option<duration>

@@ -1,4 +1,4 @@
-//! Base embarquée avec `lyxal_core`, `lyxal_error`, `lyxal_event`, `lyxal_auth` et
+//! Base embarquée avec `lyxal_core`, `lyxal_error`, `lyxal_event`, `lyxal_auth`, `lyxal_secrets` et
 //! `lyxal_storage` installés comme le fait l'hôte ; supports mémoire et disque.
 
 use bytes::Bytes;
@@ -44,7 +44,12 @@ pub async fn installed_client() -> Surreal<Any> {
     lyxal_runtime::schema::install_batch(&client, &batch)
         .await
         .expect("noyau");
-    for name in ["lyxal_event", "lyxal_auth", "lyxal_storage"] {
+    for name in [
+        "lyxal_event",
+        "lyxal_auth",
+        "lyxal_secrets",
+        "lyxal_storage",
+    ] {
         let (manifest, provider) = load(name);
         lyxal_runtime::schema::install_resources(&client, &manifest, &provider)
             .await

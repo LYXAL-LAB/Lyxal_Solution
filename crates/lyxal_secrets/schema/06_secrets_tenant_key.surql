@@ -1,15 +1,17 @@
 -- ============================================================================
 -- TABLE  : secrets_tenant_key
 -- MODULE : lyxal_secrets
--- RÔLE   : Clé de chiffrement d'une organisation, scellée par la clé maîtresse de l'hôte
+-- RÔLE   : Clé de chiffrement d'une organisation, par usage, scellée par la clé maîtresse de l'hôte
 -- ============================================================================
 -- Aucune écriture utilisateur et clé scellée illisible : seule la session système (service Rust) écrit cette table,
 -- par les fonctions fn::secrets_tenant_key_*. Une clé est tirée par le service (rand_core::OsRng),
 -- scellée par la clé maîtresse (contexte with_tenant(<organisation>, "lyxal_secrets",
--- "secrets_tenant_key", <key_id>, "key")) et rangée ici. États : active (scelle les nouvelles
--- versions, une seule par portée) → decrypt_only (relit seulement, après une rotation) →
--- destroyed (matière effacée, quand plus aucune version ne l'utilise). Les clés d'une
--- organisation partent avec elle : ses secrets ne s'ouvrent plus.
+-- "secrets_tenant_key", <key_id>, "key_<usage>")) et rangée ici. Usages : secrets (scelle les
+-- versions des secrets) et files (scelle les clés des fichiers chiffrés d'un module de l'hôte,
+-- FileKeys) ; budget de scellements et rotations séparés. États : active (scelle, une seule par
+-- portée et par usage) → decrypt_only (relit seulement, après une rotation) → destroyed (matière
+-- effacée, quand plus rien ne l'utilise). Les clés d'une organisation partent avec elle : ses
+-- secrets et ses fichiers chiffrés ne s'ouvrent plus.
 
 DEFINE TABLE OVERWRITE secrets_tenant_key
     TYPE NORMAL
@@ -22,7 +24,7 @@ DEFINE TABLE OVERWRITE secrets_tenant_key
             OR (tenant IS NOT NONE AND fn::secrets_grant_covers({ tenant: tenant, action: "write" }))
             OR fn::secrets_can({ action: "worker", tenant: tenant })
         FOR create, update, delete NONE
-    COMMENT "Clé de chiffrement d'une organisation, scellée par la clé maîtresse ; aucune écriture utilisateur, clé scellée illisible";
+    COMMENT "Clé de chiffrement d'une organisation, par usage (secrets, files), scellée par la clé maîtresse ; aucune écriture utilisateur, clé scellée illisible";
 
 DEFINE FIELD OVERWRITE tenant ON TABLE secrets_tenant_key
     TYPE option<record<auth_organization>>
@@ -34,6 +36,12 @@ DEFINE FIELD OVERWRITE scope_key ON TABLE secrets_tenant_key
     TYPE string
     VALUE IF $this.tenant IS NONE { "installation" } ELSE { <string> record::id($this.tenant) }
     COMMENT "Portée : installation ou clé de l'organisation";
+
+DEFINE FIELD OVERWRITE purpose ON TABLE secrets_tenant_key
+    TYPE string
+    READONLY
+    ASSERT $value IN ["secrets", "files"]
+    COMMENT "Usage : secrets (versions des secrets) ou files (clés des fichiers chiffrés)";
 
 DEFINE FIELD OVERWRITE key_id ON TABLE secrets_tenant_key
     TYPE string
@@ -61,7 +69,7 @@ DEFINE FIELD OVERWRITE state ON TABLE secrets_tenant_key
 DEFINE FIELD OVERWRITE active_slot ON TABLE secrets_tenant_key
     TYPE string
     VALUE IF $this.state = "active" { "active" } ELSE { <string> $this.id }
-    COMMENT "Une seule clé active par portée (index unique)";
+    COMMENT "Une seule clé active par portée et par usage (index unique)";
 
 DEFINE FIELD OVERWRITE requested_by ON TABLE secrets_tenant_key
     TYPE option<string>
@@ -86,6 +94,7 @@ DEFINE FIELD OVERWRITE destroyed_at ON TABLE secrets_tenant_key
     TYPE option<datetime>
     COMMENT "Destruction";
 
-DEFINE INDEX OVERWRITE secrets_tenant_key_active ON TABLE secrets_tenant_key FIELDS scope_key, active_slot UNIQUE;
+DEFINE INDEX OVERWRITE secrets_tenant_key_active ON TABLE secrets_tenant_key FIELDS scope_key, purpose, active_slot UNIQUE;
 DEFINE INDEX OVERWRITE secrets_tenant_key_id ON TABLE secrets_tenant_key FIELDS key_id UNIQUE;
 DEFINE INDEX OVERWRITE secrets_tenant_key_master ON TABLE secrets_tenant_key FIELDS state, master_key_id;
+DEFINE INDEX OVERWRITE secrets_tenant_key_purpose ON TABLE secrets_tenant_key FIELDS purpose, state;

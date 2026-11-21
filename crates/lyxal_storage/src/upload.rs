@@ -365,10 +365,12 @@ impl StorageService {
             .then(move |path| reader.clone().read(path))
             .try_flatten()
             .boxed();
+        // Envoi reprenable : jamais dans un bucket chiffré (refusé à l'ouverture)
         self.write_and_commit(
             target,
             Some(position(claimed.length)),
             Some(claimed.claim),
+            None,
             content,
         )
         .await

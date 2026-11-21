@@ -5,6 +5,7 @@ use crate::modules::scheduler::SchedulerHost;
 use crate::modules::secrets::SecretsHost;
 use lyxal_host::{database::Database, health::HealthRegistry, metrics::Metrics};
 use lyxal_runtime::LyxalRuntime;
+use lyxal_secrets::FileKeys;
 use lyxal_storage::{Backends, ContentScanner};
 use std::sync::Arc;
 
@@ -27,12 +28,14 @@ pub struct AppContext {
     pub notification: Option<NotificationHost>,
 }
 
-/// Ce que les routes des fichiers reçoivent de l'hôte : les supports configurés et, s'il y en a
-/// un, l'antivirus qui analyse tout fichier envoyé.
+/// Ce que les routes des fichiers reçoivent de l'hôte : les supports configurés, l'antivirus qui
+/// analyse tout fichier envoyé s'il y en a un, et les clés de fichiers du coffre-fort, qui ne
+/// servent qu'aux buckets chiffrés.
 #[derive(Clone, Default)]
 pub struct StorageHost {
     pub backends: Arc<Backends>,
     pub scanner: Option<Arc<dyn ContentScanner>>,
+    pub file_keys: Option<FileKeys>,
 }
 
 impl AppContext {

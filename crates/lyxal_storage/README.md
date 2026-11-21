@@ -1,29 +1,31 @@
 # Lyxal Storage
 
 Module du Noyau Technique de Lyxal OS : **fichiers et documents stockés**. Les règles sont dans
-SurrealDB (réglages, buckets, fiche de chaque fichier, états, droits, quotas, événements) ; le
-crate Rust écrit et lit les octets en flux sur un support (disque local, service S3 ou
-compatible, mémoire pour les tests), calcule leur empreinte, reconnaît leur type réel, les fait
-analyser par un antivirus s'il y en a un, et retire les octets devenus inutiles. L'hôte expose l'envoi et le téléchargement par HTTP (`apps/lyxal-server/README.md`).
+SurrealDB (réglages, buckets, fiche de chaque fichier, états, droits, quotas, compteurs de
+volume, événements) ; le crate Rust écrit et lit les octets en flux sur un support (disque local,
+service S3 ou compatible, mémoire pour les tests), calcule leur empreinte, reconnaît leur type
+réel, les fait analyser par un antivirus s'il y en a un, les chiffre au repos dans un bucket
+chiffré, et retire les octets devenus inutiles. L'hôte expose l'envoi et le téléchargement par HTTP (`apps/lyxal-server/README.md`).
 Les évolutions à venir sont dans la [`ROADMAP.md`](ROADMAP.md). Sources, décisions et étude de la
 gestion de fichiers de SurrealDB : [`MODELE_SOURCES.md`](MODELE_SOURCES.md).
 
 | | |
 | :--- | :--- |
 | Identifiant | `lyxal_storage` (version `0.1.0`) |
-| Dépendances (`manifest.toml`) | `lyxal_core`, `lyxal_error`, `lyxal_event`, `lyxal_auth` |
-| Dépendances Rust | `lyxal_surreal`, `lyxal_runtime`, `lyxal_crypto` ; `object_store` 0.13, `infer`, `clamav-client` |
-| Hébergement | `apps/lyxal-server` (`StorageModule`, `StorageHealthCheck` ; nettoyage `StorageCleanup` exécuté par `lyxal_scheduler`, tâche `storage.cleanup` déclarée par l'hôte) |
+| Dépendances (`manifest.toml`) | `lyxal_core`, `lyxal_error`, `lyxal_event`, `lyxal_auth`, `lyxal_secrets` |
+| Dépendances Rust | `lyxal_surreal`, `lyxal_runtime`, `lyxal_crypto`, `lyxal_secrets` (clés des fichiers chiffrés) ; `object_store` 0.13, `infer`, `clamav-client` |
+| Hébergement | `apps/lyxal-server` (`StorageModule`, `StorageHealthCheck` ; nettoyage `StorageCleanup` exécuté par `lyxal_scheduler`, tâche `storage.cleanup` déclarée par l'hôte ; clés de fichiers du coffre-fort) |
 
 ## 1. Modèle
 
 | Table | Contenu |
 | :--- | :--- |
 | `storage_settings` | réglages de l'installation, surchargés par organisation : taille maximale d'un fichier, quota, délai d'une écriture en attente, délai d'un envoi reprenable, conservation après suppression, types refusés |
-| `storage_bucket` | ensemble de fichiers : nom unique dans sa portée (`[a-z0-9-]`, 3 à 63 caractères), taille maximale, types MIME acceptés (vide : tous), lecture seule, support (`backend`, `default` par défaut, fixé à la création) |
-| `storage_object` | fiche d'un fichier : bucket, clé (`plans/2026/a.pdf`), auteur (`owner` : identité ; `owner_application` : application d'un compte de service), nom d'origine, taille et type annoncés, taille, type réel et empreinte BLAKE3 posés à la fin de l'écriture, état, support et emplacement des octets (`backend`, `path`) |
+| `storage_bucket` | ensemble de fichiers : nom unique dans sa portée (`[a-z0-9-]`, 3 à 63 caractères), taille maximale, types MIME acceptés (vide : tous), lecture seule, support (`backend`, `default` par défaut) et chiffrement (`encrypted`, faux par défaut), tous deux fixés à la création |
+| `storage_object` | fiche d'un fichier : bucket, clé (`plans/2026/a.pdf`), auteur (`owner` : identité ; `owner_application` : application d'un compte de service), nom d'origine, taille et type annoncés, taille réelle, type réel, empreinte BLAKE3 et taille des octets stockés (`stored_size`) posés à la fin de l'écriture, état, support et emplacement des octets (`backend`, `path`) ; dans un bucket chiffré, clé du fichier scellée (`content_key`, illisible hors session système et worker) et clé qui la scelle (`content_key_id`, lisible) |
 | `storage_reclaim` | préfixe d'octets à retirer : bucket supprimé, ou parties d'un envoi reprenable qui n'est plus en cours |
 | `storage_upload_part` | partie reçue d'un envoi reprenable : envoi, position, taille, nom de ses octets sur le support ; une seule partie par position (index unique) |
+| `storage_usage` | compteurs de volume, une ligne par portée (`storage_usage:[<portée>]`) et une par bucket (`storage_usage:[<portée>, <clé du bucket>]`) : fichiers disponibles ou en quarantaine (`objects`, `bytes`) et tailles annoncées des écritures en attente (`reserved`) ; aucune écriture directe |
 
 Portée : champ `tenant` (organisation `lyxal_auth`, absent pour l'installation) et `scope_key`
 (`installation` ou clé de l'organisation). Les buckets, les fiches et les réglages d'une
@@ -109,11 +111,49 @@ la liste se règle par installation et par organisation.
 (5 Go au plus) ; quota par portée, absent par défaut. Le quota compte les fichiers disponibles ou
 en quarantaine et les tailles annoncées des écritures en attente.
 
-**Montée en charge** : quand un quota est réglé, le volume de la portée est recalculé à chaque
-ouverture et fin d'écriture en relisant ses fiches ; sans quota, rien n'est recompté. Les listes
-sont paginées après lecture des fiches correspondantes. Le module convient ainsi jusqu'à
-quelques dizaines de milliers de fichiers par organisation (ordre de grandeur estimé, non
-mesuré) ; au-delà, des compteurs tenus à jour sont à la feuille de route.
+**Compteurs de volume** (`storage_usage`) : tenus par l'événement `storage_object_usage` dans la
+transaction de chaque écriture d'une fiche, quelle qu'en soit l'origine (ouverture, fin
+d'écriture, quarantaine, suppression, expiration, purge, écriture directe, suppression avec le
+bucket ou l'organisation). Le quota et les volumes (`fn::storage_object_usage`,
+`fn::storage_bucket_get`) les lisent, sans relire les fiches ; un volume qui augmente au-delà du
+quota fait échouer l'écriture, même directe (`STORAGE_QUOTA_EXCEEDED`). Toutes les écritures
+d'une portée passent par sa ligne : deux écritures simultanées peuvent se heurter, le service
+Rust rejoue alors l'ouverture et la fin d'écriture (six essais au plus, attente croissante).
+`fn::storage_usage_verify` (worker) recompte les fiches d'une portée et signale les écarts, sans
+les corriger. Les listes restent paginées après lecture des fiches correspondantes.
+
+**Bucket chiffré** (`encrypted`, fixé à la création) : chaque fichier est chiffré au repos par
+une clé propre (32 octets tirés par `OsRng`), au format de flux v1 de `lyxal_crypto` (en-tête de
+47 octets, segments de 64 Kio authentifiés). La clé du fichier est scellée (`enc:v2`) par la clé
+« fichiers » de l'organisation, tenue par `lyxal_secrets` (`FileKeys`) et distincte de sa clé
+« secrets » ; elle est rangée dans la fiche, jamais dans le fichier. Contexte de scellement, qui
+sert aussi d'identité au flux chiffré : `SecretContext::with_tenant(<organisation> ou
+"lyxal_installation", "lyxal_storage", "storage_object", <clé de la fiche>, "content_key")` ; un
+fichier recopié sous une autre fiche ou une autre organisation ne s'ouvre pas.
+
+```text
+clé maîtresse du coffre-fort (LYXAL__SECRETS__MASTER_KEY)
+   └── clé « fichiers » de l'organisation (lyxal_secrets, secrets_tenant_key, usage files)
+          └── clé du fichier (StreamKey), scellée dans storage_object.content_key
+                 └── octets du fichier, chiffrés segment par segment
+```
+
+* Le type réel et l'antivirus portent sur le clair, avant le chiffrement ; l'empreinte BLAKE3 et
+  la taille stockée sont celles du chiffré : aucune empreinte du clair n'est rangée en base.
+* La fin d'écriture exige la clé scellée dans un bucket chiffré et la refuse ailleurs, même en
+  écriture directe ; une fiche ne se crée jamais avec une clé.
+* Envoi reprenable refusé dans un bucket chiffré (ses parties seraient rangées en clair avant
+  l'assemblage).
+* Sans service de clés (clé maîtresse du coffre-fort absente, clé de l'organisation illisible),
+  rien n'est écrit ni lu (`STORAGE_ENCRYPTION_UNAVAILABLE`, à réessayer), jamais en clair.
+* **Rotation** : quand `lyxal_secrets` remplace la clé « fichiers » d'une organisation (période
+  `files_key_rotation_days`, 365 jours par défaut), l'ancienne ne sert plus qu'à relire ; le
+  nettoyage rescelle les clés de fichiers qu'elle scelle (`fn::storage_object_rekey_list`,
+  `fn::storage_object_rekey`), **sans réécrire aucun fichier**, puis la fait détruire quand
+  aucune fiche ni aucune écriture en attente ouverte avant son retrait ne peut plus s'en servir.
+* La purge d'une fiche efface sa clé scellée : des octets restés dans une sauvegarde du support
+  ne s'ouvrent plus sans une sauvegarde de la base du même moment.
+* Déduplication impossible (une clé par fichier).
 
 ## 2. Droits
 
@@ -141,18 +181,18 @@ l'installation.
 | :--- | :--- | :--- | :--- |
 | `storage_settings_get` | `tenant` | `{ own, effective }` | lecture |
 | `storage_settings_set` | `tenant`, `max_object_size`, `quota_bytes`, `pending_ttl_seconds`, `upload_ttl_seconds`, `deleted_retention_days`, `blocked_types`, `clear` | réglages ; champ fourni remplacé, champ dans `clear` effacé | gestion |
-| `storage_bucket_create` | **name**, `tenant`, `description`, `max_object_size`, `allowed_types`, `readonly`, `backend` (`default`) | bucket | gestion |
+| `storage_bucket_create` | **name**, `tenant`, `description`, `max_object_size`, `allowed_types`, `readonly`, `backend` (`default`), `encrypted` (faux) | bucket | gestion |
 | `storage_bucket_update` | **bucket**, `description`, `max_object_size`, `allowed_types`, `readonly`, `clear` (`description`, `max_object_size`) | bucket | gestion |
-| `storage_bucket_get` | **bucket** | bucket et `usage: { objects, bytes }` | lecture |
+| `storage_bucket_get` | **bucket** | bucket et `usage: { objects, bytes }` (compteurs) | lecture |
 | `storage_bucket_list` | `tenant`, `limit`, `start` | `{ items, total }`, triés par nom | lecture |
 | `storage_bucket_delete` | **bucket** | `{ deleted }` ; refusé s'il porte une fiche | gestion |
-| `storage_object_begin` | **bucket**, **key**, **filename**, `declared_type`, `declared_size`, `resumable` (envoi reprenable : `declared_size` obligatoire) | fiche `pending` et `max_size` (taille maximale acceptée) | écriture |
-| `storage_object_commit` | **object**, **size**, **content_type**, **blake3**, `claim` (envoi reprenable : jeton de la réservation) | fiche `available` | worker, ou l'appelant qui a ouvert l'écriture (son identité, ou son application pour un compte de service) |
+| `storage_object_begin` | **bucket**, **key**, **filename**, `declared_type`, `declared_size`, `resumable` (envoi reprenable : `declared_size` obligatoire ; refusé dans un bucket chiffré) | fiche `pending`, `max_size` (taille maximale acceptée) et `encrypted` | écriture |
+| `storage_object_commit` | **object**, **size**, **content_type**, **blake3** (des octets stockés), `content_key` (bucket chiffré : clé du fichier scellée, obligatoire ; refusée ailleurs), `claim` (envoi reprenable : jeton de la réservation) | fiche `available` | worker, ou l'appelant qui a ouvert l'écriture (son identité, ou son application pour un compte de service) |
 | `storage_object_get` | **object**, ou **bucket** et **key** | fiche (par adresse : fichier non supprimé) | lecture |
 | `storage_object_open` | **object**, ou **bucket** et **key** | fiche d'un fichier à servir ; refus s'il n'est pas `available` | lecture |
 | `storage_object_list` | **bucket**, `prefix`, `state` (`available`), `limit`, `start` | `{ items, total }`, triés par clé puis par identifiant (ordre total, y compris entre fichiers supprimés de même clé) | lecture |
 | `storage_object_delete` | **object** | fiche `deleted` | écriture |
-| `storage_object_usage` | `tenant` | `{ objects, bytes, reserved_bytes, quota_bytes }` | lecture |
+| `storage_object_usage` | `tenant` | `{ objects, bytes, reserved_bytes, quota_bytes }` (compteurs) | lecture |
 | `storage_object_quarantine` | **object**, **reason** | fiche `quarantined` | worker |
 | `storage_object_expire` | `limit` | `{ expired }` : écritures hors délai passées à `deleted` | worker |
 | `storage_object_purge_list` | `limit`, `start` | `{ items: [{ id, backend, path, purge_after }] }` | worker |
@@ -165,11 +205,17 @@ l'installation.
 | `storage_upload_claim` | **object**, `seconds` (1800), `claim` (jeton, pour prolonger) | état de l'envoi et jeton de la réservation (`claim`) | auteur de l'envoi, ou worker |
 | `storage_upload_release` | **object**, **claim**, `abandon` | `{ released, abandoned }` : réservation rendue, ou envoi abandonné ; refusé si le jeton n'est plus celui en cours | auteur de l'envoi, ou worker |
 | `storage_upload_ready_list` | `limit` | `{ items }` : envois complets dont l'assemblage n'est ni fait ni en cours | worker |
+| `storage_object_key_get` | **object** | `{ id, tenant, content_key }` : clé scellée d'un fichier, ouverte ensuite par le coffre-fort après le contrôle des droits de l'appelant | session système, worker |
+| `storage_object_rekey_list` | **key_id**, **retired_at**, `tenant`, `limit`, `start` | `{ items: [{ id, tenant, content_key }], pending_writes }` : fiches dont la clé est scellée par une clé « fichiers » retirée, et vrai si une écriture d'un bucket chiffré de la portée ouverte avant le retrait est encore en attente | session système, worker |
+| `storage_object_rekey` | **object**, **expected_key_id**, **content_key** | `{ object, content_key_id }` : clé du fichier rescellée rangée (écriture conditionnelle, aucun octet réécrit) | session système, worker |
+| `storage_usage_verify` | `tenant` | `{ valid, checked, mismatches: [{ bucket, counted, recorded }] }` : compteurs de la portée et de ses buckets comparés aux fiches recomptées ; rien n'est corrigé | worker |
 
 Fonctions internes : `fn::storage_can`, `fn::storage_settings_effective`,
-`fn::storage_scope_usage`, `fn::storage_object_limits`, `fn::storage_object_is_author`,
-`fn::storage_object_update_refusal`, `fn::storage_upload_offset`, `fn::storage_upload_claimed`,
-`fn::storage_upload_allowed`, `fn::storage_upload_view`, `fn::storage_upload_part_refusal`.
+`fn::storage_scope_usage` (compteurs d'une portée ou d'un bucket), `fn::storage_usage_share`,
+`fn::storage_usage_apply` (compteurs mis à jour, quota contrôlé), `fn::storage_object_limits`,
+`fn::storage_object_is_author`, `fn::storage_object_update_refusal`, `fn::storage_upload_offset`,
+`fn::storage_upload_claimed`, `fn::storage_upload_allowed`, `fn::storage_upload_view`,
+`fn::storage_upload_part_refusal`.
 
 ## 4. Erreurs (`error/<thème>/`)
 
@@ -179,7 +225,7 @@ Fonctions internes : `fn::storage_can`, `fn::storage_settings_effective`,
 | `permissions` | `STORAGE_PERMISSION_DENIED`, `STORAGE_WRITE_FORBIDDEN` |
 | `buckets` | `STORAGE_BUCKET_NOT_FOUND`, `STORAGE_BUCKET_EXISTS`, `STORAGE_BUCKET_NOT_EMPTY`, `STORAGE_BUCKET_READONLY` |
 | `fichiers` | `STORAGE_OBJECT_NOT_FOUND`, `STORAGE_OBJECT_EXISTS`, `STORAGE_OBJECT_STATE_INVALID`, `STORAGE_OBJECT_IN_USE`, `STORAGE_OBJECT_TOO_LARGE`, `STORAGE_OBJECT_TYPE_REFUSED`, `STORAGE_QUOTA_EXCEEDED`, `STORAGE_RANGE_NOT_SATISFIABLE` |
-| `supports` | `STORAGE_BACKEND_UNKNOWN`, `STORAGE_BACKEND_UNAVAILABLE` (à réessayer), `STORAGE_OBJECT_NOT_AVAILABLE`, `STORAGE_CONTENT_MISMATCH`, `STORAGE_INTEGRITY_FAILED`, `STORAGE_OBJECT_INFECTED`, `STORAGE_SCANNER_UNAVAILABLE` (à réessayer), `STORAGE_OPERATION_CANCELLED` (arrêt du serveur, à réessayer) |
+| `supports` | `STORAGE_BACKEND_UNKNOWN`, `STORAGE_BACKEND_UNAVAILABLE` (à réessayer), `STORAGE_OBJECT_NOT_AVAILABLE`, `STORAGE_CONTENT_MISMATCH`, `STORAGE_INTEGRITY_FAILED` (dont un segment, un en-tête ou une clé d'un fichier chiffré qui ne s'ouvre pas), `STORAGE_OBJECT_INFECTED`, `STORAGE_SCANNER_UNAVAILABLE` (à réessayer), `STORAGE_OPERATION_CANCELLED` (arrêt du serveur, à réessayer), `STORAGE_ENCRYPTION_UNAVAILABLE` (bucket chiffré sans service de clés, à réessayer) |
 | `envois` | `STORAGE_UPLOAD_OFFSET_MISMATCH` (position courante dans `details.offset`), `STORAGE_UPLOAD_EXPIRED`, `STORAGE_UPLOAD_BUSY` (à réessayer), `STORAGE_UPLOAD_TOO_MANY_PARTS`, `STORAGE_UPLOAD_INVALID_REQUEST`, `STORAGE_UPLOAD_VERSION_UNSUPPORTED` |
 
 ## 5. Événements
@@ -196,16 +242,19 @@ Publiés par `fn::event_publish` dans la transaction de la mutation : `storage.o
 | `StorageStore` | un appel typé par fonction publique (`LyxalSurrealCall::call_fn`) ; la session du client détermine les droits |
 | `models` | `XxxParams` et résultats nommés de chaque fonction |
 | `Backends`, `BackendConfig` | supports nommés : `Disk { root }` (tout est écrit sous `root`), `S3 { endpoint, region, bucket, access_key_id, secret_access_key, path_style, allow_http }` (service S3 ou compatible, par `object_store` ; clé secrète en `SecretString`) et `Memory` (tests) |
-| `StorageService` | `put` (écriture en flux), `stat` (fiche d'un fichier à servir), `open` (lecture en flux, en entier ou sur une plage `ByteRange` validée contre la taille de la fiche), `delete`, `verify` (relit les octets et compare taille et empreinte à la fiche) ; `with_scanner` branche un antivirus |
+| `StorageService` | `put` (écriture en flux), `stat` (fiche d'un fichier à servir), `open` (lecture en flux, en entier ou sur une plage `ByteRange` validée contre la taille de la fiche), `delete`, `verify` (relit les octets stockés et compare taille stockée et empreinte à la fiche, sans clé) ; `with_scanner` branche un antivirus ; `with_file_keys(FileKeys, StorageStore)` branche le service de clés des buckets chiffrés (clés de `lyxal_secrets`, clé scellée d'une fiche lue par la session système de l'hôte) |
+| `encryption` | `FileEncryption` ; adaptateur asynchrone de `lyxal_crypto::stream` : `EncryptingWriter` (chiffre au fil de l'écriture, un segment de clair en mémoire au plus) et lecture d'une plage qui ne lit et ne déchiffre que ses segments (`StreamDecryptor::plan_range`) |
 | `content::detect` | type réel d'un fichier, reconnu à ses premiers octets (`infer`) |
 | `ContentScanner`, `ClamAvScanner`, `ScannerConfig` | antivirus branché sur l'écriture : service `clamd` de ClamAV, en TCP ou par socket Unix (`clamav-client`) |
 | `StorageService` (`upload`) | envoi reprenable : `upload_create`, `upload_status`, `upload_append` (octets à une position), `upload_complete` (assemblage), `upload_terminate` |
-| `StorageCleanup` | nettoyage, une opération (`run`) interrompue entre deux éléments à l'arrêt, qui rend son bilan `CleanupReport` : écritures abandonnées, envois reprenables complets restés sans assemblage, fichiers supprimés hors délai, octets des buckets supprimés et des parties d'envois terminés. Aucun `LyxalWorker` : l'hôte la fait exécuter toutes les 10 min par `lyxal_scheduler` (tâche `storage.cleanup` qu'il déclare lui-même, `lyxal_storage` ne dépendant pas du planificateur) |
+| `StorageCleanup` | nettoyage, une opération (`run`) interrompue entre deux éléments à l'arrêt, qui rend son bilan `CleanupReport` : écritures abandonnées, envois reprenables complets restés sans assemblage, fichiers supprimés hors délai, octets des buckets supprimés et des parties d'envois terminés ; avec `with_file_keys`, clés de fichiers rescellées après la rotation de la clé « fichiers » d'une organisation (`rekeyed`) et anciennes clés détruites (`retired_keys_destroyed`). Aucun `LyxalWorker` : l'hôte la fait exécuter toutes les 10 min par `lyxal_scheduler` (tâche `storage.cleanup` qu'il déclare lui-même, `lyxal_storage` ne dépendant pas du planificateur) |
 | `StorageModule`, `StorageHealthCheck` | module `LyxalModule` ; la sonde écrit, relit et retire un fichier témoin sur chaque support |
-| `StorageError` | erreur SurrealQL ou du support ; `code()`, `is_retryable()` |
+| `StorageError` | erreur SurrealQL, du support ou du service de clés ; `code()`, `is_retryable()` |
 
 * **Flux** : `put` reçoit un flux d'octets et l'écrit par parties de 8 Mo ; rien d'autre n'est
-  gardé en mémoire. L'empreinte BLAKE3 (`lyxal_crypto`) et la taille sont calculées au passage.
+  gardé en mémoire. L'empreinte BLAKE3 (`lyxal_crypto`) des octets rangés et la taille sont
+  calculées au passage ; dans un bucket chiffré, le clair passe par le type réel et l'antivirus,
+  puis par le chiffrement en flux, avant l'empreinte et l'écriture.
 * **Taille** : l'écriture s'arrête dès que le contenu dépasse `max_size` ou la taille annoncée ;
   une taille annoncée doit être exacte (`STORAGE_CONTENT_MISMATCH`).
 * **Type réel** : le type enregistré est celui reconnu dans les premiers octets du fichier ;
@@ -235,7 +284,10 @@ Publiés par `fn::event_publish` dans la transaction de la mutation : `storage.o
 * **Échec** (support, taille, flux interrompu, fin d'écriture refusée) : les octets écrits sont
   retirés, la fiche passe à `deleted`, l'erreur est rendue. Une écriture coupée par l'arrêt du
   serveur est retirée par le nettoyage à la fin de son délai.
-* **Lecture** : seul un fichier `available` est servi (`fn::storage_object_open`).
+* **Lecture** : seul un fichier `available` est servi (`fn::storage_object_open`). Fichier
+  chiffré : l'en-tête est lu, la plage est traduite en segments, seuls ces segments sont lus et
+  déchiffrés ; un segment altéré, déplacé ou manquant met fin au flux par une erreur
+  (`STORAGE_INTEGRITY_FAILED`), jamais par une fin normale : l'appelant interrompt sa réponse.
 * **Nettoyage** : les octets d'abord, la fiche ou la ligne ensuite ; des octets déjà absents ne
   sont pas une erreur. Un élément en échec (support inconnu ou injoignable) est journalisé,
   repris au passage suivant, et ne retient pas les éléments qui le suivent. Sur disque, les
@@ -257,8 +309,9 @@ Publiés par `fn::event_publish` dans la transaction de la mutation : `storage.o
 ## 7. Vérification
 
 * Banc SurrealQL `tests/` (`scripts/ci/test_lyxal_modules.py`) : `reglages`, `buckets`,
-  `fichiers`, `droits`, `envois` ; chaque fonction est appelée, sous la session système et sous des
-  identités avec et sans permission.
+  `fichiers`, `droits`, `envois`, `chiffrement` (bucket chiffré, clé scellée illisible,
+  rescellement, compteurs, quota en écriture directe, contrôle de cohérence) ; chaque fonction est
+  appelée, sous la session système et sous des identités avec et sans permission.
 * Tests Rust `tests/it/` (base embarquée ; supports mémoire, disque et S3 sur un serveur S3 de
   test `s3s-fs` lancé dans les tests) : fichier écrit puis relu
   à l'identique, plage d'octets, fichier de 64 Mo sans dépasser trois parties en mémoire, échecs
@@ -267,7 +320,13 @@ Publiés par `fn::event_publish` dans la transaction de la mutation : `storage.o
   contenu refusé à l'assemblage, assemblage terminé par le nettoyage, arrêt du serveur pendant
   l'assemblage, assembleur en retard refusé, abandon, expiration) ;
   antivirus sur un faux service `clamd` lancé dans les tests (fichier sain, signature de test
-  EICAR, limite de taille, service injoignable ou muet). Un essai sur un vrai service ClamAV
+  EICAR, limite de taille, service injoignable ou muet) ; bucket chiffré sur mémoire, disque et
+  S3 (fichier relu à l'identique, octets stockés chiffrés commençant par `LXS1`, empreinte du
+  chiffré, plages à cheval sur des segments, fichier vide et d'un segment exact ; segment altéré,
+  fichier tronqué ou recopié d'une autre fiche détectés au bon segment ; refus sans clé maîtresse ;
+  antivirus et type réel sur le clair ; rotation de la clé « fichiers », rescellement sans
+  réécriture puis destruction de l'ancienne clé, retardée par une écriture en attente) ; écritures
+  simultanées dans une portée avec compteurs exacts. Un essai sur un vrai service ClamAV
   n'est pas dans les contrôles automatiques : `ClamAvScanner` sur `127.0.0.1:3310` après
   `clamd` démarré, à lancer à la main.
 * Non couvert par un test automatique : le refus au-delà de 10 000 parties
@@ -279,5 +338,8 @@ Publiés par `fn::event_publish` dans la transaction de la mutation : `storage.o
   sur Bunny Storage le 12 novembre 2026.
 * Audit de conformité (`lyxal-audit`) du 12 novembre 2026 : aucun écart P0 ni P1.
 * `apps/lyxal-server` : démarrage avec et sans dossier de stockage (`startup.rs`) ; routes des
-  fichiers de bout en bout, sur disque et sur S3 (`storage_routes.rs`).
+  fichiers de bout en bout, sur disque et sur S3, bucket chiffré avec et sans clé maîtresse
+  (`storage_routes.rs`).
+* Non mesuré : la contention des compteurs de volume sous de nombreuses écritures simultanées
+  d'une même portée (mesure prévue au banc du courrier, lot 4c).
 * `scripts/ci/ci_local.sh` rejoue la CI complète.

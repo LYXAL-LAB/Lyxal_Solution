@@ -6,13 +6,16 @@
 //! `fn::storage_*` (installées par `lyxal_runtime` depuis `manifest.toml`) ; ce crate fournit les
 //! appels typés (`StorageStore`), les supports qui portent les octets (`Backends`, sur
 //! `object_store`), l'écriture et la lecture en flux avec empreinte BLAKE3 de `lyxal_crypto`
-//! (`StorageService`), l'envoi reprenable en plusieurs requêtes (`upload`), le nettoyage
-//! (`StorageCleanup`, exécuté par `lyxal_scheduler` sur l'hôte), le module `LyxalModule` et sa
-//! sonde de santé.
+//! (`StorageService`), le chiffrement au repos des buckets chiffrés (`encryption`, clés de
+//! fichiers scellées par `lyxal_secrets`), l'envoi reprenable en plusieurs requêtes (`upload`),
+//! le nettoyage (`StorageCleanup`, exécuté par `lyxal_scheduler` sur l'hôte : écritures
+//! abandonnées, purges, rescellement des clés de fichiers après rotation), le module
+//! `LyxalModule` et sa sonde de santé.
 
 pub mod backend;
 pub mod cleanup;
 pub mod content;
+pub mod encryption;
 pub mod error;
 pub mod models;
 pub mod module;
@@ -23,6 +26,7 @@ pub mod upload;
 
 pub use backend::{Backend, BackendConfig, Backends};
 pub use cleanup::{CleanupReport, StorageCleanup};
+pub use encryption::FileEncryption;
 pub use error::{StorageError, StorageResult};
 pub use module::{StorageHealthCheck, StorageModule, MODULE_ID};
 pub use scanner::{ClamAvScanner, ContentScanner, ScanSession, ScanVerdict, ScannerConfig};

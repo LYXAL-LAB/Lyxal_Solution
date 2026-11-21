@@ -13,7 +13,7 @@ use std::collections::BTreeMap;
 use crate::error::{SecretsError, SecretsResult};
 use crate::keys::{MasterKeys, Scope, TenantKeys};
 use crate::models::{
-    AccessRequest, AuditDeniedParams, ChangeOperation, ReadBeginParams, ReadTicketRef,
+    AccessRequest, AuditDeniedParams, ChangeOperation, KeyPurpose, ReadBeginParams, ReadTicketRef,
     RequestChangeParams, RotationBeginParams, RotationCheckParams, RotationCheckResult,
     RotationClaimParams, RotationGetParams, RotationRecord, SecretGetParams, SecretRecord,
     SettingsGetParams, Stage, TenantKeyCreated, TenantRef, VersionAddParams, VersionAdded,
@@ -105,7 +105,7 @@ impl SecretsService {
     pub fn new(caller: SecretsStore, system: SecretsStore, master: Option<MasterKeys>) -> Self {
         Self {
             caller,
-            keys: TenantKeys::new(system, master),
+            keys: TenantKeys::new(system, master, KeyPurpose::Secrets),
             rotators: RotatorRegistry::default(),
         }
     }

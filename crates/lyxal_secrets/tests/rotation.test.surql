@@ -39,7 +39,7 @@
 
 -- préparation: clé d'alpha, secret à rotation (90 jours) avec une version, secret à échéance (10 jours)
 {
-    fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", key_id: "k1", wrapped: "enc:v2:m1:K1" });
+    fn::secrets_tenant_key_create({ tenant: "auth_organization:alpha", purpose: "secrets", key_id: "k1", wrapped: "enc:v2:m1:K1" });
     LET $s = fn::secrets_secret_create({ tenant: "auth_organization:alpha", path: "api/brevo", kind: "api_key", rotation_period: 90d }).data.id;
     fn::secrets_version_add({ secret: <string> $s, number: 1, envelope: "enc:v2:k1:AAAA", key_id: "k1" });
     LET $e = fn::secrets_secret_create({ tenant: "auth_organization:alpha", path: "api/echeance", kind: "token", expires_at: time::now() + 10d }).data.id;
@@ -350,22 +350,32 @@ CREATE secrets_rotation CONTENT { secret: (SELECT VALUE e FROM ONLY passe:ids), 
 
 -- préparation: clé de beta créée il y a 400 jours ; réglage de rotation des clés
 {
-    CREATE secrets_tenant_key CONTENT { tenant: auth_organization:beta, key_id: "kb", wrapped: "enc:v2:m1:KB", created_at: time::now() - 400d };
+    CREATE secrets_tenant_key CONTENT { tenant: auth_organization:beta, purpose: "secrets", key_id: "kb", wrapped: "enc:v2:m1:KB", created_at: time::now() - 400d };
+    CREATE secrets_tenant_key CONTENT { tenant: auth_organization:beta, purpose: "files", key_id: "kbf", wrapped: "enc:v2:m1:KBF", created_at: time::now() - 390d };
 };
 
--- test: clé d'organisation plus ancienne que la période : à faire tourner
+-- test: clés d'organisation plus anciennes que la période : à faire tourner, avec leur usage
 -- en tant que: worker
-RETURN fn::secrets_due_list({}).data.tenant_keys_due.key_id = ["kb"];
+RETURN fn::secrets_due_list({}).data.tenant_keys_due.{ key_id, purpose } = [{ key_id: "kb", purpose: "secrets" }, { key_id: "kbf", purpose: "files" }];
 
 -- test: rotation des clés désactivée ou bornée par les réglages
 -- en tant que: autre
 {
     LET $off = fn::secrets_settings_set({ tenant: "auth_organization:beta", tenant_key_rotation_days: 0 });
     RETURN $off.ok AND fn::secrets_settings_set({ tenant: "auth_organization:beta", tenant_key_rotation_days: 10 }).error.code = "SECRETS_INVALID_PARAMETERS"
-        AND fn::secrets_settings_set({ tenant: "auth_organization:beta", tenant_key_rotation_days: 4000 }).error.code = "SECRETS_INVALID_PARAMETERS";
+        AND fn::secrets_settings_set({ tenant: "auth_organization:beta", tenant_key_rotation_days: 4000 }).error.code = "SECRETS_INVALID_PARAMETERS"
+        AND fn::secrets_settings_set({ tenant: "auth_organization:beta", files_key_rotation_days: 10 }).error.details.fields.files_key_rotation_days.code IS NOT NONE;
 };
 
--- test: rotation désactivée : la clé n'est plus due
+-- test: rotation des clés « secrets » désactivée : seule la clé « fichiers » est due
+-- en tant que: worker
+RETURN fn::secrets_due_list({}).data.tenant_keys_due.key_id = ["kbf"];
+
+-- test: rotation des clés « fichiers » portée à 400 jours
+-- en tant que: autre
+RETURN fn::secrets_settings_set({ tenant: "auth_organization:beta", files_key_rotation_days: 400 }).data.files_key_rotation_days = 400;
+
+-- test: rotation désactivée ou pas encore échue : aucune clé n'est due
 -- en tant que: worker
 RETURN fn::secrets_due_list({}).data.tenant_keys_due = [];
 

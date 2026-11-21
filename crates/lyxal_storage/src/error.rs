@@ -40,9 +40,14 @@ pub enum StorageError {
     /// Opération interrompue par l'arrêt du serveur ; rien n'est perdu.
     #[error("opération interrompue par l'arrêt du serveur")]
     Cancelled,
-    /// Contenu relu différent de la fiche (taille ou empreinte).
+    /// Contenu relu différent de la fiche (taille ou empreinte), ou fichier chiffré dont un
+    /// segment, l'en-tête ou la clé ne s'ouvre pas.
     #[error("fichier altéré : {0}")]
     IntegrityFailed(String),
+    /// Bucket chiffré sans service de clés (clé maîtresse du coffre-fort absente, clé de
+    /// l'organisation illisible) : rien n'est écrit ni lu, jamais en clair.
+    #[error("chiffrement des fichiers indisponible : {0}")]
+    EncryptionUnavailable(String),
 }
 
 impl StorageError {
@@ -69,6 +74,7 @@ impl StorageError {
             Self::UploadVersionUnsupported(_) => "STORAGE_UPLOAD_VERSION_UNSUPPORTED".to_string(),
             Self::Cancelled => "STORAGE_OPERATION_CANCELLED".to_string(),
             Self::IntegrityFailed(_) => "STORAGE_INTEGRITY_FAILED".to_string(),
+            Self::EncryptionUnavailable(_) => "STORAGE_ENCRYPTION_UNAVAILABLE".to_string(),
         }
     }
 
@@ -87,7 +93,10 @@ impl StorageError {
                 LyxalSurrealError::Call(_) => false,
                 other => other.transport_info().is_some_and(|info| info.retryable),
             },
-            Self::BackendUnavailable(_) | Self::ScannerUnavailable(_) | Self::Cancelled => true,
+            Self::BackendUnavailable(_)
+            | Self::ScannerUnavailable(_)
+            | Self::Cancelled
+            | Self::EncryptionUnavailable(_) => true,
             Self::BackendUnknown(_)
             | Self::ContentMismatch(_)
             | Self::RangeNotSatisfiable(_)

@@ -54,15 +54,17 @@ DEFINE FUNCTION OVERWRITE fn::secrets_due_list($params: object) {
         AND expires_at IS NOT NONE AND expires_at <= $now ORDER BY expires_at ASC LIMIT $p.limit);
     LET $rotation_due = (SELECT id, tenant, path, kind, next_rotation_at FROM secrets_secret WHERE state = "active" AND rotation_notified_at IS NONE
         AND next_rotation_at IS NOT NONE AND next_rotation_at <= $now ORDER BY next_rotation_at ASC LIMIT $p.limit);
-    -- Clé d'organisation plus ancienne que la période de rotation de sa portée (0 : jamais)
+    -- Clé d'organisation plus ancienne que la période de rotation de sa portée et de son usage
+    -- (0 : jamais)
     LET $keys = array::slice(array::filter(
-        (SELECT tenant, scope_key, key_id, created_at FROM secrets_tenant_key WHERE state = "active" AND created_at <= $now - 30d ORDER BY created_at ASC),
+        (SELECT tenant, scope_key, purpose, key_id, created_at FROM secrets_tenant_key WHERE state = "active" AND created_at <= $now - 30d ORDER BY created_at ASC),
         |$k| {
-            LET $days = fn::secrets_settings_effective({ tenant: $k.tenant }).tenant_key_rotation_days;
+            LET $effective = fn::secrets_settings_effective({ tenant: $k.tenant });
+            LET $days = IF $k.purpose = "files" { $effective.files_key_rotation_days } ELSE { $effective.tenant_key_rotation_days };
             RETURN $days > 0 AND $k.created_at <= $now - duration::from_days($days);
         }), 0, $p.limit);
     RETURN fn::result_ok({ expiring: $expiring, expired: $expired, rotation_due: $rotation_due, tenant_keys_due: $keys });
-} COMMENT "Échéances à traiter ({ limit (1000 au plus) }) : { expiring (échéance dans le délai d'alerte, pas encore signalée), expired (échéance passée, pas encore signalée), rotation_due (date de rotation passée, rappel pas encore envoyé), tenant_keys_due (clés actives plus anciennes que la période de rotation de leur portée) }. Droit : worker";
+} COMMENT "Échéances à traiter ({ limit (1000 au plus) }) : { expiring (échéance dans le délai d'alerte, pas encore signalée), expired (échéance passée, pas encore signalée), rotation_due (date de rotation passée, rappel pas encore envoyé), tenant_keys_due (clés actives, avec leur usage, plus anciennes que la période de rotation de leur portée pour cet usage : tenant_key_rotation_days ou files_key_rotation_days) }. Droit : worker";
 
 -- ----------------------------------------------------------------------------
 -- fn::secrets_due_mark

@@ -1,7 +1,7 @@
 //! Routes `/api/v1/storage/*` de bout en bout sur une base embarquée et un support disque
 //! temporaire : envoi, téléchargement (entier, plage, conditionnel), fiche, liste, suppression,
-//! droits de l'appelant (sessions de comptes de service), limites, flux interrompu, service ou
-//! support absent.
+//! droits de l'appelant (sessions de comptes de service), limites, flux interrompu, bucket chiffré
+//! (avec et sans clé maîtresse du coffre-fort), service ou support absent.
 
 use axum::body::{to_bytes, Body};
 use axum::http::{HeaderMap, Request, StatusCode};
@@ -473,6 +473,92 @@ async fn files_are_sent_served_and_protected_through_http() {
     let gone = send(&router, "GET", &object, Some(&writer), &[], Body::empty()).await;
     assert_eq!(gone.status, StatusCode::NOT_FOUND);
 
+    // --- Bucket chiffré -----------------------------------------------------------------------
+    let mut created = client
+        .query(r#"RETURN <string> record::id(fn::storage_bucket_create({ tenant: "auth_organization:alpha", name: "courrier", encrypted: true }).data.id);"#)
+        .await
+        .expect("bucket chiffré");
+    let courrier: Option<String> = created.take(0).expect("bucket chiffré");
+    let sealed = format!(
+        "/api/v1/storage/buckets/{}/objects/m1.eml",
+        courrier.expect("bucket chiffré")
+    );
+    let before = files(&root).len();
+    // Sans clé maîtresse du coffre-fort : refusé, à réessayer, rien n'est rangé en clair
+    let refused = send(
+        &router,
+        "PUT",
+        &sealed,
+        Some(&writer),
+        &[],
+        Body::from(content.clone()),
+    )
+    .await;
+    assert_eq!(
+        refused.status,
+        StatusCode::SERVICE_UNAVAILABLE,
+        "{}",
+        refused.json()
+    );
+    assert_eq!(refused.code(), "STORAGE_ENCRYPTION_UNAVAILABLE");
+    assert_eq!(files(&root).len(), before);
+    // Avec la clé maîtresse : rangé chiffré, servi en clair, plages comprises
+    let master = lyxal_secrets::MasterKeys::from_keys(
+        lyxal_crypto::ResolvedKey::new(
+            lyxal_crypto::KeyId::parse("vault-1").expect("identifiant"),
+            Arc::new(lyxal_crypto::EncryptionKey::generate().expect("clé")),
+        ),
+        None,
+    )
+    .expect("trousseau");
+    let keyed = context(
+        Some(host.clone()),
+        lyxal_server::context::StorageHost {
+            file_keys: Some(lyxal_secrets::FileKeys::new(
+                lyxal_secrets::SecretsStore::new(client.clone()),
+                Some(master),
+            )),
+            ..started.storage.clone()
+        },
+    );
+    let stored = send(
+        &keyed,
+        "PUT",
+        &sealed,
+        Some(&writer),
+        &[],
+        Body::from(content.clone()),
+    )
+    .await;
+    assert_eq!(stored.status, StatusCode::CREATED, "{}", stored.json());
+    assert_eq!(stored.json()["data"]["size"], content.len());
+    let written: Vec<Vec<u8>> = files(&root)
+        .iter()
+        .map(|path| std::fs::read(path).expect("octets"))
+        .filter(|bytes| bytes.starts_with(b"LXS1"))
+        .collect();
+    assert_eq!(written.len(), 1);
+    assert!(!written[0]
+        .windows(content.len())
+        .any(|window| window == content.as_slice()));
+    let read = send(&keyed, "GET", &sealed, Some(&reader), &[], Body::empty()).await;
+    assert_eq!(read.status, StatusCode::OK);
+    assert_eq!(read.body, content);
+    assert_eq!(read.header("content-length"), content.len().to_string());
+    let part = send(
+        &keyed,
+        "GET",
+        &sealed,
+        Some(&reader),
+        &[("range", "bytes=5-11")],
+        Body::empty(),
+    )
+    .await;
+    assert_eq!(part.status, StatusCode::PARTIAL_CONTENT);
+    assert_eq!(part.body, &content[5..12]);
+    let unreadable = send(&router, "GET", &sealed, Some(&reader), &[], Body::empty()).await;
+    assert_eq!(unreadable.code(), "STORAGE_ENCRYPTION_UNAVAILABLE");
+
     // --- Service ou support absent ----------------------------------------------------------
     let no_backend = context(Some(host.clone()), Default::default());
     let unavailable = send(
@@ -745,6 +831,7 @@ async fn content_is_checked_and_only_safe_types_are_shown_inline() {
         lyxal_server::context::StorageHost {
             backends: started.storage.backends.clone(),
             scanner: Some(scanner),
+            file_keys: started.storage.file_keys.clone(),
         },
     ))
     .expect("routeur");

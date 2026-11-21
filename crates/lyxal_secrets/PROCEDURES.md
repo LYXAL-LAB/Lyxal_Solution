@@ -16,6 +16,10 @@ mêmes opérations, utilisables depuis une session SurrealDB.
   arrête le démarrage.
 * La clé maîtresse scelle la clé de chaque organisation, qui scelle les valeurs. **Sans la clé
   maîtresse, aucune valeur ne s'ouvre, même avec une sauvegarde complète de la base.**
+* Elle scelle aussi la clé « fichiers » de chaque organisation, qui scelle la clé de chaque
+  fichier d'un bucket chiffré de `lyxal_storage` (le courrier, par exemple). **Sans la clé
+  maîtresse, ces fichiers ne s'ouvrent plus non plus**, même avec une sauvegarde du support et
+  de la base ; sans elle, aucun fichier n'y est écrit (`STORAGE_ENCRYPTION_UNAVAILABLE`).
 * Sans clé maîtresse, le serveur démarre quand même : les fiches restent visibles, aucune valeur
   n'est écrite ni lue (`SECRETS_CRYPTO_UNAVAILABLE`), et la sonde de santé du module est
   dégradée.
