@@ -151,6 +151,36 @@ DEFINE FUNCTION OVERWRITE fn::auth_organization_member_list($params: object) {
 } COMMENT "Liste les membres d'une organisation avec leurs rôles ({ organization, limit, start }), par date d'adhésion puis identité (ordre total). Permission auth.member.read ou auth.organization.manage";
 
 -- ----------------------------------------------------------------------------
+-- fn::auth_organization_member_check
+-- ----------------------------------------------------------------------------
+-- Contrat d'adhésion des autres modules (lyxal_mail : création d'un compte de courrier) : ils ne
+-- lisent jamais auth_member_of. Droits vérifiés explicitement, avant la lecture : le résultat ne
+-- dépend pas des permissions de la table (la fonction peut être appelée depuis un événement).
+
+DEFINE FUNCTION OVERWRITE fn::auth_organization_member_check($params: object) {
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            organization: { pipeline: [{ rule: "record", options: { expected_table: "auth_organization" } }], required: true },
+            identity: { pipeline: [{ rule: "record", options: { expected_table: "auth_identity" } }], required: true },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 20);
+    IF !$report.valid {
+        RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
+    };
+    LET $p = $report.value;
+    -- Session système, plateforme, lecteur des membres de l'organisation, ou l'identité elle-même
+    LET $check = fn::auth_session_valid({});
+    LET $own = IF $check.valid AND !$check.system { (SELECT VALUE identity FROM ONLY $auth) = $p.identity } ELSE { false };
+    IF !$own AND !fn::auth_has_permission({ permission: "auth.organization.manage" }) AND !fn::auth_has_permission({ permission: "auth.member.read", tenant: $p.organization }) {
+        RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, { permission: "auth.member.read" });
+    };
+    LET $state = (SELECT VALUE state FROM ONLY auth_member_of WHERE in = $p.identity AND out = $p.organization LIMIT 1);
+    RETURN fn::result_ok({ member: $state = "active", state: $state });
+} COMMENT "Adhésion d'une identité à une organisation ({ organization, identity }) : { member (vrai pour une adhésion active), state (active, suspended ; NONE sans adhésion) }. Droits contrôlés avant la lecture : session système, auth.organization.manage, auth.member.read dans l'organisation, ou l'identité elle-même ; AUTH_PERMISSION_DENIED sinon. Contrat des autres modules, qui ne lisent pas auth_member_of";
+
+-- ----------------------------------------------------------------------------
 -- fn::auth_is_last_admin : l'adhésion est-elle la dernière adhésion active administratrice ?
 -- ----------------------------------------------------------------------------
 

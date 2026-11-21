@@ -73,8 +73,9 @@ pub use mfa::{
     TotpFactor, TotpSecretGetParams, TotpSecretRecord, TotpStepUseParams,
 };
 pub use organization::{
-    MemberAddParams, MemberAdded, MemberRemoveParams, MemberRemoved, Organization,
-    OrganizationCreateParams, OrganizationGetParams, OrganizationState,
+    MemberAddParams, MemberAdded, MemberCheck, MemberCheckParams, MemberRemoveParams,
+    MemberRemoved, Organization, OrganizationCreateParams, OrganizationGetParams,
+    OrganizationState,
 };
 pub use role::{
     IdentityPermissions, IdentityPermissionsParams, PermissionRegisterParams, PermissionRegistered,

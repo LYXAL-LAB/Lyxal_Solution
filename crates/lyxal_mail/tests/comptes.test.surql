@@ -11,6 +11,7 @@
 -- identité autre: { "id": "auth_session:autre", "pv": 1, "permissions": ["mail.domain.manage", "mail.mailbox.access", "auth.member.read", "auth.organization.settings.manage"] }
 -- identité worker: { "id": "auth_session:worker", "pv": 1, "permissions": ["mail.worker"] }
 -- identité plateforme: { "id": "auth_session:plateforme", "pv": 1, "permissions": ["mail.installation.manage"] }
+-- identité gestionnaire: { "id": "auth_session:gestionnaire", "pv": 1, "permissions": ["mail.domain.manage"] }
 
 -- préparation: organisations alpha et beta, identités et sessions lyxal_auth, domaines vérifiés, table de passage
 {
@@ -110,6 +111,24 @@ RETURN (SELECT VALUE payload FROM event_outbox WHERE event_type = "mail.account.
         AND fn::mail_account_create({ identity: "auth_identity:marie", domain: $domain, local_part: "JEAN.dupont" }).error.code == "MAIL_ADDRESS_EXISTS"
         AND fn::mail_account_create({ identity: "auth_identity:marie", domain: "mail_domain:absent", local_part: "marie" }).error.code == "MAIL_DOMAIN_NOT_FOUND";
 };
+
+-- préparation: adhésion par le contrat de lyxal_auth (décision P4) : membre suspendu, gestionnaire sans lecture des membres
+{
+    CREATE auth_identity:suspendu CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "suspendu@lyxal.test" } };
+    RELATE auth_identity:suspendu->auth_member_of->auth_organization:alpha CONTENT { state: "suspended" };
+    CREATE auth_identity:gestionnaire CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "gestionnaire@lyxal.test" } };
+    RELATE auth_identity:gestionnaire->auth_member_of->auth_organization:alpha;
+    CREATE auth_session:gestionnaire CONTENT { identity: auth_identity:gestionnaire, organization: auth_organization:alpha, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+};
+
+-- test: adhésion lue par fn::auth_organization_member_check : un membre suspendu n'est pas membre actif
+-- en tant que: admin
+RETURN fn::mail_account_create({ identity: "auth_identity:suspendu", domain: (SELECT VALUE domain FROM ONLY passe:ids), local_part: "suspendu" }).error.code == "MAIL_ACCOUNT_NOT_MEMBER";
+
+-- test: adhésion illisible pour un gestionnaire sans auth.member.read : refus explicite, aucun compte
+-- en tant que: gestionnaire
+RETURN fn::mail_account_create({ identity: "auth_identity:membre", domain: (SELECT VALUE domain FROM ONLY passe:ids), local_part: "membre" }).error.code == "MAIL_PERMISSION_DENIED"
+    AND array::len(SELECT * FROM mail_account WHERE identity = auth_identity:membre) == 0;
 
 -- test: décision M10 : partie locale ASCII en dot-atom de 64 caractères au plus
 -- en tant que: admin

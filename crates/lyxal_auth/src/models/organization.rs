@@ -93,6 +93,24 @@ pub struct MemberAdded {
     pub roles: Vec<AuthRecordId>,
 }
 
+/// Paramètres de `fn::auth_organization_member_check`.
+#[derive(Debug, Clone, SurrealValue)]
+pub struct MemberCheckParams {
+    /// Organisation (texte).
+    pub organization: String,
+    /// Identité (texte).
+    pub identity: String,
+}
+
+/// Résultat de `fn::auth_organization_member_check`.
+#[derive(Debug, Clone, PartialEq, SurrealValue)]
+pub struct MemberCheck {
+    /// Vrai pour une adhésion active.
+    pub member: bool,
+    /// État de l'adhésion (`active`, `suspended`) ; `None` sans adhésion.
+    pub state: Option<String>,
+}
+
 /// Paramètres de `fn::auth_organization_member_remove`.
 #[derive(Debug, Clone, SurrealValue)]
 pub struct MemberRemoveParams {

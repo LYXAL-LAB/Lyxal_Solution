@@ -59,7 +59,8 @@ est refusée ; UID strictement croissants, jamais réutilisés ; identité, comp
 immuables. Les messages d'un compte désactivé ne changent ni ne s'effacent plus (ceux d'un compte
 en suppression ne changent plus, la purge les efface), sauf par l'exploitation (session système,
 compte de service). Le domaine de `lyxal_auth` est lu par son contrat public
-(`fn::auth_organization_domain_get`), jamais dans sa table.
+(`fn::auth_organization_domain_get`), l'adhésion du titulaire d'un nouveau compte aussi
+(`fn::auth_organization_member_check`, décision P4), jamais dans leurs tables.
 
 ### Fonctions publiques (`functions/`)
 
@@ -96,47 +97,54 @@ chaque fonction appelée ; sessions système, compte de service, administrateur,
 membre, autre organisation ; écritures filtrées (`MAIL_WRITE_FORBIDDEN`) ; écritures directes
 refusées par les gardes ; compteurs égaux au contenu réel ; suppression d'une organisation.
 
-## Mesures du lot 4c (`scripts/bench/mailbox/bench_mail_module.py`)
+## Mesures (`scripts/bench/mailbox/bench_mail_module.py`)
 
 Mesures du 21 novembre 2026, SurrealDB 3.3.4 en mémoire, machine de développement à 4 cœurs,
 boîte de 2 000 messages (`--messages 2000 --delivery 100 --repeat 15`), temps vus par le client
-sur une connexion gardée ouverte. Les temps sous la session système comprennent environ 19 ms
-d'authentification Basic par requête (mesuré sur `RETURN 1`). Seuils de la décision C5 (lot 0).
+sur une connexion gardée ouverte, moteur de `lyxal_core` accéléré (décision P2), droits encore
+évalués par les permissions des tables (décision P1 non livrée). Les temps sous la session
+système comprennent environ 20 ms d'authentification Basic par requête (`RETURN 1`), ceux d'un
+membre moins de 1 ms (jeton). Seuils de la décision C5 (lot 0).
 
 | Mesure | Session de membre (p50 / p95) | Session système (p50 / p95) | Seuil C5 |
 | :--- | :-: | :-: | :-: |
-| Remise (`fn::mail_message_create`) | 91 / 104 ms, 10,8 par seconde | 106 / 115 ms ; compte de service 89 / 105 ms | 300 par seconde : **non tenu** |
-| Changement de drapeau (`_flags_set`, un message) | 27 / 37 ms | — | 20 ms : **non tenu** |
-| Première page de 50 messages (`_list`) | 1 850 / 1 912 ms | 67 / 92 ms | 100 ms : **non tenu** (membre) |
-| Plage de 1 000 UID | 2 279 / 2 321 ms | 123 / 158 ms | — |
-| Changements du compte (1 000 drapeaux, 200 effacements) | 951 / 1 006 ms | 63 / 66 ms | 100 ms : **non tenu** (membre) |
-| Changements d'un dossier | 937 / 941 ms | 67 / 69 ms | 100 ms : **non tenu** (membre) |
+| Remise (`fn::mail_message_create`) | 27 / 33 ms, 36 par seconde | 45 / 59 ms, 21 par seconde ; compte de service 25 / 30 ms, 39 par seconde | 300 par seconde : **non tenu** |
+| Changement de drapeau (`_flags_set`, un message) | 14 / 16 ms | — | 20 ms : **tenu** |
+| Première page de 50 messages (`_list`) | 1 847 / 1 904 ms | 57 / 60 ms | 100 ms : **non tenu** (membre) |
+| Plage de 1 000 UID | 2 272 / 2 344 ms | 116 / 128 ms | — |
+| Changements du compte (1 000 drapeaux, 200 effacements) | 959 / 966 ms | 60 / 63 ms | 100 ms : **non tenu** (membre) |
+| Changements d'un dossier | 947 / 957 ms | 63 / 64 ms | 100 ms : **non tenu** (membre) |
 
 **Coût des permissions de table** (risque du §19 du plan) : sous une session de membre,
-SurrealDB 3.3.4 évalue la permission de `mail_message` sur **chaque ligne de la plage d'index**
-lue, avant `LIMIT` (plan `EXPLAIN` : index et limite poussés ; temps identique pour 51 et 1 000
-lignes rendues, proportionnel à la taille du dossier : environ 0,4 ms par message à 400
-messages, 0,9 ms à 2 000, `fn::mail_can` lisant le compte puis `fn::auth_has_permission`). Une
-page d'une boîte de 100 000 messages prendrait donc plusieurs dizaines de secondes. Repli prévu
-par le plan, à décider par le CTO : contrôle une fois par fonction, puis lecture sous la session
-système du service de l'hôte.
+SurrealDB 3.3.4 évalue la permission de `mail_message` sur chaque ligne de la plage d'index lue,
+avant `LIMIT` (environ 0,9 ms par message à 2 000 messages : `fn::mail_can` lit le compte puis
+`fn::auth_has_permission`) ; une page, une plage d'UID ou une synchronisation coûtent autant que
+le dossier ou le compte entier. Décision P1 (droits contrôlés une fois par appel) : mécanisme en
+cours de décision (`ROADMAP.md`).
 
-**Coût de la validation par `lyxal_core`** : la validation des paramètres de
-`fn::mail_message_create` (enveloppe typée comprise) coûte environ 85 ms ; l'écriture, ses gardes
-et ses compteurs environ 6 ms (écriture directe mesurée sous la session système, hors
-authentification). Une liste de 3 champs coûte déjà environ 14 ms. La remise plafonne donc vers 11
-messages par seconde et par connexion, quelle que soit la session.
+**Lectures dans une fonction : coût proportionnel au dossier, même sans permission.** Dans le
+corps d'une fonction ou d'un événement, SurrealDB 3.3.4 exécute une requête avec la stratégie
+`compute-only`, qui ne pousse pas `LIMIT` dans le parcours d'index : environ 10 µs par message du
+dossier dans une fonction (page de 50 sous la session système : environ 210 ms à 20 000 messages,
+950 ms à 100 000, contre 2 ms pour la même requête au premier niveau). Une plage d'identifiants
+d'enregistrement bornée (`table:[dossier, 1]..[dossier, 52]`) reste constante (0,4 ms dans une
+fonction sur 20 000 lignes).
 
-**Contention du compteur de modifications du compte (décision M6)** : quatre clients qui
-remettent en même temps dans un même compte (25 messages chacun) : 109 conflits de transaction
-rejoués et 31 remises encore refusées après trois rejeux, 8,8 remises par seconde au total (dans
-un même dossier) ; 115 conflits, 32 refus, 9,1 par seconde dans quatre dossiers différents. Le
-compteur unique du compte sérialise les écritures du compte, comme prévu ; le rejeu borné du
-service Rust (lot 4d) ne suffit pas sous cette charge. Repli décrit au §19 du plan : compteur
-par dossier et journal des changements du compte.
+**Validation par `lyxal_core`** : depuis l'accélération du moteur (P2), la remise passe d'environ
+100 ms à 25 ms pour un membre (36 remises par seconde et par connexion, contre 10,5 avant P2) et
+le changement d'un drapeau de 28 à 14 ms.
+
+**Contention du compteur de modifications du compte (décisions M6, P3)** : quatre clients qui
+remettent en même temps dans un même compte (25 messages chacun), conflits de transaction rejoués
+trois fois au plus comme le fera le service Rust : 117 conflits et 32 remises encore refusées,
+37,8 remises par seconde au total (un dossier) ; 111 conflits, 30 refus, 38,0 par seconde (quatre
+dossiers). Le débit total quadruple avec P2, mais la proportion de remises refusées après trois
+rejeux reste la même (environ un tiers) : le compteur unique du compte sérialise toujours ses
+écritures. Repli du §19 du plan (compteur par dossier et journal des changements du compte) :
+à décider sur cette mesure (décision P3).
 
 Cohérence vérifiée en fin de banc : compteurs du compte égaux aux messages, UID uniques dans le
-dossier. Non mesuré au lot 4c : coût d'un scellement de clé de fichier par message (Rust, lot 4d).
+dossier. Non mesuré : coût d'un scellement de clé de fichier par message (Rust, lot 4d).
 
 ## État actuel : `lyxal_mail::net`
 

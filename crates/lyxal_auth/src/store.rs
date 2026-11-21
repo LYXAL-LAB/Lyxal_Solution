@@ -22,19 +22,19 @@ use crate::models::{
     IdentityCreateParams, IdentityGetParams, IdentityPermissions, IdentityPermissionsParams,
     Invitation, InvitationAcceptParams, InvitationAccepted, InvitationCreateParams,
     InvitationRevokeParams, LoginFailureParams, LoginFailureResetParams, LoginFailureStatus,
-    LoginRequirements, LoginRequirementsParams, MemberAddParams, MemberAdded, MemberRemoveParams,
-    MemberRemoved, MfaFactorListParams, MfaFactors, MfaFailureKeyParams, MfaFailureParams,
-    MfaFailureStatus, MfaReset, MfaResetParams, Organization, OrganizationCreateParams,
-    OrganizationDomain, OrganizationDomainCreated, OrganizationGetParams, PasskeyFindParams,
-    PasskeyFound, PasskeyListForParams, PasskeyRecord, PasskeyRenameParams, PasskeyRenamed,
-    PasskeySaveParams, PasskeySaved, PasskeyUpdateParams, PasswordCredential,
-    PasswordCredentialParams, PasswordSet, PasswordSetParams, PermissionRegisterParams,
-    PermissionRegistered, PolicyGetParams, RecoveryCodeUseParams, RecoveryCodeUsed,
-    RecoveryCodesReplaceParams, RecoveryCodesReplaced, RegistrationCompleteParams,
-    RegistrationCompleted, RegistrationStartParams, RegistrationStarted, RequiredAction,
-    RequiredActionCompleteParams, RequiredActionListParams, RoleAssignParams, RoleAssigned,
-    RoleUnassigned, ServiceSessionOpenParams, ServiceSessionParams, SessionCaller,
-    SessionCheckParams, SessionCreateParams, SessionIssued, SessionListParams,
+    LoginRequirements, LoginRequirementsParams, MemberAddParams, MemberAdded, MemberCheck,
+    MemberCheckParams, MemberRemoveParams, MemberRemoved, MfaFactorListParams, MfaFactors,
+    MfaFailureKeyParams, MfaFailureParams, MfaFailureStatus, MfaReset, MfaResetParams,
+    Organization, OrganizationCreateParams, OrganizationDomain, OrganizationDomainCreated,
+    OrganizationGetParams, PasskeyFindParams, PasskeyFound, PasskeyListForParams, PasskeyRecord,
+    PasskeyRenameParams, PasskeyRenamed, PasskeySaveParams, PasskeySaved, PasskeyUpdateParams,
+    PasswordCredential, PasswordCredentialParams, PasswordSet, PasswordSetParams,
+    PermissionRegisterParams, PermissionRegistered, PolicyGetParams, RecoveryCodeUseParams,
+    RecoveryCodeUsed, RecoveryCodesReplaceParams, RecoveryCodesReplaced,
+    RegistrationCompleteParams, RegistrationCompleted, RegistrationStartParams,
+    RegistrationStarted, RequiredAction, RequiredActionCompleteParams, RequiredActionListParams,
+    RoleAssignParams, RoleAssigned, RoleUnassigned, ServiceSessionOpenParams, ServiceSessionParams,
+    SessionCaller, SessionCheckParams, SessionCreateParams, SessionIssued, SessionListParams,
     SessionReauthenticateParams, SessionRefreshParams, SessionRevokeAllParams, SessionRevokeParams,
     SessionRevoked, SessionSummary, SessionSwitchParams, SetupStartParams, SetupStarted,
     SigningKeyGetParams, SigningKeyRotateParams, SigningKeyRotated, SigningKeys,
@@ -93,6 +93,14 @@ impl AuthStore {
         params: MemberAddParams,
     ) -> Result<MemberAdded, LyxalSurrealError> {
         self.call_fn("auth_organization_member_add", params).await
+    }
+
+    /// `fn::auth_organization_member_check`.
+    pub async fn member_check(
+        &self,
+        params: MemberCheckParams,
+    ) -> Result<MemberCheck, LyxalSurrealError> {
+        self.call_fn("auth_organization_member_check", params).await
     }
 
     /// `fn::auth_organization_member_remove`.

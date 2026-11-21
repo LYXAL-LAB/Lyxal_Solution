@@ -1,11 +1,12 @@
 -- lyxal-test: assertions
 -- Membres : ajout avec rôles par défaut, rôles demandés (permission dédiée), doublons, liste,
 -- suspension, retrait (rôles supprimés avec l'adhésion, version des droits), dernier
--- administrateur, prédicats.
+-- administrateur, prédicats, contrat d'adhésion des autres modules (fn::auth_organization_member_check).
 --
 -- identité gestion: { "id": "auth_session:gestion", "pv": 1, "permissions": ["auth.member.manage", "auth.member.read"] }
 -- identité admin: { "id": "auth_session:admin", "pv": 1, "permissions": ["auth.member.manage", "auth.member.read", "auth.organization.role.manage"] }
 -- identité lecteur: { "id": "auth_session:lecteur", "pv": 1, "permissions": ["auth.member.read"] }
+-- identité verif: { "id": "auth_session:verif", "pv": 1, "permissions": [] }
 
 -- préparation: organisation, identités, administrateur et sessions
 {
@@ -137,3 +138,37 @@ RETURN fn::auth_membership_create({ identity: auth_identity:lea, organization: a
     ];
     RETURN fn::auth_organization_member_list({ organization: "auth_organization:tri" }).data.identity == $expected AND $pages == $expected AND $again == $expected;
 };
+
+-- préparation: contrat d'adhésion : organisation gamma, une adhésion active, une suspendue, une session sans permission
+{
+    CREATE auth_organization:gamma CONTENT { slug: "gamma", name: "Gamma" };
+    CREATE auth_identity:verif_a CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "verif_a@gamma.test" } };
+    CREATE auth_identity:verif_b CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "verif_b@gamma.test" } };
+    RELATE auth_identity:verif_a->auth_member_of->auth_organization:gamma;
+    RELATE auth_identity:verif_b->auth_member_of->auth_organization:gamma CONTENT { state: "suspended" };
+    CREATE auth_session:verif CONTENT { identity: auth_identity:verif_a, organization: auth_organization:gamma, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+};
+
+-- test: contrat d'adhésion (session système) : adhésion active, suspendue, absente
+RETURN fn::auth_organization_member_check({ organization: "auth_organization:gamma", identity: "auth_identity:verif_a" }).data == { member: true, state: "active" }
+    AND fn::auth_organization_member_check({ organization: "auth_organization:gamma", identity: "auth_identity:verif_b" }).data == { member: false, state: "suspended" }
+    AND fn::auth_organization_member_check({ organization: "auth_organization:gamma", identity: "auth_identity:tom" }).data == { member: false, state: NONE };
+
+-- test: contrat d'adhésion : un lecteur des membres d'Alpha lit Alpha ; un membre de Gamma n'est pas membre d'Alpha
+-- en tant que: lecteur
+RETURN fn::auth_organization_member_check({ organization: "auth_organization:alpha", identity: "auth_identity:tom" }).data.member
+    AND fn::auth_organization_member_check({ organization: "auth_organization:alpha", identity: "auth_identity:verif_a" }).data == { member: false, state: NONE };
+
+-- test: contrat d'adhésion : autre organisation refusée, même pour une identité qui en est membre
+-- en tant que: lecteur
+RETURN fn::auth_organization_member_check({ organization: "auth_organization:gamma", identity: "auth_identity:verif_a" }).error.code == "AUTH_PERMISSION_DENIED";
+
+-- test: contrat d'adhésion : une identité sans permission lit sa propre adhésion, jamais celle d'une autre
+-- en tant que: verif
+RETURN fn::auth_organization_member_check({ organization: "auth_organization:gamma", identity: "auth_identity:verif_a" }).data.member
+    AND fn::auth_organization_member_check({ organization: "auth_organization:gamma", identity: "auth_identity:verif_b" }).error.code == "AUTH_PERMISSION_DENIED"
+    AND fn::auth_organization_member_check({ organization: "auth_organization:alpha", identity: "auth_identity:tom" }).error.code == "AUTH_PERMISSION_DENIED";
+
+-- test: contrat d'adhésion : paramètres invalides
+RETURN fn::auth_organization_member_check({ organization: "auth_organization:gamma" }).error.code == "AUTH_INVALID_PARAMETERS"
+    AND fn::auth_organization_member_check({ organization: "auth_organization:gamma", identity: "auth_identity:verif_a", extra: 1 }).error.code == "AUTH_INVALID_PARAMETERS";

@@ -702,7 +702,7 @@ usage) ; `apps/lyxal-groupware/README.md` (modules, configuration) ; `.agents/AG
 
 ## 22. Complément : vitesse et contrat d'adhésion (4e, avant 4d)
 
-Les mesures de 4c (README, « Mesures du lot 4c ») montrent que les seuils C5 ne sont pas tenus :
+Les mesures de 4c (à leur date ; état actuel : README, « Mesures ») montrent que les seuils C5 ne sont pas tenus :
 dépôt à 11 par seconde, page de 50 messages en 1,85 s sous la session d'un membre, conflits du
 compteur par compte. Ce complément est livré avant 4d, en deux demandes de fusion.
 

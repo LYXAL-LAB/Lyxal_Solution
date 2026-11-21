@@ -2,9 +2,9 @@
 
 use lyxal_auth::models::{
     IdentityCreateParams, IdentityGetParams, IdentityPermissionsParams, IdentityState,
-    MemberAddParams, MemberRemoveParams, OrganizationCreateParams, OrganizationGetParams,
-    OrganizationState, PermissionRegisterParams, PermissionScope, PolicyGetParams,
-    RoleAssignParams,
+    MemberAddParams, MemberCheckParams, MemberRemoveParams, OrganizationCreateParams,
+    OrganizationGetParams, OrganizationState, PermissionRegisterParams, PermissionScope,
+    PolicyGetParams, RoleAssignParams,
 };
 use lyxal_auth::{AuthHealthCheck, AuthModule};
 use lyxal_runtime::health::ModuleHealthCheck;
@@ -82,6 +82,15 @@ async fn organization_identity_membership_and_roles_round_trip() {
         .await
         .expect("adhésion");
     assert_eq!(added.roles.len(), 2);
+    let checked = store
+        .member_check(MemberCheckParams {
+            organization: organization_id.clone(),
+            identity: identity_id.clone(),
+        })
+        .await
+        .expect("contrat d'adhésion");
+    assert!(checked.member);
+    assert_eq!(checked.state.as_deref(), Some("active"));
 
     let permissions = store
         .identity_permissions(IdentityPermissionsParams {
