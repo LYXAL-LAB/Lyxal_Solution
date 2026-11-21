@@ -56,7 +56,10 @@ tombales, lecteurs des contenus, six dossiers créés avec le compte, adresses r
 en suppression. Les champs de compteurs ne s'écrivent pas directement (permission du compte de
 service) ; une écriture de message ou de dossier qui ne fait pas avancer le numéro de modification
 est refusée ; UID strictement croissants, jamais réutilisés ; identité, compte, contenu et fil
-immuables.
+immuables. Les messages d'un compte désactivé ne changent ni ne s'effacent plus (ceux d'un compte
+en suppression ne changent plus, la purge les efface), sauf par l'exploitation (session système,
+compte de service). Le domaine de `lyxal_auth` est lu par son contrat public
+(`fn::auth_organization_domain_get`), jamais dans sa table.
 
 ### Fonctions publiques (`functions/`)
 
@@ -65,7 +68,7 @@ immuables.
 | Réglages, domaines | `mail_settings_get`, `mail_settings_set`, `mail_domain_create`, `_get`, `_list`, `_update`, `_delete` |
 | Comptes, adresses | `mail_account_create` (compte, adresse principale, six dossiers), `_get`, `_list`, `_update`, `_delete` ; `mail_quota_get` ; `mail_address_create`, `_update`, `_delete`, `_list`, `_resolve` |
 | Dossiers | `mail_mailbox_create`, `_get`, `_list`, `_update` (renommage, déplacement, sous-dossiers réécrits), `_delete` |
-| Messages | `mail_message_create`, `_get`, `_list` (curseur de date ou plage d'UID), `_changes` (depuis un numéro de modification, effacements compris), `_flags_set` (`CONDSTORE`), `_move`, `_copy`, `_expunge` ; `mail_thread_get` |
+| Messages | `mail_message_create`, `_get`, `_list` (curseur de date ou plage d'UID), `_changes` (depuis un numéro de modification, effacements compris), `_flags_set` (`CONDSTORE`), `_move` (un message déjà dans le dossier cible reste inchangé), `_copy`, `_expunge` ; `mail_thread_get` |
 | Contenus, maintenance | `mail_content_begin`, `_attach`, `_open`, `_expire` ; `mail_tombstone_purge` ; `mail_account_purge_step` |
 
 Toutes : `$params: object`, entrées par le moteur de `lyxal_core`, `fn::result_ok` /

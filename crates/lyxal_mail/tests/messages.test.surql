@@ -395,5 +395,62 @@ UPDATE type::record(fn::essai_id("jean_trash")) SET uid_next = 4294967296;
 -- en tant que: jean
 RETURN fn::mail_message_create({ content: (SELECT VALUE big FROM ONLY passe:ids), mailbox: fn::essai_id("jean_trash"), received_at: time::now(), envelope: { subject: "x" }, structure: { type: "text/plain" } }).error.code == "MAIL_MAILBOX_UID_EXHAUSTED";
 
+-- préparation: un message dans INBOX, un autre déjà dans Archive (déplacement en lot)
+{
+    LET $a = fn::essai_message(fn::essai_id("jean"), fn::essai_id("jean_inbox"), { size: 30 }).data;
+    LET $b = fn::essai_message(fn::essai_id("jean"), fn::essai_id("jean_archive"), { size: 40 }).data;
+    UPDATE passe:ids SET lot_a = <string> $a.id, lot_b = <string> $b.id;
+};
+
+-- test: déplacement d'un lot dont un message est déjà dans la cible : il reste inchangé (ni nouvel UID, ni compté), l'autre est déplacé
+-- en tant que: jean
+{
+    LET $a = fn::essai_id("lot_a");
+    LET $b = fn::essai_id("lot_b");
+    LET $initial = fn::mail_message_get({ message: $b }).data;
+    LET $archive = fn::mail_mailbox_get({ mailbox: fn::essai_id("jean_archive") }).data;
+    LET $result = fn::mail_message_move({ messages: [$a, $b], mailbox: fn::essai_id("jean_archive") });
+    LET $after_a = fn::mail_message_get({ message: $a }).data;
+    LET $after_b = fn::mail_message_get({ message: $b }).data;
+    RETURN $result.ok
+        AND $result.data.moved.map(|$m| $m.id) == [type::record($a)]
+        AND $result.data.moved[0].uid == $archive.uid_next
+        AND $after_a.mailbox == type::record(fn::essai_id("jean_archive"))
+        AND $after_b.{ mailbox, uid, modseq } == $initial.{ mailbox, uid, modseq }
+        AND fn::mail_mailbox_get({ mailbox: fn::essai_id("jean_archive") }).data.{ total, uid_next } == { total: $archive.total + 1, uid_next: $archive.uid_next + 1 }
+        AND fn::essai_coherent(fn::essai_id("jean"));
+};
+
+-- test: déplacement d'un lot entièrement déjà dans la cible : rien n'est écrit
+-- en tant que: jean
+{
+    LET $b = fn::essai_id("lot_b");
+    LET $initial = fn::mail_message_get({ message: $b }).data;
+    LET $result = fn::mail_message_move({ messages: [$b], mailbox: fn::essai_id("jean_archive") });
+    RETURN $result.ok AND $result.data.moved == [] AND fn::mail_message_get({ message: $b }).data.{ uid, modseq } == $initial.{ uid, modseq };
+};
+
+-- préparation: compte de jean désactivé par l'administration
+fn::mail_account_update({ account: fn::essai_id("jean"), state: "disabled" });
+
+-- test: compte désactivé : le titulaire ne change plus un message en écriture directe, même avec un numéro de modification
+-- en tant que: jean
+-- attendu-erreur: MAIL_ACCOUNT_DISABLED
+UPDATE type::record(fn::essai_id("lot_a")) SET flagged = true, modseq = fn::mail_modseq_next(type::record(fn::essai_id("jean"))) + 10;
+
+-- test: compte désactivé : le titulaire n'efface plus un message en écriture directe
+-- en tant que: jean
+-- attendu-erreur: MAIL_ACCOUNT_DISABLED
+DELETE type::record(fn::essai_id("lot_a"));
+
+-- test: compte désactivé : la session système écrit encore (exploitation)
+{
+    UPDATE type::record(fn::essai_id("lot_a")) SET flagged = true, modseq = fn::mail_modseq_next(type::record(fn::essai_id("jean")));
+    RETURN (SELECT VALUE flagged FROM ONLY type::record(fn::essai_id("lot_a"))) == true AND fn::essai_coherent(fn::essai_id("jean"));
+};
+
+-- préparation: compte de jean réactivé
+fn::mail_account_update({ account: fn::essai_id("jean"), state: "active" });
+
 -- test: compteurs égaux au contenu réel en fin de scénario
 RETURN fn::essai_coherent(fn::essai_id("jean")) AND fn::essai_coherent(fn::essai_id("marie"));

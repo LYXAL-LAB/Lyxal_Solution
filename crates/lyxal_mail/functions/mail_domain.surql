@@ -86,9 +86,11 @@ DEFINE FUNCTION OVERWRITE fn::mail_domain_create($params: object) {
         RETURN fn::error_result("MAIL_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
     LET $p = $report.value;
-    -- Domaine de lyxal_auth lisible par l'administrateur de son organisation (sinon introuvable)
-    LET $source = (SELECT id, organization, domain, state FROM ONLY $p.auth_domain);
-    IF $source == NONE { RETURN fn::error_result("MAIL_DOMAIN_NOT_FOUND", $p.language, { auth_domain: <string> $p.auth_domain }); };
+    -- Domaine de lyxal_auth lu par son contrat public, sous les droits de l'appelant : lisible par
+    -- l'administrateur de son organisation, sinon introuvable
+    LET $found = fn::auth_organization_domain_get({ domain: <string> $p.auth_domain, language: $p.language });
+    IF !$found.ok { RETURN fn::error_result("MAIL_DOMAIN_NOT_FOUND", $p.language, { auth_domain: <string> $p.auth_domain }); };
+    LET $source = $found.data;
     IF !fn::mail_can({ action: "manage", tenant: $source.organization }) { RETURN fn::error_result("MAIL_PERMISSION_DENIED", $p.language, {}); };
     IF $source.state != "verified" { RETURN fn::error_result("MAIL_DOMAIN_NOT_VERIFIED", $p.language, { auth_domain: <string> $source.id }); };
     -- Décision M10 : forme ASCII seulement (aucune conversion IDNA dans lyxal_core)

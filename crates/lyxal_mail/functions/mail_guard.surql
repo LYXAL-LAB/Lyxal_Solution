@@ -41,7 +41,8 @@ DEFINE FUNCTION OVERWRITE fn::mail_write_refusal($table: string, $previous: any,
     IF $table = "mail_domain" {
         IF $previous IS NONE {
             -- Domaine vérifié de la même organisation (décision M9), sous son nom
-            LET $auth_domain = (SELECT organization, domain, state FROM ONLY $next.auth_domain);
+            LET $found = fn::auth_organization_domain_get({ domain: <string> $next.auth_domain });
+            LET $auth_domain = IF $found.ok { $found.data } ELSE { NONE };
             IF $auth_domain == NONE OR $auth_domain.organization != $next.tenant OR $auth_domain.domain != $next.name OR $next.address_count != 0 { RETURN "MAIL_WRITE_FORBIDDEN"; };
             RETURN IF $auth_domain.state != "verified" { "MAIL_DOMAIN_NOT_VERIFIED" } ELSE { NONE };
         };
@@ -108,9 +109,18 @@ DEFINE FUNCTION OVERWRITE fn::mail_write_refusal($table: string, $previous: any,
         RETURN IF ($next.object != $previous.object AND !($previous.state = "pending" AND $next.state = "stored")) OR ($next.state != "pending" AND $next.object IS NONE) { "MAIL_WRITE_FORBIDDEN" } ELSE { NONE };
     };
     IF $table = "mail_message" {
-        IF $next IS NONE { RETURN NONE; };
+        IF $next IS NONE {
+            -- Compte désactivé : ses messages ne s'effacent plus, sauf par l'exploitation (session
+            -- système, compte de service) ; compte en suppression ou déjà retiré : purge permise
+            LET $holder = (SELECT VALUE state FROM ONLY $previous.account);
+            RETURN IF $holder = "disabled" AND !fn::mail_can({ action: "worker" }) { "MAIL_ACCOUNT_DISABLED" } ELSE { NONE };
+        };
         LET $owner = (SELECT tenant, state, modseq, used_bytes, quota_bytes FROM ONLY $next.account);
         IF $owner == NONE OR $owner.tenant != $next.tenant { RETURN "MAIL_WRITE_FORBIDDEN"; };
+        -- Compte désactivé ou en suppression : aucun message ne change, sauf par l'exploitation
+        IF $previous IS NOT NONE AND $owner.state != "active" AND !fn::mail_can({ action: "worker" }) {
+            RETURN IF $owner.state = "deleting" { "MAIL_ACCOUNT_DELETING" } ELSE { "MAIL_ACCOUNT_DISABLED" };
+        };
         LET $box = (SELECT account, uid_next FROM ONLY $next.mailbox);
         IF $box == NONE OR $box.account != $next.account { RETURN "MAIL_WRITE_FORBIDDEN"; };
         IF $previous IS NONE {
@@ -131,7 +141,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_write_refusal($table: string, $previous: any,
         RETURN IF $next.uid < $box.uid_next { "MAIL_WRITE_FORBIDDEN" } ELSE { NONE };
     };
     RETURN NONE;
-} COMMENT "Interne : garde d'une écriture dans une table de lyxal_mail ($table ; $previous, $next : NONE à la création, à la suppression), appelée par les événements de garde ; NONE, ou le code MAIL_* du refus. Compteurs à zéro à la création ; identité jamais remplacée ; adresse principale gardée tant que le compte vit ; domaine vérifié de la même organisation, non vide seulement avec elle ; alias vers 1 à 50 comptes vivants de l'organisation ; dossier : chemin, parent et rôle cohérents, UIDVALIDITY tirée du compte, pas de boucle, boîte de réception, dossier non vide ou parent protégés ; contenu : états pending → stored → released ; message : même compte que son dossier et son contenu, contenu stocké, compte actif, UID au moins égal au prochain du dossier, numéro de modification qui avance, quota (filet de sécurité de fn::mail_message_create)";
+} COMMENT "Interne : garde d'une écriture dans une table de lyxal_mail ($table ; $previous, $next : NONE à la création, à la suppression), appelée par les événements de garde ; NONE, ou le code MAIL_* du refus. Compteurs à zéro à la création ; identité jamais remplacée ; adresse principale gardée tant que le compte vit ; domaine vérifié de la même organisation, non vide seulement avec elle ; alias vers 1 à 50 comptes vivants de l'organisation ; dossier : chemin, parent et rôle cohérents, UIDVALIDITY tirée du compte, pas de boucle, boîte de réception, dossier non vide ou parent protégés ; contenu : états pending → stored → released ; message : même compte que son dossier et son contenu, contenu stocké, compte actif (inscription et changement ; effacement refusé sur un compte désactivé ; changement et effacement permis à l'exploitation : session système, compte de service), UID au moins égal au prochain du dossier, numéro de modification qui avance, quota (filet de sécurité de fn::mail_message_create)";
 
 -- ----------------------------------------------------------------------------
 -- fn::mail_counters_apply (interne)

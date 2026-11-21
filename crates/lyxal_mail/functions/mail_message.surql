@@ -293,18 +293,20 @@ DEFINE FUNCTION OVERWRITE fn::mail_message_move($params: object) {
     IF $loaded.code IS NOT NONE { RETURN fn::error_result($loaded.code, $p.language, $loaded.details); };
     LET $target = (SELECT id, account, uid_next FROM ONLY $p.mailbox);
     IF $target == NONE OR $target.account != $loaded.account.id { RETURN fn::error_result("MAIL_MAILBOX_NOT_FOUND", $p.language, { mailbox: <string> $p.mailbox }); };
-    LET $count = array::len($loaded.rows);
+    -- Un message déjà dans le dossier cible reste inchangé (ni nouvel UID, ni numéro de modification)
+    LET $rows = array::filter($loaded.rows, |$m| $m.mailbox != $target.id);
+    LET $count = array::len($rows);
+    IF $count = 0 { RETURN fn::result_ok({ moved: [] }); };
     IF $target.uid_next + $count - 1 > 4294967295 { RETURN fn::error_result("MAIL_MAILBOX_UID_EXHAUSTED", $p.language, {}); };
     LET $modseq = fn::mail_modseq_next($loaded.account.id);
     -- Même fiche (même identifiant), nouvel UID dans le dossier cible, dans l'ordre des UID sources
-    LET $rows = $loaded.rows;
     LET $moved = array::map(<array> (0..$count), |$i| {
         LET $done = (UPDATE ONLY $rows[$i].id SET mailbox = $target.id, uid = $target.uid_next + $i, modseq = $modseq RETURN VALUE id);
         RETURN IF $done IS NONE { NONE } ELSE { { id: $rows[$i].id, from_uid: $rows[$i].uid, uid: $target.uid_next + $i, modseq: $modseq } };
     });
     IF array::any($moved, |$m| $m IS NONE) { RETURN fn::error_result("MAIL_WRITE_FORBIDDEN", $p.language, { table: "mail_message" }); };
     RETURN fn::result_ok({ moved: $moved });
-} COMMENT "Déplace des messages d'un même compte ({ messages (500 au plus), mailbox }) : même fiche (même identifiant JMAP), nouvel UID dans le dossier cible, pierre tombale dans le dossier source, un numéro de modification pour l'appel ; { moved : [{ id, from_uid, uid, modseq }] } ; MAIL_MAILBOX_UID_EXHAUSTED. Droit : titulaire du compte";
+} COMMENT "Déplace des messages d'un même compte ({ messages (500 au plus), mailbox }) : même fiche (même identifiant JMAP), nouvel UID dans le dossier cible, pierre tombale dans le dossier source, un numéro de modification pour l'appel ; un message déjà dans le dossier cible reste inchangé et n'est pas rendu ; { moved : [{ id, from_uid, uid, modseq }] } ; MAIL_MAILBOX_UID_EXHAUSTED. Droit : titulaire du compte";
 
 -- ----------------------------------------------------------------------------
 -- fn::mail_message_copy
