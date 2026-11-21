@@ -5,12 +5,16 @@
 use std::env;
 use std::path::PathBuf;
 
-/// Modules installés par l'hôte, dans l'ordre de leurs dépendances (écart E6 du lot 3 : le
-/// socle, `lyxal_event` et `lyxal_mail` seulement).
+/// Modules installés par l'hôte, dans l'ordre de leurs dépendances : le socle, `lyxal_event`,
+/// les dépendances de `lyxal_mail` (`lyxal_auth`, `lyxal_secrets`, `lyxal_storage`, ajoutées avec
+/// son modèle de données au lot 4c : écart E5 du lot 4) et `lyxal_mail`.
 const MODULES: &[(&str, Option<&str>)] = &[
     ("lyxal_core", None),
     ("lyxal_error", None),
     ("lyxal_event", None),
+    ("lyxal_auth", None),
+    ("lyxal_secrets", None),
+    ("lyxal_storage", None),
     ("lyxal_mail", None),
 ];
 

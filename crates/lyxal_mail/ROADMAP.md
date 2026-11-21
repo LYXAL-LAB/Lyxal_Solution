@@ -1,6 +1,6 @@
 # Feuille de route — `lyxal_mail`
 
-Évolutions à venir du crate (squelette au lot 3). Son objet est décrit par le [`README.md`](README.md), les
+Évolutions à venir du crate (modèle de données SurrealQL au lot 4c, contrat réseau au lot 3). Son objet est décrit par le [`README.md`](README.md), les
 études et les mesures par [`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md), la provenance des
 sources par [`SOURCES.md`](SOURCES.md). Le programme est décrit par `implementation_plan.md` à la
 racine du dépôt ; chaque lot a son propre plan, validé par le CTO avant toute ligne de code
@@ -10,7 +10,7 @@ racine du dépôt ; chaque lot a son propre plan, validé par le CTO avant toute
 
 | Lot | Contenu pour ce crate | Sources principales | Prérequis |
 | :- | :--- | :--- | :--- |
-| 4 — Socle courrier | Domaines, adresses, alias, boîtes, messages, quotas, droits, erreurs `MAIL_*`, événements ; **chiffrement au repos (niveau A)** ; drapeau « chiffré » réservé | Stalwart `email` (modèle), Mox `store` | lot 0 |
+| 4 — Socle courrier (reste 4d) | Service Rust : `MailStore` (un appel typé par fonction), `MailIngest` (lecture MIME, écriture chiffrée par `lyxal_storage`, inscription, rejeu sur conflit de transaction), `MailContent` (lecture en flux, plage), `MailMaintenance` (tâche `mail.maintenance`), `MailModule`, `MailHealthCheck` ; hôte `lyxal-groupware` : clé maîtresse, supports de stockage, bucket chiffré `lyxal-mail` | Stalwart `email` (modèle), Mox `store` | lots 4a à 4c |
 | 5 — Réception SMTP | Serveur SMTP entrant, refus dès `RCPT TO`, SPF / DKIM / DMARC, `Authentication-Results`, antivirus, remise en boîte, événement `mail.message.received` ; ordre de remise fixé : antivirus → anti-spam → filtres → index → chiffrement | Stalwart `smtp/inbound` ; Mox `smtpserver` | lots 2, 3, 4 |
 | 6 — Envoi | File par destination, tentatives, envoi vers les MX, dépôt authentifié (587 / 465), signature DKIM, avis de non-remise, adresses de retour signées, contrat public de dépôt | Stalwart `smtp/queue`, `smtp/outbound` ; Mox `queue`, `smtpclient`, `dsn` ; KumoMTA | lots 1, 5 |
 | 7 — Transport sûr et rapports | MTA-STS, DANE, TLS-RPT, rapports DMARC reçus et émis, ARC | Stalwart `smtp/reporting`, `outbound/{dane,mta_sts}` ; Mox | lot 6 |
@@ -28,10 +28,6 @@ racine du dépôt ; chaque lot a son propre plan, validé par le CTO avant toute
 Mesures et essais détaillés dans [`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md) (section
 « Mesures SurrealDB ») et dans le compte rendu du lot 0.
 
-* **Modèle des boîtes (lot 4).** Pagination d'un dossier par curseur de date ou d'UID, jamais
-  par décalage `START` ; compteurs (total, non lus, prochain UID, plus haut numéro de
-  modification) tenus à l'écriture sur la fiche du dossier, dans la transaction ; jamais de
-  `GROUP BY` sur toute la boîte à la demande.
 * **Recherche (lot 9).** Sans index plein texte, une recherche de sous-chaîne parcourt le
   dossier. L'index plein texte de SurrealDB 3.3.4 répond vite sur un mot, mais combiner un mot
   fréquent, un dossier et un tri par date est lent : à mesurer de nouveau avec le moteur de
@@ -41,6 +37,30 @@ Mesures et essais détaillés dans [`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md
 * **Liste de blocage et bannissement (lot 5).** Table de `lyxal_mail`, entrées validées par
   `fn::validation_ip` / `fn::validation_cidr` ; limites partagées entre nœuds à décider (au lot 3,
   les compteurs par réseau sont en mémoire, par nœud).
+
+## Points relevés au lot 4c, à décider avant les protocoles
+
+Mesures : [`README.md`](README.md), section « Mesures du lot 4c ».
+
+* **Permissions de table à l'échelle (plan du lot 4, §19).** Sous une session de membre,
+  SurrealDB 3.3.4 évalue les permissions de `mail_message` sur chaque ligne de la plage d'index
+  lue, avant d'appliquer `LIMIT` : une page, une plage d'UID ou une synchronisation coûtent
+  autant que le dossier ou le compte entier (environ 0,4 ms par message). Repli prévu par le
+  plan : contrôle une fois par fonction (`fn::mail_can`), puis lecture sous la session système
+  du service de l'hôte ; à décider par le CTO avant le lot 8 (IMAP).
+* **Coût du moteur de validation de `lyxal_core` (§5.7.8).** La validation des paramètres de
+  `fn::mail_message_create` (enveloppe typée comprise) coûte environ 85 ms, contre environ 6 ms
+  pour l'écriture et ses événements : la remise plafonne vers une dizaine de messages par
+  seconde et par connexion, loin des 300 par seconde de la décision C5. Besoin signalé au CTO :
+  accélération du moteur dans `lyxal_core`, ou règle propre au chemin de dépôt du service.
+* **Contention du compteur de modifications du compte (décision M6).** Plusieurs écrivains dans
+  un même compte se heurtent sur sa fiche (conflits de transaction rejoués) ; repli décrit au
+  §19 du plan (compteur par dossier et journal des changements du compte) si le service Rust du
+  lot 4d ne tient pas le débit.
+* **Domaines internationaux et parties locales UTF-8 (décision M10).** Lot 4 en ASCII
+  seulement ; conversion IDNA et validation d'une partie locale UTF-8 (`SMTPUTF8`) : besoin
+  d'extension de `lyxal_core` signalé, à instruire avant le lot 5.
+* **Adresse « attrape-tout », alias vers l'extérieur, listes** : lots 5 et 6.
 
 ## Chiffrement des boîtes (décision C7)
 

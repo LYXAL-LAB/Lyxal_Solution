@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 //! Modules hébergés par l'hôte : manifestes et fichiers SurrealQL embarqués à la compilation
-//! (`build.rs`). Au lot 3 : le socle, `lyxal_event` et `lyxal_mail`, tous sans code Rust propre
-//! au runtime (`ManifestModule`) ; les écoutes sont des workers rattachés à `lyxal_mail`.
+//! (`build.rs`) : le socle, `lyxal_event`, `lyxal_auth`, `lyxal_secrets`, `lyxal_storage` et
+//! `lyxal_mail`, tous portés par un `ManifestModule` (leurs hooks `install` n'écrivent rien ; les
+//! services Rust du courrier arrivent au lot 4d) ; les écoutes sont des workers rattachés à
+//! `lyxal_mail`.
 
 use crate::error::GroupwareError;
 use lyxal_host::modules::{manifest, EmbeddedModule, ManifestModule};

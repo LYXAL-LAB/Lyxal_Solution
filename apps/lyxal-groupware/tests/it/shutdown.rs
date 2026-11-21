@@ -50,7 +50,15 @@ async fn host_starts_serves_health_and_drains_on_shutdown() {
         .await
         .expect("démarrage");
     let runtime = started.runtime.clone();
-    for module in ["lyxal_core", "lyxal_error", "lyxal_event", "lyxal_mail"] {
+    for module in [
+        "lyxal_core",
+        "lyxal_error",
+        "lyxal_event",
+        "lyxal_auth",
+        "lyxal_secrets",
+        "lyxal_storage",
+        "lyxal_mail",
+    ] {
         assert_eq!(
             runtime.module_state(&ModuleId::new(module)),
             Some(ModuleState::Running),

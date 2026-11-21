@@ -29,7 +29,16 @@ use std::time::Duration;
 use surrealdb::engine::any::{connect, Any};
 use surrealdb::Surreal;
 
-const GROUPWARE_MODULES: [&str; 4] = ["lyxal_core", "lyxal_error", "lyxal_event", "lyxal_mail"];
+/// Modules déclarés par le nœud de `lyxal-groupware` (ordre alphabétique de `runtime_node`).
+const GROUPWARE_MODULES: [&str; 7] = [
+    "lyxal_auth",
+    "lyxal_core",
+    "lyxal_error",
+    "lyxal_event",
+    "lyxal_mail",
+    "lyxal_secrets",
+    "lyxal_storage",
+];
 
 /// Configuration de `lyxal-server` (même forme que ses propres essais) sur la base
 /// `namespace` / `database` (lue par son service d'authentification).

@@ -1,15 +1,68 @@
-# Module lyxal_mail, hébergé par l'hôte lyxal-groupware (décision P3). Lot 3 : squelette en Rust
-# seul (contrat réseau des sessions, limites, budget mémoire) ; aucune ressource SurrealQL (écart
-# E3) : la première table vient au lot 4. Porté dans l'hôte par un ManifestModule, auquel sont
-# rattachés les workers des écoutes (`lyxal_mail:mail.listener.<id>`).
+# Module lyxal_mail, hébergé par l'hôte lyxal-groupware (décision P3). Lot 4c : modèle de données
+# en SurrealQL (domaines, comptes, adresses, alias, dossiers, contenus, messages, pierres
+# tombales, réglages, droits, erreurs, événements) ; lot 3 : contrat réseau des sessions en Rust.
+# Porté dans l'hôte par un ManifestModule (lot 4d : MailModule), auquel sont rattachés les
+# workers des écoutes (`lyxal_mail:mail.listener.<id>`).
 manifest_version = 1
 id = "lyxal_mail"
 name = "Lyxal Mail"
 version = "0.1.0"
-description = "Serveur de courrier de Lyxal OS (squelette : écoutes supervisées par l'hôte lyxal-groupware)"
-capabilities = ["mail"]
+description = "Serveur de courrier de Lyxal OS : domaines, comptes, adresses, dossiers, messages et quotas ; écoutes supervisées par l'hôte lyxal-groupware"
+capabilities = ["database", "events", "mail"]
 
 [runtime]
 min_version = ">=0.1.0"
 
+[[dependencies]]
+id = "lyxal_core"
+version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_error"
+version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_event"
+version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_auth"
+version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_storage"
+version = ">=0.1.0"
+
 [resources]
+schemas = [
+    "schema/01_mail_settings.surql",
+    "schema/02_mail_domain.surql",
+    "schema/03_mail_account.surql",
+    "schema/04_mail_address.surql",
+    "schema/05_mail_mailbox.surql",
+    "schema/06_mail_content.surql",
+    "schema/07_mail_message.surql",
+    "schema/08_mail_tombstone.surql"
+]
+functions = [
+    "functions/mail_access.surql",
+    "functions/mail_guard.surql",
+    "functions/mail_domain.surql",
+    "functions/mail_account.surql",
+    "functions/mail_mailbox.surql",
+    "functions/mail_message.surql",
+    "functions/mail_content.surql"
+]
+error_definitions = [
+    "error/parametres/error_parametres.surql",
+    "error/permissions/error_permissions.surql",
+    "error/domaines/error_domaines.surql",
+    "error/comptes/error_comptes.surql",
+    "error/adresses/error_adresses.surql",
+    "error/dossiers/error_dossiers.surql",
+    "error/messages/error_messages.surql",
+    "error/contenus/error_contenus.surql",
+    "error/quotas/error_quotas.surql"
+]
+events = ["events/mail_guards.surql", "events/mail_events.surql"]
+seeds = ["seeds/mail_auth.surql"]
