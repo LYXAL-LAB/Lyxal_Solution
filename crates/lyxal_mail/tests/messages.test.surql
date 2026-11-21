@@ -125,6 +125,7 @@ RETURN fn::mail_message_get({ message: fn::essai_id("m1") }).data.{ uid, protect
         AND fn::mail_message_create(object::extend($base, { content: fn::essai_id("c2"), keywords: ["a]"] })).error.code == "MAIL_INVALID_PARAMETERS"
         AND fn::mail_message_create(object::extend($base, { content: fn::essai_id("c2"), envelope: { subject: "x", to: [{ address: "a", extra: 1 }] } })).error.code == "MAIL_INVALID_PARAMETERS"
         AND fn::mail_message_create(object::extend($base, { content: fn::essai_id("c2"), received_at: "2026-11-01" })).error.code == "MAIL_INVALID_PARAMETERS"
+        AND fn::mail_message_create(object::extend($base, { content: fn::essai_id("c2"), received_at: d"1969-12-31T23:59:59Z" })).error.code == "MAIL_INVALID_PARAMETERS"
         AND fn::mail_message_create(object::extend($base, { content: fn::essai_id("c2"), mailbox: fn::essai_id("marie_inbox") })).error.code == "MAIL_MAILBOX_NOT_FOUND";
 };
 

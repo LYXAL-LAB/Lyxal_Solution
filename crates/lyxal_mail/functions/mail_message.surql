@@ -24,7 +24,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_message_create($params: object) {
         fields: {
             content: { pipeline: [{ rule: "record", options: { expected_table: "mail_content" } }], required: true },
             mailbox: { pipeline: [{ rule: "record", options: { expected_table: "mail_mailbox" } }], required: true },
-            received_at: { pipeline: [{ rule: "datetime" }], required: true },
+            received_at: { pipeline: [{ rule: "datetime", options: { min_value: d"1970-01-01T00:00:00Z" } }], required: true },
             sent_at: { pipeline: [{ rule: "datetime" }] },
             seen: { pipeline: [{ rule: "boolean" }], default: false },
             answered: { pipeline: [{ rule: "boolean" }], default: false },
