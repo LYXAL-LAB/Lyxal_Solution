@@ -16,6 +16,7 @@ members = [
     "crates/lyxal_pipeline_ingestion",
     "crates/lyxal_host",
     "crates/lyxal_mail",
+    "crates/lyxal_mail_proto",
     "apps/lyxal-server",
     "apps/lyxal-groupware",
 ]
@@ -23,7 +24,7 @@ members = [
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.97"
+rust-version = "1.98"
 license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]

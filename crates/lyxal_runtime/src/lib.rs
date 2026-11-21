@@ -16,6 +16,12 @@
 //! - Gérer les transitions d'état et les timeouts via [`LifecycleManager`] ;
 //! - Orchestrer le démarrage et l'arrêt ordonné via la façade [`LyxalRuntime`].
 
+// `LyxalSurrealError` (erreur commune de `lyxal_surreal`, 272 octets) est rendue par les
+// fonctions de ce crate ; Clippy de Rust 1.98 les signale (`result_large_err`), 1.97 ne le
+// faisait pas. Même règle que `lyxal_surreal` et `lyxal_error` : réduire cette erreur serait un
+// changement de contrat.
+#![allow(clippy::result_large_err)]
+
 pub mod config;
 pub mod context;
 pub mod controller;

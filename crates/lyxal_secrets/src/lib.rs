@@ -15,6 +15,12 @@
 //! de l'hôte par une clé « fichiers » de chaque organisation (`FileKeys`), le module
 //! `LyxalModule` et sa sonde de santé.
 
+// `LyxalSurrealError` (erreur commune de `lyxal_surreal`, 272 octets) est rendue par les
+// fonctions de ce crate ; Clippy de Rust 1.98 les signale (`result_large_err`), 1.97 ne le
+// faisait pas. Même règle que `lyxal_surreal` et `lyxal_error` : réduire cette erreur serait un
+// changement de contrat.
+#![allow(clippy::result_large_err)]
+
 pub mod client;
 pub mod error;
 pub mod files;

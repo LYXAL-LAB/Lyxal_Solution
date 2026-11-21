@@ -667,7 +667,7 @@ l'hôte n'est pas un module du runtime.
 docker build -f apps/lyxal-server/Dockerfile .
 ```
 
-Image `rust:1.97` (version du workspace) puis `debian:bookworm-slim`, utilisateur non root,
+Image `rust:1.98` (version du workspace) puis `debian:bookworm-slim`, utilisateur non root,
 configuration copiée dans `/app/config`. Liste de contrôle avant production :
 [`docs/PRODUCTION-CHECKLIST.md`](docs/PRODUCTION-CHECKLIST.md).
 

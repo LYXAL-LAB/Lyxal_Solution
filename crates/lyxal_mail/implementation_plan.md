@@ -540,6 +540,7 @@ pub mod mime {
   pièces jointes, messages tronqués) ; propriétés `proptest` (aucune panique, positions dans les
   bornes) ; cible de fuzzing `cargo fuzz` préparée, lancée au lot 21.
 * Non inclus au lot 4 : syntaxes SMTP, IMAP, Sieve, rapports, JMAP (lots 5 à 12).
+* Rust porté à 1.98 et `mail-parser` 1.0.1, décision du CTO du 21 novembre 2026.
 
 ## 14. `lyxal_mail` en Rust (4d)
 

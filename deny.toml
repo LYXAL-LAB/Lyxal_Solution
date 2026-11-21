@@ -87,7 +87,7 @@ exceptions = [
     # décommentée par le lot qui crée le paquet, pas avant (cargo-deny signale une exception
     # sans paquet). Aucun autre paquet du workspace ne doit recevoir cette exception :
     # `lyxal-server` et les crates existants ne lient aucun crate AGPL (décision P3).
-    # { allow = ["AGPL-3.0-only"], crate = "lyxal_mail_proto" },   # lot 4
+    { allow = ["AGPL-3.0-only"], crate = "lyxal_mail_proto" },     # lot 4
     { allow = ["AGPL-3.0-only"], crate = "lyxal_mail" },           # lot 3 (squelette), lot 4
     # { allow = ["AGPL-3.0-only"], crate = "lyxal_dav" },          # lot 14
     # { allow = ["AGPL-3.0-only"], crate = "lyxal_calendar" },     # lot 16
