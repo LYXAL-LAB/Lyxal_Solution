@@ -2,7 +2,7 @@
 # sans droits : pour écouter un port inférieur à 1024 (25, 143, 993…), donner la capacité
 # CAP_NET_BIND_SERVICE au conteneur (`--cap-add NET_BIND_SERVICE`, décision G14) plutôt que de
 # le lancer en root.
-FROM rust:1.97-bookworm AS builder
+FROM rust:1.98-bookworm AS builder
 WORKDIR /workspace
 COPY . .
 RUN cargo build --release -p lyxal-groupware
