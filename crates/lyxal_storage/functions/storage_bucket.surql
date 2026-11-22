@@ -18,6 +18,7 @@ DEFINE FUNCTION OVERWRITE fn::storage_bucket_create($params: object) {
             readonly: { pipeline: [{ rule: "boolean" }], default: false },
             backend: { pipeline: [{ rule: "snake_case_name", options: { min_length: 1, max_length: 64 } }], default: "default" },
             encrypted: { pipeline: [{ rule: "boolean" }], default: false },
+            emit_events: { pipeline: [{ rule: "boolean" }], default: true },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -30,11 +31,11 @@ DEFINE FUNCTION OVERWRITE fn::storage_bucket_create($params: object) {
     LET $inserted = (INSERT IGNORE INTO storage_bucket {
         tenant: $p.tenant, name: $p.name, description: $p.description, max_object_size: $p.max_object_size,
         allowed_types: array::distinct($p.allowed_types), readonly: $p.readonly, backend: $p.backend,
-        encrypted: $p.encrypted
+        encrypted: $p.encrypted, emit_events: $p.emit_events
     });
     IF array::len($inserted) = 0 { RETURN fn::error_result("STORAGE_BUCKET_EXISTS", $p.language, { name: $p.name }); };
     RETURN fn::result_ok($inserted[0]);
-} COMMENT "Crée un bucket ({ name, tenant, description, max_object_size, allowed_types, readonly, backend, encrypted }) ; nom unique dans sa portée (STORAGE_BUCKET_EXISTS) ; allowed_types vide : tous les types ; backend : nom du support (default) et encrypted : bucket chiffré (faux par défaut), fixés à la création. Droit : gestion";
+} COMMENT "Crée un bucket ({ name, tenant, description, max_object_size, allowed_types, readonly, backend, encrypted, emit_events }) ; nom unique dans sa portée (STORAGE_BUCKET_EXISTS) ; allowed_types vide : tous les types ; backend : nom du support (default), encrypted : bucket chiffré (faux par défaut) et emit_events : publication des événements storage.object.* de ses fichiers (vrai par défaut), fixés à la création. Droit : gestion";
 
 -- ----------------------------------------------------------------------------
 -- fn::storage_bucket_update
@@ -67,7 +68,7 @@ DEFINE FUNCTION OVERWRITE fn::storage_bucket_update($params: object) {
         readonly = $p.readonly ?? readonly);
     IF $updated == NONE { RETURN fn::error_result("STORAGE_WRITE_FORBIDDEN", $p.language, { table: "storage_bucket" }); };
     RETURN fn::result_ok($updated);
-} COMMENT "Modifie un bucket ({ bucket, description, max_object_size, allowed_types, readonly, clear }) : un champ absent est conservé, clear (description, max_object_size) efface ; le nom, le support et le chiffrement ne changent pas. Droit : gestion";
+} COMMENT "Modifie un bucket ({ bucket, description, max_object_size, allowed_types, readonly, clear }) : un champ absent est conservé, clear (description, max_object_size) efface ; le nom, le support, le chiffrement et la publication des événements ne changent pas. Droit : gestion";
 
 -- ----------------------------------------------------------------------------
 -- fn::storage_bucket_get

@@ -9,9 +9,9 @@
 //! `lyxal_crypto::EnvironmentKeyProvider`. Sans clé, le serveur démarre, aucune valeur n'est
 //! écrite ni lue (`SECRETS_CRYPTO_UNAVAILABLE`) et la sonde le signale (R5).
 
-use crate::config::{AppConfig, SecretsConfig};
+use crate::config::AppConfig;
 use crate::error::ServerError;
-use lyxal_crypto::{EnvironmentKeyProvider, KeyId, ResolvedKey};
+use lyxal_host::services::SecretsConfig;
 use lyxal_runtime::{LyxalModule, LyxalRuntime};
 use lyxal_secrets::{
     FileKeys, MasterKeys, RotatorRegistry, SecretsClient, SecretsHealthCheck, SecretsMaintenance,
@@ -23,10 +23,8 @@ use surrealdb::Surreal;
 
 pub const MODULE_ID: &str = lyxal_secrets::MODULE_ID;
 
-/// Variable d'environnement de la clé maîtresse du coffre-fort.
-const MASTER_KEY_VAR: &str = "LYXAL__SECRETS__MASTER_KEY";
-/// Variable d'environnement de l'ancienne clé maîtresse, pendant une rotation.
-const PREVIOUS_MASTER_KEY_VAR: &str = "LYXAL__SECRETS__PREVIOUS_MASTER_KEY";
+/// Préfixe des variables d'environnement de l'hôte.
+const ENV_PREFIX: &str = "LYXAL";
 /// Éléments traités par paquet.
 const MAINTENANCE_BATCH: u32 = 200;
 
@@ -87,56 +85,10 @@ impl SecretsHost {
     }
 }
 
-fn configuration_error(field: &str, error: impl std::fmt::Display) -> ServerError {
-    ServerError::Configuration {
-        message: format!("{field} : {error}"),
-    }
-}
-
-/// Une clé lue par `EnvironmentKeyProvider` ; une clé sans identifiant ou invalide arrête le
-/// démarrage.
-fn load_key(
-    var: &str,
-    field: &str,
-    id_field: &str,
-    id: Option<&str>,
-) -> Result<ResolvedKey, ServerError> {
-    let id = id
-        .ok_or_else(|| configuration_error(id_field, "obligatoire avec la clé"))
-        .and_then(|id| KeyId::parse(id).map_err(|e| configuration_error(id_field, e)))?;
-    EnvironmentKeyProvider::load(var, id).map_err(|e| configuration_error(field, e))
-}
-
-/// Trousseau maître du coffre-fort : clé active et, pendant une rotation, l'ancienne en lecture
-/// seule. `None` sans clé.
+/// Trousseau maître du coffre-fort (`LYXAL__SECRETS__MASTER_KEY` et, pendant une rotation,
+/// `LYXAL__SECRETS__PREVIOUS_MASTER_KEY`) ; `None` sans clé.
 pub fn master_keys(config: &SecretsConfig) -> Result<Option<MasterKeys>, ServerError> {
-    if config.master_key.is_none() {
-        if config.previous_master_key.is_some() {
-            return Err(configuration_error(
-                "secrets.previous_master_key",
-                "fournie sans clé maîtresse active (secrets.master_key)",
-            ));
-        }
-        return Ok(None);
-    }
-    let active = load_key(
-        MASTER_KEY_VAR,
-        "secrets.master_key",
-        "secrets.master_key_id",
-        config.master_key_id.as_deref(),
-    )?;
-    let previous = match &config.previous_master_key {
-        None => None,
-        Some(_) => Some(load_key(
-            PREVIOUS_MASTER_KEY_VAR,
-            "secrets.previous_master_key",
-            "secrets.previous_master_key_id",
-            config.previous_master_key_id.as_deref(),
-        )?),
-    };
-    MasterKeys::from_keys(active, previous)
-        .map(Some)
-        .map_err(|e| configuration_error("secrets.master_key", e))
+    Ok(lyxal_host::services::master_keys(config, ENV_PREFIX)?)
 }
 
 /// Sonde de santé ; rend ce qu'il faut aux modules pour lire leurs secrets et à la maintenance.

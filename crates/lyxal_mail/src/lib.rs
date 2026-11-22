@@ -42,5 +42,5 @@ pub use error::{MailError, MailResult};
 pub use ingest::{Delivery, MailIngest, MAIL_BUCKET};
 pub use maintenance::{MailMaintenance, MaintenanceReport};
 pub use mime::DeliveryFlags;
-pub use module::{MailHealthCheck, MailModule};
+pub use module::{MailHealthCheck, MailModule, RequiredHost, REQUIRED_HOST_ABSENCE_LIMIT};
 pub use store::MailStore;

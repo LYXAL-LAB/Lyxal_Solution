@@ -1,9 +1,9 @@
 //! Appels typés du store : réglages, buckets, listes, volume.
 
 use lyxal_storage::models::{
-    BucketCreateParams, BucketListParams, BucketRefParams, BucketUpdateParams, ObjectGetParams,
-    ObjectListParams, ObjectState, ObjectUsageParams, ReclaimDoneParams, SettingsGetParams,
-    SettingsSetParams,
+    BucketCreateParams, BucketListParams, BucketRefParams, BucketUpdateParams,
+    EncryptedBucketExistsParams, ObjectGetParams, ObjectListParams, ObjectState, ObjectUsageParams,
+    ReclaimDoneParams, SettingsGetParams, SettingsSetParams,
 };
 use lyxal_surreal::ToSql;
 
@@ -149,4 +149,45 @@ async fn settings_buckets_and_usage_go_through_typed_calls() {
         .await
         .expect("ligne retirée");
     assert!(done.done);
+}
+
+/// `fn::storage_encrypted_bucket_exists` (session système) et option `emit_events`, fixée à la
+/// création et rendue par la lecture.
+#[tokio::test]
+async fn encrypted_bucket_presence_and_event_option_go_through_typed_calls() {
+    let bench = bench(Kind::Memory).await;
+    let store = &bench.store;
+    let exists = || async {
+        store
+            .encrypted_bucket_exists(EncryptedBucketExistsParams::default())
+            .await
+            .expect("présence")
+            .exists
+    };
+    assert!(!exists().await);
+
+    let plain = store
+        .bucket_create(BucketCreateParams::named(None, "plans"))
+        .await
+        .expect("bucket");
+    assert!(plain.emit_events && !plain.encrypted);
+    assert!(!exists().await);
+
+    let quiet = store
+        .bucket_create(BucketCreateParams {
+            encrypted: true,
+            emit_events: false,
+            ..BucketCreateParams::named(None, "silencieux")
+        })
+        .await
+        .expect("bucket chiffré sans événements");
+    assert!(!quiet.emit_events);
+    let details = store
+        .bucket_get(BucketRefParams {
+            bucket: quiet.id.to_sql(),
+        })
+        .await
+        .expect("bucket");
+    assert!(details.encrypted && !details.emit_events);
+    assert!(exists().await);
 }

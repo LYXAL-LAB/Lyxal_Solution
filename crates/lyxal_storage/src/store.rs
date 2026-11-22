@@ -10,14 +10,14 @@ use surrealdb::Surreal;
 
 use crate::models::{
     BatchParams, BegunObject, Bucket, BucketCreateParams, BucketDeleted, BucketDetails, BucketList,
-    BucketListParams, BucketRefParams, BucketUpdateParams, ClaimedUpload, Expired,
-    ObjectBeginParams, ObjectCommitParams, ObjectGetParams, ObjectKey, ObjectList,
-    ObjectListParams, ObjectRefParams, ObjectUsageParams, PageParams, PurgeList, Purged,
-    QuarantineParams, ReclaimDone, ReclaimDoneParams, ReclaimList, RekeyList, RekeyListParams,
-    RekeyParams, Rekeyed, ScopeUsage, SettingsGetParams, SettingsSetParams, SettingsView,
-    StoredObject, StoredSettings, UploadClaimParams, UploadPartAddParams, UploadPartList,
-    UploadReadyList, UploadRefParams, UploadReleaseParams, UploadReleased, UploadStatus,
-    UsageReport, UsageVerifyParams,
+    BucketListParams, BucketRefParams, BucketUpdateParams, ClaimedUpload, EncryptedBucketExists,
+    EncryptedBucketExistsParams, Expired, ObjectBeginParams, ObjectCommitParams, ObjectGetParams,
+    ObjectKey, ObjectList, ObjectListParams, ObjectRefParams, ObjectUsageParams, PageParams,
+    PurgeList, Purged, QuarantineParams, ReclaimDone, ReclaimDoneParams, ReclaimList, RekeyList,
+    RekeyListParams, RekeyParams, Rekeyed, ScopeUsage, SettingsGetParams, SettingsSetParams,
+    SettingsView, StoredObject, StoredSettings, UploadClaimParams, UploadPartAddParams,
+    UploadPartList, UploadReadyList, UploadRefParams, UploadReleaseParams, UploadReleased,
+    UploadStatus, UsageReport, UsageVerifyParams,
 };
 
 /// Store de `lyxal_storage` sur un client SurrealDB (`Surreal<Any>`).
@@ -74,6 +74,15 @@ impl StorageStore {
     /// `fn::storage_bucket_delete` : bucket vide supprimé.
     pub async fn bucket_delete(&self, params: BucketRefParams) -> Call<BucketDeleted> {
         self.call_fn("storage_bucket_delete", params).await
+    }
+
+    /// `fn::storage_encrypted_bucket_exists` : vrai si un bucket chiffré existe (droit : worker).
+    pub async fn encrypted_bucket_exists(
+        &self,
+        params: EncryptedBucketExistsParams,
+    ) -> Call<EncryptedBucketExists> {
+        self.call_fn("storage_encrypted_bucket_exists", params)
+            .await
     }
 
     /// `fn::storage_object_begin` : écriture ouverte (fiche en attente).

@@ -1,3 +1,7 @@
+# Fichiers en développement (section commune aux hôtes : même dossier dans lyxal-groupware) :
+# [storage.disk]
+# root = "../../target/lyxal-fichiers"
+
 [observability]
 log_filter = "debug,hyper=info,tower_http=debug"
 json_logs = false

@@ -25,6 +25,8 @@ pub struct Bucket {
     pub backend: String,
     /// Bucket chiffré : chaque fichier est chiffré au repos par une clé propre.
     pub encrypted: bool,
+    /// Publication des événements `storage.object.*` de ses fichiers.
+    pub emit_events: bool,
     /// Lecture seule.
     pub readonly: bool,
     /// Création.
@@ -53,10 +55,14 @@ pub struct BucketCreateParams {
     /// Bucket chiffré, fixé à la création : chaque fichier est chiffré au repos, sa clé scellée
     /// par la clé « fichiers » de l'organisation (`lyxal_secrets`).
     pub encrypted: bool,
+    /// Publication des événements `storage.object.created`, `storage.object.deleted` et
+    /// `storage.object.quarantined` de ses fichiers, fixée à la création : faux pour un bucket
+    /// dont le module propriétaire publie ses propres événements (le courrier).
+    pub emit_events: bool,
 }
 
 impl BucketCreateParams {
-    /// Bucket de ce nom sur le support `default`, sans restriction, en clair.
+    /// Bucket de ce nom sur le support `default`, sans restriction, en clair, avec événements.
     pub fn named(tenant: Option<String>, name: impl Into<String>) -> Self {
         Self {
             tenant,
@@ -67,6 +73,7 @@ impl BucketCreateParams {
             readonly: false,
             backend: "default".to_string(),
             encrypted: false,
+            emit_events: true,
         }
     }
 }
@@ -118,6 +125,8 @@ pub struct BucketDetails {
     pub backend: String,
     /// Bucket chiffré.
     pub encrypted: bool,
+    /// Publication des événements `storage.object.*` de ses fichiers.
+    pub emit_events: bool,
     /// Lecture seule.
     pub readonly: bool,
     /// Taille maximale d'un fichier, en octets.

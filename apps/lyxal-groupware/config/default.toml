@@ -1,7 +1,8 @@
 # Configuration de base de lyxal-groupware, complétée par config/<LYXAL_ENV>.toml puis par les
 # variables LYXAL_GROUPWARE__<SECTION>__<CLÉ>. Identifiants de la base : variables
 # LYXAL_GROUPWARE__DATABASE__USERNAME et LYXAL_GROUPWARE__DATABASE__PASSWORD seulement.
-# Aucune écoute de courrier par défaut.
+# Aucune écoute de courrier par défaut. Sections [secrets] et [storage] : communes aux hôtes, aux
+# mêmes valeurs que dans lyxal-server (voir production.toml).
 
 [application]
 name = "Lyxal Groupware"

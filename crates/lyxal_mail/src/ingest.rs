@@ -227,6 +227,9 @@ impl MailIngest {
             .store()
             .bucket_create(BucketCreateParams {
                 encrypted: true,
+                // Le courrier publie ses propres événements (`mail.message.*`), sans donnée
+                // personnelle : aucun `storage.object.*` pour ses fichiers (décision S14)
+                emit_events: false,
                 backend: self.backend.clone(),
                 description: Some("Messages du courrier (lyxal_mail)".to_string()),
                 ..BucketCreateParams::named(tenant.clone(), reserved.bucket_name.clone())

@@ -20,6 +20,8 @@ use lyxal_scheduler::models::{
     Overlap, Run, RunRefParams, RunState, ScheduleListParams, ScheduleTriggerParams,
 };
 use lyxal_scheduler::SchedulerStore;
+use lyxal_storage::models::BucketCreateParams;
+use lyxal_storage::StorageStore;
 use lyxal_surreal::ToSql;
 use serde_json::Value;
 use std::fs;
@@ -253,6 +255,13 @@ async fn the_host_delivers_reads_and_maintains_encrypted_mail() {
     assert_eq!(stored.len(), 1);
     assert!(stored[0].starts_with(b"LXS1"));
     assert!(!stored[0].windows(8).any(|w| w == b"Bonjour."));
+    // Bucket du courrier sans événements `storage.object.*` (décision S14)
+    let mut response = client
+        .query("RETURN count(SELECT * FROM event_outbox WHERE string::starts_with(event_type, 'storage.object.'));")
+        .await
+        .expect("requête");
+    let storage_events: Option<i64> = response.take(0).expect("total");
+    assert_eq!(storage_events, Some(0));
 
     // Effacement, puis maintenance par le planificateur : contenu libéré retiré avec son fichier
     system
@@ -323,6 +332,61 @@ async fn without_master_key_the_probe_is_degraded_and_deliveries_are_retryable()
     assert_eq!(refused.code(), "MAIL_CONTENT_UNAVAILABLE");
     assert!(refused.is_retryable());
     assert!(walk(root.path()).is_empty());
+    started.runtime.stop_all().await.expect("arrêt");
+}
+
+/// Sans clé maîtresse, l'hôte refuse de démarrer dès qu'un bucket chiffré existe dans la base
+/// (`GROUPWARE_MASTER_KEY_MISSING`), avant tout démarrage ; avec la clé, il démarre.
+#[tokio::test]
+async fn without_master_key_an_existing_encrypted_bucket_stops_the_start() {
+    let root = tempfile::tempdir().expect("support");
+    let keyless = config("mail_service_refusal", root.path(), false);
+    let client = crate::support::database("mail_service_refusal").await;
+
+    // Base sans bucket chiffré : démarrage « dégradé » permis
+    let started = start(&keyless, &client).await;
+    started.runtime.stop_all().await.expect("arrêt");
+    drop(started);
+
+    run(
+        &client,
+        "CREATE auth_organization:alpha CONTENT { slug: 'alpha', name: 'Alpha BTP' };",
+    )
+    .await;
+    StorageStore::new(client.clone())
+        .bucket_create(BucketCreateParams {
+            encrypted: true,
+            emit_events: false,
+            ..BucketCreateParams::named(
+                Some("auth_organization:alpha".to_string()),
+                lyxal_mail::MAIL_BUCKET,
+            )
+        })
+        .await
+        .expect("bucket chiffré");
+
+    let refused = runtime::start(
+        &keyless,
+        &client,
+        bind_listeners(&keyless).expect("liaison"),
+        None,
+    )
+    .await
+    .err()
+    .expect("démarrage refusé");
+    assert_eq!(refused.code(), "GROUPWARE_MASTER_KEY_MISSING", "{refused}");
+    // Rien n'a été démarré : aucun nœud de cet hôte inscrit dans la base
+    let mut response = client
+        .query("RETURN count(SELECT * FROM runtime_node WHERE host = 'lyxal_groupware');")
+        .await
+        .expect("requête");
+    let nodes: Option<i64> = response.take(0).expect("total");
+    assert_eq!(nodes, Some(0));
+
+    let with_key = config("mail_service_refusal", root.path(), true);
+    let started = start(&with_key, &client).await;
+    let (status, message) = mail_health(&started).await;
+    assert_eq!(status, HealthStatus::Healthy, "{message:?}");
     started.runtime.stop_all().await.expect("arrêt");
 }
 

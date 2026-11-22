@@ -193,7 +193,7 @@ fichier par message et d'une ouverture de clé par lecture (`ROADMAP.md`).
 | `MailIngest`, `Delivery`, `DeliveryFlags` | Dépôt d'un message brut (seul chemin d'écriture d'un message, repris par la remise SMTP du lot 5 et `APPEND` au lot 8) : mémoire réservée sur le budget des connexions (`MemoryBudget`, facultatif), lecture MIME par `lyxal_mail_proto`, `fn::mail_content_begin` sous la session de l'appelant, écriture chiffrée par `lyxal_storage` sous la session système de l'hôte dans le bucket chiffré `lyxal-mail` de l'organisation (créé à la première écriture, sur le support réglé par l'hôte), `fn::mail_content_attach` (session système), `fn::mail_message_create` (appelant) ; écritures rejouées trois fois au plus sur conflit de transaction |
 | `MailContent`, `OpenedContent` | Lecture d'un message, entière ou par plage d'octets du message brut (une partie MIME par ses positions) : `fn::mail_content_open` contrôle les droits de l'appelant, `lyxal_storage` ne déchiffre que les segments de la plage ; un segment altéré met fin au flux par une erreur, jamais par une fin normale |
 | `MailMaintenance`, `MaintenanceReport` | Un passage, interrompu entre deux appels à l'arrêt du serveur : `fn::mail_content_expire`, `fn::mail_tombstone_purge`, `fn::mail_account_purge_step` par paquets ; exécutée par `lyxal_scheduler` (tâche `mail.maintenance` de l'hôte, toutes les 10 minutes) |
-| `MailModule`, `MailHealthCheck` | `LyxalModule` du module (descripteur égal au manifeste) ; sonde : réglages lisibles (sinon « malade »), support de stockage et service de clés des fichiers présents (sinon « dégradé ») ; l'hôte la compose avec celle des écoutes (une sonde par module) |
+| `MailModule`, `MailHealthCheck`, `RequiredHost` | `LyxalModule` du module (descripteur égal au manifeste) ; sonde : réglages lisibles (sinon « malade »), support de stockage et service de clés des fichiers présents (sinon « dégradé »), et, avec `with_required_host`, un nœud vivant de l'hôte requis (`RequiredHost` : `lyxal_server`, lu dans `runtime_node` par `PresenceStore`) vu depuis moins de `REQUIRED_HOST_ABSENCE_LIMIT` (10 minutes ; sinon « dégradé », « aucun nœud lyxal_server vivant… ») ; l'hôte la compose avec celle des écoutes (une sonde par module) |
 | `MailError` | Code `MAIL_*` (dont `MAIL_MESSAGE_MALFORMED`, `MAIL_CONTENT_UNAVAILABLE` à réessayer) ou `STORAGE_*` propagé ; `is_retryable()`, `is_business()` ; aucune adresse, aucun sujet, aucun contenu |
 
 **Chiffrement obligatoire (décision M1).** Sans support de stockage ou sans clé maîtresse du
@@ -217,6 +217,15 @@ supprimer : la maintenance tranche. Les octets chiffrés d'un fichier supprimé 
 sont retirés par le nettoyage de `lyxal_storage` (tâche `storage.cleanup`, exécutée par
 `lyxal-server` sur la base partagée).
 
+**Deux hôtes sur la même base (exigence d'exploitation).** `lyxal-server` doit tourner à côté de
+`lyxal-groupware` : ses tâches `storage.cleanup` (octets des messages effacés) et
+`secrets.maintenance` (rotation des clés « fichiers », rescellement des clés des messages) ne
+sont exécutées que par lui. Sans nœud `lyxal_server` vivant depuis plus de 10 minutes, la sonde
+du courrier passe à « dégradé ». Le bucket `lyxal-mail` de chaque organisation est créé chiffré
+et sans événements `storage.object.*` (`emit_events` faux, décision S14) ; sans clé maîtresse,
+`lyxal-groupware` refuse de démarrer dès qu'un bucket chiffré existe
+(`GROUPWARE_MASTER_KEY_MISSING`).
+
 **Projection d'un message lu** (`mime`). Enveloppe typée (date de l'en-tête `Date`, sujet,
 adresses à plat avec leur groupe, `Message-ID`, `In-Reply-To`, `References`), structure MIME
 rangée telle quelle (types, paramètres, disposition, nom, positions `header` / `body` / `end`,
@@ -237,11 +246,14 @@ d'une partie déchiffrée, octets rangés chiffrés (`LXS1`), drapeaux, déplace
 sans service de clés ou sans clé maîtresse (rien n'est réservé) ; message illisible refusé avant
 toute réservation ; inscription refusée puis maintenance ; isolement entre membres et entre
 organisations au travers des services (lecture, liste, dépôt) ; maintenance réservée à la
-session système ; purge d'un compte supprimé avec ses contenus et fichiers. L'hôte
+session système ; purge d'un compte supprimé avec ses contenus et fichiers ; sonde « dégradé »
+sans nœud vivant de l'hôte requis au-delà de l'absence tolérée, saine dès qu'un nœud de cet hôte
+(et non d'un autre) bat, de nouveau « dégradé » après son arrêt. L'hôte
 (`cargo test -p lyxal-groupware`, essai `mail_service`) : démarrage avec clé maîtresse et support
 disque, sonde, dépôt et lecture par les services de l'hôte, maintenance exécutée par le
-planificateur, planification non recréée au redémarrage ; sans clé : sonde « dégradé », dépôt
-refusé à réessayer.
+planificateur, planification non recréée au redémarrage, aucun événement `storage.object.*` ;
+sans clé : sonde « dégradé », dépôt refusé à réessayer ; sans clé avec un bucket chiffré en
+base : démarrage refusé (`GROUPWARE_MASTER_KEY_MISSING`).
 
 ## État actuel : `lyxal_mail::net`
 

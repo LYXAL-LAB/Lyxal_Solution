@@ -23,9 +23,11 @@ include_target = false
 include_thread_ids = false
 log_client_ip = "network"
 
-# Coffre-fort et stockage : mêmes valeurs que lyxal-server (clé maîtresse
-# LYXAL_GROUPWARE__SECRETS__MASTER_KEY = celle de LYXAL__SECRETS__MASTER_KEY, par l'environnement
-# seulement ; mêmes supports nommés). Sans eux, aucun message n'est déposé ni lu.
+# Coffre-fort et stockage : sections communes aux hôtes (lyxal_host::services), mêmes valeurs que
+# lyxal-server (clé maîtresse LYXAL_GROUPWARE__SECRETS__MASTER_KEY = celle de
+# LYXAL__SECRETS__MASTER_KEY, par l'environnement seulement ; mêmes supports nommés). Sans eux,
+# aucun message n'est déposé ni lu ; sans clé maîtresse alors qu'un bucket chiffré existe, l'hôte
+# refuse de démarrer (GROUPWARE_MASTER_KEY_MISSING). lyxal-server doit tourner sur la même base.
 # [secrets]
 # master_key_id = "vault-2026"
 #

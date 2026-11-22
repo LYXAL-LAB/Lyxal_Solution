@@ -3,12 +3,9 @@ use lyxal_host::config::{
     load_layered, DatabaseConfig, ObservabilityConfig, RuntimeTimeouts, SecretPassword,
 };
 use lyxal_host::net::IpNetwork;
+use lyxal_host::services::{validate_storage, SecretsConfig, StorageConfig, SECRET_KEYS};
 use serde::Deserialize;
-use std::{
-    collections::BTreeMap,
-    net::IpAddr,
-    path::{Path, PathBuf},
-};
+use std::{net::IpAddr, path::Path};
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -26,93 +23,39 @@ pub struct AppConfig {
     #[serde(default)]
     pub auth: AuthConfig,
     #[serde(default)]
+    pub http: HttpConfig,
+    /// Supports des fichiers et antivirus, section commune aux hôtes (`lyxal_host::services`).
+    #[serde(default)]
     pub storage: StorageConfig,
+    /// Clé maîtresse du coffre-fort, distincte de la clé applicative partagée (section commune
+    /// aux hôtes, `lyxal_host::services`).
     #[serde(default)]
     pub secrets: SecretsConfig,
     #[serde(default)]
     pub scheduler: SchedulerConfig,
 }
 
-/// Stockage des fichiers (`lyxal_storage`) : support `default` sur un dossier du serveur. Sans
-/// dossier, aucun fichier n'est écrit ni lu (sonde « dégradé »).
+/// Délai des transferts HTTP (section `[http]`) : délai d'inactivité d'un envoi ou d'un
+/// téléchargement de fichier, et délai d'écriture de toute connexion HTTP (client qui ne lit
+/// plus sa réponse), en secondes (5 à 600, 60 par défaut ;
+/// `LYXAL__HTTP__TRANSFER_IDLE_TIMEOUT_SECONDS`).
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct StorageConfig {
-    #[serde(default)]
-    pub disk: Option<DiskStorageConfig>,
-    /// Supports S3 ou compatibles, par nom de support (`LYXAL__STORAGE__S3__<NOM>__*`).
-    #[serde(default)]
-    pub s3: BTreeMap<String, S3StorageConfig>,
-    /// Antivirus qui analyse tout fichier envoyé (facultatif).
-    #[serde(default)]
-    pub antivirus: Option<AntivirusConfig>,
-    /// Délai d'inactivité d'un envoi ou d'un téléchargement, en secondes (5 à 600).
-    #[serde(default = "default_storage_idle_timeout")]
-    pub idle_timeout_seconds: u64,
+pub struct HttpConfig {
+    #[serde(default = "default_transfer_idle_timeout")]
+    pub transfer_idle_timeout_seconds: u64,
 }
 
-impl Default for StorageConfig {
+impl Default for HttpConfig {
     fn default() -> Self {
         Self {
-            disk: None,
-            s3: BTreeMap::new(),
-            antivirus: None,
-            idle_timeout_seconds: default_storage_idle_timeout(),
+            transfer_idle_timeout_seconds: default_transfer_idle_timeout(),
         }
     }
 }
 
-fn default_storage_idle_timeout() -> u64 {
+fn default_transfer_idle_timeout() -> u64 {
     60
-}
-
-/// Antivirus ClamAV (service `clamd` séparé) : `LYXAL__STORAGE__ANTIVIRUS__ADDRESS`
-/// (`hôte:port`) ou `__SOCKET` (chemin d'une socket Unix), l'un des deux ; `__TIMEOUT_SECONDS`
-/// (attente maximale du service, 1 à 300, 30 par défaut). Configuré mais injoignable : les envois
-/// sont refusés.
-#[derive(Clone, Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct AntivirusConfig {
-    #[serde(default)]
-    pub address: Option<String>,
-    #[serde(default)]
-    pub socket: Option<PathBuf>,
-    #[serde(default = "default_antivirus_timeout")]
-    pub timeout_seconds: u64,
-}
-
-fn default_antivirus_timeout() -> u64 {
-    30
-}
-
-/// Support S3 ou compatible (Bunny Storage, par exemple) : `LYXAL__STORAGE__S3__<NOM>__ENDPOINT`,
-/// `__REGION`, `__BUCKET`, `__ACCESS_KEY_ID`, `__SECRET_ACCESS_KEY` (variable d'environnement
-/// seulement), `__PATH_STYLE` (vrai par défaut : adresses `/<bucket>/<clé>`), `__ALLOW_HTTP`
-/// (faux par défaut). `<NOM>` est le nom du support, celui du champ `backend` d'un bucket.
-#[derive(Clone, Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct S3StorageConfig {
-    pub endpoint: String,
-    pub region: String,
-    pub bucket: String,
-    pub access_key_id: String,
-    pub secret_access_key: SecretPassword,
-    #[serde(default = "default_true")]
-    pub path_style: bool,
-    #[serde(default)]
-    pub allow_http: bool,
-}
-
-fn default_true() -> bool {
-    true
-}
-
-/// Support disque : `LYXAL__STORAGE__DISK__ROOT`, dossier créé s'il n'existe pas ; tous les
-/// fichiers sont écrits dessous.
-#[derive(Clone, Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct DiskStorageConfig {
-    pub root: PathBuf,
 }
 
 /// Authentification (`lyxal_auth`) : adresse publique de l'interface, pour les liens des messages
@@ -139,26 +82,6 @@ pub struct CryptoConfig {
     pub application_key: Option<SecretPassword>,
     #[serde(default)]
     pub application_key_id: Option<String>,
-}
-
-/// Clé maîtresse du coffre-fort (`lyxal_secrets`), distincte de la clé applicative partagée :
-/// clé AES-256 de 32 octets en Base64 canonique (44 caractères), jamais dans les fichiers de
-/// configuration, uniquement par `LYXAL__SECRETS__MASTER_KEY` (lue par
-/// `lyxal_crypto::EnvironmentKeyProvider`), avec son identifiant `master_key_id`. Pendant une
-/// rotation, l'ancienne clé est fournie à côté, en lecture seule
-/// (`LYXAL__SECRETS__PREVIOUS_MASTER_KEY`, `previous_master_key_id`). Sans clé, le coffre-fort
-/// n'écrit ni ne lit aucune valeur (sonde « dégradé »).
-#[derive(Clone, Debug, Default, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct SecretsConfig {
-    #[serde(default)]
-    pub master_key: Option<SecretPassword>,
-    #[serde(default)]
-    pub master_key_id: Option<String>,
-    #[serde(default)]
-    pub previous_master_key: Option<SecretPassword>,
-    #[serde(default)]
-    pub previous_master_key_id: Option<String>,
 }
 
 /// Planificateur (`lyxal_scheduler`) : places de chaque exécuteur de file sur ce nœud (W3),
@@ -250,11 +173,7 @@ impl AppConfig {
         let value: Self = load_layered(
             directory.as_ref(),
             "LYXAL",
-            &[
-                "storage.s3.*.secret_access_key",
-                "secrets.master_key",
-                "secrets.previous_master_key",
-            ],
+            SECRET_KEYS,
             // Seules ces clés sont des listes ; les autres restent des chaînes
             &[
                 "server.trusted_proxies",
@@ -284,37 +203,11 @@ impl AppConfig {
                 message: "namespace et database sont obligatoires".into(),
             });
         }
-        // Nom d'un support : celui que porte le champ `backend` d'un bucket (snake_case)
-        for name in self.storage.s3.keys() {
-            let valid = name.len() <= 64
-                && name.starts_with(|c: char| c.is_ascii_lowercase())
-                && name
-                    .chars()
-                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_');
-            if !valid {
-                return Err(ServerError::Configuration {
-                    message: format!(
-                        "storage.s3.{name} : nom de support invalide (minuscules, chiffres et _, 64 caractères au plus)"
-                    ),
-                });
-            }
-        }
-        if let Some(antivirus) = &self.storage.antivirus {
-            if antivirus.address.is_some() == antivirus.socket.is_some() {
-                return Err(ServerError::Configuration {
-                    message: "storage.antivirus : address ou socket, l'un des deux".into(),
-                });
-            }
-            if !(1..=300).contains(&antivirus.timeout_seconds) {
-                return Err(ServerError::Configuration {
-                    message: "storage.antivirus.timeout_seconds doit être compris entre 1 et 300"
-                        .into(),
-                });
-            }
-        }
-        if !(5..=600).contains(&self.storage.idle_timeout_seconds) {
+        validate_storage(&self.storage)?;
+        if !(5..=600).contains(&self.http.transfer_idle_timeout_seconds) {
             return Err(ServerError::Configuration {
-                message: "storage.idle_timeout_seconds doit être compris entre 5 et 600".into(),
+                message: "http.transfer_idle_timeout_seconds doit être compris entre 5 et 600"
+                    .into(),
             });
         }
         if !(1..=lyxal_scheduler::MAX_WORKERS).contains(&self.scheduler.workers) {

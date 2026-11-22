@@ -194,7 +194,7 @@ fn s3_storage_backends_are_read_from_the_environment() {
                 "LYXAL__STORAGE__S3__BUNNY__SECRET_ACCESS_KEY",
                 "mot-de-passe-de-zone",
             ),
-            ("LYXAL__STORAGE__IDLE_TIMEOUT_SECONDS", "30"),
+            ("LYXAL__HTTP__TRANSFER_IDLE_TIMEOUT_SECONDS", "30"),
         ]),
     )
     .expect("configuration valide");
@@ -202,12 +202,13 @@ fn s3_storage_backends_are_read_from_the_environment() {
     assert_eq!(bunny.endpoint, "https://de-s3.storage.bunnycdn.com");
     assert_eq!(bunny.bucket, "zone-de-test");
     assert!(bunny.path_style && !bunny.allow_http);
-    assert_eq!(config.storage.idle_timeout_seconds, 30);
+    assert_eq!(config.http.transfer_idle_timeout_seconds, 30);
     // La clé secrète n'apparaît jamais dans l'affichage de débogage
     let debug = format!("{config:?}");
     assert!(!debug.contains("mot-de-passe-de-zone"), "{debug}");
 
-    // Champ manquant, champ inconnu, délai hors bornes : refus
+    // Champ manquant, champ inconnu, délai hors bornes, ancien emplacement du délai (section
+    // `[storage]`, commune aux hôtes) : refus
     for (pairs, expected) in [
         (
             vec![("LYXAL__STORAGE__S3__BUNNY__ENDPOINT", "https://x.test")],
@@ -225,7 +226,11 @@ fn s3_storage_backends_are_read_from_the_environment() {
             "inconnu",
         ),
         (
-            vec![("LYXAL__STORAGE__IDLE_TIMEOUT_SECONDS", "2")],
+            vec![("LYXAL__HTTP__TRANSFER_IDLE_TIMEOUT_SECONDS", "2")],
+            "http.transfer_idle_timeout_seconds",
+        ),
+        (
+            vec![("LYXAL__STORAGE__IDLE_TIMEOUT_SECONDS", "30")],
             "idle_timeout_seconds",
         ),
     ] {

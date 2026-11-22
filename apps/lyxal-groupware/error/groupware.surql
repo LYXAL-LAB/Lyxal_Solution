@@ -139,6 +139,33 @@ IF !record::exists(error_definition:GROUPWARE_TLS_CERTIFICATE_INVALID) THEN (
     }
 ) END;
 
+IF !record::exists(error_definition:GROUPWARE_MASTER_KEY_MISSING) THEN (
+    CREATE error_definition:GROUPWARE_MASTER_KEY_MISSING CONTENT {
+        code: "GROUPWARE_MASTER_KEY_MISSING",
+        module: "groupware",
+        domain: "secrets",
+        category: "internal",
+        severity: "error",
+        message: "An encrypted bucket exists: the vault master key is required",
+        default_language: "fr",
+        http_status: 500,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Clé maîtresse du coffre-fort absente",
+                description: "Un bucket chiffré existe dans la base (le courrier en crée un par organisation), mais aucune clé maîtresse du coffre-fort n'est configurée : ses fichiers ne pourraient être ni écrits ni lus. L'hôte s'arrête après l'installation des modules, sans rien démarrer.",
+                resolution: "Fournir la clé maîtresse de lyxal-server : variable LYXAL_GROUPWARE__SECRETS__MASTER_KEY (même valeur que LYXAL__SECRETS__MASTER_KEY) et secrets.master_key_id."
+            },
+            en: {
+                label: "Vault master key missing",
+                description: "An encrypted bucket exists: the vault master key is required.",
+                resolution: "Provide the lyxal-server master key: LYXAL_GROUPWARE__SECRETS__MASTER_KEY (same value as LYXAL__SECRETS__MASTER_KEY) and secrets.master_key_id."
+            }
+        }
+    }
+) END;
+
 IF !record::exists(error_definition:GROUPWARE_SHUTDOWN_SIGNAL_FAILED) THEN (
     CREATE error_definition:GROUPWARE_SHUTDOWN_SIGNAL_FAILED CONTENT {
         code: "GROUPWARE_SHUTDOWN_SIGNAL_FAILED",

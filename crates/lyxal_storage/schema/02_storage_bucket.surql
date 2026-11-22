@@ -7,6 +7,8 @@
 -- portée. Il n'est supprimé que vide, sauf avec son organisation (garde storage_object_bucket_guard).
 -- Ses octets sont sur un support nommé, sous le préfixe <portée>/<clé du bucket>. Un bucket
 -- chiffré (fixé à la création) chiffre chaque fichier au repos par une clé propre au fichier.
+-- Un bucket sans événements (emit_events faux, fixé à la création) ne publie pas les événements
+-- storage.object.* de ses fichiers : son module propriétaire publie les siens.
 
 DEFINE TABLE OVERWRITE storage_bucket
     TYPE NORMAL
@@ -62,6 +64,12 @@ DEFINE FIELD OVERWRITE encrypted ON TABLE storage_bucket
     READONLY
     COMMENT "Bucket chiffré, fixé à la création : chaque fichier est chiffré au repos (lyxal_crypto, flux v1) par une clé propre, scellée par la clé « fichiers » de l'organisation (lyxal_secrets) ; aucune écriture sans service de clés, aucun envoi reprenable";
 
+DEFINE FIELD OVERWRITE emit_events ON TABLE storage_bucket
+    TYPE bool
+    DEFAULT true
+    READONLY
+    COMMENT "Publication des événements storage.object.created, storage.object.deleted et storage.object.quarantined de ses fichiers, fixée à la création (vrai par défaut ; faux pour un bucket dont le module propriétaire publie ses propres événements, comme le courrier)";
+
 DEFINE FIELD OVERWRITE readonly ON TABLE storage_bucket
     TYPE bool
     DEFAULT false
@@ -79,3 +87,4 @@ DEFINE FIELD OVERWRITE updated_at ON TABLE storage_bucket
     COMMENT "Dernière modification";
 
 DEFINE INDEX OVERWRITE storage_bucket_name ON TABLE storage_bucket FIELDS scope_key, name UNIQUE;
+DEFINE INDEX OVERWRITE storage_bucket_encrypted ON TABLE storage_bucket FIELDS encrypted;

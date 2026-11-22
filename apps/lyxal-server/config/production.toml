@@ -8,3 +8,12 @@ json_logs = true
 [cors]
 enabled = false
 allowed_origins = []
+
+# Coffre-fort et stockage : sections communes aux hôtes (lyxal_host::services), mêmes valeurs dans
+# lyxal-groupware quand il partage la base (clé maîtresse LYXAL__SECRETS__MASTER_KEY par
+# l'environnement seulement, égale à LYXAL_GROUPWARE__SECRETS__MASTER_KEY ; mêmes supports nommés).
+# [secrets]
+# master_key_id = "vault-2026"
+#
+# [storage.disk]
+# root = "/srv/lyxal/fichiers"         # dossier partagé avec lyxal-groupware

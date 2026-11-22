@@ -26,6 +26,7 @@ Version `0.1.0` (régime pré-production, `.agents/AGENTS.md` §0). Licence `MIT
 | `http` | `bind` (port HTTP), `serve` (boucle d'acceptation, arrêt gracieux avec délai de drainage), `serve_prepared` (même boucle, chaque connexion passant d'abord par une préparation de l'hôte : en-tête PROXY, poignée de main TLS ; `PrepareConnection`, `HttpStream`), `serve_connection` (une connexion, délai d'écriture : un client qui ne lit plus est déconnecté), `health_routes` et `HostHealth` (`/live`, `/ready`, `/health` : composants de l'hôte et sondes du runtime, sans message interne ; champs `host` et `modules` de `/health`) |
 | `metrics` | `Metrics`, `MetricsSnapshot` : requêtes HTTP (total, en cours, en échec), durée de vie |
 | `modules` | `EmbeddedModule`, `ManifestModule` (module sans code Rust), `FOUNDATION`, `manifest`, `install_foundation` (socle sous bail au nom du nœud, puis définitions d'erreurs de l'hôte hors empreinte du socle), `install_host_seeds` |
+| `services` | Sections `[secrets]` et `[storage]` communes aux hôtes, reçues avec les mêmes valeurs par `lyxal-server` et `lyxal-groupware` sur une même base : `SecretsConfig` (clé maîtresse du coffre-fort et, pendant une rotation, l'ancienne), `StorageConfig` (`disk`, `s3.<nom>`, `antivirus`), `DiskStorageConfig`, `S3StorageConfig`, `AntivirusConfig` ; `SECRET_KEYS` (clés lues dans l'environnement seulement) ; `validate_storage` (noms des supports, support `default` déclaré deux fois, antivirus) ; `master_keys(config, préfixe)` (trousseau maître lu par `lyxal_crypto::EnvironmentKeyProvider` dans `<préfixe>__SECRETS__MASTER_KEY` et `__PREVIOUS_MASTER_KEY`) ; `storage_backends` (supports de `lyxal_storage`) ; `storage_scanner` (antivirus ClamAV) |
 | `net` | `IpNetwork`, `client_ip` (adresse réelle derrière des proxys de confiance, `X-Forwarded-For` lu de droite à gauche), `normalize_ip`, `log_network` (réseau d'un client pour le journal : IPv4 `/24`, IPv6 `/48`, jamais l'adresse complète) |
 | `shutdown` | `signal` : SIGINT, ou SIGTERM sous Unix |
 | `telemetry` | `init` : journal `tracing`, texte ou JSON |
@@ -48,6 +49,10 @@ Les routes de santé rendent une erreur du runtime par le type d'erreur de l'hô
 | `host` (par défaut) | Toute la bibliothèque des hôtes |
 | `build` | `build::embed_modules` seulement ; n'amène que `toml` (dépendance de compilation d'un hôte) |
 
+`host` amène `lyxal_crypto`, `lyxal_secrets` et `lyxal_storage` (pour `services`), tous sous
+licence `MIT OR Apache-2.0` et sans dépendance vers `lyxal_host` : aucun cycle, aucun paquet AGPL
+(`scripts/ci/check_agpl_isolation.py`).
+
 La dépendance du workspace est déclarée sans fonctionnalité par défaut : un hôte demande `host`
 dans `[dependencies]` et `build` dans `[build-dependencies]`.
 
@@ -59,7 +64,9 @@ cargo test -p lyxal_host
 
 Tests unitaires : réseaux, adresse du client et réseau masqué pour le journal (`net`), chargement en couches (environnement
 prioritaire, listes, clé secrète refusée dans un fichier, y compris dans une entrée de table,
-fichier par défaut obligatoire), secret masqué. `tests/serve.rs` : adresse du client transmise
+fichier par défaut obligatoire), secret masqué ; sections communes (`services` : noms de
+supports, antivirus, support `default` déclaré deux fois, clé secrète S3 refusée dans un fichier,
+supports construits, trousseau maître sans identifiant ou sans clé active refusé). `tests/serve.rs` : adresse du client transmise
 aux routes, client qui cesse de lire déconnecté après le délai d'écriture, arrêt qui laisse
 finir les requêtes en cours. Le reste (base, santé, socle, modules embarqués) est exercé par la
 suites de `lyxal-server` et de `lyxal-groupware` (`cargo test -p lyxal-server -p

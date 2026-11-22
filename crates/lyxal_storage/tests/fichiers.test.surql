@@ -328,3 +328,21 @@ RETURN fn::storage_object_expire({}).error.code == "STORAGE_PERMISSION_DENIED"
     LET $all = fn::storage_object_list({ bucket: $bucket, prefix: "tri", state: "deleted" }).data;
     RETURN $all.items.id == $expected AND $all.total == 3 AND $pages == $expected AND $again == $expected;
 };
+
+-- test: fichiers écrits puis supprimés dans un bucket sans événements et dans un bucket avec événements
+-- en tant que: autre
+{
+    LET $hash = "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262";
+    LET $muet = fn::storage_bucket_create({ tenant: "auth_organization:beta", name: "muet", emit_events: false }).data.id;
+    LET $bavard = fn::storage_bucket_create({ tenant: "auth_organization:beta", name: "bavard" }).data.id;
+    LET $m = fn::storage_object_begin({ bucket: <string> $muet, key: "muet.txt", filename: "muet.txt", declared_size: 5 }).data.id;
+    LET $v = fn::storage_object_begin({ bucket: <string> $bavard, key: "bavard.txt", filename: "bavard.txt", declared_size: 5 }).data.id;
+    RETURN fn::storage_object_commit({ object: <string> $m, size: 5, content_type: "text/plain", blake3: $hash }).data.state == "available"
+        AND fn::storage_object_commit({ object: <string> $v, size: 5, content_type: "text/plain", blake3: $hash }).data.state == "available"
+        AND fn::storage_object_delete({ object: <string> $m }).data.state == "deleted"
+        AND fn::storage_object_delete({ object: <string> $v }).data.state == "deleted";
+};
+
+-- test: le bucket sans événements ne publie ni storage.object.created ni storage.object.deleted ; l'autre les publie
+RETURN array::len(SELECT VALUE id FROM event_outbox WHERE payload.key = "muet.txt") == 0
+    AND array::sort(SELECT VALUE event_type FROM event_outbox WHERE payload.key = "bavard.txt") == ["storage.object.created", "storage.object.deleted"];

@@ -5,10 +5,12 @@
 use async_trait::async_trait;
 use lyxal_runtime::descriptor::{ModuleDescriptor, ModuleDescriptorBuilder};
 use lyxal_runtime::health::{HealthCheckResult, ModuleHealthCheck};
+use lyxal_runtime::presence::{PresenceConfig, PresenceStore};
 use lyxal_runtime::types::ModuleId;
 use lyxal_runtime::{LyxalModule, ModuleContext, RuntimeError};
 use lyxal_storage::StorageService;
-use std::time::Instant;
+use std::sync::{Mutex, PoisonError};
+use std::time::{Duration, Instant};
 
 use crate::models::SettingsGetParams;
 use crate::store::MailStore;
@@ -68,14 +70,76 @@ impl LyxalModule for MailModule {
     }
 }
 
+/// Absence tolérée des nœuds d'un hôte requis avant que la sonde du courrier ne passe à
+/// « dégradé » : 10 minutes.
+pub const REQUIRED_HOST_ABSENCE_LIMIT: Duration = Duration::from_secs(600);
+
+/// Hôte dont des nœuds doivent tourner sur la même base que le courrier : `lyxal_server`, qui
+/// exécute `storage.cleanup` (octets des messages effacés retirés des supports) et
+/// `secrets.maintenance` (clés des fichiers rescellées après une rotation). La présence est lue
+/// dans `runtime_node` (`fn::runtime_node_list`, nœud vivant : battement de moins de 30 s).
+///
+/// L'absence est comptée par ce nœud depuis le dernier nœud vivant de l'hôte qu'il a vu, ou
+/// depuis la création de la sonde s'il n'en a vu aucun.
+pub struct RequiredHost {
+    presence: PresenceStore,
+    host: String,
+    absence_limit: Duration,
+    last_alive: Mutex<Instant>,
+}
+
+impl RequiredHost {
+    /// Hôte `host` (rôle d'un binaire, par exemple `lyxal_server`), lu par `presence` (session
+    /// système), toléré absent [`REQUIRED_HOST_ABSENCE_LIMIT`].
+    pub fn new(presence: PresenceStore, host: impl Into<String>) -> Self {
+        Self {
+            presence,
+            host: host.into(),
+            absence_limit: REQUIRED_HOST_ABSENCE_LIMIT,
+            last_alive: Mutex::new(Instant::now()),
+        }
+    }
+
+    /// Absence tolérée (essais).
+    pub fn with_absence_limit(mut self, limit: Duration) -> Self {
+        self.absence_limit = limit;
+        self
+    }
+
+    /// Durée de l'absence si elle dépasse la limite ; `None` si un nœud vivant de l'hôte est
+    /// listé, ou si l'absence est encore tolérée.
+    async fn absence(&self) -> Result<Option<Duration>, RuntimeError> {
+        let nodes = self
+            .presence
+            .list_nodes(PresenceConfig::default().alive_within)
+            .await?;
+        let alive = nodes
+            .iter()
+            .any(|node| node.host == self.host && node.alive == Some(true));
+        let mut last_alive = self
+            .last_alive
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        if alive {
+            *last_alive = Instant::now();
+            return Ok(None);
+        }
+        let absent = last_alive.elapsed();
+        Ok((absent > self.absence_limit).then_some(absent))
+    }
+}
+
 /// Sonde du courrier : base joignable (réglages lus par la session système), support de
 /// stockage configuré et service de clés des fichiers présent (sans eux, aucun message n'est
-/// déposé ni lu : « dégradé »). L'écriture effective sur chaque support est vérifiée par la
-/// sonde de `lyxal_storage`.
+/// déposé ni lu : « dégradé »), et, si un hôte requis est déclaré ([`RequiredHost`]), un de ses
+/// nœuds vivant depuis moins de 10 minutes (sinon « dégradé » : octets des messages effacés et
+/// rescellement des clés en attente). L'écriture effective sur chaque support est vérifiée par
+/// la sonde de `lyxal_storage`.
 pub struct MailHealthCheck {
     module_id: ModuleId,
     store: MailStore,
     storage: StorageService,
+    required_host: Option<RequiredHost>,
 }
 
 impl MailHealthCheck {
@@ -85,7 +149,14 @@ impl MailHealthCheck {
             module_id: ModuleId::new(MODULE_ID),
             store,
             storage,
+            required_host: None,
         }
+    }
+
+    /// Hôte dont un nœud doit tourner sur la même base (`lyxal_server`).
+    pub fn with_required_host(mut self, host: RequiredHost) -> Self {
+        self.required_host = Some(host);
+        self
     }
 }
 
@@ -124,6 +195,32 @@ impl ModuleHealthCheck for MailHealthCheck {
                         .to_string(),
                 ),
             ));
+        }
+        if let Some(required) = &self.required_host {
+            match required.absence().await {
+                Ok(None) => {}
+                Ok(Some(absent)) => {
+                    return Ok(HealthCheckResult::degraded(
+                        self.module_id.clone(),
+                        elapsed(),
+                        Some(format!(
+                            "aucun nœud {} vivant depuis {} s : octets des messages effacés et rescellement des clés des fichiers en attente (storage.cleanup, secrets.maintenance)",
+                            required.host,
+                            absent.as_secs()
+                        )),
+                    ))
+                }
+                Err(error) => {
+                    return Ok(HealthCheckResult::degraded(
+                        self.module_id.clone(),
+                        elapsed(),
+                        Some(format!(
+                            "présence des nœuds {} illisible : {error}",
+                            required.host
+                        )),
+                    ))
+                }
+            }
         }
         Ok(HealthCheckResult::healthy(
             self.module_id.clone(),
