@@ -235,7 +235,7 @@ where
 }
 
 pub(super) fn idle(context: &AppContext) -> Duration {
-    Duration::from_secs(context.config.storage.idle_timeout_seconds)
+    Duration::from_secs(context.config.http.transfer_idle_timeout_seconds)
 }
 
 // ----------------------------------------------------------------------------------------------

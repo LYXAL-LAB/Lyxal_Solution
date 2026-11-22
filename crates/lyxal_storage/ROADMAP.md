@@ -6,7 +6,7 @@ sans `implementation_plan.md` validé par le CTO (`.agents/AGENTS.md` §3).
 
 | Thème | Évolution |
 | :--- | :--- |
-| Montée en charge | listes paginées par la base ; position d'un envoi reprenable tenue sans recompter ses parties ; option « bucket sans événements » si le volume des événements `storage.object.*` d'un bucket très actif (courrier) le demande |
+| Montée en charge | listes paginées par la base ; position d'un envoi reprenable tenue sans recompter ses parties |
 | Droits | droits par bucket (aujourd'hui un bucket de l'installation, comme celui de l'ingestion, demande `storage.installation.manage`) ; buckets publics (lisibles sans session) |
 | Envoi reprenable | taille inconnue au départ, envoi de plusieurs morceaux en parallèle, contrôle d'empreinte par morceau (extensions tus `creation-defer-length`, `concatenation`, `checksum`) ; refus d'un type interdit dès la première partie reçue ; assemblage sans recopie sur S3 |
 | Contrôle du contenu | nouvelle analyse des fichiers déjà stockés quand les signatures de l'antivirus changent, avec mise en quarantaine (`fn::storage_object_quarantine`) ; vérification périodique de l'intégrité de tous les fichiers (aujourd'hui à la demande, `StorageService::verify`) |

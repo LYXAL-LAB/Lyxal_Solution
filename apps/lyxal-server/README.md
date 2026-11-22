@@ -98,16 +98,22 @@ du code Rust, déclarer son implémentation et ses services dans `src/modules/` 
 | :--- | :--- |
 | `application` | `name`, `environment`, `instance_id`, `version` |
 | `server` | `host`, `port`, `request_timeout_seconds`, `graceful_shutdown_seconds`, `max_concurrency`, `body_limit_bytes`, `trusted_proxies` (facultative : proxys inverses de confiance) |
+| `http` | `transfer_idle_timeout_seconds` (délai d'inactivité d'un envoi ou d'un téléchargement de fichier, et délai d'écriture de toute connexion HTTP, 5 à 600, 60 par défaut) |
 | `database` | `endpoint` (`ws://`, `wss://`, `mem://`), `namespace`, `database`, `username`, `password`, `connect_timeout_seconds` |
 | `runtime` | `module_install_timeout_seconds`, `module_start_timeout_seconds`, `module_stop_timeout_seconds` |
 | `observability` | `log_filter`, `json_logs`, `include_target`, `include_thread_ids` |
 | `cors` | `enabled`, `allow_credentials`, `allowed_origins`, `allowed_methods`, `allowed_headers` |
 | `crypto` | `application_key` (facultative, variable d'environnement seulement), `application_key_id` |
-| `secrets` | `master_key` (facultative, variable d'environnement seulement), `master_key_id`, `previous_master_key` (pendant une rotation, variable d'environnement seulement), `previous_master_key_id` |
+| `secrets` | section commune aux hôtes (`lyxal_host::services`) : `master_key` (facultative, variable d'environnement seulement), `master_key_id`, `previous_master_key` (pendant une rotation, variable d'environnement seulement), `previous_master_key_id` |
 | `scheduler` | `workers` (places de chaque exécuteur de file sur ce nœud, 1 à 64, 4 par défaut) |
 | `auth` | `public_url` (facultative : adresse publique de l'interface, pour les liens des messages et l'origine des passkeys), `passkey_rp_id` (facultatif : domaine des passkeys, défaut : hôte de `public_url`) |
 | `notification` | `public_url` (facultative : adresse publique de l'hôte, qui active les liens de désabonnement en un clic avec la clé applicative, et l'adresse des retours de livraison demandée message par message aux fournisseurs de SMS ; elle sert aussi à vérifier la signature des retours Twilio) |
-| `storage` | `disk.root` (facultatif : dossier du support de fichiers `default`), `s3.<nom>` (facultatif : `endpoint`, `region`, `bucket`, `access_key_id`, `secret_access_key` par variable d'environnement seulement, `path_style`, `allow_http`), `antivirus` (facultatif : `address` ou `socket`, `timeout_seconds`), `idle_timeout_seconds` (délai d'inactivité d'un envoi ou d'un téléchargement, 5 à 600, 60 par défaut) |
+| `storage` | section commune aux hôtes (`lyxal_host::services`) : `disk.root` (facultatif : dossier du support de fichiers `default`), `s3.<nom>` (facultatif : `endpoint`, `region`, `bucket`, `access_key_id`, `secret_access_key` par variable d'environnement seulement, `path_style`, `allow_http`), `antivirus` (facultatif : `address` ou `socket`, `timeout_seconds`) |
+
+Les sections `[secrets]` et `[storage]` sont celles de `lyxal-groupware` (code commun de
+`lyxal_host::services`) : sur une base partagée, elles reçoivent les mêmes valeurs dans les deux
+hôtes (même clé maîtresse, mêmes supports nommés), aux préfixes près (`LYXAL__`,
+`LYXAL_GROUPWARE__`).
 
 Les identifiants Root ne figurent dans aucun fichier : `LYXAL__DATABASE__USERNAME` et
 `LYXAL__DATABASE__PASSWORD` (mot de passe en `SecretString`, masqué). Une connexion `ws://` ou
@@ -238,7 +244,7 @@ fichier, par exemple `plans/2026/a.pdf`) :
 * **Limites** : ces routes ne sont pas soumises à `server.body_limit_bytes` ni au délai total
   d'une requête ; la taille est bornée par le bucket (100 Mo par défaut, 5 Go au plus), vérifiée
   pendant l'écriture. Un envoi ou une lecture du support qui ne transmet plus rien pendant
-  `storage.idle_timeout_seconds` est coupé. Ce même délai est le délai d'écriture de toute
+  `http.transfer_idle_timeout_seconds` est coupé. Ce même délai est le délai d'écriture de toute
   connexion du serveur (`lyxal_host::http::serve`) : un client qui cesse de lire sa réponse est
   déconnecté, ce qui libère le fichier ouvert et sa place dans la limite de requêtes simultanées.
 * **Envoi reprenable** (protocole tus 1.0, pour les gros fichiers) : après une coupure, le

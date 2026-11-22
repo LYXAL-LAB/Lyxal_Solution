@@ -9,7 +9,12 @@
 - [ ] sauvegarde SurrealDB testée ;
 - [ ] migrations testées sur une copie de production ;
 - [ ] limites de corps et de concurrence ajustées ;
-- [ ] timeouts ajustés ;
+- [ ] timeouts ajustés (dont `http.transfer_idle_timeout_seconds`, délai d'inactivité d'un
+      transfert de fichier et d'écriture d'une connexion) ;
+- [ ] sections `[secrets]` et `[storage]` identiques à celles de `lyxal-groupware` quand il
+      partage la base (même clé maîtresse du coffre-fort, mêmes supports nommés) ; au moins un
+      nœud `lyxal-server` toujours en service : il exécute `storage.cleanup` et
+      `secrets.maintenance` pour toute la base, courrier compris ;
 - [ ] endpoints `/live`, `/ready`, `/health` supervisés ;
 - [ ] arrêt `SIGTERM` testé ;
 - [ ] dépendances auditées avec `cargo audit` ;

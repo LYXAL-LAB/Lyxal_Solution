@@ -1,7 +1,8 @@
 //! Code commun des hôtes de Lyxal OS (`lyxal-server`, `lyxal-groupware`) : chargement de la
-//! configuration en couches, connexion à la base et refus de l'accès anonyme, santé, journal,
-//! signal d'arrêt, adresse réelle du client, service HTTP, modules embarqués et installation du
-//! socle, aide de `build.rs`.
+//! configuration en couches, sections `[secrets]` et `[storage]` et construction du trousseau
+//! maître, des supports et de l'antivirus, connexion à la base et refus de l'accès anonyme,
+//! santé, journal, signal d'arrêt, adresse réelle du client, service HTTP, modules embarqués et
+//! installation du socle, aide de `build.rs`.
 //!
 //! Ce crate ne contient que du code écrit pour Lyxal (licence `MIT OR Apache-2.0`) : aucun code
 //! porté d'un projet sous AGPL ou GPL n'y entre. Ses erreurs (`HostError`) n'ont pas de code :
@@ -31,6 +32,8 @@ pub mod metrics;
 pub mod modules;
 #[cfg(feature = "host")]
 pub mod net;
+#[cfg(feature = "host")]
+pub mod services;
 #[cfg(feature = "host")]
 pub mod shutdown;
 #[cfg(feature = "host")]

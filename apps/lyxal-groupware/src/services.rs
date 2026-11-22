@@ -10,16 +10,17 @@
 //! maintenance du coffre-fort) restent réservées par ses nœuds : sur une base partagée, ce sont
 //! elles qui retirent les octets des fichiers supprimés du courrier et rescellent leurs clés.
 
-use crate::config::{GroupwareConfig, SecretsConfig};
+use crate::config::{GroupwareConfig, ENV_PREFIX};
 use crate::error::GroupwareError;
 use async_trait::async_trait;
-use lyxal_crypto::{EnvironmentKeyProvider, KeyId, ResolvedKey};
+use lyxal_host::services::{master_keys, storage_backends, storage_scanner};
 use lyxal_mail::{
     MailContent, MailError, MailHealthCheck, MailIngest, MailMaintenance, MailStore,
-    MaintenanceReport,
+    MaintenanceReport, RequiredHost,
 };
 use lyxal_runtime::health::ModuleHealthCheck;
 use lyxal_runtime::lock::SurrealLeaderLeaseManager;
+use lyxal_runtime::presence::PresenceStore;
 use lyxal_runtime::LyxalRuntime;
 use lyxal_scheduler::models::{
     HealthParams, Overlap, ScheduleCreateParams, ScheduleSpec, SchedulerValue,
@@ -29,23 +30,18 @@ use lyxal_scheduler::{
     SchedulerHealthCheck, SchedulerLeaderWorker, SchedulerStore, TaskFailure, TaskHandler,
     TaskOutput,
 };
-use lyxal_secrets::{FileKeys, MasterKeys, SecretsHealthCheck, SecretsStore};
-use lyxal_storage::{
-    BackendConfig, Backends, ClamAvScanner, ContentScanner, ScannerConfig, StorageHealthCheck,
-    StorageService, StorageStore,
-};
+use lyxal_secrets::{FileKeys, SecretsHealthCheck, SecretsStore};
+use lyxal_storage::models::EncryptedBucketExistsParams;
+use lyxal_storage::{StorageHealthCheck, StorageService, StorageStore};
 use std::sync::Arc;
 use std::time::Duration;
 use surrealdb::engine::any::Any;
 use surrealdb::types::{Object, SurrealValue};
 use surrealdb::Surreal;
 
-/// Variable d'environnement de la clé maîtresse du coffre-fort.
-const MASTER_KEY_VAR: &str = "LYXAL_GROUPWARE__SECRETS__MASTER_KEY";
-/// Variable d'environnement de l'ancienne clé maîtresse, pendant une rotation.
-const PREVIOUS_MASTER_KEY_VAR: &str = "LYXAL_GROUPWARE__SECRETS__PREVIOUS_MASTER_KEY";
-/// Nom du support disque.
-const DEFAULT_BACKEND: &str = "default";
+/// Hôte qui exécute, sur la base partagée, le nettoyage du stockage et la maintenance du
+/// coffre-fort (octets des messages effacés, rescellement des clés des fichiers).
+pub const SERVER_HOST_ID: &str = "lyxal_server";
 /// Éléments traités par paquet par la maintenance du courrier.
 const MAINTENANCE_BATCH: u32 = 200;
 
@@ -79,117 +75,7 @@ pub struct HostedServices {
     pub mail_probe: Arc<dyn ModuleHealthCheck>,
     scheduler: SchedulerEngine,
     workers: u32,
-}
-
-fn configuration_error(field: &str, error: impl std::fmt::Display) -> GroupwareError {
-    GroupwareError::Configuration {
-        message: format!("{field} : {error}"),
-    }
-}
-
-/// Une clé lue par `EnvironmentKeyProvider` ; une clé sans identifiant ou invalide arrête le
-/// démarrage.
-fn load_key(
-    var: &str,
-    field: &str,
-    id_field: &str,
-    id: Option<&str>,
-) -> Result<ResolvedKey, GroupwareError> {
-    let id = id
-        .ok_or_else(|| configuration_error(id_field, "obligatoire avec la clé"))
-        .and_then(|id| KeyId::parse(id).map_err(|e| configuration_error(id_field, e)))?;
-    EnvironmentKeyProvider::load(var, id).map_err(|e| configuration_error(field, e))
-}
-
-/// Trousseau maître du coffre-fort : clé active et, pendant une rotation, l'ancienne en lecture
-/// seule. `None` sans clé.
-pub fn master_keys(config: &SecretsConfig) -> Result<Option<MasterKeys>, GroupwareError> {
-    if config.master_key.is_none() {
-        if config.previous_master_key.is_some() {
-            return Err(configuration_error(
-                "secrets.previous_master_key",
-                "fournie sans clé maîtresse active (secrets.master_key)",
-            ));
-        }
-        return Ok(None);
-    }
-    let active = load_key(
-        MASTER_KEY_VAR,
-        "secrets.master_key",
-        "secrets.master_key_id",
-        config.master_key_id.as_deref(),
-    )?;
-    let previous = match &config.previous_master_key {
-        None => None,
-        Some(_) => Some(load_key(
-            PREVIOUS_MASTER_KEY_VAR,
-            "secrets.previous_master_key",
-            "secrets.previous_master_key_id",
-            config.previous_master_key_id.as_deref(),
-        )?),
-    };
-    MasterKeys::from_keys(active, previous)
-        .map(Some)
-        .map_err(|e| configuration_error("secrets.master_key", e))
-}
-
-/// Supports de l'installation : le dossier disque (`default`) et les services S3 nommés.
-fn backends(config: &GroupwareConfig) -> Result<Backends, GroupwareError> {
-    let storage = &config.storage;
-    let mut backends = Backends::new();
-    if let Some(disk) = &storage.disk {
-        backends = backends
-            .with(
-                DEFAULT_BACKEND,
-                BackendConfig::Disk {
-                    root: disk.root.clone(),
-                },
-            )
-            .map_err(|error| configuration_error("storage.disk.root", error))?;
-    }
-    for (name, s3) in &storage.s3 {
-        let secret = s3
-            .secret_access_key
-            .to_secret()
-            .map_err(|_| configuration_error(&format!("storage.s3.{name}"), "clé refusée"))?;
-        backends = backends
-            .with(
-                name,
-                BackendConfig::S3 {
-                    endpoint: s3.endpoint.clone(),
-                    region: s3.region.clone(),
-                    bucket: s3.bucket.clone(),
-                    access_key_id: s3.access_key_id.clone(),
-                    secret_access_key: secret,
-                    path_style: s3.path_style,
-                    allow_http: s3.allow_http,
-                },
-            )
-            .map_err(|error| configuration_error(&format!("storage.s3.{name}"), error))?;
-    }
-    if backends.is_empty() {
-        tracing::warn!(
-            "aucun support de stockage : aucun message n'est déposé ni lu (LYXAL_GROUPWARE__STORAGE__DISK__ROOT ou LYXAL_GROUPWARE__STORAGE__S3__<NOM>__* requis)"
-        );
-    }
-    Ok(backends)
-}
-
-/// Antivirus, s'il est configuré.
-fn scanner(config: &GroupwareConfig) -> Option<Arc<dyn ContentScanner>> {
-    let antivirus = config.storage.antivirus.as_ref()?;
-    let address = match (&antivirus.address, &antivirus.socket) {
-        (Some(address), _) => ScannerConfig::Tcp {
-            address: address.clone(),
-        },
-        (None, Some(path)) => ScannerConfig::Socket { path: path.clone() },
-        // Écarté par la validation de la configuration
-        (None, None) => return None,
-    };
-    Some(Arc::new(ClamAvScanner::new(
-        address,
-        Duration::from_secs(antivirus.timeout_seconds),
-    )))
+    has_master_key: bool,
 }
 
 /// Enregistre auprès du runtime, avant l'installation des modules : sondes du coffre-fort et du
@@ -200,7 +86,7 @@ pub fn register_services(
     client: &Surreal<Any>,
     config: &GroupwareConfig,
 ) -> Result<HostedServices, GroupwareError> {
-    let master = master_keys(&config.secrets)?;
+    let master = master_keys(&config.secrets, ENV_PREFIX)?;
     match &master {
         Some(keys) => tracing::info!(
             master_key_id = %keys.active_id(),
@@ -219,9 +105,15 @@ pub fn register_services(
         )))?;
 
     let storage_store = StorageStore::new(client.clone());
-    let backends = Arc::new(backends(config)?);
-    let scanner = scanner(config);
+    let backends = Arc::new(storage_backends(&config.storage)?);
+    if backends.is_empty() {
+        tracing::warn!(
+            "aucun support de stockage : aucun message n'est déposé ni lu (LYXAL_GROUPWARE__STORAGE__DISK__ROOT ou LYXAL_GROUPWARE__STORAGE__S3__<NOM>__* requis)"
+        );
+    }
+    let scanner = storage_scanner(&config.storage);
     let mut storage_probe = StorageHealthCheck::new(storage_store.clone(), backends.clone());
+    let has_master_key = master.is_some();
     let mut storage = StorageService::new(storage_store.clone(), backends)
         .with_file_keys(FileKeys::new(secrets_store, master), storage_store);
     if let Some(scanner) = &scanner {
@@ -243,7 +135,14 @@ pub fn register_services(
         maintenance: MailMaintenance::new(system.clone(), MAINTENANCE_BATCH),
         system: system.clone(),
     };
-    let mail_probe: Arc<dyn ModuleHealthCheck> = Arc::new(MailHealthCheck::new(system, storage));
+    // `lyxal-server` doit tourner sur la même base : sans lui, les octets des messages effacés et
+    // le rescellement des clés attendent (sonde « dégradé » après 10 minutes sans nœud vivant)
+    let mail_probe: Arc<dyn ModuleHealthCheck> = Arc::new(
+        MailHealthCheck::new(system, storage).with_required_host(RequiredHost::new(
+            PresenceStore::new(client.clone()),
+            SERVER_HOST_ID,
+        )),
+    );
 
     let scheduler = SchedulerEngine::new(
         SchedulerStore::new(client.clone()),
@@ -270,7 +169,32 @@ pub fn register_services(
         mail_probe,
         scheduler,
         workers: config.scheduler.workers,
+        has_master_key,
     })
+}
+
+/// Après l'installation des modules, avant tout démarrage : sans clé maîtresse du coffre-fort,
+/// refuse de démarrer (`GROUPWARE_MASTER_KEY_MISSING`) si un bucket chiffré existe dans la base
+/// (`fn::storage_encrypted_bucket_exists`, session système) : ses fichiers ne pourraient être ni
+/// écrits ni lus. Une base sans bucket chiffré démarre sans clé (sonde « dégradé »).
+pub async fn require_master_key(
+    client: &Surreal<Any>,
+    services: &HostedServices,
+) -> Result<(), GroupwareError> {
+    if services.has_master_key {
+        return Ok(());
+    }
+    let found = StorageStore::new(client.clone())
+        .encrypted_bucket_exists(EncryptedBucketExistsParams::default())
+        .await
+        .map_err(|error| GroupwareError::ModuleInstall {
+            module: lyxal_storage::MODULE_ID.to_string(),
+            message: format!("buckets chiffrés illisibles : {error}"),
+        })?;
+    if found.exists {
+        return Err(GroupwareError::MasterKeyMissing);
+    }
+    Ok(())
 }
 
 fn install_error(detail: impl std::fmt::Display) -> GroupwareError {

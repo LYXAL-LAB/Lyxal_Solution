@@ -24,6 +24,10 @@
     DEFINE TABLE OVERWRITE passe SCHEMALESS PERMISSIONS FULL;
 };
 
+-- test: aucun bucket chiffré : la session système et le worker le lisent
+-- en tant que: worker
+RETURN fn::storage_encrypted_bucket_exists({}).data == { exists: false };
+
 -- test: bucket chiffré créé par l'administrateur ; option rendue, fixée à la création
 -- en tant que: admin
 {
@@ -34,6 +38,19 @@
         AND fn::storage_bucket_update({ bucket: <string> $b.id, encrypted: false }).error.code == "STORAGE_INVALID_PARAMETERS"
         AND fn::storage_bucket_create({ tenant: "auth_organization:alpha", name: "autre", encrypted: "oui" }).error.code == "STORAGE_INVALID_PARAMETERS";
 };
+
+-- test: un bucket chiffré d'une organisation existe, toutes portées confondues : session système
+RETURN fn::storage_encrypted_bucket_exists({}).data == { exists: true }
+    AND fn::storage_encrypted_bucket_exists({ language: "en" }).data.exists == true
+    AND fn::storage_encrypted_bucket_exists({ tenant: "auth_organization:alpha" }).error.code == "STORAGE_INVALID_PARAMETERS";
+
+-- test: le worker (permission storage.worker) le lit aussi
+-- en tant que: worker
+RETURN fn::storage_encrypted_bucket_exists({}).data.exists == true;
+
+-- test: un administrateur d'organisation n'a pas ce droit
+-- en tant que: admin
+RETURN fn::storage_encrypted_bucket_exists({}).error.code == "STORAGE_PERMISSION_DENIED";
 
 -- test: ouverture d'une écriture dans un bucket chiffré : encrypted rendu ; envoi reprenable refusé
 -- en tant que: admin

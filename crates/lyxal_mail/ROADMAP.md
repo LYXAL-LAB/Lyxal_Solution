@@ -70,27 +70,9 @@ Mesures : [`README.md`](README.md), section « Mesures ».
   base, une ouverture `enc:v2`), sans cache : coût non mesuré (banc `scripts/bench/mailbox/` à
   étendre au service Rust) ; un cache court, effacé à l'expiration, ne viendrait que sur
   nouvelle décision, avant le lot 8 (lecture de centaines de messages par une session IMAP).
-* **Volume des événements du stockage.** `lyxal_storage` publie `storage.object.created` et
-  `storage.object.deleted` pour chaque message : la file des événements double à la remise. Non
-  mesuré ; une option « bucket sans événements » serait une évolution de `lyxal_storage`, à
-  décider avec le lot 5.
-* **Démarrage de `lyxal-groupware` sans clé maîtresse.** Le plan prévoyait de refuser le
-  démarrage si un bucket chiffré existe sans clé maîtresse : `lyxal_storage` n'offre pas de
-  lecture des buckets chiffrés toutes organisations confondues. L'hôte démarre, sa sonde de
-  `lyxal_mail` est « dégradée » et tout dépôt est refusé (à réessayer). Refus au démarrage à
-  décider avec une fonction publique de `lyxal_storage`.
 * **Contenus en attente en retard dans la sonde.** La sonde ne compte pas les contenus `pending`
   restés au-delà de leur délai (aucune fonction publique ne les compte ; la maintenance les
   retire) : fonction à ajouter si l'exploitation en a besoin.
-* **`lyxal-groupware` seul sur une base.** Les octets des fichiers supprimés du courrier et le
-  rescellement de leurs clés après rotation sont faits par les tâches de `lyxal-server`
-  (`storage.cleanup`, `secrets.maintenance`) : sans `lyxal-server` sur la base, ils restent
-  (chiffrés). Déploiement à deux hôtes exigé (README de l'hôte), ou tâches à héberger aussi par
-  `lyxal-groupware` (décision).
-* **Configuration commune des hôtes.** Les sections `[secrets]` et `[storage]` de
-  `lyxal-groupware` reprennent celles de `lyxal-server` (même forme, même lecture des clés) :
-  à factoriser dans `lyxal_host` (`.agents/AGENTS.md` §5.8.5, code commun des hôtes), qui
-  dépendrait alors de `lyxal_storage` et de `lyxal_secrets`.
 * **Essais encore à écrire.** Dépôt sur un serveur SurrealDB 3.3.4 réel (`ws://`) ; panne
   simulée entre chaque étape du dépôt (le banc couvre le refus de l'inscription et l'abandon
   d'un contenu) ; suppression d'une identité puis purge du compte, suppression d'une

@@ -633,7 +633,7 @@ async fn a_bucket_on_an_s3_backend_is_served_by_the_same_routes() {
     // La clé secrète ne se lit pas dans un fichier : le support est déclaré ici
     config.storage.s3.insert(
         "objets".to_string(),
-        lyxal_server::config::S3StorageConfig {
+        lyxal_host::services::S3StorageConfig {
             endpoint,
             region: "us-east-1".to_string(),
             bucket: "lyxal-test".to_string(),

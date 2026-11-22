@@ -5,6 +5,10 @@
 #     -keyout config/tls/development.key.pem -out config/tls/development.chain.pem \
 #     && chmod 600 config/tls/development.key.pem
 
+# Fichiers en développement (section commune aux hôtes : même dossier dans lyxal-server) :
+# [storage.disk]
+# root = "../../target/lyxal-fichiers"
+
 [tls]
 default = { certificate = "config/tls/development.chain.pem", private_key = "config/tls/development.key.pem" }
 

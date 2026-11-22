@@ -4,7 +4,8 @@
 //! partagée, socle sous bail, moteur d'événements de l'hôte (sans abonnement), services des
 //! modules hébergés (coffre-fort, stockage, planificateur, courrier) et leurs sondes, écoutes
 //! inscrites comme workers de `lyxal_mail`, modules installés depuis leurs manifestes embarqués,
-//! tâche de maintenance du courrier et exécuteurs du planificateur, puis démarrage.
+//! refus de démarrer sans clé maîtresse si un bucket chiffré existe, tâche de maintenance du
+//! courrier et exécuteurs du planificateur, puis démarrage.
 
 use crate::config::GroupwareConfig;
 use crate::error::GroupwareError;
@@ -118,6 +119,9 @@ pub async fn start_with(
         "modules installés"
     );
 
+    // Sans clé maîtresse, un bucket chiffré existant arrête tout : rien n'est démarré, les
+    // écoutes liées sont refermées avec `mail`
+    services::require_master_key(client, &services).await?;
     services::complete_services(&runtime, client, &services).await?;
     runtime.start_all().await?;
     Ok(Started {

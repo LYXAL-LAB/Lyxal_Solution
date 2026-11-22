@@ -44,6 +44,10 @@ pub enum GroupwareError {
         message: String,
     },
 
+    /// Clé maîtresse du coffre-fort absente alors qu'un bucket chiffré existe dans la base.
+    #[error("un bucket chiffré existe : la clé maîtresse du coffre-fort est obligatoire (LYXAL_GROUPWARE__SECRETS__MASTER_KEY et secrets.master_key_id, même clé que lyxal-server)")]
+    MasterKeyMissing,
+
     /// Attente du signal d'arrêt impossible.
     #[error("signal d'arrêt indisponible : {message}")]
     ShutdownSignal { message: String },
@@ -127,6 +131,15 @@ const TLS_CERTIFICATE_INVALID: GroupwareErrorInfo = GroupwareErrorInfo {
     label: "Certificat TLS invalide",
 };
 
+const MASTER_KEY_MISSING: GroupwareErrorInfo = GroupwareErrorInfo {
+    code: "GROUPWARE_MASTER_KEY_MISSING",
+    category: "internal",
+    http_status: 500,
+    retryable: false,
+    message: "An encrypted bucket exists: the vault master key is required",
+    label: "Clé maîtresse du coffre-fort absente",
+};
+
 const SHUTDOWN_SIGNAL_FAILED: GroupwareErrorInfo = GroupwareErrorInfo {
     code: "GROUPWARE_SHUTDOWN_SIGNAL_FAILED",
     category: "internal",
@@ -152,6 +165,7 @@ pub const GROUPWARE_ERROR_CATALOG: &[GroupwareErrorInfo] = &[
     MODULE_INSTALL_FAILED,
     BIND_FAILED,
     TLS_CERTIFICATE_INVALID,
+    MASTER_KEY_MISSING,
     SHUTDOWN_SIGNAL_FAILED,
     TELEMETRY_INIT_FAILED,
 ];
@@ -177,6 +191,7 @@ impl GroupwareError {
             Self::ModuleInstall { .. } => MODULE_INSTALL_FAILED,
             Self::Bind { .. } => BIND_FAILED,
             Self::TlsCertificate { .. } => TLS_CERTIFICATE_INVALID,
+            Self::MasterKeyMissing => MASTER_KEY_MISSING,
             Self::ShutdownSignal { .. } => SHUTDOWN_SIGNAL_FAILED,
             Self::Telemetry { .. } => TELEMETRY_INIT_FAILED,
         }

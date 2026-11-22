@@ -12,6 +12,9 @@ graceful_shutdown_seconds = 30
 max_concurrency = 1024
 body_limit_bytes = 10485760
 
+[http]
+transfer_idle_timeout_seconds = 60   # inactivité d'un transfert de fichier, écriture d'une connexion
+
 [database]
 endpoint = "ws://127.0.0.1:8000"
 namespace = "lyxal"

@@ -31,6 +31,7 @@ pub use upload::{
     UploadReadyList, UploadRefParams, UploadReleaseParams, UploadReleased, UploadStatus,
 };
 pub use worker::{
-    BatchParams, Expired, PageParams, PurgeItem, PurgeList, Purged, QuarantineParams, ReclaimDone,
-    ReclaimDoneParams, ReclaimItem, ReclaimList,
+    BatchParams, EncryptedBucketExists, EncryptedBucketExistsParams, Expired, PageParams,
+    PurgeItem, PurgeList, Purged, QuarantineParams, ReclaimDone, ReclaimDoneParams, ReclaimItem,
+    ReclaimList,
 };

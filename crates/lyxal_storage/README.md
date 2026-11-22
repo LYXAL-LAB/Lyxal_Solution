@@ -21,7 +21,7 @@ gestion de fichiers de SurrealDB : [`MODELE_SOURCES.md`](MODELE_SOURCES.md).
 | Table | Contenu |
 | :--- | :--- |
 | `storage_settings` | réglages de l'installation, surchargés par organisation : taille maximale d'un fichier, quota, délai d'une écriture en attente, délai d'un envoi reprenable, conservation après suppression, types refusés |
-| `storage_bucket` | ensemble de fichiers : nom unique dans sa portée (`[a-z0-9-]`, 3 à 63 caractères), taille maximale, types MIME acceptés (vide : tous), lecture seule, support (`backend`, `default` par défaut) et chiffrement (`encrypted`, faux par défaut), tous deux fixés à la création |
+| `storage_bucket` | ensemble de fichiers : nom unique dans sa portée (`[a-z0-9-]`, 3 à 63 caractères), taille maximale, types MIME acceptés (vide : tous), lecture seule, support (`backend`, `default` par défaut), chiffrement (`encrypted`, faux par défaut) et publication des événements de ses fichiers (`emit_events`, vrai par défaut), fixés à la création ; index `storage_bucket_encrypted` (`encrypted`) |
 | `storage_object` | fiche d'un fichier : bucket, clé (`plans/2026/a.pdf`), auteur (`owner` : identité ; `owner_application` : application d'un compte de service), nom d'origine, taille et type annoncés, taille réelle, type réel, empreinte BLAKE3 et taille des octets stockés (`stored_size`) posés à la fin de l'écriture, état, support et emplacement des octets (`backend`, `path`) ; dans un bucket chiffré, clé du fichier scellée (`content_key`, illisible hors session système et worker) et clé qui la scelle (`content_key_id`, lisible) |
 | `storage_reclaim` | préfixe d'octets à retirer : bucket supprimé, ou parties d'un envoi reprenable qui n'est plus en cours |
 | `storage_upload_part` | partie reçue d'un envoi reprenable : envoi, position, taille, nom de ses octets sur le support ; une seule partie par position (index unique) |
@@ -181,7 +181,7 @@ l'installation.
 | :--- | :--- | :--- | :--- |
 | `storage_settings_get` | `tenant` | `{ own, effective }` | lecture |
 | `storage_settings_set` | `tenant`, `max_object_size`, `quota_bytes`, `pending_ttl_seconds`, `upload_ttl_seconds`, `deleted_retention_days`, `blocked_types`, `clear` | réglages ; champ fourni remplacé, champ dans `clear` effacé | gestion |
-| `storage_bucket_create` | **name**, `tenant`, `description`, `max_object_size`, `allowed_types`, `readonly`, `backend` (`default`), `encrypted` (faux) | bucket | gestion |
+| `storage_bucket_create` | **name**, `tenant`, `description`, `max_object_size`, `allowed_types`, `readonly`, `backend` (`default`), `encrypted` (faux), `emit_events` (vrai) | bucket | gestion |
 | `storage_bucket_update` | **bucket**, `description`, `max_object_size`, `allowed_types`, `readonly`, `clear` (`description`, `max_object_size`) | bucket | gestion |
 | `storage_bucket_get` | **bucket** | bucket et `usage: { objects, bytes }` (compteurs) | lecture |
 | `storage_bucket_list` | `tenant`, `limit`, `start` | `{ items, total }`, triés par nom | lecture |
@@ -208,6 +208,7 @@ l'installation.
 | `storage_object_key_get` | **object** | `{ id, tenant, content_key }` : clé scellée d'un fichier, ouverte ensuite par le coffre-fort après le contrôle des droits de l'appelant | session système, worker |
 | `storage_object_rekey_list` | **key_id**, **retired_at**, `tenant`, `limit`, `start` | `{ items: [{ id, tenant, content_key }], pending_writes }` : fiches dont la clé est scellée par une clé « fichiers » retirée, et vrai si une écriture d'un bucket chiffré de la portée ouverte avant le retrait est encore en attente | session système, worker |
 | `storage_object_rekey` | **object**, **expected_key_id**, **content_key** | `{ object, content_key_id }` : clé du fichier rescellée rangée (écriture conditionnelle, aucun octet réécrit) | session système, worker |
+| `storage_encrypted_bucket_exists` | `language` | `{ exists }` : vrai si au moins un bucket chiffré existe, toutes portées confondues (lu par `lyxal-groupware` au démarrage : sans clé maîtresse du coffre-fort, il refuse alors de démarrer) | session système, worker |
 | `storage_usage_verify` | `tenant` | `{ valid, checked, mismatches: [{ bucket, counted, recorded }] }` : compteurs de la portée et de ses buckets comparés aux fiches recomptées ; rien n'est corrigé | worker |
 
 Fonctions internes : `fn::storage_can`, `fn::storage_settings_effective`,
@@ -233,7 +234,9 @@ Fonctions internes : `fn::storage_can`, `fn::storage_settings_effective`,
 Publiés par `fn::event_publish` dans la transaction de la mutation : `storage.object.created`
 (passage à `available`), `storage.object.quarantined`, `storage.object.deleted` (sauf pour une
 écriture jamais terminée). Charge utile : `object_id`, `bucket_id`, `key`, `tenant`, `size`,
-`content_type` ; jamais de contenu.
+`content_type` ; jamais de contenu. Aucun de ces événements pour un fichier d'un bucket créé
+avec `emit_events` faux : son module propriétaire publie les siens, sans donnée personnelle (le
+bucket `lyxal-mail` du courrier).
 
 ## 6. Crate Rust
 

@@ -1,5 +1,5 @@
 //! Opérations du worker (`fn::storage_object_quarantine`, `_expire`, `_purge_list`, `_purge`,
-//! `fn::storage_reclaim_list`, `fn::storage_reclaim_done`).
+//! `fn::storage_reclaim_list`, `fn::storage_reclaim_done`, `fn::storage_encrypted_bucket_exists`).
 
 use lyxal_surreal::SurrealValue;
 
@@ -96,4 +96,18 @@ pub struct ReclaimDoneParams {
 pub struct ReclaimDone {
     /// Ligne retirée (faux si elle n'existait plus).
     pub done: bool,
+}
+
+/// Paramètres de `fn::storage_encrypted_bucket_exists`.
+#[derive(Debug, Clone, Default, SurrealValue)]
+pub struct EncryptedBucketExistsParams {
+    /// Langue des messages d'erreur (`fr` par défaut).
+    pub language: Option<String>,
+}
+
+/// Résultat de `fn::storage_encrypted_bucket_exists`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, SurrealValue)]
+pub struct EncryptedBucketExists {
+    /// Vrai si au moins un bucket chiffré existe, toutes portées confondues.
+    pub exists: bool,
 }

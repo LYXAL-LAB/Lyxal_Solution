@@ -78,7 +78,7 @@ async fn run_inner() -> Result<(), ServerError> {
     lyxal_host::http::serve(
         listener,
         router,
-        Duration::from_secs(config.storage.idle_timeout_seconds),
+        Duration::from_secs(config.http.transfer_idle_timeout_seconds),
         Duration::from_secs(graceful_seconds),
         async move {
             if let Err(error) = shutdown::signal().await {

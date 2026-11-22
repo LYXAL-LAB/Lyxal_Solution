@@ -100,10 +100,13 @@ THEN {
 -- ----------------------------------------------------------------------------
 -- storage.object.created, storage.object.deleted, storage.object.quarantined
 -- ----------------------------------------------------------------------------
+-- Pas d'événement pour un fichier d'un bucket créé sans événements (emit_events faux) : son
+-- module propriétaire publie les siens (le courrier : mail.message.received).
 
 DEFINE EVENT OVERWRITE storage_object_state_event ON TABLE storage_object
 WHEN $event = "UPDATE" AND $before.state != $after.state
     AND ($after.state IN ["available", "quarantined"] OR ($after.state = "deleted" AND $before.state != "pending"))
+    AND (SELECT VALUE emit_events FROM ONLY $after.bucket) != false
 THEN {
     LET $published = fn::event_publish({
         event_id: rand::uuid::v7(),

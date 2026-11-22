@@ -1,5 +1,6 @@
 -- ============================================================================
--- FONCTIONS : opérations du worker (quarantaine, expiration, purge, préfixes à retirer)
+-- FONCTIONS : opérations du worker (quarantaine, expiration, purge, préfixes à retirer,
+--             présence d'un bucket chiffré)
 -- MODULE    : lyxal_storage
 -- ============================================================================
 -- Réservées au compte de service (permission storage.worker) et à la session système.
@@ -270,3 +271,26 @@ DEFINE FUNCTION OVERWRITE fn::storage_usage_verify($params: object) {
     LET $mismatches = array::filter($lines, |$line| $line.counted != $line.recorded);
     RETURN fn::result_ok({ valid: array::len($mismatches) = 0, checked: array::len($lines), mismatches: $mismatches });
 } COMMENT "Contrôle de cohérence des compteurs de volume d'une portée ({ tenant }) : fiches recomptées une à une, comparées à la ligne de la portée et à celle de chaque bucket : { valid, checked, mismatches: [{ bucket (NONE : portée), counted, recorded }] } ; rien n'est corrigé. Opération lourde, à la demande. Droit : worker";
+
+-- ----------------------------------------------------------------------------
+-- fn::storage_encrypted_bucket_exists
+-- ----------------------------------------------------------------------------
+-- Lu par un hôte au démarrage (lyxal-groupware) : sans clé maîtresse du coffre-fort, il refuse
+-- de démarrer si un bucket chiffré existe, puisque ses fichiers ne pourraient être ni écrits
+-- ni lus.
+
+DEFINE FUNCTION OVERWRITE fn::storage_encrypted_bucket_exists($params: object) {
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 20);
+    IF !$report.valid {
+        RETURN fn::error_result("STORAGE_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
+    };
+    LET $p = $report.value;
+    IF !fn::storage_can({ action: "worker" }) { RETURN fn::error_result("STORAGE_PERMISSION_DENIED", $p.language, {}); };
+    LET $found = (SELECT VALUE id FROM storage_bucket WHERE encrypted = true LIMIT 1);
+    RETURN fn::result_ok({ exists: array::len($found) > 0 });
+} COMMENT "Vrai si au moins un bucket chiffré existe, toutes portées confondues ({ language }) : { exists }. Droit : worker (session système ou permission storage.worker)";

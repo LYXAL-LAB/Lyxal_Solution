@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license = "MIT OR Apache-2.0"
-description = "Code commun des hôtes de Lyxal OS : configuration, base, santé, journal, arrêt, HTTP, modules embarqués"
+description = "Code commun des hôtes de Lyxal OS : configuration (dont coffre-fort et stockage), base, santé, journal, arrêt, HTTP, modules embarqués"
 
 [features]
 default = ["host"]
@@ -16,7 +16,10 @@ host = [
     "dep:config",
     "dep:hyper",
     "dep:hyper-util",
+    "dep:lyxal_crypto",
     "dep:lyxal_runtime",
+    "dep:lyxal_secrets",
+    "dep:lyxal_storage",
     "dep:lyxal_surreal",
     "dep:serde",
     "dep:surrealdb",
@@ -36,6 +39,11 @@ axum = { workspace = true, optional = true }
 chrono = { workspace = true, optional = true }
 config = { workspace = true, optional = true }
 lyxal_runtime = { workspace = true, optional = true }
+# Sections communes `[secrets]` et `[storage]` (services) : clé maîtresse lue par
+# lyxal_crypto::EnvironmentKeyProvider, trousseau du coffre-fort, supports et antivirus
+lyxal_crypto = { workspace = true, optional = true }
+lyxal_secrets = { workspace = true, optional = true }
+lyxal_storage = { workspace = true, optional = true }
 lyxal_surreal = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
 surrealdb = { workspace = true, optional = true }

@@ -140,3 +140,17 @@ DELETE storage_bucket WHERE name = "archives";
 
 -- test: le bucket et son fichier sont intacts
 RETURN array::len(SELECT VALUE id FROM storage_bucket WHERE name = "archives") == 1 AND array::len(SELECT VALUE id FROM storage_object) == 1;
+
+-- test: publication des événements de ses fichiers : vraie par défaut, choisie à la création, jamais modifiée
+-- en tant que: admin
+{
+    LET $muet = fn::storage_bucket_create({ tenant: "auth_organization:alpha", name: "muet", emit_events: false }).data;
+    RETURN (SELECT VALUE emit_events FROM ONLY storage_bucket WHERE scope_key = "alpha" AND name = "archives" LIMIT 1) == true
+        AND $muet.emit_events == false
+        AND fn::storage_bucket_get({ bucket: <string> $muet.id }).data.emit_events == false
+        AND fn::storage_bucket_create({ tenant: "auth_organization:alpha", name: "bavard", emit_events: "non" }).error.code == "STORAGE_INVALID_PARAMETERS"
+        AND fn::storage_bucket_update({ bucket: <string> $muet.id, emit_events: true }).error.code == "STORAGE_INVALID_PARAMETERS";
+};
+
+-- test: des buckets en clair seulement : aucun bucket chiffré
+RETURN fn::storage_encrypted_bucket_exists({}).data.exists == false;

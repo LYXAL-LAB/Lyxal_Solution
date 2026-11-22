@@ -43,9 +43,12 @@ budget mémoire de [`lyxal_mail::net`](../../crates/lyxal_mail/README.md).
    services des modules hébergés (§2) : trousseau maître du coffre-fort et sa sonde, supports et
    antivirus du stockage et sa sonde, planificateur élu et sa sonde, handler de la tâche
    `mail.maintenance`, services du courrier ; workers des écoutes, worker `mail.tls_reload` et
-   sonde de `lyxal_mail` (service du courrier, puis écoutes) ; `install_packages` ; seed de
-   l'hôte (tâche `mail.maintenance` et sa permission), planification de la tâche si elle est
-   absente, un exécuteur par file du planificateur ; `start_all`.
+   sonde de `lyxal_mail` (service du courrier, puis écoutes) ; `install_packages` ; **sans clé
+   maîtresse du coffre-fort, refus de démarrer si un bucket chiffré existe dans la base**
+   (`fn::storage_encrypted_bucket_exists`, `GROUPWARE_MASTER_KEY_MISSING` : rien n'est démarré,
+   les ports liés sont refermés) ; seed de l'hôte (tâche `mail.maintenance` et sa permission),
+   planification de la tâche si elle est absente, un exécuteur par file du planificateur ;
+   `start_all`.
 5. Port HTTP de santé ; attente de SIGINT ou SIGTERM.
 
 Arrêt : santé « stopping » (`/ready` répond `503`, le répartiteur retire le nœud), puis
@@ -72,11 +75,14 @@ Services (`src/services.rs`, rendus par `runtime::start` dans `Started::services
 | `lyxal_secrets` | Trousseau maître (clé active et, pendant une rotation, l'ancienne), clés « fichiers » des organisations (`FileKeys`, sans cache), sonde `SecretsHealthCheck` ; la maintenance du coffre-fort (rotation, rescellement) reste exécutée par `lyxal-server` |
 | `lyxal_storage` | Supports (disque `default`, S3 nommés) et antivirus, service de stockage sur la session système avec les clés de fichiers, sonde `StorageHealthCheck` (fichier témoin sur chaque support) ; le nettoyage (octets des fichiers supprimés, rescellement) reste exécuté par `lyxal-server` |
 | `lyxal_scheduler` | Planificateur élu pour toute la base (bail `leader` du runtime, partagé avec `lyxal-server`), un exécuteur par file, sonde ; registre des handlers avec celui de `mail.maintenance` : seul un nœud de cet hôte réserve cette tâche ; les tâches `handler` de `lyxal-server` ne sont jamais réservées ici |
-| `lyxal_mail` | `MailIngest` (dépôt, bucket chiffré `lyxal-mail` de chaque organisation créé sur le support `mail.storage_backend`), `MailContent` (lecture), `MailMaintenance` (tâche `mail.maintenance`, toutes les 10 minutes, chevauchement `skip`), `MailHealthCheck` composée avec la sonde des écoutes |
+| `lyxal_mail` | `MailIngest` (dépôt, bucket chiffré `lyxal-mail` de chaque organisation créé sur le support `mail.storage_backend`, sans événements `storage.object.*` : `emit_events` faux, décision S14), `MailContent` (lecture), `MailMaintenance` (tâche `mail.maintenance`, toutes les 10 minutes, chevauchement `skip`), `MailHealthCheck` avec l'hôte requis `lyxal_server` (`RequiredHost`, §9), composée avec la sonde des écoutes |
 
 **Chiffrement obligatoire (décision M1).** Sans clé maîtresse du coffre-fort ou sans support de
-stockage, l'hôte démarre, la sonde de `lyxal_mail` est « dégradée » (`MAIL_CONTENT_UNAVAILABLE`)
-et tout dépôt est refusé, à réessayer ; aucun message n'est jamais rangé en clair.
+stockage, l'hôte démarre sur une base sans bucket chiffré : la sonde de `lyxal_mail` est
+« dégradée » (`MAIL_CONTENT_UNAVAILABLE`) et tout dépôt est refusé, à réessayer ; aucun message
+n'est jamais rangé en clair. Dès qu'un bucket chiffré existe (le premier dépôt d'une organisation
+en crée un), l'hôte refuse de démarrer sans clé maîtresse (`GROUPWARE_MASTER_KEY_MISSING`) :
+les messages déjà rangés ne pourraient être ni lus ni complétés.
 
 ## 3. Configuration
 
@@ -97,8 +103,8 @@ arrête le démarrage, sans être écrite au journal).
 | `tls` | `default = { certificate, private_key }` (certificat par défaut), `[[tls.certificates]]` (`names`, `certificate`, `private_key`), `reload_interval_seconds` (60, de 5 à 86 400), `handshake_timeout_seconds` (30, de 1 à 300) ; voir §5 |
 | `[[listeners]]` | `id` (minuscules, chiffres, `_`, 32 caractères au plus, unique), `protocol` (`smtp`, `submission`, `imap`, `pop3`, `managesieve`), `bind` (une ou plusieurs adresses), `tls` (`none`, `starttls`, `implicit`), `tls_min_version` (`"1.2"` par défaut ou `"1.3"`, écoute chiffrée seulement), `proxy_networks` (réseaux des répartiteurs, §5.3), `max_connections` (facultatif) |
 | `observability` | `log_filter`, `json_logs`, `include_target`, `include_thread_ids`, `log_client_ip` (`network` par défaut, ou `full`) |
-| `secrets` | `master_key_id`, `previous_master_key_id` ; les clés elles-mêmes **seulement** par `LYXAL_GROUPWARE__SECRETS__MASTER_KEY` et `LYXAL_GROUPWARE__SECRETS__PREVIOUS_MASTER_KEY` (32 octets en Base64 canonique, lues par `lyxal_crypto::EnvironmentKeyProvider`) : **la même clé que `lyxal-server`** (`LYXAL__SECRETS__MASTER_KEY`), sans quoi les fichiers écrits par l'un ne s'ouvrent pas chez l'autre |
-| `storage` | `disk.root` (support `default`, dossier partagé avec `lyxal-server`), `[storage.s3.<nom>]` (`endpoint`, `region`, `bucket`, `access_key_id`, `secret_access_key` par l'environnement seulement, `path_style`, `allow_http`), `antivirus` (`address` ou `socket`, `timeout_seconds`) : **les mêmes supports nommés que `lyxal-server`** |
+| `secrets` | section commune aux hôtes (`lyxal_host::services`) : `master_key_id`, `previous_master_key_id` ; les clés elles-mêmes **seulement** par `LYXAL_GROUPWARE__SECRETS__MASTER_KEY` et `LYXAL_GROUPWARE__SECRETS__PREVIOUS_MASTER_KEY` (32 octets en Base64 canonique, lues par `lyxal_crypto::EnvironmentKeyProvider`) : **la même clé que `lyxal-server`** (`LYXAL__SECRETS__MASTER_KEY`), sans quoi les fichiers écrits par l'un ne s'ouvrent pas chez l'autre |
+| `storage` | section commune aux hôtes (`lyxal_host::services`) : `disk.root` (support `default`, dossier partagé avec `lyxal-server`), `[storage.s3.<nom>]` (`endpoint`, `region`, `bucket`, `access_key_id`, `secret_access_key` par l'environnement seulement, `path_style`, `allow_http`), `antivirus` (`address` ou `socket`, `timeout_seconds`) : **les mêmes supports nommés que `lyxal-server`** |
 | `scheduler` | `workers` (places de chaque exécuteur de file sur ce nœud, 4 par défaut, de 1 à 64) |
 | `mail` | `storage_backend` (support des fichiers du courrier, `default` par défaut ; doit exister dans `[storage]` dès qu'un support est déclaré) |
 
@@ -251,7 +257,9 @@ automatique et liste de blocage en base : lot 5.
   « dégradé »). Aucune adresse IP.
 * Sonde de `lyxal_mail` (une seule par module : `MailListenersHealthCheck` composée avec
   `MailHealthCheck`) : d'abord le service du courrier (« malade » si ses réglages sont
-  illisibles, « dégradé » sans support de stockage ou sans clé maîtresse), puis les écoutes
+  illisibles, « dégradé » sans support de stockage ou sans clé maîtresse, ou quand aucun nœud
+  `lyxal_server` vivant n'est listé dans `runtime_node` depuis plus de 10 minutes : message
+  « aucun nœud lyxal_server vivant… », §9), puis les écoutes
   (« dégradé » si le dernier rechargement des certificats a échoué, au-delà de 90 % du budget
   mémoire ou du plafond d'une écoute ; « malade » porté par la supervision des workers). Sondes
   de `lyxal_secrets`, `lyxal_storage` et `lyxal_scheduler` comme dans `lyxal-server`.
@@ -274,6 +282,7 @@ installées avec le socle (hors empreinte du socle), contrôlées contre `src/er
 | `GROUPWARE_MODULE_INSTALL_FAILED` | Installation d'un module hébergé impossible |
 | `GROUPWARE_BIND_FAILED` | Port de courrier ou port HTTP indisponible |
 | `GROUPWARE_TLS_CERTIFICATE_INVALID` | Certificat illisible ou invalide, nom non couvert, clé lisible par d'autres comptes : arrêt au démarrage ; au rechargement, l'ancien reste et la santé passe à « dégradé » |
+| `GROUPWARE_MASTER_KEY_MISSING` | Aucune clé maîtresse du coffre-fort alors qu'un bucket chiffré existe dans la base : arrêt après l'installation des modules, rien n'est démarré |
 | `GROUPWARE_SHUTDOWN_SIGNAL_FAILED` | Signal d'arrêt indisponible |
 | `GROUPWARE_TELEMETRY_INIT_FAILED` | Journal non initialisé |
 
@@ -289,11 +298,20 @@ Une erreur du runtime garde son code `RUNTIME_*`. Les erreurs du transport (`Net
 * **Même commit que `lyxal-server`** : deux binaires d'un autre commit installeraient des
   releases différentes sous le même numéro (`RUNTIME_RELEASE_CHECKSUM_MISMATCH`) et l'un des deux
   verrait le socle « dégradé ».
-* **Même clé maîtresse et mêmes supports que `lyxal-server`** (décision M13) : la clé maîtresse
-  du coffre-fort (perdue : courrier illisible ; ses procédures de sauvegarde sont celles de
-  `lyxal_secrets`) et les supports nommés (disque partagé ou S3). `lyxal-server` doit tourner sur
-  la même base : ses tâches `storage.cleanup` et `secrets.maintenance` retirent les octets des
-  messages effacés et rescellent leurs clés après rotation (`crates/lyxal_mail/ROADMAP.md`).
+* **Même clé maîtresse et mêmes supports que `lyxal-server`** (décision M13) : sections
+  `[secrets]` et `[storage]` communes aux deux hôtes (`lyxal_host::services`), aux mêmes valeurs
+  (préfixes `LYXAL__` et `LYXAL_GROUPWARE__`) : la clé maîtresse du coffre-fort (perdue :
+  courrier illisible ; ses procédures de sauvegarde sont celles de `lyxal_secrets` ; absente
+  alors qu'un bucket chiffré existe : refus de démarrer, `GROUPWARE_MASTER_KEY_MISSING`) et les
+  supports nommés (disque partagé ou S3).
+* **`lyxal-server` sur la même base, exigence d'exploitation** : `lyxal-groupware` ne fonctionne
+  pas seul. Les tâches `storage.cleanup` (octets des messages effacés retirés des supports,
+  préfixes des buckets supprimés) et `secrets.maintenance` (rotation des clés « fichiers » des
+  organisations, rescellement des clés des fichiers) ne sont exécutées que par les nœuds de
+  `lyxal-server`. Sans lui, rien n'est perdu, mais les octets s'accumulent et une clé retirée
+  n'est jamais rescellée : la sonde de `lyxal_mail` passe à « dégradé » quand aucun nœud
+  `lyxal_server` vivant (battement de moins de 30 s dans `runtime_node`) n'a été vu par ce nœud
+  depuis plus de 10 minutes, et le redevient sain au premier battement vu.
 * **Certificats** : fichier de clé en mode 0600 ou 0400, propriété du compte du service ;
   vérification par `openssl s_client -connect hôte:993 -servername mail.exemple.fr` (TLS
   implicite) ou `openssl s_client -connect hôte:587 -starttls smtp` (STARTTLS).
@@ -322,8 +340,10 @@ refusée, nom non couvert refusé) ;
 cycle de vie complet (santé, mesures, arrêt avec drainage, session qui ignore l'arrêt abandonnée
 au délai, port déjà pris) ; services du courrier (`mail_service` : démarrage avec clé maîtresse
 et support disque, sonde saine, dépôt puis lecture d'un message chiffré sur le disque,
-maintenance exécutée par le planificateur, planification non recréée au redémarrage ; sans clé :
-sonde « dégradé » et dépôt refusé à réessayer) ; réglages du coffre-fort et du stockage (clés
+maintenance exécutée par le planificateur, planification non recréée au redémarrage, aucun
+événement `storage.object.*` ; sans clé : sonde « dégradé » et dépôt refusé à réessayer ; sans
+clé et avec un bucket chiffré en base : démarrage refusé, `GROUPWARE_MASTER_KEY_MISSING`, aucun
+nœud inscrit, puis démarrage avec la clé) ; réglages du coffre-fort et du stockage (clés
 refusées dans les fichiers, supports, antivirus, exécuteurs, support du courrier) ; **deux hôtes** avec le vrai `lyxal-server` (décision G16) sur base
 embarquée et sur `ws://` ; bout en bout du binaire (démarrage, routes HTTP, refus SMTP, arrêt par
 SIGTERM).
