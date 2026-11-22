@@ -171,6 +171,12 @@ impl StorageService {
             })
     }
 
+    /// Vrai si le service de clés des buckets chiffrés est disponible (clé maîtresse du
+    /// coffre-fort présente) : sans lui, aucun fichier chiffré n'est écrit ni lu.
+    pub fn encryption_available(&self) -> bool {
+        self.encryption().is_ok()
+    }
+
     /// Vrai si au moins un support est configuré : sans support, rien ne peut être écrit ni lu.
     pub fn is_configured(&self) -> bool {
         !self.backends.is_empty()
