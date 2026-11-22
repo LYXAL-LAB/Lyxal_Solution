@@ -96,6 +96,18 @@
     };
 };
 
+-- test: bucket du courrier trouvé par son nom, au-delà de la première page de la liste (1 000 buckets triés avant) ; absent : NONE
+{
+    CREATE auth_organization:gamma CONTENT { slug: "gamma", name: "Gamma Pierre" };
+    LET $absent = fn::mail_content_bucket(auth_organization:gamma);
+    FOR $i IN 0..1000 { fn::storage_bucket_create({ tenant: "auth_organization:gamma", name: string::concat("a-", <string> (10000 + $i)) }); };
+    LET $mail = fn::storage_bucket_create({ tenant: "auth_organization:gamma", name: "lyxal-mail", encrypted: true }).data.id;
+    RETURN fn::mail_content_bucket(auth_organization:alpha) == type::record((SELECT VALUE mail FROM ONLY passe:storage))
+        AND $absent == NONE
+        AND fn::storage_bucket_list({ tenant: "auth_organization:gamma", limit: 1000 }).data.total == 1001
+        AND fn::mail_content_bucket(auth_organization:gamma) == $mail;
+};
+
 -- test: jean réserve un contenu : clé sans donnée personnelle, bucket du courrier, délai d'une heure
 -- en tant que: jean
 {

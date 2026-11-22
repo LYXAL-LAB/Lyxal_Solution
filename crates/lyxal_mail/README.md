@@ -113,7 +113,8 @@ changées (index `(compte, modseq)`). Clés texte de largeur fixe, car le moteur
 `lyxal_core` ne lit pas un identifiant tableau (`mail_message:[dossier, uid]`).
 Fonctions internes (`COMMENT` « Interne ») : `fn::mail_can`, `fn::mail_settings_effective`,
 `fn::mail_session_account`, `fn::mail_address_normalize`, `fn::mail_modseq_next`,
-`fn::mail_thread_assign`, `fn::mail_content_release`, `fn::mail_content_remove`,
+`fn::mail_thread_assign`, `fn::mail_content_release`, `fn::mail_content_bucket` (bucket
+`lyxal-mail` de l'organisation, cherché sur toutes les pages), `fn::mail_content_remove`,
 `fn::mail_write_refusal`, `fn::mail_counters_apply`, `fn::mail_keywords_rule`,
 `fn::mail_messages_rule`, `fn::mail_flags_apply`, `fn::mail_messages_load`,
 `fn::mail_message_key`, `fn::mail_message_key_text`, `fn::mail_message_date_key_text`,

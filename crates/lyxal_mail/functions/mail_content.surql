@@ -110,6 +110,27 @@ DEFINE FUNCTION OVERWRITE fn::mail_content_open($params: object) {
 } COMMENT "Fichier à lire pour un message ({ message }) : { object (fiche de lyxal_storage, lue et déchiffrée par le service sous la session système), size, protection, key_fingerprint } ; MAIL_CONTENT_UNAVAILABLE si le contenu n'est pas stocké. Droit : titulaire du compte, compte de service";
 
 -- ----------------------------------------------------------------------------
+-- fn::mail_content_bucket (interne)
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::mail_content_bucket($tenant: record<auth_organization>) -> option<record<storage_bucket>> {
+    LET $first = fn::storage_bucket_list({ tenant: <string> $tenant, limit: 1000, start: 0 });
+    IF !$first.ok { THROW "MAIL_CONTENT_UNAVAILABLE"; };
+    LET $found = array::find($first.data.items, |$b| $b.name = "lyxal-mail");
+    IF $found IS NOT NONE { RETURN $found.id; };
+    -- Pages suivantes, bornées par le total lu : la page qui le porte est relue (une page en échec aussi, pour son erreur)
+    LET $pages = math::max([1, <int> math::ceil(<float> $first.data.total / 1000)]);
+    LET $index = array::find(<array> (1..$pages), |$i| {
+        LET $page = fn::storage_bucket_list({ tenant: <string> $tenant, limit: 1000, start: $i * 1000 });
+        RETURN !$page.ok OR array::any($page.data.items, |$b| $b.name = "lyxal-mail");
+    });
+    IF $index IS NONE { RETURN NONE; };
+    LET $page = fn::storage_bucket_list({ tenant: <string> $tenant, limit: 1000, start: $index * 1000 });
+    IF !$page.ok { THROW "MAIL_CONTENT_UNAVAILABLE"; };
+    RETURN array::find($page.data.items, |$b| $b.name = "lyxal-mail").id;
+} COMMENT "Interne : bucket lyxal-mail de l'organisation ($tenant), cherché sur toutes les pages de fn::storage_bucket_list (bornées par son total) ; NONE s'il n'existe pas ; liste illisible : THROW MAIL_CONTENT_UNAVAILABLE";
+
+-- ----------------------------------------------------------------------------
 -- fn::mail_content_remove (interne)
 -- ----------------------------------------------------------------------------
 
@@ -118,10 +139,8 @@ DEFINE FUNCTION OVERWRITE fn::mail_content_remove($content: object) -> bool {
     LET $object = IF $content.object IS NOT NONE {
         fn::storage_object_get({ object: <string> $content.object })
     } ELSE {
-        LET $buckets = fn::storage_bucket_list({ tenant: <string> $content.tenant, limit: 1000 });
-        IF !$buckets.ok { THROW "MAIL_CONTENT_UNAVAILABLE"; };
-        LET $bucket = array::first(array::filter($buckets.data.items, |$b| $b.name = "lyxal-mail"));
-        IF $bucket IS NONE { NONE } ELSE { fn::storage_object_get({ bucket: <string> $bucket.id, key: $content.key }) }
+        LET $bucket = fn::mail_content_bucket($content.tenant);
+        IF $bucket IS NONE { NONE } ELSE { fn::storage_object_get({ bucket: <string> $bucket, key: $content.key }) }
     };
     IF $object IS NOT NONE AND !$object.ok AND $object.error.code != "STORAGE_OBJECT_NOT_FOUND" { THROW "MAIL_CONTENT_UNAVAILABLE"; };
     -- Le contenu d'abord : le fichier n'est plus référencé, puis il est supprimé dans la même transaction

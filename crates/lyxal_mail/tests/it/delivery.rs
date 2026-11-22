@@ -8,8 +8,8 @@
 
 use bytes::Bytes;
 use lyxal_mail::models::{
-    AccountRefParams, ExpungeParams, FlagsSetParams, MailboxRefParams, MessageListParams,
-    MessageRefParams, TransferParams,
+    AccountRefParams, ContentBeginParams, ExpungeParams, FlagsSetParams, MailboxRefParams,
+    MessageListParams, MessageRefParams, TransferParams,
 };
 use lyxal_mail::{Delivery, DeliveryFlags, MailContent, MailIngest, MailMaintenance, MAIL_BUCKET};
 use lyxal_runtime::worker::CancellationToken;
@@ -489,12 +489,8 @@ async fn an_unencrypted_mail_bucket_refuses_the_delivery_before_any_write() {
     assert_eq!(refused.code(), "MAIL_CONTENT_UNAVAILABLE");
 }
 
-#[tokio::test]
-async fn the_mail_bucket_is_found_beyond_the_first_page_of_buckets() {
-    let bench = bench().await;
-    let domain = bench.domain("alpha").await;
-    let jean = bench.person("jean", "alpha", &domain).await;
-    // 1 000 buckets triés avant « lyxal-mail » : il n'est pas sur la première page
+/// 1 000 buckets d'alpha triés avant « lyxal-mail » : il n'est pas sur la première page.
+async fn buckets_before_mail(bench: &Bench) {
     bench
         .run(
             "FOR $i IN 0..1000 {
@@ -503,6 +499,67 @@ async fn the_mail_bucket_is_found_beyond_the_first_page_of_buckets() {
             };",
         )
         .await;
+}
+
+#[tokio::test]
+async fn an_interrupted_delivery_file_is_removed_beyond_the_first_page_of_buckets() {
+    let bench = bench().await;
+    let domain = bench.domain("alpha").await;
+    let jean = bench.person("jean", "alpha", &domain).await;
+    buckets_before_mail(&bench).await;
+    // Un premier dépôt crée le bucket du courrier
+    bench
+        .ingest
+        .deliver(
+            &jean.store,
+            delivery(&jean.account, &jean.inbox, MESSAGE.as_bytes()),
+        )
+        .await
+        .expect("dépôt");
+    // Dépôt interrompu : contenu réservé, fichier écrit à sa clé, jamais lié
+    let reserved = jean
+        .store
+        .content_begin(ContentBeginParams {
+            account: jean.account.clone(),
+            size: 300,
+            protection: None,
+        })
+        .await
+        .expect("réservation");
+    bench
+        .run(&format!(
+            "LET $bucket = (SELECT VALUE id FROM ONLY storage_bucket WHERE tenant = auth_organization:alpha AND name = 'lyxal-mail' LIMIT 1);
+             LET $object = fn::storage_object_begin({{ bucket: <string> $bucket, key: '{key}', filename: 'message.eml', declared_size: 300 }}).data;
+             LET $committed = fn::storage_object_commit({{ object: <string> $object.id, size: 300, content_type: 'message/rfc822', blake3: 'af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262', content_key: 'enc:v2:essai-files-1:QUJD' }});
+             IF !$committed.ok {{ THROW $committed.error.code; }};
+             UPDATE {content} SET expires_at = time::now() - 1s;",
+            key = reserved.key,
+            content = reserved.content.to_sql(),
+        ))
+        .await;
+    let report = bench
+        .maintenance
+        .run(&CancellationToken::new())
+        .await
+        .expect("maintenance");
+    assert_eq!(report.expired, 1);
+    // Le fichier du dépôt interrompu est retiré avec son contenu ; celui du message reste
+    let states: Vec<String> = bench
+        .values(&format!(
+            "SELECT VALUE state FROM storage_object WHERE key = '{}';",
+            reserved.key
+        ))
+        .await;
+    assert_eq!(states, vec!["deleted".to_string()]);
+    assert_eq!(count(&bench, "SELECT id FROM mail_content").await, 1);
+}
+
+#[tokio::test]
+async fn the_mail_bucket_is_found_beyond_the_first_page_of_buckets() {
+    let bench = bench().await;
+    let domain = bench.domain("alpha").await;
+    let jean = bench.person("jean", "alpha", &domain).await;
+    buckets_before_mail(&bench).await;
     for _ in 0..2 {
         bench
             .ingest
