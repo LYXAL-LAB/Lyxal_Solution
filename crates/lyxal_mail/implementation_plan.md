@@ -173,9 +173,13 @@ les étapes du lot 5 s'insèrent entre 1 et 2 ; le chiffrement reste la dernièr
 1. **Un message appartient à un seul dossier** (modèle de Mox, `store/account.go` ; modèle du banc
    du lot 0). JMAP annonce `maxMailboxesPerEmail = 1` ; les « libellés » (Proton, Gmail) sont des
    mots-clés (`ROADMAP.md`, « Dossiers et libellés »). Une copie crée une nouvelle fiche qui
-   **partage le même contenu** (aucun octet recopié, aucun nouveau scellement). Un déplacement
-   garde la fiche (même `Email.id`), lui donne un nouvel UID dans le dossier cible et laisse une
-   pierre tombale dans le dossier source (comme Mox, qui garde une fiche « effacée » à la place).
+   **partage le même contenu** (aucun octet recopié, aucun nouveau scellement). L'identifiant d'une
+   fiche est ordonné par dossier et UID (`mail_message:⟨<clé du dossier>_<10^10 + UID>⟩`) : un
+   déplacement inscrit une **nouvelle fiche** (nouvel UID, donc nouvel identifiant) dans le dossier
+   cible et retire l'ancienne, avec sa pierre tombale dans le dossier source, dans la même
+   transaction, sous **un numéro de modification par message déplacé** (commun à la pierre tombale
+   et à la nouvelle fiche) ; l'identifiant JMAP stable est `email_id` (UUID v7), gardé par un
+   déplacement, nouveau pour une copie — décision P1 du CTO du 21 novembre 2026.
 2. **Numéro de modification unique par compte** (Mox : `SyncState.LastModSeq` par compte). Chaque
    écriture d'un compte prend le numéro suivant ; un dossier garde le plus haut numéro de ses
    messages (`HIGHESTMODSEQ`), un message le sien (`MODSEQ`). Le même compteur sert d'état JMAP
@@ -406,7 +410,7 @@ compte de service, **S** session système.
 | `mail_message_list` | **mailbox**, `before` (`{ received_at, id }`) ou `uid_min` / `uid_max`, `limit` (50, 1 000 au plus), `fields` (`summary` ou `full`) | `{ items, next }` par date décroissante, ou par UID croissant | B |
 | `mail_message_changes` | **account** ou **mailbox**, **since** (numéro de modification), `limit` (1 000, 5 000 au plus) | `{ changed: [{ id, mailbox, uid, modseq, drapeaux, keywords }], removed: [{ kind, mailbox, uid, object, modseq }], highest_modseq, more }` ; `MAIL_CHANGES_TOO_OLD` sous le plancher | B |
 | `mail_message_flags_set` | **messages** (500 au plus), `add`, `remove`, `replace` (drapeaux et mots-clés), `unchanged_since` | `{ updated: [{ id, uid, modseq }], conflicts: [id] }` (`CONDSTORE`) ; compteurs du dossier | B |
-| `mail_message_move` | **messages** (500 au plus), **mailbox** | `{ moved: [{ id, from_uid, uid, modseq }] }` ; pierres tombales à la source | B |
+| `mail_message_move` | **messages** (500 au plus), **mailbox** | `{ moved: [{ id (nouvelle fiche), from, from_uid, uid, modseq }] }` ; ancienne fiche retirée, pierres tombales à la source, `email_id` gardé (décision P1 du CTO du 21 novembre 2026) | B |
 | `mail_message_copy` | **messages** (500 au plus), **mailbox** | `{ copied: [{ source, id, uid }] }` ; contenu partagé, quota compté | B |
 | `mail_message_expunge` | **mailbox**, `messages` (sinon tous les `\Deleted` du dossier, 500 par appel) | `{ expunged: [{ id, uid, modseq }], more }` ; contenus libérés | B |
 | `mail_thread_get` | **thread** | `{ messages: [id] }` par date de réception | B |
@@ -588,7 +592,7 @@ erreurs ; sessions système, compte de service, administrateur, membre propriét
 croissants et jamais réutilisés après effacement ; `UIDVALIDITY` plus grande pour un dossier
 recréé sous le même nom ; numéros de modification croissants dans le compte ; compteurs égaux au
 contenu réel après chaque scénario ; pages par curseur sans doublon ni manque à égalité de date ;
-`unchanged_since` ; déplacement (même identifiant, nouvel UID, pierre tombale) ; copie (contenu
+`unchanged_since` ; déplacement (nouvelle fiche, même `email_id`, nouvel UID, pierre tombale) ; copie (contenu
 partagé, `refs`) ; effacement du dernier message d'un contenu → fichier supprimé dans la même
 transaction ; plancher et `MAIL_CHANGES_TOO_OLD` ; fils (réponse, références, sujet différent,
 avis de non-remise, enfant avant parent) ; résolution (casse, sous-adresse, alias, compte
@@ -708,7 +712,7 @@ compteur par compte. Ce complément est livré avant 4d, en deux demandes de fus
 
 | Décision | Contenu |
 | :- | :--- |
-| **P1** | Droits contrôlés **une fois par appel** dans chaque fonction publique `fn::mail_*` (`fn::mail_can` sur le compte visé), puis lectures et écritures du module sans réévaluer la permission de table ligne à ligne. Les permissions de table restent posées (défense en profondeur pour les écritures directes) ; les lectures des fonctions publiques passent par un chemin qui ne les réévalue pas. Essais : un membre ne lit ni n'écrit jamais le compte d'un autre, par chaque fonction publique ; mesure de la page de 50 sous la session d'un membre (cible 100 ms sur 2 000 messages, puis 100 000). |
+| **P1** | Identifiants ordonnés `mail_message:[dossier, uid]` (lectures bornées aux lignes rendues, permissions de table conservées) ; exécuteur par événement écarté — décision du CTO du 21 novembre 2026. Réalisé (4e-3) : clé texte de largeur fixe `<clé du dossier>_<10^10 + UID>` (le moteur de `lyxal_core` ne lit pas un identifiant tableau), vue par date `mail_message_date` sur le même modèle ; un déplacement inscrit une nouvelle fiche et retire l'ancienne ; règle de lecture par fiche allégée (organisation et titulaire recopiés sur les fiches, session lue par chemins, même portée que `fn::mail_can`), `fn::mail_can` une fois par appel. Essais : un membre ne lit jamais le compte d'un autre, par plages d'identifiants comprises ; mesures de la page de 50 sous la session d'un membre à 2 000, 20 000 et 100 000 messages (README, « Mesures »). |
 | **P2** | Moteur de `lyxal_core` accéléré (`fn::validation_object_execute`, `fn::sanitize_object_execute`, `fn::security_object_execute`, `fn::utils_engine_*`, et le tri `fn::utils_collection_sort_by` en temps n log n) sans changer son contrat ; mesures avant / après dans le README de `lyxal_core`. Aucune validation propre au courrier (§5.7.8). |
 | **P3** | Compteur unique par compte (M6) gardé ; contention remesurée après P1 et P2 (4 écrivains). Repli du §19 (compteur par dossier et journal du compte) seulement si la mesure reste mauvaise, sur nouvelle décision. |
 | **P4** | Contrat public `fn::auth_organization_member_check({ organization, identity })` dans `lyxal_auth` (adhésion active ou non, sous les droits de l'appelant) ; `fn::mail_account_create` l'utilise au lieu de lire `auth_member_of`. |
@@ -717,6 +721,14 @@ Découpage : **4e-1** `lyxal_core` (P2) ; **4e-2** `lyxal_auth` et `lyxal_mail` 
 puis 4d.
 
 Validé par le CTO le 21 novembre 2026 (décisions P1 à P4 telles que recommandées).
+
+Décisions complémentaires du CTO (22 novembre 2026, telles que recommandées) :
+
+| Décision | Contenu |
+| :- | :--- |
+| **P5** | `lyxal_auth` : révoquer une clé d'API ou un mot de passe d'application révoque aussitôt les sessions qui en sont issues ; une session issue d'une clé ou d'un mot de passe d'application n'expire jamais après lui. La règle de lecture par ligne de `lyxal_mail` couvre ainsi ces cas. |
+| **P6** | La règle de lecture par ligne de `lyxal_mail` reprend des règles de validité de session de `lyxal_auth` (coût) : écart accepté, consigné dans les README des deux modules ; toute évolution de ces règles dans `lyxal_auth` met à jour celle de `lyxal_mail` dans le même changement. |
+| **P7** | Débit de dépôt et contention du compteur par compte (M6) traités au lot 5 (compteur par dossier, contrôle des paramètres du dépôt allégé). |
 
 ## Checklist (`.agents/rules/lyxal_standards_and_checklist.md` §13)
 

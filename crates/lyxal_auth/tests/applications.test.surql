@@ -150,6 +150,16 @@ RETURN fn::auth_api_key_list({}).data.prefix == ["lyxk_cli"]
         AND (SELECT VALUE last_used_at FROM ONLY auth_api_key LIMIT 1) IS NOT NONE;
 };
 
+-- test: clé qui expire avant le jeton d'accès : session bornée par son expiration (décision P5)
+{
+    LET $claire = (SELECT VALUE identity FROM ONLY auth_session:claire);
+    CREATE auth_api_key:courte CONTENT { identity: $claire, name: "Courte", key_hash: "3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c", prefix: "lyxk_crt", permissions: ["auth.member.read"], organization: auth_organization:alpha, expires_at: time::now() + 5m };
+    LET $s = fn::auth_api_key_session_create({ key_hash: "3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c", access_slot: "a" }).data;
+    LET $expires = (SELECT VALUE expires_at FROM ONLY auth_api_key:courte);
+    LET $row = (SELECT expires_at, idle_expires_at, api_key FROM ONLY $s.session);
+    RETURN $s.expires_at == $expires AND $row == { expires_at: $expires, idle_expires_at: $expires, api_key: auth_api_key:courte };
+};
+
 -- test: clé inconnue refusée ; clé expirée refusée
 {
     CREATE auth_api_key CONTENT { identity: (SELECT VALUE identity FROM ONLY auth_session:claire), name: "Vieille", key_hash: "0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f", prefix: "lyxk_old", permissions: ["auth.member.read"], expires_at: time::now() - 1s };
@@ -163,6 +173,11 @@ RETURN fn::auth_api_key_list({}).data.prefix == ["lyxk_cli"]
     LET $key = (SELECT VALUE id FROM ONLY auth_api_key WHERE prefix = "lyxk_cli" LIMIT 1);
     RETURN fn::auth_api_key_revoke({ api_key: <string> $key }).data.revoked;
 };
+
+-- test: clé révoquée : sa session est révoquée dans la même transaction, contrôle de l'hôte refusé (décision P5)
+RETURN (SELECT state, revoked_reason FROM ONLY test_ref:app.api_session) == { state: "revoked", revoked_reason: "api_key_revoked" }
+    AND fn::auth_session_check({ session: <string> test_ref:app.api_session, pv: 1 }).error.code == "AUTH_SESSION_REVOKED"
+    AND array::len(SELECT * FROM event_outbox WHERE event_type = "auth.session.revoked" AND payload.reason = "api_key_revoked") == 1;
 
 -- test: une clé révoquée ne se réactive pas par écriture directe
 -- en tant que: claire
@@ -195,7 +210,7 @@ RETURN array::len(SELECT * FROM auth_api_key WHERE prefix IN ["lyxk_tr1", "lyxk_
 
 -- test: clé révoquée : échange refusé, événements de création et de révocation publiés
 RETURN fn::auth_api_key_session_create({ key_hash: "8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d", access_slot: "a" }).error.code == "AUTH_API_KEY_INVALID"
-    AND array::len(SELECT * FROM event_outbox WHERE event_type IN ["auth.api_key.created", "auth.api_key.revoked"]) == 3
+    AND array::len(SELECT * FROM event_outbox WHERE event_type IN ["auth.api_key.created", "auth.api_key.revoked"]) == 4
     AND fn::auth_application_can({ tenant: NONE });
 
 -- test: compte de service interne à l'hôte : session ouverte sans secret par la session système, refusée pour une application non machine
@@ -232,4 +247,12 @@ RETURN fn::auth_api_key_session_create({ key_hash: "8d8d8d8d8d8d8d8d8d8d8d8d8d8d
         fn::auth_application_list({ tenant: "auth_organization:tri", limit: 3 }).data.id
     ];
     RETURN $cuts == [array::slice($expected, 0, 1), array::slice($expected, 0, 2), $expected] AND $again == $cuts;
+};
+
+-- test: clé supprimée : ses sessions disparaissent avec elle (référence en cascade), le jeton n'a plus de session
+{
+    LET $sessions = (SELECT VALUE id FROM auth_session WHERE api_key = auth_api_key:courte);
+    DELETE auth_api_key:courte;
+    RETURN array::len($sessions) == 1 AND count(SELECT id FROM auth_session WHERE id IN $sessions) == 0
+        AND fn::auth_session_check({ session: <string> $sessions[0], pv: 1 }).error.code == "AUTH_SESSION_REVOKED";
 };

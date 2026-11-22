@@ -356,18 +356,19 @@ RETURN fn::auth_app_password_revoke({ session: "auth_session:marc", app_password
 RETURN fn::auth_context({}).error.code == "AUTH_SESSION_REVOKED"
     AND !fn::auth_has_permission({ permission: "mail.mailbox.access", tenant: auth_organization:alpha });
 
--- préparation: mot de passe expiré et une session qui le désigne encore
+-- préparation: mot de passe expiré et sa session, expirée avec lui (une session n'expire jamais après son mot de passe, décision P5)
 {
-    CREATE auth_app_password:ancien CONTENT { identity: test_ref:claire.identity, organization: auth_organization:alpha, name: "Ancien", password_hash: "5555555555555555555555555555555555555555555555555555555555555555", permissions: ["mail.mailbox.access"], expires_at: time::now() - 1s };
-    CREATE auth_session:ancien_appareil CONTENT { identity: test_ref:claire.identity, kind: "app_password", app_password: auth_app_password:ancien, organization: auth_organization:alpha, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1h };
+    LET $expired = time::now() - 1s;
+    CREATE auth_app_password:ancien CONTENT { identity: test_ref:claire.identity, organization: auth_organization:alpha, name: "Ancien", password_hash: "5555555555555555555555555555555555555555555555555555555555555555", permissions: ["mail.mailbox.access"], expires_at: $expired };
+    CREATE auth_session:ancien_appareil CONTENT { identity: test_ref:claire.identity, kind: "app_password", app_password: auth_app_password:ancien, organization: auth_organization:alpha, idle_expires_at: $expired, expires_at: $expired };
 };
 
 -- test: mot de passe expiré : la session est refusée
 -- en tant que: ancien_appareil
-RETURN fn::auth_context({}).error.code == "AUTH_SESSION_REVOKED";
+RETURN fn::auth_context({}).error.code == "AUTH_SESSION_EXPIRED";
 
 -- test: mot de passe expiré : contrôle de la session par l'hôte refusé, vérification refusée sans compter, état calculé
-RETURN fn::auth_session_check({ session: "auth_session:ancien_appareil", pv: 1 }).error.code == "AUTH_SESSION_REVOKED"
+RETURN fn::auth_session_check({ session: "auth_session:ancien_appareil", pv: 1 }).error.code == "AUTH_SESSION_EXPIRED"
     AND fn::auth_app_password_verify({ password_hash: "5555555555555555555555555555555555555555555555555555555555555555", identifier: "claire@exemple.fr", protocol: "imap", client: { ip: "192.0.2.40" }, ip_hash: "a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6", identifier_hash: "b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6", access_slot: "a" }).error.code == "AUTH_APP_PASSWORD_INVALID"
     AND array::len(SELECT * FROM auth_login_failure WHERE key_hash IN ["a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6", "b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6"]) == 0
     AND fn::auth_app_password_list({ identity: <string> test_ref:claire.identity, organization: "auth_organization:alpha" }).data.map(|$a| [$a.name, $a.state])
@@ -548,4 +549,22 @@ RETURN fn::auth_app_password_eligible({}).error.code == "AUTH_APP_PASSWORD_DISAB
     RETURN $r.app_passwords >= 1 AND $r.app_password_uses == 1
         AND !record::exists(auth_app_password:vieux) AND record::exists(test_ref:tablette.app)
         AND array::len(SELECT * FROM auth_app_password_use WHERE ip = "192.0.2.99") == 0;
+};
+
+-- test: session d'un mot de passe qui expire avant la durée de la politique : bornée par son expiration (décision P5)
+{
+    CREATE auth_app_password:court CONTENT { identity: test_ref:claire.identity, organization: auth_organization:alpha, name: "Court", password_hash: "c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5", permissions: ["mail.mailbox.access"], expires_at: time::now() + 20m };
+    LET $v = fn::auth_app_password_session_open({ app_password: auth_app_password:court, client: { ip: "203.0.113.7" }, access_slot: "a" });
+    LET $s = (SELECT * FROM ONLY $v.session);
+    LET $expires = (SELECT VALUE expires_at FROM ONLY auth_app_password:court);
+    CREATE test_ref:court CONTENT { session: $v.session };
+    RETURN $v.code IS NONE AND $v.expires_at == $expires AND $s.expires_at == $expires AND $s.idle_expires_at == $expires;
+};
+
+-- test: révocation du mot de passe : sa session est révoquée dans la même transaction (décision P5)
+{
+    UPDATE auth_app_password:court SET revoked_at = time::now(), revoked_reason = "owner", revoked_by = test_ref:claire.identity;
+    LET $s = (SELECT state, revoked_reason FROM ONLY test_ref:court.session);
+    RETURN $s == { state: "revoked", revoked_reason: "app_password_revoked" }
+        AND fn::auth_session_check({ session: <string> test_ref:court.session, pv: 1 }).error.code == "AUTH_SESSION_REVOKED";
 };

@@ -4,9 +4,13 @@
 -- MODULE : lyxal_mail
 -- RÔLE   : Messages d'un compte : dossier, UID, numéros de modification, drapeaux, fil, enveloppe
 -- ============================================================================
--- Une fiche par message et par dossier (décision M5) ; une copie est une nouvelle fiche sur le
--- même contenu ; un déplacement garde la fiche (même identifiant JMAP), lui donne un nouvel UID
--- dans le dossier cible et laisse une pierre tombale dans le dossier source. Les drapeaux système
+-- Une fiche par message et par dossier (décision M5), d'identifiant ordonné
+-- mail_message:⟨<clé du dossier>_<10000000000 + UID>⟩ (décision P1) : une page ou une plage d'UID
+-- se lit par une plage d'identifiants bornée (fn::mail_message_key), qui ne parcourt que les fiches
+-- rendues, permissions de la table comprises. Une copie est une nouvelle fiche sur le même
+-- contenu ; un déplacement inscrit une nouvelle fiche dans le dossier cible (nouvel UID, donc
+-- nouvel identifiant) et retire l'ancienne (pierre tombale à la source), dans la même
+-- transaction ; email_id (identifiant JMAP) passe de l'une à l'autre. Les drapeaux système
 -- sont des booléens ; les mots-clés sont en minuscules et triés (modèle de Mox) ; \Recent n'est pas
 -- stocké (IMAP4rev2). Le fil (thread) est fixé à l'inscription et ne change jamais (décision M7).
 -- Restent en clair (décision M8) : l'enveloppe, le sujet de base et la structure MIME, facultatifs
@@ -15,11 +19,28 @@
 -- contenu : tenus par les événements (events/mail_guards.surql), quelle que soit l'origine de
 -- l'écriture ; une écriture qui ne fait pas avancer le numéro de modification est refusée.
 
+-- Lecture contrôlée fiche par fiche par une règle allégée (décision P1), même texte sur
+-- mail_message, mail_message_date et mail_tombstone (vérifié par le banc plages) : session active et
+-- non expirée, sujet actif, session postérieure à son not_before, version des droits du jeton à
+-- jour, puis titulaire de la boîte (owner, recopié du compte) dans son organisation active avec
+-- mail.mailbox.access, ou compte de service (mail.worker) ; même portée que
+-- fn::mail_can({ action: "mailbox" }), lue par chemins sur la session (environ 13 µs par fiche,
+-- contre 360 µs pour fn::mail_can). Les permissions du courrier n'exigent aucun niveau
+-- d'assurance (banc plages). Les fonctions publiques contrôlent en plus fn::mail_can une fois par
+-- appel (dossier, compte ou message visé). Les règles de validité de la session sont celles de
+-- lyxal_auth, recopiées (décision P6) : toute évolution de fn::auth_session_valid met à jour
+-- cette règle dans le même changement.
+
 DEFINE TABLE OVERWRITE mail_message
     TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
-        FOR select, create, update, delete WHERE fn::mail_can({ action: "mailbox", tenant: tenant, account: account })
+        FOR select WHERE type::is_record($auth, "auth_session") AND $auth.state = "active" AND $auth.expires_at > time::now() AND $auth.idle_expires_at > time::now()
+            AND ((owner IS NOT NONE AND $auth.identity = owner AND $auth.organization = tenant AND $token.permissions CONTAINS "mail.mailbox.access") OR $token.permissions CONTAINS "mail.worker")
+            AND ($auth.identity ?? $auth.application).state = "active"
+            AND (($auth.identity ?? $auth.application).not_before IS NONE OR $auth.created_at >= ($auth.identity ?? $auth.application).not_before)
+            AND type::is_int($token.pv) AND $token.pv >= ($auth.identity ?? $auth.application).permissions_version
+        FOR create, update, delete WHERE fn::mail_can({ action: "mailbox", tenant: tenant, account: account })
     COMMENT "Messages d'un compte : dossier, UID, numéros de modification, drapeaux, fil, enveloppe";
 
 DEFINE FIELD OVERWRITE tenant ON TABLE mail_message
@@ -34,10 +55,22 @@ DEFINE FIELD OVERWRITE account ON TABLE mail_message
     READONLY
     COMMENT "Compte";
 
+DEFINE FIELD OVERWRITE owner ON TABLE mail_message
+    TYPE option<record<auth_identity>>
+    READONLY
+    COMMENT "Titulaire du compte (identité) à l'inscription, recopié de mail_account.identity (garde) : clé du contrôle de lecture par fiche (décision P1) ; jamais changé (le titulaire d'un compte ne change pas ; identité supprimée : compte en suppression)";
+
+DEFINE FIELD OVERWRITE protection ON TABLE mail_message
+    TYPE string
+    DEFAULT "platform"
+    READONLY
+    ASSERT $value IN ["platform", "openpgp", "client"]
+    COMMENT "Protection du contenu (décision M15), recopiée de mail_content.protection (garde) : une page la rend sans lire le contenu (une lecture et un contrôle de moins par fiche)";
+
 DEFINE FIELD OVERWRITE mailbox ON TABLE mail_message
     TYPE record<mail_mailbox>
     REFERENCE ON DELETE CASCADE
-    COMMENT "Dossier (un seul) ; un dossier qui contient des messages ne se supprime qu'avec son compte";
+    COMMENT "Dossier (un seul), partie de l'identifiant, jamais changé (garde) ; un dossier qui contient des messages ne se supprime qu'avec son compte";
 
 DEFINE FIELD OVERWRITE content ON TABLE mail_message
     TYPE record<mail_content>
@@ -48,7 +81,14 @@ DEFINE FIELD OVERWRITE content ON TABLE mail_message
 DEFINE FIELD OVERWRITE uid ON TABLE mail_message
     TYPE int
     ASSERT $value >= 1 AND $value <= 4294967295
-    COMMENT "UID dans le dossier : strictement croissant, jamais réutilisé ; nouveau à chaque déplacement";
+    COMMENT "UID dans le dossier : strictement croissant, jamais réutilisé ; partie de l'identifiant, jamais changé (garde : un déplacement inscrit une nouvelle fiche)";
+
+DEFINE FIELD OVERWRITE email_id ON TABLE mail_message
+    TYPE string
+    DEFAULT <string> rand::uuid::v7()
+    READONLY
+    ASSERT string::len($value) >= 1 AND string::len($value) <= 64
+    COMMENT "Identifiant du message pour JMAP (Email.id, UUID v7) : nouveau à l'inscription et à la copie, gardé par un déplacement";
 
 DEFINE FIELD OVERWRITE modseq ON TABLE mail_message
     TYPE int
@@ -76,7 +116,8 @@ DEFINE FIELD OVERWRITE thread_orphan ON TABLE mail_message
 DEFINE FIELD OVERWRITE received_at ON TABLE mail_message
     TYPE datetime
     READONLY
-    COMMENT "Date interne (INTERNALDATE IMAP, receivedAt JMAP)";
+    ASSERT $value >= d"1970-01-01T00:00:00Z"
+    COMMENT "Date interne (INTERNALDATE IMAP, receivedAt JMAP), postérieure à 1970 (clé de la vue par date, mail_message_date)";
 
 DEFINE FIELD OVERWRITE sent_at ON TABLE mail_message
     TYPE option<datetime>
@@ -185,7 +226,7 @@ DEFINE FIELD OVERWRITE updated_at ON TABLE mail_message
     COMMENT "Dernière modification";
 
 DEFINE INDEX OVERWRITE mail_message_uid ON TABLE mail_message FIELDS mailbox, uid UNIQUE;
-DEFINE INDEX OVERWRITE mail_message_received ON TABLE mail_message FIELDS mailbox, received_at;
+DEFINE INDEX OVERWRITE mail_message_deleted ON TABLE mail_message FIELDS mailbox, deleted;
 DEFINE INDEX OVERWRITE mail_message_mailbox_modseq ON TABLE mail_message FIELDS mailbox, modseq;
 DEFINE INDEX OVERWRITE mail_message_seen ON TABLE mail_message FIELDS mailbox, seen;
 DEFINE INDEX OVERWRITE mail_message_account_modseq ON TABLE mail_message FIELDS account, modseq;

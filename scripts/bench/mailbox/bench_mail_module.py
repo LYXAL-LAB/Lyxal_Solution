@@ -8,14 +8,15 @@ boîte de N messages par `fn::mail_message_create`, puis mesure (médiane et 95e
 vu par le client, connexion gardée ouverte) :
 
   * la remise par `fn::mail_message_create` sous une session de membre (permissions des tables
-    évaluées, `fn::mail_can` par ligne), sous le compte de service et sous la session système ;
+    évaluées sur chaque fiche lue ou écrite), sous le compte de service et sous la session système ;
   * la contention du compteur de modifications du compte (décision M6) : quatre clients qui
     remettent dans le même compte, dans un même dossier puis dans quatre dossiers ; conflits de
     transaction comptés, rejoués trois fois au plus comme le fera le service Rust ;
   * le changement d'un drapeau (`fn::mail_message_flags_set`) ;
-  * une page de 50 messages, une plage de 1 000 UID, et les changements depuis un numéro de
+  * une page de 50 messages (par date et par UID), une plage de 1 000 UID, et les changements depuis un numéro de
     modification avec pierres tombales (`fn::mail_message_changes`), sous une session de membre
-    et sous la session système : l'écart est le coût des permissions de table.
+    et sous la session système : l'écart est le coût des permissions des tables, évaluées sur
+    les seules fiches lues (plages d'identifiants bornées, décision P1).
 
 Seuils de la décision C5 (lot 0) : page et synchronisation en moins de 100 ms, changement de
 drapeau en moins de 20 ms, remise d'au moins 300 messages par seconde. Hors CI. Usage :
@@ -104,15 +105,33 @@ def contents(client, account, count):
     return client.one(f'RETURN fn::banc_contenus({account}, {count});')[0]
 
 
-def load(client, account, inbox, total):
+FAST_LOAD = """FOR $c IN {ids} {{
+    LET $box = (SELECT uid_next FROM ONLY {inbox});
+    LET $m = (SELECT VALUE modseq FROM ONLY {account}) + 1;
+    CREATE fn::mail_message_key({inbox}, $box.uid_next) CONTENT {{ tenant: auth_organization:alpha, account: {account}, owner: auth_identity:jean, mailbox: {inbox},
+        content: type::record($c), uid: $box.uid_next, modseq: $m, create_modseq: $m, thread: <string> rand::uuid::v7(),
+        received_at: time::now(), size: 4096, keywords: [], message_id: string::concat($c, "@banc.test"), base_subject: "Sujet",
+        envelope: {{ subject: "Sujet", from: [{{ name: "Expéditeur", address: "exp@ailleurs.test" }}], to: [{{ address: "jean@bench.test" }}] }},
+        structure: {{ type: "text/plain", size: 4096, lines: 80 }} }};
+}};"""
+
+
+def load(client, account, inbox, total, fast=False):
+    """Boîte de `total` messages ; `fast` : écriture directe sous la session système (gardes et
+    compteurs exécutés, sans la validation des paramètres), pour les grandes boîtes."""
     done, start = 0, time.perf_counter()
     while done < total:
-        batch = min(200, total - done)
+        batch = min(500 if fast else 200, total - done)
         ids = contents(client, account, batch)
-        body = "\n".join(f"{message_sql(c, inbox, done + i)};" for i, c in enumerate(ids))
-        for result in client.sql(body):
-            if result["status"] != "OK" or not result["result"]["ok"]:
+        if fast:
+            result = client.sql(FAST_LOAD.format(ids=json.dumps(ids), inbox=inbox, account=account))[-1]
+            if result["status"] != "OK":
                 raise RuntimeError(str(result["result"])[:300])
+        else:
+            body = "\n".join(f"{message_sql(c, inbox, done + i)};" for i, c in enumerate(ids))
+            for result in client.sql(body):
+                if result["status"] != "OK" or not result["result"]["ok"]:
+                    raise RuntimeError(str(result["result"])[:300])
         done += batch
         print(f"  chargement : {done}/{total}", file=sys.stderr)
     return round(total / (time.perf_counter() - start), 1)
@@ -178,11 +197,22 @@ def repeat(client, body, repetitions):
     return stats(times)
 
 
+def repeat_error(client, body, code, repetitions):
+    times = []
+    for _ in range(repetitions):
+        result, elapsed = client.one(body)
+        if result.get("ok") is not False or result["error"]["code"] != code:
+            raise RuntimeError(str(result)[:300])
+        times.append(elapsed)
+    return stats(times)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--messages", type=int, default=20000)
     parser.add_argument("--delivery", type=int, default=300)
     parser.add_argument("--repeat", type=int, default=30)
+    parser.add_argument("--fast-load", action="store_true", help="charger la boîte par écriture directe (session système)")
     parser.add_argument("--out", type=Path)
     args = parser.parse_args()
     results = {"machine": {"platform": platform.platform(), "python": platform.python_version()},
@@ -198,11 +228,15 @@ def main():
         account, boxes = setup["account"], dict(setup["boxes"])
         inbox = boxes["INBOX"]
         print("Chargement de la boîte…", file=sys.stderr)
-        measures["load_per_second_root"] = load(root, account, inbox, args.messages)
+        measures["load_per_second_root"] = load(root, account, inbox, args.messages, args.fast_load)
         print("Remise…", file=sys.stderr)
         measures["delivery_member"] = delivery(jean, root, account, inbox, args.delivery, 2_000_000)
         measures["delivery_worker"] = delivery(service, root, account, inbox, args.delivery, 3_000_000)
         measures["delivery_root"] = delivery(root, root, account, inbox, args.delivery, 4_000_000)
+        # Part de la validation des paramètres (lyxal_core) : même appel, refusé juste après elle
+        # (dossier absent), sous la session système
+        refused = message_sql("mail_content:absent", "mail_mailbox:absent", 0)
+        measures["delivery_validation_only_root"] = repeat_error(root, f"RETURN {refused};", "MAIL_MAILBOX_NOT_FOUND", args.repeat)
         print("Contention…", file=sys.stderr)
         per_client = max(25, args.delivery // 4)
         measures["contention_same_mailbox"] = contention(server, database, member, root, account, [inbox] * 4, per_client)
@@ -213,6 +247,7 @@ def main():
         measures["flag_member"] = repeat(jean, f'RETURN fn::mail_message_flags_set({{ messages: ["{last}"], replace: [IF rand::bool() {{ "$seen" }} ELSE {{ "$flagged" }}] }});', args.repeat)
         for who, client in (("member", jean), ("root", root)):
             measures[f"page_first_{who}"] = repeat(client, f'RETURN fn::mail_message_list({{ mailbox: "{inbox}", limit: 50 }});', args.repeat)
+            measures[f"page_uid_{who}"] = repeat(client, f'RETURN fn::mail_message_list({{ mailbox: "{inbox}", uid_min: 1, limit: 50 }});', args.repeat)
             measures[f"uid_range_1000_{who}"] = repeat(client, f'RETURN fn::mail_message_list({{ mailbox: "{inbox}", uid_min: 1, limit: 1000 }});', args.repeat)
         # Changements : 1 000 drapeaux (deux lots de 500) et 200 effacements depuis un point de synchronisation
         since = root.one(f"RETURN (SELECT VALUE modseq FROM ONLY {account});")[0]
@@ -225,7 +260,8 @@ def main():
             measures[f"changes_mailbox_{who}"] = repeat(client, f'RETURN fn::mail_message_changes({{ mailbox: "{inbox}", since: {since}, limit: 1000 }});', max(5, args.repeat // 3))
         consistent = root.one(f"""RETURN {{
             account: (SELECT VALUE message_count FROM ONLY {account}) == array::len(SELECT VALUE id FROM mail_message WHERE account = {account}),
-            uids: array::len(SELECT VALUE id FROM mail_message WHERE mailbox = {inbox}) == array::len(array::distinct(SELECT VALUE uid FROM mail_message WHERE mailbox = {inbox}))
+            uids: array::len(SELECT VALUE id FROM mail_message WHERE mailbox = {inbox}) == array::len(array::distinct(SELECT VALUE uid FROM mail_message WHERE mailbox = {inbox})),
+            dates: count(SELECT id FROM mail_message_date) == count(SELECT id FROM mail_message)
         }};""")[0]
         results["consistent"] = consistent
     for name, threshold in (("flag_member", THRESHOLDS["flag"]), ("page_first_member", THRESHOLDS["page"]),

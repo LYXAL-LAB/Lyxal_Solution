@@ -125,6 +125,7 @@ RETURN fn::mail_message_get({ message: fn::essai_id("m1") }).data.{ uid, protect
         AND fn::mail_message_create(object::extend($base, { content: fn::essai_id("c2"), keywords: ["a]"] })).error.code == "MAIL_INVALID_PARAMETERS"
         AND fn::mail_message_create(object::extend($base, { content: fn::essai_id("c2"), envelope: { subject: "x", to: [{ address: "a", extra: 1 }] } })).error.code == "MAIL_INVALID_PARAMETERS"
         AND fn::mail_message_create(object::extend($base, { content: fn::essai_id("c2"), received_at: "2026-11-01" })).error.code == "MAIL_INVALID_PARAMETERS"
+        AND fn::mail_message_create(object::extend($base, { content: fn::essai_id("c2"), received_at: d"1969-12-31T23:59:59Z" })).error.code == "MAIL_INVALID_PARAMETERS"
         AND fn::mail_message_create(object::extend($base, { content: fn::essai_id("c2"), mailbox: fn::essai_id("marie_inbox") })).error.code == "MAIL_MAILBOX_NOT_FOUND";
 };
 
@@ -225,18 +226,23 @@ RETURN fn::mail_message_create({ content: fn::essai_id("big"), mailbox: fn::essa
         AND fn::mail_message_flags_set({ messages: [$id], add: (<array> (0..51)).map(|$n| string::concat("k", <string> $n)) }).error.code == "MAIL_KEYWORD_LIMIT";
 };
 
--- test: déplacement : même fiche, nouvel UID dans la cible, pierre tombale à la source
+-- test: déplacement : nouvelle fiche (nouvel UID, nouvel identifiant ordonné, même email_id, même contenu), ancienne retirée, pierre tombale à la source
 -- en tant que: jean
 {
     LET $id = fn::essai_id("m1");
+    LET $original = fn::mail_message_get({ message: $id }).data;
     LET $moved = fn::mail_message_move({ messages: [$id], mailbox: fn::essai_id("jean_archive") }).data.moved;
-    LET $moved_row = fn::mail_message_get({ message: $id }).data;
+    LET $moved_row = fn::mail_message_get({ message: <string> $moved[0].id }).data;
+    UPDATE passe:ids SET m1 = <string> $moved[0].id;
     LET $tomb = (SELECT kind, mailbox, uid, object, modseq FROM ONLY mail_tombstone WHERE object = $id LIMIT 1);
-    RETURN $moved == [{ id: type::record($id), from_uid: 1, uid: 1, modseq: $moved_row.modseq }]
+    RETURN $moved == [{ id: fn::mail_message_key(type::record(fn::essai_id("jean_archive")), 1), from: type::record($id), from_uid: 1, uid: 1, modseq: $moved_row.modseq }]
+        AND fn::mail_message_get({ message: $id }).error.code == "MAIL_MESSAGE_NOT_FOUND"
+        AND $moved_row.{ email_id, content, thread, uid } == { email_id: $original.email_id, content: $original.content, thread: $original.thread, uid: 1 }
+        AND (SELECT VALUE [refs, state] FROM ONLY $original.content) == [1, "stored"]
         AND $moved_row.mailbox == type::record(fn::essai_id("jean_archive"))
         AND $tomb == { kind: "message", mailbox: fn::essai_id("jean_inbox"), uid: 1, object: $id, modseq: $moved_row.modseq }
         AND fn::mail_mailbox_get({ mailbox: fn::essai_id("jean_inbox") }).data.{ total, highest_modseq } == { total: 1, highest_modseq: $moved_row.modseq }
-        AND fn::mail_message_move({ messages: [$id], mailbox: fn::essai_id("marie_inbox") }).error.code == "MAIL_MAILBOX_NOT_FOUND"
+        AND fn::mail_message_move({ messages: [<string> $moved[0].id], mailbox: fn::essai_id("marie_inbox") }).error.code == "MAIL_MAILBOX_NOT_FOUND"
         AND fn::essai_coherent(fn::essai_id("jean"));
 };
 
@@ -249,7 +255,7 @@ RETURN fn::mail_message_create({ content: fn::essai_id("big"), mailbox: fn::essa
     LET $source = fn::mail_message_get({ message: $id }).data;
     UPDATE passe:ids SET copie = <string> $copied[0].id;
     RETURN $copied[0].source == type::record($id) AND $copied[0].uid == 3 AND $copy.content == $source.content AND $copy.thread == $source.thread
-        AND $copy.keywords == $source.keywords AND $copy.id != $source.id
+        AND $copy.keywords == $source.keywords AND $copy.id != $source.id AND $copy.email_id != $source.email_id
         AND (SELECT VALUE refs FROM ONLY $source.content) == 2
         AND fn::mail_quota_get({}).data.used_bytes == math::sum((SELECT VALUE size FROM mail_message))
         AND fn::essai_coherent(fn::essai_id("jean"));
@@ -363,7 +369,7 @@ UPDATE (SELECT VALUE parent.id FROM ONLY passe:fils) SET mailbox = type::record(
 -- test: écriture directe : un message ne s'inscrit pas sans contenu stocké de son compte
 -- en tant que: jean
 -- attendu-erreur: MAIL_WRITE_FORBIDDEN
-CREATE mail_message CONTENT {
+CREATE fn::mail_message_key(type::record(fn::essai_id("jean_inbox")), 1000) CONTENT {
     tenant: auth_organization:alpha, account: type::record(fn::essai_id("jean")), mailbox: type::record(fn::essai_id("jean_inbox")),
     content: type::record(fn::essai_id("cm")), uid: 1000, modseq: 1000, create_modseq: 1000, thread: "t", received_at: time::now(), size: 10
 };
@@ -402,7 +408,7 @@ RETURN fn::mail_message_create({ content: (SELECT VALUE big FROM ONLY passe:ids)
     UPDATE passe:ids SET lot_a = <string> $a.id, lot_b = <string> $b.id;
 };
 
--- test: déplacement d'un lot dont un message est déjà dans la cible : il reste inchangé (ni nouvel UID, ni compté), l'autre est déplacé
+-- test: déplacement d'un lot dont un message est déjà dans la cible : il reste inchangé (ni nouvel UID, ni compté), l'autre est déplacé (nouvelle fiche)
 -- en tant que: jean
 {
     LET $a = fn::essai_id("lot_a");
@@ -410,10 +416,12 @@ RETURN fn::mail_message_create({ content: (SELECT VALUE big FROM ONLY passe:ids)
     LET $initial = fn::mail_message_get({ message: $b }).data;
     LET $archive = fn::mail_mailbox_get({ mailbox: fn::essai_id("jean_archive") }).data;
     LET $result = fn::mail_message_move({ messages: [$a, $b], mailbox: fn::essai_id("jean_archive") });
-    LET $after_a = fn::mail_message_get({ message: $a }).data;
+    UPDATE passe:ids SET lot_a = <string> $result.data.moved[0].id;
+    LET $after_a = fn::mail_message_get({ message: <string> $result.data.moved[0].id }).data;
     LET $after_b = fn::mail_message_get({ message: $b }).data;
     RETURN $result.ok
-        AND $result.data.moved.map(|$m| $m.id) == [type::record($a)]
+        AND $result.data.moved.map(|$m| $m.from) == [type::record($a)]
+        AND !record::exists(type::record($a))
         AND $result.data.moved[0].uid == $archive.uid_next
         AND $after_a.mailbox == type::record(fn::essai_id("jean_archive"))
         AND $after_b.{ mailbox, uid, modseq } == $initial.{ mailbox, uid, modseq }

@@ -101,8 +101,9 @@ DEFINE FUNCTION OVERWRITE fn::mail_content_open($params: object) {
         RETURN fn::error_result("MAIL_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
     LET $p = $report.value;
-    LET $message = (SELECT id, content FROM ONLY $p.message);
-    IF $message == NONE { RETURN fn::error_result("MAIL_MESSAGE_NOT_FOUND", $p.language, { message: <string> $p.message }); };
+    LET $message = (SELECT id, tenant, account, content FROM ONLY $p.message);
+    -- Contrôle complet une fois par appel (la permission de la fiche est un contrôle allégé)
+    IF $message == NONE OR !fn::mail_can({ action: "mailbox", tenant: $message.tenant, account: $message.account }) { RETURN fn::error_result("MAIL_MESSAGE_NOT_FOUND", $p.language, { message: <string> $p.message }); };
     LET $content = (SELECT object, size, state, protection, key_fingerprint FROM ONLY $message.content);
     IF $content == NONE OR $content.state != "stored" OR $content.object IS NONE { RETURN fn::error_result("MAIL_CONTENT_UNAVAILABLE", $p.language, {}); };
     RETURN fn::result_ok({ object: $content.object, size: $content.size, protection: $content.protection, key_fingerprint: $content.key_fingerprint });

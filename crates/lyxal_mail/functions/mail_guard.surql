@@ -104,8 +104,9 @@ DEFINE FUNCTION OVERWRITE fn::mail_write_refusal($table: string, $previous: any,
             RETURN IF $owner == NONE OR $owner.tenant != $next.tenant OR $next.state != "pending" OR $next.refs != 0 OR $next.object IS NOT NONE
                 OR !string::starts_with($next.key, string::concat(<string> record::id($next.account), "/")) { "MAIL_WRITE_FORBIDDEN" } ELSE { NONE };
         };
-        LET $allowed = { pending: ["pending", "stored"], stored: ["stored", "released"], released: ["released"] }[$previous.state];
-        IF $next.state NOTINSIDE $allowed { RETURN "MAIL_CONTENT_STATE_INVALID"; };
+        -- released → stored : contenu relu par la fiche qui remplace celle d'un déplacement
+        LET $allowed = { pending: ["pending", "stored"], stored: ["stored", "released"], released: ["released", "stored"] }[$previous.state];
+        IF $next.state NOTINSIDE $allowed OR ($previous.state = "released" AND $next.state = "stored" AND $next.refs < 1) { RETURN "MAIL_CONTENT_STATE_INVALID"; };
         RETURN IF ($next.object != $previous.object AND !($previous.state = "pending" AND $next.state = "stored")) OR ($next.state != "pending" AND $next.object IS NONE) { "MAIL_WRITE_FORBIDDEN" } ELSE { NONE };
     };
     IF $table = "mail_message" {
@@ -115,7 +116,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_write_refusal($table: string, $previous: any,
             LET $holder = (SELECT VALUE state FROM ONLY $previous.account);
             RETURN IF $holder = "disabled" AND !fn::mail_can({ action: "worker" }) { "MAIL_ACCOUNT_DISABLED" } ELSE { NONE };
         };
-        LET $owner = (SELECT tenant, state, modseq, used_bytes, quota_bytes FROM ONLY $next.account);
+        LET $owner = (SELECT tenant, identity, state, modseq, used_bytes, quota_bytes FROM ONLY $next.account);
         IF $owner == NONE OR $owner.tenant != $next.tenant { RETURN "MAIL_WRITE_FORBIDDEN"; };
         -- Compte désactivé ou en suppression : aucun message ne change, sauf par l'exploitation
         IF $previous IS NOT NONE AND $owner.state != "active" AND !fn::mail_can({ action: "worker" }) {
@@ -125,9 +126,15 @@ DEFINE FUNCTION OVERWRITE fn::mail_write_refusal($table: string, $previous: any,
         IF $box == NONE OR $box.account != $next.account { RETURN "MAIL_WRITE_FORBIDDEN"; };
         IF $previous IS NONE {
             IF $owner.state != "active" { RETURN IF $owner.state = "deleting" { "MAIL_ACCOUNT_DELETING" } ELSE { "MAIL_ACCOUNT_DISABLED" }; };
-            LET $content = (SELECT account, state, size FROM ONLY $next.content);
-            IF $content == NONE OR $content.account != $next.account OR $content.size != $next.size { RETURN "MAIL_WRITE_FORBIDDEN"; };
-            IF $content.state != "stored" { RETURN "MAIL_CONTENT_STATE_INVALID"; };
+            -- Identifiant ordonné : <clé du dossier>_<10^10 + UID> (décision P1)
+            IF $next.id != fn::mail_message_key($next.mailbox, $next.uid) { RETURN "MAIL_WRITE_FORBIDDEN"; };
+            -- Titulaire recopié du compte : clé du contrôle de lecture par fiche (décision P1)
+            IF $owner.identity IS NONE OR $next.owner != $owner.identity { RETURN "MAIL_WRITE_FORBIDDEN"; };
+            LET $content = (SELECT account, state, size, protection FROM ONLY $next.content);
+            IF $content == NONE OR $content.account != $next.account OR $content.size != $next.size OR $content.protection != $next.protection { RETURN "MAIL_WRITE_FORBIDDEN"; };
+            -- Un contenu libéré dans la même transaction est relu par la fiche qui remplace celle
+            -- d'un déplacement (fn::mail_message_move)
+            IF $content.state NOTINSIDE ["stored", "released"] { RETURN "MAIL_CONTENT_STATE_INVALID"; };
             IF $next.uid < $box.uid_next OR $next.modseq < $owner.modseq OR $next.modseq < 1 OR $next.create_modseq != $next.modseq { RETURN "MAIL_WRITE_FORBIDDEN"; };
             LET $quota = $owner.quota_bytes ?? fn::mail_settings_effective({ tenant: $next.tenant }).default_quota_bytes;
             RETURN IF $quota IS NOT NONE AND $owner.used_bytes + $next.size > $quota { "MAIL_QUOTA_EXCEEDED" } ELSE { NONE };
@@ -136,9 +143,8 @@ DEFINE FUNCTION OVERWRITE fn::mail_write_refusal($table: string, $previous: any,
         -- de modification plus grand, au moins égal au dernier du compte
         LET $changed = array::any(["mailbox", "uid", "seen", "answered", "flagged", "deleted", "draft", "keywords"], |$f| $previous[$f] != $next[$f]);
         IF $next.modseq < $previous.modseq OR ($changed AND ($next.modseq <= $previous.modseq OR $next.modseq < $owner.modseq)) { RETURN "MAIL_WRITE_FORBIDDEN"; };
-        IF $next.mailbox = $previous.mailbox { RETURN IF $next.uid != $previous.uid { "MAIL_WRITE_FORBIDDEN" } ELSE { NONE }; };
-        -- Déplacement : nouvel UID dans le dossier cible
-        RETURN IF $next.uid < $box.uid_next { "MAIL_WRITE_FORBIDDEN" } ELSE { NONE };
+        -- Dossier et UID font partie de l'identifiant : un déplacement inscrit une nouvelle fiche
+        RETURN IF $next.mailbox != $previous.mailbox OR $next.uid != $previous.uid { "MAIL_WRITE_FORBIDDEN" } ELSE { NONE };
     };
     RETURN NONE;
 } COMMENT "Interne : garde d'une écriture dans une table de lyxal_mail ($table ; $previous, $next : NONE à la création, à la suppression), appelée par les événements de garde ; NONE, ou le code MAIL_* du refus. Compteurs à zéro à la création ; identité jamais remplacée ; adresse principale gardée tant que le compte vit ; domaine vérifié de la même organisation, non vide seulement avec elle ; alias vers 1 à 50 comptes vivants de l'organisation ; dossier : chemin, parent et rôle cohérents, UIDVALIDITY tirée du compte, pas de boucle, boîte de réception, dossier non vide ou parent protégés ; contenu : états pending → stored → released ; message : même compte que son dossier et son contenu, contenu stocké, compte actif (inscription et changement ; effacement refusé sur un compte désactivé ; changement et effacement permis à l'exploitation : session système, compte de service), UID au moins égal au prochain du dossier, numéro de modification qui avance, quota (filet de sécurité de fn::mail_message_create)";
@@ -200,14 +206,14 @@ DEFINE FUNCTION OVERWRITE fn::mail_counters_apply($table: string, $previous: any
             IF $next.modseq != $previous.modseq { UPDATE $next.account SET modseq = math::max([modseq, $next.modseq]); };
             RETURN NONE;
         };
-        LET $owner = (SELECT state, modseq FROM ONLY $previous.account);
+        LET $owner = (SELECT identity, state, modseq FROM ONLY $previous.account);
         IF $owner == NONE { RETURN NONE; };
         IF $owner.state = "deleting" {
             UPDATE $previous.account SET mailbox_count -= 1;
             RETURN NONE;
         };
         LET $modseq = $owner.modseq + 1;
-        CREATE mail_tombstone CONTENT { tenant: $previous.tenant, account: $previous.account, kind: "mailbox", mailbox: <string> $previous.id, object: <string> $previous.id, modseq: $modseq };
+        CREATE mail_tombstone CONTENT { tenant: $previous.tenant, account: $previous.account, owner: $owner.identity, kind: "mailbox", mailbox: <string> $previous.id, object: <string> $previous.id, modseq: $modseq };
         UPDATE $previous.account SET modseq = $modseq, mailbox_count -= 1;
         RETURN NONE;
     };
@@ -216,16 +222,23 @@ DEFINE FUNCTION OVERWRITE fn::mail_counters_apply($table: string, $previous: any
             UPDATE $next.mailbox SET total += 1, unseen += IF $next.seen { 0 } ELSE { 1 }, size += $next.size,
                 uid_next = math::max([uid_next, $next.uid + 1]), highest_modseq = math::max([highest_modseq, $next.modseq]);
             UPDATE $next.account SET message_count += 1, used_bytes += $next.size, modseq = math::max([modseq, $next.modseq]);
-            UPDATE $next.content SET refs += 1, expires_at = NONE;
+            UPDATE $next.content SET refs += 1, expires_at = NONE, state = "stored";
+            -- Vue par date (pages par date, décision P1) et bornes de dates du dossier
+            CREATE type::record("mail_message_date", fn::mail_message_date_key_text($next.mailbox, time::micros($next.received_at), $next.uid)) CONTENT {
+                tenant: $next.tenant, account: $next.account, owner: $next.owner, mailbox: $next.mailbox, message: $next.id, received_at: $next.received_at, uid: $next.uid
+            };
+            UPDATE $next.mailbox SET received_min = IF received_min IS NONE OR $next.received_at < received_min { $next.received_at } ELSE { received_min },
+                received_max = IF received_max IS NONE OR $next.received_at > received_max { $next.received_at } ELSE { received_max };
             RETURN NONE;
         };
         IF $next IS NONE {
+            DELETE type::record("mail_message_date", fn::mail_message_date_key_text($previous.mailbox, time::micros($previous.received_at), $previous.uid));
             LET $owner = (SELECT state, modseq FROM ONLY $previous.account);
             IF $owner == NONE { RETURN NONE; };
             -- Compte en purge : ni pierre tombale ni numéro de modification
             LET $modseq = IF $owner.state = "deleting" { $owner.modseq } ELSE { $owner.modseq + 1 };
             IF $owner.state != "deleting" {
-                CREATE mail_tombstone CONTENT { tenant: $previous.tenant, account: $previous.account, kind: "message", mailbox: <string> $previous.mailbox, uid: $previous.uid, object: <string> $previous.id, modseq: $modseq };
+                CREATE mail_tombstone CONTENT { tenant: $previous.tenant, account: $previous.account, owner: $previous.owner, kind: "message", mailbox: <string> $previous.mailbox, uid: $previous.uid, object: <string> $previous.id, modseq: $modseq };
             };
             UPDATE $previous.mailbox SET total -= 1, unseen -= IF $previous.seen { 0 } ELSE { 1 }, size -= $previous.size,
                 highest_modseq = math::max([highest_modseq, $modseq]);
@@ -235,18 +248,9 @@ DEFINE FUNCTION OVERWRITE fn::mail_counters_apply($table: string, $previous: any
             fn::mail_content_release($previous.content);
             RETURN NONE;
         };
-        IF $next.mailbox = $previous.mailbox {
-            IF $next.seen != $previous.seen OR $next.modseq != $previous.modseq {
-                UPDATE $next.mailbox SET unseen += IF $previous.seen = $next.seen { 0 } ELSE IF $next.seen { -1 } ELSE { 1 },
-                    highest_modseq = math::max([highest_modseq, $next.modseq]);
-            };
-        } ELSE {
-            -- Déplacement : pierre tombale à la source, compteurs des deux dossiers
-            CREATE mail_tombstone CONTENT { tenant: $previous.tenant, account: $previous.account, kind: "message", mailbox: <string> $previous.mailbox, uid: $previous.uid, object: <string> $previous.id, modseq: $next.modseq };
-            UPDATE $previous.mailbox SET total -= 1, unseen -= IF $previous.seen { 0 } ELSE { 1 }, size -= $previous.size,
+        IF $next.seen != $previous.seen OR $next.modseq != $previous.modseq {
+            UPDATE $next.mailbox SET unseen += IF $previous.seen = $next.seen { 0 } ELSE IF $next.seen { -1 } ELSE { 1 },
                 highest_modseq = math::max([highest_modseq, $next.modseq]);
-            UPDATE $next.mailbox SET total += 1, unseen += IF $next.seen { 0 } ELSE { 1 }, size += $next.size,
-                uid_next = math::max([uid_next, $next.uid + 1]), highest_modseq = math::max([highest_modseq, $next.modseq]);
         };
         IF $next.modseq != $previous.modseq { UPDATE $next.account SET modseq = math::max([modseq, $next.modseq]); };
         RETURN NONE;

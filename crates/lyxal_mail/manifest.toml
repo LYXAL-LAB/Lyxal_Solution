@@ -42,7 +42,8 @@ schemas = [
     "schema/05_mail_mailbox.surql",
     "schema/06_mail_content.surql",
     "schema/07_mail_message.surql",
-    "schema/08_mail_tombstone.surql"
+    "schema/08_mail_tombstone.surql",
+    "schema/09_mail_message_date.surql"
 ]
 functions = [
     "functions/mail_access.surql",
