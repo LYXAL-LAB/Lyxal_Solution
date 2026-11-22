@@ -1,0 +1,12 @@
+# RFC 5321 §3.3, §4.1.1.3, §4.1.2 : chemins, route source, postmaster, adresses littérales.
+C: MAIL FROM:<>
+C: RCPT TO:<@hosta.int,@jkl.org:userc@d.bar.org>
+C: RCPT TO:<userc@d.bar.org>
+C: RCPT TO:<Postmaster>
+C: RCPT TO:<postmaster@example.com>
+C: MAIL FROM:<"quoted local"@example.com>
+C: RCPT TO:<user@[192.0.2.1]>
+C: RCPT TO:<user@[IPv6:2001:db8::1]>
+C: HELO relay.example.org
+C: NOOP
+C: HELP

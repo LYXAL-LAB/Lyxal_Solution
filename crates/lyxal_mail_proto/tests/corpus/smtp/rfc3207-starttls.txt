@@ -1,0 +1,9 @@
+# RFC 3207 §5 : STARTTLS (dernière commande du flux : rien n'est lu après).
+S: 220 mail.imc.org SMTP service ready
+C: EHLO mail.example.com
+S: 250-mail.imc.org offers a warm hug of welcome
+S: 250-8BITMIME
+S: 250-STARTTLS
+S: 250 DSN
+C: STARTTLS
+S: 220 Go ahead

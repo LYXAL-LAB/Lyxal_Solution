@@ -1,0 +1,20 @@
+# RFC 2920 §3.2 : exemple avec PIPELINING (lignes « P: » envoyées d'un seul tenant).
+S: 220 innosoft.com SMTP service ready
+C: EHLO dbc.mtview.ca.us
+S: 250-innosoft.com
+S: 250 PIPELINING
+P: MAIL FROM:<mrose@dbc.mtview.ca.us>
+P: RCPT TO:<ned@innosoft.com>
+P: RCPT TO:<dan@innosoft.com>
+P: RCPT TO:<kvc@innosoft.com>
+P: DATA
+S: 250 sender <mrose@dbc.mtview.ca.us> OK
+S: 250 recipient <ned@innosoft.com> OK
+S: 250 recipient <dan@innosoft.com> OK
+S: 250 recipient <kvc@innosoft.com> OK
+S: 354 enter mail, end with line containing only "."
+D: ...
+D: .
+C: QUIT
+S: 250 message sent
+S: 221 goodbye

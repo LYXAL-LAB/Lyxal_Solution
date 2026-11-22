@@ -1,0 +1,25 @@
+# RFC 5321, annexe D.3 : courrier relayé (étape vers XYZ.COM).
+S: 220 xyz.com Simple Mail Transfer Service Ready
+C: EHLO foo.com
+S: 250 xyz.com is on the air
+C: MAIL FROM:<JQP@bar.com>
+S: 250 OK
+C: RCPT TO:<Jones@XYZ.COM>
+S: 250 OK
+C: DATA
+S: 354 Start mail input; end with <CRLF>.<CRLF>
+D: Received: from foo.com by xyz.com ; Thu, 21 May 1998
+D:     05:33:29 -0700
+D: Date: Thu, 21 May 1998 05:33:22 -0700
+D: From: John Q. Public <JQP@bar.com>
+D: Subject: The Next Meeting of the Board
+D: To: Jones@xyz.com
+D:
+D: Bill:
+D: The next meeting of the board of directors will be
+D: on Tuesday.
+D:                                          John.
+D: .
+S: 250 OK
+C: QUIT
+S: 221 foo.com Service closing transmission channel

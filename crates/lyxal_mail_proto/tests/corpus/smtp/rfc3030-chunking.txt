@@ -1,0 +1,25 @@
+# RFC 3030 §4.1 : CHUNKING simple (86 octets, BDAT LAST).
+S: 220 Random.com ESMTP
+C: EHLO Example.com
+S: 250-Random.com
+S: 250 CHUNKING
+C: MAIL FROM:<Sam@Random.com>
+S: 250 <Sam@Random.com> Sender ok
+C: RCPT TO:<Susan@Random.com>
+S: 250 <Susan@random.com> Recipient ok
+C: BDAT 86 LAST
+B: To: Susan@random.com
+B: From: Sam@random.com
+B: Subject: This is a bodyless test message
+S: 250 Message OK, 86 octets received
+C: QUIT
+S: 221 Goodbye
+# RFC 3030 §4.2 : en-tête d'une transaction BINARYMIME (lu ; BINARYMIME non annoncé par Lyxal).
+C: MAIL FROM:<ned@thor.innosoft.com> BODY=BINARYMIME SIZE=10000
+# Morceaux en PIPELINING, écrit pour Lyxal sur la forme du §4.2.
+P: BDAT 12
+B: Subject: x
+P: BDAT 6 LAST
+B: body
+S: 250 2.0.0 Data OK
+S: 250 2.0.0 Message accepted
