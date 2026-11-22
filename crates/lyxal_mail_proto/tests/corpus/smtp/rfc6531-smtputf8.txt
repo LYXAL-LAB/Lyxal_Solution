@@ -1,0 +1,19 @@
+# RFC 6531 §3.2, §3.4 : SMTPUTF8 ; dialogue et adresses écrits pour Lyxal.
+S: 220 mx.example.org ESMTP
+C: EHLO client.example
+S: 250-mx.example.org
+S: 250-8BITMIME
+S: 250 SMTPUTF8
+C: MAIL FROM:<用户@例子.广告> SMTPUTF8 BODY=8BITMIME
+S: 250 2.1.0 OK
+C: RCPT TO:<δοκιμή@παράδειγμα.δοκιμή>
+S: 250 2.1.5 OK
+C: RCPT TO:<jörg@bücher.example>
+S: 550 5.1.1 Unknown recipient
+C: DATA
+S: 354 Go ahead
+D: Subject: =?UTF-8?Q?Gr=C3=BC=C3=9Fe?=
+D:
+D: Grüße aus 例子.
+D: .
+S: 250 2.0.0 OK

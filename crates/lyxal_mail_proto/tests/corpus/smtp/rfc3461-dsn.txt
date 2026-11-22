@@ -1,0 +1,7 @@
+# RFC 3461 : paramètres DSN, sur la forme des exemples de la norme (lus ; refusés par Lyxal tant que DSN n'est pas annoncé).
+C: MAIL FROM:<Alice@Pure-Heart.ORG> RET=HDRS ENVID=QQ314159
+C: RCPT TO:<Bob@Big-Box.COM> NOTIFY=SUCCESS ORCPT=rfc822;Bob@Big-Box.COM
+C: RCPT TO:<Carol@Ivory.EDU> NOTIFY=FAILURE ORCPT=rfc822;Carol@Ivory.EDU
+C: RCPT TO:<Dana@Ivory.EDU> NOTIFY=SUCCESS,FAILURE ORCPT=rfc822;Dana@Ivory.EDU
+C: RCPT TO:<Fred@Bombs.AF.MIL> NOTIFY=NEVER
+C: RCPT TO:<George@Tax-ME.GOV> NOTIFY=FAILURE ORCPT=rfc822;George+40Tax-ME.GOV

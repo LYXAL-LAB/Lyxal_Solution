@@ -36,18 +36,52 @@ tri pour les crates de Stalwart qui alimentent ce crate (commit figé ; rapport 
 (`Apache-2.0 OR MIT`), `memchr`, `simdutf8` et `encoding_rs` (déjà présents) ; contrôlé par
 `cargo deny check licenses`.
 
+Lot 5 (`smtp`) : `memchr` 2 (`Unlicense OR MIT`, déjà dans l'arbre par `mail-parser`) devient
+une dépendance directe ; aucune autre dépendance.
+
 ## 3. Éléments repris
 
-Aucun code de Stalwart ni de Mox au lot 4 : la lecture MIME est écrite pour Lyxal OS autour de
-la dépendance `mail-parser`. Chaque lot ajoute ses lignes.
+La lecture MIME (lot 4) est écrite pour Lyxal OS autour de la dépendance `mail-parser`. La
+syntaxe SMTP (lot 5) est écrite pour Lyxal OS sur le **modèle** de Stalwart `smtp-proto` et de
+Mox : aucune ligne de code n'est recopiée (voir §4). Chaque lot ajoute ses lignes.
 
 | Élément de Lyxal (fichier ou dossier) | Projet | Commit | Licence | Chemin d'origine | Nature (porté / modèle / copié) | Lot |
 | :--- | :--- | :--- | :--- | :--- | :--- | :- |
 | `tests/corpus/mail-parser/rfc/*.eml` (10 messages) | `mail-parser` | 0.11.9 (`918cc0c`) | `Apache-2.0 OR MIT`, option MIT retenue (avis : `LICENSES/MIT-mail-parser.txt`) | `resources/eml/rfc/*.eml` | copié (données d'essai, sans modification) | 4 |
 | `tests/corpus/mail-parser/malformed/*.eml` (23 messages) | `mail-parser` | 0.11.9 (`918cc0c`) | idem | `resources/eml/malformed/*.eml` | copié (données d'essai, sans modification) | 4 |
+| `src/smtp/command.rs` (jeu de commandes, paramètres `SIZE`, `BODY`, `SMTPUTF8`, DSN), `src/smtp/receiver.rs` (récepteur de lignes) | Stalwart `smtp-proto` | `3adead9` | `AGPL-3.0-only OR LicenseRef-SEL`, option AGPL retenue | `crates/smtp-proto/src/request/{parser,receiver,mod}.rs`, `src/lib.rs` | modèle | 5 |
+| `src/smtp/data.rs` (`DATA`, `BDAT`) | Stalwart `smtp-proto` ; Mox | `3adead9` ; `b32f0de` | idem ; MIT | `crates/smtp-proto/src/request/receiver.rs` ; `smtp/data.go` (`DataReader`, refus des fins isolées) | modèle | 5 |
+| `src/smtp/response.rs` (réponses, réponse à `EHLO`) | Stalwart `smtp-proto` ; Mox | `3adead9` ; `b32f0de` | idem ; MIT | `crates/smtp-proto/src/response/generate.rs` ; `smtpserver/server.go` (`cmdHello`) | modèle | 5 |
+| `src/smtp/address.rs` (chemins, boîtes, domaines, adresses littérales, route source) | Mox | `b32f0de` | MIT | `smtpserver/parse.go` (`xpath`, `xbarePath`, `xlocalpart`, `xipdomain`) | modèle | 5 |
+| `src/smtp/error.rs` (codes de réponse et codes étendus) | Mox | `b32f0de` | MIT | `smtp/codes.go`, `smtpserver/server.go` | modèle | 5 |
+| `tests/smtp_data.rs` (`mox_data_reader_cases`) | Mox | `b32f0de` | MIT | `smtp/data_test.go` (`TestDataReader`) | porté (cas d'essai transposés ; un cas inversé par la décision S7) | 5 |
+| `tests/corpus/smtp/rfc*.txt` (11 dialogues) | RFC 5321 (annexe D, §3.3, §4.1), 2920 (§3.2), 3030 (§4.1, §4.2), 1870 (§8), 3207 (§5), 3461, 6531 | — | IETF Trust (Legal Provisions, extraits courts cités) | exemples des RFC | copié (dialogues transcrits, mis au format du corpus) ; `rfc5321-paths` et `rfc3461-dsn` assemblés à partir des adresses et paramètres des normes, `rfc6531`, fin de `rfc3030` et adresses non ASCII écrits pour Lyxal | 5 |
 
 « Porté » : code repris et adapté. « Modèle » : fonctionnement repris, code réécrit. « Copié » :
 fichier repris tel quel. Les mentions de droit d'auteur et de licence des fichiers portés sont
 conservées dans les fichiers ; les fichiers copiés du corpus, qui n'en portent pas, relèvent de
-l'avis `LICENSES/MIT-mail-parser.txt`. Texte de la licence du crate : `LICENSES/AGPL-3.0-only.txt`
-(copie de celui de `crates/lyxal_mail`).
+l'avis `LICENSES/MIT-mail-parser.txt`. Les cas d'essai transposés de Mox relèvent de l'avis
+`LICENSES/MIT-Mox.txt` (copie de `LICENSE.MIT` de Mox) ; les dialogues des RFC sont de courts
+extraits cités. Texte de la licence du crate : `LICENSES/AGPL-3.0-only.txt` (copie de celui de
+`crates/lyxal_mail`).
+
+## 4. Syntaxe SMTP : modèle plutôt que portage (lot 5)
+
+Le plan du lot 5 (§4) prévoyait de porter `smtp-proto` « presque tel quel ». Après lecture de la
+source (copie triée, commit `3adead9`, 9 fichiers, aucun `LicenseRef-SEL`), le code a été **écrit
+pour Lyxal OS** en reprenant le fonctionnement de Stalwart et de Mox, parce que la source
+contredit des décisions du plan :
+
+* `request/parser.rs` saute tout CR où qu'il soit et accepte LF seul comme fin de commande ;
+  `request/receiver.rs` lit plusieurs commandes d'un même tampon (décision S7 : CRLF strict ;
+  `STARTTLS` et `BDAT` : aucune lecture au-delà de la frontière) ;
+* l'UTF-8 invalide est converti avec perte (`from_utf8_lossy`) dans les adresses ;
+* `<Postmaster>` est rendu comme un chemin vide, confondu avec `<>` (plan §7.3 : `postmaster` est
+  résolu) ;
+* le texte des réponses n'est pas assaini (`response/generate.rs`).
+
+Mox a servi de modèle pour la grammaire des chemins, les tolérances (espaces après `FROM:`,
+espaces en fin de ligne, texte après une adresse littérale de `EHLO`), la longueur de la partie
+locale (128) et la détection des fins de ligne isolées ; la décision S7 est plus stricte que Mox
+(tout LF isolé est refusé). Les fichiers écrits portent `SPDX-License-Identifier: AGPL-3.0-only`
+sans mention de droit d'auteur de Stalwart, aucun code n'étant recopié.

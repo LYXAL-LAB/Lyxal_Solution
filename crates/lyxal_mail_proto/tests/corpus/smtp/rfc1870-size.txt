@@ -1,0 +1,11 @@
+# RFC 1870 §8 : SIZE annoncé par le serveur et par le client.
+S: 220 sigurd.innosoft.com -- Server SMTP (PMDF V4.2-6 #1992)
+C: EHLO ymir.claremont.edu
+S: 250-sigurd.innosoft.com
+S: 250-EXPN
+S: 250-HELP
+S: 250 SIZE 1000000
+C: MAIL FROM:<ned@thor.innosoft.com> SIZE=500000
+S: 250 Address Ok.
+C: RCPT TO:<ned@innosoft.com>
+S: 250 ned@innosoft.com OK; can accomodate 500000 byte message

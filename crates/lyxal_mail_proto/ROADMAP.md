@@ -1,6 +1,6 @@
 # Feuille de route — `lyxal_mail_proto`
 
-Évolutions à venir du crate. Son état (lecture MIME, lot 4) est décrit par le
+Évolutions à venir du crate. Son état (lecture MIME, lot 4 ; syntaxe SMTP, lot 5) est décrit par le
 [`README.md`](README.md), la provenance de ses sources par [`SOURCES.md`](SOURCES.md). Le programme est décrit par
 `implementation_plan.md` à la racine du dépôt ; chaque lot a son propre plan, validé par le CTO
 avant toute ligne de code (`.agents/AGENTS.md` §3).
@@ -9,7 +9,7 @@ avant toute ligne de code (`.agents/AGENTS.md` §3).
 
 | Lot | Contenu pour ce crate | Source | Prérequis |
 | :- | :--- | :--- | :--- |
-| 5 — Réception SMTP | Syntaxe SMTP / LMTP et extensions | Stalwart `smtp-proto` | lots 2, 3, 4 |
+| 6 — Envoi | Lecture des réponses SMTP pour le client d'envoi (lecteur des essais `tests/smtp_support/` sorti en code) ; paramètres `AUTH=` et DSN acceptés quand `AUTH` et `DSN` sont annoncés ; extension `AUTH` (mécanismes, réponses initiales jamais gardées) | Stalwart `smtp-proto` (`response/parser.rs`), Mox | lot 5 |
 | 7 — Transport sûr et rapports | Formats des rapports DMARC et TLS-RPT | Stalwart `smtp-report` | lot 6 |
 | 8 — IMAP | Syntaxe IMAP4rev2 et rev1, extensions | Stalwart `imap-proto` | lots 1, 4 |
 | 9 — Recherche et POP3 | Syntaxe POP3 | Stalwart `pop3` | lot 8 |
@@ -25,6 +25,18 @@ avant toute ligne de code (`.agents/AGENTS.md` §3).
 * **Dates** : seule la date de `Date` est lue (`sent_at`) ; la date de réception est celle du
   dépôt (`lyxal_mail`).
 * **Fuzzing** : cible `fuzz/` préparée, lancée au lot 21.
+
+## Syntaxe SMTP : points ouverts (lot 5)
+
+* **LF isolé** : refusé partout (décision S7), plus strictement que Mox, qui l'accepte loin d'un
+  point parce que des messages réels en contiennent ; à confirmer par les essais réels (lot 5,
+  `crates/lyxal_mail/ROADMAP.md`) avant la mise en service.
+* **Parties locales UTF-8** : gardées telles que reçues, sans normalisation NFC (Mox normalise) ;
+  sans effet au lot 5 (les adresses de Lyxal sont ASCII, plan §8) ; à revoir avec le lot 13.
+* **`LMTP`** : `LHLO` reconnu et refusé ; aucune syntaxe propre tant qu'aucun besoin n'existe
+  (plan du lot 5, §2).
+* **Fuzzing** : cibles `smtp_request` et `smtp_data` lancées 60 s à leur création, longuement au
+  lot 21.
 
 ## Chiffrement des boîtes (décision C7)
 
