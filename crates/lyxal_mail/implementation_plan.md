@@ -722,6 +722,14 @@ puis 4d.
 
 Validé par le CTO le 21 novembre 2026 (décisions P1 à P4 telles que recommandées).
 
+Décisions complémentaires du CTO (22 novembre 2026, telles que recommandées) :
+
+| Décision | Contenu |
+| :- | :--- |
+| **P5** | `lyxal_auth` : révoquer une clé d'API ou un mot de passe d'application révoque aussitôt les sessions qui en sont issues ; une session issue d'une clé ou d'un mot de passe d'application n'expire jamais après lui. La règle de lecture par ligne de `lyxal_mail` couvre ainsi ces cas. |
+| **P6** | La règle de lecture par ligne de `lyxal_mail` reprend des règles de validité de session de `lyxal_auth` (coût) : écart accepté, consigné dans les README des deux modules ; toute évolution de ces règles dans `lyxal_auth` met à jour celle de `lyxal_mail` dans le même changement. |
+| **P7** | Débit de dépôt et contention du compteur par compte (M6) traités au lot 5 (compteur par dossier, contrôle des paramètres du dépôt allégé). |
+
 ## Checklist (`.agents/rules/lyxal_standards_and_checklist.md` §13)
 
 * [ ] **Architecture** : modèle et règles dans `lyxal_mail` ; chiffrement dans `lyxal_storage` ;
