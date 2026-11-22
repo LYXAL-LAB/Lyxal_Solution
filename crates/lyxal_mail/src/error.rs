@@ -24,8 +24,9 @@ pub enum MailError {
     #[error("message illisible : {0}")]
     Malformed(MimeError),
     /// Contenu indisponible pour l'instant : service de clés absent (clé maîtresse du
-    /// coffre-fort), aucun support de stockage, ou mémoire des dépôts épuisée
-    /// (`MAIL_CONTENT_UNAVAILABLE`, à réessayer). Rien n'est écrit.
+    /// coffre-fort), aucun support de stockage, bucket `lyxal-mail` de l'organisation en clair,
+    /// ou mémoire des dépôts épuisée (`MAIL_CONTENT_UNAVAILABLE`, à réessayer). Rien n'est
+    /// écrit.
     #[error("contenu indisponible : {0}")]
     Unavailable(String),
 }

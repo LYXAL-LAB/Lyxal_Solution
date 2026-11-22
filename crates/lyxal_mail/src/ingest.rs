@@ -29,7 +29,7 @@
 
 use bytes::Bytes;
 use lyxal_mail_proto::mime::{parse, MimeLimits};
-use lyxal_storage::models::{BucketCreateParams, BucketListParams};
+use lyxal_storage::models::{Bucket, BucketCreateParams, BucketListParams};
 use lyxal_storage::{PutRequest, StorageService};
 use lyxal_surreal::{LyxalSurrealError, ToSql};
 use std::convert::Infallible;
@@ -52,7 +52,7 @@ const FILE_NAME: &str = "message.eml";
 const CONTENT_TYPE: &str = "message/rfc822";
 /// Essais d'une écriture refusée pour conflit de transaction (le premier compris).
 const CONFLICT_ATTEMPTS: u32 = 4;
-/// Buckets lus au plus dans une organisation pour trouver celui du courrier.
+/// Buckets lus par page dans une organisation pour trouver celui du courrier.
 const BUCKET_PAGE: i64 = 1_000;
 
 /// Appel rejoué tant qu'il échoue sur un conflit de transaction (annulé par la base, sans
@@ -214,10 +214,13 @@ impl MailIngest {
     }
 
     /// Bucket chiffré du courrier de l'organisation du contenu réservé, créé s'il n'existe pas.
+    /// Un bucket de ce nom trouvé en clair (créé par ailleurs : le chiffrement est absent par
+    /// défaut) fait refuser le dépôt avant toute écriture (`MAIL_CONTENT_UNAVAILABLE`) : aucun
+    /// octet de message n'est jamais rangé en clair.
     async fn bucket(&self, reserved: &ContentReservation) -> MailResult<String> {
         let tenant = Some(reserved.tenant.to_sql());
         if let Some(found) = self.find_bucket(&tenant, &reserved.bucket_name).await? {
-            return Ok(found);
+            return encrypted_bucket(found);
         }
         let created = self
             .storage
@@ -230,31 +233,53 @@ impl MailIngest {
             })
             .await;
         match created {
-            Ok(bucket) => Ok(bucket.id.to_sql()),
-            // Créé au même moment par un autre dépôt
-            Err(error) if is_code(&error, "STORAGE_BUCKET_EXISTS") => self
-                .find_bucket(&tenant, &reserved.bucket_name)
-                .await?
-                .ok_or_else(|| MailError::from(error)),
+            Ok(bucket) => encrypted_bucket(bucket),
+            // Créé au même moment par un autre dépôt, ou par un autre appelant
+            Err(error) if is_code(&error, "STORAGE_BUCKET_EXISTS") => {
+                match self.find_bucket(&tenant, &reserved.bucket_name).await? {
+                    Some(found) => encrypted_bucket(found),
+                    None => Err(error.into()),
+                }
+            }
             Err(error) => Err(error.into()),
         }
     }
 
-    async fn find_bucket(&self, tenant: &Option<String>, name: &str) -> MailResult<Option<String>> {
-        let list = self
-            .storage
-            .store()
-            .bucket_list(BucketListParams {
-                tenant: tenant.clone(),
-                limit: BUCKET_PAGE,
-                start: 0,
-            })
-            .await?;
-        Ok(list
-            .items
-            .into_iter()
-            .find(|bucket| bucket.name == name)
-            .map(|bucket| bucket.id.to_sql()))
+    /// Bucket de ce nom dans la portée, cherché page par page jusqu'à la fin de la liste
+    /// (`total` relu à chaque page ; une page vide arrête la lecture).
+    async fn find_bucket(&self, tenant: &Option<String>, name: &str) -> MailResult<Option<Bucket>> {
+        let mut start = 0;
+        loop {
+            let page = self
+                .storage
+                .store()
+                .bucket_list(BucketListParams {
+                    tenant: tenant.clone(),
+                    limit: BUCKET_PAGE,
+                    start,
+                })
+                .await?;
+            let read = page.items.len();
+            if let Some(found) = page.items.into_iter().find(|bucket| bucket.name == name) {
+                return Ok(Some(found));
+            }
+            start += i64::try_from(read).unwrap_or(BUCKET_PAGE);
+            if read == 0 || start >= page.total {
+                return Ok(None);
+            }
+        }
+    }
+}
+
+/// Identifiant du bucket du courrier s'il est chiffré ; un bucket en clair fait refuser le
+/// dépôt (`MAIL_CONTENT_UNAVAILABLE`) avant toute écriture.
+fn encrypted_bucket(bucket: Bucket) -> MailResult<String> {
+    if bucket.encrypted {
+        Ok(bucket.id.to_sql())
+    } else {
+        Err(MailError::Unavailable(
+            "bucket du courrier de l'organisation non chiffré".to_string(),
+        ))
     }
 }
 

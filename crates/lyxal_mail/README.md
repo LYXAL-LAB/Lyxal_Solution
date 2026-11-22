@@ -197,7 +197,11 @@ fichier par message et d'une ouverture de clé par lecture (`ROADMAP.md`).
 
 **Chiffrement obligatoire (décision M1).** Sans support de stockage ou sans clé maîtresse du
 coffre-fort, rien n'est réservé ni écrit (`MAIL_CONTENT_UNAVAILABLE`, à réessayer) et aucun
-message n'est lu ; jamais de repli en clair. Hiérarchie des clés : clé maîtresse du coffre-fort →
+message n'est lu ; jamais de repli en clair. Un bucket `lyxal-mail` trouvé en clair dans
+l'organisation (créé par ailleurs avant la première remise : `lyxal_storage` n'en réserve pas le
+nom) fait refuser chaque dépôt avant toute écriture (`MAIL_CONTENT_UNAVAILABLE`) jusqu'à ce que
+l'administrateur le supprime ; le bucket est cherché sur toutes les pages de la liste des buckets
+de l'organisation. Hiérarchie des clés : clé maîtresse du coffre-fort →
 clé « fichiers » de l'organisation (`lyxal_secrets`, sans cache, M19) → clé propre à chaque
 message (scellée dans la fiche de `lyxal_storage`) → segments de 64 Kio du `.eml`. Un message
 remis à plusieurs comptes a un contenu par compte (M14).

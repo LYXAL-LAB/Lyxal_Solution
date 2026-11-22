@@ -11,10 +11,10 @@ use lyxal_mail::models::{
     AccountRefParams, ExpungeParams, FlagsSetParams, MailboxRefParams, MessageListParams,
     MessageRefParams, TransferParams,
 };
-use lyxal_mail::{Delivery, DeliveryFlags, MailContent, MailIngest, MailMaintenance};
+use lyxal_mail::{Delivery, DeliveryFlags, MailContent, MailIngest, MailMaintenance, MAIL_BUCKET};
 use lyxal_runtime::worker::CancellationToken;
 use lyxal_secrets::{FileKeys, SecretsStore};
-use lyxal_storage::models::ObjectGetParams;
+use lyxal_storage::models::{BucketCreateParams, ObjectGetParams};
 use lyxal_storage::{ByteRange, StorageService};
 use lyxal_surreal::ToSql;
 
@@ -440,4 +440,82 @@ async fn a_deleted_account_is_purged_with_its_contents_and_files() {
         .await;
     assert_eq!(states.len(), 3);
     assert!(states.iter().all(|state| state == "deleted"));
+}
+
+/// Fichiers rangés sous un dossier du support disque (récursif).
+fn files_under(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
+    let mut found = Vec::new();
+    for entry in std::fs::read_dir(dir).expect("dossier").flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            found.extend(files_under(&path));
+        } else {
+            found.push(path);
+        }
+    }
+    found
+}
+
+#[tokio::test]
+async fn an_unencrypted_mail_bucket_refuses_the_delivery_before_any_write() {
+    let bench = bench().await;
+    let domain = bench.domain("alpha").await;
+    let jean = bench.person("jean", "alpha", &domain).await;
+    // Bucket du même nom créé en clair (chiffrement absent par défaut)
+    bench
+        .storage_store
+        .bucket_create(BucketCreateParams::named(
+            Some("auth_organization:alpha".to_string()),
+            MAIL_BUCKET,
+        ))
+        .await
+        .expect("bucket en clair");
+
+    let refused = bench
+        .ingest
+        .deliver(
+            &jean.store,
+            delivery(&jean.account, &jean.inbox, MESSAGE.as_bytes()),
+        )
+        .await
+        .expect_err("dépôt refusé");
+    // Rien n'est écrit : ni octet sur le support, ni fiche de fichier, ni message
+    assert_eq!(
+        files_under(bench.root.path()),
+        Vec::<std::path::PathBuf>::new()
+    );
+    assert_eq!(count(&bench, "SELECT id FROM storage_object").await, 0);
+    assert_eq!(count(&bench, "SELECT id FROM mail_message").await, 0);
+    assert_eq!(refused.code(), "MAIL_CONTENT_UNAVAILABLE");
+}
+
+#[tokio::test]
+async fn the_mail_bucket_is_found_beyond_the_first_page_of_buckets() {
+    let bench = bench().await;
+    let domain = bench.domain("alpha").await;
+    let jean = bench.person("jean", "alpha", &domain).await;
+    // 1 000 buckets triés avant « lyxal-mail » : il n'est pas sur la première page
+    bench
+        .run(
+            "FOR $i IN 0..1000 {
+                LET $created = fn::storage_bucket_create({ tenant: 'auth_organization:alpha', name: 'a-' + <string> (10000 + $i) });
+                IF !$created.ok { THROW $created.error.code; };
+            };",
+        )
+        .await;
+    for _ in 0..2 {
+        bench
+            .ingest
+            .deliver(
+                &jean.store,
+                delivery(&jean.account, &jean.inbox, MESSAGE.as_bytes()),
+            )
+            .await
+            .expect("dépôt");
+    }
+    assert_eq!(count(&bench, "SELECT id FROM mail_message").await, 2);
+    let buckets: Vec<bool> = bench
+        .values("SELECT VALUE encrypted FROM storage_bucket WHERE name = 'lyxal-mail';")
+        .await;
+    assert_eq!(buckets, vec![true]);
 }
