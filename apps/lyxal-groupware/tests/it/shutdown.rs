@@ -57,6 +57,7 @@ async fn host_starts_serves_health_and_drains_on_shutdown() {
         "lyxal_auth",
         "lyxal_secrets",
         "lyxal_storage",
+        "lyxal_scheduler",
         "lyxal_mail",
     ] {
         assert_eq!(
@@ -87,8 +88,10 @@ async fn host_starts_serves_health_and_drains_on_shutdown() {
     assert_eq!(status, StatusCode::OK, "{body}");
     assert_eq!(body["host"]["state"], "healthy", "{body}");
     assert_eq!(body["host"]["components"]["groupware"]["state"], "healthy");
+    // Sans support de stockage ni clé maîtresse, aucun message n'est déposé ni lu : « dégradé »
+    // (essai `mail_service` pour l'hôte configuré)
     assert_eq!(
-        body["modules"]["modules"]["lyxal_mail"], "healthy",
+        body["modules"]["modules"]["lyxal_mail"], "degraded",
         "{body}"
     );
 

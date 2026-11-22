@@ -2,15 +2,22 @@
 
 //! Configuration de l'hôte : fichiers `config/default.toml`, `config/<LYXAL_ENV>.toml`, puis
 //! variables `LYXAL_GROUPWARE__*` (décision G5 : distinctes des `LYXAL__*` de `lyxal-server`).
-//! Le mot de passe de la base ne se lit que dans l'environnement. Tout est validé avant la
-//! connexion à la base.
+//! Le mot de passe de la base, la clé secrète d'un support S3 et les clés maîtresses du
+//! coffre-fort ne se lisent que dans l'environnement. Tout est validé avant la connexion à la
+//! base.
+//!
+//! Les sections `[secrets]`, `[storage]` et `[scheduler]` ont la forme de celles de
+//! `lyxal-server` et reçoivent les mêmes valeurs (décision M13 du lot 4) : même clé maîtresse du
+//! coffre-fort, mêmes supports nommés (disque partagé ou S3), sans quoi un hôte ne lit pas les
+//! fichiers écrits par l'autre.
 
 use crate::error::GroupwareError;
+use lyxal_host::config::SecretPassword;
 use lyxal_host::config::{load_layered, DatabaseConfig, ObservabilityConfig, RuntimeTimeouts};
 use lyxal_host::net::IpNetwork;
 use lyxal_mail::net::{MailProtocol, TlsMode};
 use serde::{Deserialize, Deserializer};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -35,6 +42,142 @@ pub struct GroupwareConfig {
     #[serde(default)]
     pub listeners: Vec<ListenerConfig>,
     pub observability: GroupwareObservability,
+    /// Clé maîtresse du coffre-fort (clés des fichiers chiffrés du courrier).
+    #[serde(default)]
+    pub secrets: SecretsConfig,
+    /// Supports des fichiers et antivirus.
+    #[serde(default)]
+    pub storage: StorageConfig,
+    /// Exécuteurs du planificateur sur ce nœud.
+    #[serde(default)]
+    pub scheduler: SchedulerConfig,
+    /// Courrier : support de ses fichiers, maintenance.
+    #[serde(default)]
+    pub mail: MailConfig,
+}
+
+/// Clé maîtresse du coffre-fort (`lyxal_secrets`), la même que celle de `lyxal-server` : clé
+/// AES-256 de 32 octets en Base64 canonique (44 caractères), jamais dans les fichiers de
+/// configuration, uniquement par `LYXAL_GROUPWARE__SECRETS__MASTER_KEY` (lue par
+/// `lyxal_crypto::EnvironmentKeyProvider`), avec son identifiant `master_key_id`. Pendant une
+/// rotation, l'ancienne clé est fournie à côté, en lecture seule
+/// (`LYXAL_GROUPWARE__SECRETS__PREVIOUS_MASTER_KEY`, `previous_master_key_id`). Sans clé, aucun
+/// message n'est déposé ni lu (chiffrement obligatoire, décision M1 : sonde « dégradé »).
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SecretsConfig {
+    #[serde(default)]
+    pub master_key: Option<SecretPassword>,
+    #[serde(default)]
+    pub master_key_id: Option<String>,
+    #[serde(default)]
+    pub previous_master_key: Option<SecretPassword>,
+    #[serde(default)]
+    pub previous_master_key_id: Option<String>,
+}
+
+/// Supports des fichiers (`lyxal_storage`), les mêmes que ceux de `lyxal-server` : support
+/// `default` sur un dossier (`LYXAL_GROUPWARE__STORAGE__DISK__ROOT`, dossier partagé entre les
+/// hôtes), services S3 nommés (`LYXAL_GROUPWARE__STORAGE__S3__<NOM>__*`), antivirus facultatif.
+/// Sans support, aucun message n'est déposé ni lu (sonde « dégradé »).
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StorageConfig {
+    #[serde(default)]
+    pub disk: Option<DiskStorageConfig>,
+    #[serde(default)]
+    pub s3: BTreeMap<String, S3StorageConfig>,
+    #[serde(default)]
+    pub antivirus: Option<AntivirusConfig>,
+}
+
+/// Support disque : dossier créé s'il n'existe pas ; tous les fichiers sont écrits dessous.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DiskStorageConfig {
+    pub root: PathBuf,
+}
+
+/// Support S3 ou compatible : `__ENDPOINT`, `__REGION`, `__BUCKET`, `__ACCESS_KEY_ID`,
+/// `__SECRET_ACCESS_KEY` (variable d'environnement seulement), `__PATH_STYLE` (vrai par
+/// défaut), `__ALLOW_HTTP` (faux par défaut).
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct S3StorageConfig {
+    pub endpoint: String,
+    pub region: String,
+    pub bucket: String,
+    pub access_key_id: String,
+    pub secret_access_key: SecretPassword,
+    #[serde(default = "default_true")]
+    pub path_style: bool,
+    #[serde(default)]
+    pub allow_http: bool,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+/// Antivirus ClamAV (service `clamd`) : `address` (`hôte:port`) ou `socket` (socket Unix), l'un
+/// des deux ; `timeout_seconds` (1 à 300, 30 par défaut). Configuré mais injoignable : les
+/// dépôts sont refusés.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AntivirusConfig {
+    #[serde(default)]
+    pub address: Option<String>,
+    #[serde(default)]
+    pub socket: Option<PathBuf>,
+    #[serde(default = "default_antivirus_timeout")]
+    pub timeout_seconds: u64,
+}
+
+fn default_antivirus_timeout() -> u64 {
+    30
+}
+
+/// Planificateur (`lyxal_scheduler`) : places de chaque exécuteur de file sur ce nœud,
+/// 4 par défaut, de 1 à 64.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SchedulerConfig {
+    #[serde(default = "default_scheduler_workers")]
+    pub workers: u32,
+}
+
+fn default_scheduler_workers() -> u32 {
+    lyxal_scheduler::DEFAULT_WORKERS
+}
+
+impl Default for SchedulerConfig {
+    fn default() -> Self {
+        Self {
+            workers: default_scheduler_workers(),
+        }
+    }
+}
+
+/// Courrier : support des fichiers des messages (`storage_backend`, `default` par défaut, nom
+/// d'un support de `[storage]`), fixé à la création du bucket chiffré `lyxal-mail` de chaque
+/// organisation.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MailConfig {
+    #[serde(default = "default_mail_backend")]
+    pub storage_backend: String,
+}
+
+fn default_mail_backend() -> String {
+    "default".to_string()
+}
+
+impl Default for MailConfig {
+    fn default() -> Self {
+        Self {
+            storage_backend: default_mail_backend(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -301,7 +444,12 @@ impl GroupwareConfig {
         let value: Self = load_layered(
             directory.as_ref(),
             ENV_PREFIX,
-            &["database.password"],
+            &[
+                "database.password",
+                "storage.s3.*.secret_access_key",
+                "secrets.master_key",
+                "secrets.previous_master_key",
+            ],
             &[
                 "limits.connections_per_network",
                 "limits.connections_per_minute",
@@ -335,6 +483,7 @@ impl GroupwareConfig {
         }
         self.validate_limits()?;
         self.validate_tls()?;
+        self.validate_storage()?;
 
         let mut ids = BTreeSet::new();
         let mut addresses = BTreeSet::from([self.http.bind]);
@@ -425,6 +574,62 @@ impl GroupwareConfig {
             return invalid(
                 "limits.drain_seconds doit être inférieur à runtime.module_stop_timeout_seconds",
             );
+        }
+        Ok(())
+    }
+
+    fn validate_storage(&self) -> Result<(), GroupwareError> {
+        let invalid = |message: String| Err(GroupwareError::Configuration { message });
+        // Nom d'un support : celui que porte le champ `backend` d'un bucket (snake_case)
+        let valid_name = |name: &str| {
+            name.len() <= 64
+                && name.starts_with(|c: char| c.is_ascii_lowercase())
+                && name
+                    .chars()
+                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
+        };
+        for name in self.storage.s3.keys() {
+            if !valid_name(name) {
+                return invalid(format!(
+                    "storage.s3.{name} : nom de support invalide (minuscules, chiffres et _, 64 caractères au plus)"
+                ));
+            }
+            if self.storage.disk.is_some() && name == "default" {
+                return invalid(
+                    "storage.s3.default : le support `default` est déjà le dossier storage.disk.root"
+                        .into(),
+                );
+            }
+        }
+        if let Some(antivirus) = &self.storage.antivirus {
+            if antivirus.address.is_some() == antivirus.socket.is_some() {
+                return invalid("storage.antivirus : address ou socket, l'un des deux".into());
+            }
+            if !(1..=300).contains(&antivirus.timeout_seconds) {
+                return invalid(
+                    "storage.antivirus.timeout_seconds doit être compris entre 1 et 300".into(),
+                );
+            }
+        }
+        if !(1..=lyxal_scheduler::MAX_WORKERS).contains(&self.scheduler.workers) {
+            return invalid(format!(
+                "scheduler.workers doit être compris entre 1 et {}",
+                lyxal_scheduler::MAX_WORKERS
+            ));
+        }
+        let backend = &self.mail.storage_backend;
+        if !valid_name(backend) {
+            return invalid(format!(
+                "mail.storage_backend « {backend} » : nom de support invalide"
+            ));
+        }
+        let configured = (self.storage.disk.is_some() && backend == "default")
+            || self.storage.s3.contains_key(backend);
+        let any = self.storage.disk.is_some() || !self.storage.s3.is_empty();
+        if any && !configured {
+            return invalid(format!(
+                "mail.storage_backend « {backend} » : aucun support de ce nom dans [storage]"
+            ));
         }
         Ok(())
     }

@@ -1,11 +1,12 @@
 # Manifeste de l'hôte lyxal-groupware : il n'est pas un module du runtime (aucun LyxalModule) ;
 # il déclare ses définitions d'erreurs GROUPWARE_*, installées avec lyxal_core et lyxal_error au
-# démarrage (hors empreinte du socle). Aucun seed au lot 3 (aucun droit, aucune tâche).
+# démarrage (hors empreinte du socle), et la tâche de fond qu'il fait exécuter par
+# lyxal_scheduler (maintenance de lyxal_mail, seed installé après les modules hébergés).
 manifest_version = 1
 id = "lyxal_groupware"
 name = "Lyxal Groupware"
 version = "0.1.0"
-description = "Hôte du courrier, des agendas et des contacts de Lyxal OS : définitions d'erreurs GROUPWARE_*"
+description = "Hôte du courrier, des agendas et des contacts de Lyxal OS : définitions d'erreurs GROUPWARE_*, tâche de fond confiée à lyxal_scheduler"
 capabilities = []
 
 [runtime]
@@ -17,3 +18,4 @@ version = ">=0.1.0"
 
 [resources]
 error_definitions = ["error/groupware.surql"]
+seeds = ["seeds/groupware_tasks.surql"]

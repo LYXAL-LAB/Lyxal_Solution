@@ -296,3 +296,34 @@ fn tls_settings_are_checked() {
         assert!(message.contains(expected), "{section} : {message}");
     }
 }
+
+/// Clés maîtresses du coffre-fort et clé secrète d'un support S3 : jamais dans un fichier ;
+/// supports, antivirus, exécuteurs et support du courrier contrôlés (décision M13 du lot 4).
+#[test]
+fn vault_and_storage_settings_are_checked() {
+    for key in ["master_key", "previous_master_key"] {
+        let message = refused(&format!(
+            "[secrets]\nmaster_key_id = \"vault-1\"\n{key} = \"cle-dans-un-fichier\"\n"
+        ));
+        assert!(
+            message.contains(&format!("LYXAL_GROUPWARE__SECRETS__{}", key.to_uppercase())),
+            "{message}"
+        );
+        assert!(!message.contains("cle-dans-un-fichier"), "{message}");
+    }
+    let message = refused(
+        "[storage.s3.ovh]\nendpoint = \"https://s3.test\"\nregion = \"gra\"\nbucket = \"b\"\naccess_key_id = \"k\"\nsecret_access_key = \"secret-dans-un-fichier\"\n",
+    );
+    assert!(!message.contains("secret-dans-un-fichier"), "{message}");
+
+    assert!(refused("[storage.antivirus]\ntimeout_seconds = 5\n").contains("storage.antivirus"));
+    assert!(refused("[scheduler]\nworkers = 0\n").contains("scheduler.workers"));
+    assert!(
+        refused("[storage.disk]\nroot = \"/tmp/lyxal\"\n[mail]\nstorage_backend = \"ovh\"\n")
+            .contains("mail.storage_backend")
+    );
+    let config = try_config(&toml("config", "[storage.disk]\nroot = \"/tmp/lyxal\"\n"))
+        .expect("support disque");
+    assert_eq!(config.mail.storage_backend, "default");
+    assert!(config.secrets.master_key.is_none());
+}
