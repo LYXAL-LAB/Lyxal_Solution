@@ -1,7 +1,8 @@
 -- lyxal-test: assertions
 -- Plages d'identifiants (décision P1) : identifiants ordonnés des messages et vue par date,
 -- pages par UID et par date lues par plages bornées (trous d'UID, dates éloignées, égalités),
--- isolement par les permissions des tables (autre membre, autre organisation, administrateur),
+-- isolement par les permissions des tables (autre membre, autre organisation, administrateur,
+-- session issue d'une clé d'API ou d'un mot de passe d'application révoqué : décision P5),
 -- vue par date fermée à l'écriture directe, gardes de l'identifiant.
 --
 -- identité admin: { "id": "auth_session:admin", "pv": 1, "permissions": ["mail.domain.manage", "mail.mailbox.access", "auth.member.read", "auth.organization.settings.manage"] }
@@ -11,6 +12,8 @@
 -- identité autre: { "id": "auth_session:autre", "pv": 1, "permissions": ["mail.domain.manage", "mail.mailbox.access", "auth.member.read", "auth.organization.settings.manage"] }
 -- identité worker: { "id": "auth_session:worker", "pv": 1, "permissions": ["mail.worker"] }
 -- identité plateforme: { "id": "auth_session:plateforme", "pv": 1, "permissions": ["mail.installation.manage"] }
+-- identité marie_cle: { "id": "auth_session:marie_cle", "pv": 1, "permissions": ["mail.mailbox.access"] }
+-- identité marie_app: { "id": "auth_session:marie_app", "pv": 1, "permissions": ["mail.mailbox.access"] }
 
 -- préparation: organisations alpha et beta, identités et sessions lyxal_auth, domaines vérifiés, table de passage
 {
@@ -249,3 +252,35 @@ RETURN (SELECT VALUE permissions_version FROM ONLY auth_identity:jean) > 1
     AND fn::mail_message_get({ message: fn::essai_id("m1") }).error.code == "MAIL_MESSAGE_NOT_FOUND"
     AND count(SELECT id FROM type::record("mail_message", fn::mail_message_key_text(type::record(fn::essai_id("jean_inbox")), 0)..fn::mail_message_key_text(type::record(fn::essai_id("jean_inbox")), 4294967296))) == 0
     AND count(SELECT id FROM mail_message) == 0 AND count(SELECT id FROM mail_message_date) == 0 AND count(SELECT id FROM mail_tombstone) == 0;
+
+-- préparation: clé d'API et mot de passe d'application de marie, une session issue de chacun (décision P5)
+{
+    CREATE auth_api_key:marie CONTENT { identity: auth_identity:marie, name: "Client de messagerie", key_hash: "1111111111111111111111111111111111111111111111111111111111111111", prefix: "lyx_mari", permissions: ["mail.mailbox.access"], organization: auth_organization:alpha };
+    CREATE auth_app_password:marie CONTENT { identity: auth_identity:marie, organization: auth_organization:alpha, name: "Téléphone", password_hash: "2222222222222222222222222222222222222222222222222222222222222222", permissions: ["mail.mailbox.access"] };
+    CREATE auth_session:marie_cle CONTENT { identity: auth_identity:marie, organization: auth_organization:alpha, kind: "api_key", api_key: auth_api_key:marie, amr: [{ method: "api_key", at: time::now() }], idle_expires_at: time::now() + 1h, expires_at: time::now() + 1h };
+    CREATE auth_session:marie_app CONTENT { identity: auth_identity:marie, organization: auth_organization:alpha, kind: "app_password", app_password: auth_app_password:marie, amr: [{ method: "app_password", at: time::now() }], idle_expires_at: time::now() + 12h, expires_at: time::now() + 12h };
+};
+
+-- test: session issue d'une clé d'API : la titulaire lit ses fiches directement
+-- en tant que: marie_cle
+RETURN count(SELECT id FROM mail_message) > 0 AND count(SELECT id FROM mail_message) == count(SELECT id FROM mail_message WHERE owner = auth_identity:marie)
+    AND count(SELECT id FROM mail_message_date) == count(SELECT id FROM mail_message);
+
+-- test: session issue d'un mot de passe d'application : la titulaire lit ses fiches directement
+-- en tant que: marie_app
+RETURN count(SELECT id FROM mail_message) > 0 AND count(SELECT id FROM mail_message) == count(SELECT id FROM mail_message WHERE owner = auth_identity:marie)
+    AND count(SELECT id FROM mail_message_date) == count(SELECT id FROM mail_message);
+
+-- préparation: clé d'API et mot de passe d'application de marie révoqués
+{
+    IF !fn::auth_api_key_revoke({ api_key: "auth_api_key:marie" }).data.revoked { THROW "ESSAI_REVOCATION"; };
+    UPDATE auth_app_password:marie SET revoked_at = time::now(), revoked_reason = "admin";
+};
+
+-- test: clé d'API révoquée : le même jeton ne lit plus aucune fiche, même directement
+-- en tant que: marie_cle
+RETURN count(SELECT id FROM mail_message) == 0 AND count(SELECT id FROM mail_message_date) == 0 AND count(SELECT id FROM mail_tombstone) == 0;
+
+-- test: mot de passe d'application révoqué : le même jeton ne lit plus aucune fiche, même directement
+-- en tant que: marie_app
+RETURN count(SELECT id FROM mail_message) == 0 AND count(SELECT id FROM mail_message_date) == 0 AND count(SELECT id FROM mail_tombstone) == 0;

@@ -59,10 +59,23 @@ l'organisation), un index unique ignorant les valeurs absentes.
 * La session (`$auth`) est relue à chaque appel : révoquée, expirée (absolue ou inactivité),
   antérieure au `not_before` de l'identité, identité inactive, ou version des droits du jeton
   (`pv`) dépassée → aucun droit, même sur une connexion WebSocket restée ouverte.
-* Session d'application (compte de service, clé d'API) : application active, session postérieure
-  à son `not_before`, version des droits à jour ; mêmes codes `AUTH_SESSION_*`.
-* Session d'un mot de passe d'application : refusée dès que ce mot de passe est révoqué ou expiré
-  (`AUTH_SESSION_REVOKED`), même sur une connexion restée ouverte.
+* Session d'application (compte de service) : application active, session postérieure à son
+  `not_before`, version des droits à jour ; mêmes codes `AUTH_SESSION_*`.
+* Session issue d'une clé d'API ou d'un mot de passe d'application (décision P5) : révoquée dans
+  la même transaction que ce moyen (motif `api_key_revoked` ou `app_password_revoked`, événement
+  `auth.session.revoked` ; `AUTH_SESSION_REVOKED` dès l'opération suivante, même sur une
+  connexion restée ouverte), supprimée avec lui ou avec son titulaire (référence en cascade), et
+  jamais plus longue que lui : son expiration est bornée à la création par celle du moyen, qui ne
+  change plus ensuite (`AUTH_SESSION_EXPIRED`). La session seule dit donc si le moyen est encore
+  valide : `fn::auth_session_valid` et `fn::auth_session_check` ne relisent ni la clé ni le mot
+  de passe.
+* **Règles reprises par `lyxal_mail` (décision P6).** La règle de lecture par fiche de
+  `lyxal_mail` (`mail_message`, `mail_message_date`, `mail_tombstone`) recopie, pour son coût,
+  les règles de validité d'une session au lieu d'appeler `fn::auth_session_valid` : état de la
+  session et expirations (absolue et d'inactivité), sujet actif (identité ou application),
+  session postérieure au `not_before` du sujet, version des droits du jeton (`pv`) à jour,
+  permission portée par le jeton. Écart accepté ; toute évolution de ces règles dans
+  `lyxal_auth` met à jour la règle de `lyxal_mail` dans le même changement.
 * Session système (root de l'hôte) : tous les droits.
 * Tout retrait de droit (adhésion supprimée ou suspendue, rôle retiré, permission ou inclusion
   retirée d'un rôle) incrémente `permissions_version` des identités concernées par un événement
@@ -154,7 +167,9 @@ organisation, AAL 1 ; `fn::auth_permission_register` le contrôle).
   durée maximale d'un jeton) ; `force` écrase une clé compromise.
 * **Applications** : secret client → session `service` sans renouvellement
   (`client_credentials`) ; révoquer un secret invalide les sessions de service antérieures ;
-  clé d'API → session `api_key` aux permissions de la clé, bornées par celles du propriétaire.
+  clé d'API → session `api_key` aux permissions de la clé, bornées par celles du propriétaire,
+  durée d'un jeton d'accès sans dépasser l'expiration de la clé ; révoquer la clé révoque ses
+  sessions.
 * **Purge** (`AuthPurge::run`, par paquets, interrompue entre deux paquets à l'arrêt ; rend son
   bilan ; l'hôte la fait exécuter toutes les 15 min par `lyxal_scheduler`, tâche `auth.purge`
   qu'il déclare lui-même, `lyxal_auth` ne dépendant pas du planificateur) : parcours,
@@ -255,7 +270,8 @@ lots 3 et suivants du programme courrier) appellent la vérification.
   `AUTH_APP_PASSWORD_NO_PERMISSION` (le mot de passe est gardé, le droit peut revenir).
 * **Session `app_password`** : AAL 1, `amr` `[app_password]`, sans jeton de renouvellement,
   **une par mot de passe**, partagée par ses connexions (reprise s'il lui reste plus de 5 min,
-  sinon nouvelle ; durée `app_password.session_seconds`, 12 h par défaut) ; jeton d'accès de
+  sinon nouvelle ; durée `app_password.session_seconds`, 12 h par défaut, jamais au-delà de
+  l'expiration du mot de passe) ; jeton d'accès de
   15 min, accepté par l'accès SurrealDB `lyxal_auth_a|b` : l'hôte ouvre une connexion
   SurrealDB au nom de l'utilisateur, le logiciel n'envoie que son mot de passe.
   **Renouvellement** sans le mot de passe pour une connexion longue (IMAP en veille), droits

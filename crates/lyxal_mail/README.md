@@ -59,7 +59,17 @@ l'incrémente), puis titulaire dans son organisation active avec `mail.mailbox.a
 de service (`mail.worker`). Même portée que `fn::mail_can` pour une boîte, sans appel de fonction
 (13 µs par fiche au lieu de 360 µs) ; l'administrateur ne lit jamais une fiche d'une boîte (M11).
 Les fonctions publiques contrôlent en plus `fn::mail_can` une fois par appel (dossier, compte ou
-message visé). Les écritures gardent le contrôle complet. `mail_message.protection` est recopiée
+message visé).
+
+**Règles de session reprises de `lyxal_auth` (décision P6).** Pour son coût, cette règle recopie
+les règles de validité d'une session de `lyxal_auth` au lieu d'appeler `fn::auth_session_valid` :
+état de la session et expirations (absolue et d'inactivité), sujet actif (identité ou
+application), session postérieure au `not_before` du sujet, version des droits du jeton (`pv`) à
+jour, permission portée par le jeton. Écart accepté, consigné aussi dans le README de
+`lyxal_auth` : toute évolution de ces règles dans `lyxal_auth` met à jour cette règle dans le
+même changement. Une session issue d'une clé d'API ou d'un mot de passe d'application est
+révoquée avec lui et n'expire jamais après lui (décision P5) : la règle n'a pas à relire le moyen
+(banc `plages` : le même jeton ne lit plus rien après la révocation). Les écritures gardent le contrôle complet. `mail_message.protection` est recopiée
 du contenu : une page ne lit pas le contenu.
 
 ### Gardes et compteurs (`events/mail_guards.surql`, `functions/mail_guard.surql`)

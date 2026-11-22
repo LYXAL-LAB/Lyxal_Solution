@@ -341,9 +341,13 @@ THEN {
     IF !$published.ok { THROW $published.error.code; };
 };
 
+-- Révocation : ses sessions sont révoquées dans la même transaction (refus dès l'opération
+-- suivante, même sur une connexion ouverte ou par une lecture directe des tables)
 DEFINE EVENT OVERWRITE auth_api_key_revoked_event ON TABLE auth_api_key
 WHEN $event = "UPDATE" AND $before.revoked_at IS NONE AND $after.revoked_at IS NOT NONE
 THEN {
+    UPDATE auth_session SET state = "revoked", revoked_at = time::now(), revoked_reason = "api_key_revoked"
+        WHERE api_key = $after.id AND state = "active";
     LET $published = fn::event_publish({
         event_id: rand::uuid::v7(),
         event_type: "auth.api_key.revoked",

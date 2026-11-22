@@ -65,8 +65,13 @@ DEFINE FUNCTION OVERWRITE fn::auth_session_open($params: object) -> object {
     LET $computed = IF $params.kind = "interactive" { $now + duration::from_secs($absolute) }
         ELSE IF $params.kind = "app_password" { $now + duration::from_secs($policy.app_password.session_seconds ?? 43200) }
         ELSE { $now + duration::from_secs($access_ttl) };
-    -- Plafond (changement d'organisation : jamais au-delà de la session d'origine)
-    LET $expires_at = IF $params.expires_cap IS NONE { $computed } ELSE { array::min([$computed, $params.expires_cap]) };
+    -- Plafonds : changement d'organisation, jamais au-delà de la session d'origine ; clé d'API ou
+    -- mot de passe d'application, jamais au-delà de son expiration (sa révocation révoque aussi la
+    -- session : la session seule dit si le moyen est encore valide, décision P5)
+    LET $credential_expires_at = IF $params.api_key IS NOT NONE { (SELECT VALUE expires_at FROM ONLY $params.api_key) }
+        ELSE IF $params.app_password IS NOT NONE { (SELECT VALUE expires_at FROM ONLY $params.app_password) }
+        ELSE { NONE };
+    LET $expires_at = array::min(array::filter([$computed, $params.expires_cap, $credential_expires_at], |$cap| $cap IS NOT NONE));
     LET $sess = (CREATE ONLY type::record("auth_session", string::replace(<string> rand::uuid::v7(), "-", "")) CONTENT {
         identity: $params.identity,
         application: $params.application,
@@ -103,7 +108,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_session_open($params: object) -> object {
         expires_at: $expires_at,
         refresh_expires_at: $refresh_expires_at
     };
-} COMMENT "Crée une session ({ identity | application, api_key, app_password, kind, organization, amr, authenticated_at, client, access_slot, refresh_token_hash, limit, expires_cap }) et son jeton de renouvellement ; AAL calculé depuis l'AMR ; session app_password de durée app_password.session_seconds ; session interactive sur le seul mot de passe refusée (AUTH_MFA_REQUIRED) si l'identité a un second facteur ou s'il lui est exigé ; renvoie ce que porte le jeton d'accès";
+} COMMENT "Crée une session ({ identity | application, api_key, app_password, kind, organization, amr, authenticated_at, client, access_slot, refresh_token_hash, limit, expires_cap }) et son jeton de renouvellement ; AAL calculé depuis l'AMR ; session app_password de durée app_password.session_seconds ; expiration bornée par expires_cap et par celle de la clé d'API ou du mot de passe d'application ; session interactive sur le seul mot de passe refusée (AUTH_MFA_REQUIRED) si l'identité a un second facteur ou s'il lui est exigé ; renvoie ce que porte le jeton d'accès";
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_session_create
@@ -352,14 +357,6 @@ DEFINE FUNCTION OVERWRITE fn::auth_session_check($params: object) {
     LET $subject = IF $s.identity IS NOT NONE { (SELECT state, not_before, permissions_version FROM ONLY $s.identity) } ELSE { (SELECT state, not_before, permissions_version FROM ONLY $s.application) };
     IF $subject == NONE OR $subject.state != "active" { RETURN fn::error_result(IF $s.identity IS NOT NONE { "AUTH_IDENTITY_INACTIVE" } ELSE { "AUTH_APPLICATION_INACTIVE" }, $p.language, {}); };
     IF $subject.not_before IS NOT NONE AND $s.created_at < $subject.not_before { RETURN fn::error_result("AUTH_SESSION_REVOKED", $p.language, {}); };
-    IF $s.api_key IS NOT NONE {
-        LET $key = (SELECT revoked_at, expires_at FROM ONLY $s.api_key);
-        IF $key == NONE OR $key.revoked_at IS NOT NONE OR ($key.expires_at IS NOT NONE AND $key.expires_at <= $now) { RETURN fn::error_result("AUTH_SESSION_REVOKED", $p.language, {}); };
-    };
-    IF $s.app_password IS NOT NONE {
-        LET $app = (SELECT revoked_at, expires_at FROM ONLY $s.app_password);
-        IF $app == NONE OR $app.revoked_at IS NOT NONE OR ($app.expires_at IS NOT NONE AND $app.expires_at <= $now) { RETURN fn::error_result("AUTH_SESSION_REVOKED", $p.language, {}); };
-    };
     IF $p.pv < $subject.permissions_version { RETURN fn::error_result("AUTH_SESSION_STALE", $p.language, {}); };
     RETURN fn::result_ok({ session: $s.id, identity: $s.identity, application: $s.application, organization: $s.organization, kind: $s.kind });
-} COMMENT "Validité d'une session ({ session, pv }) désignée par un jeton dont l'hôte a vérifié la signature : mêmes règles que fn::auth_session_valid (état, expirations, sujet actif, not_before, clé d'API, mot de passe d'application, version des droits). Session système";
+} COMMENT "Validité d'une session ({ session, pv }) désignée par un jeton dont l'hôte a vérifié la signature : mêmes règles que fn::auth_session_valid (état, expirations, sujet actif, not_before, version des droits). Session système";

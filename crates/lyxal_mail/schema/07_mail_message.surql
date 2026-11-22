@@ -27,7 +27,9 @@
 -- fn::mail_can({ action: "mailbox" }), lue par chemins sur la session (environ 13 µs par fiche,
 -- contre 360 µs pour fn::mail_can). Les permissions du courrier n'exigent aucun niveau
 -- d'assurance (banc plages). Les fonctions publiques contrôlent en plus fn::mail_can une fois par
--- appel (dossier, compte ou message visé).
+-- appel (dossier, compte ou message visé). Les règles de validité de la session sont celles de
+-- lyxal_auth, recopiées (décision P6) : toute évolution de fn::auth_session_valid met à jour
+-- cette règle dans le même changement.
 
 DEFINE TABLE OVERWRITE mail_message
     TYPE NORMAL

@@ -15,13 +15,17 @@
 DEFINE FUNCTION OVERWRITE fn::auth_session_valid($params: object) -> object {
     IF $session.ac == NONE AND $auth == NONE { RETURN { valid: true, system: true, code: NONE }; };
     IF $auth == NONE OR !type::is_record($auth, "auth_session") { RETURN { valid: false, system: false, code: "AUTH_SESSION_REQUIRED" }; };
-    LET $s = (SELECT state, created_at, idle_expires_at, expires_at, identity, application, api_key, app_password FROM ONLY $auth);
+    LET $s = (SELECT state, created_at, idle_expires_at, expires_at, identity, application FROM ONLY $auth);
     IF $s == NONE { RETURN { valid: false, system: false, code: "AUTH_SESSION_REVOKED" }; };
     IF $s.state = "revoked" { RETURN { valid: false, system: false, code: "AUTH_SESSION_REVOKED" }; };
     IF $s.state != "active" OR $s.expires_at <= time::now() OR $s.idle_expires_at <= time::now() {
         RETURN { valid: false, system: false, code: "AUTH_SESSION_EXPIRED" };
     };
-    -- Sujet : identité (session interactive ou clé d'API) ou application (compte de service)
+    -- Une clé d'API ou un mot de passe d'application révoqué révoque ses sessions, et une session
+    -- n'expire jamais après le moyen qui l'a ouverte (décision P5) : la session suffit. Ces règles
+    -- sont reprises par la règle de lecture par fiche de lyxal_mail (décision P6).
+    -- Sujet : identité (session interactive, clé d'API, mot de passe d'application) ou application
+    -- (compte de service)
     LET $subject = IF $s.identity IS NOT NONE {
         (SELECT state, not_before, permissions_version FROM ONLY $s.identity)
     } ELSE {
@@ -31,23 +35,9 @@ DEFINE FUNCTION OVERWRITE fn::auth_session_valid($params: object) -> object {
         RETURN { valid: false, system: false, code: IF $s.identity IS NOT NONE { "AUTH_IDENTITY_INACTIVE" } ELSE { "AUTH_APPLICATION_INACTIVE" } };
     };
     IF $subject.not_before IS NOT NONE AND $s.created_at < $subject.not_before { RETURN { valid: false, system: false, code: "AUTH_SESSION_REVOKED" }; };
-    IF $s.api_key IS NOT NONE {
-        LET $key = (SELECT revoked_at, expires_at FROM ONLY $s.api_key);
-        IF $key == NONE OR $key.revoked_at IS NOT NONE OR ($key.expires_at IS NOT NONE AND $key.expires_at <= time::now()) {
-            RETURN { valid: false, system: false, code: "AUTH_SESSION_REVOKED" };
-        };
-    };
-    -- Mot de passe d'application révoqué ou expiré : refus dès l'opération suivante, même sur une
-    -- connexion IMAP restée ouverte
-    IF $s.app_password IS NOT NONE {
-        LET $app = (SELECT revoked_at, expires_at FROM ONLY $s.app_password);
-        IF $app == NONE OR $app.revoked_at IS NOT NONE OR ($app.expires_at IS NOT NONE AND $app.expires_at <= time::now()) {
-            RETURN { valid: false, system: false, code: "AUTH_SESSION_REVOKED" };
-        };
-    };
     IF !type::is_int($token.pv) OR $token.pv < $subject.permissions_version { RETURN { valid: false, system: false, code: "AUTH_SESSION_STALE" }; };
     RETURN { valid: true, system: false, code: NONE };
-} COMMENT "Indique si la session du jeton est utilisable (active, non expirée, sujet actif — identité ou application —, postérieure à not_before, clé d'API ou mot de passe d'application valide, droits à jour) ; { valid, system, code }";
+} COMMENT "Indique si la session du jeton est utilisable (active, non expirée, sujet actif — identité ou application —, postérieure à not_before, droits à jour ; une session de clé d'API ou de mot de passe d'application est révoquée avec lui et n'expire jamais après lui) ; { valid, system, code }";
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_context : identité, session, organisation active, permissions, AAL
