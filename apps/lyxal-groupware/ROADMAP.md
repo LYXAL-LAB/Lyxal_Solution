@@ -20,9 +20,13 @@ décrit par `implementation_plan.md` à la racine du dépôt.
 
 * **Offre du code source (AGPL, article 13)** : le moyen de proposer le source aux utilisateurs
   d'un service réseau modifié relève du CTO (décision F2) ; rien n'est codé.
-* **Avant d'héberger des handlers d'événements ou des tâches** : un seul handler par type
-  d'événement et par processus (`lyxal_event`) ; files du planificateur réservées à un hôte
-  (`crates/lyxal_runtime/ROADMAP.md`).
+* **Avant d'héberger des handlers d'événements** : un seul handler par type d'événement et par
+  processus (`lyxal_event`). Tâches : depuis le lot 4, l'hôte exécute la tâche `handler`
+  `mail.maintenance` (réservée par ses seuls nœuds) et ses exécuteurs servent aussi les tâches
+  `function` et `event` de la file `default`, comme ceux de `lyxal-server` ; des files réservées
+  à un hôte restent à décider si une charge l'exige (`crates/lyxal_runtime/ROADMAP.md`).
+* **Configuration commune des hôtes (lot 4)** : sections `[secrets]` et `[storage]` reprises de
+  `lyxal-server`, à factoriser dans `lyxal_host` (`crates/lyxal_mail/ROADMAP.md`).
 * **ALPN de SMTP et de la soumission** : aucun nom enregistré à l'IANA à notre connaissance
   (registre non relu au lot 3) ; aucun ALPN n'est annoncé sur ces écoutes. À revoir si un nom
   est enregistré.

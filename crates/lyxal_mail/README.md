@@ -1,15 +1,17 @@
 # `lyxal_mail` — serveur de courrier
 
-**État : modèle de données SurrealQL (lot 4c du programme courrier) et contrat réseau des
-sessions en Rust (lot 3).** Le module déclare ses tables, fonctions, gardes, erreurs `MAIL_*`,
-événements et permissions (`manifest.toml`, `[resources]`) ; aucun service Rust ne les appelle
-encore (lot 4d : `MailStore`, `MailIngest`, `MailContent`, `MailMaintenance`, `MailModule`), ni
-aucun protocole (lots 5 à 12). Le module est installé et démarré par l'hôte
-`apps/lyxal-groupware`, qui le porte par un `ManifestModule` avec ses dépendances (`lyxal_auth`,
-`lyxal_secrets`, `lyxal_storage`) et lui rattache ses écoutes (workers
+**État : socle courrier (lot 4 du programme courrier, réalisé) et contrat réseau des sessions
+(lot 3).** Le module déclare ses tables, fonctions, gardes, erreurs `MAIL_*`, événements et
+permissions (`manifest.toml`, `[resources]`) ; son service Rust dépose un message brut (lecture
+MIME, écriture **chiffrée au repos** par `lyxal_storage`, inscription), le relit en entier ou par
+plage, et fait la maintenance (contenus abandonnés et libérés, effacements échus, comptes
+supprimés). Aucun protocole n'est encore écrit (lots 5 à 12) : rien n'est joignable par le
+réseau. Le module est installé et démarré par l'hôte `apps/lyxal-groupware`, qui le porte par
+son `MailModule`, héberge ses dépendances (`lyxal_auth`, `lyxal_secrets`, `lyxal_storage`) et
+`lyxal_scheduler` (maintenance), et lui rattache ses écoutes (workers
 `lyxal_mail:mail.listener.<id>`). Inscrit au Noyau Technique dans `.agents/AGENTS.md` §6 et dans
-[`docs/14-roadmap/ROADMAP_NOYAU.md`](../../docs/14-roadmap/ROADMAP_NOYAU.md). Plan du lot en
-cours : [`implementation_plan.md`](implementation_plan.md) (validé par le CTO).
+[`docs/14-roadmap/ROADMAP_NOYAU.md`](../../docs/14-roadmap/ROADMAP_NOYAU.md). Évolutions à
+venir : [`ROADMAP.md`](ROADMAP.md).
 
 Version `0.1.0` (régime pré-production, `.agents/AGENTS.md` §0).
 
@@ -180,7 +182,61 @@ du compte sérialise ses écritures. Repli du §19 du plan à décider sur cette
 
 Cohérence vérifiée en fin de banc : compteurs du compte égaux aux messages, UID uniques dans le
 dossier, une fiche de la vue par date par message. Non mesuré : coût d'un scellement de clé de
-fichier par message (Rust, lot 4d).
+fichier par message et d'une ouverture de clé par lecture (`ROADMAP.md`).
+
+## État actuel : service Rust
+
+| Élément | Rôle |
+| :--- | :--- |
+| `MailStore`, `models` | Un appel typé d'une ligne par fonction publique `fn::mail_*` (38 fonctions, `LyxalSurrealCall::call_fn`), paramètres `XxxParams` et résultats nommés (`SurrealValue`) ; la session du client détermine l'appelant |
+| `MailIngest`, `Delivery`, `DeliveryFlags` | Dépôt d'un message brut (seul chemin d'écriture d'un message, repris par la remise SMTP du lot 5 et `APPEND` au lot 8) : mémoire réservée sur le budget des connexions (`MemoryBudget`, facultatif), lecture MIME par `lyxal_mail_proto`, `fn::mail_content_begin` sous la session de l'appelant, écriture chiffrée par `lyxal_storage` sous la session système de l'hôte dans le bucket chiffré `lyxal-mail` de l'organisation (créé à la première écriture, sur le support réglé par l'hôte), `fn::mail_content_attach` (session système), `fn::mail_message_create` (appelant) ; écritures rejouées trois fois au plus sur conflit de transaction |
+| `MailContent`, `OpenedContent` | Lecture d'un message, entière ou par plage d'octets du message brut (une partie MIME par ses positions) : `fn::mail_content_open` contrôle les droits de l'appelant, `lyxal_storage` ne déchiffre que les segments de la plage ; un segment altéré met fin au flux par une erreur, jamais par une fin normale |
+| `MailMaintenance`, `MaintenanceReport` | Un passage, interrompu entre deux appels à l'arrêt du serveur : `fn::mail_content_expire`, `fn::mail_tombstone_purge`, `fn::mail_account_purge_step` par paquets ; exécutée par `lyxal_scheduler` (tâche `mail.maintenance` de l'hôte, toutes les 10 minutes) |
+| `MailModule`, `MailHealthCheck` | `LyxalModule` du module (descripteur égal au manifeste) ; sonde : réglages lisibles (sinon « malade »), support de stockage et service de clés des fichiers présents (sinon « dégradé ») ; l'hôte la compose avec celle des écoutes (une sonde par module) |
+| `MailError` | Code `MAIL_*` (dont `MAIL_MESSAGE_MALFORMED`, `MAIL_CONTENT_UNAVAILABLE` à réessayer) ou `STORAGE_*` propagé ; `is_retryable()`, `is_business()` ; aucune adresse, aucun sujet, aucun contenu |
+
+**Chiffrement obligatoire (décision M1).** Sans support de stockage ou sans clé maîtresse du
+coffre-fort, rien n'est réservé ni écrit (`MAIL_CONTENT_UNAVAILABLE`, à réessayer) et aucun
+message n'est lu ; jamais de repli en clair. Hiérarchie des clés : clé maîtresse du coffre-fort →
+clé « fichiers » de l'organisation (`lyxal_secrets`, sans cache, M19) → clé propre à chaque
+message (scellée dans la fiche de `lyxal_storage`) → segments de 64 Kio du `.eml`. Un message
+remis à plusieurs comptes a un contenu par compte (M14).
+
+**Atomicité d'un dépôt en échec.** Aucun octet en clair n'est jamais rangé. Écriture du fichier
+en échec : `lyxal_storage` retire ses octets et sa fiche. Lien refusé : le fichier, que rien ne
+référence, est supprimé aussitôt. Inscription refusée : le contenu lié au fichier reste sans
+lecteur et la maintenance le retire avec son fichier, dans la même transaction, à la fin de son
+délai d'une heure (le fichier ne peut pas être supprimé avant : il est référencé par le contenu,
+`STORAGE_OBJECT_IN_USE`). Une panne dont on ne sait pas si l'écriture a eu lieu ne fait rien
+supprimer : la maintenance tranche. Les octets chiffrés d'un fichier supprimé et sa clé scellée
+sont retirés par le nettoyage de `lyxal_storage` (tâche `storage.cleanup`, exécutée par
+`lyxal-server` sur la base partagée).
+
+**Projection d'un message lu** (`mime`). Enveloppe typée (date de l'en-tête `Date`, sujet,
+adresses à plat avec leur groupe, `Message-ID`, `In-Reply-To`, `References`), structure MIME
+rangée telle quelle (types, paramètres, disposition, nom, positions `header` / `body` / `end`,
+tailles, lignes, parties ou message joint avec son enveloppe, la date brute), clés de fil et sujet
+de base. Un message reçu se garde même hors norme : textes et listes plus longs que le schéma de
+`mail_message` sont raccourcis (texte coupé à une limite de caractère, `References` réduit aux
+1 000 plus récents) au lieu de faire refuser le message ; les entrées restent contrôlées par
+`fn::mail_message_create`.
+
+Dépendances Rust : `lyxal_mail_proto`, `lyxal_runtime`, `lyxal_storage`, `lyxal_surreal`,
+`surrealdb`, `tokio`, `tokio-util`, `async-trait`, `thiserror`, `tracing`, `bytes`, `futures` ;
+aucune crate cryptographique (le chiffrement passe par `lyxal_storage` et `lyxal_secrets`).
+
+Vérification : `cargo test -p lyxal_mail` (base embarquée, support disque, clé maîtresse
+éphémère, jetons de session de test) : dépôt de bout en bout puis liste, lecture entière et
+d'une partie déchiffrée, octets rangés chiffrés (`LXS1`), drapeaux, déplacement (même
+`email_id`), effacement, maintenance qui retire le contenu et son fichier ; refus à réessayer
+sans service de clés ou sans clé maîtresse (rien n'est réservé) ; message illisible refusé avant
+toute réservation ; inscription refusée puis maintenance ; isolement entre membres et entre
+organisations au travers des services (lecture, liste, dépôt) ; maintenance réservée à la
+session système ; purge d'un compte supprimé avec ses contenus et fichiers. L'hôte
+(`cargo test -p lyxal-groupware`, essai `mail_service`) : démarrage avec clé maîtresse et support
+disque, sonde, dépôt et lecture par les services de l'hôte, maintenance exécutée par le
+planificateur, planification non recréée au redémarrage ; sans clé : sonde « dégradé », dépôt
+refusé à réessayer.
 
 ## État actuel : `lyxal_mail::net`
 
@@ -195,8 +251,8 @@ fichier par message (Rust, lot 4d).
 | `MemoryBudget`, `MemoryReservation`, `MemoryClass` | Budget mémoire du processus en deux classes (réception SMTP, lecture), plancher d'un quart par classe, réservations par pas de 64 Kio rendues à la libération, portée annulable ; la somme réservée ne dépasse jamais le budget (porté de Stalwart) |
 | `refusal_line`, `RefusalReason`, `UnavailableHandler` | Ligne de refus poli par protocole (`421` SMTP, `* BYE` IMAP, `-ERR` POP3, `BYE` ManageSieve), sans donnée du client ; handler « service indisponible » des protocoles pas encore écrits (retiré au lot 10) |
 
-Dépendances au lot 3 : `tokio`, `tokio-util`, `async-trait`, `thiserror` ; aucun crate Lyxal,
-aucune crate cryptographique.
+Dépendances du module `net` : `tokio`, `tokio-util`, `async-trait`, `thiserror` ; aucun crate
+Lyxal, aucune crate cryptographique.
 
 Vérification : `cargo test -p lyxal_mail` (limiteur par réseau avec les cas d'essai de Mox
 transposés, plafond rendu même sur annulation, budget mémoire dont une propriété `proptest`,
@@ -246,7 +302,7 @@ dans [`SOURCES.md`](SOURCES.md). Les conséquences de licence sont traitées par
 | :- | :--- |
 | 0 — Cadre | Ce dossier, les sources figées, le tri du code propriétaire, les mesures de SurrealDB |
 | 3 — Hôte et socle réseau (réalisé) | Squelette du module (`lyxal_mail::net`) ; écoutes supervisées, TLS implicite, STARTTLS, certificats rechargés à chaud et PROXY protocol dans `apps/lyxal-groupware` |
-| 4 — Socle courrier (en cours) | Modèle de données SurrealQL : domaines, adresses, alias, boîtes, messages, quotas, droits, erreurs, événements (4c, réalisé) ; service Rust de dépôt et de lecture, chiffrement au repos (niveau A) branché, maintenance (4d) |
+| 4 — Socle courrier (réalisé) | Modèle de données SurrealQL : domaines, adresses, alias, boîtes, messages, quotas, droits, erreurs, événements ; service Rust de dépôt et de lecture, chiffrement au repos (niveau A) par `lyxal_storage`, maintenance par `lyxal_scheduler` |
 | 5 — Réception SMTP | Serveur SMTP entrant, SPF / DKIM / DMARC, antivirus, remise en boîte |
 | 6 — Envoi | File par destination, envoi vers les MX, dépôt authentifié, signature DKIM, avis de non-remise |
 | 7 — Transport sûr et rapports | MTA-STS, DANE, TLS-RPT, rapports DMARC, ARC |

@@ -23,6 +23,18 @@ include_target = false
 include_thread_ids = false
 log_client_ip = "network"
 
+# Coffre-fort et stockage : mêmes valeurs que lyxal-server (clé maîtresse
+# LYXAL_GROUPWARE__SECRETS__MASTER_KEY = celle de LYXAL__SECRETS__MASTER_KEY, par l'environnement
+# seulement ; mêmes supports nommés). Sans eux, aucun message n'est déposé ni lu.
+# [secrets]
+# master_key_id = "vault-2026"
+#
+# [storage.disk]
+# root = "/srv/lyxal/fichiers"         # dossier partagé avec lyxal-server
+#
+# [mail]
+# storage_backend = "default"
+
 # Certificats (fichiers PEM, par exemple ceux de certbot ; clé en mode 0600 ou 0400, lisible par
 # le seul compte du service), relus toutes les 60 s :
 # [tls]

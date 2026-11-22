@@ -1,12 +1,12 @@
 # `lyxal_mail_proto` — syntaxes du courrier
 
-**État : lot 4 du programme courrier.** Crate Rust membre du workspace, sous licence
+**État : lot 4 du programme courrier (réalisé).** Crate Rust membre du workspace, sous licence
 `AGPL-3.0-only`. Il contient un seul module, `mime` : la lecture d'un message. Les syntaxes des
 protocoles arrivent avec les lots qui les servent (voir [`ROADMAP.md`](ROADMAP.md)).
 
 Le programme courrier, agendas et contacts (architecture, 23 lots, décisions F1 à F5 et P1 à P15
-du CTO) est décrit par `implementation_plan.md` à la racine du dépôt ; le plan du lot 4 par
-`crates/lyxal_mail/implementation_plan.md` (§13).
+du CTO) est décrit par `implementation_plan.md` à la racine du dépôt. Utilisé par le dépôt d'un
+message de `lyxal_mail` (`MailIngest`), qui range enveloppe et structure en base.
 
 ## Objet
 

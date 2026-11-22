@@ -1,6 +1,7 @@
 # Feuille de route — `lyxal_mail`
 
-Évolutions à venir du crate (modèle de données SurrealQL au lot 4c, contrat réseau au lot 3). Son objet est décrit par le [`README.md`](README.md), les
+Évolutions à venir du crate (socle courrier réalisé au lot 4, contrat réseau au lot 3). Son
+objet et son état actuel sont décrits par le [`README.md`](README.md), les
 études et les mesures par [`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md), la provenance des
 sources par [`SOURCES.md`](SOURCES.md). Le programme est décrit par `implementation_plan.md` à la
 racine du dépôt ; chaque lot a son propre plan, validé par le CTO avant toute ligne de code
@@ -10,7 +11,6 @@ racine du dépôt ; chaque lot a son propre plan, validé par le CTO avant toute
 
 | Lot | Contenu pour ce crate | Sources principales | Prérequis |
 | :- | :--- | :--- | :--- |
-| 4 — Socle courrier (reste 4d) | Service Rust : `MailStore` (un appel typé par fonction), `MailIngest` (lecture MIME, écriture chiffrée par `lyxal_storage`, inscription, rejeu sur conflit de transaction), `MailContent` (lecture en flux, plage), `MailMaintenance` (tâche `mail.maintenance`), `MailModule`, `MailHealthCheck` ; hôte `lyxal-groupware` : clé maîtresse, supports de stockage, bucket chiffré `lyxal-mail` | Stalwart `email` (modèle), Mox `store` | lots 4a à 4c |
 | 5 — Réception SMTP | Serveur SMTP entrant, refus dès `RCPT TO`, SPF / DKIM / DMARC, `Authentication-Results`, antivirus, remise en boîte, événement `mail.message.received` ; ordre de remise fixé : antivirus → anti-spam → filtres → index → chiffrement | Stalwart `smtp/inbound` ; Mox `smtpserver` | lots 2, 3, 4 |
 | 6 — Envoi | File par destination, tentatives, envoi vers les MX, dépôt authentifié (587 / 465), signature DKIM, avis de non-remise, adresses de retour signées, contrat public de dépôt | Stalwart `smtp/queue`, `smtp/outbound` ; Mox `queue`, `smtpclient`, `dsn` ; KumoMTA | lots 1, 5 |
 | 7 — Transport sûr et rapports | MTA-STS, DANE, TLS-RPT, rapports DMARC reçus et émis, ARC | Stalwart `smtp/reporting`, `outbound/{dane,mta_sts}` ; Mox | lot 6 |
@@ -38,7 +38,7 @@ Mesures et essais détaillés dans [`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md
   `fn::validation_ip` / `fn::validation_cidr` ; limites partagées entre nœuds à décider (au lot 3,
   les compteurs par réseau sont en mémoire, par nœud).
 
-## Points relevés aux lots 4c et 4e, à décider avant les protocoles
+## Points relevés au lot 4, à décider avant les protocoles
 
 Mesures : [`README.md`](README.md), section « Mesures ».
 
@@ -55,14 +55,49 @@ Mesures : [`README.md`](README.md), section « Mesures ».
 * **Plage de 1 000 UID sous la session d'un membre.** Environ 0,3 ms de plus par fiche que sous
   la session système, non expliqué par la règle de lecture (13 µs) : à analyser avant le lot 8
   (`FETCH` de grandes plages).
-* **Contention du compteur de modifications du compte (décisions M6, P3).** Quatre écrivains
+* **Contention du compteur de modifications du compte (décisions M6, P3, P7).** Quatre écrivains
   dans un même compte : débit total de 35 remises par seconde, mais environ un tiers des remises
-  encore refusées après trois rejeux pour conflit de transaction. Repli décrit au §19 du plan
-  (compteur par dossier et journal des changements du compte) à décider sur cette mesure.
+  encore refusées après trois rejeux pour conflit de transaction. Traité au lot 5 (décision P7) :
+  compteur par dossier et journal des changements du compte, contrôle des paramètres du dépôt
+  allégé. Le banc Rust du lot 4 ne dépose donc pas en concurrence dans un même compte (aucun
+  essai de rejeu sur conflit sous charge) : essai à ajouter avec ce changement.
 * **Domaines internationaux et parties locales UTF-8 (décision M10).** Lot 4 en ASCII
   seulement ; conversion IDNA et validation d'une partie locale UTF-8 (`SMTPUTF8`) : besoin
   d'extension de `lyxal_core` signalé, à instruire avant le lot 5.
 * **Adresse « attrape-tout », alias vers l'extérieur, listes** : lots 5 et 6.
+* **Coût des clés à chaque lecture et à chaque dépôt (décision M19).** Chaque dépôt scelle une
+  clé de fichier et chaque lecture rouvre la clé « fichiers » de l'organisation (une lecture en
+  base, une ouverture `enc:v2`), sans cache : coût non mesuré (banc `scripts/bench/mailbox/` à
+  étendre au service Rust) ; un cache court, effacé à l'expiration, ne viendrait que sur
+  nouvelle décision, avant le lot 8 (lecture de centaines de messages par une session IMAP).
+* **Volume des événements du stockage.** `lyxal_storage` publie `storage.object.created` et
+  `storage.object.deleted` pour chaque message : la file des événements double à la remise. Non
+  mesuré ; une option « bucket sans événements » serait une évolution de `lyxal_storage`, à
+  décider avec le lot 5.
+* **Démarrage de `lyxal-groupware` sans clé maîtresse.** Le plan prévoyait de refuser le
+  démarrage si un bucket chiffré existe sans clé maîtresse : `lyxal_storage` n'offre pas de
+  lecture des buckets chiffrés toutes organisations confondues. L'hôte démarre, sa sonde de
+  `lyxal_mail` est « dégradée » et tout dépôt est refusé (à réessayer). Refus au démarrage à
+  décider avec une fonction publique de `lyxal_storage`.
+* **Contenus en attente en retard dans la sonde.** La sonde ne compte pas les contenus `pending`
+  restés au-delà de leur délai (aucune fonction publique ne les compte ; la maintenance les
+  retire) : fonction à ajouter si l'exploitation en a besoin.
+* **`lyxal-groupware` seul sur une base.** Les octets des fichiers supprimés du courrier et le
+  rescellement de leurs clés après rotation sont faits par les tâches de `lyxal-server`
+  (`storage.cleanup`, `secrets.maintenance`) : sans `lyxal-server` sur la base, ils restent
+  (chiffrés). Déploiement à deux hôtes exigé (README de l'hôte), ou tâches à héberger aussi par
+  `lyxal-groupware` (décision).
+* **Configuration commune des hôtes.** Les sections `[secrets]` et `[storage]` de
+  `lyxal-groupware` reprennent celles de `lyxal-server` (même forme, même lecture des clés) :
+  à factoriser dans `lyxal_host` (`.agents/AGENTS.md` §5.8.5, code commun des hôtes), qui
+  dépendrait alors de `lyxal_storage` et de `lyxal_secrets`.
+* **Essais encore à écrire.** Dépôt sur un serveur SurrealDB 3.3.4 réel (`ws://`) ; panne
+  simulée entre chaque étape du dépôt (le banc couvre le refus de l'inscription et l'abandon
+  d'un contenu) ; suppression d'une identité puis purge du compte, suppression d'une
+  organisation, par le service Rust (couvertes par le banc SurrealQL).
+* **À relire.** Modèle `email` de Stalwart (fils, état JMAP, appartenance à plusieurs dossiers) ;
+  `maxMailboxesPerEmail` (RFC 8621 §1.3.1) et numéros de RFC cités de mémoire par le plan du lot
+  4 ; acceptation de l'UTF-8 par `string::is_email` (SurrealDB 3.3.4).
 
 ## Chiffrement des boîtes (décision C7)
 
