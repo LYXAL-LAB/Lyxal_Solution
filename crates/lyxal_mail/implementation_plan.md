@@ -883,4 +883,4 @@ avec contrebande SMTP contre le serveur exposé ; antivirus ClamAV réel avec la
   `mail-auth` ; Mox) ; aucune partie `LicenseRef-SEL`.
 * [ ] **Validation CTO** : ce plan, décisions S1 à S20.
 
-À valider par le CTO.
+Validé par le CTO le 22 novembre 2026 (décisions S1 à S20 telles que recommandées, dont le maintien du compteur par compte au lieu du compteur par dossier de P7, et l'exception S12 limitée au service interne de remise).
