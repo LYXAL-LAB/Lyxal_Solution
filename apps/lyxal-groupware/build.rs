@@ -6,8 +6,9 @@ use std::env;
 use std::path::PathBuf;
 
 /// Modules installés par l'hôte, dans l'ordre de leurs dépendances : le socle, `lyxal_event`,
-/// les dépendances de `lyxal_mail` (`lyxal_auth`, `lyxal_secrets`, `lyxal_storage`, ajoutées avec
-/// son modèle de données au lot 4c : écart E5 du lot 4) et `lyxal_mail`.
+/// les dépendances de `lyxal_mail` (`lyxal_auth`, `lyxal_secrets`, `lyxal_storage`) et le
+/// planificateur qui exécute sa maintenance (`lyxal_scheduler`), ajoutés au lot 4 (écart E5,
+/// décision M13), puis `lyxal_mail`.
 const MODULES: &[(&str, Option<&str>)] = &[
     ("lyxal_core", None),
     ("lyxal_error", None),
@@ -15,6 +16,7 @@ const MODULES: &[(&str, Option<&str>)] = &[
     ("lyxal_auth", None),
     ("lyxal_secrets", None),
     ("lyxal_storage", None),
+    ("lyxal_scheduler", None),
     ("lyxal_mail", None),
 ];
 

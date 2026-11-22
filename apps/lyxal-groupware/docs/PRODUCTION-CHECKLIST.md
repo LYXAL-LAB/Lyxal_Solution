@@ -4,6 +4,19 @@
 - [ ] même base que `lyxal-server` (`database.endpoint`, `namespace`, `database`) ;
 - [ ] identifiants SurrealDB fournis par `LYXAL_GROUPWARE__DATABASE__USERNAME` et
       `LYXAL_GROUPWARE__DATABASE__PASSWORD` (aucun dans les TOML) ; compte non-root ;
+- [ ] clé maîtresse du coffre-fort fournie par `LYXAL_GROUPWARE__SECRETS__MASTER_KEY` avec
+      `secrets.master_key_id` : **la même que `LYXAL__SECRETS__MASTER_KEY` de `lyxal-server`**
+      (aucune dans les TOML) ; sauvegarde de la clé selon les procédures de `lyxal_secrets`
+      (clé perdue : courrier illisible) ; pendant une rotation, l'ancienne clé fournie des deux
+      côtés ;
+- [ ] supports de stockage identiques à ceux de `lyxal-server` (`storage.disk.root` sur un
+      dossier partagé, ou mêmes supports S3 nommés, clé secrète par l'environnement) ;
+      `mail.storage_backend` choisi avant le premier message (fixé à la création du bucket
+      `lyxal-mail` de chaque organisation) ; antivirus déclaré comme dans `lyxal-server` ;
+- [ ] `/health` : `lyxal_mail`, `lyxal_secrets` et `lyxal_storage` sans « dégradé » (clé
+      maîtresse et supports présents) ; `lyxal-server` en service sur la même base (ses tâches
+      `storage.cleanup` et `secrets.maintenance` retirent les octets des messages effacés et
+      rescellent leurs clés) ; tâche `mail.maintenance` exécutée (journal de `lyxal_scheduler`) ;
 - [ ] `LYXAL_ENV=production` ; journal JSON ; `observability.log_client_ip = "network"` ;
 - [ ] port HTTP de santé lié à une adresse interne (`127.0.0.1:8090` par défaut) ; `/live`,
       `/ready`, `/health`, `/metrics` supervisés ;

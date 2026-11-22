@@ -30,12 +30,13 @@ use surrealdb::engine::any::{connect, Any};
 use surrealdb::Surreal;
 
 /// Modules déclarés par le nœud de `lyxal-groupware` (ordre alphabétique de `runtime_node`).
-const GROUPWARE_MODULES: [&str; 7] = [
+const GROUPWARE_MODULES: [&str; 8] = [
     "lyxal_auth",
     "lyxal_core",
     "lyxal_error",
     "lyxal_event",
     "lyxal_mail",
+    "lyxal_scheduler",
     "lyxal_secrets",
     "lyxal_storage",
 ];

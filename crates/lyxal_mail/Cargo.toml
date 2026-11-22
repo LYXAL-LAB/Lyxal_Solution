@@ -7,13 +7,25 @@ rust-version.workspace = true
 # Le fichier transposé de Mox garde sa licence MIT (avis dans LICENSES/MIT-Mox.txt).
 license = "AGPL-3.0-only"
 publish = false
-description = "Serveur de courrier de Lyxal OS (squelette du lot 3 : contrat réseau des sessions, limites par réseau, plafond de connexions, budget mémoire, refus poli)"
+description = "Serveur de courrier de Lyxal OS : modèle de données SurrealQL, dépôt et lecture des messages chiffrés au repos, maintenance, contrat réseau des sessions"
 
 [dependencies]
+lyxal_mail_proto.workspace = true
+lyxal_runtime.workspace = true
+lyxal_storage.workspace = true
+lyxal_surreal.workspace = true
 async-trait.workspace = true
+surrealdb.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["io-util"] }
 tokio-util.workspace = true
+tracing.workspace = true
+bytes = "1"
+futures = { version = "0.3", default-features = false, features = ["std"] }
 
 [dev-dependencies]
 proptest = "1.5"
+lyxal_crypto.workspace = true
+lyxal_secrets.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true

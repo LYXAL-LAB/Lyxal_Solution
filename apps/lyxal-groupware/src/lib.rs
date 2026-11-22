@@ -18,5 +18,6 @@ pub mod http;
 pub mod modules;
 pub mod net;
 pub mod runtime;
+pub mod services;
 
 pub use bootstrap::run;

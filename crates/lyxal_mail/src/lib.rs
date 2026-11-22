@@ -2,20 +2,45 @@
 
 //! Serveur de courrier de Lyxal OS (module du Noyau Technique, licence `AGPL-3.0-only`).
 //!
-//! **État : squelette (lot 3 du programme courrier).** Le crate ne contient que le contrat
-//! réseau des sessions ([`net`]) : ce que l'hôte `lyxal-groupware` remet à un protocole pour
-//! chaque connexion acceptée, les limites appliquées à l'acceptation (plafond par écoute,
-//! cadence et connexions ouvertes par réseau, budget mémoire) et les lignes de refus poli de
-//! chaque protocole. Les protocoles (SMTP, IMAP, POP3, ManageSieve) arrivent aux lots 5 à 10 ;
-//! les tables, fonctions SurrealQL et codes `MAIL_*` au lot 4.
+//! Les règles (domaines, comptes, adresses, dossiers, messages, quotas, droits) vivent dans les
+//! fonctions SurrealQL `fn::mail_*`, installées par `lyxal_runtime` depuis `manifest.toml`. Ce
+//! crate fournit :
+//!
+//! * les appels typés de ces fonctions ([`MailStore`], contrats dans [`models`]) ;
+//! * le dépôt d'un message brut ([`MailIngest`] : lecture MIME par `lyxal_mail_proto`,
+//!   écriture chiffrée par `lyxal_storage`, inscription) et sa lecture, entière ou par plage
+//!   ([`MailContent`]) ;
+//! * la maintenance ([`MailMaintenance`], exécutée par `lyxal_scheduler` sur l'hôte) ;
+//! * le module [`MailModule`] et sa sonde [`MailHealthCheck`] ;
+//! * le contrat réseau des sessions ([`net`], lot 3) : ce que l'hôte `lyxal-groupware` remet à
+//!   un protocole pour chaque connexion acceptée. Les protocoles arrivent aux lots 5 à 12.
 //!
 //! Provenance : voir `SOURCES.md` (code porté de Stalwart, transposé de Mox).
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+// `LyxalSurrealError` (erreur commune de `lyxal_surreal`) est rendue par les appels typés ;
+// même règle que `lyxal_storage` : réduire cette erreur serait un changement de contrat.
+#![allow(clippy::result_large_err)]
 
 /// Identifiant du module (`id` de `manifest.toml`).
 pub const MODULE_ID: &str = "lyxal_mail";
 
+pub mod content;
+pub mod error;
+pub mod ingest;
+pub mod maintenance;
+pub mod mime;
+pub mod models;
+pub mod module;
 pub mod net;
+pub mod store;
+
+pub use content::{MailContent, OpenedContent};
+pub use error::{MailError, MailResult};
+pub use ingest::{Delivery, MailIngest, MAIL_BUCKET};
+pub use maintenance::{MailMaintenance, MaintenanceReport};
+pub use mime::DeliveryFlags;
+pub use module::{MailHealthCheck, MailModule};
+pub use store::MailStore;

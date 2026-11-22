@@ -43,6 +43,7 @@ lyxal_scheduler = { path = "crates/lyxal_scheduler" }
 lyxal_pipeline_ingestion = { path = "crates/lyxal_pipeline_ingestion" }
 lyxal_host = { path = "crates/lyxal_host", default-features = false }
 lyxal_mail = { path = "crates/lyxal_mail" }
+lyxal_mail_proto = { path = "crates/lyxal_mail_proto" }
 surrealdb = { version = "3.3", features = ["protocol-ws", "protocol-http", "kv-mem"] }
 surrealdb-types = "3.3"
 serde = { version = "1.0", features = ["derive"] }

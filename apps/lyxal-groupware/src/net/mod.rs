@@ -21,7 +21,7 @@ use lyxal_mail::net::{
     ConnectionLimiter, IpRateLimiter, MailProtocol, MemoryBudget, SessionHandler, TlsMode,
     WindowLimit,
 };
-use lyxal_runtime::health::{HealthCheckResult, ModuleHealthCheck};
+use lyxal_runtime::health::{HealthCheckResult, HealthStatus, ModuleHealthCheck};
 use lyxal_runtime::worker::LyxalWorker;
 use lyxal_runtime::{ModuleContext, ModuleId, RuntimeError};
 use metrics::{ListenerMetrics, ListenerSnapshot};
@@ -271,6 +271,7 @@ impl MailNet {
         MailListenersHealthCheck {
             module_id: ModuleId::new(lyxal_mail::MODULE_ID),
             net: self.clone(),
+            service: None,
         }
     }
 
@@ -325,13 +326,25 @@ pub struct MemorySnapshot {
     pub limit_bytes: u64,
 }
 
-/// Sonde des écoutes (`ModuleHealthCheck` de `lyxal_mail`) : « dégradé » si le dernier
-/// rechargement des certificats a échoué, ou si le budget mémoire ou le plafond d'une écoute
-/// dépasse 90 % ; une écoute arrêtée est portée par la supervision
-/// des workers (criticité `Required` : module « malade »).
+/// Sonde des écoutes (`ModuleHealthCheck` de `lyxal_mail`) : d'abord celle du service du
+/// courrier si elle est donnée (`with_service_probe` : base, supports, clés des fichiers), puis
+/// « dégradé » si le dernier rechargement des certificats a échoué, ou si le budget mémoire ou le
+/// plafond d'une écoute dépasse 90 % ; une écoute arrêtée est portée par la supervision des
+/// workers (criticité `Required` : module « malade »). Le runtime n'admet qu'une sonde par
+/// module.
 pub struct MailListenersHealthCheck {
     module_id: ModuleId,
     net: MailNet,
+    service: Option<Arc<dyn ModuleHealthCheck>>,
+}
+
+impl MailListenersHealthCheck {
+    /// Interroge d'abord la sonde du service du courrier : un résultat autre que « sain » est
+    /// rendu tel quel.
+    pub fn with_service_probe(mut self, probe: Arc<dyn ModuleHealthCheck>) -> Self {
+        self.service = Some(probe);
+        self
+    }
 }
 
 #[async_trait::async_trait]
@@ -340,8 +353,14 @@ impl ModuleHealthCheck for MailListenersHealthCheck {
         &self.module_id
     }
 
-    async fn check(&self, _ctx: &ModuleContext) -> Result<HealthCheckResult, RuntimeError> {
+    async fn check(&self, ctx: &ModuleContext) -> Result<HealthCheckResult, RuntimeError> {
         let id = self.module_id.clone();
+        if let Some(service) = &self.service {
+            let result = service.check(ctx).await?;
+            if result.status != HealthStatus::Healthy {
+                return Ok(result);
+            }
+        }
         if self.net.certificates.as_ref().is_some_and(|c| c.degraded()) {
             return Ok(HealthCheckResult::degraded(
                 id,

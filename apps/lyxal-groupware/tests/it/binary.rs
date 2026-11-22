@@ -1,6 +1,6 @@
 //! Bout en bout du binaire `lyxal-groupware` : démarrage sur une configuration d'essai (base
-//! embarquée), `/live`, `/ready`, `/health`, `/metrics`, refus poli sur le port SMTP, puis arrêt
-//! par SIGTERM.
+//! embarquée, support disque et clé maîtresse du coffre-fort passés par l'environnement),
+//! `/live`, `/ready`, `/health`, `/metrics`, refus poli sur le port SMTP, puis arrêt par SIGTERM.
 
 use crate::support::{first_line, toml};
 use std::fs;
@@ -63,6 +63,16 @@ async fn binary_serves_health_and_mail_ports_then_stops_on_sigterm() {
         Command::new(env!("CARGO_BIN_EXE_lyxal-groupware"))
             .current_dir(directory.path())
             .env("LYXAL_ENV", "test")
+            .env(
+                "LYXAL_GROUPWARE__STORAGE__DISK__ROOT",
+                directory.path().join("fichiers"),
+            )
+            // Clé d'essai (32 octets en Base64 canonique), jamais une vraie clé
+            .env(
+                "LYXAL_GROUPWARE__SECRETS__MASTER_KEY",
+                "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+            )
+            .env("LYXAL_GROUPWARE__SECRETS__MASTER_KEY_ID", "vault-1")
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .spawn()

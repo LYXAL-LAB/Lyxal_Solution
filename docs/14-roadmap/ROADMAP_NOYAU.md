@@ -42,7 +42,7 @@ propre plan, validé avant tout code. L'ordre de création est celui des lots :
 
 | Rang | Élément | Créé par le lot | Complété par les lots | Dossier |
 | :-: | :--- | :--- | :--- | :--- |
-| 2 | `lyxal_mail` (squelette créé au lot 3 : contrat réseau, limites, budget mémoire ; module au lot 4) | 3 et 4 — socle courrier | 5 à 13 (réception, envoi, IMAP, recherche, Sieve, anti-spam, JMAP, administration) | [`crates/lyxal_mail`](../../crates/lyxal_mail/README.md) |
+| 2 | `lyxal_mail` (créé aux lots 3 et 4 : contrat réseau, limites, budget mémoire ; modèle de données, dépôt et lecture chiffrés au repos, maintenance) | 3 et 4 — socle courrier | 5 à 13 (réception, envoi, IMAP, recherche, Sieve, anti-spam, JMAP, administration) | [`crates/lyxal_mail`](../../crates/lyxal_mail/README.md) |
 | 3 | `lyxal_mail_proto` (créé au lot 4 : lecture MIME par `mail-parser`) | 4 — socle courrier | 5, 7, 8, 9, 10, 12 (syntaxes portées) | [`crates/lyxal_mail_proto`](../../crates/lyxal_mail_proto/README.md) |
 | 4 | `lyxal_dav` | 14 — formats agenda et contact | 15 (socle WebDAV) | [`crates/lyxal_dav`](../../crates/lyxal_dav/README.md) |
 | 5 | `lyxal_calendar` | 16 — CalDAV | 17, 18, 20 (tâches, partage, planification, JMAP) | [`crates/lyxal_calendar`](../../crates/lyxal_calendar/README.md) |

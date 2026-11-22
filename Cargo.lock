@@ -3951,6 +3951,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "axum 0.7.9",
+ "bytes",
  "config",
  "lyxal-server",
  "lyxal_crypto",
@@ -3958,6 +3959,10 @@ dependencies = [
  "lyxal_host",
  "lyxal_mail",
  "lyxal_runtime",
+ "lyxal_scheduler",
+ "lyxal_secrets",
+ "lyxal_storage",
+ "lyxal_surreal",
  "proxy-header",
  "serde",
  "serde_json",
@@ -4157,10 +4162,22 @@ name = "lyxal_mail"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "bytes",
+ "futures",
+ "lyxal_crypto",
+ "lyxal_mail_proto",
+ "lyxal_runtime",
+ "lyxal_secrets",
+ "lyxal_storage",
+ "lyxal_surreal",
  "proptest",
+ "serde_json",
+ "surrealdb",
+ "tempfile",
  "thiserror 1.0.69",
  "tokio",
  "tokio-util",
+ "tracing",
 ]
 
 [[package]]

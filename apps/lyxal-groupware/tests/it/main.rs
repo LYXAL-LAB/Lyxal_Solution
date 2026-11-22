@@ -11,6 +11,7 @@ mod config;
 mod http_port;
 mod limits;
 mod listeners;
+mod mail_service;
 mod proxy;
 mod reload;
 mod shutdown;

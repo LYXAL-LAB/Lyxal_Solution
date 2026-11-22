@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 //! Assemblage du runtime de l'hôte : `LyxalRuntime` de l'hôte `lyxal_groupware` sur la base
-//! partagée, socle sous bail, moteur d'événements de l'hôte (sans abonnement au lot 3), écoutes
+//! partagée, socle sous bail, moteur d'événements de l'hôte (sans abonnement), services des
+//! modules hébergés (coffre-fort, stockage, planificateur, courrier) et leurs sondes, écoutes
 //! inscrites comme workers de `lyxal_mail`, modules installés depuis leurs manifestes embarqués,
-//! puis démarrés.
+//! tâche de maintenance du courrier et exécuteurs du planificateur, puis démarrage.
 
 use crate::config::GroupwareConfig;
 use crate::error::GroupwareError;
@@ -11,6 +12,7 @@ use crate::modules;
 use crate::net::bind::BoundListener;
 use crate::net::certificates::Certificates;
 use crate::net::MailNet;
+use crate::services::{self, MailHost};
 use lyxal_mail::net::{MailProtocol, SessionHandler, UnavailableHandler};
 use lyxal_runtime::lock::SurrealInstallationLeaseManager;
 use lyxal_runtime::{
@@ -21,10 +23,12 @@ use std::time::Duration;
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
-/// Runtime démarré et écoutes de l'hôte.
+/// Runtime démarré, écoutes de l'hôte et services du courrier.
 pub struct Started {
     pub runtime: Arc<LyxalRuntime>,
     pub mail: MailNet,
+    /// Dépôt, lecture et maintenance des messages (session système de l'hôte).
+    pub services: MailHost,
 }
 
 /// Session de chaque protocole au lot 3 : aucun protocole n'existe encore, chaque port répond
@@ -78,14 +82,19 @@ pub async fn start_with(
         runtime.foundation_health_check(ModuleId::new(lyxal_host::modules::FOUNDATION[0])),
     ))?;
 
+    // Services des modules hébergés : coffre-fort, stockage, planificateur, courrier
+    let services = services::register_services(&runtime, client, config)?;
+
     // Écoutes : un worker par écoute, la relecture des certificats et la sonde de `lyxal_mail`
+    // (service du courrier, puis écoutes)
     let mail = MailNet::new(config, listeners, certificates, handler_for)?;
     for worker in mail.workers()? {
         runtime.register_worker(worker)?;
     }
-    runtime
-        .health_registry()
-        .register_check(Arc::new(mail.health_check()))?;
+    runtime.health_registry().register_check(Arc::new(
+        mail.health_check()
+            .with_service_probe(services.mail_probe.clone()),
+    ))?;
 
     let report = runtime.install_packages(modules::packages()?).await?;
     if let Some(failure) = report.failed.first() {
@@ -109,9 +118,11 @@ pub async fn start_with(
         "modules installés"
     );
 
+    services::complete_services(&runtime, client, &services).await?;
     runtime.start_all().await?;
     Ok(Started {
         runtime: Arc::new(runtime),
         mail,
+        services: services.mail,
     })
 }
