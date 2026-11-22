@@ -77,5 +77,9 @@ fuzz_target!(|raw: &[u8]| {
         }
         assert_eq!(read, size);
     }
-    assert_eq!(out, &input[..first + second]);
+    // Au-delà de la taille maximale du message, le receveur compte les octets sans les garder :
+    // seul le début, jusqu'à cette taille, est rendu.
+    let limit = usize::try_from(limits.max_message_bytes()).unwrap_or(usize::MAX);
+    let kept = (first + second).min(limit);
+    assert_eq!(out, &input[..kept]);
 });
