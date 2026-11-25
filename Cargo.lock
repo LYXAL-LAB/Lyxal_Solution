@@ -4165,8 +4165,12 @@ name = "lyxal_mail"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "base64 0.22.1",
  "bytes",
+ "fastrand",
  "futures",
+ "hickory-resolver",
+ "idna",
  "lyxal_crypto",
  "lyxal_mail_proto",
  "lyxal_runtime",

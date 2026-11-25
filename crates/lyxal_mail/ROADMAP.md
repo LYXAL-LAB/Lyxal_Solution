@@ -32,8 +32,15 @@ Mesures et essais détaillés dans [`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md
   dossier. L'index plein texte de SurrealDB 3.3.4 répond vite sur un mot, mais combiner un mot
   fréquent, un dossier et un tri par date est lent : à mesurer de nouveau avec le moteur de
   recherche retenu au lot 9.
-* **Résolveur DNS (lot 5).** `hickory-resolver` 0.26, une instance par nœud, construit au lot 5
-  avec les contrôles SPF, DKIM et DMARC de `mail-auth` (écart E2 du lot 3).
+* **Liste des suffixes publics (lot 5, décision S4).** Aucune crate permissive embarquant la
+  liste n'est dans `Cargo.lock` (seule `psl-types`, sans données, y est, amenée par `addr`) ; le
+  domaine d'organisation de DMARC lit une liste fournie par l'appelant. Source à décider par le
+  CTO avant le branchement de la session SMTP (5d) : crate `psl` (à ajouter, licence à contrôler
+  par `cargo deny`) ou fichier de la liste copié sous MPL-2.0 avec exception nommée dans
+  `deny.toml`.
+* **Domaines d'auteur multiples (lot 5).** DMARC évalue au plus 10 domaines distincts de `From` ;
+  au-delà, les domaines sont ignorés : refus ou non d'un tel message à décider avec la session
+  SMTP (5d).
 * **Liste de blocage et bannissement (lot 5).** Table de `lyxal_mail`, entrées validées par
   `fn::validation_ip` / `fn::validation_cidr` ; limites partagées entre nœuds à décider (au lot 3,
   les compteurs par réseau sont en mémoire, par nœud).

@@ -13,9 +13,13 @@
 //! * la maintenance ([`MailMaintenance`], exécutée par `lyxal_scheduler` sur l'hôte) ;
 //! * le module [`MailModule`] et sa sonde [`MailHealthCheck`] ;
 //! * le contrat réseau des sessions ([`net`], lot 3) : ce que l'hôte `lyxal-groupware` remet à
-//!   un protocole pour chaque connexion acceptée. Les protocoles arrivent aux lots 5 à 12.
+//!   un protocole pour chaque connexion acceptée. Les protocoles arrivent aux lots 5 à 12 ;
+//! * le résolveur DNS du courrier ([`dns`], lot 5) et les contrôles d'authenticité ([`auth`],
+//!   lot 5 : SPF, DKIM, DMARC, nom inverse, en-tête `Authentication-Results`), employés par la
+//!   session SMTP entrante.
 //!
-//! Provenance : voir `SOURCES.md` (code porté de Stalwart, transposé de Mox).
+//! Provenance : voir `SOURCES.md` (code porté de Stalwart, transposé de Mox, écrit depuis les
+//! RFC).
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
@@ -27,7 +31,9 @@
 /// Identifiant du module (`id` de `manifest.toml`).
 pub const MODULE_ID: &str = "lyxal_mail";
 
+pub mod auth;
 pub mod content;
+pub mod dns;
 pub mod error;
 pub mod ingest;
 pub mod maintenance;

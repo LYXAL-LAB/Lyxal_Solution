@@ -4,12 +4,15 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 # Code porté de Stalwart (AGPL-3.0-only OR LicenseRef-SEL, option AGPL retenue) : décision P2.
-# Le fichier transposé de Mox garde sa licence MIT (avis dans LICENSES/MIT-Mox.txt).
+# Les fichiers transposés de Mox gardent leur licence MIT (avis dans LICENSES/MIT-Mox.txt).
 license = "AGPL-3.0-only"
 publish = false
-description = "Serveur de courrier de Lyxal OS : modèle de données SurrealQL, dépôt et lecture des messages chiffrés au repos, maintenance, contrat réseau des sessions"
+description = "Serveur de courrier de Lyxal OS : modèle de données SurrealQL, dépôt et lecture des messages chiffrés au repos, maintenance, contrat réseau des sessions, DNS et authenticité du courrier"
 
 [dependencies]
+# DKIM (octets signés, vérification) : toute la cryptographie passe par lyxal_crypto (règle 13
+# du §11.3 ; mail-auth n'est jamais une dépendance, décision S1).
+lyxal_crypto.workspace = true
 lyxal_mail_proto.workspace = true
 lyxal_runtime.workspace = true
 lyxal_storage.workspace = true
@@ -22,10 +25,18 @@ tokio-util.workspace = true
 tracing.workspace = true
 bytes = "1"
 futures = { version = "0.3", default-features = false, features = ["std"] }
+# Valeurs `b=`, `bh=` et `p=` de DKIM en Base64 (MIT OR Apache-2.0, déjà dans l'arbre).
+base64 = "0.22"
+# Tirage du `pct=` de DMARC (RFC 7489 §6.6.4) : aucun usage cryptographique.
+fastrand.workspace = true
+# Résolveur DNS du courrier (décision S3) : sans DNSSEC (lot 7), sans DNS sur TLS ou HTTPS.
+hickory-resolver = { version = "0.26", default-features = false, features = ["tokio", "system-config"] }
+# Domaines Unicode convertis en forme ASCII (A-label) avant toute requête DNS (décision S16 ;
+# MIT OR Apache-2.0, données Unicode-3.0, déjà dans l'arbre).
+idna = "1.1"
 
 [dev-dependencies]
 proptest = "1.5"
-lyxal_crypto.workspace = true
 lyxal_secrets.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
