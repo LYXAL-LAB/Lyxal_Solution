@@ -1,0 +1,27 @@
+# Oracle différentiel DKIM (décision S2 du lot 5) : compare la canonicalisation de lyxal_crypto
+# et les résultats de lyxal_mail::auth::DkimVerifier à ceux de mail-auth 0.16.0 (commit c862df2).
+# Lancé à la main avant la fusion de 5b et avant le lot 22 (aucun accès à Internet en CI) :
+#   cargo run --release -- <dossier resources/dkim d'un clone de mail-auth au commit c862df2>
+# (depuis crates/lyxal_mail/tools/dkim_oracle). Paquet hors du workspace (son propre
+# `[workspace]`) : ni la CI, ni `cargo build --workspace`, ni check_crypto_dependencies.py (qui
+# ne lit que les paquets du workspace) ne le voient. mail-auth n'est une dépendance que de cet
+# outil, jamais d'un paquet du workspace.
+[package]
+name = "lyxal_mail-dkim_oracle"
+version = "0.0.0"
+edition = "2021"
+# Lie lyxal_mail (AGPL-3.0-only).
+license = "AGPL-3.0-only"
+publish = false
+
+[dependencies]
+lyxal_crypto = { path = "../../../lyxal_crypto" }
+lyxal_mail = { path = "../.." }
+# Apache-2.0 OR MIT ; fonctionnalité « test » : module `testing` (canonicalisation exposée).
+mail-auth = { git = "https://github.com/stalwartlabs/mail-auth", rev = "c862df2c6fcd7b9f7eada5fe2d3dc9e6def43429", features = ["test"] }
+base64 = "0.22"
+tokio = { version = "1.38", features = ["rt-multi-thread", "macros"] }
+
+[workspace]
+members = ["."]
+resolver = "2"

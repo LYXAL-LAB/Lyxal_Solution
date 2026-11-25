@@ -20,9 +20,13 @@ validation du CTO (décision P14).
 | `sabre_dav` | sabre/dav | <https://github.com/sabre-io/dav> | `be1d58d6bce7ca33313b02909f9088c93c35db02` | après 4.7.1 (1er nov. 2026) | BSD-3-Clause |
 
 Bibliothèques prises en **dépendances** (crates.io, non copiées) : `mail-parser` 1.0.1,
-`mail-builder` 2.0.1, `mail-send` 0.7.0, `mail-auth` 0.15.1 — toutes `Apache-2.0 OR MIT`. Elles
-entreront dans `Cargo.lock` avec le lot qui les ajoute ; `cargo deny check licenses` contrôle
-l'arbre (`deny.toml` à la racine).
+`mail-builder` 2.0.1, `mail-send` 0.7.0 — toutes `Apache-2.0 OR MIT`. Elles entrent dans
+`Cargo.lock` avec le lot qui les ajoute ; `cargo deny check licenses` contrôle l'arbre
+(`deny.toml` à la racine). `mail-auth` (`Apache-2.0 OR MIT`) n'est **jamais** une dépendance
+d'un paquet du workspace (décision S1 du lot 5, contrôle `check_crypto_dependencies.py`) : seul
+l'oracle différentiel `tools/dkim_oracle/`, hors du workspace, en dépend, au commit
+`c862df2c6fcd7b9f7eada5fe2d3dc9e6def43429` (0.16.0, 17 nov. 2026, dépôt Git
+<https://github.com/stalwartlabs/mail-auth>).
 
 Les quatre clones ont été faits et vérifiés par le script le 18 novembre 2026, depuis GitHub
 (et, pour l'essai de l'option `--from`, depuis un miroir local).
@@ -208,6 +212,30 @@ inscrits dans son propre registre (`apps/lyxal-groupware/SOURCES.md`).
 | `schema/03_mail_account.surql`, `schema/05_mail_mailbox.surql`, `schema/07_mail_message.surql`, `schema/08_mail_tombstone.surql`, `functions/mail_guard.surql` (un message dans un seul dossier, copie sur le même contenu, numéro de modification unique par compte, compteur d'UIDVALIDITY du compte, drapeaux système en booléens, mots-clés en minuscules triés, fiche laissée à la place d'un message déplacé ou effacé) | Mox | `b32f0de` | MIT | `store/account.go` (`Message`, `Mailbox`, `SyncState.LastModSeq`, `NextUIDValidity`) | modèle (réécrit en SurrealQL ; pierres tombales dans une table à part, conservation réglable, plancher des changements) | 4 |
 | `functions/mail_access.surql` (`fn::mail_thread_assign`) | Mox | `b32f0de` | MIT | `store/threads.go` (rattachement par `In-Reply-To`, `References`, `Message-ID`, sujet de base) | modèle (réécrit en SurrealQL ; ancêtres cherchés du plus proche au plus lointain, avis de non-remise, aucune fusion de fils après coup) | 4 |
 | Modèle des messages (état JMAP par compte, identifiant stable d'un message déplacé, fils immuables) | Stalwart | `3adead9` | `AGPL-3.0-only OR LicenseRef-SEL` | `crates/email/src/message/` (études du lot 0 ; copie triée absente de l'espace de travail du lot 4c : non relu) | modèle (étude seulement, aucun code) | 4 |
+
+### 3.1. Lot 5b : DNS et authenticité (`src/dns/`, `src/auth/`)
+
+Aucune copie de `mail-auth` n'était disponible hors ligne (ni `.sources/`, ni registre Cargo)
+quand le lot 5b a été écrit : **SPF, la lecture des balises DKIM, DMARC, `iprev` et
+`Authentication-Results` sont écrits depuis les RFC** (7208, 6376, 8301, 8463, 7489, 8601 ;
+RFC 8617 lue seulement, ARC au lot 7), sans code de `mail-auth` ni de Mox. Le clone de
+`mail-auth` fait ensuite pour l'oracle (S2) n'a servi qu'à en lire l'interface publique. La
+liste des suffixes publics n'est **pas** embarquée (décision S4 en attente, voir
+`src/auth/psl.rs`) : l'algorithme de <https://publicsuffix.org/list/> est réécrit depuis sa
+description, les essais utilisent une liste de neuf règles écrite pour Lyxal.
+
+| Élément de Lyxal (fichier ou dossier) | Projet | Commit | Licence | Chemin d'origine | Nature (porté / modèle) | Lot |
+| :--- | :--- | :--- | :--- | :--- | :--- | :- |
+| `src/dns/static_resolver.rs` (`StaticResolver` : tables de réponses par type, pannes par type et nom) | Mox | `b32f0de` | MIT | `dns/mock.go` (`MockResolver`) | modèle (réécrit en Rust ; distinction « n'existe pas » / « aucun enregistrement », délais et compte des requêtes ajoutés) | 5 |
+| `src/auth/spf/tests.rs` (développement des macros, annexe A de la RFC 7208, plusieurs domaines, scénarios et limites) | Mox | `b32f0de` | MIT (avis : `LICENSES/MIT-Mox.txt`, en-tête SPDX du fichier) | `spf/spf_test.go` (`TestExpand`, `TestVerify`, `TestVerifyMultipleDomain`, `TestVerifyScenarios`) | porté (cas d'essai transposés en Rust ; résultats seuls comparés ; cas propres à Lyxal ajoutés) | 5 |
+| `src/auth/dmarc/tests.rs` (lecture, recherche, alignement, `sp`, `pct`, pannes, suffixe public) | Mox | `b32f0de` | MIT (avis : `LICENSES/MIT-Mox.txt`, en-tête SPDX du fichier) | `dmarc/dmarc_test.go` (`TestLookup`, `TestVerify`), `dmarc/parse_test.go` | porté (cas d'essai transposés ; matrice d'alignement, décisions S6 et domaines d'auteur ajoutés) | 5 |
+| `src/auth/dkim/tests.rs` : liste des cas de la RFC 6376 §6.1 vérifiés | Mox | `b32f0de` | MIT | `dkim/dkim_test.go` (`TestVerify`) | modèle (liste des cas seulement ; messages signés par `lyxal_crypto`, aucun code repris) | 5 |
+| `src/auth/iprev.rs` (essais) | Mox | `b32f0de` | MIT | `iprev/iprev_test.go` | modèle (cas inspirés, réécrits) | 5 |
+| Corpus DKIM lu par `src/auth/dkim/tests.rs` et par l'oracle | `mail-auth` 0.16.0 | `c862df2` | `Apache-2.0 OR MIT` | `resources/dkim/001.txt` à `003.txt` | non copié ici : lu depuis `crates/lyxal_crypto/tests/fixtures/dkim/mail_auth/` (licences à côté) | 5 |
+| `tools/dkim_oracle/` (oracle différentiel, hors du workspace) | — | — | `AGPL-3.0-only` (lie `lyxal_mail`) ; dépend de `mail-auth` (`Apache-2.0 OR MIT`) au commit `c862df2` | — | écrit pour Lyxal ; lit `resources/dkim/` d'un clone de `mail-auth` passé en argument (non copié) | 5 |
+
+La suite d'essais SPF de la RFC 7208 (format YAML, présente dans `resources/spf/` de
+`mail-auth`) n'est pas reprise : sa licence n'est pas vérifiée (plan du lot 5, §19).
 
 Chaque fichier porté garde son en-tête `SPDX-FileCopyrightText` d'origine, déclare sa licence
 retenue (`AGPL-3.0-only` pour Stalwart, `MIT` pour Mox) et décrit ses modifications pour Lyxal

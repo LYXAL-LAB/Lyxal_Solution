@@ -29,10 +29,8 @@ Chacune entre par le plan de son lot, validé par le CTO :
 - [ ] SCRAM-SHA-256 (P6 h) — lot 8 ;
 - [ ] OpenPGP (P6 j) — lot 12 bis ;
 - [ ] lecture des dates et des noms d'un certificat (alerte d'expiration), ACME (P6 g) — lot 13 ;
-- [ ] comparaison différentielle de la canonicalisation DKIM avec `mail-auth` sur son corpus
-      complet (`tools/dkim_oracle/` prévu par le plan du lot 2, non livré au lot 2b : `mail-auth`
-      0.16.0 n'est pas publié sur crates.io) — au plus tard avec le lot 5, qui dépend de
-      `mail-auth`.
+- [ ] nouvelle comparaison différentielle DKIM avec `mail-auth` (oracle
+      `crates/lyxal_mail/tools/dkim_oracle/`, à la main) — avant le lot 22.
 
 ## 2. Audit de sécurité externe
 

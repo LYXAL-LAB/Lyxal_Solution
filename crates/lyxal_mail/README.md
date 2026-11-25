@@ -276,6 +276,42 @@ transposés, plafond rendu même sur annulation, budget mémoire dont une propri
 lignes de refus, mise à niveau STARTTLS refusée sur entrée déjà lue). L'usage réel (sockets,
 runtime) est essayé par `cargo test -p lyxal-groupware`.
 
+## État actuel : `lyxal_mail::dns` et `lyxal_mail::auth` (lot 5b)
+
+Contrôles employés par la session SMTP entrante (lot 5d), non encore branchés dans l'hôte.
+
+| Élément | Rôle |
+| :--- | :--- |
+| `dns::MailResolver`, `DnsError`, `Answer` | Seule porte vers le DNS (TXT, MX, A, AAAA, PTR) ; « n'existe pas » et « aucun enregistrement » (définitifs) distingués de la panne (`temperror`) |
+| `dns::HickoryResolver`, `DnsConfig` | `hickory-resolver` 0.26 sans DNSSEC ni DNS chiffré (décision S3), une instance par nœud ; serveurs du système ou liste explicite, délai (5 s) et essais (2) par requête, cache de 16 384 réponses, TTL bornés à 1 h (positifs) et 5 min (négatifs), fichier `hosts` non lu ; noms toujours interrogés comme noms complets |
+| `dns::StaticResolver` | Résolveur des essais : réponses, pannes et délais simulés, compte des requêtes ; aucun essai n'interroge le vrai DNS |
+| `auth::SpfVerifier` | SPF (RFC 7208) sur `MAIL FROM` (ou `postmaster@<HELO>`) et sur HELO ; macros ; 10 termes DNS, 2 réponses vides, 10 noms par `mx` / `ptr`, 20 s au plus ; domaines Unicode convertis en A-label (`idna`) |
+| `auth::DkimVerifier` | DKIM (RFC 6376, 8301, 8463) : balises, clé `<s>._domainkey.<d>`, en-têtes de `h=` du bas vers le haut ; octets signés et vérification par `lyxal_crypto::dkim` ; 5 signatures au plus ; `rsa-sha1`, `h=` sans `From`, `i=` hors de `d=`, échéance passée, clé révoquée : `permerror` ; `t=` à plus de 5 min dans le futur : `neutral` ; `l=` plus court que le corps : `policy` ; clé `t=y` signalée (ignorée par DMARC) |
+| `auth::DmarcVerifier`, `author_domains`, `DmarcDisposition` | DMARC (RFC 7489) pour chaque domaine de `From` (10 au plus) : `_dmarc.<domaine>` puis domaine d'organisation, alignement souple ou strict, `p`, `sp`, `pct` ; décision S6 : `reject` → refus, `quarantine` → « Junk », `temperror` avec `reject` → `451`, jamais de refus sur SPF ou DKIM seuls, `dmarc_enforce` faux → aucun effet ; le plus sévère de plusieurs domaines l'emporte |
+| `auth::OrganizationalDomain`, `PublicSuffixList` | Domaine d'organisation par une liste au format de la « Public Suffix List » ; **aucune liste embarquée** : la source des données attend la décision S4 |
+| `auth::Iprev` | Nom inverse confirmé (RFC 8601 §3), informatif |
+| `auth::AuthenticationResults`, `strip_forged_results` | En-tête `Authentication-Results` (RFC 8601) : `spf` (`smtp.mailfrom` : domaine seulement, `smtp.helo`), `dkim` (`header.d`, `header.s`, `header.b` sur 8 caractères), `dmarc` (`header.from`, `policy.dmarc`), `iprev` (`policy.iprev`) ; valeurs échappées, sans caractère de contrôle ; retrait des en-têtes reçus portant notre `authserv-id` |
+| `auth::MessageHeaders` | Découpage brut de l'en-tête (champs, valeurs repliées, corps), syntaxe obsolète d'un espace avant `:` admise |
+
+Vérification : `cargo test -p lyxal_mail` — cas de Mox transposés (SPF : macros, annexe A de la
+RFC 7208, limites ; DMARC : recherche, alignement, `sp`, `pct`), corpus DKIM de `mail-auth` et
+message signé de `lyxal_crypto`, messages signés par les clés de `lyxal_crypto` dans les quatre
+canonicalisations, cas de la RFC 6376 §6.1, en-têtes `Authentication-Results`.
+
+Oracle différentiel S2 (`tools/dkim_oracle/`, hors du workspace, lancé à la main le 25 novembre
+2026 contre `mail-auth` 0.16.0, commit `c862df2`, sur son corpus `resources/dkim/` (6 messages),
+le message signé de `lyxal_crypto` et 64 messages signés par les clés de `lyxal_crypto` puis
+altérés ; 71 messages) : **(a) canonicalisation identique 71/71** (en-têtes et empreinte du corps,
+`simple` et `relaxed`) ; **(b) même verdict 70/71**, mêmes mots 57/71. Écarts de mot (politique
+propre à Lyxal, même verdict) : empreinte du corps fausse `fail` ici, `neutral` chez `mail-auth`
+(13 messages) ; signature échue `permerror` ici, `neutral` chez `mail-auth` (corpus `005`). Seul
+écart de verdict : le message signé de `lyxal_crypto` (`pass` ici, `fail` chez `mail-auth`) porte
+un champ `SUBJECT :` (espace avant `:`, syntaxe obsolète de la RFC 5322 §4.5.8) ; `mail-auth`
+compare le nom brut `SUBJECT ` à `Subject` de `h=` et ne signe pas le champ, alors que les
+signatures de ce message ont été produites par OpenSSL avec une canonicalisation écrite depuis la
+RFC (`lyxal_crypto/tools/check_dkim_fixtures.py`) : comportement de Lyxal conservé. Code de
+sortie de l'outil : 1 (à cause de cet écart).
+
 Le programme courrier, agendas et contacts (architecture, 23 lots, décisions F1 à F5 et P1 à P15
 du CTO) est décrit par `implementation_plan.md` à la racine du dépôt. Chaque lot a son plan
 détaillé, placé dans le crate qu'il modifie et supprimé une fois le lot fusionné.
@@ -346,7 +382,7 @@ Les lots 1 (mots de passe d'application, dans `lyxal_auth` : réalisé) et 2 (ex
 | `lyxal_secrets` | Clés DKIM privées, clé du compte ACME, clés privées TLS, secrets des adresses signées |
 | `lyxal_scheduler` | Purges, rapports, renouvellement des certificats, apprentissage anti-spam |
 | `lyxal_event`, `lyxal_runtime` | Événements `mail.*`, module, workers supervisés, sondes de santé |
-| Externes (accord de principe P7) | `mail-parser`, `mail-builder`, `mail-send`, `mail-auth` (derrière `lyxal_crypto`), `rustls` côté serveur, `hickory-resolver` avec DNSSEC |
+| Externes (accord de principe P7) | `mail-parser`, `mail-builder`, `mail-send`, `rustls` côté serveur, `hickory-resolver` (sans DNSSEC au lot 5, DNSSEC examiné au lot 7), `idna` ; `mail-auth` jamais (décision S1 : seul l'oracle hors du workspace en dépend) |
 
 `lyxal_mail` ne dépend ni de `lyxal_notification`, ni de `lyxal_calendar`, ni de
 `lyxal_contacts`. `lyxal_notification` consomme ses événements `mail.*` sans lien Cargo ;

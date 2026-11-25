@@ -16,6 +16,10 @@ lyxal_crypto. Ce contrôle échoue si :
    un seul moteur asymétrique, aws-lc-rs ; ring reste amené indirectement par rustls), rsa,
    ed25519-dalek, mail-auth (canonicalisation DKIM portée, décision C4) ou openssl.
 
+Hors du workspace par construction : les paquets à leur propre `[workspace]` (cibles de
+fuzzing, oracle différentiel DKIM `crates/lyxal_mail/tools/dkim_oracle`, qui dépend de mail-auth
+pour comparer, décision S2 du lot 5) ne sont pas lus par `cargo metadata` ; leurs sources .rs
+sont tout de même parcourues par le contrôle 2.
 Les crates de protocole qui amènent leur propre TLS (lettre, reqwest dans lyxal_notification)
 restent permises : ce sont des dépendances indirectes, validées en K10 / N4.
 Lancé par scripts/ci/crypto_checks.sh (job « Cryptographie » de la CI et scripts/ci/ci_local.sh).

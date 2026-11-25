@@ -164,6 +164,13 @@ message signé par OpenSSL pour ces tests sont dans `tests/fixtures/` ; les clé
 `tests/fixtures/` sont réservés aux tests (provenance et commandes dans
 `tests/fixtures/README.md`).
 
+Comparaison différentielle de la canonicalisation DKIM avec `mail-auth` 0.16.0 (commit
+`c862df2`, décision S2 du lot 5 du programme courrier ; oracle
+`crates/lyxal_mail/tools/dkim_oracle/`, hors du workspace, lancé à la main le 25 novembre 2026) :
+en-têtes et empreinte du corps identiques sur 71 messages sur 71 (`simple` et `relaxed` ; corpus
+`resources/dkim/` de `mail-auth`, message signé de `tests/fixtures/dkim/`, 64 messages signés et
+altérés). Résultats de vérification : voir `crates/lyxal_mail/README.md`.
+
 Mesure indicative du format de flux (20 novembre 2026, compilation `release`, conteneur de
 développement à 4 cœurs Intel Xeon, un seul fil, fichier de 256 Mio en mémoire) : chiffrement
 ≈ 535 Mio/s, déchiffrement ≈ 810 Mio/s. Génération d'une clé RSA (même conteneur, AWS-LC
