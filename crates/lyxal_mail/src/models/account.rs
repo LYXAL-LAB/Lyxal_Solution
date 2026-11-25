@@ -223,19 +223,3 @@ pub struct AddressList {
     /// Curseur de la page suivante, absent à la fin.
     pub next: Option<String>,
 }
-
-/// Paramètres de `fn::mail_address_resolve`.
-#[derive(Debug, Clone, SurrealValue)]
-pub struct AddressResolveParams {
-    /// Adresse du destinataire.
-    pub address: String,
-}
-
-/// Résultat de `fn::mail_address_resolve`.
-#[derive(Debug, Clone, SurrealValue)]
-pub struct ResolvedRecipient {
-    /// Comptes actifs qui reçoivent le message.
-    pub accounts: Vec<MailRecordId>,
-    /// Adresse inscrite qui a servi.
-    pub address: String,
-}

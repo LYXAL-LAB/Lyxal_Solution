@@ -9,7 +9,7 @@
 -- identité marie: { "id": "auth_session:marie", "pv": 1, "permissions": ["mail.mailbox.access"] }
 -- identité membre: { "id": "auth_session:membre", "pv": 1, "permissions": [] }
 -- identité autre: { "id": "auth_session:autre", "pv": 1, "permissions": ["mail.domain.manage", "mail.mailbox.access", "auth.member.read", "auth.organization.settings.manage"] }
--- identité worker: { "id": "auth_session:worker", "pv": 1, "permissions": ["mail.worker"] }
+-- identité worker: { "id": "auth_session:worker", "pv": 1, "permissions": ["mail.worker", "storage.worker"] }
 -- identité plateforme: { "id": "auth_session:plateforme", "pv": 1, "permissions": ["mail.installation.manage"] }
 
 -- préparation: organisations alpha et beta, identités et sessions lyxal_auth, domaines vérifiés, table de passage
@@ -110,10 +110,10 @@ RETURN (SELECT VALUE code FROM auth_permission WHERE module = "lyxal_mail" ORDER
         AND (SELECT VALUE message FROM ONLY error_definition:MAIL_QUOTA_EXCEEDED) == "Mail quota exceeded";
 };
 
--- test: 39 codes d'erreur MAIL_*, traduits en français et en anglais
-RETURN array::len(SELECT * FROM error_definition WHERE module = "mail") == 39
+-- test: 47 codes d'erreur MAIL_*, traduits en français et en anglais
+RETURN array::len(SELECT * FROM error_definition WHERE module = "mail") == 47
     AND (SELECT * FROM error_definition WHERE module = "mail").all(|$e| string::starts_with($e.code, "MAIL_") AND $e.translations.fr.label != NONE AND $e.translations.en.label != NONE)
-    AND (SELECT VALUE code FROM error_definition WHERE module = "mail" AND retryable = true) == ["MAIL_CONTENT_UNAVAILABLE"];
+    AND (SELECT VALUE code FROM error_definition WHERE module = "mail" AND retryable = true ORDER BY code) == ["MAIL_CONTENT_UNAVAILABLE", "MAIL_SCANNER_UNAVAILABLE"];
 
 -- test: la session système peut tout
 RETURN ["worker", "manage", "settings", "mailbox"].all(|$a| fn::mail_can({ action: $a, tenant: auth_organization:alpha, account: type::record(fn::essai_id("jean")) }) AND fn::mail_can({ action: $a }));
@@ -201,8 +201,59 @@ RETURN fn::mail_write_refusal("mail_content", { state: "released", object: mail_
     RETURN fn::mail_content_remove($row) AND !record::exists($reserved.content);
 };
 
+-- préparation: remise ouverte pour jean (contenu réservé, fichier écrit) et fiche d'idempotence échue, écrites par la session système
+{
+    LET $account = fn::essai_id("jean");
+    LET $reserved = fn::mail_delivery_begin({ account: $account, size: 10, delivery_key: string::repeat("a", 64) }).data;
+    LET $bucket = (SELECT VALUE id FROM ONLY storage_bucket WHERE tenant = auth_organization:alpha AND name = "lyxal-mail" LIMIT 1);
+    LET $object = fn::storage_object_begin({ bucket: <string> $bucket, key: $reserved.storage_key, filename: "message.eml", declared_size: 10 }).data;
+    fn::storage_object_commit({ object: <string> $object.id, size: 10, content_type: "message/rfc822", blake3: "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262", content_key: "enc:v2:essai-files-1:QUJD" });
+    CREATE passe:remise CONTENT { item: {
+        content: <string> $reserved.content, object: <string> $object.id, received_at: time::now(), delivery_key: string::repeat("a", 64),
+        envelope: { subject: "x" }, structure: { type: "text/plain" },
+        reception: { spf: "pass", dkim: "pass", dmarc: "pass", iprev: "pass", antivirus: "not_scanned", spam: "none", tls: true }
+    } };
+    CREATE fn::mail_delivery_key(type::record($account), string::repeat("b", 64)) CONTENT { tenant: auth_organization:alpha, account: type::record($account), message: mail_message:ancien, expires_at: time::now() - 1h };
+};
+
+-- test: réception et liste de blocage : aucune fonction pour un titulaire, même dans sa propre boîte
+-- en tant que: jean
+RETURN [fn::mail_recipient_resolve({ address: "jean@alpha.test" }), fn::mail_delivery_begin({ account: fn::essai_id("jean"), size: 10, delivery_key: string::repeat("c", 64) }),
+        fn::mail_delivery_commit({ account: fn::essai_id("jean"), items: [(SELECT VALUE item FROM ONLY passe:remise)] }), fn::mail_delivery_purge({}),
+        fn::mail_block_create({ network: "192.0.2.0/24" }), fn::mail_block_create({ network: "192.0.2.0/24", reason: "errors" }), fn::mail_block_list({}), fn::mail_block_delete({ network: "192.0.2.0/24" }), fn::mail_block_active({})]
+    .all(|$r| $r.error.code == "MAIL_PERMISSION_DENIED")
+    AND array::len(SELECT * FROM mail_delivery) == 0 AND array::len(SELECT * FROM mail_network_block) == 0;
+
+-- test: réception et liste de blocage : aucune fonction pour un administrateur d'organisation
+-- en tant que: admin
+RETURN [fn::mail_recipient_resolve({ address: "jean@alpha.test" }), fn::mail_delivery_begin({ account: fn::essai_id("jean"), size: 10, delivery_key: string::repeat("c", 64) }),
+        fn::mail_delivery_commit({ account: fn::essai_id("jean"), items: [(SELECT VALUE item FROM ONLY passe:remise)] }), fn::mail_delivery_purge({}),
+        fn::mail_block_create({ network: "192.0.2.0/24" }), fn::mail_block_create({ network: "192.0.2.0/24", reason: "errors" }), fn::mail_block_list({}), fn::mail_block_delete({ network: "192.0.2.0/24" }), fn::mail_block_active({})]
+    .all(|$r| $r.error.code == "MAIL_PERMISSION_DENIED")
+    AND array::len(SELECT * FROM mail_delivery) == 0 AND array::len(SELECT * FROM mail_network_block) == 0;
+
+-- test: réception et liste de blocage : aucune fonction pour une autre organisation
+-- en tant que: autre
+RETURN [fn::mail_recipient_resolve({ address: "jean@alpha.test" }), fn::mail_delivery_begin({ account: fn::essai_id("jean"), size: 10, delivery_key: string::repeat("c", 64) }),
+        fn::mail_delivery_commit({ account: fn::essai_id("jean"), items: [(SELECT VALUE item FROM ONLY passe:remise)] }), fn::mail_delivery_purge({}),
+        fn::mail_block_create({ network: "192.0.2.0/24" }), fn::mail_block_create({ network: "192.0.2.0/24", reason: "errors" }), fn::mail_block_list({}), fn::mail_block_delete({ network: "192.0.2.0/24" }), fn::mail_block_active({})]
+    .all(|$r| $r.error.code == "MAIL_PERMISSION_DENIED")
+    AND array::len(SELECT * FROM mail_delivery) == 0 AND array::len(SELECT * FROM mail_network_block) == 0;
+
+-- test: administrateur de la plateforme : la liste de blocage, jamais la réception ni l'attrape-tout d'un domaine
+-- en tant que: plateforme
+RETURN [fn::mail_recipient_resolve({ address: "jean@alpha.test" }), fn::mail_delivery_begin({ account: fn::essai_id("jean"), size: 10, delivery_key: string::repeat("c", 64) }),
+        fn::mail_delivery_commit({ account: fn::essai_id("jean"), items: [(SELECT VALUE item FROM ONLY passe:remise)] }), fn::mail_delivery_purge({}), fn::mail_block_active({})]
+    .all(|$r| $r.error.code == "MAIL_PERMISSION_DENIED")
+    AND fn::mail_domain_update({ domain: fn::essai_id("domain"), catch_all: fn::essai_id("jean") }).error.code == "MAIL_DOMAIN_NOT_FOUND"
+    AND fn::mail_block_list({}).data.items == [];
+
+-- test: clé d'idempotence d'une remise (interne)
+RETURN fn::mail_delivery_key(mail_account:abc, "00ff") == mail_delivery:⟨abc_00ff⟩;
+
 -- préparation: tables du courrier fermées à l'écriture (lecture inchangée), pour vérifier le contrôle de l'écriture principale
 {
+    DEFINE TABLE OVERWRITE mail_delivery TYPE NORMAL SCHEMAFULL PERMISSIONS FOR select WHERE fn::mail_can({ action: "worker" }) FOR create, update, delete NONE;
     DEFINE TABLE OVERWRITE mail_settings TYPE NORMAL SCHEMAFULL PERMISSIONS FOR select WHERE tenant IS NONE OR fn::mail_can({ action: "settings", tenant: tenant }) FOR create, update, delete NONE;
     DEFINE TABLE OVERWRITE mail_domain TYPE NORMAL SCHEMAFULL PERMISSIONS FOR select WHERE fn::mail_can({ action: "manage", tenant: tenant }) OR fn::mail_can({ action: "worker" }) FOR create, update, delete NONE;
     DEFINE TABLE OVERWRITE mail_account TYPE NORMAL SCHEMAFULL PERMISSIONS FOR select WHERE fn::mail_can({ action: "manage", tenant: tenant }) OR fn::mail_can({ action: "mailbox", tenant: tenant, identity: identity }) FOR create, update, delete NONE;
@@ -267,3 +318,47 @@ UPDATE passe:ids SET c2 = fn::essai_contenu(fn::essai_id("jean"), 10);
 -- test: inscription filtrée : erreur explicite
 -- en tant que: jean
 RETURN fn::mail_message_create({ content: fn::essai_id("c2"), mailbox: fn::essai_id("jean_inbox"), received_at: time::now(), envelope: { subject: "x" }, structure: { type: "text/plain" } }).error.code == "MAIL_WRITE_FORBIDDEN";
+
+-- test: remise : écritures filtrées, erreur explicite (ouverture, élément du lot, purge), rien d'inscrit ni retiré
+-- en tant que: worker
+{
+    LET $item = (SELECT VALUE item FROM ONLY passe:remise);
+    LET $messages = array::len(SELECT VALUE id FROM mail_message);
+    LET $done = fn::mail_delivery_commit({ account: fn::essai_id("jean"), items: [$item] });
+    RETURN fn::mail_delivery_begin({ account: fn::essai_id("jean"), size: 10, delivery_key: string::repeat("c", 64) }).error.{ code, details } == { code: "MAIL_WRITE_FORBIDDEN", details: { table: "mail_content" } }
+        AND $done.ok AND $done.data.items[0].keys() == ["error"] AND $done.data.items[0].error.{ code, details } == { code: "MAIL_WRITE_FORBIDDEN", details: { table: "mail_content" } }
+        AND fn::mail_delivery_purge({}).error.{ code, details } == { code: "MAIL_WRITE_FORBIDDEN", details: { table: "mail_delivery" } }
+        AND (SELECT VALUE state FROM ONLY type::record($item.content)) == "pending"
+        AND array::len(SELECT VALUE id FROM mail_message) == $messages
+        AND array::len(SELECT VALUE id FROM mail_delivery) == 1;
+};
+
+-- test: domaine et réglages : attrape-tout, postmaster filtrés, erreur explicite
+-- en tant que: admin
+RETURN fn::mail_domain_update({ domain: fn::essai_id("domain"), catch_all: fn::essai_id("jean") }).error.code == "MAIL_WRITE_FORBIDDEN"
+    AND fn::mail_domain_get({ domain: fn::essai_id("domain") }).data.catch_all IS NONE;
+
+-- test: réglage postmaster de l'installation filtré, erreur explicite
+-- en tant que: plateforme
+RETURN fn::mail_settings_set({ postmaster: "jean@alpha.test" }).error.code == "MAIL_WRITE_FORBIDDEN";
+
+-- préparation: contenus et messages rouverts au service, fiches d'idempotence toujours fermées
+{
+    DEFINE TABLE OVERWRITE mail_content TYPE NORMAL SCHEMAFULL PERMISSIONS FOR select, create WHERE fn::mail_can({ action: "mailbox", tenant: tenant, account: account }) FOR update, delete WHERE fn::mail_can({ action: "worker" });
+    DEFINE TABLE OVERWRITE mail_message TYPE NORMAL SCHEMAFULL PERMISSIONS FOR select, create, update, delete WHERE fn::mail_can({ action: "mailbox", tenant: tenant, account: account });
+    DEFINE TABLE OVERWRITE mail_mailbox TYPE NORMAL SCHEMAFULL PERMISSIONS FOR select, create, update, delete WHERE fn::mail_can({ action: "mailbox", tenant: tenant, account: account });
+    DEFINE TABLE OVERWRITE mail_account TYPE NORMAL SCHEMAFULL PERMISSIONS FOR select, update WHERE fn::mail_can({ action: "manage", tenant: tenant }) OR fn::mail_can({ action: "mailbox", tenant: tenant, identity: identity }) FOR create, delete NONE;
+};
+
+-- test: fiche d'idempotence filtrée : tout le lot est annulé (un message sans fiche serait remis deux fois)
+-- en tant que: worker
+-- attendu-erreur: MAIL_WRITE_FORBIDDEN
+fn::mail_delivery_commit({ account: fn::essai_id("jean"), items: [(SELECT VALUE item FROM ONLY passe:remise)] });
+
+-- test: lot annulé : ni message, ni fiche, contenu toujours réservé
+{
+    LET $item = (SELECT VALUE item FROM ONLY passe:remise);
+    RETURN (SELECT VALUE state FROM ONLY type::record($item.content)) == "pending"
+        AND array::len(SELECT VALUE id FROM mail_message WHERE origin = "delivery") == 0
+        AND !record::exists(fn::mail_delivery_key(type::record(fn::essai_id("jean")), string::repeat("a", 64)));
+};

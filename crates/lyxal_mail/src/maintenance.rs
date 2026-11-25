@@ -7,7 +7,8 @@
 //!    fichier (`fn::mail_content_expire`) ;
 //! 2. pierres tombales plus anciennes que la conservation de leur organisation
 //!    (`fn::mail_tombstone_purge`) ;
-//! 3. comptes en suppression purgés par étapes (`fn::mail_account_purge_step`).
+//! 3. fiches d'idempotence des remises échues (`fn::mail_delivery_purge`) ;
+//! 4. comptes en suppression purgés par étapes (`fn::mail_account_purge_step`).
 //!
 //! Chaque appel est une transaction ; l'arrêt du serveur interrompt la maintenance entre deux
 //! appels (le reste est fait au passage suivant). Un passage s'arrête aussi après un nombre
@@ -32,6 +33,8 @@ pub struct MaintenanceReport {
     pub released: u64,
     /// Pierres tombales retirées.
     pub tombstones: u64,
+    /// Fiches d'idempotence des remises échues retirées.
+    pub deliveries: u64,
     /// Comptes purgés.
     pub accounts: u64,
     /// Messages retirés des comptes purgés.
@@ -83,6 +86,16 @@ impl MailMaintenance {
             let done = retry_conflicts(|| self.store.tombstone_purge(params)).await?;
             report.tombstones += count(done.purged);
             if done.purged < self.batch {
+                break;
+            }
+        }
+        for _ in 0..MAX_ROUNDS {
+            if cancellation.is_cancelled() {
+                return Ok(report);
+            }
+            let done = retry_conflicts(|| self.store.delivery_purge(params)).await?;
+            report.deliveries += count(done.removed);
+            if done.removed < self.batch {
                 break;
             }
         }

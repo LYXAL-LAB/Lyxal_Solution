@@ -36,7 +36,9 @@ pub mod store;
 
 pub use client::{ClientRead, ClientWrite, SecretsClient};
 pub use error::{SecretsError, SecretsResult};
-pub use files::{FileKeys, SealedFileKey};
+pub use files::{
+    FileKeyCacheStats, FileKeys, SealedFileKey, FILE_KEY_CACHE_ENTRIES, FILE_KEY_CACHE_SECONDS,
+};
 pub use health::SecretsHealthCheck;
 pub use keys::MasterKeys;
 pub use maintenance::{MaintenanceReport, SecretsMaintenance};

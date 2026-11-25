@@ -2,12 +2,12 @@
 -- ============================================================================
 -- EVENTS : lyxal_mail — publications
 -- MODULE : lyxal_mail
--- RÔLE   : mail.domain.*, mail.account.*, mail.address.*, mail.quota.exceeded
+-- RÔLE   : mail.domain.*, mail.account.*, mail.address.*, mail.message.received, mail.quota.exceeded
 -- ============================================================================
 -- Publiés par fn::event_publish dans la transaction de la mutation (.agents/AGENTS.md §5.6.1) ;
 -- une publication refusée annule la mutation. Charges utiles sans donnée personnelle :
 -- identifiants d'enregistrement et compteurs seulement, ni adresse, ni nom de domaine, ni sujet.
--- Aucun événement par message au lot 4 (décision M16). Un retrait emporté par la suppression de
+-- Un seul événement par message : mail.message.received, à la remise SMTP (décisions M16, S15). Un retrait emporté par la suppression de
 -- l'organisation ne publie rien (l'organisation n'existe plus).
 
 DEFINE EVENT OVERWRITE mail_domain_created_event ON TABLE mail_domain
@@ -95,6 +95,35 @@ THEN {
         producer: "lyxal_mail",
         source: $before.id,
         payload: { address_id: <string> $before.id, kind: $before.kind, tenant: <string> $before.tenant },
+        metadata: {}
+    });
+    IF !$published.ok { THROW $published.error.code; };
+};
+
+-- Message reçu par SMTP (décision S15) : un événement par compte destinataire, publié dans la
+-- transaction de l'inscription (origine delivery seulement : ni copie, ni déplacement, ni dépôt
+-- par le titulaire). Ni adresse, ni domaine, ni sujet, ni Message-ID : un consommateur lit le
+-- message par les fonctions publiques, sous ses propres droits.
+DEFINE EVENT OVERWRITE mail_message_received_event ON TABLE mail_message
+WHEN $event = "CREATE" AND $after.origin = "delivery"
+THEN {
+    LET $published = fn::event_publish({
+        event_id: rand::uuid::v7(),
+        event_type: "mail.message.received",
+        producer: "lyxal_mail",
+        source: $after.id,
+        payload: {
+            tenant: <string> $after.tenant,
+            account: <string> $after.account,
+            mailbox: <string> $after.mailbox,
+            message: <string> $after.id,
+            email_id: $after.email_id,
+            size: $after.size,
+            received_at: <string> $after.received_at,
+            has_attachment: $after.has_attachment,
+            protection: $after.protection,
+            reception: $after.reception
+        },
         metadata: {}
     });
     IF !$published.ok { THROW $published.error.code; };

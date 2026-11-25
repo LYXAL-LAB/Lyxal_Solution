@@ -341,39 +341,3 @@ DEFINE FUNCTION OVERWRITE fn::mail_address_list($params: object) {
     LET $items = array::slice($rows, 0, $p.limit);
     RETURN fn::result_ok({ items: $items, next: IF array::len($rows) > $p.limit { array::last($items).address } ELSE { NONE } });
 } COMMENT "Adresses d'un domaine ({ domain }, droit : gestion) ou d'un compte ({ account }, droit : gestion, ou titulaire du compte), triées par adresse (unique) ; after : curseur (adresse), limit (50, 200 au plus) ; { items, next }";
-
--- ----------------------------------------------------------------------------
--- fn::mail_address_resolve
--- ----------------------------------------------------------------------------
-
-DEFINE FUNCTION OVERWRITE fn::mail_address_resolve($params: object) {
-    LET $report = fn::validation_object_execute($params, {
-        fields: {
-            address: { pipeline: [{ rule: "required_string", options: { min_length: 3, max_length: 254 } }, { rule: "ascii", options: { trim_value: true, allow_blank: false } }], required: true },
-            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
-        },
-        unknown_keys: "reject"
-    }, 20);
-    IF !$report.valid {
-        RETURN fn::error_result("MAIL_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
-    };
-    LET $p = fn::sanitize_object_execute($report.value, { fields: { address: { pipeline: [{ rule: "trim" }, { rule: "lowercase" }] } }, unknown_keys: "keep" }, 20);
-    IF !fn::mail_can({ action: "worker" }) { RETURN fn::error_result("MAIL_PERMISSION_DENIED", $p.language, {}); };
-    IF !fn::validation_email($p.address, 254).valid { RETURN fn::error_result("MAIL_RECIPIENT_UNKNOWN", $p.language, {}); };
-    LET $parts = string::split($p.address, "@");
-    LET $local = array::join(array::slice($parts, 0, array::len($parts) - 1), "@");
-    LET $domain = (SELECT id, state, subaddress_separator FROM ONLY mail_domain WHERE name = array::last($parts) LIMIT 1);
-    IF $domain == NONE OR $domain.state != "active" { RETURN fn::error_result("MAIL_RECIPIENT_UNKNOWN", $p.language, {}); };
-    -- Adresse exacte, sinon sans sa sous-adresse (jean+factures → jean)
-    LET $exact = (SELECT address, kind, account, targets, state FROM ONLY mail_address WHERE address = $p.address LIMIT 1);
-    LET $base = IF $exact IS NONE AND $domain.subaddress_separator IS NOT NONE AND string::contains($local, $domain.subaddress_separator) {
-        string::concat(string::split($local, $domain.subaddress_separator)[0], "@", array::last($parts))
-    } ELSE { NONE };
-    LET $row = $exact ?? (IF $base IS NONE { NONE } ELSE { (SELECT address, kind, account, targets, state FROM ONLY mail_address WHERE address = $base LIMIT 1) });
-    IF $row == NONE OR $row.state != "active" { RETURN fn::error_result("MAIL_RECIPIENT_UNKNOWN", $p.language, {}); };
-    -- Comptes actifs seulement (alias développé)
-    LET $wanted = IF $row.kind = "account" { [$row.account] } ELSE { $row.targets };
-    LET $accounts = (SELECT VALUE id FROM $wanted WHERE state = "active" ORDER BY id);
-    IF array::len($accounts) = 0 { RETURN fn::error_result("MAIL_RECIPIENT_UNKNOWN", $p.language, {}); };
-    RETURN fn::result_ok({ accounts: $accounts, address: $row.address });
-} COMMENT "Résout une adresse de destinataire ({ address }) : casse ignorée, sous-adresse retirée (jean+factures → jean) si le domaine en a, alias développé, comptes actifs seulement ; { accounts, address (adresse inscrite qui a servi) } ; MAIL_RECIPIENT_UNKNOWN sinon (domaine ou adresse absents ou désactivés, aucun compte actif), sans écho de l'adresse. Droit : compte de service, session système";

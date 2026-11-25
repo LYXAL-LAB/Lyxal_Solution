@@ -56,8 +56,7 @@ clé maîtresse du coffre-fort (LYXAL__SECRETS__MASTER_KEY ; ancienne clé en le
 * Le trousseau d'une organisation pour un usage est reconstruit à chaque opération
   (`EncryptionKey::import`, `KeyRingBuilder`, `StaticKeyResolver`, `CryptoEngine`) depuis ses
   clés `active` et `decrypt_only` ; aucune clé d'organisation n'est gardée en mémoire au-delà de
-  l'opération (y compris pour les clés de fichiers : pas de cache, décision M19 du lot 4 du
-  courrier).
+  l'opération, sauf par le cache facultatif des clés « fichiers » ci-dessous.
 * **Clés de fichiers** (`FileKeys`, session système) : `seal(organisation, &StreamKey,
   &SecretContext)` scelle la clé d'un fichier par la clé « fichiers » active (créée au premier
   fichier) ; `open` la rouvre (clé détruite : `SECRETS_TENANT_KEY_UNAVAILABLE` ; enveloppe
@@ -65,6 +64,24 @@ clé maîtresse du coffre-fort (LYXAL__SECRETS__MASTER_KEY ; ancienne clé en le
   `reseal` la rescelle par la clé active après une rotation. Le contexte (identité de la fiche du
   fichier) est fourni par le module qui range les fichiers ; le coffre-fort ne lit aucune de ses
   tables.
+* **Cache des clés « fichiers »** (`FileKeys::with_cache`, facultatif, activé par l'hôte ;
+  décisions M19 et S13 du programme courrier). Mesure du 25 novembre 2026 (serveur SurrealDB
+  3.3.4 en mémoire, `ws://`) : `seal` et `open` coûtent chacun environ 13 ms, presque entièrement
+  la lecture du trousseau en base (`fn::secrets_tenant_key_ring`, 12,9 ms), soit 15 % d'une
+  remise de courrier : au-dessus du seuil fixé (2 ms ou 10 %). Avec le cache, une clé
+  « fichiers » ouverte est gardée en mémoire **60 secondes** au plus
+  (`FILE_KEY_CACHE_SECONDS`), par organisation et identifiant de clé, **1 024 entrées** au plus
+  (`FILE_KEY_CACHE_ENTRIES` ; cache plein : entrées échues retirées, puis la plus ancienne),
+  dans un `SecretBytes` effacé à l'éviction. Il ne sert qu'à **ouvrir** (`open`) : une ouverture
+  servie par le cache ne lit plus la base. Il ne sert **jamais à sceller** : seule la clé
+  `active` scelle, et une clé retirée par une rotation faite sur un autre nœud peut être
+  détruite dès que l'hôte dit qu'aucun fichier ne l'utilise ; `seal` et `reseal` relisent donc
+  toujours le trousseau en base (leur coût ne change pas). Une clé `decrypt_only` s'ouvre depuis
+  le cache jusqu'à l'expiration de son entrée ; une clé détruite en disparaît au plus tard 60 s
+  après sa destruction, et aussitôt sur le nœud qui la détruit (`destroy`). Usage `files`
+  seulement : la clé « secrets » n'est jamais gardée. Sans clé maîtresse, rien ne s'ouvre, cache
+  compris. Relevé : `FileKeys::cache_stats()` (succès, échecs, entrées) ; aucun contenu de clé
+  au journal ni dans `Debug`.
 * **Rotation de la clé « secrets » d'une organisation** (sur demande, droit
   `secrets.settings.manage`, ou à échéance de `tenant_key_rotation_days`) : nouvelle clé
   active, l'ancienne ne sert plus qu'à relire ; la maintenance rescelle toutes les versions
@@ -95,7 +112,7 @@ clé maîtresse du coffre-fort (LYXAL__SECRETS__MASTER_KEY ; ancienne clé en le
 | `SecretsService::propose` | nouvelle valeur d'un secret protégé : scellée et écrite en version `proposed` (jamais servie avant l'application), puis demande de changement ouverte au nom de l'appelant |
 | `SecretsService::rotate_now`, `check_rotation` | rotation immédiate (dont l'urgence ; sans rotateur, l'urgence coupe la version courante et la rotation échoue aussitôt, `SECRETS_ROTATOR_UNAVAILABLE`) ; essai sans bascule de la valeur en service, outil du worker et de la session système (pas de route HTTP) |
 | `SecretsClient` | lecture et écriture des modules de l'hôte par organisation et chemin, session système, module annoncé comme consommateur |
-| `FileKeys`, `SealedFileKey` | clés des fichiers chiffrés des modules de l'hôte (session système) : `seal`, `open`, `reseal`, `retired` (clés « fichiers » retirées), `destroy` (sur l'avis de l'hôte : `in_use`) ; `context_tenant` (organisation du contexte de scellement) ; enveloppe au `Debug` masqué |
+| `FileKeys`, `SealedFileKey`, `FileKeyCacheStats` | clés des fichiers chiffrés des modules de l'hôte (session système) : `seal`, `open`, `reseal`, `retired` (clés « fichiers » retirées), `destroy` (sur l'avis de l'hôte : `in_use`) ; `context_tenant` (organisation du contexte de scellement) ; `with_cache` (cache facultatif des ouvertures, 60 s, 1 024 entrées), `cache_stats` ; enveloppe au `Debug` masqué |
 | `SecretsMaintenance` | maintenance, une opération (`run`) interrompue entre deux éléments à l'arrêt ; aucun `LyxalWorker` : l'hôte la fait exécuter toutes les 10 min par `lyxal_scheduler` (tâche `secrets.maintenance` qu'il déclare lui-même, `lyxal_secrets` ne dépendant pas du planificateur) : purge à échéance, alertes d'échéance et rappels de rotation, démarrage des rotations dues qu'un rotateur sait faire, rotation des clés d'organisation échues (« secrets » et « fichiers »), avancement des rotations réservées, expiration des demandes et retrait des accès finis, expiration des partages, rescellement des versions puis des clés d'organisation, destruction des clés « secrets » inutilisées ; bilan `MaintenanceReport` |
 | `SecretsModule`, `SecretsHealthCheck` | descripteur du module ; sonde : base joignable, clé maîtresse présente, clés scellées par une clé maîtresse absente du trousseau (dégradé), rescellements en attente |
 | `SecretsError` | code `SECRETS_*` de la base, ou cause constatée par le service (`SECRETS_CRYPTO_UNAVAILABLE`, `SECRETS_VALUE_TOO_LARGE`, `SECRETS_VALUE_CORRUPTED`, `SECRETS_TENANT_KEY_UNAVAILABLE`) ; jamais de valeur |
@@ -295,5 +312,5 @@ destruction au cinquième essai, lien réservé à l'organisation ou à l'instal
 autre auteur jamais mise en service, `LIVE SELECT` sans enveloppe ; clés de fichiers (clé
 « fichiers » distincte de la clé « secrets », scellement lié au fichier et à l'organisation, sans
 clé maîtresse, rotation puis rescellement et destruction sur l'avis de l'hôte, rotation de la clé
-maîtresse) ; 49 tests et 1 test unitaire. Hôte :
+maîtresse ; cache : ouvertures servies sans relire la base, jamais de scellement par une clé gardée, clé retirée encore ouverte, clé détruite oubliée aussitôt par le nœud qui la détruit, expiration à 60 s, éviction à 1 024 entrées) ; 51 tests et 5 tests unitaires. Hôte :
 `apps/lyxal-server/tests/secrets_http.rs` (routes HTTP de bout en bout) et `apps/lyxal-server/tests/secrets.rs`.

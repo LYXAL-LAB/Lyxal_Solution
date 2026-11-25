@@ -172,18 +172,21 @@ RETURN fn::mail_address_list({ account: fn::essai_id("jean") }).data.items.addre
 {
     LET $jean = type::record(fn::essai_id("jean"));
     LET $marie = type::record(fn::essai_id("marie"));
-    RETURN fn::mail_address_resolve({ address: " JEAN@Alpha.Test " }).data == { accounts: [$jean], address: "jean@alpha.test" }
-        AND fn::mail_address_resolve({ address: "jean+factures@alpha.test" }).data == { accounts: [$jean], address: "jean@alpha.test" }
-        AND fn::mail_address_resolve({ address: "equipe@alpha.test" }).data.accounts == array::sort::asc([$jean, $marie])
-        AND fn::mail_address_resolve({ address: "equipe+x@alpha.test" }).data.address == "equipe@alpha.test";
+    LET $expected = { address: "jean@alpha.test", domain: "alpha.test", tenant: auth_organization:alpha, max_message_bytes: 52428800, accounts: [{ account: $jean, quota_full: false }] };
+    RETURN fn::mail_recipient_resolve({ address: " JEAN@Alpha.Test " }).data == $expected
+        AND fn::mail_recipient_resolve({ address: "jean+factures@alpha.test" }).data == $expected
+        AND fn::mail_recipient_resolve({ address: "equipe@alpha.test" }).data.accounts.account == array::sort::asc([$jean, $marie])
+        AND fn::mail_recipient_resolve({ address: "equipe+x@alpha.test" }).data.address == "equipe@alpha.test";
 };
 
--- test: résolution : destinataire inconnu, sans écho de l'adresse
+-- test: résolution : destinataire inconnu ou domaine étranger (aucun relais), sans écho de l'adresse
 -- en tant que: worker
-RETURN ["inconnu@alpha.test", "jean@inconnu.test", "pas-une-adresse", "jean+@nulle.test"].all(|$a|
-        fn::mail_address_resolve({ address: $a }).error.{ code, details } == { code: "MAIL_RECIPIENT_UNKNOWN", details: {} })
-    AND fn::mail_address_resolve({ address: "jéan@alpha.test" }).error.code == "MAIL_INVALID_PARAMETERS"
-    AND fn::mail_address_resolve({}).error.code == "MAIL_INVALID_PARAMETERS";
+RETURN ["inconnu@alpha.test", "pas-une-adresse", "nul+x@alpha.test"].all(|$a|
+        fn::mail_recipient_resolve({ address: $a }).error.{ code, details } == { code: "MAIL_RECIPIENT_UNKNOWN", details: {} })
+    AND ["jean@inconnu.test", "jean+@nulle.test"].all(|$a|
+        fn::mail_recipient_resolve({ address: $a }).error.{ code, details } == { code: "MAIL_RELAY_DENIED", details: {} })
+    AND fn::mail_recipient_resolve({ address: "jéan@alpha.test" }).error.code == "MAIL_INVALID_PARAMETERS"
+    AND fn::mail_recipient_resolve({}).error.code == "MAIL_INVALID_PARAMETERS";
 
 -- préparation: compte de marie désactivé, adresse de jean désactivée, domaine bêta sans sous-adresse
 {
@@ -193,10 +196,10 @@ RETURN ["inconnu@alpha.test", "jean@inconnu.test", "pas-une-adresse", "jean+@nul
 
 -- test: résolution : comptes actifs seulement, domaine sans sous-adresse
 -- en tant que: worker
-RETURN fn::mail_address_resolve({ address: "equipe@alpha.test" }).data.accounts == [type::record(fn::essai_id("jean"))]
-    AND fn::mail_address_resolve({ address: "marie@alpha.test" }).error.code == "MAIL_RECIPIENT_UNKNOWN"
-    AND fn::mail_address_resolve({ address: "autre@beta.test" }).data.accounts == [type::record(fn::essai_id("autre"))]
-    AND fn::mail_address_resolve({ address: "autre+x@beta.test" }).error.code == "MAIL_RECIPIENT_UNKNOWN";
+RETURN fn::mail_recipient_resolve({ address: "equipe@alpha.test" }).data.accounts.account == [type::record(fn::essai_id("jean"))]
+    AND fn::mail_recipient_resolve({ address: "marie@alpha.test" }).error.code == "MAIL_RECIPIENT_DISABLED"
+    AND fn::mail_recipient_resolve({ address: "autre@beta.test" }).data.accounts.account == [type::record(fn::essai_id("autre"))]
+    AND fn::mail_recipient_resolve({ address: "autre+x@beta.test" }).error.code == "MAIL_RECIPIENT_UNKNOWN";
 
 -- préparation: adresse de jean désactivée, puis domaine alpha désactivé
 {
@@ -205,17 +208,21 @@ RETURN fn::mail_address_resolve({ address: "equipe@alpha.test" }).data.accounts 
 
 -- test: résolution : adresse désactivée, puis domaine désactivé
 {
-    LET $address = fn::mail_address_resolve({ address: "jean@alpha.test" }).error.code;
+    LET $address = fn::mail_recipient_resolve({ address: "jean@alpha.test" }).error.code;
     fn::mail_domain_update({ domain: fn::essai_id("domain"), state: "disabled" });
-    LET $domain = fn::mail_address_resolve({ address: "equipe@alpha.test" }).error.code;
+    LET $domain = fn::mail_recipient_resolve({ address: "equipe@alpha.test" }).error.code;
     fn::mail_domain_update({ domain: fn::essai_id("domain"), state: "active" });
-    RETURN $address == "MAIL_RECIPIENT_UNKNOWN" AND $domain == "MAIL_RECIPIENT_UNKNOWN"
-        AND fn::mail_address_resolve({ address: "equipe@alpha.test" }).ok;
+    RETURN $address == "MAIL_RECIPIENT_UNKNOWN" AND $domain == "MAIL_RELAY_DENIED"
+        AND fn::mail_recipient_resolve({ address: "equipe@alpha.test" }).ok;
 };
 
--- test: un membre ne résout pas d'adresse ; l'administrateur non plus
+-- test: un membre ne résout pas d'adresse
 -- en tant que: jean
-RETURN fn::mail_address_resolve({ address: "jean@alpha.test" }).error.code == "MAIL_PERMISSION_DENIED";
+RETURN fn::mail_recipient_resolve({ address: "jean@alpha.test" }).error.code == "MAIL_PERMISSION_DENIED";
+
+-- test: l'administrateur de l'organisation non plus
+-- en tant que: admin
+RETURN fn::mail_recipient_resolve({ address: "jean@alpha.test" }).error.code == "MAIL_PERMISSION_DENIED";
 
 -- test: une autre organisation ne voit ni ne gère les adresses d'alpha
 -- en tant que: autre

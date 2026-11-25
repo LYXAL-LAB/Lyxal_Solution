@@ -177,7 +177,7 @@ RETURN (SELECT * FROM type::record("mail_message", fn::mail_message_key_text(typ
 -- attendu-erreur: MAIL_WRITE_FORBIDDEN
 CREATE fn::mail_message_key(type::record(fn::essai_id("jean_inbox")), 500) CONTENT {
     tenant: auth_organization:alpha, account: type::record(fn::essai_id("jean")), mailbox: type::record(fn::essai_id("jean_inbox")),
-    content: (SELECT VALUE content FROM ONLY type::record(fn::essai_id("m1"))), uid: 501, modseq: 1000, create_modseq: 1000, thread: "t", received_at: time::now(), size: 100
+    content: (SELECT VALUE content FROM ONLY type::record(fn::essai_id("m1"))), origin: "append", uid: 501, modseq: 1000, create_modseq: 1000, thread: "t", received_at: time::now(), size: 100
 };
 
 -- test: écriture directe : l'UID d'un message ne change pas (partie de son identifiant)

@@ -32,18 +32,23 @@ Mesures et essais détaillés dans [`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md
   dossier. L'index plein texte de SurrealDB 3.3.4 répond vite sur un mot, mais combiner un mot
   fréquent, un dossier et un tri par date est lent : à mesurer de nouveau avec le moteur de
   recherche retenu au lot 9.
-* **Liste des suffixes publics (lot 5, décision S4).** Aucune crate permissive embarquant la
-  liste n'est dans `Cargo.lock` (seule `psl-types`, sans données, y est, amenée par `addr`) ; le
-  domaine d'organisation de DMARC lit une liste fournie par l'appelant. Source à décider par le
-  CTO avant le branchement de la session SMTP (5d) : crate `psl` (à ajouter, licence à contrôler
-  par `cargo deny`) ou fichier de la liste copié sous MPL-2.0 avec exception nommée dans
-  `deny.toml`.
+* **Liste des suffixes publics (décision S4).** Embarquée par la crate `psl` à version figée
+  (`EmbeddedSuffixList`) : la liste vieillit avec la version ; sa mise à jour (changement de
+  version, par plan, décision P14) est à inscrire dans les procédures d'exploitation. La crate
+  déclare `MIT/Apache-2.0` sans mentionner la MPL-2.0 de la liste qu'elle embarque : à confirmer
+  par le CTO (repli : fichier de la liste sous MPL-2.0, exception nommée dans `deny.toml`).
+  `PublicSuffixList` (liste fournie par l'appelant) ne sert plus qu'aux essais : à garder ou à
+  retirer avec le branchement de la session SMTP (5d).
 * **Domaines d'auteur multiples (lot 5).** DMARC évalue au plus 10 domaines distincts de `From` ;
   au-delà, les domaines sont ignorés : refus ou non d'un tel message à décider avec la session
   SMTP (5d).
-* **Liste de blocage et bannissement (lot 5).** Table de `lyxal_mail`, entrées validées par
-  `fn::validation_ip` / `fn::validation_cidr` ; limites partagées entre nœuds à décider (au lot 3,
-  les compteurs par réseau sont en mémoire, par nœud).
+* **Liste de blocage et bannissement (lot 5).** Table et fonctions en place (5c) ; restent à la
+  session SMTP (5d) : lecture par chaque nœud toutes les 30 s, bannissement après récidive. Un
+  réseau est rangé tel qu'il est donné (`fn::validation_cidr` valide la syntaxe, sans ramener
+  l'adresse à son réseau : `192.0.2.7/24` et `192.0.2.0/24` sont deux entrées) : forme canonique
+  à produire par l'appelant, ou primitive de `lyxal_core` à demander au CTO. Les entrées échues
+  ne sont pas purgées (elles portent le nombre de récidives) : durée de conservation à décider.
+  Les compteurs de cadence restent par nœud (lot 3).
 
 ## Points relevés au lot 4, à décider avant les protocoles
 
@@ -55,28 +60,36 @@ Mesures : [`README.md`](README.md), section « Mesures ».
 * **Effacement des messages `\Deleted` d'un grand dossier.** `fn::mail_message_expunge` sans liste
   lit les messages `\Deleted` par l'index `(dossier, deleted)` : coût non mesuré sur une grande
   boîte, à mesurer au lot 8.
-* **Débit de remise (§5.7.8, décision P2).** Moteur de `lyxal_core` accéléré : remise d'environ
-  27 ms (environ 35 par seconde et par connexion, dont 39 ms de validation sous la session
-  système), encore loin des 300 par seconde de la décision C5 ; changement d'un drapeau sous le
-  seuil.
+* **Débit de remise (décisions C5, P7, S11, S12) : objectif non atteint, à décider avant 5d.**
+  Mesures du lot 5c (`README.md`, « Mesures de la remise ») : 11 à 25 remises par seconde sur un
+  serveur SurrealDB, pour 300 visées ; aucune remise refusée sur un nœud. Une remise coûte 93 à
+  96 ms de calcul à la base. Pistes, toutes hors du plan du lot 5 et à décider par le CTO :
+  coût du moteur de validation de `lyxal_core` (2 ms pour un champ, 10,7 ms pour un élément de
+  remise ; `fn::event_publish` 7 ms, fonctions de `lyxal_storage` 3,4 ms chacune) ; plusieurs
+  connexions à la base par hôte (un serveur exécute une à une les requêtes d'une connexion) ;
+  compteurs de volume de `lyxal_storage` écrits par chaque fichier d'une organisation (les
+  écritures d'une organisation passent une à une dans le nœud) ; lecture du trousseau des clés
+  « fichiers » à chaque scellement (13 ms).
 * **Plage de 1 000 UID sous la session d'un membre.** Environ 0,3 ms de plus par fiche que sous
   la session système, non expliqué par la règle de lecture (13 µs) : à analyser avant le lot 8
   (`FETCH` de grandes plages).
-* **Contention du compteur de modifications du compte (décisions M6, P3, P7).** Quatre écrivains
-  dans un même compte : débit total de 35 remises par seconde, mais environ un tiers des remises
-  encore refusées après trois rejeux pour conflit de transaction. Traité au lot 5 (décision P7) :
-  compteur par dossier et journal des changements du compte, contrôle des paramètres du dépôt
-  allégé. Le banc Rust du lot 4 ne dépose donc pas en concurrence dans un même compte (aucun
-  essai de rejeu sur conflit sous charge) : essai à ajouter avec ce changement.
-* **Domaines internationaux et parties locales UTF-8 (décision M10).** Lot 4 en ASCII
-  seulement ; conversion IDNA et validation d'une partie locale UTF-8 (`SMTPUTF8`) : besoin
-  d'extension de `lyxal_core` signalé, à instruire avant le lot 5.
-* **Adresse « attrape-tout », alias vers l'extérieur, listes** : lots 5 et 6.
-* **Coût des clés à chaque lecture et à chaque dépôt (décision M19).** Chaque dépôt scelle une
-  clé de fichier et chaque lecture rouvre la clé « fichiers » de l'organisation (une lecture en
-  base, une ouverture `enc:v2`), sans cache : coût non mesuré (banc `scripts/bench/mailbox/` à
-  étendre au service Rust) ; un cache court, effacé à l'expiration, ne viendrait que sur
-  nouvelle décision, avant le lot 8 (lecture de centaines de messages par une session IMAP).
+* **Contention entre deux nœuds (décisions M6, S11).** Le compteur reste par compte ; dans un
+  nœud, l'ordre par compte supprime les conflits. Entre deux nœuds simulés dans un processus
+  (base embarquée, un compte, 20 clients) : 1 remise refusée sur 1 000 après rejeu (0,1 %, sous
+  le seuil de 1 % du repli), 199 conflits rejoués. À mesurer de nouveau avec deux vrais hôtes et
+  la session SMTP (5d), y compris les conflits sur les compteurs de volume de `lyxal_storage`.
+  Le dépôt par un titulaire (`MailIngest::deliver`, `APPEND` au lot 8) ne passe pas par l'ordre
+  par compte : à décider au lot 8.
+* **Domaines internationaux et parties locales UTF-8 (décisions M10, S16).** Adresses de Lyxal
+  en ASCII ; domaines convertis en forme ASCII en Rust par la session SMTP (5d) ; aucune
+  extension de `lyxal_core` au lot 5 ; saisie d'un domaine ou d'une adresse en Unicode par un
+  administrateur : question rouverte au lot 13.
+* **Alias vers l'extérieur, listes** : lot 6.
+* **Clés « fichiers » (décisions M19, S13).** Cache écrit dans `lyxal_secrets`
+  (`FileKeys::with_cache`), pour les ouvertures seulement ; à activer par l'hôte (5d). Un
+  scellement relit toujours le trousseau (13 ms par remise) : le sceller depuis le cache
+  demanderait qu'une clé « fichiers » retirée ne puisse pas être détruite avant un délai plus
+  long que la garde du cache (règle de `lyxal_secrets` à décider par le CTO).
 * **Contenus en attente en retard dans la sonde.** La sonde ne compte pas les contenus `pending`
   restés au-delà de leur délai (aucune fonction publique ne les compte ; la maintenance les
   retire) : fonction à ajouter si l'exploitation en a besoin.

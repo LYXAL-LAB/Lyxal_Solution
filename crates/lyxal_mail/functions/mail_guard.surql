@@ -43,11 +43,15 @@ DEFINE FUNCTION OVERWRITE fn::mail_write_refusal($table: string, $previous: any,
             -- Domaine vérifié de la même organisation (décision M9), sous son nom
             LET $found = fn::auth_organization_domain_get({ domain: <string> $next.auth_domain });
             LET $auth_domain = IF $found.ok { $found.data } ELSE { NONE };
-            IF $auth_domain == NONE OR $auth_domain.organization != $next.tenant OR $auth_domain.domain != $next.name OR $next.address_count != 0 { RETURN "MAIL_WRITE_FORBIDDEN"; };
+            IF $auth_domain == NONE OR $auth_domain.organization != $next.tenant OR $auth_domain.domain != $next.name OR $next.address_count != 0
+                OR $next.catch_all IS NOT NONE OR $next.postmaster IS NOT NONE { RETURN "MAIL_WRITE_FORBIDDEN"; };
             RETURN IF $auth_domain.state != "verified" { "MAIL_DOMAIN_NOT_VERIFIED" } ELSE { NONE };
         };
         -- Un domaine qui porte des adresses ne se supprime qu'avec son organisation
-        RETURN IF $next IS NONE AND $previous.address_count > 0 AND record::exists($previous.tenant) { "MAIL_DOMAIN_NOT_EMPTY" } ELSE { NONE };
+        IF $next IS NONE { RETURN IF $previous.address_count > 0 AND record::exists($previous.tenant) { "MAIL_DOMAIN_NOT_EMPTY" } ELSE { NONE }; };
+        -- Attrape-tout et postmaster : posés sur un compte actif de la même organisation
+        LET $posed = array::filter(["catch_all", "postmaster"], |$f| $next[$f] IS NOT NONE AND $next[$f] != $previous[$f]);
+        RETURN IF array::all($posed, |$f| (SELECT VALUE id FROM ONLY $next[$f] WHERE tenant = $next.tenant AND state = "active") IS NOT NONE) { NONE } ELSE { "MAIL_WRITE_FORBIDDEN" };
     };
     IF $table = "mail_address" {
         IF $next IS NONE {
@@ -130,6 +134,9 @@ DEFINE FUNCTION OVERWRITE fn::mail_write_refusal($table: string, $previous: any,
             IF $next.id != fn::mail_message_key($next.mailbox, $next.uid) { RETURN "MAIL_WRITE_FORBIDDEN"; };
             -- Titulaire recopié du compte : clé du contrôle de lecture par fiche (décision P1)
             IF $owner.identity IS NONE OR $next.owner != $owner.identity { RETURN "MAIL_WRITE_FORBIDDEN"; };
+            -- Origine delivery : service de remise seulement, avec les résultats de la réception ;
+            -- aucune autre origine ne les porte (seule delivery publie mail.message.received)
+            IF ($next.origin = "delivery") != ($next.reception IS NOT NONE) OR ($next.origin = "delivery" AND (object::len($next.reception) != 7 OR !fn::mail_can({ action: "worker" }))) { RETURN "MAIL_WRITE_FORBIDDEN"; };
             LET $content = (SELECT account, state, size, protection FROM ONLY $next.content);
             IF $content == NONE OR $content.account != $next.account OR $content.size != $next.size OR $content.protection != $next.protection { RETURN "MAIL_WRITE_FORBIDDEN"; };
             -- Un contenu libéré dans la même transaction est relu par la fiche qui remplace celle
@@ -147,7 +154,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_write_refusal($table: string, $previous: any,
         RETURN IF $next.mailbox != $previous.mailbox OR $next.uid != $previous.uid { "MAIL_WRITE_FORBIDDEN" } ELSE { NONE };
     };
     RETURN NONE;
-} COMMENT "Interne : garde d'une écriture dans une table de lyxal_mail ($table ; $previous, $next : NONE à la création, à la suppression), appelée par les événements de garde ; NONE, ou le code MAIL_* du refus. Compteurs à zéro à la création ; identité jamais remplacée ; adresse principale gardée tant que le compte vit ; domaine vérifié de la même organisation, non vide seulement avec elle ; alias vers 1 à 50 comptes vivants de l'organisation ; dossier : chemin, parent et rôle cohérents, UIDVALIDITY tirée du compte, pas de boucle, boîte de réception, dossier non vide ou parent protégés ; contenu : états pending → stored → released ; message : même compte que son dossier et son contenu, contenu stocké, compte actif (inscription et changement ; effacement refusé sur un compte désactivé ; changement et effacement permis à l'exploitation : session système, compte de service), UID au moins égal au prochain du dossier, numéro de modification qui avance, quota (filet de sécurité de fn::mail_message_create)";
+} COMMENT "Interne : garde d'une écriture dans une table de lyxal_mail ($table ; $previous, $next : NONE à la création, à la suppression), appelée par les événements de garde ; NONE, ou le code MAIL_* du refus. Compteurs à zéro à la création ; identité jamais remplacée ; adresse principale gardée tant que le compte vit ; domaine vérifié de la même organisation, non vide seulement avec elle, attrape-tout et postmaster posés sur un compte actif de l'organisation ; alias vers 1 à 50 comptes vivants de l'organisation ; dossier : chemin, parent et rôle cohérents, UIDVALIDITY tirée du compte, pas de boucle, boîte de réception, dossier non vide ou parent protégés ; contenu : états pending → stored → released ; message : même compte que son dossier et son contenu, contenu stocké, compte actif (inscription et changement ; effacement refusé sur un compte désactivé ; changement et effacement permis à l'exploitation : session système, compte de service), origine delivery réservée au service de remise et seule à porter les résultats de la réception, UID au moins égal au prochain du dossier, numéro de modification qui avance, quota (filet de sécurité de fn::mail_message_create)";
 
 -- ----------------------------------------------------------------------------
 -- fn::mail_counters_apply (interne)
@@ -183,6 +190,8 @@ DEFINE FUNCTION OVERWRITE fn::mail_counters_apply($table: string, $previous: any
             DELETE mail_address WHERE kind = "alias" AND targets CONTAINS $next.id AND array::len(targets) = 1;
             UPDATE mail_address SET targets = array::complement(targets, [$next.id]) WHERE kind = "alias" AND targets CONTAINS $next.id;
             UPDATE $next.id SET primary_address = NONE;
+            UPDATE mail_domain SET catch_all = NONE WHERE catch_all = $next.id;
+            UPDATE mail_domain SET postmaster = NONE WHERE postmaster = $next.id;
             RETURN NONE;
         };
         RETURN NONE;
@@ -256,4 +265,4 @@ DEFINE FUNCTION OVERWRITE fn::mail_counters_apply($table: string, $previous: any
         RETURN NONE;
     };
     RETURN NONE;
-} COMMENT "Interne : effets d'une écriture admise par fn::mail_write_refusal ($table ; $previous, $next), appelée par les événements de compteurs. Compte créé : six dossiers (INBOX, Drafts, Sent, Junk, Trash, Archive, rôles posés, décision M18) ; identité supprimée : compte en suppression ; compte en suppression : adresses retirées, alias ne le visant plus (vides : retirés) ; volume sous le quota : date du dépassement effacée. Adresse : compteurs du domaine et du compte. Dossier : UIDVALIDITY suivante, numéro de modification et nombre de dossiers du compte, pierre tombale à la suppression. Message : compteurs du dossier (total, non lus, volume, prochain UID, HIGHESTMODSEQ) et du compte (messages, volume, numéro de modification), lecteurs du contenu, pierres tombales (effacement, déplacement) ; rien pour un compte en purge";
+} COMMENT "Interne : effets d'une écriture admise par fn::mail_write_refusal ($table ; $previous, $next), appelée par les événements de compteurs. Compte créé : six dossiers (INBOX, Drafts, Sent, Junk, Trash, Archive, rôles posés, décision M18) ; identité supprimée : compte en suppression ; compte en suppression : adresses retirées, alias ne le visant plus (vides : retirés), attrape-tout et postmaster des domaines effacés ; volume sous le quota : date du dépassement effacée. Adresse : compteurs du domaine et du compte. Dossier : UIDVALIDITY suivante, numéro de modification et nombre de dossiers du compte, pierre tombale à la suppression. Message : compteurs du dossier (total, non lus, volume, prochain UID, HIGHESTMODSEQ) et du compte (messages, volume, numéro de modification), lecteurs du contenu, pierres tombales (effacement, déplacement) ; rien pour un compte en purge";

@@ -269,6 +269,7 @@ impl TaskHandler for MailMaintenanceHandler {
                     expired,
                     released,
                     tombstones,
+                    deliveries,
                     accounts,
                     messages,
                 } = report;
@@ -277,6 +278,7 @@ impl TaskHandler for MailMaintenanceHandler {
                     ("expired", expired),
                     ("released", released),
                     ("tombstones", tombstones),
+                    ("deliveries", deliveries),
                     ("accounts", accounts),
                     ("messages", messages),
                 ] {

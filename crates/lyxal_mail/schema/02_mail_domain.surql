@@ -9,7 +9,10 @@
 -- (décision M10 : pas de domaine international au lot 4). Le retrait du domaine de lyxal_auth
 -- est refusé tant qu'un domaine de courrier le référence (MAIL_DOMAIN_EXISTS), sauf avec son
 -- organisation : la clause ON DELETE THEN laisse passer la purge de l'organisation, que
--- ON DELETE REJECT bloquerait (essayé sur SurrealDB 3.3.4).
+-- ON DELETE REJECT bloquerait (essayé sur SurrealDB 3.3.4). Réception (lot 5) : un compte
+-- attrape-tout (catch_all, aucun par défaut, décision S17) reçoit les adresses inconnues du
+-- domaine ; un compte postmaster reçoit postmaster@<domaine> quand aucune adresse postmaster
+-- n'est inscrite. Tous deux sont des comptes actifs de la même organisation (garde).
 
 DEFINE TABLE OVERWRITE mail_domain
     TYPE NORMAL
@@ -50,6 +53,16 @@ DEFINE FIELD OVERWRITE subaddress_separator ON TABLE mail_domain
     ASSERT $value IS NONE OR $value = "+"
     COMMENT "Séparateur des sous-adresses (jean+factures → jean) ; NONE : aucune sous-adresse";
 
+DEFINE FIELD OVERWRITE catch_all ON TABLE mail_domain
+    TYPE option<record<mail_account>>
+    REFERENCE ON DELETE UNSET
+    COMMENT "Compte attrape-tout : reçoit les adresses inconnues du domaine (aucun par défaut, décision S17) ; compte actif de la même organisation (garde) ; effacé quand le compte part en suppression";
+
+DEFINE FIELD OVERWRITE postmaster ON TABLE mail_domain
+    TYPE option<record<mail_account>>
+    REFERENCE ON DELETE UNSET
+    COMMENT "Compte qui reçoit postmaster@<domaine> quand aucune adresse postmaster n'est inscrite (RFC 5321 §4.5.1) ; compte actif de la même organisation (garde) ; effacé quand le compte part en suppression";
+
 DEFINE FIELD OVERWRITE address_count ON TABLE mail_domain
     TYPE int
     DEFAULT 0
@@ -69,3 +82,5 @@ DEFINE FIELD OVERWRITE updated_at ON TABLE mail_domain
 
 DEFINE INDEX OVERWRITE mail_domain_name ON TABLE mail_domain FIELDS name UNIQUE;
 DEFINE INDEX OVERWRITE mail_domain_tenant ON TABLE mail_domain FIELDS tenant, name;
+DEFINE INDEX OVERWRITE mail_domain_catch_all ON TABLE mail_domain FIELDS catch_all;
+DEFINE INDEX OVERWRITE mail_domain_postmaster ON TABLE mail_domain FIELDS postmaster;

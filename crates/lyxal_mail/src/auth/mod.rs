@@ -30,6 +30,6 @@ pub use dmarc::{
 pub use domain::{is_same_or_subdomain, is_valid_domain, to_ascii_domain};
 pub use headers::{HeaderError, HeaderField, MessageHeaders, MAX_HEADER_FIELDS};
 pub use iprev::{Iprev, IprevOutput, IprevResult};
-pub use psl::{OrganizationalDomain, PublicSuffixList, PublicSuffixListError};
+pub use psl::{EmbeddedSuffixList, OrganizationalDomain, PublicSuffixList, PublicSuffixListError};
 pub use results::{strip_forged_results, AuthenticationResults};
 pub use spf::{SpfIdentity, SpfLimits, SpfOutput, SpfResult, SpfVerifier};

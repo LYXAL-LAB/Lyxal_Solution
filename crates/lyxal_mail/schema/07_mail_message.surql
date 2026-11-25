@@ -18,6 +18,10 @@
 -- texte des pièces jointes. Compteurs des dossiers et du compte, pierres tombales et lecteurs du
 -- contenu : tenus par les événements (events/mail_guards.surql), quelle que soit l'origine de
 -- l'écriture ; une écriture qui ne fait pas avancer le numéro de modification est refusée.
+-- L'origine (origin) dit comment la fiche a été inscrite : delivery (remise SMTP, par le service
+-- de remise seulement : garde), append, copy, move, import ; un message reçu porte en plus les
+-- résultats de ses contrôles (reception : mots de résultat de la RFC 8601, antivirus, TLS), sans
+-- domaine ni adresse. Seule une inscription d'origine delivery publie mail.message.received.
 
 -- Lecture contrôlée fiche par fiche par une règle allégée (décision P1), même texte sur
 -- mail_message, mail_message_date et mail_tombstone (vérifié par le banc plages) : session active et
@@ -77,6 +81,25 @@ DEFINE FIELD OVERWRITE content ON TABLE mail_message
     REFERENCE ON DELETE CASCADE
     READONLY
     COMMENT "Contenu (partagé par les copies du message dans le compte) ; un contenu n'est supprimé qu'à zéro lecteur, ou avec son compte";
+
+DEFINE FIELD OVERWRITE origin ON TABLE mail_message
+    TYPE string
+    READONLY
+    ASSERT $value IN ["delivery", "append", "copy", "move", "import"]
+    COMMENT "Origine de la fiche, posée par la fonction qui inscrit, jamais changée : delivery (remise SMTP, service de remise seulement), append (dépôt par le titulaire), copy, move, import";
+
+DEFINE FIELD OVERWRITE reception ON TABLE mail_message
+    TYPE option<object>
+    READONLY
+    COMMENT "Message reçu (origin delivery) seulement : résultats des contrôles à la réception, sans domaine ni adresse";
+
+DEFINE FIELD OVERWRITE reception.spf ON TABLE mail_message TYPE option<string> ASSERT $value IS NONE OR $value IN ["none", "neutral", "pass", "fail", "softfail", "temperror", "permerror"] COMMENT "SPF (RFC 7208)";
+DEFINE FIELD OVERWRITE reception.dkim ON TABLE mail_message TYPE option<string> ASSERT $value IS NONE OR $value IN ["none", "pass", "fail", "neutral", "policy", "temperror", "permerror"] COMMENT "DKIM (RFC 6376) : résultat retenu parmi les signatures";
+DEFINE FIELD OVERWRITE reception.dmarc ON TABLE mail_message TYPE option<string> ASSERT $value IS NONE OR $value IN ["none", "pass", "fail", "temperror", "permerror"] COMMENT "DMARC (RFC 7489)";
+DEFINE FIELD OVERWRITE reception.iprev ON TABLE mail_message TYPE option<string> ASSERT $value IS NONE OR $value IN ["pass", "fail", "temperror", "permerror"] COMMENT "Nom inverse (RFC 8601 §3)";
+DEFINE FIELD OVERWRITE reception.antivirus ON TABLE mail_message TYPE option<string> ASSERT $value IS NONE OR $value IN ["clean", "not_scanned"] COMMENT "Antivirus : clean, ou not_scanned (aucun antivirus configuré)";
+DEFINE FIELD OVERWRITE reception.spam ON TABLE mail_message TYPE option<string> ASSERT $value IS NONE OR $value IN ["none"] COMMENT "Verdict anti-spam (réservé au lot 11 : none)";
+DEFINE FIELD OVERWRITE reception.tls ON TABLE mail_message TYPE option<bool> COMMENT "Reçu sous TLS";
 
 DEFINE FIELD OVERWRITE uid ON TABLE mail_message
     TYPE int

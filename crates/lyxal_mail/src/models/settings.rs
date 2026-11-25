@@ -34,6 +34,9 @@ pub struct StoredSettings {
     pub max_addresses_per_account: Option<i64>,
     /// Mots-clés par message.
     pub max_keywords_per_message: Option<i64>,
+    /// Installation seulement : adresse inscrite qui reçoit le destinataire `postmaster` écrit
+    /// sans domaine.
+    pub postmaster: Option<String>,
     /// Création.
     pub created_at: MailDatetime,
     /// Dernière modification.
@@ -84,6 +87,9 @@ pub struct SettingsSetParams {
     pub max_addresses_per_account: Option<i64>,
     /// Mots-clés par message (1 à 1 000).
     pub max_keywords_per_message: Option<i64>,
+    /// Installation seulement : adresse inscrite qui reçoit le destinataire `postmaster` écrit
+    /// sans domaine (RFC 5321 §4.5.1).
+    pub postmaster: Option<String>,
     /// Champs à effacer.
     pub clear: Vec<String>,
 }

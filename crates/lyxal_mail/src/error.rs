@@ -29,6 +29,15 @@ pub enum MailError {
     /// écrit.
     #[error("contenu indisponible : {0}")]
     Unavailable(String),
+    /// Message d'un lot de remise refusé par `fn::mail_delivery_commit` (code `MAIL_*` de cet
+    /// élément : quota, taille, contenu) ; les autres messages du lot sont inscrits.
+    #[error("{code}")]
+    Refused {
+        /// Code `MAIL_*`.
+        code: String,
+        /// L'élément peut réussir plus tard sans changement.
+        retryable: bool,
+    },
 }
 
 impl MailError {
@@ -47,6 +56,7 @@ impl MailError {
             Self::Storage(error) => error.code(),
             Self::Malformed(_) => "MAIL_MESSAGE_MALFORMED".to_string(),
             Self::Unavailable(_) => "MAIL_CONTENT_UNAVAILABLE".to_string(),
+            Self::Refused { code, .. } => code.clone(),
         }
     }
 
@@ -60,6 +70,7 @@ impl MailError {
                 LyxalSurrealError::Call(LyxalCallError::Business(_))
             ),
             Self::Storage(error) => error.is_business(),
+            Self::Refused { .. } => true,
             Self::Malformed(_) | Self::Unavailable(_) => false,
         }
     }
@@ -78,6 +89,7 @@ impl MailError {
             },
             Self::Storage(error) => error.is_retryable(),
             Self::Unavailable(_) => true,
+            Self::Refused { retryable, .. } => *retryable,
             Self::Malformed(_) => false,
         }
     }

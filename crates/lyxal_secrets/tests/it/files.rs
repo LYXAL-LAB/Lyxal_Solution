@@ -244,3 +244,129 @@ async fn a_master_key_rotation_rewraps_files_keys_too() {
         .expect("ouverture");
     assert!(same_key(&key, &opened, &context("o1")));
 }
+
+/// Rotation de la clé « fichiers » active d'alpha par la maintenance du coffre-fort (clé vieillie
+/// au-delà de sa période).
+async fn rotate_files_key(bench: &Bench, key_id: &str) {
+    bench
+        .run(&format!(
+            "LET $k = (SELECT * FROM ONLY secrets_tenant_key WHERE key_id = '{key_id}' LIMIT 1);
+             DELETE $k.id;
+             CREATE secrets_tenant_key CONTENT {{ tenant: $k.tenant, purpose: 'files', key_id: $k.key_id, wrapped: $k.wrapped, created_at: time::now() - 400d }};"
+        ))
+        .await;
+    let report = SecretsMaintenance::new(
+        bench.store.clone(),
+        Some(bench.master.clone()),
+        RotatorRegistry::new(),
+        10,
+    )
+    .run(&CancellationToken::new())
+    .await
+    .expect("maintenance");
+    assert_eq!(report.tenant_keys_rotated, 1, "{report:?}");
+}
+
+#[tokio::test]
+async fn the_cache_serves_openings_only_and_never_seals() {
+    let bench = bench().await;
+    let cached = keys(&bench, Some(bench.master.clone())).with_cache();
+    assert_eq!(keys(&bench, Some(bench.master.clone())).cache_stats(), None);
+    let key = StreamKey::generate().expect("clé");
+    let sealed = cached
+        .seal(Some(&alpha()), &key, &context("o1"))
+        .await
+        .expect("scellement");
+    // Un scellement ne garde rien : la première ouverture relit le trousseau, la suivante non
+    let stats = |files: &FileKeys| files.cache_stats().expect("cache");
+    assert_eq!((stats(&cached).hits, stats(&cached).entries), (0, 0));
+    for _ in 0..3 {
+        let opened = cached
+            .open(Some(&alpha()), &sealed, &context("o1"))
+            .await
+            .expect("ouverture");
+        assert!(same_key(&key, &opened, &context("o1")));
+    }
+    assert_eq!(
+        (
+            stats(&cached).hits,
+            stats(&cached).misses,
+            stats(&cached).entries
+        ),
+        (2, 1, 1)
+    );
+    // Une copie partage le cache ; une enveloppe recopiée d'un autre fichier reste refusée
+    let copy = cached.clone();
+    let error = copy
+        .open(Some(&alpha()), &sealed, &context("o2"))
+        .await
+        .expect_err("autre fichier");
+    assert_eq!(error.code(), "SECRETS_VALUE_CORRUPTED");
+    assert_eq!(stats(&cached).hits, 3);
+
+    // Rotation faite ailleurs (maintenance du coffre-fort) : la clé gardée n'est plus active.
+    // Le scellement relit le trousseau et prend la nouvelle clé, jamais celle du cache
+    rotate_files_key(&bench, sealed.key_id()).await;
+    let after = cached
+        .seal(Some(&alpha()), &key, &context("o3"))
+        .await
+        .expect("scellement après rotation");
+    assert_ne!(after.key_id(), sealed.key_id());
+    assert!(cached
+        .reseal(Some(&alpha()), &sealed, &context("o1"))
+        .await
+        .expect("rescellement")
+        .is_some_and(|resealed| resealed.key_id() == after.key_id()));
+    // L'ancienne clé, decrypt_only, s'ouvre encore depuis le cache
+    let hits = stats(&cached).hits;
+    cached
+        .open(Some(&alpha()), &sealed, &context("o1"))
+        .await
+        .expect("ouverture par la clé retirée");
+    assert_eq!(stats(&cached).hits, hits + 1);
+
+    // Destruction par un autre nœud : l'entrée vit jusqu'à son expiration (60 s au plus) sur ce
+    // nœud ; le nœud qui détruit l'oublie aussitôt
+    let other_node = keys(&bench, Some(bench.master.clone())).with_cache();
+    other_node
+        .open(Some(&alpha()), &sealed, &context("o1"))
+        .await
+        .expect("ouverture sur l'autre nœud");
+    assert!(other_node
+        .destroy(sealed.key_id(), false)
+        .await
+        .expect("destruction"));
+    let error = other_node
+        .open(Some(&alpha()), &sealed, &context("o1"))
+        .await
+        .expect_err("clé détruite, oubliée aussitôt");
+    assert_eq!(error.code(), "SECRETS_TENANT_KEY_UNAVAILABLE");
+    cached
+        .open(Some(&alpha()), &sealed, &context("o1"))
+        .await
+        .expect("entrée encore gardée sur le premier nœud");
+    // Une clé jamais gardée et détruite : relue en base, refusée
+    let fresh = keys(&bench, Some(bench.master.clone())).with_cache();
+    let error = fresh
+        .open(Some(&alpha()), &sealed, &context("o1"))
+        .await
+        .expect_err("clé détruite");
+    assert_eq!(error.code(), "SECRETS_TENANT_KEY_UNAVAILABLE");
+}
+
+#[tokio::test]
+async fn the_cache_opens_nothing_without_the_master_key() {
+    let bench = bench().await;
+    let files = keys(&bench, Some(bench.master.clone())).with_cache();
+    let key = StreamKey::generate().expect("clé");
+    let sealed = files
+        .seal(Some(&alpha()), &key, &context("o1"))
+        .await
+        .expect("scellement");
+    let error = keys(&bench, None)
+        .with_cache()
+        .open(Some(&alpha()), &sealed, &context("o1"))
+        .await
+        .expect_err("sans clé maîtresse");
+    assert_eq!(error.code(), "SECRETS_CRYPTO_UNAVAILABLE");
+}

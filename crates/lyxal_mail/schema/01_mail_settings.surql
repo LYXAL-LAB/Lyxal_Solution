@@ -8,7 +8,8 @@
 -- défaut du module (fn::mail_settings_effective). Les réglages de l'installation (limites, sans
 -- donnée sensible) sont lisibles de toute session ; ceux d'une organisation, de ses
 -- administrateurs, de ses membres qui ont une boîte (limites appliquées à leurs écritures) et du
--- compte de service.
+-- compte de service. Le réglage postmaster n'existe qu'à la portée de l'installation : adresse
+-- inscrite qui reçoit RCPT TO:<postmaster> écrit sans domaine (RFC 5321 §4.5.1, décision S17).
 
 DEFINE TABLE OVERWRITE mail_settings
     TYPE NORMAL
@@ -59,6 +60,11 @@ DEFINE FIELD OVERWRITE max_keywords_per_message ON TABLE mail_settings
     TYPE option<int>
     ASSERT $value IS NONE OR ($value >= 1 AND $value <= 1000)
     COMMENT "Nombre maximal de mots-clés d'un message (1 à 1 000)";
+
+DEFINE FIELD OVERWRITE postmaster ON TABLE mail_settings
+    TYPE option<string>
+    ASSERT $value IS NONE OR ($this.tenant IS NONE AND string::len($value) >= 3 AND string::len($value) <= 254 AND $value == string::lowercase($value))
+    COMMENT "Installation seulement : adresse inscrite (minuscules) qui reçoit le destinataire postmaster écrit sans domaine ; NONE : ce destinataire est inconnu";
 
 DEFINE FIELD OVERWRITE created_at ON TABLE mail_settings
     TYPE datetime

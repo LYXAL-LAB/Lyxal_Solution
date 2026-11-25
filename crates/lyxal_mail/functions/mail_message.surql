@@ -81,7 +81,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_message_create($params: object) {
     LET $thread = fn::mail_thread_assign({ account: $account.id, message_id: $p.message_id, in_reply_to: $p.in_reply_to, references: $p.references, base_subject: $p.base_subject, is_report: $p.is_report });
     LET $modseq = fn::mail_modseq_next($account.id);
     LET $created = (CREATE ONLY fn::mail_message_key($mailbox.id, $mailbox.uid_next) CONTENT {
-        tenant: $account.tenant, account: $account.id, owner: $account.identity, mailbox: $mailbox.id, content: $content.id, protection: $content.protection, email_id: <string> rand::uuid::v7(),
+        tenant: $account.tenant, account: $account.id, owner: $account.identity, mailbox: $mailbox.id, content: $content.id, protection: $content.protection, origin: "append", email_id: <string> rand::uuid::v7(),
         uid: $mailbox.uid_next, modseq: $modseq, create_modseq: $modseq, thread: $thread.thread, thread_orphan: $thread.orphan,
         received_at: $p.received_at, sent_at: $p.sent_at, size: $content.size,
         seen: $flags.seen, answered: $flags.answered, flagged: $flags.flagged, deleted: $flags.deleted, draft: $flags.draft, keywords: $flags.keywords,
@@ -89,7 +89,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_message_create($params: object) {
     });
     IF $created == NONE { RETURN fn::error_result("MAIL_WRITE_FORBIDDEN", $p.language, { table: "mail_message" }); };
     RETURN fn::result_ok($created);
-} COMMENT "Inscrit un message ({ content (stocké, jamais inscrit), mailbox, received_at, sent_at, seen, answered, flagged, deleted, draft, keywords, message_id, in_reply_to, references, base_subject, is_report (avis de non-remise), envelope, structure, has_attachment }) : UID suivant du dossier, numéro de modification suivant du compte, fil (décision M7), compteurs et lecteurs du contenu ; enveloppe et structure exigées pour un contenu platform (MAIL_MESSAGE_MALFORMED) ; MAIL_MESSAGE_TOO_LARGE, MAIL_KEYWORD_LIMIT, MAIL_MAILBOX_UID_EXHAUSTED ; quota contrôlé : MAIL_QUOTA_EXCEEDED, et mail.quota.exceeded au premier refus. Droit : titulaire du compte, compte de service";
+} COMMENT "Inscrit un message ({ content (stocké, jamais inscrit), mailbox, received_at, sent_at, seen, answered, flagged, deleted, draft, keywords, message_id, in_reply_to, references, base_subject, is_report (avis de non-remise), envelope, structure, has_attachment }) : origine append, UID suivant du dossier, numéro de modification suivant du compte, fil (décision M7), compteurs et lecteurs du contenu ; enveloppe et structure exigées pour un contenu platform (MAIL_MESSAGE_MALFORMED) ; MAIL_MESSAGE_TOO_LARGE, MAIL_KEYWORD_LIMIT, MAIL_MAILBOX_UID_EXHAUSTED ; quota contrôlé : MAIL_QUOTA_EXCEEDED, et mail.quota.exceeded au premier refus. Droit : titulaire du compte, compte de service";
 
 -- ----------------------------------------------------------------------------
 -- fn::mail_message_get
@@ -309,7 +309,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_message_move($params: object) {
         LET $modseq = (SELECT VALUE modseq FROM ONLY $source.account);
         LET $uid = $target.uid_next + $i;
         LET $created = (CREATE ONLY fn::mail_message_key($target.id, $uid) CONTENT {
-            tenant: $source.tenant, account: $source.account, owner: $source.owner, mailbox: $target.id, content: $source.content, protection: $source.protection, email_id: $source.email_id,
+            tenant: $source.tenant, account: $source.account, owner: $source.owner, mailbox: $target.id, content: $source.content, protection: $source.protection, origin: "move", email_id: $source.email_id,
             uid: $uid, modseq: $modseq, create_modseq: $modseq, thread: $source.thread, thread_orphan: $source.thread_orphan,
             received_at: $source.received_at, sent_at: $source.sent_at, size: $source.size,
             seen: $source.seen, answered: $source.answered, flagged: $source.flagged, deleted: $source.deleted, draft: $source.draft, keywords: $source.keywords,
@@ -319,7 +319,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_message_move($params: object) {
     });
     IF array::any($moved, |$m| $m IS NONE) { RETURN fn::error_result("MAIL_WRITE_FORBIDDEN", $p.language, { table: "mail_message" }); };
     RETURN fn::result_ok({ moved: $moved });
-} COMMENT "Déplace des messages d'un même compte ({ messages (500 au plus), mailbox }) : nouvelle fiche dans le dossier cible (nouvel UID, donc nouvel identifiant ; même email_id JMAP, même contenu, même fil, mêmes drapeaux), ancienne fiche retirée avec sa pierre tombale dans le dossier source, dans la même transaction ; un numéro de modification par message, commun à la pierre tombale et à la nouvelle fiche ; un message déjà dans le dossier cible reste inchangé et n'est pas rendu ; { moved : [{ id (nouvel identifiant), from (ancien), from_uid, uid, modseq }] } ; MAIL_MAILBOX_UID_EXHAUSTED. Droit : titulaire du compte";
+} COMMENT "Déplace des messages d'un même compte ({ messages (500 au plus), mailbox }) : nouvelle fiche dans le dossier cible (nouvel UID, donc nouvel identifiant ; même email_id JMAP, même contenu, même fil, mêmes drapeaux ; origine move, sans les résultats de réception), ancienne fiche retirée avec sa pierre tombale dans le dossier source, dans la même transaction ; un numéro de modification par message, commun à la pierre tombale et à la nouvelle fiche ; un message déjà dans le dossier cible reste inchangé et n'est pas rendu ; { moved : [{ id (nouvel identifiant), from (ancien), from_uid, uid, modseq }] } ; MAIL_MAILBOX_UID_EXHAUSTED. Droit : titulaire du compte";
 
 -- ----------------------------------------------------------------------------
 -- fn::mail_message_copy
@@ -357,7 +357,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_message_copy($params: object) {
     LET $copied = array::map(<array> (0..$count), |$i| {
         LET $source = $rows[$i];
         LET $created = (CREATE ONLY fn::mail_message_key($target.id, $target.uid_next + $i) CONTENT {
-            tenant: $source.tenant, account: $source.account, owner: $source.owner, mailbox: $target.id, content: $source.content, protection: $source.protection, email_id: <string> rand::uuid::v7(),
+            tenant: $source.tenant, account: $source.account, owner: $source.owner, mailbox: $target.id, content: $source.content, protection: $source.protection, origin: "copy", email_id: <string> rand::uuid::v7(),
             uid: $target.uid_next + $i, modseq: $modseq, create_modseq: $modseq, thread: $source.thread, thread_orphan: $source.thread_orphan,
             received_at: $source.received_at, sent_at: $source.sent_at, size: $source.size,
             seen: $source.seen, answered: $source.answered, flagged: $source.flagged, deleted: $source.deleted, draft: $source.draft, keywords: $source.keywords,
@@ -367,7 +367,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_message_copy($params: object) {
     });
     IF array::any($copied, |$c| $c IS NONE) { RETURN fn::error_result("MAIL_WRITE_FORBIDDEN", $p.language, { table: "mail_message" }); };
     RETURN fn::result_ok({ copied: $copied });
-} COMMENT "Copie des messages d'un même compte ({ messages (500 au plus), mailbox }) : nouvelles fiches sur le même contenu (aucun octet recopié, lecteurs du contenu comptés), même fil, drapeaux et mots-clés gardés, nouveaux UID, un numéro de modification pour l'appel ; quota compté à nouveau (MAIL_QUOTA_EXCEEDED) ; { copied : [{ source, id, uid }] }. Droit : titulaire du compte";
+} COMMENT "Copie des messages d'un même compte ({ messages (500 au plus), mailbox }) : nouvelles fiches d'origine copy sur le même contenu (aucun octet recopié, lecteurs du contenu comptés), même fil, drapeaux et mots-clés gardés, nouveaux UID, un numéro de modification pour l'appel ; quota compté à nouveau (MAIL_QUOTA_EXCEEDED) ; { copied : [{ source, id, uid }] }. Droit : titulaire du compte";
 
 -- ----------------------------------------------------------------------------
 -- fn::mail_message_expunge

@@ -4,6 +4,7 @@
 
 use lyxal_surreal::SurrealValue;
 
+use super::reception::Reception;
 use super::types::{MailDatetime, MailRecordId, MailValue};
 
 /// Adresse d'une enveloppe : adresse seule, ou membre d'un groupe nommé (`group`) ; un groupe
@@ -60,6 +61,10 @@ pub struct Message {
     pub content: MailRecordId,
     /// Protection du contenu (`platform` ; `openpgp`, `client` réservés).
     pub protection: String,
+    /// Origine de la fiche : `delivery` (remise SMTP), `append`, `copy`, `move`, `import`.
+    pub origin: String,
+    /// Résultats des contrôles à la réception (message d'origine `delivery` seulement).
+    pub reception: Option<Reception>,
     /// Empreinte de la clé de l'utilisateur (niveaux B et C ; rendue par `fn::mail_message_get`).
     pub key_fingerprint: Option<String>,
     /// Identifiant JMAP (`Email.id`), gardé par un déplacement.

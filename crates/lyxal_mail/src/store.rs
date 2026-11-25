@@ -12,17 +12,19 @@ use surrealdb::Surreal;
 
 use crate::models::{
     Account, AccountCreateParams, AccountCreated, AccountGetParams, AccountList, AccountListParams,
-    AccountPurgeStep, AccountRefParams, AccountUpdateParams, Address, AddressCreateParams,
-    AddressList, AddressListParams, AddressRefParams, AddressResolveParams, AddressUpdateParams,
-    Content, ContentAttachParams, ContentBeginParams, ContentExpired, ContentLocation,
-    ContentReservation, CopyResult, Deleted, Domain, DomainCreateParams, DomainList,
+    AccountPurgeStep, AccountRefParams, AccountUpdateParams, ActiveBlocks, Address,
+    AddressCreateParams, AddressList, AddressListParams, AddressRefParams, AddressUpdateParams,
+    BlockActiveParams, BlockCreateParams, BlockDeleteParams, BlockListParams, BlockPage, Content,
+    ContentAttachParams, ContentBeginParams, ContentExpired, ContentLocation, ContentReservation,
+    CopyResult, Deleted, DeliveriesPurged, DeliveryBeginParams, DeliveryCommitParams,
+    DeliveryCommitResult, DeliveryReservation, Domain, DomainCreateParams, DomainList,
     DomainListParams, DomainRefParams, DomainUpdateParams, ExpungeParams, ExpungeResult,
     FlagsSetParams, FlagsSetResult, Mailbox, MailboxCreateParams, MailboxDeleteParams,
     MailboxDeleted, MailboxListParams, MailboxRefParams, MailboxUpdateParams, MaintenanceParams,
     Message, MessageChanges, MessageChangesParams, MessageCreateParams, MessageListParams,
-    MessagePage, MessageRefParams, MoveResult, Quota, ResolvedRecipient, SettingsGetParams,
-    SettingsSetParams, SettingsView, StoredSettings, ThreadGetParams, ThreadMessages,
-    TombstonesPurged, TransferParams,
+    MessagePage, MessageRefParams, MoveResult, NetworkBlock, Quota, RecipientResolveParams,
+    ResolvedRecipient, SettingsGetParams, SettingsSetParams, SettingsView, StoredSettings,
+    ThreadGetParams, ThreadMessages, TombstonesPurged, TransferParams,
 };
 
 /// Store de `lyxal_mail` sur un client SurrealDB (`Surreal<Any>`).
@@ -131,9 +133,50 @@ impl MailStore {
         self.call_fn("mail_address_list", params).await
     }
 
-    /// `fn::mail_address_resolve` : comptes qui reçoivent une adresse.
-    pub async fn address_resolve(&self, params: AddressResolveParams) -> Call<ResolvedRecipient> {
-        self.call_fn("mail_address_resolve", params).await
+    /// `fn::mail_recipient_resolve` : comptes qui reçoivent un destinataire (aucun relais).
+    pub async fn recipient_resolve(
+        &self,
+        params: RecipientResolveParams,
+    ) -> Call<ResolvedRecipient> {
+        self.call_fn("mail_recipient_resolve", params).await
+    }
+
+    /// `fn::mail_delivery_begin` : remise ouverte (contenu réservé), ou message déjà remis.
+    pub async fn delivery_begin(&self, params: DeliveryBeginParams) -> Call<DeliveryReservation> {
+        self.call_fn("mail_delivery_begin", params).await
+    }
+
+    /// `fn::mail_delivery_commit` : lot de 1 à 32 messages inscrits dans un compte.
+    pub async fn delivery_commit(
+        &self,
+        params: DeliveryCommitParams,
+    ) -> Call<DeliveryCommitResult> {
+        self.call_fn("mail_delivery_commit", params).await
+    }
+
+    /// `fn::mail_delivery_purge` : fiches d'idempotence échues retirées.
+    pub async fn delivery_purge(&self, params: MaintenanceParams) -> Call<DeliveriesPurged> {
+        self.call_fn("mail_delivery_purge", params).await
+    }
+
+    /// `fn::mail_block_create` : réseau bloqué (entrée manuelle ou bannissement automatique).
+    pub async fn block_create(&self, params: BlockCreateParams) -> Call<NetworkBlock> {
+        self.call_fn("mail_block_create", params).await
+    }
+
+    /// `fn::mail_block_list` : liste de blocage, par curseur.
+    pub async fn block_list(&self, params: BlockListParams) -> Call<BlockPage> {
+        self.call_fn("mail_block_list", params).await
+    }
+
+    /// `fn::mail_block_delete` : réseau retiré de la liste de blocage.
+    pub async fn block_delete(&self, params: BlockDeleteParams) -> Call<Deleted> {
+        self.call_fn("mail_block_delete", params).await
+    }
+
+    /// `fn::mail_block_active` : réseaux bloqués en vigueur.
+    pub async fn block_active(&self, params: BlockActiveParams) -> Call<ActiveBlocks> {
+        self.call_fn("mail_block_active", params).await
     }
 
     /// `fn::mail_mailbox_create` : dossier créé.

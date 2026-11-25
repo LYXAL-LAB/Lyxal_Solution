@@ -371,7 +371,7 @@ UPDATE (SELECT VALUE parent.id FROM ONLY passe:fils) SET mailbox = type::record(
 -- attendu-erreur: MAIL_WRITE_FORBIDDEN
 CREATE fn::mail_message_key(type::record(fn::essai_id("jean_inbox")), 1000) CONTENT {
     tenant: auth_organization:alpha, account: type::record(fn::essai_id("jean")), mailbox: type::record(fn::essai_id("jean_inbox")),
-    content: type::record(fn::essai_id("cm")), uid: 1000, modseq: 1000, create_modseq: 1000, thread: "t", received_at: time::now(), size: 10
+    content: type::record(fn::essai_id("cm")), origin: "append", uid: 1000, modseq: 1000, create_modseq: 1000, thread: "t", received_at: time::now(), size: 10
 };
 
 -- test: écriture directe avec un numéro de modification : drapeau changé, compteurs tenus ; effacement direct : pierre tombale

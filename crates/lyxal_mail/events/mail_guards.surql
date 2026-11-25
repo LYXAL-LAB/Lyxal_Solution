@@ -19,7 +19,7 @@ THEN {
 };
 
 DEFINE EVENT OVERWRITE mail_domain_guard ON TABLE mail_domain
-WHEN $event IN ["CREATE", "DELETE"]
+WHEN $event IN ["CREATE", "UPDATE", "DELETE"]
 THEN {
     LET $refusal = fn::mail_write_refusal("mail_domain", $before, $after);
     IF $refusal IS NOT NONE { THROW $refusal; };

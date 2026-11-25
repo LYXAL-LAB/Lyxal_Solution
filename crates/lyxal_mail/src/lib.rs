@@ -10,6 +10,9 @@
 //! * le dépôt d'un message brut ([`MailIngest`] : lecture MIME par `lyxal_mail_proto`,
 //!   écriture chiffrée par `lyxal_storage`, inscription) et sa lecture, entière ou par plage
 //!   ([`MailContent`]) ;
+//! * la remise d'un message reçu par SMTP ([`MailIngest::receive`], lot 5) : empreinte
+//!   d'idempotence ([`delivery_key`]), ordre des inscriptions par compte dans le nœud et
+//!   écriture groupée ([`AccountQueue`]) ;
 //! * la maintenance ([`MailMaintenance`], exécutée par `lyxal_scheduler` sur l'hôte) ;
 //! * le module [`MailModule`] et sa sonde [`MailHealthCheck`] ;
 //! * le contrat réseau des sessions ([`net`], lot 3) : ce que l'hôte `lyxal-groupware` remet à
@@ -33,6 +36,7 @@ pub const MODULE_ID: &str = "lyxal_mail";
 
 pub mod auth;
 pub mod content;
+pub mod delivery;
 pub mod dns;
 pub mod error;
 pub mod ingest;
@@ -44,8 +48,9 @@ pub mod net;
 pub mod store;
 
 pub use content::{MailContent, OpenedContent};
+pub use delivery::{delivery_key, AccountQueue, DeliveryOutcome, QueueStats, MAX_BATCH};
 pub use error::{MailError, MailResult};
-pub use ingest::{Delivery, MailIngest, MAIL_BUCKET};
+pub use ingest::{Delivery, MailIngest, ReceivedDelivery, MAIL_BUCKET};
 pub use maintenance::{MailMaintenance, MaintenanceReport};
 pub use mime::DeliveryFlags;
 pub use module::{MailHealthCheck, MailModule, RequiredHost, REQUIRED_HOST_ABSENCE_LIMIT};
