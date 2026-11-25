@@ -42,18 +42,20 @@ DEFINE FUNCTION OVERWRITE fn::mail_settings_set($params: object) {
             max_mailboxes_per_account: { pipeline: [{ rule: "integer", options: { min_value: 6, max_value: 10000 } }] },
             max_addresses_per_account: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 1000 } }] },
             max_keywords_per_message: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 1000 } }] },
-            clear: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: true } }, { rule: "each", options: { pipeline: [{ rule: "enum", options: { allowed: ["max_message_bytes", "default_quota_bytes", "tombstone_retention_days", "max_mailboxes_per_account", "max_addresses_per_account", "max_keywords_per_message"], case_sensitive: true } }] } }], default: [] },
+            postmaster: { pipeline: [{ rule: "email", options: { max_length: 254 } }, { rule: "ascii", options: { trim_value: true, allow_blank: false } }] },
+            clear: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: true } }, { rule: "each", options: { pipeline: [{ rule: "enum", options: { allowed: ["max_message_bytes", "default_quota_bytes", "tombstone_retention_days", "max_mailboxes_per_account", "max_addresses_per_account", "max_keywords_per_message", "postmaster"], case_sensitive: true } }] } }], default: [] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
     }, 40);
-    IF !$report.valid {
-        RETURN fn::error_result("MAIL_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
+    -- Le destinataire postmaster sans domaine est un réglage de l'installation seulement
+    IF !$report.valid OR ($report.value.tenant IS NOT NONE AND $report.value.postmaster IS NOT NONE) {
+        RETURN fn::error_result("MAIL_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: IF $report.valid { { postmaster: ["installation_only"] } } ELSE { $report.by_field } });
     };
-    LET $p = $report.value;
+    LET $p = fn::sanitize_object_execute($report.value, { fields: { postmaster: { pipeline: [{ rule: "trim" }, { rule: "lowercase" }] } }, unknown_keys: "keep" }, 20);
     IF !fn::mail_can({ action: "manage", tenant: $p.tenant }) { RETURN fn::error_result("MAIL_PERMISSION_DENIED", $p.language, {}); };
     LET $scope = IF $p.tenant IS NONE { "installation" } ELSE { <string> record::id($p.tenant) };
-    LET $fields = ["max_message_bytes", "default_quota_bytes", "tombstone_retention_days", "max_mailboxes_per_account", "max_addresses_per_account", "max_keywords_per_message"];
+    LET $fields = ["max_message_bytes", "default_quota_bytes", "tombstone_retention_days", "max_mailboxes_per_account", "max_addresses_per_account", "max_keywords_per_message", "postmaster"];
     -- Champ fourni : remplacé ; champ dans clear : effacé ; sinon conservé
     LET $changes = object::from_entries(array::filter(
         array::map($fields, |$f| [$f, IF $f IN $p.clear { NONE } ELSE { $p[$f] }]),
@@ -67,7 +69,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_settings_set($params: object) {
     };
     IF $saved == NONE { RETURN fn::error_result("MAIL_WRITE_FORBIDDEN", $p.language, { table: "mail_settings" }); };
     RETURN fn::result_ok($saved);
-} COMMENT "Enregistre les réglages d'une portée ({ tenant, max_message_bytes, default_quota_bytes, tombstone_retention_days, max_mailboxes_per_account, max_addresses_per_account, max_keywords_per_message, clear }) : un champ fourni est remplacé, un champ nommé dans clear est effacé, les autres sont conservés. Droit : gestion (mail.domain.manage ; mail.installation.manage sans tenant)";
+} COMMENT "Enregistre les réglages d'une portée ({ tenant, max_message_bytes, default_quota_bytes, tombstone_retention_days, max_mailboxes_per_account, max_addresses_per_account, max_keywords_per_message, postmaster (installation seulement : adresse inscrite qui reçoit le destinataire postmaster écrit sans domaine, rangée en minuscules), clear }) : un champ fourni est remplacé, un champ nommé dans clear est effacé, les autres sont conservés. Droit : gestion (mail.domain.manage ; mail.installation.manage sans tenant)";
 
 -- ----------------------------------------------------------------------------
 -- fn::mail_domain_create
@@ -166,6 +168,9 @@ DEFINE FUNCTION OVERWRITE fn::mail_domain_update($params: object) {
             domain: { pipeline: [{ rule: "record", options: { expected_table: "mail_domain" } }], required: true },
             state: { pipeline: [{ rule: "enum", options: { allowed: ["active", "disabled"], case_sensitive: true } }] },
             subaddress_separator: { pipeline: [{ rule: "enum", options: { allowed: ["+", "none"], case_sensitive: true } }] },
+            catch_all: { pipeline: [{ rule: "record", options: { expected_table: "mail_account" } }] },
+            postmaster: { pipeline: [{ rule: "record", options: { expected_table: "mail_account" } }] },
+            clear: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: true } }, { rule: "each", options: { pipeline: [{ rule: "enum", options: { allowed: ["catch_all", "postmaster"], case_sensitive: true } }] } }], default: [] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -177,12 +182,21 @@ DEFINE FUNCTION OVERWRITE fn::mail_domain_update($params: object) {
     LET $domain = (SELECT id, tenant, subaddress_separator FROM ONLY $p.domain);
     IF $domain == NONE { RETURN fn::error_result("MAIL_DOMAIN_NOT_FOUND", $p.language, { domain: <string> $p.domain }); };
     IF !fn::mail_can({ action: "manage", tenant: $domain.tenant }) { RETURN fn::error_result("MAIL_PERMISSION_DENIED", $p.language, {}); };
+    -- Attrape-tout et postmaster : comptes actifs de l'organisation du domaine
+    LET $receivers = array::filter([$p.catch_all, $p.postmaster], |$a| $a IS NOT NONE);
+    LET $known = (SELECT id, state FROM $receivers WHERE tenant = $domain.tenant);
+    LET $missing = array::complement($receivers, $known.id);
+    IF array::len($missing) > 0 { RETURN fn::error_result("MAIL_ACCOUNT_NOT_FOUND", $p.language, { account: <string> $missing[0] }); };
+    LET $inactive = array::find($known, |$a| $a.state != "active");
+    IF $inactive IS NOT NONE { RETURN fn::error_result(IF $inactive.state = "deleting" { "MAIL_ACCOUNT_DELETING" } ELSE { "MAIL_ACCOUNT_DISABLED" }, $p.language, { account: <string> $inactive.id }); };
     LET $updated = (UPDATE ONLY $domain.id SET
         state = $p.state ?? state,
-        subaddress_separator = IF $p.subaddress_separator IS NONE { subaddress_separator } ELSE IF $p.subaddress_separator = "none" { NONE } ELSE { $p.subaddress_separator });
+        subaddress_separator = IF $p.subaddress_separator IS NONE { subaddress_separator } ELSE IF $p.subaddress_separator = "none" { NONE } ELSE { $p.subaddress_separator },
+        catch_all = IF "catch_all" IN $p.clear { NONE } ELSE { $p.catch_all ?? catch_all },
+        postmaster = IF "postmaster" IN $p.clear { NONE } ELSE { $p.postmaster ?? postmaster });
     IF $updated == NONE { RETURN fn::error_result("MAIL_WRITE_FORBIDDEN", $p.language, { table: "mail_domain" }); };
     RETURN fn::result_ok($updated);
-} COMMENT "Modifie un domaine de courrier ({ domain, state (active, disabled : aucune adresse du domaine n'est résolue), subaddress_separator (+ ou none) }) ; un champ absent est conservé. Droit : gestion";
+} COMMENT "Modifie un domaine de courrier ({ domain, state (active, disabled : aucune adresse du domaine n'est résolue), subaddress_separator (+ ou none), catch_all (compte attrape-tout : reçoit les adresses inconnues du domaine), postmaster (compte qui reçoit postmaster@<domaine> sans adresse inscrite), clear (champs à effacer : catch_all, postmaster) }) ; un champ absent est conservé ; attrape-tout et postmaster : comptes actifs de l'organisation du domaine (MAIL_ACCOUNT_NOT_FOUND, MAIL_ACCOUNT_DISABLED, MAIL_ACCOUNT_DELETING). Droit : gestion";
 
 -- ----------------------------------------------------------------------------
 -- fn::mail_domain_delete

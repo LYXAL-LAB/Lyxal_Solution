@@ -11,11 +11,13 @@
 //! Le trousseau d'une organisation pour un usage est reconstruit à chaque opération
 //! (`EncryptionKey::import`, `KeyRingBuilder`, `StaticKeyResolver`, `CryptoEngine`) depuis ses
 //! clés `active` et `decrypt_only`, ouvertes par la clé maîtresse : aucune clé d'organisation
-//! n'est gardée en mémoire au-delà de l'opération.
+//! n'est gardée en mémoire au-delà de l'opération, sauf par le cache facultatif des clés
+//! « fichiers » (`FileKeys::with_cache`, 60 s au plus, pour ouvrir seulement).
 
 use lyxal_crypto::{
     CryptoEngine, CryptoError, EncryptedEnvelope, EncryptionKey, KeyId, KeyRing, KeyRingBuilder,
     KeyState, KeyUse, ReencryptResult, ResolvedKey, SecretBytes, SecretContext, StaticKeyResolver,
+    StreamKey,
 };
 use lyxal_surreal::{RecordId, ToSql};
 use rand_core::{OsRng, RngCore};
@@ -238,6 +240,43 @@ impl Scope {
     }
 }
 
+/// Clé d'une organisation ouverte par la clé maîtresse.
+pub(crate) struct OpenedKey {
+    pub(crate) id: KeyId,
+    pub(crate) material: SecretBytes,
+    pub(crate) state: TenantKeyState,
+}
+
+/// Ouverture seule par une clé d'organisation déjà ouverte (clé gardée en mémoire par
+/// `FileKeys`) : n'offre aucun scellement, quel que soit l'état de la clé.
+pub(crate) struct KeyOpener {
+    engine: CryptoEngine<StaticKeyResolver>,
+}
+
+impl KeyOpener {
+    /// Ouvreur de la clé `id`. `KeyRing` exige une clé active : la clé y est seule, et ce type
+    /// ne scelle jamais.
+    pub(crate) fn new(id: KeyId, material: SecretBytes) -> SecretsResult<Self> {
+        let label = id.as_str().to_string();
+        let imported = EncryptionKey::import(material)
+            .map_err(|_| SecretsError::TenantKeyUnavailable(format!("clé {label} illisible")))?;
+        let mut builder = KeyRingBuilder::new();
+        builder.insert(id, imported, KeyUse::Active)?;
+        Ok(Self {
+            engine: CryptoEngine::new(StaticKeyResolver::new(Arc::new(builder.build()?))),
+        })
+    }
+
+    /// Clé d'un fichier ouverte par cette clé.
+    pub(crate) fn open_stream_key(
+        &self,
+        envelope: &EncryptedEnvelope,
+        context: &SecretContext,
+    ) -> Result<StreamKey, CryptoError> {
+        StreamKey::open(&self.engine, envelope, context)
+    }
+}
+
 /// Trousseau d'une organisation, le temps d'une opération.
 pub(crate) struct TenantRing {
     engine: CryptoEngine<StaticKeyResolver>,
@@ -245,6 +284,36 @@ pub(crate) struct TenantRing {
 }
 
 impl TenantRing {
+    /// Trousseau des clés ouvertes d'une portée ; `None` sans clé ; une portée sans clé active
+    /// est `TenantKeyUnavailable`.
+    pub(crate) fn from_keys(keys: Vec<OpenedKey>) -> SecretsResult<Option<Self>> {
+        if keys.is_empty() {
+            return Ok(None);
+        }
+        let mut builder = KeyRingBuilder::new();
+        let mut active = None;
+        for key in keys {
+            let label = key.id.as_str().to_string();
+            let imported = EncryptionKey::import(key.material).map_err(|_| {
+                SecretsError::TenantKeyUnavailable(format!("clé {label} illisible"))
+            })?;
+            let use_ = match key.state {
+                TenantKeyState::Active => {
+                    active = Some(key.id.clone());
+                    KeyUse::Active
+                }
+                TenantKeyState::DecryptOnly => KeyUse::DecryptOnly,
+            };
+            builder.insert(key.id, imported, use_)?;
+        }
+        let active = active
+            .ok_or_else(|| SecretsError::TenantKeyUnavailable("aucune clé active".to_string()))?;
+        Ok(Some(Self {
+            engine: CryptoEngine::new(StaticKeyResolver::new(Arc::new(builder.build()?))),
+            active,
+        }))
+    }
+
     /// Clé active de l'organisation.
     pub(crate) fn active_id(&self) -> &KeyId {
         &self.active
@@ -347,20 +416,17 @@ impl TenantKeys {
         self.master.as_ref().ok_or(SecretsError::CryptoUnavailable)
     }
 
-    /// Trousseau d'une portée pour l'usage de ces clés, s'il existe une clé.
-    pub(crate) async fn ring(&self, scope: &Scope) -> SecretsResult<Option<TenantRing>> {
+    /// Clés d'une portée pour l'usage de ces clés (`active` et `decrypt_only`), lues en base et
+    /// ouvertes par la clé maîtresse ; vide si la portée n'a pas encore de clé.
+    pub(crate) async fn opened(&self, scope: &Scope) -> SecretsResult<Vec<OpenedKey>> {
         let master = self.master()?;
         let entries = self
             .system
             .tenant_key_ring(scope.ring_params(self.purpose))
             .await?
             .items;
-        if entries.is_empty() {
-            return Ok(None);
-        }
-        let mut builder = KeyRingBuilder::new();
-        let mut active = None;
-        for entry in &entries {
+        let mut keys = Vec::with_capacity(entries.len());
+        for entry in entries {
             let unavailable =
                 |_| SecretsError::TenantKeyUnavailable(format!("clé {} illisible", entry.key_id));
             let id = KeyId::parse(&entry.key_id).map_err(unavailable)?;
@@ -369,22 +435,18 @@ impl TenantKeys {
                 .engine
                 .open(&wrapped, &scope.key_context(&entry.key_id, self.purpose)?)
                 .map_err(unavailable)?;
-            let key = EncryptionKey::import(material).map_err(unavailable)?;
-            let use_ = match entry.state {
-                TenantKeyState::Active => {
-                    active = Some(id.clone());
-                    KeyUse::Active
-                }
-                TenantKeyState::DecryptOnly => KeyUse::DecryptOnly,
-            };
-            builder.insert(id, key, use_)?;
+            keys.push(OpenedKey {
+                id,
+                material,
+                state: entry.state,
+            });
         }
-        let active = active
-            .ok_or_else(|| SecretsError::TenantKeyUnavailable("aucune clé active".to_string()))?;
-        Ok(Some(TenantRing {
-            engine: CryptoEngine::new(StaticKeyResolver::new(Arc::new(builder.build()?))),
-            active,
-        }))
+        Ok(keys)
+    }
+
+    /// Trousseau d'une portée pour l'usage de ces clés, s'il existe une clé.
+    pub(crate) async fn ring(&self, scope: &Scope) -> SecretsResult<Option<TenantRing>> {
+        TenantRing::from_keys(self.opened(scope).await?)
     }
 
     /// Trousseau d'une portée ; sa première clé est créée à la première valeur écrite (R2) ou au

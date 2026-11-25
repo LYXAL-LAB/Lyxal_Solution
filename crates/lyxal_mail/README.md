@@ -1,12 +1,15 @@
 # `lyxal_mail` — serveur de courrier
 
-**État : socle courrier (lot 4 du programme courrier, réalisé) et contrat réseau des sessions
-(lot 3).** Le module déclare ses tables, fonctions, gardes, erreurs `MAIL_*`, événements et
-permissions (`manifest.toml`, `[resources]`) ; son service Rust dépose un message brut (lecture
-MIME, écriture **chiffrée au repos** par `lyxal_storage`, inscription), le relit en entier ou par
-plage, et fait la maintenance (contenus abandonnés et libérés, effacements échus, comptes
-supprimés). Aucun protocole n'est encore écrit (lots 5 à 12) : rien n'est joignable par le
-réseau. Le module est installé et démarré par l'hôte `apps/lyxal-groupware`, qui le porte par
+**État : socle courrier (lot 4 du programme courrier, réalisé), contrat réseau des sessions
+(lot 3) et, pour la réception SMTP (lot 5, en cours), DNS et authenticité (5b) puis résolution
+des destinataires, remise groupée et idempotente, liste de blocage (5c).** Le module déclare ses
+tables, fonctions, gardes, erreurs `MAIL_*`, événements et permissions (`manifest.toml`,
+`[resources]`) ; son service Rust dépose un message brut (lecture MIME, écriture **chiffrée au
+repos** par `lyxal_storage`, inscription), le relit en entier ou par plage, remet un message reçu
+à un compte (ordre par compte dans le nœud, écriture groupée, événement
+`mail.message.received`) et fait la maintenance (contenus abandonnés et libérés, effacements
+échus, fiches d'idempotence échues, comptes supprimés). La session SMTP n'est pas encore écrite
+(5d) : rien n'est joignable par le réseau. Le module est installé et démarré par l'hôte `apps/lyxal-groupware`, qui le porte par
 son `MailModule`, héberge ses dépendances (`lyxal_auth`, `lyxal_secrets`, `lyxal_storage`) et
 `lyxal_scheduler` (maintenance), et lui rattache ses écoutes (workers
 `lyxal_mail:mail.listener.<id>`). Inscrit au Noyau Technique dans `.agents/AGENTS.md` §6 et dans
@@ -23,17 +26,20 @@ Dépendances du manifeste : `lyxal_core`, `lyxal_error`, `lyxal_event`, `lyxal_a
 ### Tables (`schema/`)
 
 Toutes `TYPE NORMAL SCHEMAFULL`, rattachées à une organisation (`tenant`, `REFERENCE ON DELETE
-CASCADE`) : une organisation supprimée emporte tout son courrier.
+CASCADE`) : une organisation supprimée emporte tout son courrier. Seule la liste de blocage
+(`mail_network_block`) est à l'échelle de l'installation.
 
 | Table | Contenu |
 | :--- | :--- |
-| `mail_settings` | Réglages de l'installation et des organisations : taille d'un message (50 Mio par défaut), quota par défaut (aucun), conservation des effacements (30 jours, 7 à 365), dossiers par compte (1 000), adresses par compte (100), mots-clés par message (50) |
-| `mail_domain` | Domaine de courrier repris d'un domaine **vérifié** de `lyxal_auth` (M9), forme ASCII seulement (M10), état, séparateur de sous-adresse (`+` ou aucun), nombre d'adresses ; le retrait du domaine dans `lyxal_auth` est refusé tant qu'il sert au courrier (`MAIL_DOMAIN_EXISTS`), sauf avec l'organisation |
+| `mail_settings` | Réglages de l'installation et des organisations : taille d'un message (50 Mio par défaut), quota par défaut (aucun), conservation des effacements (30 jours, 7 à 365), dossiers par compte (1 000), adresses par compte (100), mots-clés par message (50) ; installation seulement : `postmaster`, adresse inscrite qui reçoit le destinataire `postmaster` écrit sans domaine (RFC 5321 §4.5.1, S17) |
+| `mail_domain` | Domaine de courrier repris d'un domaine **vérifié** de `lyxal_auth` (M9), forme ASCII seulement (M10), état, séparateur de sous-adresse (`+` ou aucun), nombre d'adresses ; `catch_all` (compte attrape-tout, **aucun par défaut**, S17) et `postmaster` (compte qui reçoit `postmaster@<domaine>` sans adresse inscrite), comptes actifs de la même organisation, effacés quand le compte part en suppression ; le retrait du domaine dans `lyxal_auth` est refusé tant qu'il sert au courrier (`MAIL_DOMAIN_EXISTS`), sauf avec l'organisation |
 | `mail_account` | Compte d'un membre (une identité par organisation), état (`active`, `disabled`, `deleting`), adresse principale, quota, compteurs du compte : messages, volume, **numéro de modification du compte** (M6), prochaine UIDVALIDITY, plancher des changements, dossiers, adresses |
 | `mail_address` | Adresse d'un compte ou alias vers 1 à 50 comptes de l'organisation ; partie locale ASCII en minuscules |
 | `mail_mailbox` | Dossier : chemin (`/`), parent, rôle SPECIAL-USE, abonnement, ordre, UIDVALIDITY, prochain UID, compteurs (total, non lus, volume, `HIGHESTMODSEQ`) |
 | `mail_content` | Contenu d'un message (fichier `.eml` de `lyxal_storage`) : clé `<compte>/<UUID v7>.eml`, fiche de stockage, état `pending` → `stored` → `released`, taille, `protection` (`platform` ; `openpgp`, `client` réservés, M15), lecteurs (`refs`) |
-| `mail_message` | Message d'un dossier (un seul, M5), d'identifiant ordonné `mail_message:⟨<clé du dossier>_<10^10 + UID>⟩` (décision P1) : UID, identifiant JMAP (`email_id`, gardé par un déplacement), numéros de modification, fil immuable (M7), dates, drapeaux système en booléens, mots-clés en minuscules triés, `Message-ID`, sujet de base, enveloppe typée et structure MIME facultatives (M8) |
+| `mail_message` | Message d'un dossier (un seul, M5), d'identifiant ordonné `mail_message:⟨<clé du dossier>_<10^10 + UID>⟩` (décision P1) : UID, identifiant JMAP (`email_id`, gardé par un déplacement), numéros de modification, fil immuable (M7), dates, drapeaux système en booléens, mots-clés en minuscules triés, `Message-ID`, sujet de base, enveloppe typée et structure MIME facultatives (M8) ; `origin` (immuable : `delivery`, `append`, `copy`, `move`, `import`) et, pour un message reçu seulement, `reception` : résultats `spf`, `dkim`, `dmarc`, `iprev` (mots de la RFC 8601), `antivirus`, `spam`, `tls`, sans domaine ni adresse |
+| `mail_delivery` | Idempotence d'une remise SMTP (S8) : `mail_delivery:⟨<clé du compte>_<empreinte>⟩`, message inscrit, fin de conservation (7 jours) ; lue et écrite par la session système et le compte de service seulement ; purgée par la maintenance |
+| `mail_network_block` | Liste de blocage de l'installation (S18) : réseau (plage CIDR, unique), motif (`manual`, `errors`, `harvest`, `smuggling`), récidives (`strikes`), fin (`expires_at` ; absente : entrée manuelle sans fin), auteur d'une entrée manuelle |
 | `mail_tombstone` | Effacements (message effacé ou déplacé hors d'un dossier, dossier supprimé) avec leur numéro de modification, pour `QRESYNC` et `Email/changes` |
 | `mail_message_date` | Vue des messages d'un dossier par date interne, d'identifiant ordonné `⟨<clé du dossier>_<10^16 + µs>_<10^10 + UID>⟩`, tenue par les événements des messages, fermée à l'écriture directe (pages par date) |
 
@@ -43,8 +49,8 @@ CASCADE`) : une organisation supprimée emporte tout son courrier.
 | :--- | :--- | :-: | :--- | :--- |
 | `mail.mailbox.access` | organisation | oui | membre, administrateur | sa propre boîte (identité du compte = identité de la session) |
 | `mail.domain.manage` | organisation | non | administrateur | domaines, comptes, adresses, alias, réglages ; **jamais** le contenu des boîtes (M11) |
-| `mail.installation.manage` | installation | non | administrateur de la plateforme | réglages de l'installation |
-| `mail.worker` | installation | non | aucun (compte de service) | résolution d'adresse, dépôt dans tout compte, maintenance |
+| `mail.installation.manage` | installation | non | administrateur de la plateforme | réglages de l'installation (dont `postmaster`), entrées manuelles de la liste de blocage, sa lecture et ses retraits |
+| `mail.worker` | installation | non | aucun (compte de service) | résolution des destinataires, remise et dépôt dans tout compte, bannissements automatiques et lecture des réseaux bloqués, maintenance |
 
 Une fiche invisible est « introuvable ». Les fonctions qui touchent aux fichiers (lien d'un
 contenu, maintenance) passent par les fonctions publiques de `lyxal_storage` : elles s'exécutent
@@ -85,7 +91,10 @@ service) ; une écriture de message ou de dossier qui ne fait pas avancer le num
 est refusée ; UID strictement croissants, jamais réutilisés ; identité, compte, contenu et fil
 immuables. Les messages d'un compte désactivé ne changent ni ne s'effacent plus (ceux d'un compte
 en suppression ne changent plus, la purge les efface), sauf par l'exploitation (session système,
-compte de service). Le domaine de `lyxal_auth` est lu par son contrat public
+compte de service). Réception : un message d'origine `delivery` n'est inscrit que par le service
+de remise (session système, compte de service) et porte ses sept résultats de réception ; aucune
+autre origine ne les porte ; l'attrape-tout et le postmaster d'un domaine ne se posent que sur un
+compte actif de son organisation. Le domaine de `lyxal_auth` est lu par son contrat public
 (`fn::auth_organization_domain_get`), l'adhésion du titulaire d'un nouveau compte aussi
 (`fn::auth_organization_member_check`, décision P4), jamais dans leurs tables.
 
@@ -93,8 +102,10 @@ compte de service). Le domaine de `lyxal_auth` est lu par son contrat public
 
 | Domaine | Fonctions |
 | :--- | :--- |
-| Réglages, domaines | `mail_settings_get`, `mail_settings_set`, `mail_domain_create`, `_get`, `_list`, `_update`, `_delete` |
-| Comptes, adresses | `mail_account_create` (compte, adresse principale, six dossiers), `_get`, `_list`, `_update`, `_delete` ; `mail_quota_get` ; `mail_address_create`, `_update`, `_delete`, `_list`, `_resolve` |
+| Réglages, domaines | `mail_settings_get`, `mail_settings_set` (dont `postmaster`, installation seulement), `mail_domain_create`, `_get`, `_list`, `_update` (dont `catch_all`, `postmaster`, `clear`), `_delete` |
+| Comptes, adresses | `mail_account_create` (compte, adresse principale, six dossiers), `_get`, `_list`, `_update`, `_delete` ; `mail_quota_get` ; `mail_address_create`, `_update`, `_delete`, `_list` |
+| Réception (session système, `mail.worker`) | `mail_recipient_resolve` (remplace `mail_address_resolve` : domaine actif sinon `MAIL_RELAY_DENIED` ; adresse exacte, sans sous-adresse, `postmaster`, attrape-tout ; comptes actifs et `quota_full` par compte ; taille maximale de l'organisation) ; `mail_delivery_begin` (compte, taille, quota, idempotence : contenu réservé, ou `duplicate`) ; `mail_delivery_commit` (1 à 32 messages d'un compte en une transaction ; une erreur d'élément n'annule pas les autres ; 33 : `MAIL_DELIVERY_BATCH_TOO_LARGE`) ; `mail_delivery_purge` |
+| Liste de blocage | `mail_block_create` (entrée manuelle : `mail.installation.manage` ; bannissement automatique : `mail.worker`, 1 h doublée à chaque récidive, 24 h au plus), `_list` (curseur : réseau), `_delete`, `_active` (réseaux en vigueur, lus par chaque nœud) |
 | Dossiers | `mail_mailbox_create`, `_get`, `_list`, `_update` (renommage, déplacement, sous-dossiers réécrits), `_delete` |
 | Messages | `mail_message_create`, `_get`, `_list` (curseur de date ou plage d'UID), `_changes` (depuis un numéro de modification, effacements compris), `_flags_set` (`CONDSTORE`), `_move` (nouvelle fiche dans le dossier cible, ancienne retirée, même `email_id` ; un message déjà dans le dossier cible reste inchangé), `_copy`, `_expunge` ; `mail_thread_get` |
 | Contenus, maintenance | `mail_content_begin`, `_attach`, `_open`, `_expire` ; `mail_tombstone_purge` ; `mail_account_purge_step` |
@@ -118,21 +129,46 @@ Fonctions internes (`COMMENT` « Interne ») : `fn::mail_can`, `fn::mail_setting
 `fn::mail_write_refusal`, `fn::mail_counters_apply`, `fn::mail_keywords_rule`,
 `fn::mail_messages_rule`, `fn::mail_flags_apply`, `fn::mail_messages_load`,
 `fn::mail_message_key`, `fn::mail_message_key_text`, `fn::mail_message_date_key_text`,
-`fn::mail_message_uid_page`, `fn::mail_message_date_page`.
+`fn::mail_message_uid_page`, `fn::mail_message_date_page`, `fn::mail_recipient_accounts`,
+`fn::mail_delivery_item` (un élément d'un lot : tous les contrôles avant les écritures),
+`fn::mail_delivery_key`, `fn::mail_reception_rule`.
+
+**Contrôle allégé des paramètres de remise (décision S12).** `fn::mail_delivery_commit`, appelée
+par le seul service de remise, fait valider par le moteur de `lyxal_core` les champs scalaires de
+chaque élément, la forme des listes d'identifiants, les résultats de réception et la taille
+sérialisée de l'enveloppe (256 Kio) et de la structure (1 Mio) ; la forme détaillée de l'enveloppe
+est garantie par le schéma de `mail_message`. Une valeur hors schéma fait refuser l'écriture par
+la base (erreur de la base, pas un code `MAIL_*` : SurrealQL ne rattrape pas une erreur) et annule
+le lot ; le service de remise reprend alors le lot élément par élément, et l'élément en cause
+échoue seul. `fn::mail_message_create` (dépôt par un titulaire) garde la validation complète.
 
 ### Erreurs et événements
 
-39 codes `MAIL_*` en master data (`error/<thème>/`, traduits en français et en anglais ;
-`MAIL_CONTENT_UNAVAILABLE` à réessayer). Événements publiés par `fn::event_publish`, sans donnée
+47 codes `MAIL_*` en master data (`error/<thème>/`, traduits en français et en anglais ;
+`MAIL_CONTENT_UNAVAILABLE` et `MAIL_SCANNER_UNAVAILABLE` à réessayer), dont 8 pour la réception :
+`MAIL_RELAY_DENIED`, `MAIL_RECIPIENT_DISABLED` (thème `adresses`), `MAIL_DELIVERY_REJECTED`,
+`MAIL_MESSAGE_INFECTED`, `MAIL_SCANNER_UNAVAILABLE`, `MAIL_DELIVERY_BATCH_TOO_LARGE` (`reception`),
+`MAIL_BLOCK_EXISTS`, `MAIL_BLOCK_NOT_FOUND` (`blocage`) ; ils ne sont jamais rendus à un serveur
+expéditeur (la session SMTP les traduit). Événements publiés par `fn::event_publish`, sans donnée
 personnelle (identifiants et compteurs seulement) : `mail.domain.created`, `mail.domain.deleted`,
 `mail.account.created`, `mail.account.deleted` (fin de la purge), `mail.address.created`,
 `mail.address.deleted`, `mail.quota.exceeded` (premier refus depuis le dernier passage sous le
-quota ou le dernier changement de quota). Aucun événement par message au lot 4 (M16).
+quota ou le dernier changement de quota), et `mail.message.received` (décision S15) : un par
+compte destinataire, dans la transaction de l'inscription d'un message d'origine `delivery`
+(jamais pour une copie, un déplacement ou un dépôt du titulaire) ; charge utile : `tenant`,
+`account`, `mailbox`, `message`, `email_id`, `size`, `received_at`, `has_attachment`,
+`protection`, `reception` ; ni adresse, ni domaine, ni sujet, ni `Message-ID`.
 
 ### Banc SurrealQL
 
 `tests/*.test.surql` (`scripts/ci/test_lyxal_modules.py`) : `reglages`, `domaines`, `comptes`,
-`adresses`, `dossiers`, `messages`, `synchronisation`, `contenus`, `droits`, `plages`, `organisations` —
+`adresses`, `dossiers`, `messages`, `synchronisation`, `contenus`, `droits`, `plages`,
+`organisations`, `reception` (résolution : relais refusé, inconnu, désactivé, sous-adresse,
+alias, attrape-tout, `postmaster` avec et sans domaine, quota plein, taille de l'organisation ;
+remise : ouverture, doublon, lot de 32, élément en erreur sans annuler les autres, lot de 33
+refusé, origine, résultats de réception, compteurs égaux au contenu, dossier « Junk » ; événement
+publié une fois par compte, sans adresse ni sujet), `blocages` (CIDR valide et invalide, doublon,
+expiration, récidive, droits des entrées manuelles et des bannissements) —
 chaque fonction appelée ; sessions système, compte de service, administrateur, titulaire, autre
 membre, autre organisation ; écritures filtrées (`MAIL_WRITE_FORBIDDEN`) ; écritures directes
 refusées par les gardes ; compteurs égaux au contenu réel ; suppression d'une organisation ;
@@ -182,19 +218,84 @@ messages. Environ un tiers des remises restent refusées après trois rejeux : l
 du compte sérialise ses écritures. Repli du §19 du plan à décider sur cette mesure.
 
 Cohérence vérifiée en fin de banc : compteurs du compte égaux aux messages, UID uniques dans le
-dossier, une fiche de la vue par date par message. Non mesuré : coût d'un scellement de clé de
-fichier par message et d'une ouverture de clé par lecture (`ROADMAP.md`).
+dossier, une fiche de la vue par date par message.
+
+### Mesures de la remise (lot 5c, `tests/it/measures.rs`)
+
+Mesures du 25 novembre 2026, machine de développement à 4 cœurs, binaire d'essai optimisé
+(`cargo test -p lyxal_mail --release --test it -- --ignored --nocapture --test-threads 1
+measures`), messages de 10 Kio remis par `MailIngest::receive` (le chemin de la session SMTP,
+**sans** le dialogue SMTP ni les contrôles d'authenticité, livrés en 5d), support disque, un
+nœud. Trois moteurs : base embarquée dans le processus (`mem://`) ; serveur SurrealDB 3.3.4 en
+mémoire joint par `ws://` (`LYXAL_SURREAL_WS_URL`, `LYXAL_SURREAL_USER`, `LYXAL_SURREAL_PASS`) sur
+une connexion ; le même serveur avec une connexion par service (courrier, stockage, coffre-fort :
+`LYXAL_SURREAL_CONNECTIONS=services`). Une seule série par mesure. Objectifs : plan du lot 5,
+§10.5.
+
+| Mesure | Base embarquée | Serveur, une connexion | Serveur, une connexion par service | Objectif |
+| :--- | :-: | :-: | :-: | :-: |
+| 100 comptes d'une organisation, 50 clients, 3 000 remises | 15,0 par seconde ; p50 3 296 ms, p95 3 667 ms | 11,8 par seconde ; p50 4 107 ms, p95 4 775 ms | 16,9 par seconde ; p50 2 196 ms, p95 8 371 ms | ≥ 300 (embarquée), ≥ 200 (serveur) : **non tenu** |
+| 100 comptes de deux organisations, 50 clients, 3 000 remises | 22,0 par seconde | 11,5 par seconde | 17,0 par seconde | — |
+| Un compte, 20 clients, 1 000 remises | 14,9 par seconde ; **0 refusée** ; 133 appels pour 1 000 messages (lot de 11 au plus) | 10,9 par seconde ; **0 refusée** ; aucun lot (1 000 appels) | 25,1 par seconde ; **0 refusée** ; 286 appels (lot de 6 au plus) | ≥ 100 par seconde : **non tenu** ; 0 refusée : **tenu** |
+| Deux nœuds simulés (deux services de remise sur la même base), un compte, 20 clients, 1 000 remises | 12,8 par seconde ; **1 refusée (0,1 %)** après rejeu ; 199 conflits rejoués, 38 lots repris élément par élément | non mesuré (une connexion exécute ses requêtes une à une : aucun conflit possible) | non mesuré | ≤ 1 % : **tenu** sur cette série (repli du §10.3 non déclenché) |
+| Une remise, sans concurrence (moyenne de 300) | 160 ms : ouverture 12,3 ; fichier chiffré 56,4 ; inscription 91,3 | 96 ms : ouverture 9,0 ; fichier chiffré 38,4 ; inscription 48,2 | 93 ms | p95 ≤ 100 ms de la fin de `DATA` à `250` : à mesurer avec la session (5d) |
+
+Aucun conflit de transaction entre les remises d'un nœud dans ces séries (ordre par compte, et
+tour d'écriture des fichiers par organisation). **Le débit visé n'est pas atteint, d'un facteur
+proche de vingt.** Ce que montrent les mesures :
+
+* **Le temps de calcul de la base par remise** (93 à 96 ms sur le serveur, lecture MIME : 0,05 ms)
+  borne le débit : quatre cœurs donnent au mieux une quarantaine de remises par seconde, quel que
+  soit l'ordre des écritures. Il se répartit entre `fn::mail_delivery_begin` (9 ms), les deux
+  fonctions de `lyxal_storage` et la lecture du trousseau des clés « fichiers » (38 ms en tout,
+  dont 13 ms pour le trousseau) et `fn::mail_delivery_commit` (48 ms).
+* **Le moteur de validation de `lyxal_core`** en est la première part. Mesuré dans la base
+  (30 appels en boucle, sans aller-retour) : un objet d'un champ 2,0 ms, les 4 champs de
+  l'ouverture 2,8 ms, un élément de remise en contrôle allégé 10,7 ms (12,8 ms par `each` ; 6,5 ms
+  par élément dans un lot de 8), contre 0,05 ms pour la primitive `fn::validation_record` seule.
+  Chaque fonction appelée par une remise paie ce coût (`fn::storage_object_get` : 3,4 ms ;
+  `fn::event_publish` : 7,0 ms ; `fn::error_result` : 0,13 ms ; `fn::mail_can` : 0,04 ms).
+* **Contrôle allégé (décision S12), mesuré des deux façons** par une requête isolée : contrôle
+  allégé 22 à 25 ms, validation complète de l'enveloppe 34 ms avec 5 adresses et 94 à 99 ms avec
+  67 adresses (base embarquée : 39 à 40 ms, 62 ms et 187 ms). Le contrôle allégé ne dépend plus du
+  nombre d'adresses, mais l'objectif de 2 ms par élément n'est pas atteint : il est hors de portée
+  du moteur tel qu'il est (2 ms pour un seul champ).
+* **Un serveur SurrealDB exécute une à une les requêtes d'une même connexion** (mesuré : des
+  connexions distinctes se partagent les cœurs, 31, 58, 107 puis 114 requêtes par seconde pour 1,
+  2, 4 et 8 connexions). Avec une seule connexion, le débit d'un nœud est celui d'une remise à la
+  fois (11 à 12 par seconde) et rien ne se groupe ; avec une connexion par service, l'écriture
+  des fichiers et l'inscription avancent ensemble et les inscriptions d'un compte se groupent.
+* **Compteurs de volume de `lyxal_storage`** : sans le tour d'écriture par organisation, avec 20
+  clients simultanés dans une organisation, des remises étaient refusées pour conflit de
+  transaction après les six essais de `lyxal_storage` (constaté par l'essai des remises
+  concurrentes, non chiffré) ; avec lui, aucune, mais les écritures de fichiers d'une
+  organisation passent une à une (38 ms chacune sur le serveur, soit 26 par seconde au plus).
+* **La base embarquée du binaire d'essai est près de deux fois plus lente que le serveur** (une
+  remise : 160 ms contre 96 ms ; un élément validé par une requête isolée : 39 ms contre 22 ms) :
+  ses chiffres ne valent pas pour une installation, qui joint un serveur.
+
+**Clés « fichiers » (décision S13).** `FileKeys::seal` : 13,1 ms en moyenne sur le serveur (p95
+14,8 ms ; 21,8 ms sur la base embarquée), `FileKeys::open` : 13,1 ms, dont 12,6 à 13,1 ms pour la
+seule lecture du trousseau en base (`fn::secrets_tenant_key_ring`) ; le scellement pèse 14 % d'une
+remise. Le seuil de la décision (2 ms ou 10 %) est dépassé : le cache est écrit dans
+`lyxal_secrets` (`FileKeys::with_cache`). Avec lui, une ouverture coûte 0,05 ms (299 succès pour
+300 appels) ; un scellement coûte toujours 12,4 ms, parce que la règle du cache (ne jamais
+sceller par une clé qui n'est plus active) impose de relire le trousseau. **Le cache ne réduit
+donc pas le coût d'une remise** ; il sert les lectures (lot 8). Il n'est pas encore activé par
+l'hôte (5d).
 
 ## État actuel : service Rust
 
 | Élément | Rôle |
 | :--- | :--- |
-| `MailStore`, `models` | Un appel typé d'une ligne par fonction publique `fn::mail_*` (38 fonctions, `LyxalSurrealCall::call_fn`), paramètres `XxxParams` et résultats nommés (`SurrealValue`) ; la session du client détermine l'appelant |
-| `MailIngest`, `Delivery`, `DeliveryFlags` | Dépôt d'un message brut (seul chemin d'écriture d'un message, repris par la remise SMTP du lot 5 et `APPEND` au lot 8) : mémoire réservée sur le budget des connexions (`MemoryBudget`, facultatif), lecture MIME par `lyxal_mail_proto`, `fn::mail_content_begin` sous la session de l'appelant, écriture chiffrée par `lyxal_storage` sous la session système de l'hôte dans le bucket chiffré `lyxal-mail` de l'organisation (créé à la première écriture, sur le support réglé par l'hôte), `fn::mail_content_attach` (session système), `fn::mail_message_create` (appelant) ; écritures rejouées trois fois au plus sur conflit de transaction |
+| `MailStore`, `models` | Un appel typé d'une ligne par fonction publique `fn::mail_*` (45 fonctions, `LyxalSurrealCall::call_fn`), paramètres `XxxParams` et résultats nommés (`SurrealValue`) ; la session du client détermine l'appelant ; réception : `models::{RecipientResolveParams, ResolvedRecipient, RecipientAccount, DeliveryBeginParams, DeliveryReservation, DeliveryCommitParams, DeliveryItem, DeliveryCommitResult, DeliveryItemResult, Reception}` ; liste de blocage : `BlockCreateParams`, `NetworkBlock`, `BlockReason`, `BlockListParams`, `BlockPage`, `BlockDeleteParams`, `BlockActiveParams`, `ActiveBlocks` |
+| `MailIngest`, `Delivery`, `DeliveryFlags` | Dépôt d'un message brut par son titulaire (`APPEND` au lot 8) : mémoire réservée sur le budget des connexions (`MemoryBudget`, facultatif), lecture MIME par `lyxal_mail_proto`, `fn::mail_content_begin` sous la session de l'appelant, écriture chiffrée par `lyxal_storage` sous la session système de l'hôte dans le bucket chiffré `lyxal-mail` de l'organisation (créé à la première écriture, sur le support réglé par l'hôte, puis gardé en mémoire du nœud), `fn::mail_content_attach` (session système), `fn::mail_message_create` (appelant) ; écritures rejouées trois fois au plus sur conflit de transaction |
+| `MailIngest::receive`, `ReceivedDelivery`, `DeliveryOutcome`, `delivery_key` | Remise d'un message reçu par SMTP à un compte, sous la session système, en quatre allers-retours au lieu de six : `fn::mail_delivery_begin` (un message déjà remis s'arrête là : `DeliveryOutcome::Duplicate`), écriture chiffrée du fichier, `fn::mail_delivery_commit` à son tour dans l'ordre du compte ; `delivery_key` : empreinte d'idempotence BLAKE3 (`lyxal_crypto`) de l'adresse inscrite, de l'expéditeur de l'enveloppe et des octets reçus (S8) ; l'élément refusé d'un lot (`MailError::Refused`) laisse son fichier supprimé |
+| `AccountQueue`, `QueueStats`, `MAX_BATCH` | Ordre des inscriptions par compte dans le nœud (S11) : 1 024 compartiments, un tour d'écriture chacun ; les inscriptions d'un compte qui attendent déjà sont inscrites ensemble, 32 au plus par appel, sans délai ajouté ; lot refusé en entier (hors conflit rejoué) : repris élément par élément ; relevé des lots, conflits rejoués et lots repris |
 | `MailContent`, `OpenedContent` | Lecture d'un message, entière ou par plage d'octets du message brut (une partie MIME par ses positions) : `fn::mail_content_open` contrôle les droits de l'appelant, `lyxal_storage` ne déchiffre que les segments de la plage ; un segment altéré met fin au flux par une erreur, jamais par une fin normale |
-| `MailMaintenance`, `MaintenanceReport` | Un passage, interrompu entre deux appels à l'arrêt du serveur : `fn::mail_content_expire`, `fn::mail_tombstone_purge`, `fn::mail_account_purge_step` par paquets ; exécutée par `lyxal_scheduler` (tâche `mail.maintenance` de l'hôte, toutes les 10 minutes) |
+| `MailMaintenance`, `MaintenanceReport` | Un passage, interrompu entre deux appels à l'arrêt du serveur : `fn::mail_content_expire`, `fn::mail_tombstone_purge`, `fn::mail_delivery_purge`, `fn::mail_account_purge_step` par paquets ; exécutée par `lyxal_scheduler` (tâche `mail.maintenance` de l'hôte, toutes les 10 minutes) |
 | `MailModule`, `MailHealthCheck`, `RequiredHost` | `LyxalModule` du module (descripteur égal au manifeste) ; sonde : réglages lisibles (sinon « malade »), support de stockage et service de clés des fichiers présents (sinon « dégradé »), et, avec `with_required_host`, un nœud vivant de l'hôte requis (`RequiredHost` : `lyxal_server`, lu dans `runtime_node` par `PresenceStore`) vu depuis moins de `REQUIRED_HOST_ABSENCE_LIMIT` (10 minutes ; sinon « dégradé », « aucun nœud lyxal_server vivant… ») ; l'hôte la compose avec celle des écoutes (une sonde par module) |
-| `MailError` | Code `MAIL_*` (dont `MAIL_MESSAGE_MALFORMED`, `MAIL_CONTENT_UNAVAILABLE` à réessayer) ou `STORAGE_*` propagé ; `is_retryable()`, `is_business()` ; aucune adresse, aucun sujet, aucun contenu |
+| `MailError` | Code `MAIL_*` (dont `MAIL_MESSAGE_MALFORMED`, `MAIL_CONTENT_UNAVAILABLE` à réessayer, et `Refused` : code de l'élément refusé d'un lot de remise) ou `STORAGE_*` propagé ; `is_retryable()`, `is_business()` ; aucune adresse, aucun sujet, aucun contenu |
 
 **Chiffrement obligatoire (décision M1).** Sans support de stockage ou sans clé maîtresse du
 coffre-fort, rien n'est réservé ni écrit (`MAIL_CONTENT_UNAVAILABLE`, à réessayer) et aucun
@@ -226,6 +327,17 @@ et sans événements `storage.object.*` (`emit_events` faux, décision S14) ; sa
 `lyxal-groupware` refuse de démarrer dès qu'un bucket chiffré existe
 (`GROUPWARE_MASTER_KEY_MISSING`).
 
+**Ordre des écritures dans le nœud (décision S11, et écart).** Le compteur de modifications reste
+par compte (M6) : `AccountQueue` fait passer une à une les inscriptions d'un même compte et
+groupe celles qui attendent, ce qui supprime les conflits entre remises d'un nœud. Les mesures
+ont montré une seconde contention, hors du plan : `lyxal_storage` tient les compteurs de volume
+d'une organisation (`storage_usage`) à chaque écriture de fichier, et vingt remises simultanées
+dans une même organisation épuisaient ses six essais (remises refusées), quel que soit le compte.
+`MailIngest` fait donc aussi passer une à une, dans le nœud, les écritures de fichiers d'une même
+organisation (table de 1 024 tours d'écriture) : aucune remise refusée sur un nœud, mais le débit
+d'une organisation est borné par la durée d'une écriture de fichier (« Mesures »). Entre deux
+nœuds, les conflits restent rejoués par `lyxal_storage` et par le service de remise.
+
 **Projection d'un message lu** (`mime`). Enveloppe typée (date de l'en-tête `Date`, sujet,
 adresses à plat avec leur groupe, `Message-ID`, `In-Reply-To`, `References`), structure MIME
 rangée telle quelle (types, paramètres, disposition, nom, positions `header` / `body` / `end`,
@@ -233,11 +345,13 @@ tailles, lignes, parties ou message joint avec son enveloppe, la date brute), cl
 de base. Un message reçu se garde même hors norme : textes et listes plus longs que le schéma de
 `mail_message` sont raccourcis (texte coupé à une limite de caractère, `References` réduit aux
 1 000 plus récents) au lieu de faire refuser le message ; les entrées restent contrôlées par
-`fn::mail_message_create`.
+`fn::mail_message_create` et `fn::mail_delivery_commit`.
 
-Dépendances Rust : `lyxal_mail_proto`, `lyxal_runtime`, `lyxal_storage`, `lyxal_surreal`,
-`surrealdb`, `tokio`, `tokio-util`, `async-trait`, `thiserror`, `tracing`, `bytes`, `futures` ;
-aucune crate cryptographique (le chiffrement passe par `lyxal_storage` et `lyxal_secrets`).
+Dépendances Rust : `lyxal_crypto` (DKIM, BLAKE3 de l'empreinte d'idempotence), `lyxal_mail_proto`,
+`lyxal_runtime`, `lyxal_storage`, `lyxal_surreal`, `surrealdb`, `tokio`, `tokio-util`,
+`async-trait`, `thiserror`, `tracing`, `bytes`, `futures`, `hickory-resolver`, `idna`, `psl`
+(liste des suffixes publics, version figée) ; aucune crate cryptographique directe (le chiffrement
+passe par `lyxal_storage` et `lyxal_secrets`).
 
 Vérification : `cargo test -p lyxal_mail` (base embarquée, support disque, clé maîtresse
 éphémère, jetons de session de test) : dépôt de bout en bout puis liste, lecture entière et
@@ -248,7 +362,14 @@ toute réservation ; inscription refusée puis maintenance ; isolement entre mem
 organisations au travers des services (lecture, liste, dépôt) ; maintenance réservée à la
 session système ; purge d'un compte supprimé avec ses contenus et fichiers ; sonde « dégradé »
 sans nœud vivant de l'hôte requis au-delà de l'absence tolérée, saine dès qu'un nœud de cet hôte
-(et non d'un autre) bat, de nouveau « dégradé » après son arrêt. L'hôte
+(et non d'un autre) bat, de nouveau « dégradé » après son arrêt ; réception (`tests/it/reception.rs`) :
+destinataire résolu, message remis chiffré puis lu par son titulaire, nouvel essai sans doublon
+ni fichier, un événement sans adresse ni sujet, alias (un contenu et un événement par compte),
+dossier « Junk », élément refusé pour quota à l'inscription (fichier supprimé, voisin inscrit),
+100 remises de 20 clients simultanés dans un compte (UID de 1 à 100, compteurs exacts, aucun
+conflit, moins d'appels que de messages), lot dont un élément sort du schéma (repris élément par
+élément), purge des fiches d'idempotence, liste de blocage, attrape-tout et `postmaster` par les
+appels typés. L'hôte
 (`cargo test -p lyxal-groupware`, essai `mail_service`) : démarrage avec clé maîtresse et support
 disque, sonde, dépôt et lecture par les services de l'hôte, maintenance exécutée par le
 planificateur, planification non recréée au redémarrage, aucun événement `storage.object.*` ;
@@ -288,7 +409,7 @@ Contrôles employés par la session SMTP entrante (lot 5d), non encore branchés
 | `auth::SpfVerifier` | SPF (RFC 7208) sur `MAIL FROM` (ou `postmaster@<HELO>`) et sur HELO ; macros ; 10 termes DNS, 2 réponses vides, 10 noms par `mx` / `ptr`, 20 s au plus ; domaines Unicode convertis en A-label (`idna`) |
 | `auth::DkimVerifier` | DKIM (RFC 6376, 8301, 8463) : balises, clé `<s>._domainkey.<d>`, en-têtes de `h=` du bas vers le haut ; octets signés et vérification par `lyxal_crypto::dkim` ; 5 signatures au plus ; `rsa-sha1`, `h=` sans `From`, `i=` hors de `d=`, échéance passée, clé révoquée : `permerror` ; `t=` à plus de 5 min dans le futur : `neutral` ; `l=` plus court que le corps : `policy` ; clé `t=y` signalée (ignorée par DMARC) |
 | `auth::DmarcVerifier`, `author_domains`, `DmarcDisposition` | DMARC (RFC 7489) pour chaque domaine de `From` (10 au plus) : `_dmarc.<domaine>` puis domaine d'organisation, alignement souple ou strict, `p`, `sp`, `pct` ; décision S6 : `reject` → refus, `quarantine` → « Junk », `temperror` avec `reject` → `451`, jamais de refus sur SPF ou DKIM seuls, `dmarc_enforce` faux → aucun effet ; le plus sévère de plusieurs domaines l'emporte |
-| `auth::OrganizationalDomain`, `PublicSuffixList` | Domaine d'organisation par une liste au format de la « Public Suffix List » ; **aucune liste embarquée** : la source des données attend la décision S4 |
+| `auth::OrganizationalDomain`, `EmbeddedSuffixList`, `PublicSuffixList` | Domaine d'organisation : `EmbeddedSuffixList`, la « Public Suffix List » embarquée par la crate `psl` à version figée (décision S4 ; `=2.1.263`, liste du jour de sa publication ; noms en forme ASCII convertis pour la recherche) ; `PublicSuffixList`, liste au même format fournie par l'appelant (essais) |
 | `auth::Iprev` | Nom inverse confirmé (RFC 8601 §3), informatif |
 | `auth::AuthenticationResults`, `strip_forged_results` | En-tête `Authentication-Results` (RFC 8601) : `spf` (`smtp.mailfrom` : domaine seulement, `smtp.helo`), `dkim` (`header.d`, `header.s`, `header.b` sur 8 caractères), `dmarc` (`header.from`, `policy.dmarc`), `iprev` (`policy.iprev`) ; valeurs échappées, sans caractère de contrôle ; retrait des en-têtes reçus portant notre `authserv-id` |
 | `auth::MessageHeaders` | Découpage brut de l'en-tête (champs, valeurs repliées, corps), syntaxe obsolète d'un espace avant `:` admise |

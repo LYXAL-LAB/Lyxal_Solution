@@ -1,20 +1,24 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 //! Projection d'un message lu par `lyxal_mail_proto` dans les champs de
-//! `fn::mail_message_create` : enveloppe typée, structure MIME (objet libre), clés de fil.
+//! `fn::mail_message_create` et d'un élément de `fn::mail_delivery_commit` : enveloppe typée,
+//! structure MIME (objet libre), clés de fil.
 //!
 //! Un message reçu se garde même hors norme (plan du lot 4, §13) : les textes et les listes
 //! plus longs que ce que le schéma de `mail_message` accepte sont raccourcis ici (texte coupé à
 //! une limite de caractère, liste réduite à ses éléments les plus récents), au lieu de faire
 //! refuser tout le message. Aucune règle d'acceptation n'est écrite ici : les entrées restent
-//! contrôlées par `fn::mail_message_create`.
+//! contrôlées par ces fonctions.
 
 use lyxal_mail_proto::mime::{
     AddressEntry, BodyPart, Envelope, MailAddress, Parameter, ParsedMessage, PartBody,
 };
 use surrealdb::types::{Object, SurrealValue, Value};
 
-use crate::models::{EnvelopeAddress, MailDatetime, MessageCreateParams, MessageEnvelope};
+use crate::models::{
+    DeliveryItem, DeliveryRole, EnvelopeAddress, MailDatetime, MessageCreateParams,
+    MessageEnvelope, Reception,
+};
 
 /// Longueur maximale d'un sujet (schéma de `mail_message`).
 const MAX_SUBJECT: usize = 16_384;
@@ -254,6 +258,37 @@ pub(crate) fn message_params(
         envelope: Some(envelope),
         structure: Some(structure(&parsed.structure)),
         has_attachment: parsed.has_attachment,
+    }
+}
+
+/// Champs d'un message reçu, lus une fois, pour `fn::mail_delivery_commit` : l'élément du lot
+/// est complété par le contenu réservé et le fichier écrit de chaque compte destinataire.
+pub(crate) fn delivery_item(
+    parsed: &ParsedMessage,
+    received_at: MailDatetime,
+    role: DeliveryRole,
+    delivery_key: String,
+    reception: Reception,
+) -> DeliveryItem {
+    let sent_at = parsed
+        .sent_at
+        .and_then(|date| datetime(date.unix_timestamp(), date.nanosecond()));
+    let envelope = envelope(&parsed.envelope, sent_at);
+    DeliveryItem {
+        content: String::new(),
+        object: String::new(),
+        role,
+        received_at,
+        delivery_key,
+        message_id: envelope.message_id.clone(),
+        in_reply_to: envelope.in_reply_to.clone().unwrap_or_default(),
+        references: envelope.references.clone().unwrap_or_default(),
+        base_subject: cut_option(&parsed.base_subject, MAX_SUBJECT),
+        is_report: parsed.is_report,
+        envelope,
+        structure: structure(&parsed.structure),
+        has_attachment: parsed.has_attachment,
+        reception,
     }
 }
 

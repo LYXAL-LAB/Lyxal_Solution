@@ -260,7 +260,7 @@ RETURN fn::essai_coherent(fn::essai_id("jean"));
 -- test: un compte en suppression ne reçoit plus rien
 -- en tant que: worker
 RETURN fn::mail_content_begin({ account: fn::essai_id("marie"), size: 10 }).error.code == "MAIL_ACCOUNT_DELETING"
-    AND fn::mail_address_resolve({ address: "marie@alpha.test" }).error.code == "MAIL_RECIPIENT_UNKNOWN";
+    AND fn::mail_recipient_resolve({ address: "marie@alpha.test" }).error.code == "MAIL_RECIPIENT_UNKNOWN";
 
 -- test: purge par étapes : messages, puis contenus et fichiers, puis le compte ; mail.account.deleted
 {
@@ -341,7 +341,7 @@ RETURN fn::mail_message_copy({ messages: [fn::essai_id("q1")], mailbox: fn::essa
     LET $account = type::record(fn::essai_id("jean"));
     LET $content = (SELECT VALUE id FROM ONLY mail_content WHERE account = $account AND state = "stored" AND refs = 0 LIMIT 1);
     CREATE fn::mail_message_key(type::record(fn::essai_id("jean_inbox")), 100) CONTENT { tenant: auth_organization:alpha, account: $account, owner: auth_identity:jean, mailbox: type::record(fn::essai_id("jean_inbox")), content: $content,
-        uid: 100, modseq: 1000, create_modseq: 1000, thread: "t", received_at: time::now(), size: 300 };
+        origin: "append", uid: 100, modseq: 1000, create_modseq: 1000, thread: "t", received_at: time::now(), size: 300 };
 };
 
 -- test: le titulaire n'efface pas la date du dépassement sans libérer de place

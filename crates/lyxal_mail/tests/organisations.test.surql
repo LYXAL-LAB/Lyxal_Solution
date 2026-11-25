@@ -95,16 +95,39 @@
     fn::mail_settings_set({ tenant: "auth_organization:alpha", default_quota_bytes: 200000 });
 };
 
+-- préparation: message remis par SMTP dans beta (fiche d'idempotence), attrape-tout et postmaster de beta
+{
+    LET $account = fn::essai_id("autre");
+    LET $key = string::repeat("a", 64);
+    LET $reserved = fn::mail_delivery_begin({ account: $account, size: 100, delivery_key: $key }).data;
+    LET $bucket = (SELECT VALUE id FROM ONLY storage_bucket WHERE tenant = auth_organization:beta AND name = "lyxal-mail" LIMIT 1);
+    LET $object = fn::storage_object_begin({ bucket: <string> $bucket, key: $reserved.storage_key, filename: "message.eml", declared_size: 100 }).data;
+    fn::storage_object_commit({ object: <string> $object.id, size: 100, content_type: "message/rfc822", blake3: "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262", content_key: "enc:v2:essai-files-1:QUJD" });
+    fn::mail_delivery_commit({ account: $account, items: [{
+        content: <string> $reserved.content, object: <string> $object.id, received_at: time::now(), delivery_key: $key, message_id: "d@x",
+        envelope: { subject: "Remis" }, structure: { type: "text/plain", size: 100 },
+        reception: { spf: "pass", dkim: "pass", dmarc: "pass", iprev: "pass", antivirus: "not_scanned", spam: "none", tls: true }
+    }] });
+    fn::mail_domain_update({ domain: fn::essai_id("domain_beta"), catch_all: $account, postmaster: $account });
+};
+
+-- test: remise de beta en place : message d'origine delivery, fiche d'idempotence, attrape-tout
+RETURN (SELECT VALUE origin FROM mail_message WHERE message_id = "d@x") == ["delivery"]
+    AND (SELECT VALUE tenant FROM mail_delivery) == [auth_organization:beta]
+    AND fn::mail_domain_get({ domain: fn::essai_id("domain_beta") }).data.catch_all == type::record(fn::essai_id("autre"))
+    AND fn::mail_recipient_resolve({ address: "nimporte@beta.test" }).data.tenant == auth_organization:beta;
+
 -- test: l'administrateur de beta ne voit rien d'alpha
 -- en tant que: autre
 RETURN [mail_domain, mail_account, mail_address, mail_mailbox, mail_content, mail_message, mail_tombstone].all(|$t| (SELECT VALUE tenant FROM $t).all(|$x| $x == auth_organization:beta))
     AND (SELECT VALUE tenant FROM mail_settings WHERE tenant IS NOT NONE) == [auth_organization:beta]
-    AND array::len(SELECT * FROM mail_message) == 1;
+    AND array::len(SELECT * FROM mail_message) == 2
+    AND array::len(SELECT * FROM mail_delivery) == 0 AND array::len(SELECT * FROM mail_network_block) == 0;
 
 -- test: l'administrateur d'alpha ne voit rien de beta, ni les boîtes de ses membres
 -- en tant que: admin
 RETURN [mail_domain, mail_account, mail_address].all(|$t| (SELECT VALUE tenant FROM $t).all(|$x| $x == auth_organization:alpha))
-    AND [mail_mailbox, mail_content, mail_message, mail_tombstone].all(|$t| array::len(SELECT * FROM $t) == 0);
+    AND [mail_mailbox, mail_content, mail_message, mail_tombstone, mail_delivery, mail_network_block].all(|$t| array::len(SELECT * FROM $t) == 0);
 
 -- test: un identifiant d'une autre organisation est introuvable, pas interdit
 -- en tant que: autre
@@ -115,7 +138,12 @@ RETURN fn::mail_domain_get({ domain: fn::essai_id("domain") }).error.code == "MA
     AND fn::mail_quota_get({ account: fn::essai_id("jean") }).error.code == "MAIL_ACCOUNT_NOT_FOUND"
     AND fn::mail_content_begin({ account: fn::essai_id("jean"), size: 1 }).error.code == "MAIL_ACCOUNT_NOT_FOUND"
     AND fn::mail_account_create({ identity: "auth_identity:autre", domain: fn::essai_id("domain"), local_part: "intrus" }).error.code == "MAIL_DOMAIN_NOT_FOUND"
-    AND fn::mail_address_create({ domain: fn::essai_id("domain_beta"), local_part: "fuite", kind: "account", account: fn::essai_id("jean") }).error.code == "MAIL_ACCOUNT_NOT_FOUND";
+    AND fn::mail_address_create({ domain: fn::essai_id("domain_beta"), local_part: "fuite", kind: "account", account: fn::essai_id("jean") }).error.code == "MAIL_ACCOUNT_NOT_FOUND"
+    AND fn::mail_domain_update({ domain: fn::essai_id("domain"), catch_all: fn::essai_id("autre") }).error.code == "MAIL_DOMAIN_NOT_FOUND"
+    AND fn::mail_domain_update({ domain: fn::essai_id("domain_beta"), catch_all: fn::essai_id("jean") }).error.code == "MAIL_ACCOUNT_NOT_FOUND"
+    AND fn::mail_domain_update({ domain: fn::essai_id("domain_beta"), postmaster: fn::essai_id("jean") }).error.code == "MAIL_ACCOUNT_NOT_FOUND"
+    AND fn::mail_recipient_resolve({ address: "jean@alpha.test" }).error.code == "MAIL_PERMISSION_DENIED"
+    AND fn::mail_delivery_begin({ account: fn::essai_id("jean"), size: 1, delivery_key: string::repeat("b", 64) }).error.code == "MAIL_PERMISSION_DENIED";
 
 -- test: écriture directe dans une autre organisation : sans effet
 -- en tant que: autre
@@ -133,7 +161,7 @@ RETURN (SELECT VALUE quota_bytes FROM mail_account WHERE tenant = auth_organizat
 {
     LET $events = array::len(SELECT * FROM event_outbox WHERE string::starts_with(event_type, "mail.") AND (string::ends_with(event_type, ".deleted")));
     DELETE auth_organization:beta;
-    RETURN [mail_settings, mail_domain, mail_account, mail_address, mail_mailbox, mail_content, mail_message, mail_tombstone].all(|$t| array::len(SELECT * FROM $t WHERE tenant = auth_organization:beta) == 0)
+    RETURN [mail_settings, mail_domain, mail_account, mail_address, mail_mailbox, mail_content, mail_message, mail_tombstone, mail_delivery].all(|$t| array::len(SELECT * FROM $t WHERE tenant = auth_organization:beta) == 0)
         AND array::len(SELECT * FROM storage_object WHERE tenant = auth_organization:beta) == 0
         AND array::len(SELECT * FROM storage_bucket WHERE tenant = auth_organization:beta) == 0
         AND !record::exists(auth_organization_domain:beta)
@@ -154,6 +182,6 @@ DELETE auth_organization_domain:alpha;
 -- test: suppression de l'organisation alpha : plus rien, ni compte ni fichier
 {
     DELETE auth_organization:alpha;
-    RETURN [mail_settings, mail_domain, mail_account, mail_address, mail_mailbox, mail_content, mail_message, mail_tombstone].all(|$t| array::len(SELECT * FROM $t WHERE tenant IS NOT NONE) == 0)
+    RETURN [mail_settings, mail_domain, mail_account, mail_address, mail_mailbox, mail_content, mail_message, mail_tombstone, mail_delivery].all(|$t| array::len(SELECT * FROM $t WHERE tenant IS NOT NONE) == 0)
         AND array::len(SELECT * FROM storage_object) == 0;
 };

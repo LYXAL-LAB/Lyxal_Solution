@@ -109,7 +109,7 @@ FAST_LOAD = """FOR $c IN {ids} {{
     LET $box = (SELECT uid_next FROM ONLY {inbox});
     LET $m = (SELECT VALUE modseq FROM ONLY {account}) + 1;
     CREATE fn::mail_message_key({inbox}, $box.uid_next) CONTENT {{ tenant: auth_organization:alpha, account: {account}, owner: auth_identity:jean, mailbox: {inbox},
-        content: type::record($c), uid: $box.uid_next, modseq: $m, create_modseq: $m, thread: <string> rand::uuid::v7(),
+        content: type::record($c), origin: "import", uid: $box.uid_next, modseq: $m, create_modseq: $m, thread: <string> rand::uuid::v7(),
         received_at: time::now(), size: 4096, keywords: [], message_id: string::concat($c, "@banc.test"), base_subject: "Sujet",
         envelope: {{ subject: "Sujet", from: [{{ name: "Expéditeur", address: "exp@ailleurs.test" }}], to: [{{ address: "jean@bench.test" }}] }},
         structure: {{ type: "text/plain", size: 4096, lines: 80 }} }};

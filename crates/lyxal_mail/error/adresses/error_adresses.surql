@@ -165,3 +165,57 @@ IF !record::exists(error_definition:MAIL_RECIPIENT_UNKNOWN) THEN (
         }
     }
 ) END;
+
+IF !record::exists(error_definition:MAIL_RELAY_DENIED) THEN (
+    CREATE error_definition:MAIL_RELAY_DENIED CONTENT {
+        code: "MAIL_RELAY_DENIED",
+        module: "mail",
+        domain: "adresses",
+        category: "authorization",
+        severity: "error",
+        message: "Relaying denied",
+        default_language: "fr",
+        http_status: 403,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Relais refusé",
+                description: "Le domaine de ce destinataire n'est pas un domaine de courrier actif de l'installation : aucun message n'est relayé.",
+                resolution: "Vérifiez le domaine du destinataire."
+            },
+            en: {
+                label: "Relaying denied",
+                description: "The domain of this recipient is not an active mail domain of the installation: no message is relayed.",
+                resolution: "Check the recipient domain."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:MAIL_RECIPIENT_DISABLED) THEN (
+    CREATE error_definition:MAIL_RECIPIENT_DISABLED CONTENT {
+        code: "MAIL_RECIPIENT_DISABLED",
+        module: "mail",
+        domain: "adresses",
+        category: "business",
+        severity: "error",
+        message: "Recipient mailbox disabled",
+        default_language: "fr",
+        http_status: 409,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Boîte du destinataire désactivée",
+                description: "Cette adresse mène à un compte désactivé ou en cours de suppression.",
+                resolution: "Contactez l'administrateur du domaine du destinataire."
+            },
+            en: {
+                label: "Recipient mailbox disabled",
+                description: "This address leads to a disabled account or to an account being deleted.",
+                resolution: "Contact the administrator of the recipient domain."
+            }
+        }
+    }
+) END;

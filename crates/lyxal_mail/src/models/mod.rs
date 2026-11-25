@@ -5,18 +5,23 @@
 //! `lyxal_core`) ; un champ absent prend la valeur par défaut de la fonction.
 
 mod account;
+mod block;
 mod content;
 mod domain;
 mod mailbox;
 mod message;
+mod reception;
 mod settings;
 mod types;
 
 pub use account::{
     Account, AccountCreateParams, AccountCreated, AccountGetParams, AccountList, AccountListParams,
     AccountRefParams, AccountUpdateParams, Address, AddressCreateParams, AddressList,
-    AddressListParams, AddressRefParams, AddressResolveParams, AddressUpdateParams, Quota,
-    QuotaResource, ResolvedRecipient,
+    AddressListParams, AddressRefParams, AddressUpdateParams, Quota, QuotaResource,
+};
+pub use block::{
+    ActiveBlocks, BlockActiveParams, BlockCreateParams, BlockDeleteParams, BlockListParams,
+    BlockPage, BlockReason, NetworkBlock,
 };
 pub use content::{
     AccountPurgeStep, Content, ContentAttachParams, ContentBeginParams, ContentExpired,
@@ -36,6 +41,11 @@ pub use message::{
     MessageCreateParams, MessageCursor, MessageEnvelope, MessageListParams, MessagePage,
     MessagePageNext, MessageRefParams, MessageVersion, MoveResult, MovedMessage, RemovedEntry,
     ThreadGetParams, ThreadMessages, TransferParams,
+};
+pub use reception::{
+    DeliveriesPurged, DeliveryBeginParams, DeliveryCommitParams, DeliveryCommitResult,
+    DeliveryItem, DeliveryItemError, DeliveryItemResult, DeliveryReservation, DeliveryRole,
+    Reception, RecipientAccount, RecipientResolveParams, ResolvedRecipient,
 };
 pub use settings::{
     EffectiveSettings, SettingsGetParams, SettingsSetParams, SettingsView, StoredSettings,

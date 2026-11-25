@@ -4178,6 +4178,7 @@ dependencies = [
  "lyxal_storage",
  "lyxal_surreal",
  "proptest",
+ "psl",
  "serde_json",
  "surrealdb",
  "tempfile",
@@ -5483,6 +5484,15 @@ checksum = "accf7ba1ae5e4f5b6acfb2d88d3cf68d03c333fca0260b06fb9aafcfcf22e2f5"
 dependencies = [
  "pin-project-lite",
  "tokio",
+]
+
+[[package]]
+name = "psl"
+version = "2.1.263"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ce5fe095326c5a930f8f4af012fa5494c56587bcc02311dc80a8f6827f2742e"
+dependencies = [
+ "psl-types",
 ]
 
 [[package]]

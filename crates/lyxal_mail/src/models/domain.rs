@@ -21,6 +21,10 @@ pub struct Domain {
     pub state: String,
     /// Séparateur de sous-adresse (`+`), absent : aucun.
     pub subaddress_separator: Option<String>,
+    /// Compte attrape-tout : reçoit les adresses inconnues du domaine (aucun par défaut).
+    pub catch_all: Option<MailRecordId>,
+    /// Compte qui reçoit `postmaster@<domaine>` quand aucune adresse `postmaster` n'est inscrite.
+    pub postmaster: Option<MailRecordId>,
     /// Adresses et alias du domaine (compteur tenu).
     pub address_count: i64,
     /// Création.
@@ -65,8 +69,9 @@ pub struct DomainList {
     pub next: Option<String>,
 }
 
-/// Paramètres de `fn::mail_domain_update` : un champ absent est conservé.
-#[derive(Debug, Clone, SurrealValue)]
+/// Paramètres de `fn::mail_domain_update` : un champ absent est conservé, un champ nommé dans
+/// `clear` est effacé.
+#[derive(Debug, Clone, Default, SurrealValue)]
 pub struct DomainUpdateParams {
     /// Domaine (`mail_domain:<clé>`).
     pub domain: String,
@@ -74,6 +79,13 @@ pub struct DomainUpdateParams {
     pub state: Option<String>,
     /// Séparateur de sous-adresse : `+` ou `none`.
     pub subaddress_separator: Option<String>,
+    /// Compte attrape-tout (`mail_account:<clé>`), actif et de la même organisation.
+    pub catch_all: Option<String>,
+    /// Compte qui reçoit `postmaster@<domaine>` (`mail_account:<clé>`), actif et de la même
+    /// organisation.
+    pub postmaster: Option<String>,
+    /// Champs à effacer : `catch_all`, `postmaster`.
+    pub clear: Vec<String>,
 }
 
 /// Résultat d'une suppression.

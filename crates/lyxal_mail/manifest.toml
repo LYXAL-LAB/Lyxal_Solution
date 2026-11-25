@@ -43,7 +43,9 @@ schemas = [
     "schema/06_mail_content.surql",
     "schema/07_mail_message.surql",
     "schema/08_mail_tombstone.surql",
-    "schema/09_mail_message_date.surql"
+    "schema/09_mail_message_date.surql",
+    "schema/10_mail_delivery.surql",
+    "schema/11_mail_network_block.surql"
 ]
 functions = [
     "functions/mail_access.surql",
@@ -52,7 +54,9 @@ functions = [
     "functions/mail_account.surql",
     "functions/mail_mailbox.surql",
     "functions/mail_message.surql",
-    "functions/mail_content.surql"
+    "functions/mail_content.surql",
+    "functions/mail_delivery.surql",
+    "functions/mail_block.surql"
 ]
 error_definitions = [
     "error/parametres/error_parametres.surql",
@@ -63,7 +67,9 @@ error_definitions = [
     "error/dossiers/error_dossiers.surql",
     "error/messages/error_messages.surql",
     "error/contenus/error_contenus.surql",
-    "error/quotas/error_quotas.surql"
+    "error/quotas/error_quotas.surql",
+    "error/reception/error_reception.surql",
+    "error/blocage/error_blocage.surql"
 ]
 events = ["events/mail_guards.surql", "events/mail_events.surql"]
 seeds = ["seeds/mail_auth.surql"]

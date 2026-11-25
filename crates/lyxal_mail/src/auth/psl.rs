@@ -3,14 +3,41 @@
 //! Domaine d'organisation (RFC 7489 §3.2, décision S4).
 //!
 //! [`OrganizationalDomain`] est la question posée par DMARC (et par DKIM pour refuser un `d=`
-//! qui serait un suffixe public) ; [`PublicSuffixList`] y répond à partir d'une liste au format
-//! de la « Public Suffix List » (<https://publicsuffix.org/list/>), algorithme réécrit depuis sa
-//! description publique. **Aucune liste n'est embarquée dans ce crate** : la source des données
-//! (crate permissive ou fichier sous MPL-2.0) attend la décision S4 ; l'appelant charge le texte
-//! de la liste.
+//! qui serait un suffixe public). Deux réponses :
+//!
+//! * [`EmbeddedSuffixList`] : la « Public Suffix List » (<https://publicsuffix.org/list/>)
+//!   embarquée par la crate `psl`, à version figée (décision S4) ; c'est la liste du serveur ;
+//! * [`PublicSuffixList`] : une liste au même format fournie par l'appelant (essais), algorithme
+//!   réécrit depuis sa description publique.
 
 use super::domain::to_ascii_domain;
 use std::collections::HashSet;
+
+/// Liste des suffixes publics embarquée (crate `psl`, version figée dans `Cargo.toml` : la liste
+/// est celle du jour de publication de cette version ; mise à jour par plan, décision P14).
+///
+/// La crate compare des noms en Unicode : un nom en forme ASCII (A-label) est converti pour la
+/// recherche, et le domaine d'organisation est rendu dans la forme reçue (mêmes étiquettes).
+/// Règle par défaut `*` : un domaine de premier niveau inconnu de la liste est un suffixe.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct EmbeddedSuffixList;
+
+impl OrganizationalDomain for EmbeddedSuffixList {
+    fn organizational_domain(&self, domain: &str) -> Option<String> {
+        let labels: Vec<&str> = domain.split('.').collect();
+        if labels.iter().any(|label| label.is_empty()) {
+            return None;
+        }
+        let (unicode, converted) = idna::domain_to_unicode(domain);
+        converted.ok()?;
+        let kept = psl::domain_str(&unicode)?.split('.').count();
+        labels
+            .len()
+            .checked_sub(kept)
+            .and_then(|start| labels.get(start..))
+            .map(|organizational| organizational.join("."))
+    }
+}
 
 /// Taille maximale du texte d'une liste, en octets.
 pub const MAX_LIST_BYTES: usize = 4 * 1024 * 1024;
@@ -148,6 +175,37 @@ pub(crate) mod tests {
             Some("y.xn--bcher-kva.example".into())
         );
         assert_eq!(org("a..b"), None);
+    }
+
+    #[test]
+    fn liste_embarquee() {
+        let org = |domain: &str| EmbeddedSuffixList.organizational_domain(domain);
+        assert_eq!(org("example.com"), Some("example.com".into()));
+        assert_eq!(org("a.b.example.com"), Some("example.com".into()));
+        assert_eq!(org("com"), None);
+        assert_eq!(org("mail.example.co.uk"), Some("example.co.uk".into()));
+        assert_eq!(org("co.uk"), None);
+        // Joker et exception de la liste publique (`*.ck`, `!www.ck`)
+        assert_eq!(org("a.b.ck"), Some("a.b.ck".into()));
+        assert_eq!(org("b.ck"), None);
+        assert_eq!(org("x.www.ck"), Some("www.ck".into()));
+        // Suffixe en Unicode dans la liste (公司.cn), nom reçu en forme ASCII
+        assert_eq!(
+            org("mail.exemple.xn--55qx5d.cn"),
+            Some("exemple.xn--55qx5d.cn".into())
+        );
+        assert_eq!(org("xn--55qx5d.cn"), None);
+        // Étiquette en forme ASCII hors du suffixe : rendue telle qu'elle est reçue
+        assert_eq!(
+            org("a.xn--bcher-kva.example.org"),
+            Some("example.org".into())
+        );
+        assert_eq!(org("www.xn--bcher-kva.de"), Some("xn--bcher-kva.de".into()));
+        // Règle par défaut `*` : domaine de premier niveau inconnu de la liste
+        assert_eq!(org("a.b.inconnu-lyxal"), Some("b.inconnu-lyxal".into()));
+        assert_eq!(org("inconnu-lyxal"), None);
+        assert_eq!(org("a..b"), None);
+        assert_eq!(org(""), None);
     }
 
     #[test]

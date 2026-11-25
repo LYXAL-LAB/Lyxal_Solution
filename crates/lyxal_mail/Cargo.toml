@@ -34,6 +34,10 @@ hickory-resolver = { version = "0.26", default-features = false, features = ["to
 # Domaines Unicode convertis en forme ASCII (A-label) avant toute requête DNS (décision S16 ;
 # MIT OR Apache-2.0, données Unicode-3.0, déjà dans l'arbre).
 idna = "1.1"
+# Liste des suffixes publics embarquée (décision S4) : domaine d'organisation de DMARC. Version
+# figée (la liste est celle du jour de publication de la crate) ; mise à jour par plan (décision
+# P14). Licence déclarée de la crate : MIT/Apache-2.0 ; données de la liste : MPL-2.0 (Mozilla).
+psl = "=2.1.263"
 
 [dev-dependencies]
 proptest = "1.5"

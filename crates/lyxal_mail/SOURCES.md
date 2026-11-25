@@ -220,9 +220,10 @@ quand le lot 5b a été écrit : **SPF, la lecture des balises DKIM, DMARC, `ipr
 `Authentication-Results` sont écrits depuis les RFC** (7208, 6376, 8301, 8463, 7489, 8601 ;
 RFC 8617 lue seulement, ARC au lot 7), sans code de `mail-auth` ni de Mox. Le clone de
 `mail-auth` fait ensuite pour l'oracle (S2) n'a servi qu'à en lire l'interface publique. La
-liste des suffixes publics n'est **pas** embarquée (décision S4 en attente, voir
-`src/auth/psl.rs`) : l'algorithme de <https://publicsuffix.org/list/> est réécrit depuis sa
-description, les essais utilisent une liste de neuf règles écrite pour Lyxal.
+liste des suffixes publics est embarquée par une crate (décision S4, lot 5c, voir §3.2) ;
+l'algorithme de <https://publicsuffix.org/list/> est aussi réécrit depuis sa description pour une
+liste fournie par l'appelant (`PublicSuffixList`), et les essais utilisent une liste de neuf
+règles écrite pour Lyxal.
 
 | Élément de Lyxal (fichier ou dossier) | Projet | Commit | Licence | Chemin d'origine | Nature (porté / modèle) | Lot |
 | :--- | :--- | :--- | :--- | :--- | :--- | :- |
@@ -236,6 +237,25 @@ description, les essais utilisent une liste de neuf règles écrite pour Lyxal.
 
 La suite d'essais SPF de la RFC 7208 (format YAML, présente dans `resources/spf/` de
 `mail-auth`) n'est pas reprise : sa licence n'est pas vérifiée (plan du lot 5, §19).
+
+### 3.2. Lot 5c : remise et liste des suffixes publics
+
+Le SurrealQL de la réception (`schema/10_mail_delivery.surql`, `schema/11_mail_network_block.surql`,
+`functions/mail_delivery.surql`, `functions/mail_block.surql`, l'événement
+`mail.message.received`) et le service de remise (`src/delivery.rs`, `MailIngest::receive`) sont
+**écrits pour Lyxal** depuis le plan du lot 5 (§9, §10.3) : aucun code de Stalwart ni de Mox n'y
+est repris (Mox sert de modèle pour une seule règle : préférer un doublon à une perte, RFC 5321
+§6.1). Le cache des clés « fichiers » (`crates/lyxal_secrets/src/files.rs`, `MIT OR Apache-2.0`)
+est écrit pour Lyxal, sans code AGPL.
+
+| Élément de Lyxal | Source | Version | Licence | Nature |
+| :--- | :--- | :--- | :--- | :--- |
+| `src/auth/psl.rs` (`EmbeddedSuffixList`) | crate `psl` (<https://github.com/addr-rs/psl>), dépendance de `lyxal_mail` | `=2.1.263` (figée dans `Cargo.toml` ; somme de contrôle dans `Cargo.lock`) ; avec `psl-types` 2.0.11, déjà dans l'arbre par `addr` | licence déclarée de la crate : `MIT/Apache-2.0` (acceptée par `cargo deny check licenses`, sans exception) ; la crate embarque, compilée en code Rust, la « Public Suffix List » de Mozilla (<https://publicsuffix.org/list/>), dont le texte est sous **MPL-2.0** | dépendance (décision S4) : aucune ligne de la liste n'est copiée dans le dépôt ; la liste est celle du jour de publication de la version figée ; mise à jour par plan (décision P14) |
+
+La licence déclarée par la crate `psl` ne mentionne pas la MPL-2.0 des données qu'elle embarque
+(fichier `data/rules.txt` et code généré `src/list.rs` de la crate) : point signalé au CTO avec
+le lot 5c ; le repli de la décision S4 (fichier de la liste copié sous MPL-2.0, exception nommée
+dans `deny.toml`) reste possible sans changer `OrganizationalDomain`.
 
 Chaque fichier porté garde son en-tête `SPDX-FileCopyrightText` d'origine, déclare sa licence
 retenue (`AGPL-3.0-only` pour Stalwart, `MIT` pour Mox) et décrit ses modifications pour Lyxal

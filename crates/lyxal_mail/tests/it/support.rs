@@ -43,11 +43,64 @@ impl ResourceProvider for DirResourceProvider {
     }
 }
 
-pub async fn installed_client() -> Surreal<Any> {
+/// Base embarquée en mémoire (`mem://`), ns et base des essais choisis.
+pub async fn embedded() -> Surreal<Any> {
     let client = surrealdb::engine::any::connect("mem://")
         .await
         .expect("connexion");
     client.use_ns(NS).use_db(DB).await.expect("ns/db");
+    client
+}
+
+/// Base d'un serveur SurrealDB 3.3.4 réel pour les mesures, si `LYXAL_SURREAL_WS_URL`
+/// (`ws://hôte:port`), `LYXAL_SURREAL_USER` et `LYXAL_SURREAL_PASS` (compte racine du serveur
+/// d'essai) sont posés ; une base neuve par appel. Sinon `None`. Rend trois clients (courrier,
+/// stockage, coffre-fort) : une seule connexion partagée, ou une connexion par service si
+/// `LYXAL_SURREAL_CONNECTIONS=services` (un serveur SurrealDB exécute une à une les requêtes
+/// d'une même connexion).
+pub async fn remote() -> Option<([Surreal<Any>; 3], &'static str)> {
+    let url = std::env::var("LYXAL_SURREAL_WS_URL").ok()?;
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("horloge")
+        .as_nanos();
+    let database = format!("mesures_{nanos}");
+    let first = remote_connection(&url, &database).await;
+    if std::env::var("LYXAL_SURREAL_CONNECTIONS").as_deref() == Ok("services") {
+        let second = remote_connection(&url, &database).await;
+        let third = remote_connection(&url, &database).await;
+        Some((
+            [first, second, third],
+            "serveur SurrealDB (ws://), une connexion par service",
+        ))
+    } else {
+        Some((
+            [first.clone(), first.clone(), first],
+            "serveur SurrealDB (ws://), une connexion",
+        ))
+    }
+}
+
+async fn remote_connection(url: &str, database: &str) -> Surreal<Any> {
+    let username = std::env::var("LYXAL_SURREAL_USER").expect("LYXAL_SURREAL_USER");
+    let password = std::env::var("LYXAL_SURREAL_PASS").expect("LYXAL_SURREAL_PASS");
+    let client = surrealdb::engine::any::connect(url)
+        .await
+        .expect("connexion ws://");
+    client
+        .signin(surrealdb::opt::auth::Root { username, password })
+        .await
+        .expect("session root");
+    client.use_ns(NS).use_db(database).await.expect("ns/db");
+    client
+}
+
+pub async fn installed_client() -> Surreal<Any> {
+    install(embedded().await).await
+}
+
+/// Installe le socle et les modules dans la base du client, comme le fait l'hôte.
+pub async fn install(client: Surreal<Any>) -> Surreal<Any> {
     let crates = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .expect("dossier crates")
@@ -108,6 +161,10 @@ pub struct Bench {
     pub system: MailStore,
     pub storage_store: StorageStore,
     pub backends: Arc<Backends>,
+    /// Stockage de l'hôte (session système, clés de fichiers).
+    pub storage: StorageService,
+    /// Clés « fichiers » du coffre-fort (mesures).
+    pub file_keys: FileKeys,
     pub ingest: MailIngest,
     pub content: MailContent,
     pub maintenance: MailMaintenance,
@@ -128,7 +185,32 @@ pub struct Person {
 }
 
 pub async fn bench() -> Bench {
-    let client = installed_client().await;
+    bench_on(installed_client().await).await
+}
+
+/// Banc des mesures : sur le serveur SurrealDB désigné par `LYXAL_SURREAL_WS_URL` s'il est posé,
+/// sinon sur la base embarquée. Rend aussi le nom du moteur mesuré.
+pub async fn measure_bench() -> (Bench, &'static str) {
+    match remote().await {
+        Some(([mail, storage, secrets], engine)) => {
+            let mail = install(mail).await;
+            (bench_with(mail, storage, secrets).await, engine)
+        }
+        None => (bench().await, "base embarquée (mem://)"),
+    }
+}
+
+/// Banc sur une base installée, tous les services sur la même connexion.
+pub async fn bench_on(client: Surreal<Any>) -> Bench {
+    bench_with(client.clone(), client.clone(), client).await
+}
+
+/// Banc sur une base installée : client du courrier, du stockage et du coffre-fort.
+pub async fn bench_with(
+    client: Surreal<Any>,
+    storage_client: Surreal<Any>,
+    secrets_client: Surreal<Any>,
+) -> Bench {
     let master = master();
     let root = tempfile::tempdir().expect("dossier temporaire");
     let backends = Arc::new(
@@ -141,16 +223,17 @@ pub async fn bench() -> Bench {
             )
             .expect("support"),
     );
-    let storage_store = StorageStore::new(client.clone());
-    let storage = StorageService::new(storage_store.clone(), backends.clone()).with_file_keys(
-        FileKeys::new(SecretsStore::new(client.clone()), Some(master.clone())),
-        storage_store.clone(),
-    );
+    let storage_store = StorageStore::new(storage_client);
+    let file_keys = FileKeys::new(SecretsStore::new(secrets_client), Some(master.clone()));
+    let storage = StorageService::new(storage_store.clone(), backends.clone())
+        .with_file_keys(file_keys.clone(), storage_store.clone());
     let system = MailStore::new(client.clone());
     let bench = Bench {
         ingest: MailIngest::new(system.clone(), storage.clone(), "default"),
         content: MailContent::new(storage.clone()),
         maintenance: MailMaintenance::new(system.clone(), 100),
+        storage,
+        file_keys,
         client,
         system,
         storage_store,
