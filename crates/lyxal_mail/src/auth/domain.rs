@@ -31,6 +31,19 @@ pub fn is_valid_domain(name: &str, allow_underscore: bool) -> bool {
     !last.bytes().all(|byte| byte.is_ascii_digit())
 }
 
+/// Vrai si `name` (sans point final) est un nom DNS interrogeable : étiquettes de 1 à 63 octets
+/// d'ASCII imprimable, 253 octets au plus. Plus large que [`is_valid_domain`] : un nom produit
+/// par une macro SPF n'est pas un nom d'hôte (`user+tag._spf.example.com`, RFC 7208 §4.8).
+pub fn is_valid_dns_name(name: &str) -> bool {
+    !name.is_empty()
+        && name.len() <= MAX_NAME_BYTES
+        && name.split('.').all(|label| {
+            !label.is_empty()
+                && label.len() <= MAX_LABEL_BYTES
+                && label.bytes().all(|byte| byte.is_ascii_graphic())
+        })
+}
+
 /// Vrai si le nom compte au moins deux étiquettes (RFC 7208 §4.3 : « multi-label »).
 pub fn is_multi_label(name: &str) -> bool {
     name.contains('.')

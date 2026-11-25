@@ -12,7 +12,9 @@
 
 mod record;
 
-use super::domain::{is_multi_label, is_same_or_subdomain, is_valid_domain, to_ascii_domain};
+use super::domain::{
+    is_multi_label, is_same_or_subdomain, is_valid_dns_name, is_valid_domain, to_ascii_domain,
+};
 use crate::dns::{DnsError, MailResolver, MAX_NAME_BYTES, MAX_POLICY_TXT_BYTES};
 use record::{in_network, MacroString, MacroToken, Mechanism, Qualifier, SpfRecord};
 use std::future::Future;
@@ -114,6 +116,9 @@ struct State {
     helo: String,
     dns_terms: usize,
     void_lookups: usize,
+    /// Noms inverses confirmés de `ip`, cherchés une fois par évaluation (mécanisme `ptr` et
+    /// macro `%{p}`).
+    validated_names: Option<Result<Vec<String>, DnsError>>,
 }
 
 type BoxFuture<'b, T> = Pin<Box<dyn Future<Output = T> + Send + 'b>>;
@@ -181,6 +186,7 @@ impl<'a> SpfVerifier<'a> {
             helo: helo_domain(helo).unwrap_or_else(|| helo.to_ascii_lowercase()),
             dns_terms: 0,
             void_lookups: 0,
+            validated_names: None,
         };
         let result = match tokio::time::timeout(
             self.limits.timeout,
@@ -369,7 +375,7 @@ impl<'a> SpfVerifier<'a> {
             Mechanism::Ptr(spec) => {
                 self.count_dns_term(state)?;
                 let target = self.target(state, domain, spec.as_ref()).await?;
-                let names = match self.validated_names(state.ip).await {
+                let names = match self.validated_names(state).await {
                     Ok(names) => names,
                     Err(DnsError::NotFound | DnsError::NoRecords) => {
                         self.count_void(state)?;
@@ -409,8 +415,18 @@ impl<'a> SpfVerifier<'a> {
     }
 
     /// Noms inverses de l'adresse confirmés par une requête A ou AAAA (§5.5), dans la limite de
-    /// [`SpfLimits::names_per_lookup`] noms lus.
-    async fn validated_names(&self, ip: IpAddr) -> Result<Vec<String>, DnsError> {
+    /// [`SpfLimits::names_per_lookup`] noms lus. Cherchés une seule fois par évaluation : un
+    /// enregistrement qui répète `%{p}` ne multiplie pas les requêtes (§4.6.4).
+    async fn validated_names(&self, state: &mut State) -> Result<Vec<String>, DnsError> {
+        if let Some(known) = &state.validated_names {
+            return known.clone();
+        }
+        let found = self.lookup_validated_names(state.ip).await;
+        state.validated_names = Some(found.clone());
+        found
+    }
+
+    async fn lookup_validated_names(&self, ip: IpAddr) -> Result<Vec<String>, DnsError> {
         let answer = self.resolver.ptr(ip).await?;
         let mut validated = Vec::new();
         for name in answer.records.iter().take(self.limits.names_per_lookup) {
@@ -433,7 +449,10 @@ impl<'a> SpfVerifier<'a> {
         let expanded = self.expand(state, domain, spec).await?;
         let expanded = expanded.strip_suffix('.').unwrap_or(&expanded);
         let name = truncate_name(expanded).to_ascii_lowercase();
-        if !is_valid_domain(&name, true) {
+        // Étiquettes de gauche : tout nom DNS (une partie locale peut porter `+`) ; dernière
+        // étiquette : un `toplabel` (lettres, chiffres, `-`, pas entièrement numérique).
+        let top_label = name.rsplit('.').next().unwrap_or_default();
+        if !is_valid_dns_name(&name) || !is_valid_domain(top_label, false) {
             return Err(SpfResult::PermError);
         }
         Ok(name)
@@ -465,7 +484,7 @@ impl<'a> SpfVerifier<'a> {
                         b'i' => ip_macro(state.ip),
                         b'v' => if state.ip.is_ipv4() { "in-addr" } else { "ip6" }.to_string(),
                         b'h' => state.helo.clone(),
-                        b'p' => self.p_macro(state.ip, domain).await,
+                        b'p' => self.p_macro(state, domain).await,
                         _ => return Err(SpfResult::PermError),
                     };
                     let transformed = transform(&value, *digits, *reverse, delimiters);
@@ -485,8 +504,8 @@ impl<'a> SpfVerifier<'a> {
 
     /// Macro `%{p}` : nom inverse confirmé, de préférence `domain` ou l'un de ses sous-domaines
     /// (§7.3) ; `unknown` sinon.
-    async fn p_macro(&self, ip: IpAddr, domain: &str) -> String {
-        let Ok(names) = self.validated_names(ip).await else {
+    async fn p_macro(&self, state: &mut State, domain: &str) -> String {
+        let Ok(names) = self.validated_names(state).await else {
             return "unknown".to_string();
         };
         names

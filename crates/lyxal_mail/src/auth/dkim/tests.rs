@@ -126,7 +126,7 @@ fn sign(message: &str, key: &DkimSigningKey, tags: &str, length: Option<u64>) ->
     for name in get("h").unwrap().split(':') {
         let lower = name.trim().to_ascii_lowercase();
         let count = used.entry(lower.clone()).or_insert(0);
-        if let Some(position) = index.nth_from_bottom(&lower, *count) {
+        if let Some(position) = index.nth_from_bottom(&lower, *count, None) {
             *count += 1;
             let field = headers.fields[position];
             canonicalizer.push_header(field.name, field.value).unwrap();
@@ -454,4 +454,29 @@ async fn messages_sans_signature_et_signatures_nombreuses() {
         .verify(b" mal\r\n\r\n")
         .await;
     assert_eq!(outputs, vec![DkimOutput::bare(DkimResult::PermError)]);
+}
+
+/// Une signature qui signe aussi `DKIM-Signature` (surnommé) ne se compte pas elle-même parmi
+/// les en-têtes signés (RFC 6376 §3.5).
+#[tokio::test]
+async fn la_signature_verifiee_n_est_pas_un_en_tete_signe() {
+    let ed = ed25519();
+    let mut resolver = StaticResolver::new();
+    resolver.set_txt("ed._domainkey.example.org", &[&key_record(&ed, "")]);
+    let first = sign(MESSAGE, &ed, ED_TAGS, None);
+    let tags = ED_TAGS.replace(
+        "h=from:to:subject:date;",
+        "h=from:dkim-signature:dkim-signature;",
+    );
+    let second = sign(&first, &ed, &tags, None);
+    let outputs = DkimVerifier::at(&resolver, NOW)
+        .verify(second.as_bytes())
+        .await;
+    assert_eq!(
+        outputs
+            .iter()
+            .map(|output| output.result)
+            .collect::<Vec<_>>(),
+        vec![DkimResult::Pass, DkimResult::Pass]
+    );
 }

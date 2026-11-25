@@ -24,6 +24,7 @@ fn state(ip_text: &str) -> State {
         helo: "mx.mox.example".into(),
         dns_terms: 0,
         void_lookups: 0,
+        validated_names: None,
     }
 }
 
@@ -540,4 +541,49 @@ async fn delai_total() {
         .check_mail_from(ip("1.2.3.4"), "h.example", "x@lent.example")
         .await;
     assert_eq!(output.result, SpfResult::TempError);
+}
+
+/// Un nom produit par une macro est un nom DNS, pas un nom d'hôte : `+` de la partie locale et
+/// `%2B` de la forme échappée sont interrogés tels quels (RFC 7208 §4.8, §7.3).
+#[tokio::test]
+async fn cible_de_macro_hors_des_noms_d_hote() {
+    let mut resolver = StaticResolver::new();
+    resolver
+        .set_txt("plus.example", &["v=spf1 exists:%{l}._spf.%{d} -all"])
+        .set_ips("user+tag._spf.plus.example", &[ip("127.0.0.2")])
+        .set_txt("escaped.example", &["v=spf1 exists:%{L}._spf.%{d} -all"])
+        .set_ips("user%2btag._spf.escaped.example", &[ip("127.0.0.2")]);
+    for domain in ["plus.example", "escaped.example"] {
+        assert_eq!(
+            result(&resolver, "192.0.2.1", &format!("user+tag@{domain}")).await,
+            SpfResult::Pass,
+            "{domain}"
+        );
+    }
+    // Une étiquette vide ou trop longue reste une erreur.
+    resolver.set_txt("vide.example", &["v=spf1 exists:%{l}._spf.%{d} -all"]);
+    assert_eq!(
+        result(&resolver, "192.0.2.1", "a..b@vide.example").await,
+        SpfResult::PermError
+    );
+}
+
+/// `%{p}` : les noms inverses sont cherchés une seule fois par évaluation, quel que soit le
+/// nombre de macros (RFC 7208 §4.6.4).
+#[tokio::test]
+async fn macro_p_cherchee_une_fois() {
+    let mut resolver = StaticResolver::new();
+    resolver
+        .set_txt(
+            "p.example",
+            &["v=spf1 exists:%{p1}.%{p1}.%{p1}.%{p1}.x.%{d} exists:%{p}.y.%{d} ptr -all"],
+        )
+        .set_ptr(ip("192.0.2.1"), &["host.p.example"])
+        .set_ips("host.p.example", &[ip("192.0.2.1")]);
+    assert_eq!(
+        result(&resolver, "192.0.2.1", "a@p.example").await,
+        SpfResult::Pass
+    );
+    // TXT, PTR, A de confirmation, puis une requête par `exists`.
+    assert_eq!(resolver.queries(), 5);
 }

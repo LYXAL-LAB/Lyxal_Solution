@@ -141,10 +141,11 @@ impl<'a> DkimVerifier<'a> {
     /// Vérifie les signatures d'un message déjà découpé : un résultat par signature (les
     /// [`MAX_VERIFIED_SIGNATURES`] premières, du haut vers le bas), ou un seul `none`.
     pub async fn verify_headers(&self, headers: &MessageHeaders<'_>) -> Vec<DkimOutput> {
-        let signatures: Vec<&HeaderField<'_>> = headers
+        let signatures: Vec<(usize, &HeaderField<'_>)> = headers
             .fields
             .iter()
-            .filter(|field| field.is("DKIM-Signature"))
+            .enumerate()
+            .filter(|(_, field)| field.is("DKIM-Signature"))
             .take(MAX_VERIFIED_SIGNATURES)
             .collect();
         if signatures.is_empty() {
@@ -152,8 +153,8 @@ impl<'a> DkimVerifier<'a> {
         }
         let index = HeaderIndex::new(headers);
         let mut outputs = Vec::with_capacity(signatures.len());
-        for field in signatures {
-            outputs.push(self.verify_one(headers, &index, field).await);
+        for (position, field) in signatures {
+            outputs.push(self.verify_one(headers, &index, position, field).await);
         }
         outputs
     }
@@ -162,6 +163,7 @@ impl<'a> DkimVerifier<'a> {
         &self,
         headers: &MessageHeaders<'_>,
         index: &HeaderIndex,
+        position: usize,
         field: &HeaderField<'_>,
     ) -> DkimOutput {
         let signature = match Signature::parse(field.value) {
@@ -188,7 +190,14 @@ impl<'a> DkimVerifier<'a> {
             testing: false,
         };
         output.result = self
-            .evaluate(headers, index, field, &signature, &mut output.testing)
+            .evaluate(
+                headers,
+                index,
+                position,
+                field,
+                &signature,
+                &mut output.testing,
+            )
             .await;
         output
     }
@@ -197,6 +206,7 @@ impl<'a> DkimVerifier<'a> {
         &self,
         headers: &MessageHeaders<'_>,
         index: &HeaderIndex,
+        position: usize,
         field: &HeaderField<'_>,
         signature: &Signature,
         testing: &mut bool,
@@ -279,7 +289,7 @@ impl<'a> DkimVerifier<'a> {
         for name in &signature.signed_headers {
             let lower = name.to_ascii_lowercase();
             let count = used.entry(lower.clone()).or_insert(0);
-            if let Some(selected) = index.nth_from_bottom(&lower, *count) {
+            if let Some(selected) = index.nth_from_bottom(&lower, *count, Some(position)) {
                 *count += 1;
                 if let Some(selected) = headers.fields.get(selected) {
                     if canonicalizer
@@ -346,12 +356,16 @@ impl HeaderIndex {
         Self { positions }
     }
 
-    /// `n`-ième champ de ce nom en partant du bas (0 : le dernier).
-    fn nth_from_bottom(&self, name: &str, n: usize) -> Option<usize> {
+    /// `n`-ième champ de ce nom en partant du bas (0 : le dernier), sans compter le champ
+    /// `excluded` : la signature en cours de vérification n'est jamais l'un de ses propres
+    /// en-têtes signés (RFC 6376 §3.5).
+    fn nth_from_bottom(&self, name: &str, n: usize, excluded: Option<usize>) -> Option<usize> {
         self.positions
-            .get(name)
-            .and_then(|list| list.get(n))
+            .get(name)?
+            .iter()
             .copied()
+            .filter(|position| Some(*position) != excluded)
+            .nth(n)
     }
 }
 
