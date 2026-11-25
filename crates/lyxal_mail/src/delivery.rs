@@ -121,6 +121,7 @@ pub struct QueueStats {
 
 /// Inscription en attente de son tour.
 struct Waiting {
+    ticket: u64,
     item: DeliveryItem,
     reply: oneshot::Sender<MailResult<DeliveryOutcome>>,
 }
@@ -130,16 +131,61 @@ struct Waiting {
 struct Compartment {
     waiting: Mutex<HashMap<String, VecDeque<Waiting>>>,
     turn: tokio::sync::Mutex<()>,
+    tickets: AtomicU64,
+}
+
+/// Place d'une inscription dans la file de son compte. Lâchée avant que l'inscription soit
+/// prise dans un lot (remise abandonnée par son appelant : délai dépassé, connexion fermée),
+/// elle retire l'inscription de la file : rien n'y reste sans appelant.
+struct Ticket<'a> {
+    compartment: &'a Compartment,
+    account: &'a str,
+    ticket: u64,
+}
+
+impl Drop for Ticket<'_> {
+    fn drop(&mut self) {
+        let mut waiting = self
+            .compartment
+            .waiting
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        if let Some(queue) = waiting.get_mut(self.account) {
+            queue.retain(|entry| entry.ticket != self.ticket);
+            if queue.is_empty() {
+                waiting.remove(self.account);
+            }
+        }
+    }
 }
 
 impl Compartment {
-    fn push(&self, account: &str, waiting: Waiting) {
+    /// Met l'inscription en file ; rend sa place et le canal de sa réponse.
+    fn enqueue<'a>(
+        &'a self,
+        account: &'a str,
+        item: DeliveryItem,
+    ) -> (Ticket<'a>, oneshot::Receiver<MailResult<DeliveryOutcome>>) {
+        let (reply, answer) = oneshot::channel();
+        let ticket = self.tickets.fetch_add(1, Ordering::Relaxed);
         self.waiting
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .entry(account.to_string())
             .or_default()
-            .push_back(waiting);
+            .push_back(Waiting {
+                ticket,
+                item,
+                reply,
+            });
+        (
+            Ticket {
+                compartment: self,
+                account,
+                ticket,
+            },
+            answer,
+        )
     }
 
     /// Les plus anciennes inscriptions en attente du compte, [`MAX_BATCH`] au plus.
@@ -206,8 +252,7 @@ impl AccountQueue {
         let Some(compartment) = self.compartment(account) else {
             return Err(interrupted());
         };
-        let (reply, mut answer) = oneshot::channel();
-        compartment.push(account, Waiting { item, reply });
+        let (_ticket, mut answer) = compartment.enqueue(account, item);
         self.items.fetch_add(1, Ordering::Relaxed);
         loop {
             tokio::select! {
@@ -325,6 +370,7 @@ fn interrupted() -> MailError {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 
@@ -353,6 +399,50 @@ mod tests {
             key,
             delivery_key("marie@alpha.test", "paul@ailleurs.test", b"message")
         );
+    }
+
+    fn item(key: &str) -> DeliveryItem {
+        let raw = b"From: a@alpha.test\r\nSubject: essai\r\n\r\ncorps\r\n";
+        let parsed = lyxal_mail_proto::mime::parse(raw, &Default::default()).expect("message");
+        crate::mime::delivery_item(
+            &parsed,
+            crate::models::MailDatetime::now(),
+            crate::models::DeliveryRole::Inbox,
+            key.to_string(),
+            crate::models::Reception {
+                spf: "none".to_string(),
+                dkim: "none".to_string(),
+                dmarc: "none".to_string(),
+                iprev: "pass".to_string(),
+                antivirus: "not_scanned".to_string(),
+                spam: "none".to_string(),
+                tls: false,
+            },
+        )
+    }
+
+    #[test]
+    fn an_abandoned_commit_leaves_nothing_in_the_queue() {
+        let compartment = Compartment::default();
+        let (first, _first_answer) = compartment.enqueue("mail_account:a", item("1"));
+        let (second, _second_answer) = compartment.enqueue("mail_account:a", item("2"));
+        // Remise abandonnée avant son tour : retirée, l'autre garde sa place
+        drop(first);
+        let left = compartment.take("mail_account:a");
+        assert_eq!(left.len(), 1);
+        assert_eq!(left[0].item.delivery_key, "2");
+        // Déjà prise dans un lot : lâcher sa place ne retire rien d'autre
+        let (third, _third_answer) = compartment.enqueue("mail_account:a", item("3"));
+        drop(second);
+        assert_eq!(compartment.take("mail_account:a").len(), 1);
+        drop(third);
+        let (last, _last_answer) = compartment.enqueue("mail_account:b", item("4"));
+        drop(last);
+        assert!(compartment
+            .waiting
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .is_empty());
     }
 
     #[test]
