@@ -9,7 +9,6 @@ Ce dossier regroupe les feuilles de route stratégiques et d'intégration transv
 
 2. **Feuilles de Route des Modules** :
    - [`ROADMAP_NOYAU.md`](./ROADMAP_NOYAU.md) — Ordre de création des crates du noyau technique à créer (programme courrier, agendas et contacts : `lyxal_mail_proto`, `lyxal_mail`, `lyxal_dav`, `lyxal_calendar`, `lyxal_contacts`, hôte `lyxal-groupware`).
-  - [`implementation_plan_performance.md`](./implementation_plan_performance.md) — Plan courant : débit de la remise du courrier (constat mesuré, causes, corrections prototypées, décisions P1 à P11 à valider par le CTO ; supprimé une fois exécuté).
    - [`crates/lyxal_mail_proto/ROADMAP.md`](../../crates/lyxal_mail_proto/ROADMAP.md) — Syntaxes du courrier (créé au lot 4 : lecture MIME) : lots du programme, essais réels.
    - [`crates/lyxal_mail/ROADMAP.md`](../../crates/lyxal_mail/ROADMAP.md) — Serveur de courrier (à créer) : lots du programme, chiffrement des boîtes (niveaux A, B, C), webmail et alias à venir, essais réels.
    - [`crates/lyxal_dav/ROADMAP.md`](../../crates/lyxal_dav/ROADMAP.md) — Socle WebDAV, iCalendar et vCard (à créer) : lots du programme, essais réels.

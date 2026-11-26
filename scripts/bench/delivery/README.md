@@ -1,7 +1,6 @@
 # Banc SurrealQL de la remise d'un message
 
-Banc du plan de performance de la remise du courrier
-(`docs/14-roadmap/implementation_plan_performance.md`, sous-lot 0). Il mesure le temps de calcul
+Banc de performance de la remise du courrier. Il mesure le temps de calcul
 de la base pour une remise, sans écriture de fichier ni chiffrement ; la remise entière
 (`MailIngest::receive`) est mesurée par le banc Rust `crates/lyxal_mail/tests/it/measures.rs`.
 

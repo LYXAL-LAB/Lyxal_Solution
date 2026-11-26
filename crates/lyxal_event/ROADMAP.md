@@ -16,6 +16,11 @@ l'objet d'un `implementation_plan.md` validé par le CTO avant tout développeme
   du handler. Plusieurs hôtes écoutant un même type fonctionnent déjà (un abonnement par hôte).
   À lever avant le premier cas dans `lyxal-groupware` (décision H9 (a) du plan « plusieurs
   hôtes sur une même base », exécuté).
+- [ ] Publication en une seule écriture : `fn::event_publish` crée la fiche de `event_outbox`
+  en `pending`, puis `fn::event_fanout` la réécrit en `fanned_out`. La créer directement en
+  `fanned_out` (identifiant tiré avant, livraisons créées d'abord) économiserait 0,3 à 0,6 ms
+  par événement, mais `fn::event_publish` rendrait `status: "fanned_out"` au lieu de `pending`
+  (aucun appelant ne lit ce champ aujourd'hui). À décider avec la prochaine mesure du débit.
 - [ ] Rôle du filtre `instance_id` du worker (décision H9 (b)) : il ne sépare pas les hôtes (les
   événements émis par la base portent le contexte `default`, les hôtes le laissent vide) ;
   le garder avec un usage défini, ou le retirer.
