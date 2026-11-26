@@ -93,15 +93,17 @@ async fn files_are_sent_served_and_protected_through_http() {
     );
     let config = Arc::new(config_with("storage_routes", &extra));
     let client = database("storage_routes").await;
-    let started = runtime::start(&config, &client).await.expect("démarrage");
-    let host = auth::host(&client, &config, Some(crypto()))
+    let started = runtime::start(&config, &client.clone().into())
+        .await
+        .expect("démarrage");
+    let host = auth::host(&client.clone().into(), &config, Some(crypto()))
         .expect("service")
         .expect("service configuré");
     auth::complete_services(Some(&host)).await.expect("clés");
     let context = |auth, storage| {
         build_router(AppContext::new(
             config.clone(),
-            Arc::new(client.clone()),
+            client.clone().into(),
             HealthRegistry::default(),
             Metrics::default(),
             started.runtime.clone(),
@@ -648,14 +650,16 @@ async fn a_bucket_on_an_s3_backend_is_served_by_the_same_routes() {
     );
     let config = Arc::new(config);
     let client = database("storage_routes_s3").await;
-    let started = runtime::start(&config, &client).await.expect("démarrage");
-    let host = auth::host(&client, &config, Some(crypto()))
+    let started = runtime::start(&config, &client.clone().into())
+        .await
+        .expect("démarrage");
+    let host = auth::host(&client.clone().into(), &config, Some(crypto()))
         .expect("service")
         .expect("service configuré");
     auth::complete_services(Some(&host)).await.expect("clés");
     let router = build_router(AppContext::new(
         config.clone(),
-        Arc::new(client.clone()),
+        client.clone().into(),
         HealthRegistry::default(),
         Metrics::default(),
         started.runtime.clone(),
@@ -809,8 +813,10 @@ async fn content_is_checked_and_only_safe_types_are_shown_inline() {
     );
     let config = Arc::new(config_with("storage_routes_content", &extra));
     let client = database("storage_routes_content").await;
-    let started = runtime::start(&config, &client).await.expect("démarrage");
-    let host = auth::host(&client, &config, Some(crypto()))
+    let started = runtime::start(&config, &client.clone().into())
+        .await
+        .expect("démarrage");
+    let host = auth::host(&client.clone().into(), &config, Some(crypto()))
         .expect("service")
         .expect("service configuré");
     auth::complete_services(Some(&host)).await.expect("clés");
@@ -823,7 +829,7 @@ async fn content_is_checked_and_only_safe_types_are_shown_inline() {
         ));
     let router = build_router(AppContext::new(
         config.clone(),
-        Arc::new(client.clone()),
+        client.clone().into(),
         HealthRegistry::default(),
         Metrics::default(),
         started.runtime.clone(),

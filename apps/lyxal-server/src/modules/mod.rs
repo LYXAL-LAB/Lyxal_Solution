@@ -14,6 +14,7 @@ pub mod tasks;
 
 use crate::config::AppConfig;
 use crate::error::ServerError;
+use lyxal_host::database::Database;
 use lyxal_host::modules::{manifest, EmbeddedModule, ManifestModule};
 use lyxal_runtime::resource::EmbeddedResourceProvider;
 use lyxal_runtime::{
@@ -149,30 +150,32 @@ pub struct HostedServices {
 
 /// Enregistre auprès du runtime les workers, consommateurs d'événements et sondes de santé des
 /// modules hébergés, et inscrit les handlers des tâches de fond de l'hôte au planificateur (avant
-/// leur installation et le démarrage du runtime).
+/// leur installation et le démarrage du runtime). Les stores de la session système reçoivent
+/// le pool `database` ; les baux, la requête `LIVE` du fil et la session de l'agent de
+/// synchronisation prennent sa connexion fixe.
 pub async fn register_services(
     runtime: &LyxalRuntime,
-    client: &Surreal<Any>,
+    database: &Database,
     config: &AppConfig,
 ) -> Result<HostedServices, ServerError> {
     let crypto = crate::crypto::application_crypto(&config.crypto)?;
-    let auth = auth::register_services(runtime, client, config, crypto.clone())?;
-    i18n::register_services(runtime, client)?;
-    let secrets = secrets::register_services(runtime, client, config)?;
-    let storage = storage::register_services(runtime, client, config, secrets.file_keys())?;
-    let scheduler = scheduler::register_services(runtime, client, config)?;
+    let auth = auth::register_services(runtime, database, config, crypto.clone())?;
+    i18n::register_services(runtime, database)?;
+    let secrets = secrets::register_services(runtime, database, config)?;
+    let storage = storage::register_services(runtime, database, config, secrets.file_keys())?;
+    let scheduler = scheduler::register_services(runtime, database, config)?;
     tasks::register_handlers(
         &mut scheduler.handlers(),
-        auth::purge(client),
-        storage::cleanup(client, &storage),
+        auth::purge(database),
+        storage::cleanup(database, &storage),
         secrets.maintenance(),
     )?;
     let notification =
-        notification::register_services(runtime, client, config, crypto, &secrets).await?;
+        notification::register_services(runtime, database, config, crypto, &secrets).await?;
     #[cfg(feature = "module-ingestion")]
     {
         let publication =
-            ingestion::register_services(runtime, client, auth.as_ref(), &storage).await?;
+            ingestion::register_services(runtime, database, auth.as_ref(), &storage).await?;
         Ok(HostedServices {
             auth,
             storage,
@@ -198,15 +201,15 @@ pub async fn register_services(
 /// planifications, abonnements), avant le démarrage.
 pub async fn complete_services(
     runtime: &LyxalRuntime,
-    client: &Surreal<Any>,
+    database: &Database,
     services: &HostedServices,
 ) -> Result<(), ServerError> {
     auth::complete_services(services.auth.as_ref()).await?;
-    tasks::install(client, &services.scheduler).await?;
+    tasks::install(database, &services.scheduler).await?;
     scheduler::register_executors(runtime, &services.scheduler).await?;
     #[cfg(feature = "module-ingestion")]
     {
-        ingestion::ensure_source_bucket(client).await?;
+        ingestion::ensure_source_bucket(database).await?;
         ingestion::reconcile_publication(runtime, services.publication).await?;
     }
     notification::reconcile_subscriptions(runtime, services.notification_delivery).await?;

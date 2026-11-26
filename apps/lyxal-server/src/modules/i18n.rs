@@ -2,11 +2,10 @@
 //! défaut rendue, base des fuseaux horaires).
 
 use crate::error::ServerError;
+use lyxal_host::database::Database;
 use lyxal_i18n::{I18nHealthCheck, I18nModule, I18nStore};
 use lyxal_runtime::{LyxalModule, LyxalRuntime};
 use std::sync::Arc;
-use surrealdb::engine::any::Any;
-use surrealdb::Surreal;
 
 pub const MODULE_ID: &str = lyxal_i18n::MODULE_ID;
 
@@ -15,11 +14,11 @@ pub fn module() -> Arc<dyn LyxalModule> {
 }
 
 /// Enregistre la sonde de santé du module.
-pub fn register_services(runtime: &LyxalRuntime, client: &Surreal<Any>) -> Result<(), ServerError> {
+pub fn register_services(runtime: &LyxalRuntime, database: &Database) -> Result<(), ServerError> {
     runtime
         .health_registry()
         .register_check(Arc::new(I18nHealthCheck::new(I18nStore::new(
-            client.clone(),
+            database.clone(),
         ))))?;
     Ok(())
 }

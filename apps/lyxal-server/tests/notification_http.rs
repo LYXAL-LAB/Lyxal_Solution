@@ -133,7 +133,9 @@ async fn the_one_click_unsubscribe_routes_verify_the_signed_link() {
         .use_db("notification_http")
         .await
         .expect("ns/db");
-    let started = runtime::start(&config, &client).await.expect("démarrage");
+    let started = runtime::start(&config, &client.clone().into())
+        .await
+        .expect("démarrage");
     let links = started
         .notification
         .links
@@ -142,7 +144,7 @@ async fn the_one_click_unsubscribe_routes_verify_the_signed_link() {
     let context = || {
         AppContext::new(
             config.clone(),
-            Arc::new(client.clone()),
+            client.clone().into(),
             HealthRegistry::default(),
             Metrics::default(),
             started.runtime.clone(),

@@ -28,6 +28,7 @@ use crate::modules::notification_feed::{FeedHub, FeedHubWorker, FeedSettings};
 use crate::modules::secrets::SecretsHost;
 use lyxal_crypto::{CryptoEngine, StaticKeyResolver};
 use lyxal_event::EventSubscription;
+use lyxal_host::database::Database;
 use lyxal_notification::{
     BroadcastWorkerSettings, ChannelDispatcher, ChatSender, EmailDispatcher, EmailProviders,
     NotificationBroadcastWorker, NotificationChannelWorker, NotificationConsumer,
@@ -109,12 +110,12 @@ pub fn unsubscribe_links(config: &AppConfig) -> Result<Option<Arc<UnsubscribeLin
 /// intégrations (avec les liens de désabonnement s'ils sont configurés).
 pub async fn register_services(
     runtime: &LyxalRuntime,
-    client: &Surreal<Any>,
+    database: &Database,
     config: &AppConfig,
     crypto: Option<Arc<CryptoEngine<StaticKeyResolver>>>,
     secrets: &SecretsHost,
 ) -> Result<NotificationServices, ServerError> {
-    let store = NotificationStore::new(client.clone());
+    let store = NotificationStore::new(database.clone());
     runtime.register_worker(Arc::new(NotificationStepWorker::new(
         store.clone(),
         StepWorkerSettings::default(),
@@ -131,7 +132,12 @@ pub async fn register_services(
         )?,
     ))?;
     let feed = FeedHub::new(FeedSettings::default());
-    runtime.register_worker(Arc::new(FeedHubWorker::new(feed.clone(), client.clone())?))?;
+    // Requête `LIVE SELECT` du fil : tenue et vérifiée sur la connexion fixe de la session
+    // système, jamais sur un client du tour
+    runtime.register_worker(Arc::new(FeedHubWorker::new(
+        feed.clone(),
+        database.fixed().clone(),
+    )?))?;
     let links = unsubscribe_links(config)?;
     let providers = Arc::new(
         EmailProviders::new().map_err(|e| configuration_error("fournisseurs d'e-mail", e))?,

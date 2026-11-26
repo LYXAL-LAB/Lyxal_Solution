@@ -17,6 +17,9 @@ axum = { workspace = true, optional = true }
 
 [dev-dependencies]
 toml = { workspace = true }
+# Essais du pool : relais TCP devant un serveur SurrealDB réel, appels simultanés
+futures = { version = "0.3", default-features = false, features = ["std"] }
+tokio = { workspace = true, features = ["net", "io-util"] }
 
 [features]
 default = []

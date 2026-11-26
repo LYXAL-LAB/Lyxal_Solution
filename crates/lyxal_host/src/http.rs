@@ -7,6 +7,7 @@
 //! n'avance plus pendant `write_idle` ferme la connexion, ce qui libère le fichier ouvert et la
 //! place prise dans la limite de requêtes simultanées.
 
+use crate::database::Database;
 use crate::health::{HealthRegistry, HealthSnapshot, HealthState};
 use crate::HostError;
 use axum::extract::{ConnectInfo, State};
@@ -168,21 +169,33 @@ where
     }
 }
 
-/// Ce que les routes de santé lisent : les composants de l'hôte, son runtime et son nom.
+/// Ce que les routes de santé lisent : les composants de l'hôte, son runtime, son nom et les
+/// connexions de sa session système.
 #[derive(Clone)]
 pub struct HostHealth {
     registry: HealthRegistry,
     runtime: Arc<LyxalRuntime>,
     host: &'static str,
+    database: Database,
+    probe_timeout: Duration,
 }
 
 impl HostHealth {
-    /// Santé de l'hôte `host` (nom fixe de l'hôte, ex. `lyxal_server`).
-    pub fn new(registry: HealthRegistry, runtime: Arc<LyxalRuntime>, host: &'static str) -> Self {
+    /// Santé de l'hôte `host` (nom fixe de l'hôte, ex. `lyxal_server`). `/ready` sonde les
+    /// connexions de `database`, chacune devant répondre en moins de `probe_timeout`.
+    pub fn new(
+        registry: HealthRegistry,
+        runtime: Arc<LyxalRuntime>,
+        host: &'static str,
+        database: Database,
+        probe_timeout: Duration,
+    ) -> Self {
         Self {
             registry,
             runtime,
             host,
+            database,
+            probe_timeout,
         }
     }
 }
@@ -205,8 +218,22 @@ async fn live() -> StatusCode {
     StatusCode::NO_CONTENT
 }
 
+/// Prêt si les composants de l'hôte le sont et si une connexion au moins de la session système
+/// répond : une connexion muette parmi plusieurs est journalisée, elle ne retire pas le nœud.
 async fn ready(State(state): State<HostHealth>) -> StatusCode {
-    if state.registry.ready().await {
+    if !state.registry.ready().await {
+        return StatusCode::SERVICE_UNAVAILABLE;
+    }
+    let probe = state.database.probe(state.probe_timeout).await;
+    if !probe.complete() {
+        tracing::warn!(
+            responding = probe.responding,
+            connections = probe.clients,
+            error = probe.error.as_deref().unwrap_or_default(),
+            "connexions SurrealDB muettes"
+        );
+    }
+    if probe.reachable() {
         StatusCode::NO_CONTENT
     } else {
         StatusCode::SERVICE_UNAVAILABLE

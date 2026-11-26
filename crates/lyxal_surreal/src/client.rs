@@ -77,22 +77,28 @@ pub fn validate_endpoint_scheme(endpoint: &str) -> Result<(), LyxalSurrealError>
     }
 }
 
+/// Vrai pour une base embarquée (`mem://…`, `memory`) : aucune connexion réseau, aucune
+/// authentification Root (§11.2).
+pub fn is_embedded_endpoint(endpoint: &str) -> bool {
+    let endpoint = endpoint.trim();
+    endpoint == "memory" || endpoint.starts_with("mem://")
+}
+
 /// Connecte un client `Surreal<Any>` et sélectionne le namespace et la base (§11.2).
 ///
 /// * `ws://` / `wss://` : identifiants Root non vides obligatoires (`MissingCredentials`).
 /// * `mem://` / `memory` : aucune authentification, même si des identifiants sont fournis.
 /// * Au-delà de `connect_timeout` : `ConnectTimeout`.
 pub async fn create_surreal_client(
-    options: SurrealConnectOptions,
+    options: &SurrealConnectOptions,
 ) -> Result<Surreal<Any>, LyxalSurrealError> {
     let endpoint = normalize_endpoint(&options.endpoint);
     validate_endpoint_scheme(&endpoint)?;
 
-    let embedded = endpoint == "memory" || endpoint.starts_with("mem://");
-    let credentials = if embedded {
+    let credentials = if is_embedded_endpoint(&endpoint) {
         None
     } else {
-        match options.credentials {
+        match &options.credentials {
             Some(creds)
                 if !creds.username.trim().is_empty()
                     && !creds.password.expose_secret().trim().is_empty() =>
@@ -107,7 +113,7 @@ pub async fn create_surreal_client(
         let db = any::connect(endpoint.clone()).await?;
         if let Some(creds) = credentials {
             db.signin(Root {
-                username: creds.username,
+                username: creds.username.clone(),
                 password: creds.password.expose_secret().to_owned(),
             })
             .await?;
@@ -200,7 +206,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_surreal_client_mem_selects_namespace_and_database() {
-        let db = create_surreal_client(options("mem://", None))
+        let db = create_surreal_client(&options("mem://", None))
             .await
             .expect("mem:// sans identifiants");
         let mut res = db
@@ -215,21 +221,21 @@ mod tests {
     async fn test_create_surreal_client_mem_ignores_credentials() {
         // Aucun signin en mémoire : des identifiants fournis ne provoquent pas d'erreur.
         let creds = RootCredentials::new("root", secret("ignored"));
-        assert!(create_surreal_client(options("memory", Some(creds)))
+        assert!(create_surreal_client(&options("memory", Some(creds)))
             .await
             .is_ok());
     }
 
     #[tokio::test]
     async fn test_create_surreal_client_rejects_missing_credentials_on_ws() {
-        let res = create_surreal_client(options("ws://127.0.0.1:9999", None)).await;
+        let res = create_surreal_client(&options("ws://127.0.0.1:9999", None)).await;
         assert!(matches!(
             res,
             Err(LyxalSurrealError::MissingCredentials { .. })
         ));
 
         let blank = RootCredentials::new("root", secret("  "));
-        let res = create_surreal_client(options("ws://127.0.0.1:9999", Some(blank))).await;
+        let res = create_surreal_client(&options("ws://127.0.0.1:9999", Some(blank))).await;
         assert!(matches!(
             res,
             Err(LyxalSurrealError::MissingCredentials { .. })
@@ -238,7 +244,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_surreal_client_rejects_unsupported_endpoint() {
-        let res = create_surreal_client(options("http://127.0.0.1:8000", None)).await;
+        let res = create_surreal_client(&options("http://127.0.0.1:8000", None)).await;
         assert!(matches!(
             res,
             Err(LyxalSurrealError::UnsupportedEndpoint { .. })
@@ -253,7 +259,7 @@ mod tests {
         let creds = RootCredentials::new("root", secret("root"));
         let mut opts = options(&format!("ws://127.0.0.1:{port}"), Some(creds));
         opts.connect_timeout = Duration::from_millis(300);
-        let res = create_surreal_client(opts).await;
+        let res = create_surreal_client(&opts).await;
         assert!(
             matches!(res, Err(LyxalSurrealError::ConnectTimeout { .. })),
             "{res:?}"

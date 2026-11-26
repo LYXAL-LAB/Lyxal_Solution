@@ -318,7 +318,7 @@ fn the_antivirus_is_configured_by_one_address() {
 
 /// Serveur SurrealDB réel (`LYXAL_SURREAL_BIN`, à défaut `surreal` dans le `PATH`), arrêté à la
 /// fin du test.
-struct SurrealServer(std::process::Child);
+pub(crate) struct SurrealServer(std::process::Child);
 
 impl Drop for SurrealServer {
     fn drop(&mut self) {
@@ -327,7 +327,7 @@ impl Drop for SurrealServer {
     }
 }
 
-async fn surreal_server(allow_guests: bool) -> (SurrealServer, String) {
+pub(crate) async fn surreal_server(allow_guests: bool) -> (SurrealServer, String) {
     let port = std::net::TcpListener::bind("127.0.0.1:0")
         .and_then(|l| l.local_addr())
         .expect("port libre")
@@ -366,7 +366,7 @@ async fn surreal_server(allow_guests: bool) -> (SurrealServer, String) {
     (server, format!("ws://{address}"))
 }
 
-fn remote_config(endpoint: String) -> lyxal_host::config::DatabaseConfig {
+pub(crate) fn remote_config(endpoint: String) -> lyxal_host::config::DatabaseConfig {
     lyxal_host::config::DatabaseConfig {
         endpoint,
         namespace: "test".into(),
@@ -376,6 +376,7 @@ fn remote_config(endpoint: String) -> lyxal_host::config::DatabaseConfig {
             lyxal_host::config::SecretPassword::new("root-de-test".into()).expect("secret"),
         ),
         connect_timeout_seconds: 5,
+        connections: std::num::NonZeroUsize::MIN,
     }
 }
 
@@ -404,6 +405,7 @@ async fn remote_database_without_credentials_is_refused() {
         username: None,
         password: None,
         connect_timeout_seconds: 1,
+        connections: std::num::NonZeroUsize::MIN,
     };
     let error = lyxal_host::database::connect_database(&config)
         .await

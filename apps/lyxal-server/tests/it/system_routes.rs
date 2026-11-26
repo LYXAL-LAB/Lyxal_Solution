@@ -6,7 +6,7 @@
 
 use axum::body::{to_bytes, Body};
 use axum::http::{Request, StatusCode};
-use lyxal_host::{health::HealthRegistry, metrics::Metrics};
+use lyxal_host::{database::Database, health::HealthRegistry, metrics::Metrics};
 use lyxal_runtime::LyxalRuntime;
 use lyxal_server::{
     config::AppConfig,
@@ -38,13 +38,23 @@ pub(crate) async fn router_with_auth(
     runtime: Arc<LyxalRuntime>,
     health: HealthRegistry,
 ) -> (axum::Router, Arc<AuthHost>) {
-    let host = auth::host(client, &config, Some(crypto()))
+    router_on(config, client.clone().into(), runtime, health).await
+}
+
+/// Routeur de l'hôte et son service d'authentification sur la session système `database`.
+pub(crate) async fn router_on(
+    config: Arc<AppConfig>,
+    database: Database,
+    runtime: Arc<LyxalRuntime>,
+    health: HealthRegistry,
+) -> (axum::Router, Arc<AuthHost>) {
+    let host = auth::host(&database, &config, Some(crypto()))
         .expect("service")
         .expect("service configuré");
     auth::complete_services(Some(&host)).await.expect("clés");
     let router = build_router(AppContext::new(
         config,
-        Arc::new(client.clone()),
+        database,
         health,
         Metrics::default(),
         runtime,
@@ -165,7 +175,9 @@ async fn migration_status(client: &Surreal<Any>) -> Value {
 async fn interrupted_migrations_are_listed_and_resolved_by_an_installation_administrator() {
     let config = Arc::new(config_with("system_routes", AUTH));
     let client = database("system_routes").await;
-    let started = runtime::start(&config, &client).await.expect("démarrage");
+    let started = runtime::start(&config, &client.clone().into())
+        .await
+        .expect("démarrage");
     let (router, host) = router_with_auth(
         config,
         &client,
@@ -378,7 +390,9 @@ async fn interrupted_migrations_are_listed_and_resolved_by_an_installation_admin
 async fn hosted_modules_and_live_nodes_are_listed_to_an_installation_administrator() {
     let config = Arc::new(config_with("system_modules", AUTH));
     let client = database("system_modules").await;
-    let started = runtime::start(&config, &client).await.expect("démarrage");
+    let started = runtime::start(&config, &client.clone().into())
+        .await
+        .expect("démarrage");
     let (router, host) = router_with_auth(
         config,
         &client,

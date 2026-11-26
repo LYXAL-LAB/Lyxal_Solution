@@ -13,10 +13,11 @@ use lyxal_runtime::resource::ResourceProvider;
 use lyxal_secrets::{FileKeys, MasterKeys, SecretsStore};
 use lyxal_storage::models::ObjectGetParams;
 use lyxal_storage::{BackendConfig, Backends, StorageService, StorageStore};
-use lyxal_surreal::ToSql;
+use lyxal_surreal::{RootCredentials, SecretString, SurrealConnectOptions, SurrealPool, ToSql};
+use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
@@ -54,45 +55,44 @@ pub async fn embedded() -> Surreal<Any> {
 
 /// Base d'un serveur SurrealDB 3.3.4 réel pour les mesures, si `LYXAL_SURREAL_WS_URL`
 /// (`ws://hôte:port`), `LYXAL_SURREAL_USER` et `LYXAL_SURREAL_PASS` (compte racine du serveur
-/// d'essai) sont posés ; une base neuve par appel. Sinon `None`. Rend trois clients (courrier,
-/// stockage, coffre-fort) : une seule connexion partagée, ou une connexion par service si
-/// `LYXAL_SURREAL_CONNECTIONS=services` (un serveur SurrealDB exécute une à une les requêtes
-/// d'une même connexion).
-pub async fn remote() -> Option<([Surreal<Any>; 3], &'static str)> {
+/// d'essai) sont posés ; une base neuve par appel. Sinon `None`. Rend le pool de connexions de
+/// la session système, comme celui d'un hôte (`[database] connections`) : une connexion, ou
+/// `LYXAL_SURREAL_CONNECTIONS=<nombre>` connexions (un serveur SurrealDB ne répartit pas sur
+/// ses cœurs les requêtes d'une même connexion).
+pub async fn remote() -> Option<(SurrealPool, String)> {
     let url = std::env::var("LYXAL_SURREAL_WS_URL").ok()?;
+    let username = std::env::var("LYXAL_SURREAL_USER").expect("LYXAL_SURREAL_USER");
+    let password = std::env::var("LYXAL_SURREAL_PASS").expect("LYXAL_SURREAL_PASS");
+    let connections = match std::env::var("LYXAL_SURREAL_CONNECTIONS") {
+        Ok(text) => text
+            .parse::<NonZeroUsize>()
+            .expect("LYXAL_SURREAL_CONNECTIONS : nombre de connexions, 1 au moins"),
+        Err(_) => NonZeroUsize::MIN,
+    };
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("horloge")
         .as_nanos();
-    let database = format!("mesures_{nanos}");
-    let first = remote_connection(&url, &database).await;
-    if std::env::var("LYXAL_SURREAL_CONNECTIONS").as_deref() == Ok("services") {
-        let second = remote_connection(&url, &database).await;
-        let third = remote_connection(&url, &database).await;
-        Some((
-            [first, second, third],
-            "serveur SurrealDB (ws://), une connexion par service",
-        ))
-    } else {
-        Some((
-            [first.clone(), first.clone(), first],
-            "serveur SurrealDB (ws://), une connexion",
-        ))
-    }
-}
-
-async fn remote_connection(url: &str, database: &str) -> Surreal<Any> {
-    let username = std::env::var("LYXAL_SURREAL_USER").expect("LYXAL_SURREAL_USER");
-    let password = std::env::var("LYXAL_SURREAL_PASS").expect("LYXAL_SURREAL_PASS");
-    let client = surrealdb::engine::any::connect(url)
-        .await
-        .expect("connexion ws://");
-    client
-        .signin(surrealdb::opt::auth::Root { username, password })
-        .await
-        .expect("session root");
-    client.use_ns(NS).use_db(database).await.expect("ns/db");
-    client
+    let pool = SurrealPool::connect(
+        &SurrealConnectOptions {
+            endpoint: url,
+            credentials: Some(RootCredentials::new(
+                username,
+                SecretString::new(password).expect("mot de passe"),
+            )),
+            namespace: NS.to_string(),
+            database: format!("mesures_{nanos}"),
+            connect_timeout: Duration::from_secs(15),
+        },
+        connections,
+    )
+    .await
+    .expect("connexions ws://");
+    let engine = format!(
+        "serveur SurrealDB (ws://), pool de {} connexion(s)",
+        pool.size()
+    );
+    Some((pool, engine))
 }
 
 pub async fn installed_client() -> Surreal<Any> {
@@ -157,6 +157,7 @@ pub fn master() -> MasterKeys {
 /// Banc : base installée, organisations alpha et beta, domaines, comptes de jean et marie
 /// (alpha) et d'autre (beta), services du courrier sur la session système.
 pub struct Bench {
+    /// Connexion fixe de la session système (préparation, contrôles, sessions des personnes).
     pub client: Surreal<Any>,
     pub system: MailStore,
     pub storage_store: StorageStore,
@@ -190,27 +191,25 @@ pub async fn bench() -> Bench {
 
 /// Banc des mesures : sur le serveur SurrealDB désigné par `LYXAL_SURREAL_WS_URL` s'il est posé,
 /// sinon sur la base embarquée. Rend aussi le nom du moteur mesuré.
-pub async fn measure_bench() -> (Bench, &'static str) {
+pub async fn measure_bench() -> (Bench, String) {
     match remote().await {
-        Some(([mail, storage, secrets], engine)) => {
-            let mail = install(mail).await;
-            (bench_with(mail, storage, secrets).await, engine)
+        Some((pool, engine)) => {
+            install(pool.fixed().clone()).await;
+            (bench_with(pool).await, engine)
         }
-        None => (bench().await, "base embarquée (mem://)"),
+        None => (bench().await, "base embarquée (mem://)".to_string()),
     }
 }
 
 /// Banc sur une base installée, tous les services sur la même connexion.
 pub async fn bench_on(client: Surreal<Any>) -> Bench {
-    bench_with(client.clone(), client.clone(), client).await
+    bench_with(SurrealPool::from(client)).await
 }
 
-/// Banc sur une base installée : client du courrier, du stockage et du coffre-fort.
-pub async fn bench_with(
-    client: Surreal<Any>,
-    storage_client: Surreal<Any>,
-    secrets_client: Surreal<Any>,
-) -> Bench {
+/// Banc sur une base installée : les stores du courrier, du stockage et du coffre-fort
+/// reçoivent le pool de la session système, comme dans l'hôte.
+pub async fn bench_with(database: SurrealPool) -> Bench {
+    let client = database.fixed().clone();
     let master = master();
     let root = tempfile::tempdir().expect("dossier temporaire");
     let backends = Arc::new(
@@ -223,11 +222,11 @@ pub async fn bench_with(
             )
             .expect("support"),
     );
-    let storage_store = StorageStore::new(storage_client);
-    let file_keys = FileKeys::new(SecretsStore::new(secrets_client), Some(master.clone()));
+    let storage_store = StorageStore::new(database.clone());
+    let file_keys = FileKeys::new(SecretsStore::new(database.clone()), Some(master.clone()));
     let storage = StorageService::new(storage_store.clone(), backends.clone())
         .with_file_keys(file_keys.clone(), storage_store.clone());
-    let system = MailStore::new(client.clone());
+    let system = MailStore::new(database);
     let bench = Bench {
         ingest: MailIngest::new(system.clone(), storage.clone(), "default"),
         content: MailContent::new(storage.clone()),

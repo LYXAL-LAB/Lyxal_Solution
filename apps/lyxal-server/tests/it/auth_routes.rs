@@ -141,13 +141,15 @@ async fn login_sessions_and_logout_through_http() {
         "[auth]\npublic_url = \"https://lyxal.test/\"\n",
     ));
     let client = database("auth_routes").await;
-    let started = runtime::start(&config, &client).await.expect("démarrage");
+    let started = runtime::start(&config, &client.clone().into())
+        .await
+        .expect("démarrage");
     // Sans clé applicative dans l'environnement, l'hôte n'a pas de service de connexion
     assert!(started.auth.is_none());
 
     let disabled = build_router(AppContext::new(
         config.clone(),
-        Arc::new(client.clone()),
+        client.clone().into(),
         HealthRegistry::default(),
         Metrics::default(),
         started.runtime.clone(),
@@ -179,13 +181,13 @@ async fn login_sessions_and_logout_through_http() {
     assert_eq!(response.headers()["cache-control"], "no-store");
     assert_eq!(response.headers()["pragma"], "no-cache");
 
-    let host = auth::host(&client, &config, Some(crypto()))
+    let host = auth::host(&client.clone().into(), &config, Some(crypto()))
         .expect("service")
         .expect("service configuré");
     auth::complete_services(Some(&host)).await.expect("clés");
     let router = build_router(AppContext::new(
         config.clone(),
-        Arc::new(client.clone()),
+        client.clone().into(),
         HealthRegistry::default(),
         Metrics::default(),
         started.runtime.clone(),
@@ -543,14 +545,16 @@ async fn app_passwords_through_http() {
         "[auth]\npublic_url = \"https://lyxal.test/\"\n",
     ));
     let client = database("app_password_routes").await;
-    let started = runtime::start(&config, &client).await.expect("démarrage");
-    let host = auth::host(&client, &config, Some(crypto()))
+    let started = runtime::start(&config, &client.clone().into())
+        .await
+        .expect("démarrage");
+    let host = auth::host(&client.clone().into(), &config, Some(crypto()))
         .expect("service")
         .expect("service configuré");
     auth::complete_services(Some(&host)).await.expect("clés");
     let router = build_router(AppContext::new(
         config.clone(),
-        Arc::new(client.clone()),
+        client.clone().into(),
         HealthRegistry::default(),
         Metrics::default(),
         started.runtime.clone(),

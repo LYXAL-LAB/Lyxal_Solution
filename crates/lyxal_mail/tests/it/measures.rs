@@ -7,7 +7,10 @@
 //! cargo test -p lyxal_mail --release --test it -- --ignored --nocapture --test-threads 1 measures
 //! ```
 //!
-//! Base SurrealDB embarquée en mémoire, support disque dans un dossier temporaire, un seul nœud,
+//! Base SurrealDB embarquée en mémoire, ou serveur SurrealDB réel si `LYXAL_SURREAL_WS_URL`,
+//! `LYXAL_SURREAL_USER` et `LYXAL_SURREAL_PASS` sont posés, avec un pool de
+//! `LYXAL_SURREAL_CONNECTIONS=<nombre>` connexions pour la session système (une par défaut) ;
+//! support disque dans un dossier temporaire, un seul nœud,
 //! messages de 10 Kio remis par [`MailIngest::receive`] (le chemin de la session SMTP, sans le
 //! dialogue SMTP ni les contrôles d'authenticité, livrés avec la session). Les relevés sont
 //! reportés dans `README.md` (« Mesures »).
@@ -283,8 +286,9 @@ async fn measures_hundred_accounts_fifty_clients_two_organizations() {
 
 /// Deux nœuds simulés dans le processus (deux services de remise sur la même base, chacun avec
 /// son ordre des inscriptions) : mesure du repli de la décision S11 (plus de 1 % de remises
-/// refusées après rejeu). Sur la base embarquée seulement : un serveur exécute une à une les
-/// requêtes d'une même connexion, ce qui cacherait les conflits entre nœuds.
+/// refusées après rejeu). Sur la base embarquée ou sur un serveur, quel que soit le pool
+/// (`LYXAL_SURREAL_CONNECTIONS`) : les requêtes d'une même connexion s'entrelacent, et les
+/// conflits entre nœuds y apparaissent aussi.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "mesure, hors CI"]
 async fn measures_two_nodes_one_account() {

@@ -62,10 +62,7 @@ pub(super) async fn service(
     // Buckets chiffrés : la clé scellée d'une fiche est lue par la session système, après le
     // contrôle des droits de l'appelant sur la fiche
     if let Some(keys) = &context.storage.file_keys {
-        service = service.with_file_keys(
-            keys.clone(),
-            StorageStore::new(context.database.as_ref().clone()),
-        );
+        service = service.with_file_keys(keys.clone(), StorageStore::new(context.database.clone()));
     }
     Ok(service)
 }

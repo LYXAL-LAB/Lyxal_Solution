@@ -10,6 +10,7 @@
 
 use crate::config::AppConfig;
 use crate::error::ServerError;
+use lyxal_host::database::Database;
 use lyxal_runtime::lock::SurrealLeaderLeaseManager;
 use lyxal_runtime::{LyxalModule, LyxalRuntime};
 use lyxal_scheduler::models::HealthParams;
@@ -18,8 +19,6 @@ use lyxal_scheduler::{
     SchedulerHealthCheck, SchedulerLeaderWorker, SchedulerModule, SchedulerService, SchedulerStore,
 };
 use std::sync::Arc;
-use surrealdb::engine::any::Any;
-use surrealdb::Surreal;
 
 pub const MODULE_ID: &str = lyxal_scheduler::MODULE_ID;
 
@@ -63,18 +62,19 @@ impl SchedulerHost {
 /// (`register_executors`), une fois les files connues.
 pub fn register_services(
     runtime: &LyxalRuntime,
-    client: &Surreal<Any>,
+    database: &Database,
     config: &AppConfig,
 ) -> Result<SchedulerHost, ServerError> {
     let engine = SchedulerEngine::new(
-        SchedulerStore::new(client.clone()),
+        SchedulerStore::new(database.clone()),
         HandlerRegistry::new(),
         runtime.node_id().clone(),
         runtime.host_id().clone(),
     );
     runtime.register_worker(Arc::new(SchedulerLeaderWorker::new(
         engine.clone(),
-        SurrealLeaderLeaseManager::new(client.clone()),
+        // Bail du planificateur : connexion fixe, comme les autres baux du runtime
+        SurrealLeaderLeaseManager::new(database.fixed().clone()),
     )?))?;
     runtime
         .health_registry()

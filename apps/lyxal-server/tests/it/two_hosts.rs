@@ -182,7 +182,7 @@ async fn host_tasks_are_executed_only_by_lyxal_server_beside_another_host() {
     let client = database("two_hosts_tasks").await;
     let store = SchedulerStore::new(client.clone());
 
-    let server = runtime::start(&config, &client)
+    let server = runtime::start(&config, &client.clone().into())
         .await
         .expect("démarrage de lyxal-server");
     let peer = start_peer(&client).await;
@@ -260,7 +260,7 @@ async fn host_tasks_are_executed_only_by_lyxal_server_beside_another_host() {
     );
 
     // Retour de lyxal-server (nouveau nœud) : les exécutions en attente sont faites, une fois
-    let restarted = runtime::start(&config, &client)
+    let restarted = runtime::start(&config, &client.clone().into())
         .await
         .expect("redémarrage de lyxal-server");
     for (task, run) in &waiting {

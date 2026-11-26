@@ -20,6 +20,7 @@ use crate::modules::scheduler::SchedulerHost;
 use async_trait::async_trait;
 use lyxal_auth::models::AuthPurgeResult;
 use lyxal_auth::AuthPurge;
+use lyxal_host::database::Database;
 use lyxal_scheduler::models::{Overlap, ScheduleCreateParams, ScheduleSpec, SchedulerValue};
 use lyxal_scheduler::{
     HandlerRegistry, RunContext, SchedulerStore, TaskFailure, TaskHandler, TaskOutput,
@@ -29,9 +30,7 @@ use lyxal_storage::{CleanupReport, StorageCleanup, StorageError};
 use lyxal_surreal::{LyxalCallError, LyxalSurrealError};
 use std::sync::Arc;
 use std::time::Duration;
-use surrealdb::engine::any::Any;
 use surrealdb::types::{Object, SurrealValue};
-use surrealdb::Surreal;
 
 /// Tâche de fond de l'hôte : sa tâche `lyxal_scheduler`, sa planification et son rythme.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -305,10 +304,11 @@ fn install_error(task: &str, detail: impl std::fmt::Display) -> ServerError {
 
 /// Après l'installation des modules : déclare les trois tâches et leur permission propre
 /// (`seeds/server_tasks.surql`), puis crée la planification de chacune si elle est absente.
-/// Rejouable : ni tâche ni planification en double. `client` : session système de l'hôte.
-pub async fn install(client: &Surreal<Any>, scheduler: &SchedulerHost) -> Result<(), ServerError> {
-    super::install_host_seeds(client).await?;
-    let scheduler = scheduler.client(SchedulerStore::new(client.clone()));
+/// Rejouable : ni tâche ni planification en double. `database` : session système de l'hôte
+/// (seeds installés sur sa connexion fixe).
+pub async fn install(database: &Database, scheduler: &SchedulerHost) -> Result<(), ServerError> {
+    super::install_host_seeds(database.fixed()).await?;
+    let scheduler = scheduler.client(SchedulerStore::new(database.clone()));
     for task in HOST_TASKS {
         let mut spec = ScheduleSpec::new("UTC");
         spec.every = vec![task.every.into()];

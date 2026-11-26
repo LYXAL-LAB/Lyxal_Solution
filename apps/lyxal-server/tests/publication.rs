@@ -133,7 +133,7 @@ async fn approved_manifest_is_published_by_the_sync_service_account() {
         .use_db("publication")
         .await
         .expect("ns/db");
-    let started = runtime::start(&config(true), &client)
+    let started = runtime::start(&config(true), &client.clone().into())
         .await
         .expect("démarrage");
     assert!(started.auth.is_some(), "service de connexion configuré");
@@ -228,7 +228,7 @@ async fn approved_manifest_is_published_by_the_sync_service_account() {
     // Redémarrage sans service de connexion : abonnement suspendu
     std::env::remove_var(KEY_VAR);
     std::env::remove_var(KEY_ID_VAR);
-    let without_auth = runtime::start(&config(false), &client)
+    let without_auth = runtime::start(&config(false), &client.clone().into())
         .await
         .expect("redémarrage sans service de connexion")
         .runtime;

@@ -3,7 +3,7 @@
 //! restent dans SurrealQL ; la session SurrealDB du client détermine l'appelant.
 
 use async_trait::async_trait;
-use lyxal_surreal::{LyxalSurrealCall, LyxalSurrealError, SurrealValue};
+use lyxal_surreal::{LyxalSurrealCall, LyxalSurrealError, SurrealPool, SurrealValue};
 use rand_core::{OsRng, RngCore};
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
@@ -23,16 +23,18 @@ use crate::models::{
     TaskSetStateParams,
 };
 
-/// Store de `lyxal_scheduler` sur un client SurrealDB (`Surreal<Any>`).
+/// Store de `lyxal_scheduler` sur un client SurrealDB (`Surreal<Any>`), ou sur le pool de
+/// connexions de la session système de l'hôte (`SurrealPool`) : chaque appel prend alors le
+/// client du tour suivant. Une copie du store partage la session de l'original.
 #[derive(Clone)]
 pub struct SchedulerStore {
-    db: Surreal<Any>,
+    db: SurrealPool,
 }
 
 #[async_trait]
 impl LyxalSurrealCall for SchedulerStore {
     fn surreal_client(&self) -> &Surreal<Any> {
-        &self.db
+        self.db.client()
     }
 }
 
@@ -42,9 +44,10 @@ type Call<T> = Result<T, LyxalSurrealError>;
 const CONFLICT_RETRIES: u32 = 12;
 
 impl SchedulerStore {
-    /// Store sur un client déjà connecté (espace de noms et base choisis).
-    pub fn new(db: Surreal<Any>) -> Self {
-        Self { db }
+    /// Store sur un client déjà connecté (espace de noms et base choisis), ou sur un pool de
+    /// clients de la même session.
+    pub fn new(db: impl Into<SurrealPool>) -> Self {
+        Self { db: db.into() }
     }
 
     /// Appel d'une fonction du moteur, rejoué après un conflit d'écriture transitoire de

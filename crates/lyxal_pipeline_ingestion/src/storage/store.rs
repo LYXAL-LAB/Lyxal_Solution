@@ -6,9 +6,8 @@
 //! Une erreur métier (`fn::error_result`) remonte avec son code dans
 //! [`IngestionError::Surreal`].
 
-use lyxal_surreal::{Datetime, LyxalSurrealCall, LyxalSurrealError, SurrealValue};
+use lyxal_surreal::{Datetime, LyxalSurrealCall, LyxalSurrealError, SurrealPool, SurrealValue};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
@@ -470,28 +469,33 @@ pub struct ManifestDetailResult {
 // STORE
 // =============================================================================
 
-/// Store de persistance SurrealDB pour le pipeline d'ingestion Lyxal OS.
+/// Store de persistance SurrealDB pour le pipeline d'ingestion Lyxal OS, sur un client
+/// (`Surreal<Any>`) ou sur le pool de connexions de la session système de l'hôte
+/// (`SurrealPool`) : chaque appel prend alors le client du tour suivant. Une copie du store
+/// partage la session de l'original.
 #[derive(Clone)]
 pub struct IngestionStore {
-    db: Arc<Surreal<Any>>,
+    db: SurrealPool,
 }
 
 #[async_trait::async_trait]
 impl LyxalSurrealCall for IngestionStore {
     fn surreal_client(&self) -> &Surreal<Any> {
-        &self.db
+        self.db.client()
     }
 }
 
 impl IngestionStore {
-    /// Initialise le store avec une instance `Surreal<Any>` existante.
-    pub fn new(db: Surreal<Any>) -> Self {
-        Self { db: Arc::new(db) }
+    /// Initialise le store avec un client `Surreal<Any>` existant, ou un pool de clients de la
+    /// même session.
+    pub fn new(db: impl Into<SurrealPool>) -> Self {
+        Self { db: db.into() }
     }
 
-    /// Client SurrealDB sous-jacent.
+    /// Client SurrealDB sous-jacent : le client unique du store, ou celui du tour suivant
+    /// d'un pool.
     pub fn client(&self) -> &Surreal<Any> {
-        &self.db
+        self.db.client()
     }
 
     // --- Lots ---------------------------------------------------------------

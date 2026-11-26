@@ -99,7 +99,7 @@ du code Rust, déclarer son implémentation et ses services dans `src/modules/` 
 | `application` | `name`, `environment`, `instance_id`, `version` |
 | `server` | `host`, `port`, `request_timeout_seconds`, `graceful_shutdown_seconds`, `max_concurrency`, `body_limit_bytes`, `trusted_proxies` (facultative : proxys inverses de confiance) |
 | `http` | `transfer_idle_timeout_seconds` (délai d'inactivité d'un envoi ou d'un téléchargement de fichier, et délai d'écriture de toute connexion HTTP, 5 à 600, 60 par défaut) |
-| `database` | `endpoint` (`ws://`, `wss://`, `mem://`), `namespace`, `database`, `username`, `password`, `connect_timeout_seconds` |
+| `database` | `endpoint` (`ws://`, `wss://`, `mem://`), `namespace`, `database`, `username`, `password`, `connect_timeout_seconds`, `connections` (connexions de la session système : par défaut le nombre de cœurs, 16 au plus ; `0` refusé ; une seule sur `mem://`) |
 | `runtime` | `module_install_timeout_seconds`, `module_start_timeout_seconds`, `module_stop_timeout_seconds` |
 | `observability` | `log_filter`, `json_logs`, `include_target`, `include_thread_ids` |
 | `cors` | `enabled`, `allow_credentials`, `allowed_origins`, `allowed_methods`, `allowed_headers` |
@@ -378,7 +378,7 @@ cargo run -p lyxal-server
 | :--- | :--- |
 | `GET /`, `GET /api/v1/system/info` | Nom, version, environnement, instance. |
 | `GET /live` | `204` tant que le processus répond. |
-| `GET /ready` | `204` si le serveur et la base sont opérationnels, sinon `503`. |
+| `GET /ready` | `204` si le serveur est opérationnel et si une connexion au moins de la session système répond à la sonde (délai `database.connect_timeout_seconds`), sinon `503`. Une connexion muette parmi plusieurs est journalisée. |
 | `GET /health` | `{ host, modules }` : statuts des composants de l'hôte (serveur, base) et des modules (sondes `ModuleHealthCheck` évaluées par le runtime), sans détail interne ; `503` si un module est en panne. Même contrat que `lyxal-groupware` (`lyxal_host`). |
 | `GET /metrics` | Compteurs de requêtes et durée de fonctionnement. |
 | 🔒 `GET /api/v1/system/modules` | Hôte (`host`) et nœud (`node_id`) de ce processus ; modules hébergés (`modules` : identifiant, nom, version, état) ; nœuds vivants de la base, de tous les hôtes (`nodes` : `node_id`, `host`, `modules` démarrés, `started_at`, `seen_at`, `current` pour ce processus ; battement de moins de 30 s), du plus récent au plus ancien. |

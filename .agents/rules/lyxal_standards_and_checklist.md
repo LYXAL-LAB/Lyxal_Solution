@@ -64,6 +64,8 @@ surrealdb::engine::any::Any
 
 Interdiction de créer des `enum (Ws/Mem)` locaux.
 
+Pour la session système d'un hôte, le store enveloppe un `lyxal_surreal::SurrealPool` : des clients `Surreal<Any>` de la même session, distribués à tour de rôle (`[database] connections`). Un client rendu par un pool ne reçoit jamais `authenticate`, `signin`, `use_ns`, `use_db` ni `set`. Une session d'utilisateur, une requête `LIVE`, un bail et le runtime prennent la connexion fixe du pool (`fixed()`).
+
 ### Centralisation de `call_fn()`
 
 La méthode d'exécution universelle :

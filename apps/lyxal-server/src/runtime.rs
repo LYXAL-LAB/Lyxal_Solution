@@ -3,6 +3,7 @@
 //! reprise d'une migration interrompue pour la ligne de commande (`recovery`).
 
 use crate::{config::AppConfig, error::ServerError, modules};
+use lyxal_host::database::Database;
 use lyxal_runtime::lock::SurrealInstallationLeaseManager;
 use lyxal_runtime::{
     EventEngineConfig, LyxalRuntime, ModuleId, ModulePackage, RuntimeConfig, SurrealRuntimeStore,
@@ -27,8 +28,10 @@ pub struct Started {
 }
 
 /// Construit le runtime, installe le noyau et les modules hébergés, puis les démarre.
-pub async fn start(config: &AppConfig, client: &Surreal<Any>) -> Result<Started, ServerError> {
-    start_with(config, client, Vec::new()).await
+/// `database` : session système de l'hôte. Le runtime, ses baux, le moteur d'événements et
+/// l'installation passent par sa connexion fixe ; les stores des modules reçoivent le pool.
+pub async fn start(config: &AppConfig, database: &Database) -> Result<Started, ServerError> {
+    start_with(config, database, Vec::new()).await
 }
 
 /// Runtime réduit à la reprise d'une migration interrompue (`LyxalRuntime::interrupted_migrations`
@@ -55,9 +58,10 @@ pub async fn recovery(client: &Surreal<Any>) -> Result<LyxalRuntime, ServerError
 /// `start`, avec des packages ajoutés aux modules embarqués (modules d'essai des tests).
 pub async fn start_with(
     config: &AppConfig,
-    client: &Surreal<Any>,
+    database: &Database,
     additional: Vec<ModulePackage>,
 ) -> Result<Started, ServerError> {
+    let client = database.fixed();
     let timeouts = &config.runtime;
     let host = modules::host_id()?;
     // Le chef des événements de cet hôte ne sert que les abonnements de `lyxal_server` (bail
@@ -85,7 +89,7 @@ pub async fn start_with(
         runtime.foundation_health_check(ModuleId::new(lyxal_host::modules::FOUNDATION[0])),
     ))?;
 
-    let services = modules::register_services(&runtime, client, config).await?;
+    let services = modules::register_services(&runtime, database, config).await?;
 
     let mut packages = modules::packages(client)?;
     packages.extend(additional);
@@ -111,7 +115,7 @@ pub async fn start_with(
         "modules installés"
     );
 
-    modules::complete_services(&runtime, client, &services).await?;
+    modules::complete_services(&runtime, database, &services).await?;
     runtime.start_all().await?;
     Ok(Started {
         runtime: Arc::new(runtime),

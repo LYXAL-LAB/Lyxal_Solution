@@ -31,7 +31,8 @@ budget mémoire de [`lyxal_mail::net`](../../crates/lyxal_mail/README.md).
 
 1. Configuration (`config/default.toml`, `config/<LYXAL_ENV>.toml`, variables
    `LYXAL_GROUPWARE__*`), validée en entier ; journal.
-2. Base : `connect_database` (même refus d'une base ouverte aux invités que `lyxal-server`).
+2. Base : `connect_database` (pool de `database.connections` connexions sous la session
+   système, chacune sondée ; même refus d'une base ouverte aux invités que `lyxal-server`).
 3. **Liaison de tous les ports avant toute installation** : chaque adresse de chaque écoute,
    puis le port HTTP. Un port indisponible arrête le démarrage (`GROUPWARE_BIND_FAILED`) :
    rien n'est installé. Puis chargement des certificats (§5) : un certificat illisible ou
@@ -97,7 +98,7 @@ arrête le démarrage, sans être écrite au journal).
 | :--- | :--- |
 | `application` | `name`, `environment` |
 | `http` | `bind` (port de santé, `127.0.0.1:8090` par défaut : les routes ne demandent aucun jeton), `graceful_shutdown_seconds`, `tls` (`false` par défaut ; `true` : TLS avec les certificats de `[tls]`, ALPN `h2` et `http/1.1`), `proxy_networks` (en-tête PROXY exigé depuis ces réseaux, §5.3) |
-| `database` | `endpoint`, `namespace`, `database`, `connect_timeout_seconds` (même base que `lyxal-server`) |
+| `database` | `endpoint`, `namespace`, `database`, `connect_timeout_seconds` (même base que `lyxal-server`), `connections` (connexions de la session système : par défaut le nombre de cœurs, 16 au plus ; `0` refusé) |
 | `runtime` | délais d'installation, de démarrage et d'arrêt d'un module |
 | `limits` | voir §6 |
 | `tls` | `default = { certificate, private_key }` (certificat par défaut), `[[tls.certificates]]` (`names`, `certificate`, `private_key`), `reload_interval_seconds` (60, de 5 à 86 400), `handshake_timeout_seconds` (30, de 1 à 300) ; voir §5 |
@@ -247,8 +248,8 @@ automatique et liste de blocage en base : lot 5.
 
 ## 7. Santé, mesures, journal
 
-* Port HTTP (`127.0.0.1:8090` par défaut) : `/live` (`204`), `/ready` (`204`, `503` au démarrage
-  et à l'arrêt), `/health` (`host` : composants `groupware`, `database`, `http` ; `modules` :
+* Port HTTP (`127.0.0.1:8090` par défaut) : `/live` (`204`), `/ready` (`204` ; `503` au démarrage,
+  à l'arrêt, et quand aucune connexion de la session système ne répond à la sonde), `/health` (`host` : composants `groupware`, `database`, `http` ; `modules` :
   sondes du runtime, sans message interne ; `503` si un module est en panne) — mêmes routes que
   `lyxal-server`, par `lyxal_host` ; `/metrics` (JSON) : par écoute, connexions servies,
   ouvertes, plafond, refus par raison (en-têtes PROXY refusés compris), connexions venues par

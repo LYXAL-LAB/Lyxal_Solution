@@ -131,13 +131,13 @@ async fn sealed_message(
 }
 
 async fn context_as(store: &AuthStore, token: &SecretString) -> Result<Context, String> {
-    store
-        .client()
+    // Session à part : le client du store reste la session système, que ses copies partagent
+    let session = store.client().clone();
+    session
         .authenticate(token.expose_secret().to_string())
         .await
         .map_err(|e| e.to_string())?;
-    let mut response = store
-        .client()
+    let mut response = session
         .query("RETURN fn::auth_context({}).data")
         .await
         .map_err(|e| e.to_string())?;
