@@ -32,7 +32,7 @@ use crate::auth::{
     author_domains, is_valid_domain, sample_roll, strip_forged_results, to_ascii_domain,
     AuthenticationResults, DkimOutput, DkimResult, DkimVerifier, DmarcDisposition, DmarcOutput,
     DmarcResult, DmarcVerifier, Iprev, IprevResult, MessageHeaders, SpfIdentity, SpfOutput,
-    SpfResult, SpfVerifier,
+    SpfResult, SpfVerifier, MAX_AUTHOR_DOMAINS,
 };
 use crate::delivery::{PipelineResult, ReceivedMessage, RecipientTarget, RejectReason};
 use crate::models::{MailDatetime, RecipientResolveParams, ResolvedRecipient};
@@ -945,6 +945,15 @@ impl SmtpSession {
             self.refuse(RefusedReason::Policy, size, 550);
             return Flow::Continue;
         }
+        // Au-delà de MAX_AUTHOR_DOMAINS domaines d'auteur, un domaine ne serait pas évalué par
+        // DMARC : le message est refusé plutôt que jugé sur une partie de ses auteurs.
+        let domains = author_domains(&parsed.envelope);
+        if domains.len() > MAX_AUTHOR_DOMAINS {
+            self.io
+                .reply(550, "5.7.1", "Too many author domains in From");
+            self.refuse(RefusedReason::Policy, size, 550);
+            return Flow::Continue;
+        }
         if headers.count("Received") > MAX_RECEIVED_HEADERS {
             self.io.reply(
                 554,
@@ -970,7 +979,6 @@ impl SmtpSession {
         let dkim = DkimVerifier::new(resolver.as_ref())
             .verify_headers(&headers)
             .await;
-        let domains = author_domains(&parsed.envelope);
         let dmarc = DmarcVerifier::new(resolver.as_ref(), self.shared.organizational.as_ref())
             .verify(&domains, &spf, &dkim)
             .await;
