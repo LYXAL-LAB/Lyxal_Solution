@@ -34,7 +34,7 @@ Avant toute proposition d'architecture, inspecter obligatoirement l'existant dan
 3. **Vérification de non-duplication & Graphe DAG** :
    - Vérifier si la responsabilité existe déjà dans `lyxal_core` (`validations/`, `sanitize/`, `security/`, `utils/` ; contrat dans `crates/lyxal_core/Readme.md`), `lyxal_base` (`base_unite`, `base_unite_type`), `lyxal_crypto` ou `lyxal_error`.
    - S'assurer que les dépendances déclarées respectent l'ordre topologique strict sans cycle (`DependencyResolver` de `crates/lyxal_runtime`).
-   - Pour valider, nettoyer ou contrôler un objet champ par champ, réutiliser le moteur unique de `lyxal_core` (`fn::validation_object_execute`, `fn::sanitize_object_execute`, `fn::security_object_execute`, et leurs variantes `*_pipeline_execute`) plutôt que d'écrire un pipeline ou un schéma local.
+   - Pour valider, nettoyer ou contrôler un objet champ par champ, réutiliser le moteur unique de `lyxal_core` (`fn::validation_object_execute`, `fn::sanitize_object_execute`, `fn::security_object_execute`, et leurs variantes `*_pipeline_execute` ; `fn::validation_fields_execute`, à contrôles par fermetures, pour une fonction appelée souvent) plutôt que d'écrire un pipeline ou un schéma local.
    - Si une primitive générique `lyxal_core` ou `lyxal_crypto` manque, la noter comme **Point d'escalade CTO** et ne jamais l'implémenter ni la contourner localement.
 
 ---

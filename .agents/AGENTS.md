@@ -613,7 +613,8 @@ Une nouvelle fonction ne doit être ajoutée au Core que si :
 Toute fonction d'un module qui valide, nettoie ou contrôle (sécurité) les données reçues le fait **exclusivement** avec `lyxal_core` :
 
 * **une valeur isolée** : la primitive correspondante (`fn::validation_*`, `fn::sanitize_*`, `fn::security_*`) ;
-* **plusieurs champs d'un objet** ou une suite d'étapes : le **moteur unique**, c'est-à-dire `fn::validation_object_execute`, `fn::sanitize_object_execute` ou `fn::security_object_execute` (et leurs variantes `*_pipeline_execute` pour une valeur), avec les règles des catalogues `fn::<domaine>_step_catalog()`.
+* **plusieurs champs d'un objet** ou une suite d'étapes : le **moteur unique**, c'est-à-dire `fn::validation_object_execute`, `fn::sanitize_object_execute` ou `fn::security_object_execute` (et leurs variantes `*_pipeline_execute` pour une valeur), avec les règles des catalogues `fn::<domaine>_step_catalog()` ;
+* **une fonction appelée souvent** (remise d'un message, écriture d'un fichier, publication d'un événement…) : `fn::validation_fields_execute($params, { <champ>: { checks, required, nullable, default } }, "reject")`, forme du moteur unique dont les contrôles sont des fermetures qui appellent les primitives (`|$v: any| fn::validation_record($v, "mail_account")`). Même rapport (`valid`, `value`, `by_field`) ; la fonction ne charge que les validateurs qu'elle nomme, au lieu de tout le catalogue à chaque transaction.
 
 Il est interdit dans un module :
 

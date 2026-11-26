@@ -79,7 +79,7 @@ Inspecter les fichiers `.surql` du module pour contrôler :
    - Préfixe strict `<MODULE>_*` sur tous les codes d'erreurs ;
    - Vérification que chaque code passé à `fn::error_result("<CODE>", ...)` dans `functions/` possède bien sa définition dans `error/` ou `seeds/error_definitions.surql`.
 6. **Entrées traitées par `lyxal_core`** ([`AGENTS.md` §5.7.8](../../AGENTS.md)) — hors `crates/lyxal_core` lui-même :
-   - Pour chaque fonction publique, relever comment `$params` est validé, nettoyé et contrôlé : primitives `fn::validation_*` / `fn::sanitize_*` / `fn::security_*`, ou moteur `fn::*_object_execute` / `fn::*_pipeline_execute`.
+   - Pour chaque fonction publique, relever comment `$params` est validé, nettoyé et contrôlé : primitives `fn::validation_*` / `fn::sanitize_*` / `fn::security_*`, ou moteur `fn::*_object_execute` / `fn::*_pipeline_execute` / `fn::validation_fields_execute` (contrôles par fermetures, pour les fonctions appelées souvent).
    - Signaler en **P1** :
      - une vérification ou normalisation générique écrite localement (`string::matches` sur un e-mail, une URL ou un UUID, test de longueur ou de bornes, `string::trim` / `string::lowercase` de nettoyage) alors qu'une règle du catalogue la couvre ;
      - un exécuteur local de pipeline, de schéma d'objet, de rapport par champ, d'optimiseur, de traces ou de mesures ;

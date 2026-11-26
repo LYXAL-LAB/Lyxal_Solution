@@ -453,7 +453,7 @@ RETURN (SELECT VALUE [origin, reception] FROM ONLY passe:append) == ["append", N
 
 -- test: règle d'entrée des résultats de réception (interne) : sept champs exigés, mots de la RFC 8601
 {
-    LET $check = |$reception| fn::validation_object_execute({ r: $reception }, { fields: { r: fn::mail_reception_rule() }, unknown_keys: "reject" }, 20);
+    LET $check = |$reception| fn::validation_fields_execute({ r: $reception }, { r: fn::mail_reception_rule() }, "reject");
     LET $full = { spf: "softfail", dkim: "policy", dmarc: "temperror", iprev: "permerror", antivirus: "clean", spam: "none", tls: false };
     LET $reports = [$full, NONE, object::remove($full, "tls"), object::extend($full, { iprev: "none" }), object::extend($full, { domaine: "alpha.test" })].map(|$reception| $check($reception));
     RETURN $reports.valid == [true, false, false, false, false]

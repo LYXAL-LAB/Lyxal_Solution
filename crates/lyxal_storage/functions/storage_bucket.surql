@@ -75,13 +75,10 @@ DEFINE FUNCTION OVERWRITE fn::storage_bucket_update($params: object) {
 -- ----------------------------------------------------------------------------
 
 DEFINE FUNCTION OVERWRITE fn::storage_bucket_get($params: object) {
-    LET $report = fn::validation_object_execute($params, {
-        fields: {
-            bucket: { pipeline: [{ rule: "record", options: { expected_table: "storage_bucket" } }], required: true },
-            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
-        },
-        unknown_keys: "reject"
-    }, 20);
+    LET $report = fn::validation_fields_execute($params, {
+        bucket: { checks: [|$v: any| fn::validation_record($v, "storage_bucket")], required: true },
+        language: { checks: [|$v: any| fn::validation_language_code($v, false, NONE)], default: "fr" }
+    }, "reject");
     IF !$report.valid {
         RETURN fn::error_result("STORAGE_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };

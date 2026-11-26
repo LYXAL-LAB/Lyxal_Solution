@@ -66,7 +66,8 @@ Toutes prennent un objet unique `$params`, acceptent `language` (défaut `fr`) e
 `{ ok, data, error }`. Une entrée invalide renvoie `EVENT_INVALID_PARAMETERS` avec le détail
 par champ.
 
-* **Appelées par les modules**, validées par `fn::validation_object_execute` de `lyxal_core` :
+* **Appelées par les modules**, validées par `fn::validation_object_execute` de `lyxal_core`
+  (`fn::event_publish`, appelée à chaque événement : `fn::validation_fields_execute`) :
   `fn::event_publish`, `fn::event_subscription_register` (hôte obligatoire),
   `fn::event_subscription_transfer` (exploitation : changement d'hôte), `fn::event_backlog`
   (attente par hôte), `fn::event_outbox_get`, `fn::event_delivery_get`,
