@@ -3,15 +3,17 @@
 pub mod call;
 pub mod client;
 pub mod error;
+pub mod pool;
 
 pub use call::{thrown_code, validate_function_name, LyxalSurrealCall};
 pub use client::{
-    create_surreal_client, normalize_endpoint, validate_endpoint_scheme, RootCredentials,
-    SurrealConnectOptions,
+    create_surreal_client, is_embedded_endpoint, normalize_endpoint, validate_endpoint_scheme,
+    RootCredentials, SurrealConnectOptions,
 };
 pub use error::LyxalSurrealError;
 pub use lyxal_crypto::SecretString;
 pub use lyxal_error::{LyxalCallError, LyxalError, LyxalResult};
+pub use pool::{PoolProbe, SurrealPool};
 
 /// Types natifs du SDK SurrealDB exposés aux modules (§12.2 : alias définis dans `models/types.rs`).
 pub use surrealdb::types::{Datetime, RecordId, SurrealValue, ToSql, Value};

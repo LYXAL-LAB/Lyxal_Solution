@@ -41,6 +41,8 @@ pub fn build_router(context: AppContext) -> Result<Router, ServerError> {
         context.health.clone(),
         context.runtime.clone(),
         modules::HOST_ID,
+        context.database.clone(),
+        Duration::from_secs(context.config.database.connect_timeout_seconds),
     );
 
     // Limite du corps et délai total : toutes les routes, sauf les fichiers

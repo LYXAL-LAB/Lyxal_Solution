@@ -12,13 +12,12 @@
 use crate::config::AppConfig;
 use crate::context::StorageHost;
 use crate::error::ServerError;
+use lyxal_host::database::Database;
 use lyxal_host::services::{storage_backends, storage_scanner};
 use lyxal_runtime::{LyxalModule, LyxalRuntime};
 use lyxal_secrets::FileKeys;
 use lyxal_storage::{StorageCleanup, StorageHealthCheck, StorageModule, StorageStore};
 use std::sync::Arc;
-use surrealdb::engine::any::Any;
-use surrealdb::Surreal;
 
 pub const MODULE_ID: &str = lyxal_storage::MODULE_ID;
 
@@ -33,12 +32,12 @@ pub fn module() -> Arc<dyn LyxalModule> {
 /// `storage.cleanup` ; absent si aucun support n'est configuré. Les envois reprenables qu'il
 /// assemble passent par le même antivirus que les routes ; les clés de fichiers des buckets
 /// chiffrés y sont rescellées après la rotation de la clé « fichiers » d'une organisation.
-pub fn cleanup(client: &Surreal<Any>, host: &StorageHost) -> Option<StorageCleanup> {
+pub fn cleanup(database: &Database, host: &StorageHost) -> Option<StorageCleanup> {
     if host.backends.is_empty() {
         return None;
     }
     let mut cleanup = StorageCleanup::new(
-        StorageStore::new(client.clone()),
+        StorageStore::new(database.clone()),
         host.backends.clone(),
         CLEANUP_BATCH,
     );
@@ -55,11 +54,11 @@ pub fn cleanup(client: &Surreal<Any>, host: &StorageHost) -> Option<StorageClean
 /// (`file_keys`), utilisés par les routes `/storage/*` et par le nettoyage.
 pub fn register_services(
     runtime: &LyxalRuntime,
-    client: &Surreal<Any>,
+    database: &Database,
     config: &AppConfig,
     file_keys: FileKeys,
 ) -> Result<StorageHost, ServerError> {
-    let store = StorageStore::new(client.clone());
+    let store = StorageStore::new(database.clone());
     let backends = Arc::new(storage_backends(&config.storage)?);
     if backends.is_empty() {
         tracing::warn!(

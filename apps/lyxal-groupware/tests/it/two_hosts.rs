@@ -15,6 +15,8 @@ use axum::http::{Request, StatusCode};
 use lyxal_crypto::{CryptoEngine, EncryptionKey, KeyId, KeyRingBuilder, KeyUse, StaticKeyResolver};
 use lyxal_groupware::config::GroupwareConfig;
 use lyxal_groupware::net::bind::bind_listeners;
+use lyxal_host::config::{DatabaseConfig, SecretPassword};
+use lyxal_host::database::{connect_database, Database};
 use lyxal_host::{health::HealthRegistry, health::HealthState, metrics::Metrics};
 use lyxal_mail::net::{refusal_line, MailProtocol, RefusalReason};
 use lyxal_runtime::{DesiredRuntimeState, ForeignModule, ModuleId, RuntimeReconciler};
@@ -26,7 +28,7 @@ use serde_json::Value;
 use std::fs;
 use std::sync::Arc;
 use std::time::Duration;
-use surrealdb::engine::any::{connect, Any};
+use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
 /// Modules déclarés par le nœud de `lyxal-groupware` (ordre alphabétique de `runtime_node`).
@@ -143,7 +145,7 @@ async fn send(router: &axum::Router, uri: &str, token: Option<&str>) -> (StatusC
 /// Routeur de `lyxal-server` avec son service d'authentification, et le jeton d'un
 /// administrateur de la plateforme (droit `server.installation.manage`).
 async fn server_router(
-    client: &Surreal<Any>,
+    database: &Database,
     base: (&str, &str),
     runtime: Arc<lyxal_runtime::LyxalRuntime>,
 ) -> (axum::Router, String) {
@@ -152,7 +154,7 @@ async fn server_router(
         base.1,
         "[auth]\npublic_url = \"https://lyxal.test/\"\n",
     ));
-    let host = auth::host(client, &config, Some(crypto()))
+    let host = auth::host(database, &config, Some(crypto()))
         .expect("service")
         .expect("service configuré");
     auth::complete_services(Some(&host)).await.expect("clés");
@@ -160,7 +162,7 @@ async fn server_router(
     health.set("server", HealthState::Healthy, None).await;
     let router = build_router(AppContext::new(
         config,
-        Arc::new(client.clone()),
+        database.clone(),
         health,
         Metrics::default(),
         runtime,
@@ -168,7 +170,8 @@ async fn server_router(
         Default::default(),
     ))
     .expect("routeur");
-    client
+    database
+        .fixed()
         .query(
             r#"CREATE auth_application:plateforme CONTENT { client_id: "lyxal-test-groupware-admin", name: "Plateforme", type: "machine", redirect_uris: [], state: "active", permissions_version: 1 };
                RELATE auth_application:plateforme->auth_has_role->auth_role:platform_admin SET granted_at = time::now();"#,
@@ -205,20 +208,18 @@ async fn mail_installed_at(client: &Surreal<Any>) -> Value {
     .await
 }
 
-/// Scénario commun : `server_client` et `groupware_client` désignent la même base `base`
-/// (namespace, base).
-async fn two_hosts(
-    server_client: &Surreal<Any>,
-    groupware_client: &Surreal<Any>,
-    base: (&str, &str),
-) {
-    let server = lyxal_server::runtime::start(&server_config(base.0, base.1, ""), server_client)
+/// Scénario commun : `server_database` et `groupware_database`, sessions système des deux hôtes,
+/// désignent la même base `base` (namespace, base).
+async fn two_hosts(server_database: &Database, groupware_database: &Database, base: (&str, &str)) {
+    // Requêtes de contrôle des essais : connexion fixe de la session système de lyxal-server
+    let server_client = server_database.fixed();
+    let server = lyxal_server::runtime::start(&server_config(base.0, base.1, ""), server_database)
         .await
         .expect("démarrage de lyxal-server");
     let config = groupware_config();
     let groupware = lyxal_groupware::runtime::start(
         &config,
-        groupware_client,
+        groupware_database,
         bind_listeners(&config).expect("liaison"),
         None,
     )
@@ -255,7 +256,7 @@ async fn two_hosts(
     );
 
     // Route système de lyxal-server : les nœuds vivants des deux hôtes
-    let (router, admin) = server_router(server_client, base, server.runtime.clone()).await;
+    let (router, admin) = server_router(server_database, base, server.runtime.clone()).await;
     let (status, reply) = send(&router, "/api/v1/system/modules", Some(&admin)).await;
     assert_eq!(status, StatusCode::OK, "{reply}");
     let system = &reply["data"];
@@ -330,7 +331,7 @@ async fn two_hosts(
     let config = groupware_config();
     let restarted = lyxal_groupware::runtime::start(
         &config,
-        groupware_client,
+        groupware_database,
         bind_listeners(&config).expect("liaison"),
         None,
     )
@@ -358,10 +359,16 @@ async fn two_hosts(
 #[tokio::test]
 async fn groupware_beside_lyxal_server_on_an_embedded_database() {
     let client = crate::support::database("two_hosts").await;
-    two_hosts(&client, &client, ("lyxal_test", "two_hosts")).await;
+    two_hosts(
+        &client.clone().into(),
+        &client.into(),
+        ("lyxal_test", "two_hosts"),
+    )
+    .await;
 }
 
-/// Serveur SurrealDB 3.3.4 réel (`ws://`) : chaque hôte a sa propre connexion à la même base.
+/// Serveur SurrealDB 3.3.4 réel (`ws://`) : chaque hôte ouvre sur la même base sa session système,
+/// un pool de trois connexions (`connect_database`, comme au démarrage du binaire).
 /// `LYXAL_SURREAL_WS_URL`, `LYXAL_SURREAL_USER`, `LYXAL_SURREAL_PASS` (`scripts/ci/test_all.sh`).
 #[tokio::test]
 #[ignore = "nécessite un serveur SurrealDB distant (LYXAL_SURREAL_WS_URL)"]
@@ -374,12 +381,20 @@ async fn groupware_beside_lyxal_server_on_a_remote_server() {
             .unwrap()
             .as_nanos()
     );
-    let server_client = remote(namespace, &database).await;
-    let groupware_client = remote(namespace, &database).await;
+    let server_database = remote(namespace, &database).await;
+    let groupware_database = remote(namespace, &database).await;
+    assert_eq!(server_database.size(), 3);
+    assert_eq!(groupware_database.size(), 3);
 
-    two_hosts(&server_client, &groupware_client, (namespace, &database)).await;
+    two_hosts(
+        &server_database,
+        &groupware_database,
+        (namespace, &database),
+    )
+    .await;
 
-    server_client
+    server_database
+        .fixed()
         .query(format!("REMOVE DATABASE {database}"))
         .await
         .unwrap()
@@ -387,19 +402,18 @@ async fn groupware_beside_lyxal_server_on_a_remote_server() {
         .unwrap();
 }
 
-async fn remote(namespace: &str, database: &str) -> Surreal<Any> {
-    let url = std::env::var("LYXAL_SURREAL_WS_URL").expect("LYXAL_SURREAL_WS_URL");
-    let username = std::env::var("LYXAL_SURREAL_USER").expect("LYXAL_SURREAL_USER");
+/// Session système d'un hôte sur le serveur d'essai : pool de trois connexions.
+async fn remote(namespace: &str, database: &str) -> Database {
     let password = std::env::var("LYXAL_SURREAL_PASS").expect("LYXAL_SURREAL_PASS");
-    let client = connect(url.as_str()).await.expect("connexion ws://");
-    client
-        .signin(surrealdb::opt::auth::Root { username, password })
-        .await
-        .expect("session root");
-    client
-        .use_ns(namespace)
-        .use_db(database)
-        .await
-        .expect("use_ns/use_db");
-    client
+    connect_database(&DatabaseConfig {
+        endpoint: std::env::var("LYXAL_SURREAL_WS_URL").expect("LYXAL_SURREAL_WS_URL"),
+        namespace: namespace.to_string(),
+        database: database.to_string(),
+        username: Some(std::env::var("LYXAL_SURREAL_USER").expect("LYXAL_SURREAL_USER")),
+        password: Some(SecretPassword::new(password).expect("mot de passe")),
+        connect_timeout_seconds: 15,
+        connections: std::num::NonZeroUsize::new(3).expect("connexions"),
+    })
+    .await
+    .expect("connexions ws://")
 }

@@ -336,7 +336,7 @@ pub async fn execute(command: Command) -> Result<(), ServerError> {
         Command::MigrationsList { module } => {
             let config = AppConfig::load()?;
             let client = database::connect_database(&config.database).await?;
-            print!("{}", migrations_list(&client, module).await?);
+            print!("{}", migrations_list(client.fixed(), module).await?);
             Ok(())
         }
         Command::MigrationsResolve {
@@ -354,7 +354,7 @@ pub async fn execute(command: Command) -> Result<(), ServerError> {
                 reason,
                 actor: cli_actor(&config),
             };
-            print!("{}", migrations_resolve(&client, decision).await?);
+            print!("{}", migrations_resolve(client.fixed(), decision).await?);
             Ok(())
         }
     }
@@ -475,7 +475,7 @@ fn resolution_summary(resolved: &MigrationResolved, actor: &str) -> String {
 async fn exchange() -> Result<Exchange, ServerError> {
     let config = AppConfig::load()?;
     let client = database::connect_database(&config.database).await?;
-    Ok(Exchange::new(I18nStore::new(client.as_ref().clone())))
+    Ok(Exchange::new(I18nStore::new(client)))
 }
 
 fn failed(error: &dyn std::fmt::Display) -> ServerError {

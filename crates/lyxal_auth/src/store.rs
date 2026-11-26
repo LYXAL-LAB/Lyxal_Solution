@@ -3,7 +3,7 @@
 //! SurrealQL ; la session SurrealDB du client détermine l'appelant.
 
 use async_trait::async_trait;
-use lyxal_surreal::{LyxalSurrealCall, LyxalSurrealError};
+use lyxal_surreal::{LyxalSurrealCall, LyxalSurrealError, SurrealPool};
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
@@ -42,28 +42,32 @@ use crate::models::{
     TotpSecretRecord, TotpStepUseParams,
 };
 
-/// Store de `lyxal_auth` sur un client SurrealDB (`Surreal<Any>`).
+/// Store de `lyxal_auth` sur un client SurrealDB (`Surreal<Any>`), ou sur le pool de
+/// connexions de la session système de l'hôte (`SurrealPool`) : chaque appel prend alors le
+/// client du tour suivant. Une copie du store partage la session de l'original.
 #[derive(Clone)]
 pub struct AuthStore {
-    db: Surreal<Any>,
+    db: SurrealPool,
 }
 
 #[async_trait]
 impl LyxalSurrealCall for AuthStore {
     fn surreal_client(&self) -> &Surreal<Any> {
-        &self.db
+        self.db.client()
     }
 }
 
 impl AuthStore {
-    /// Store sur un client déjà connecté (espace de noms et base choisis).
-    pub fn new(db: Surreal<Any>) -> Self {
-        Self { db }
+    /// Store sur un client déjà connecté (espace de noms et base choisis), ou sur un pool de
+    /// clients de la même session.
+    pub fn new(db: impl Into<SurrealPool>) -> Self {
+        Self { db: db.into() }
     }
 
-    /// Client SurrealDB sous-jacent.
+    /// Client SurrealDB sous-jacent : le client unique du store, ou celui du tour suivant
+    /// d'un pool.
     pub fn client(&self) -> &Surreal<Any> {
-        &self.db
+        self.db.client()
     }
 
     /// `fn::auth_context` : contexte de l'appelant.

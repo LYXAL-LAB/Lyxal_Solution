@@ -161,16 +161,18 @@ async fn the_vault_is_used_through_http_on_behalf_of_the_caller() {
         .use_db("coffre_http")
         .await
         .expect("ns/db");
-    let started = runtime::start(&config, &client).await.expect("démarrage");
+    let started = runtime::start(&config, &client.clone().into())
+        .await
+        .expect("démarrage");
     assert!(started.secrets.has_master_key());
-    let host = auth::host(&client, &config, Some(crypto()))
+    let host = auth::host(&client.clone().into(), &config, Some(crypto()))
         .expect("service")
         .expect("service configuré");
     auth::complete_services(Some(&host)).await.expect("clés");
     let router = build_router(
         AppContext::new(
             config.clone(),
-            Arc::new(client.clone()),
+            client.clone().into(),
             HealthRegistry::default(),
             Metrics::default(),
             started.runtime.clone(),

@@ -14,10 +14,9 @@ use lyxal_auth::{
     SigningKeyService,
 };
 use lyxal_crypto::{CryptoEngine, StaticKeyResolver};
+use lyxal_host::database::Database;
 use lyxal_runtime::{LyxalModule, LyxalRuntime};
 use std::sync::Arc;
-use surrealdb::engine::any::Any;
-use surrealdb::Surreal;
 
 pub const MODULE_ID: &str = lyxal_auth::MODULE_ID;
 
@@ -35,19 +34,19 @@ pub struct AuthHost {
 }
 
 /// Purge de `lyxal_auth` sur la session système de l'hôte, exécutée par la tâche `auth.purge`.
-pub fn purge(client: &Surreal<Any>) -> AuthPurge {
-    AuthPurge::new(AuthStore::new(client.clone()), PURGE_BATCH)
+pub fn purge(database: &Database) -> AuthPurge {
+    AuthPurge::new(AuthStore::new(database.clone()), PURGE_BATCH)
 }
 
 /// Sonde et, si la clé applicative et `auth.public_url` sont fournies, service de connexion.
 pub fn register_services(
     runtime: &LyxalRuntime,
-    client: &Surreal<Any>,
+    database: &Database,
     config: &AppConfig,
     crypto: Option<Arc<CryptoEngine<StaticKeyResolver>>>,
 ) -> Result<Option<Arc<AuthHost>>, ServerError> {
-    let store = AuthStore::new(client.clone());
-    let host = host(client, config, crypto)?;
+    let store = AuthStore::new(database.clone());
+    let host = host(database, config, crypto)?;
     let disabled = host.is_none().then(|| {
         "connexion désactivée : LYXAL__CRYPTO__APPLICATION_KEY et auth.public_url requis"
             .to_string()
@@ -64,14 +63,14 @@ pub fn register_services(
 /// Service de connexion sur la session système, si la clé applicative et `auth.public_url` sont
 /// fournies (routes `/auth/*` et commandes d'administration).
 pub fn host(
-    client: &Surreal<Any>,
+    database: &Database,
     config: &AppConfig,
     crypto: Option<Arc<CryptoEngine<StaticKeyResolver>>>,
 ) -> Result<Option<Arc<AuthHost>>, ServerError> {
     let (Some(crypto), Some(public_url)) = (crypto, config.auth.public_url.clone()) else {
         return Ok(None);
     };
-    let store = AuthStore::new(client.clone());
+    let store = AuthStore::new(database.clone());
     let keys = Arc::new(SigningKeyService::new(store.clone(), crypto.clone()));
     let access = AccessService::new(
         store,

@@ -92,7 +92,7 @@ fn config(database: &str, root: &std::path::Path, with_key: bool) -> GroupwareCo
 async fn start(config: &GroupwareConfig, client: &Surreal<Any>) -> Started {
     runtime::start(
         config,
-        client,
+        &client.clone().into(),
         bind_listeners(config).expect("liaison"),
         None,
     )
@@ -367,7 +367,7 @@ async fn without_master_key_an_existing_encrypted_bucket_stops_the_start() {
 
     let refused = runtime::start(
         &keyless,
-        &client,
+        &client.clone().into(),
         bind_listeners(&keyless).expect("liaison"),
         None,
     )

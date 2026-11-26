@@ -7,6 +7,7 @@ use crate::modules::auth::AuthHost;
 use async_trait::async_trait;
 use lyxal_crypto::SecretString;
 use lyxal_event::EventSubscription;
+use lyxal_host::database::Database;
 use lyxal_pipeline_ingestion::error::{IngestionError, IngestionResult};
 use lyxal_pipeline_ingestion::publisher::{
     CatalogueTokenIssuer, CATALOGUE_SYNC_CLIENT_ID, PUBLICATION_HANDLER, PUBLICATION_MODULE,
@@ -20,8 +21,6 @@ use lyxal_runtime::{LyxalModule, LyxalRuntime};
 use lyxal_storage::models::BucketCreateParams;
 use lyxal_storage::{StorageService, StorageStore};
 use std::sync::Arc;
-use surrealdb::engine::any::Any;
-use surrealdb::Surreal;
 
 pub const MODULE_ID: &str = "lyxal_pipeline_ingestion";
 
@@ -60,13 +59,16 @@ impl CatalogueTokenIssuer for AuthCatalogueTokenIssuer {
 /// catalogue. Retourne `true` si la publication est active.
 pub async fn register_services(
     runtime: &LyxalRuntime,
-    client: &Surreal<Any>,
+    database: &Database,
     auth: Option<&Arc<AuthHost>>,
     storage: &StorageHost,
 ) -> Result<bool, ServerError> {
-    let store = IngestionStore::new(client.clone());
+    let store = IngestionStore::new(database.clone());
     // Fichiers sources des lots lus dans lyxal_storage, sous la session système de l'hôte
-    let sources = StorageService::new(StorageStore::new(client.clone()), storage.backends.clone());
+    let sources = StorageService::new(
+        StorageStore::new(database.clone()),
+        storage.backends.clone(),
+    );
     let source_storage = sources.is_configured();
     if !source_storage {
         tracing::warn!(
@@ -78,7 +80,9 @@ pub async fn register_services(
     let publication = match auth {
         Some(host) => {
             let issuer = AuthCatalogueTokenIssuer { host: host.clone() };
-            let publisher = ControlledPublisher::new(client.clone(), Arc::new(issuer));
+            // Session de l'agent de synchronisation : clonée de la connexion fixe, puis
+            // authentifiée par son jeton à chaque publication
+            let publisher = ControlledPublisher::new(database.fixed().clone(), Arc::new(issuer));
             runtime
                 .register_event_consumer(Arc::new(PublicationConsumer::new(Arc::new(publisher))))
                 .await;
@@ -102,8 +106,8 @@ pub async fn register_services(
 
 /// Après l'installation des modules : bucket de l'installation qui conserve les fichiers sources
 /// des lots, créé s'il n'existe pas (rejouable).
-pub async fn ensure_source_bucket(client: &Surreal<Any>) -> Result<(), ServerError> {
-    let created = StorageStore::new(client.clone())
+pub async fn ensure_source_bucket(database: &Database) -> Result<(), ServerError> {
+    let created = StorageStore::new(database.clone())
         .bucket_create(BucketCreateParams::named(None, SOURCE_BUCKET))
         .await;
     match created {

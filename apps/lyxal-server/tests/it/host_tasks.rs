@@ -101,7 +101,7 @@ async fn host_tasks_are_declared_and_scheduled_once() {
     let client = database("host_tasks_install").await;
     let store = SchedulerStore::new(client.clone());
 
-    let first = runtime::start(&config, &client)
+    let first = runtime::start(&config, &client.clone().into())
         .await
         .expect("premier démarrage");
     // Handlers inscrits dans le registre du planificateur, avant le démarrage
@@ -138,7 +138,9 @@ async fn host_tasks_are_declared_and_scheduled_once() {
     }
 
     // Redémarrage sur la base installée : ni tâche ni planification en double, mêmes planifications
-    let second = runtime::start(&config, &client).await.expect("redémarrage");
+    let second = runtime::start(&config, &client.clone().into())
+        .await
+        .expect("redémarrage");
     second.runtime.stop_all().await.expect("arrêt");
     assert_eq!(count(&client, declared).await, 3);
     assert_eq!(count(&client, permissions).await, 3);
@@ -167,7 +169,9 @@ async fn a_triggered_host_task_does_the_work_of_its_module() {
     );
     let config = config_with("host_tasks_run", &extra);
     let client = database("host_tasks_run").await;
-    let started = runtime::start(&config, &client).await.expect("démarrage");
+    let started = runtime::start(&config, &client.clone().into())
+        .await
+        .expect("démarrage");
     let store = SchedulerStore::new(client.clone());
 
     // lyxal_auth : une session expirée, encore marquée active
@@ -264,7 +268,9 @@ async fn a_triggered_host_task_does_the_work_of_its_module() {
 async fn the_storage_cleanup_does_nothing_without_a_backend() {
     let config = config_with("host_tasks_no_backend", "");
     let client = database("host_tasks_no_backend").await;
-    let started = runtime::start(&config, &client).await.expect("démarrage");
+    let started = runtime::start(&config, &client.clone().into())
+        .await
+        .expect("démarrage");
     let cleanup = trigger(&SchedulerStore::new(client.clone()), STORAGE_CLEANUP).await;
     assert_eq!(cleanup, serde_json::json!({ "skipped": "no_backend" }));
     started.runtime.stop_all().await.expect("arrêt");
@@ -300,15 +306,17 @@ async fn a_caller_without_the_task_permission_cannot_run_a_host_task() {
         "[auth]\npublic_url = \"https://lyxal.test/\"\n",
     ));
     let client = database("host_tasks_rights").await;
-    let started = runtime::start(&config, &client).await.expect("démarrage");
-    let host = auth::host(&client, &config, Some(crypto()))
+    let started = runtime::start(&config, &client.clone().into())
+        .await
+        .expect("démarrage");
+    let host = auth::host(&client.clone().into(), &config, Some(crypto()))
         .expect("service")
         .expect("service configuré");
     auth::complete_services(Some(&host)).await.expect("clés");
     let router = build_router(
         AppContext::new(
             config.clone(),
-            Arc::new(client.clone()),
+            client.clone().into(),
             HealthRegistry::default(),
             Metrics::default(),
             started.runtime.clone(),

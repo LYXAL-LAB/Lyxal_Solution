@@ -79,7 +79,7 @@ fn package() -> ModulePackage {
 
 /// Démarrage de l'hôte : modules embarqués et module d'essai.
 async fn start(config: &AppConfig, client: &Surreal<Any>) -> Result<runtime::Started, ServerError> {
-    runtime::start_with(config, client, vec![package()]).await
+    runtime::start_with(config, &client.clone().into(), vec![package()]).await
 }
 
 /// Le démarrage de l'hôte échoue sur l'installation du module d'essai.

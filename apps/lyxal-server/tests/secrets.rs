@@ -86,7 +86,9 @@ async fn the_vault_with_its_master_key_writes_and_reads_values() {
         .use_db("coffre")
         .await
         .expect("ns/db");
-    let started = runtime::start(&config, &client).await.expect("démarrage");
+    let started = runtime::start(&config, &client.clone().into())
+        .await
+        .expect("démarrage");
     assert!(started.secrets.has_master_key());
     let probe = started
         .runtime

@@ -10,6 +10,7 @@ use axum::http::{Request, StatusCode};
 use lyxal_groupware::net::bind::bind_listeners;
 use lyxal_groupware::{http, runtime};
 use lyxal_host::health::{HealthRegistry, HealthState};
+use lyxal_host::http::HostHealth;
 use lyxal_mail::net::{MailProtocol, SessionHandler};
 use lyxal_runtime::worker::WorkerState;
 use lyxal_runtime::{ModuleId, ModuleState};
@@ -46,9 +47,15 @@ async fn host_starts_serves_health_and_drains_on_shutdown() {
     let client = database("lifecycle").await;
     let listeners = bind_listeners(&config).unwrap();
     let handler: Arc<dyn SessionHandler> = Arc::new(HoldHandler(MailProtocol::Smtp));
-    let started = runtime::start_with(&config, &client, listeners, None, &move |_| handler.clone())
-        .await
-        .expect("démarrage");
+    let started = runtime::start_with(
+        &config,
+        &client.clone().into(),
+        listeners,
+        None,
+        &move |_| handler.clone(),
+    )
+    .await
+    .expect("démarrage");
     let runtime = started.runtime.clone();
     for module in [
         "lyxal_core",
@@ -81,7 +88,16 @@ async fn host_starts_serves_health_and_drains_on_shutdown() {
     for component in ["groupware", "database", "http"] {
         health.set(component, HealthState::Healthy, None).await;
     }
-    let router = http::router(health.clone(), runtime.clone(), started.mail.clone());
+    let router = http::router(
+        HostHealth::new(
+            health.clone(),
+            runtime.clone(),
+            lyxal_groupware::modules::HOST_ID,
+            client.clone().into(),
+            Duration::from_secs(5),
+        ),
+        started.mail.clone(),
+    );
     assert_eq!(get(&router, "/live").await.0, StatusCode::NO_CONTENT);
     assert_eq!(get(&router, "/ready").await.0, StatusCode::NO_CONTENT);
     let (status, body) = get(&router, "/health").await;
@@ -148,7 +164,7 @@ async fn session_ignoring_shutdown_is_abandoned_at_the_drain_deadline() {
     );
     let client = database("stubborn").await;
     let listeners = bind_listeners(&config).unwrap();
-    let started = runtime::start_with(&config, &client, listeners, None, &|_| {
+    let started = runtime::start_with(&config, &client.clone().into(), listeners, None, &|_| {
         Arc::new(StubbornHandler) as Arc<dyn SessionHandler>
     })
     .await

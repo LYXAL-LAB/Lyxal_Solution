@@ -4,7 +4,7 @@
 //! connectée pour ses propres préférences).
 
 use async_trait::async_trait;
-use lyxal_surreal::{LyxalSurrealCall, LyxalSurrealError, SurrealValue};
+use lyxal_surreal::{LyxalSurrealCall, LyxalSurrealError, SurrealPool, SurrealValue};
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
@@ -41,16 +41,18 @@ use crate::models::{
     InboxDeliverParams, InboxDelivered,
 };
 
-/// Store de `lyxal_notification` sur un client SurrealDB (`Surreal<Any>`).
+/// Store de `lyxal_notification` sur un client SurrealDB (`Surreal<Any>`), ou sur le pool de
+/// connexions de la session système de l'hôte (`SurrealPool`) : chaque appel prend alors le
+/// client du tour suivant. Une copie du store partage la session de l'original.
 #[derive(Clone)]
 pub struct NotificationStore {
-    db: Surreal<Any>,
+    db: SurrealPool,
 }
 
 #[async_trait]
 impl LyxalSurrealCall for NotificationStore {
     fn surreal_client(&self) -> &Surreal<Any> {
-        &self.db
+        self.db.client()
     }
 }
 
@@ -58,9 +60,10 @@ impl LyxalSurrealCall for NotificationStore {
 const CONFLICT_RETRIES: u32 = 12;
 
 impl NotificationStore {
-    /// Store sur un client déjà connecté (espace de noms et base choisis).
-    pub fn new(db: Surreal<Any>) -> Self {
-        Self { db }
+    /// Store sur un client déjà connecté (espace de noms et base choisis), ou sur un pool de
+    /// clients de la même session.
+    pub fn new(db: impl Into<SurrealPool>) -> Self {
+        Self { db: db.into() }
     }
 
     /// Appel d'une fonction des workers, rejoué après un conflit d'écriture transitoire de
@@ -89,9 +92,10 @@ impl NotificationStore {
         }
     }
 
-    /// Client SurrealDB sous-jacent.
+    /// Client SurrealDB sous-jacent : le client unique du store, ou celui du tour suivant
+    /// d'un pool.
     pub fn client(&self) -> &Surreal<Any> {
-        &self.db
+        self.db.client()
     }
 
     /// `fn::notification_trigger` : déclenchement idempotent (abonné, liste, sujet ou tous).

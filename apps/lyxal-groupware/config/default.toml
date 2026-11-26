@@ -17,6 +17,10 @@ endpoint = "ws://127.0.0.1:8000"
 namespace = "lyxal"
 database = "system"
 connect_timeout_seconds = 15
+# Connexions de la session système (pool) : par défaut le nombre de cœurs, 16 au plus ; 0 refusé.
+# Sans effet sur une base embarquée (mem://). Un serveur SurrealDB ne répartit pas sur ses cœurs les
+# requêtes d'une même connexion : le débit suit le nombre de connexions, jusqu'au nombre de cœurs de la base.
+# connections = 8
 
 [runtime]
 module_install_timeout_seconds = 120

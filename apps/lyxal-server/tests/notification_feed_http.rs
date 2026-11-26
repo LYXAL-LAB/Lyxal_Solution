@@ -346,8 +346,10 @@ async fn harness() -> Harness {
         .use_db("notification_fil")
         .await
         .expect("ns/db");
-    let started = runtime::start(&config, &client).await.expect("démarrage");
-    let host = auth::host(&client, &config, Some(crypto()))
+    let started = runtime::start(&config, &client.clone().into())
+        .await
+        .expect("démarrage");
+    let host = auth::host(&client.clone().into(), &config, Some(crypto()))
         .expect("service")
         .expect("service configuré");
     auth::complete_services(Some(&host)).await.expect("clés");
@@ -371,7 +373,7 @@ async fn harness() -> Harness {
     let router = build_router(
         AppContext::new(
             config.clone(),
-            Arc::new(client.clone()),
+            client.clone().into(),
             HealthRegistry::default(),
             Metrics::default(),
             started.runtime.clone(),

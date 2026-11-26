@@ -15,6 +15,7 @@ endpoint = "wss://db.interne:8000"
 namespace = "lyxal"
 database = "system"
 connect_timeout_seconds = 15
+# connections = 8            # connexions de la session système ; défaut : nombre de cœurs, 16 au plus
 
 [observability]
 log_filter = "info"

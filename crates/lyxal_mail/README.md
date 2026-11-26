@@ -222,32 +222,37 @@ dossier, une fiche de la vue par date par message.
 
 ### Mesures de la remise (`tests/it/measures.rs`, `scripts/bench/delivery/`)
 
-Mesures des 25 et 26 novembre 2026, après le sous-lot 1 du plan de performance
+Mesures du 26 novembre 2026, après les sous-lots 1 et 2 du plan de performance
 (`docs/14-roadmap/implementation_plan_performance.md` : contrôle des paramètres par
-`fn::validation_fields_execute` dans les neuf fonctions du chemin de remise). Machine de
-développement à 4 cœurs, **occupée par d'autres travaux pendant une partie des séries** ; une
-seule série par mesure. Objectifs (décision P10 du plan) : une remise seule en 42 ms au plus ;
+`fn::validation_fields_execute` dans les neuf fonctions du chemin de remise ; pool de connexions
+de la session système). Machine de développement à 4 cœurs, base et banc sur la même machine ;
+une seule série par mesure. Objectifs (décision P10 du plan) : une remise seule en 42 ms au plus ;
 80 remises par seconde sur 4 cœurs partagés, 110 sur 4 cœurs réservés à la base, aucune refusée.
 
 **Banc Rust** : binaire d'essai optimisé (`cargo test -p lyxal_mail --release --test it --
 --ignored --nocapture --test-threads 1 measures`), messages de 10 Kio remis par
 `MailIngest::receive` (le chemin de la session SMTP, **sans** le dialogue SMTP ni les contrôles
-d'authenticité, livrés en 5d), support disque, un nœud. Trois moteurs : base embarquée dans le
-processus (`mem://`) ; serveur SurrealDB 3.3.4 en mémoire joint par `ws://`
-(`LYXAL_SURREAL_WS_URL`, `LYXAL_SURREAL_USER`, `LYXAL_SURREAL_PASS`) sur une connexion ; le même
-serveur avec une connexion par service (`LYXAL_SURREAL_CONNECTIONS=services`).
+d'authenticité, livrés en 5d), support disque. Serveur SurrealDB 3.3.4 en mémoire joint par
+`ws://` (`LYXAL_SURREAL_WS_URL`, `LYXAL_SURREAL_USER`, `LYXAL_SURREAL_PASS`), pool de
+`LYXAL_SURREAL_CONNECTIONS` connexions (une par défaut) ; sans ces variables, base embarquée
+dans le processus (`mem://`).
 
-| Mesure | Base embarquée | Serveur, une connexion | Serveur, une connexion par service | Avant le sous-lot 1 (serveur, une connexion) |
-| :--- | :-: | :-: | :-: | :-: |
-| Une remise, sans concurrence (moyenne de 300) | 70,6 ms : ouverture 7,8 ; fichier chiffré 25,6 ; inscription 37,1 | **37,1 ms** : ouverture 4,3 ; fichier chiffré 15,1 ; inscription 17,7 | 37,0 ms | 96 ms : ouverture 9,0 ; fichier chiffré 38,4 ; inscription 48,2 |
-| 100 comptes d'une organisation, 50 clients, 3 000 remises | 28,3 par seconde ; p50 1 906 ms, p95 2 073 ms | **24,7 par seconde** ; p50 1 936 ms, p95 2 182 ms | 34,2 par seconde ; p50 1 360 ms, p95 2 772 ms | 11,8 par seconde |
-| 100 comptes de deux organisations, 50 clients, 3 000 remises | 31,8 par seconde | 27,1 par seconde | 36,7 par seconde | 11,5 par seconde |
-| Un compte, 20 clients, 1 000 remises | 26,4 par seconde ; 0 refusée ; 105 appels (lot de 11 au plus) | 23,2 par seconde ; 0 refusée ; aucun lot (1 000 appels) | 47,4 par seconde ; 0 refusée ; 134 appels (lot de 12 au plus) | 10,9 par seconde |
-| Deux nœuds simulés (deux services de remise sur la même base), un compte, 20 clients, 1 000 remises | 19,3 par seconde ; 1 refusée (0,1 %, `SURREAL_DATABASE_ERROR`) après rejeu ; 172 conflits rejoués, 40 lots repris élément par élément | non mesuré (une connexion exécute ses requêtes une à une : aucun conflit possible) | non mesuré | — |
+| Mesure | Avant le plan (une connexion) | Sous-lot 1, une connexion | Sous-lots 1 et 2, pool de 8 |
+| :--- | :-: | :-: | :-: |
+| Une remise, sans concurrence (moyenne de 300) | 96 ms : ouverture 9,0 ; fichier chiffré 38,4 ; inscription 48,2 | 36,5 ms : ouverture 4,3 ; fichier chiffré 14,8 ; inscription 17,3 | **37,2 ms** : ouverture 4,4 ; fichier chiffré 15,2 ; inscription 17,6 |
+| `FileKeys::seal` | 13,1 ms | 2,4 ms (p95 3,1) | 2,6 ms (p95 2,8) |
+| 100 comptes d'une organisation, 50 clients, 3 000 remises | 11,8 par seconde | 29,2 par seconde ; p50 1 690 ms, p95 1 855 ms | **62,3 par seconde** ; p50 794 ms, p95 882 ms |
+| 100 comptes de deux organisations, 50 clients, 3 000 remises | 11,5 par seconde | 30,1 par seconde | **101,0 par seconde** ; p50 487 ms, p95 854 ms |
+| Un compte, 20 clients, 1 000 remises | 10,9 par seconde | 26,9 par seconde ; aucun lot | **65,0 par seconde** ; p50 300 ms ; 505 appels (lot de 3 au plus) |
+| Deux nœuds simulés (deux services de remise sur la même base), un compte, 20 clients, 1 000 remises | — | 25,8 par seconde ; 5 refusées (0,5 %) ; 39 conflits rejoués | 45,7 par seconde ; **10 refusées (1,0 %)** ; 239 conflits rejoués, 37 lots repris élément par élément |
 
-Une remise seule tient l'objectif (37 ms pour 42). Le débit ne le tient pas encore : il attend le
-pool de connexions et les compteurs de volume sans conflit (sous-lots 2 et 3 du plan). Aucune
-remise refusée ni conflit de transaction sur un nœud dans ces séries.
+Aucune remise refusée sur un nœud dans ces séries. Une remise seule tient l'objectif (37 ms pour
+42). Le débit d'une organisation (62 par seconde) ne le tient pas encore : le tour d'écriture par
+organisation du nœud y fait passer les fichiers un à un, en attendant les compteurs de volume sans
+conflit (sous-lot 3 du plan). Sur deux nœuds, les remises refusées (`SURREAL_DATABASE_ERROR` : un
+conflit d'écriture qui survit aux rejeux) atteignent le seuil de 1 % de la décision S11 ; à
+remesurer après le sous-lot 3. Base embarquée du binaire d'essai, après le sous-lot 1 : une remise
+70,6 ms, 28,3 remises par seconde pour 100 comptes d'une organisation.
 
 **Banc SurrealQL** (`scripts/bench/delivery/bench_delivery.py`, temps de calcul de la base seule,
 relevé dans le serveur, chaque appel public dans sa transaction ; « avant » : `--ref 2ed5fbb33`) :
@@ -281,10 +286,12 @@ Ce que montrent les mesures :
   remise ne nomment plus que les validateurs qu'elles utilisent (`fn::validation_fields_execute`,
   `crates/lyxal_core/Readme.md`). Les autres fonctions publiques du courrier paient encore ce
   coût.
-* **Un serveur SurrealDB exécute une à une les requêtes d'une même connexion** : avec une seule
-  connexion, le débit d'un nœud reste celui d'une remise à la fois (24,7 par seconde pour 37 ms
-  par remise), quel que soit le nombre de clients, et rien ne se groupe. Des connexions
-  distinctes se partagent les cœurs (117 remises par seconde à 4 connexions, pas plus au-delà).
+* **Une seule connexion ne se partage pas les cœurs du serveur** : ses requêtes s'entrelacent
+  (deux transactions simultanées peuvent déjà s'y heurter), mais le débit d'un nœud y reste
+  proche d'une remise à la fois (29 par seconde pour 37 ms par remise), quel que soit le nombre
+  de clients, et rien ne se groupe. Avec le pool de la session système (`[database] connections`,
+  `lyxal_surreal::SurrealPool`), les appels se répartissent sur les cœurs : 62 à 101 remises par
+  seconde avec 8 connexions.
 * **Compteurs de volume de `lyxal_storage`** : chaque fichier écrit les deux mêmes lignes de son
   organisation. Sans le tour d'écriture par organisation du nœud, les remises simultanées d'une
   organisation se refusent pour conflit de transaction (banc SurrealQL ci-dessus) ; avec lui,

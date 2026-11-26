@@ -4,3 +4,4 @@
 //! au lieu d'un par fichier (chaque exécutable embarque le moteur SurrealDB complet).
 
 mod call_tests;
+mod pool_tests;

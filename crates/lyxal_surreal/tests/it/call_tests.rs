@@ -50,7 +50,7 @@ struct EmptyParams {}
 
 #[tokio::test]
 async fn test_create_surreal_client_mem_lifecycle() {
-    let client = create_surreal_client(opts("mem://", None, "test_db"))
+    let client = create_surreal_client(&opts("mem://", None, "test_db"))
         .await
         .expect("Connection to mem:// without Root credentials must succeed");
 
@@ -64,7 +64,7 @@ async fn test_create_surreal_client_mem_lifecycle() {
 
 #[tokio::test]
 async fn test_create_surreal_client_rejects_unsupported_protocol() {
-    let res = create_surreal_client(opts("http://127.0.0.1:8000", None, "test_db")).await;
+    let res = create_surreal_client(&opts("http://127.0.0.1:8000", None, "test_db")).await;
     match res {
         Err(LyxalSurrealError::UnsupportedEndpoint { endpoint }) => {
             assert_eq!(endpoint, "http://127.0.0.1:8000");
@@ -75,7 +75,7 @@ async fn test_create_surreal_client_rejects_unsupported_protocol() {
 
 #[tokio::test]
 async fn test_create_surreal_client_rejects_missing_credentials_on_remote() {
-    let res = create_surreal_client(opts("ws://127.0.0.1:8000", None, "test_db")).await;
+    let res = create_surreal_client(&opts("ws://127.0.0.1:8000", None, "test_db")).await;
     match res {
         Err(LyxalSurrealError::MissingCredentials { endpoint }) => {
             assert_eq!(endpoint, "ws://127.0.0.1:8000");
@@ -85,7 +85,7 @@ async fn test_create_surreal_client_rejects_missing_credentials_on_remote() {
 
     let empty_creds = Some(RootCredentials::new("", secret("")));
     let res_empty =
-        create_surreal_client(opts("ws://127.0.0.1:8000", empty_creds, "test_db")).await;
+        create_surreal_client(&opts("ws://127.0.0.1:8000", empty_creds, "test_db")).await;
     assert!(matches!(
         res_empty,
         Err(LyxalSurrealError::MissingCredentials { .. })
@@ -94,7 +94,7 @@ async fn test_create_surreal_client_rejects_missing_credentials_on_remote() {
 
 #[tokio::test]
 async fn test_call_fn_nominal_success() {
-    let client = create_surreal_client(opts("mem://", None, "test_db"))
+    let client = create_surreal_client(&opts("mem://", None, "test_db"))
         .await
         .expect("Connect mem://");
 
@@ -125,7 +125,7 @@ async fn test_call_fn_nominal_success() {
 
 #[tokio::test]
 async fn test_call_fn_business_error_propagation() {
-    let client = create_surreal_client(opts("mem://", None, "test_db"))
+    let client = create_surreal_client(&opts("mem://", None, "test_db"))
         .await
         .expect("Connect mem://");
 
@@ -182,7 +182,7 @@ async fn test_call_fn_business_error_propagation() {
 
 #[tokio::test]
 async fn test_call_fn_invalid_contract_rejection() {
-    let client = create_surreal_client(opts("mem://", None, "test_db"))
+    let client = create_surreal_client(&opts("mem://", None, "test_db"))
         .await
         .expect("Connect mem://");
 
@@ -243,7 +243,7 @@ async fn test_call_fn_invalid_contract_rejection() {
 
 #[tokio::test]
 async fn test_call_fn_sql_injection_rejection() {
-    let client = create_surreal_client(opts("mem://", None, "test_db"))
+    let client = create_surreal_client(&opts("mem://", None, "test_db"))
         .await
         .expect("Connect mem://");
     let store = TestStore { db: client };
@@ -281,7 +281,7 @@ struct ThrowParams {
 /// résolue par `fn::error_result` ; un texte libre levé reste une erreur de base.
 #[tokio::test]
 async fn test_call_fn_resolves_thrown_module_codes() {
-    let db = create_surreal_client(opts("mem://", None, "test_thrown"))
+    let db = create_surreal_client(&opts("mem://", None, "test_thrown"))
         .await
         .expect("Connect mem://");
     let crate_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -372,7 +372,7 @@ async fn install_resource(db: &Surreal<Any>, module_dir: &std::path::Path, key: 
 /// sans doublon au rejeu, et se résolvent par `fn::error_resolve`.
 #[tokio::test]
 async fn test_surreal_error_definitions_install_and_resolve() {
-    let db = create_surreal_client(opts("mem://", None, "test_definitions"))
+    let db = create_surreal_client(&opts("mem://", None, "test_definitions"))
         .await
         .expect("Connect mem://");
     let crate_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -429,7 +429,7 @@ async fn test_remote_ws_root_signin_and_call_fn() {
     let pass = std::env::var("LYXAL_SURREAL_PASS").unwrap_or_else(|_| "root".to_owned());
 
     let creds = RootCredentials::new(user, secret(&pass));
-    let db = create_surreal_client(opts(&url, Some(creds), "test_remote"))
+    let db = create_surreal_client(&opts(&url, Some(creds), "test_remote"))
         .await
         .expect("Connexion ws:// avec authentification Root");
 

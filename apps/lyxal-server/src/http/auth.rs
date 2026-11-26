@@ -256,6 +256,7 @@ struct Resolved {
 async fn resolve(context: &AppContext, code: &str, language: &str) -> Option<LyxalError> {
     let mut response = context
         .database
+        .client()
         .query("RETURN fn::error_result($code, $language, {})")
         .bind(("code", code.to_string()))
         .bind(("language", language.to_string()))
@@ -277,7 +278,7 @@ pub(super) async fn language(
         candidates.extend(accept_language::candidates(header));
     }
     candidates.truncate(accept_language::MAX_CANDIDATES);
-    let resolved = I18nStore::new(context.database.as_ref().clone())
+    let resolved = I18nStore::new(context.database.clone())
         .locale_resolve(LocaleResolveParams {
             candidates,
             language: None,
@@ -451,7 +452,8 @@ pub(super) async fn caller_session(
         .and_then(|v| v.to_str().ok())
         .and_then(|v| v.strip_prefix("Bearer "))
         .ok_or(ApiError::Auth(AuthError::Rejected("AUTH_SESSION_REQUIRED")))?;
-    let session = context.database.as_ref().clone();
+    // Session à part, clonée de la connexion fixe : le pool reste à la session système
+    let session = context.database.fixed().clone();
     session
         .authenticate(token.to_string())
         .await

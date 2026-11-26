@@ -17,7 +17,9 @@ pub fn validate_function_name(name: &str) -> bool {
 /// Trait universel fournissant la méthode d'extension `call_fn` à tous les stores de l'écosystème Lyxal OS.
 #[async_trait]
 pub trait LyxalSurrealCall {
-    /// Récupère la référence au client SurrealDB (Transport Any - WS ou Mem).
+    /// Client SurrealDB de l'appel (Transport Any - WS ou Mem). Un store posé sur un
+    /// [`SurrealPool`](crate::SurrealPool) rend ici le client du tour suivant
+    /// (`SurrealPool::client`) : deux appels successifs peuvent passer par deux connexions.
     fn surreal_client(&self) -> &Surreal<Any>;
 
     /// Exécute une fonction SurrealQL `fn::<function_name>($params)` en lui transmettant un objet `$params` typé.

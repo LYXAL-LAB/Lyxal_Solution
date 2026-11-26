@@ -11,6 +11,7 @@ use crate::net::bind;
 use crate::net::certificates::Certificates;
 use crate::{http, runtime};
 use lyxal_host::health::{HealthRegistry, HealthState};
+use lyxal_host::http::HostHealth;
 use lyxal_host::{database, shutdown, telemetry};
 use std::time::Duration;
 
@@ -59,7 +60,16 @@ async fn run_inner() -> Result<(), GroupwareError> {
     let prepare = http::prepare(&config, certificates.as_ref())?;
     let started = runtime::start(&config, &database, listeners, certificates).await?;
     let runtime = started.runtime.clone();
-    let router = http::router(health.clone(), runtime.clone(), started.mail.clone());
+    let router = http::router(
+        HostHealth::new(
+            health.clone(),
+            runtime.clone(),
+            crate::modules::HOST_ID,
+            database,
+            Duration::from_secs(config.database.connect_timeout_seconds),
+        ),
+        started.mail.clone(),
+    );
     health.set("http", HealthState::Healthy, None).await;
     health.set("groupware", HealthState::Healthy, None).await;
     tracing::info!(address = %config.http.bind, "port HTTP de santé prêt");

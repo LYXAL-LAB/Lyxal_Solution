@@ -13,6 +13,7 @@
 use crate::config::{GroupwareConfig, ENV_PREFIX};
 use crate::error::GroupwareError;
 use async_trait::async_trait;
+use lyxal_host::database::Database;
 use lyxal_host::services::{master_keys, storage_backends, storage_scanner};
 use lyxal_mail::{
     MailContent, MailError, MailHealthCheck, MailIngest, MailMaintenance, MailStore,
@@ -35,9 +36,7 @@ use lyxal_storage::models::EncryptedBucketExistsParams;
 use lyxal_storage::{StorageHealthCheck, StorageService, StorageStore};
 use std::sync::Arc;
 use std::time::Duration;
-use surrealdb::engine::any::Any;
 use surrealdb::types::{Object, SurrealValue};
-use surrealdb::Surreal;
 
 /// Hôte qui exécute, sur la base partagée, le nettoyage du stockage et la maintenance du
 /// coffre-fort (octets des messages effacés, rescellement des clés des fichiers).
@@ -80,10 +79,12 @@ pub struct HostedServices {
 
 /// Enregistre auprès du runtime, avant l'installation des modules : sondes du coffre-fort et du
 /// stockage, planificateur élu et sa sonde, handler de la maintenance du courrier ; rend les
-/// services du courrier et sa sonde (à composer avec celle des écoutes).
+/// services du courrier et sa sonde (à composer avec celle des écoutes). Les stores de la
+/// session système reçoivent le pool `database` ; le bail du planificateur et la présence des
+/// nœuds prennent sa connexion fixe.
 pub fn register_services(
     runtime: &LyxalRuntime,
-    client: &Surreal<Any>,
+    database: &Database,
     config: &GroupwareConfig,
 ) -> Result<HostedServices, GroupwareError> {
     let master = master_keys(&config.secrets, ENV_PREFIX)?;
@@ -96,7 +97,7 @@ pub fn register_services(
             "coffre-fort sans clé maîtresse : aucun message n'est déposé ni lu (LYXAL_GROUPWARE__SECRETS__MASTER_KEY et secrets.master_key_id requis, même clé que lyxal-server)"
         ),
     }
-    let secrets_store = SecretsStore::new(client.clone());
+    let secrets_store = SecretsStore::new(database.clone());
     runtime
         .health_registry()
         .register_check(Arc::new(SecretsHealthCheck::new(
@@ -104,7 +105,7 @@ pub fn register_services(
             master.clone(),
         )))?;
 
-    let storage_store = StorageStore::new(client.clone());
+    let storage_store = StorageStore::new(database.clone());
     let backends = Arc::new(storage_backends(&config.storage)?);
     if backends.is_empty() {
         tracing::warn!(
@@ -124,7 +125,7 @@ pub fn register_services(
         .health_registry()
         .register_check(Arc::new(storage_probe))?;
 
-    let system = MailStore::new(client.clone());
+    let system = MailStore::new(database.clone());
     let mail = MailHost {
         ingest: MailIngest::new(
             system.clone(),
@@ -139,20 +140,21 @@ pub fn register_services(
     // le rescellement des clés attendent (sonde « dégradé » après 10 minutes sans nœud vivant)
     let mail_probe: Arc<dyn ModuleHealthCheck> = Arc::new(
         MailHealthCheck::new(system, storage).with_required_host(RequiredHost::new(
-            PresenceStore::new(client.clone()),
+            PresenceStore::new(database.fixed().clone()),
             SERVER_HOST_ID,
         )),
     );
 
     let scheduler = SchedulerEngine::new(
-        SchedulerStore::new(client.clone()),
+        SchedulerStore::new(database.clone()),
         HandlerRegistry::new(),
         runtime.node_id().clone(),
         runtime.host_id().clone(),
     );
     runtime.register_worker(Arc::new(SchedulerLeaderWorker::new(
         scheduler.clone(),
-        SurrealLeaderLeaseManager::new(client.clone()),
+        // Bail du planificateur : connexion fixe, comme les autres baux du runtime
+        SurrealLeaderLeaseManager::new(database.fixed().clone()),
     )?))?;
     runtime
         .health_registry()
@@ -178,13 +180,13 @@ pub fn register_services(
 /// (`fn::storage_encrypted_bucket_exists`, session système) : ses fichiers ne pourraient être ni
 /// écrits ni lus. Une base sans bucket chiffré démarre sans clé (sonde « dégradé »).
 pub async fn require_master_key(
-    client: &Surreal<Any>,
+    database: &Database,
     services: &HostedServices,
 ) -> Result<(), GroupwareError> {
     if services.has_master_key {
         return Ok(());
     }
-    let found = StorageStore::new(client.clone())
+    let found = StorageStore::new(database.clone())
         .encrypted_bucket_exists(EncryptedBucketExistsParams::default())
         .await
         .map_err(|error| GroupwareError::ModuleInstall {
@@ -206,20 +208,21 @@ fn install_error(detail: impl std::fmt::Display) -> GroupwareError {
 
 /// Après l'installation des modules : déclare la tâche de maintenance du courrier et sa
 /// permission (`seeds/groupware_tasks.surql`), crée sa planification si elle est absente, puis un
-/// exécuteur par file déclarée. Rejouable. `client` : session système de l'hôte.
+/// exécuteur par file déclarée. Rejouable. `database` : session système de l'hôte (seeds
+/// installés sur sa connexion fixe).
 pub async fn complete_services(
     runtime: &LyxalRuntime,
-    client: &Surreal<Any>,
+    database: &Database,
     services: &HostedServices,
 ) -> Result<(), GroupwareError> {
-    crate::modules::install_host_seeds(client).await?;
+    crate::modules::install_host_seeds(database.fixed()).await?;
     let mut spec = ScheduleSpec::new("UTC");
     spec.every = vec![MAIL_MAINTENANCE_EVERY.into()];
     spec.jitter = Some(JITTER.into());
     let mut params =
         ScheduleCreateParams::new(MAIL_MAINTENANCE_SCHEDULE, MAIL_MAINTENANCE_TASK, spec);
     params.overlap = Some(Overlap::Skip);
-    match SchedulerClient::new(SchedulerStore::new(client.clone()))
+    match SchedulerClient::new(SchedulerStore::new(database.clone()))
         .schedule(params)
         .await
     {

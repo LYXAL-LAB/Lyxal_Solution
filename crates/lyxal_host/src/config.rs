@@ -6,7 +6,13 @@ use crate::HostError;
 use lyxal_surreal::SecretString;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer};
-use std::{fmt, path::Path, sync::Arc};
+use std::{fmt, num::NonZeroUsize, path::Path, sync::Arc};
+
+/// Connexions ouvertes au plus, par défaut, par la session système d'un hôte.
+const DEFAULT_CONNECTIONS_CEILING: NonZeroUsize = match NonZeroUsize::new(16) {
+    Some(ceiling) => ceiling,
+    None => NonZeroUsize::MIN,
+};
 
 /// Base SurrealDB de l'hôte. Identifiants Root : jamais dans les fichiers de configuration,
 /// uniquement par les variables `<préfixe>__DATABASE__USERNAME` et `<préfixe>__DATABASE__PASSWORD`.
@@ -19,6 +25,19 @@ pub struct DatabaseConfig {
     pub username: Option<String>,
     pub password: Option<SecretPassword>,
     pub connect_timeout_seconds: u64,
+    /// Connexions de la session système de l'hôte (`lyxal_surreal::SurrealPool`), 1 au moins :
+    /// la valeur 0 est refusée à la lecture. Absente : le nombre de cœurs de la machine, 16 au
+    /// plus. Sans effet sur une base embarquée (`mem://`), qui n'a qu'un client.
+    #[serde(default = "default_connections")]
+    pub connections: NonZeroUsize,
+}
+
+/// Connexions par défaut : le nombre de cœurs offerts au processus, 16 au plus ; 1 si ce nombre
+/// est inconnu.
+pub fn default_connections() -> NonZeroUsize {
+    std::thread::available_parallelism().map_or(NonZeroUsize::MIN, |cores| {
+        cores.min(DEFAULT_CONNECTIONS_CEILING)
+    })
 }
 
 /// Secret lu dans la configuration (mot de passe de la base, clé de signature) : masqué dans
@@ -277,6 +296,56 @@ mod tests {
             "configuration invalide : store.s3.archive.secret_key ne doit pas figurer dans un \
              fichier : ESSAI__STORE__S3__ARCHIVE__SECRET_KEY seulement"
         );
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct WithDatabase {
+        database: DatabaseConfig,
+    }
+
+    const DATABASE: &str = "[database]\nendpoint = \"mem://\"\nnamespace = \"n\"\n\
+                            database = \"d\"\nconnect_timeout_seconds = 5\n";
+
+    fn database(file: &str, environment: &[(&str, &str)]) -> Result<DatabaseConfig, HostError> {
+        let directory = config_directory(file);
+        load_layered::<WithDatabase>(directory.path(), "ESSAI", &[], &[], variables(environment))
+            .map(|loaded| loaded.database)
+    }
+
+    #[test]
+    fn database_connections_default_to_the_cores_sixteen_at_most() {
+        let connections = database(DATABASE, &[]).expect("configuration").connections;
+        assert_eq!(connections, default_connections());
+        assert!((1..=16).contains(&connections.get()), "{connections}");
+        if let Ok(cores) = std::thread::available_parallelism() {
+            assert_eq!(connections.get(), cores.get().min(16));
+        }
+    }
+
+    #[test]
+    fn database_connections_are_read_from_file_and_environment() {
+        let file = format!("{DATABASE}connections = 3\n");
+        assert_eq!(database(&file, &[]).expect("fichier").connections.get(), 3);
+        assert_eq!(
+            database(&file, &[("ESSAI__DATABASE__CONNECTIONS", "8")])
+                .expect("environnement")
+                .connections
+                .get(),
+            8
+        );
+    }
+
+    #[test]
+    fn zero_database_connections_are_refused() {
+        let file = format!("{DATABASE}connections = 0\n");
+        for refused in [
+            database(&file, &[]),
+            database(DATABASE, &[("ESSAI__DATABASE__CONNECTIONS", "0")]),
+            database(DATABASE, &[("ESSAI__DATABASE__CONNECTIONS", "-2")]),
+        ] {
+            let error = refused.expect_err("0 connexion refusée");
+            assert!(matches!(error, HostError::Configuration { .. }), "{error}");
+        }
     }
 
     #[test]

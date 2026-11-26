@@ -11,6 +11,7 @@
 
 use crate::config::AppConfig;
 use crate::error::ServerError;
+use lyxal_host::database::Database;
 use lyxal_host::services::SecretsConfig;
 use lyxal_runtime::{LyxalModule, LyxalRuntime};
 use lyxal_secrets::{
@@ -18,8 +19,6 @@ use lyxal_secrets::{
     SecretsModule, SecretsService, SecretsStore,
 };
 use std::sync::Arc;
-use surrealdb::engine::any::Any;
-use surrealdb::Surreal;
 
 pub const MODULE_ID: &str = lyxal_secrets::MODULE_ID;
 
@@ -94,7 +93,7 @@ pub fn master_keys(config: &SecretsConfig) -> Result<Option<MasterKeys>, ServerE
 /// Sonde de santé ; rend ce qu'il faut aux modules pour lire leurs secrets et à la maintenance.
 pub fn register_services(
     runtime: &LyxalRuntime,
-    client: &Surreal<Any>,
+    database: &Database,
     config: &AppConfig,
 ) -> Result<SecretsHost, ServerError> {
     let master = master_keys(&config.secrets)?;
@@ -108,7 +107,7 @@ pub fn register_services(
             "coffre-fort des secrets sans clé maîtresse : aucune valeur n'est écrite ni lue (LYXAL__SECRETS__MASTER_KEY et secrets.master_key_id requis)"
         ),
     }
-    let store = SecretsStore::new(client.clone());
+    let store = SecretsStore::new(database.clone());
     // Aucun rotateur pour l'instant : les modules qui parlent aux services extérieurs inscriront
     // le leur ; sans rotateur, une rotation due ne donne que le rappel
     let rotators = RotatorRegistry::new();

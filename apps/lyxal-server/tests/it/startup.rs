@@ -10,7 +10,8 @@ use std::sync::Arc;
 use surrealdb::engine::any::{connect, Any};
 use surrealdb::Surreal;
 
-use crate::system_routes::{platform_admin, router_with_auth, send, AUTH, MODULES};
+use crate::configuration::{remote_config, surreal_server};
+use crate::system_routes::{platform_admin, router_on, router_with_auth, send, AUTH, MODULES};
 
 fn config(database: &str) -> AppConfig {
     config_with(database, "")
@@ -90,11 +91,78 @@ async fn get(router: &axum::Router, uri: &str) -> (StatusCode, serde_json::Value
     (status, json)
 }
 
+/// Serveur SurrealDB réel, session système en pool de trois connexions : le serveur s'installe
+/// et démarre, une route d'administration répond à une session d'utilisateur (clonée de la
+/// connexion fixe), les stores de la session système passent par le pool ; `/ready` suit la
+/// base : `204` tant qu'une connexion répond, `503` une fois la base arrêtée.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn server_starts_on_a_pool_of_connections_and_ready_follows_the_database() {
+    let (server, endpoint) = surreal_server(false).await;
+    let mut config = config_with("pool", AUTH);
+    config.database = remote_config(endpoint);
+    config.database.connections = std::num::NonZeroUsize::new(3).expect("connexions");
+    config.database.connect_timeout_seconds = 3;
+    let config = Arc::new(config);
+
+    let database = lyxal_host::database::connect_database(&config.database)
+        .await
+        .expect("pool de connexions");
+    assert_eq!(database.size(), 3);
+    let runtime = runtime::start(&config, &database)
+        .await
+        .expect("démarrage sur un pool")
+        .runtime;
+
+    let health = HealthRegistry::default();
+    health.set("server", HealthState::Healthy, None).await;
+    health.set("database", HealthState::Healthy, None).await;
+    let (router, host) = router_on(config, database.clone(), runtime.clone(), health).await;
+    assert_eq!(get(&router, "/ready").await.0, StatusCode::NO_CONTENT);
+    let (status, reply) = get(&router, "/health").await;
+    assert_eq!(status, StatusCode::OK, "{reply}");
+
+    // Session d'un compte de service, sur une copie de la connexion fixe ; plusieurs requêtes :
+    // les appels de la session système (contrôle du jeton, langue) tournent sur le pool
+    let admin = platform_admin(database.fixed(), &host).await;
+    for _ in 0..6 {
+        let (status, reply) = send(&router, "GET", MODULES, Some(&admin), None).await;
+        assert_eq!(status, StatusCode::OK, "{reply}");
+        assert_eq!(reply["data"]["host"], "lyxal_server", "{reply}");
+    }
+    // Chaque connexion du pool est restée dans la session système (aucune n'a pris le jeton)
+    for client in database.clients() {
+        let mut response = client
+            .query("RETURN [$auth, session::db()];")
+            .await
+            .expect("session");
+        let state: Vec<serde_json::Value> = response
+            .take::<surrealdb::types::Value>(0)
+            .expect("lecture")
+            .into_json_value()
+            .as_array()
+            .expect("liste")
+            .clone();
+        assert_eq!(
+            state[0],
+            serde_json::Value::Null,
+            "session système attendue"
+        );
+        assert_eq!(state[1], "test");
+    }
+
+    // Base arrêtée : plus aucune connexion ne répond
+    drop(server);
+    assert_eq!(
+        get(&router, "/ready").await.0,
+        StatusCode::SERVICE_UNAVAILABLE
+    );
+}
+
 #[tokio::test]
 async fn server_installs_and_starts_hosted_modules() {
     let config = Arc::new(config_with("startup", AUTH));
     let client = database("startup").await;
-    let runtime = runtime::start(&config, &client)
+    let runtime = runtime::start(&config, &client.clone().into())
         .await
         .expect("démarrage")
         .runtime;
@@ -217,14 +285,14 @@ async fn restart_on_installed_database_is_idempotent() {
     let config = config("restart");
     let client = database("restart").await;
 
-    let first = runtime::start(&config, &client)
+    let first = runtime::start(&config, &client.clone().into())
         .await
         .expect("premier démarrage")
         .runtime;
     first.stop_all().await.expect("arrêt");
     drop(first);
 
-    let second = runtime::start(&config, &client)
+    let second = runtime::start(&config, &client.clone().into())
         .await
         .expect("redémarrage")
         .runtime;
@@ -387,7 +455,7 @@ async fn every_emitted_error_code_is_defined() {
 async fn publication_without_auth_service_degrades_the_ingestion_probe() {
     let config = config("sans_cle");
     let client = database("sans_cle").await;
-    let runtime = runtime::start(&config, &client)
+    let runtime = runtime::start(&config, &client.clone().into())
         .await
         .expect("démarrage")
         .runtime;
@@ -421,7 +489,7 @@ async fn publication_without_auth_service_degrades_the_ingestion_probe() {
 async fn storage_probe_follows_the_configured_folder() {
     async fn probe(config: &AppConfig, name: &str) -> lyxal_runtime::health::HealthCheckResult {
         let client = database(name).await;
-        let runtime = runtime::start(config, &client)
+        let runtime = runtime::start(config, &client.clone().into())
             .await
             .expect("démarrage")
             .runtime;
@@ -473,7 +541,9 @@ async fn storage_probe_follows_the_configured_folder() {
 async fn the_vault_without_master_key_is_degraded() {
     let config = config("coffre_sans_cle");
     let client = database("coffre_sans_cle").await;
-    let started = runtime::start(&config, &client).await.expect("démarrage");
+    let started = runtime::start(&config, &client.clone().into())
+        .await
+        .expect("démarrage");
     assert!(!started.secrets.has_master_key());
     let result = started
         .runtime
@@ -523,7 +593,9 @@ async fn the_vault_without_master_key_is_degraded() {
 async fn the_scheduler_runs_with_its_workers_and_probe() {
     let config = config("planificateur");
     let client = database("planificateur").await;
-    let started = runtime::start(&config, &client).await.expect("démarrage");
+    let started = runtime::start(&config, &client.clone().into())
+        .await
+        .expect("démarrage");
     assert_eq!(
         started.scheduler.handlers().tasks(),
         vec!["auth.purge", "secrets.maintenance", "storage.cleanup"]

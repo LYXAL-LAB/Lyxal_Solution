@@ -245,8 +245,10 @@ async fn provider_webhooks_and_integration_tests_go_through_the_host() {
         .use_db("notification_retours")
         .await
         .expect("ns/db");
-    let started = runtime::start(&config, &client).await.expect("démarrage");
-    let host = auth::host(&client, &config, Some(crypto()))
+    let started = runtime::start(&config, &client.clone().into())
+        .await
+        .expect("démarrage");
+    let host = auth::host(&client.clone().into(), &config, Some(crypto()))
         .expect("service")
         .expect("service configuré");
     auth::complete_services(Some(&host)).await.expect("clés");
@@ -272,7 +274,7 @@ async fn provider_webhooks_and_integration_tests_go_through_the_host() {
     let router = build_router(
         AppContext::new(
             config.clone(),
-            Arc::new(client.clone()),
+            client.clone().into(),
             HealthRegistry::default(),
             Metrics::default(),
             started.runtime.clone(),

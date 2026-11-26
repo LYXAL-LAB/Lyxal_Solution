@@ -14,6 +14,7 @@ use crate::net::bind::BoundListener;
 use crate::net::certificates::Certificates;
 use crate::net::MailNet;
 use crate::services::{self, MailHost};
+use lyxal_host::database::Database;
 use lyxal_mail::net::{MailProtocol, SessionHandler, UnavailableHandler};
 use lyxal_runtime::lock::SurrealInstallationLeaseManager;
 use lyxal_runtime::{
@@ -21,8 +22,6 @@ use lyxal_runtime::{
 };
 use std::sync::Arc;
 use std::time::Duration;
-use surrealdb::engine::any::Any;
-use surrealdb::Surreal;
 
 /// Runtime démarré, écoutes de l'hôte et services du courrier.
 pub struct Started {
@@ -40,24 +39,27 @@ pub fn unavailable(protocol: MailProtocol) -> Arc<dyn SessionHandler> {
 
 /// Construit le runtime, installe le socle et les modules hébergés, inscrit les écoutes
 /// `listeners` (déjà liées, servies avec les certificats `certificates`), puis démarre le tout.
+/// `database` : session système de l'hôte ; les stores des modules reçoivent le pool.
 pub async fn start(
     config: &GroupwareConfig,
-    client: &Surreal<Any>,
+    database: &Database,
     listeners: Vec<BoundListener>,
     certificates: Option<Arc<Certificates>>,
 ) -> Result<Started, GroupwareError> {
-    start_with(config, client, listeners, certificates, &unavailable).await
+    start_with(config, database, listeners, certificates, &unavailable).await
 }
 
 /// `start`, avec la session de chaque protocole donnée par `handler_for` (protocoles d'essai
 /// des tests).
 pub async fn start_with(
     config: &GroupwareConfig,
-    client: &Surreal<Any>,
+    database: &Database,
     listeners: Vec<BoundListener>,
     certificates: Option<Arc<Certificates>>,
     handler_for: &dyn Fn(MailProtocol) -> Arc<dyn SessionHandler>,
 ) -> Result<Started, GroupwareError> {
+    // Runtime, baux, moteur d'événements et installation : connexion fixe de la session système
+    let client = database.fixed();
     let timeouts = &config.runtime;
     let host = modules::host_id()?;
     // Chef des événements propre à cet hôte (bail `event_stream_lease:lyxal_groupware`), sans
@@ -84,7 +86,7 @@ pub async fn start_with(
     ))?;
 
     // Services des modules hébergés : coffre-fort, stockage, planificateur, courrier
-    let services = services::register_services(&runtime, client, config)?;
+    let services = services::register_services(&runtime, database, config)?;
 
     // Écoutes : un worker par écoute, la relecture des certificats et la sonde de `lyxal_mail`
     // (service du courrier, puis écoutes)
@@ -121,8 +123,8 @@ pub async fn start_with(
 
     // Sans clé maîtresse, un bucket chiffré existant arrête tout : rien n'est démarré, les
     // écoutes liées sont refermées avec `mail`
-    services::require_master_key(client, &services).await?;
-    services::complete_services(&runtime, client, &services).await?;
+    services::require_master_key(database, &services).await?;
+    services::complete_services(&runtime, database, &services).await?;
     runtime.start_all().await?;
     Ok(Started {
         runtime: Arc::new(runtime),
