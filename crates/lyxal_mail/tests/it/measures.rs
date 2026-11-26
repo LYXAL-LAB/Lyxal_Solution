@@ -37,7 +37,7 @@ use crate::support::{measure_bench, Bench};
 const MESSAGE_BYTES: usize = 10 * 1024;
 
 /// Message de 10 Kio, unique par `id`.
-fn message(id: &str) -> Bytes {
+pub(crate) fn message(id: &str) -> Bytes {
     let mut text = format!(
         "Return-Path: <paul@ailleurs.test>\r\n\
          Received: from mx.ailleurs.test by mx.alpha.test with ESMTPS id {id}; Tue, 3 Nov 2026 10:00:01 +0100\r\n\
@@ -73,7 +73,11 @@ fn reception() -> Reception {
 }
 
 /// Comptes de courrier créés par la session système : `count` par organisation.
-async fn accounts(bench: &Bench, organizations: &[&str], count: usize) -> Vec<(String, String)> {
+pub(crate) async fn accounts(
+    bench: &Bench,
+    organizations: &[&str],
+    count: usize,
+) -> Vec<(String, String)> {
     let mut created = Vec::new();
     for organization in organizations {
         let domain = bench.domain(organization).await;
@@ -105,7 +109,7 @@ async fn accounts(bench: &Bench, organizations: &[&str], count: usize) -> Vec<(S
 }
 
 /// Centile d'une série de durées, en millisecondes.
-fn percentile(sorted: &[Duration], percent: usize) -> f64 {
+pub(crate) fn percentile(sorted: &[Duration], percent: usize) -> f64 {
     if sorted.is_empty() {
         return 0.0;
     }
@@ -113,7 +117,7 @@ fn percentile(sorted: &[Duration], percent: usize) -> f64 {
     sorted[index].as_secs_f64() * 1_000.0
 }
 
-fn mean(durations: &[Duration]) -> f64 {
+pub(crate) fn mean(durations: &[Duration]) -> f64 {
     if durations.is_empty() {
         return 0.0;
     }

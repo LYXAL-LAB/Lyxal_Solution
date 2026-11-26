@@ -9,6 +9,10 @@
 # [storage.disk]
 # root = "../../target/lyxal-fichiers"
 
+# Réception SMTP de développement (port 2525)
+[smtp]
+hostname = "localhost"
+
 [tls]
 default = { certificate = "config/tls/development.chain.pem", private_key = "config/tls/development.key.pem" }
 

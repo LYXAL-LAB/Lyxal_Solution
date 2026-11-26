@@ -15,9 +15,12 @@ use crate::error::GroupwareError;
 use async_trait::async_trait;
 use lyxal_host::database::Database;
 use lyxal_host::services::{master_keys, storage_backends, storage_scanner};
+use lyxal_mail::dns::{HickoryResolver, MailResolver};
+use lyxal_mail::net::MemoryBudget;
+use lyxal_mail::smtp::{BlockList, BlockRefreshWorker, SmtpInboundHandler, SmtpServices};
 use lyxal_mail::{
-    MailContent, MailError, MailHealthCheck, MailIngest, MailMaintenance, MailStore,
-    MaintenanceReport, RequiredHost,
+    DeliveryPipeline, MailContent, MailError, MailHealthCheck, MailIngest, MailMaintenance,
+    MailStore, MaintenanceReport, RequiredHost,
 };
 use lyxal_runtime::health::ModuleHealthCheck;
 use lyxal_runtime::lock::SurrealLeaderLeaseManager;
@@ -64,6 +67,11 @@ pub struct MailHost {
     pub content: MailContent,
     /// Maintenance, exécutée par la tâche `mail.maintenance`.
     pub maintenance: MailMaintenance,
+    /// Réception SMTP du nœud (écoutes `smtp`), si une écoute `smtp` est déclarée.
+    pub smtp: Option<SmtpInboundHandler>,
+    /// Liste de blocage du nœud, relue toutes les 30 s ; appliquée à l'acceptation de toutes
+    /// les écoutes.
+    pub blocks: BlockList,
 }
 
 /// Services des modules hébergés à compléter après leur installation.
@@ -86,6 +94,7 @@ pub fn register_services(
     runtime: &LyxalRuntime,
     database: &Database,
     config: &GroupwareConfig,
+    budget: &MemoryBudget,
 ) -> Result<HostedServices, GroupwareError> {
     let master = master_keys(&config.secrets, ENV_PREFIX)?;
     match &master {
@@ -115,35 +124,77 @@ pub fn register_services(
     let scanner = storage_scanner(&config.storage);
     let mut storage_probe = StorageHealthCheck::new(storage_store.clone(), backends.clone());
     let has_master_key = master.is_some();
-    let mut storage = StorageService::new(storage_store.clone(), backends)
-        .with_file_keys(FileKeys::new(secrets_store, master), storage_store);
+    // Clés « fichiers » ouvertes gardées 60 s (lectures des messages, décision S13) ; aucun
+    // antivirus sur les écritures du stockage : le message est analysé une fois, en tête de la
+    // chaîne de remise (décision S9)
+    let storage = StorageService::new(storage_store.clone(), backends).with_file_keys(
+        FileKeys::new(secrets_store, master).with_cache(),
+        storage_store,
+    );
     if let Some(scanner) = &scanner {
         storage_probe = storage_probe.with_scanner(scanner.clone());
-        storage = storage.with_scanner(scanner.clone());
     }
     runtime
         .health_registry()
         .register_check(Arc::new(storage_probe))?;
 
     let system = MailStore::new(database.clone());
+    let ingest = MailIngest::new(
+        system.clone(),
+        storage.clone(),
+        config.mail.storage_backend.clone(),
+    );
+    let blocks = BlockList::new();
+    let mut probe = MailHealthCheck::new(system.clone(), storage.clone()).with_required_host(
+        RequiredHost::new(PresenceStore::new(database.fixed().clone()), SERVER_HOST_ID),
+    );
+    let smtp = match config.smtp.smtp_config() {
+        Some(smtp_config) if config.has_smtp_listener() => {
+            let dns = config.dns.dns_config()?;
+            let resolver: Arc<dyn MailResolver> =
+                Arc::new(HickoryResolver::new(&dns).map_err(|error| {
+                    GroupwareError::DnsUnavailable {
+                        message: error.to_string(),
+                    }
+                })?);
+            let mut pipeline = DeliveryPipeline::new(ingest.clone());
+            if let Some(scanner) = &scanner {
+                pipeline = pipeline.with_scanner(scanner.clone());
+                probe = probe.with_scanner(scanner.clone());
+            }
+            probe = probe.with_dns_probe(resolver.clone(), smtp_config.hostname.clone());
+            let handler = SmtpInboundHandler::new(
+                smtp_config,
+                SmtpServices {
+                    store: system.clone(),
+                    resolver,
+                    pipeline,
+                    budget: budget.clone(),
+                    blocks: blocks.clone(),
+                },
+            )
+            .map_err(|error| GroupwareError::Configuration {
+                message: error.to_string(),
+            })?;
+            runtime.register_worker(Arc::new(BlockRefreshWorker::new(
+                blocks.clone(),
+                system.clone(),
+            )?))?;
+            Some(handler)
+        }
+        _ => None,
+    };
     let mail = MailHost {
-        ingest: MailIngest::new(
-            system.clone(),
-            storage.clone(),
-            config.mail.storage_backend.clone(),
-        ),
-        content: MailContent::new(storage.clone()),
+        ingest,
+        content: MailContent::new(storage),
         maintenance: MailMaintenance::new(system.clone(), MAINTENANCE_BATCH),
-        system: system.clone(),
+        system,
+        smtp,
+        blocks,
     };
     // `lyxal-server` doit tourner sur la même base : sans lui, les octets des messages effacés et
     // le rescellement des clés attendent (sonde « dégradé » après 10 minutes sans nœud vivant)
-    let mail_probe: Arc<dyn ModuleHealthCheck> = Arc::new(
-        MailHealthCheck::new(system, storage).with_required_host(RequiredHost::new(
-            PresenceStore::new(database.fixed().clone()),
-            SERVER_HOST_ID,
-        )),
-    );
+    let mail_probe: Arc<dyn ModuleHealthCheck> = Arc::new(probe);
 
     let scheduler = SchedulerEngine::new(
         SchedulerStore::new(database.clone()),

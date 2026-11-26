@@ -6,15 +6,14 @@ décrit par `implementation_plan.md` à la racine du dépôt.
 
 | Étape | Thème | Plan ou lot |
 | :--- | :--- | :--- |
-| 1 | Réception SMTP, résolveur DNS, liste de blocage et bannissement | lot 5 |
-| 2 | Envoi et dépôt authentifié (587, 465) | lot 6 |
-| 3 | IMAP | lot 8 |
-| 4 | POP3 | lot 9 |
-| 5 | ManageSieve (dernier protocole : retrait de `UnavailableHandler`) | lot 10 |
-| 6 | JMAP et découverte `/.well-known/…` sur le port HTTP | lot 12 |
-| 7 | Certificats de `lyxal_secrets`, ACME, échéances, OCSP ; signal de rechargement immédiat si le besoin apparaît | lot 13 |
-| 8 | DAV (agendas, contacts) ; séparation du port public et du port interne de santé | lot 15 |
-| 9 | Durcissement, charge, essais réels | lots 21, 22 |
+| 1 | Envoi et dépôt authentifié (587, 465) | lot 6 |
+| 2 | IMAP | lot 8 |
+| 3 | POP3 | lot 9 |
+| 4 | ManageSieve (dernier protocole : retrait de `UnavailableHandler`) | lot 10 |
+| 5 | JMAP et découverte `/.well-known/…` sur le port HTTP | lot 12 |
+| 6 | Certificats de `lyxal_secrets`, ACME, échéances, OCSP ; signal de rechargement immédiat si le besoin apparaît | lot 13 |
+| 7 | DAV (agendas, contacts) ; séparation du port public et du port interne de santé | lot 15 |
+| 8 | Durcissement, charge, essais réels (dont ceux de la réception SMTP : `crates/lyxal_mail/ROADMAP.md`) | lots 21, 22 |
 
 ## Points relevés au lot 3
 
@@ -31,8 +30,19 @@ décrit par `implementation_plan.md` à la racine du dépôt.
 * **Proxys de confiance du port HTTP** (`X-Forwarded-For`, `lyxal_host::net::client_ip`) : sans
   objet tant que les routes du port HTTP n'utilisent pas l'adresse du client ; à ajouter avec
   les routes du DAV et de JMAP (lot 15).
-* **Limites partagées entre nœuds** : compteurs par réseau en mémoire et par nœud ; modèle
-  partagé à décider au lot 5 ou au lot 21 selon les mesures.
+* **Limites partagées entre nœuds** : compteurs par réseau en mémoire et par nœud ; depuis le
+  lot 5, seuls les bannissements sont partagés (liste de blocage de l'installation, décision
+  S18) ; un modèle partagé des compteurs reste à décider au lot 21 selon les mesures.
+
+## Points relevés au lot 5
+
+* **Banc SMTP contre le vrai binaire** : le générateur Python prévu par le plan du lot 5 (§10.5)
+  n'est pas écrit ; la charge est mesurée dans le processus (`crates/lyxal_mail/tests/it/
+  smtp_load.rs`). À écrire avec le lot 21 (charge), avec un serveur DNS d'essai.
+* **Mesures DNS** : `hickory-resolver` n'expose pas les succès de son cache ; `/metrics` compte
+  les requêtes et les pannes seulement.
+* **Sonde DNS** : interroge `smtp.hostname` (A) ; une absence est une réponse : seule une panne
+  dégrade la santé.
 * **Essai de supervision** : une écoute dont la boucle échoue est redémarrée par le runtime sur
   la même socket (sockets gardées hors du worker) ; aucun cas d'échec ne peut être provoqué de
   l'extérieur au lot 3, l'essai viendra avec le premier cas réel.

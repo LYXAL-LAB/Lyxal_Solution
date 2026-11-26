@@ -242,7 +242,7 @@ La suite d'essais SPF de la RFC 7208 (format YAML, présente dans `resources/spf
 
 Le SurrealQL de la réception (`schema/10_mail_delivery.surql`, `schema/11_mail_network_block.surql`,
 `functions/mail_delivery.surql`, `functions/mail_block.surql`, l'événement
-`mail.message.received`) et le service de remise (`src/delivery.rs`, `MailIngest::receive`) sont
+`mail.message.received`) et le service de remise (`src/delivery/mod.rs`, `MailIngest::receive`) sont
 **écrits pour Lyxal** depuis le plan du lot 5 (§9, §10.3) : aucun code de Stalwart ni de Mox n'y
 est repris (Mox sert de modèle pour une seule règle : préférer un doublon à une perte, RFC 5321
 §6.1). Le cache des clés « fichiers » (`crates/lyxal_secrets/src/files.rs`, `MIT OR Apache-2.0`)
@@ -256,6 +256,22 @@ La licence déclarée par la crate `psl` ne mentionne pas la MPL-2.0 des donnée
 (fichier `data/rules.txt` et code généré `src/list.rs` de la crate) : point signalé au CTO avec
 le lot 5c ; le repli de la décision S4 (fichier de la liste copié sous MPL-2.0, exception nommée
 dans `deny.toml`) reste possible sans changer `OrganizationalDomain`.
+
+### 3.3. Lot 5d : session SMTP et chaîne de remise
+
+La session SMTP entrante (`src/smtp/` : `session.rs`, `checks.rs`, `handler.rs`, `block.rs`,
+`config.rs`, `metrics.rs`, `resolver.rs`), la chaîne de remise (`src/delivery/pipeline.rs`) et
+leurs essais (`tests/it/smtp.rs`, `tests/it/smtp_load.rs`) sont **écrits pour Lyxal** depuis le
+plan du lot 5 (§7, §11, §12) et les RFC (5321, 1870, 2034, 2920, 3030, 3207, 3463, 3848, 6152,
+6531, 7489, 8601) : aucun code de Stalwart ni de Mox n'y est repris. Les comportements que le plan
+tire de ces projets sont repris comme modèles seulement :
+
+| Élément de Lyxal | Projet | Commit | Licence | Chemin d'origine (cité par le plan) | Nature | Lot |
+| :--- | :--- | :--- | :--- | :--- | :--- | :- |
+| `src/smtp/session.rs` : machine d'états, réponses par commande, `VRFY` réduit à `252`, en-tête `Received` | Stalwart | `3adead9` | `AGPL-3.0-only OR LicenseRef-SEL` | `crates/smtp/src/inbound/{session,ehlo,mail,rcpt,vrfy}.rs` | modèle (plan §7.1 à §7.4 ; aucun fichier relu ni copié dans ce lot) | 5 |
+| `src/smtp/session.rs` : refus de toute fin de ligne isolée (`500 5.5.2`, « possible SMTP smuggling »), données avant `354` refusées, refus unique après les données | Mox | `b32f0de` | MIT | `smtpserver/server.go` | modèle (plan §7.4, décisions S7, S8) | 5 |
+| `src/delivery/pipeline.rs` : remise directe en boîte après les contrôles, au lieu d'une file | Mox | `b32f0de` | MIT | `smtpserver/server.go` (`deliver`) | modèle (plan §3, §12) | 5 |
+| `src/smtp/session.rs` : DMARC de plusieurs domaines d'auteur, le plus sévère l'emporte | Stalwart | `3adead9` | `AGPL-3.0-only OR LicenseRef-SEL` | `crates/smtp/src/inbound/data.rs` (`conflicting_author_domains`) | modèle (plan §6 ; logique dans `src/auth/dmarc.rs`, lot 5b) | 5 |
 
 Chaque fichier porté garde son en-tête `SPDX-FileCopyrightText` d'origine, déclare sa licence
 retenue (`AGPL-3.0-only` pour Stalwart, `MIT` pour Mox) et décrit ses modifications pour Lyxal

@@ -64,7 +64,7 @@ clé maîtresse du coffre-fort (LYXAL__SECRETS__MASTER_KEY ; ancienne clé en le
   `reseal` la rescelle par la clé active après une rotation. Le contexte (identité de la fiche du
   fichier) est fourni par le module qui range les fichiers ; le coffre-fort ne lit aucune de ses
   tables.
-* **Cache des clés « fichiers »** (`FileKeys::with_cache`, facultatif, activé par l'hôte ;
+* **Cache des clés « fichiers »** (`FileKeys::with_cache`, facultatif, activé par l'hôte `lyxal-groupware` ;
   décisions M19 et S13 du programme courrier). Mesure du 26 novembre 2026 (serveur SurrealDB
   3.3.4 en mémoire, `ws://`) : `seal` et `open` coûtent chacun environ 2,5 ms, presque entièrement
   la lecture du trousseau en base (`fn::secrets_tenant_key_ring`), soit 7 % d'une remise de

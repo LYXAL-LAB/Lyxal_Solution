@@ -1,18 +1,21 @@
 # `lyxal_mail` — serveur de courrier
 
 **État : socle courrier (lot 4 du programme courrier, réalisé), contrat réseau des sessions
-(lot 3) et, pour la réception SMTP (lot 5, en cours), DNS et authenticité (5b) puis résolution
-des destinataires, remise groupée et idempotente, liste de blocage (5c).** Le module déclare ses
-tables, fonctions, gardes, erreurs `MAIL_*`, événements et permissions (`manifest.toml`,
-`[resources]`) ; son service Rust dépose un message brut (lecture MIME, écriture **chiffrée au
-repos** par `lyxal_storage`, inscription), le relit en entier ou par plage, remet un message reçu
-à un compte (ordre par compte dans le nœud, écriture groupée, événement
-`mail.message.received`) et fait la maintenance (contenus abandonnés et libérés, effacements
-échus, fiches d'idempotence échues, comptes supprimés). La session SMTP n'est pas encore écrite
-(5d) : rien n'est joignable par le réseau. Le module est installé et démarré par l'hôte `apps/lyxal-groupware`, qui le porte par
-son `MailModule`, héberge ses dépendances (`lyxal_auth`, `lyxal_secrets`, `lyxal_storage`) et
-`lyxal_scheduler` (maintenance), et lui rattache ses écoutes (workers
-`lyxal_mail:mail.listener.<id>`). Inscrit au Noyau Technique dans `.agents/AGENTS.md` §6 et dans
+(lot 3) et réception SMTP (lot 5, réalisé : DNS, SPF, DKIM, DMARC, nom inverse, résolution des
+destinataires, remise groupée et idempotente, liste de blocage, session SMTP entrante, chaîne de
+remise).** Le module déclare ses tables, fonctions, gardes, erreurs `MAIL_*`, événements et
+permissions (`manifest.toml`, `[resources]`) ; son service Rust reçoit le courrier d'Internet
+sur le port 25 (session SMTP, refus dès `RCPT TO`, contrôles d'authenticité, politique DMARC,
+antivirus), dépose un message brut (lecture MIME, écriture **chiffrée au repos** par
+`lyxal_storage`, inscription), le relit en entier ou par plage, remet un message reçu à un compte
+(ordre par compte dans le nœud, écriture groupée, événement `mail.message.received`) et fait la
+maintenance (contenus abandonnés et libérés, effacements échus, fiches d'idempotence échues,
+comptes supprimés). Rien n'est encore envoyé vers l'extérieur (lot 6) : aucun relais, aucun avis
+de non-remise, tout refus se fait pendant la session. Le module est installé et démarré par
+l'hôte `apps/lyxal-groupware`, qui le porte par son `MailModule`, héberge ses dépendances
+(`lyxal_auth`, `lyxal_secrets`, `lyxal_storage`) et `lyxal_scheduler` (maintenance), et lui
+rattache ses écoutes (workers `lyxal_mail:mail.listener.<id>`), servies pour `smtp` par
+`SmtpInboundHandler`, et la relecture de la liste de blocage (`lyxal_mail:mail.block_refresh`). Inscrit au Noyau Technique dans `.agents/AGENTS.md` §6 et dans
 [`docs/14-roadmap/ROADMAP_NOYAU.md`](../../docs/14-roadmap/ROADMAP_NOYAU.md). Évolutions à
 venir : [`ROADMAP.md`](ROADMAP.md).
 
@@ -244,8 +247,8 @@ Corrections en place :
 
 **Banc Rust** : binaire d'essai optimisé (`cargo test -p lyxal_mail --release --test it --
 --ignored --nocapture --test-threads 1 measures`), messages de 10 Kio remis par
-`MailIngest::receive` (le chemin de la session SMTP, **sans** le dialogue SMTP ni les contrôles
-d'authenticité, livrés en 5d), support disque. Serveur SurrealDB 3.3.4 en mémoire joint par
+`MailIngest::receive` (la remise seule, **sans** le dialogue SMTP ni les contrôles
+d'authenticité : voir « Mesures de la réception SMTP » ci-dessous), support disque. Serveur SurrealDB 3.3.4 en mémoire joint par
 `ws://` (`LYXAL_SURREAL_WS_URL`, `LYXAL_SURREAL_USER`, `LYXAL_SURREAL_PASS`), pool de
 `LYXAL_SURREAL_CONNECTIONS` connexions (8 ici ; une par défaut) ; sans ces variables, base
 embarquée dans le processus (`mem://`).
@@ -321,7 +324,35 @@ pèse 7 % d'une remise. Avec le cache de `lyxal_secrets` (`FileKeys::with_cache`
 coûte 0,01 ms (299 succès pour 300 appels) ; un scellement coûte toujours 2,4 ms, parce que la
 règle du cache (ne jamais sceller par une clé qui n'est plus active) impose de relire le
 trousseau. **Le cache ne réduit donc pas le coût d'une remise** ; il sert les lectures (lot 8).
-Il n'est pas encore activé par l'hôte (5d).
+Il est activé par l'hôte `lyxal-groupware`.
+
+### Mesures de la réception SMTP (`tests/it/smtp_load.rs`)
+
+Mesures du 26 novembre 2026, même machine (4 cœurs partagés par les clients SMTP, la session,
+le service de remise et le serveur SurrealDB 3.3.4 en mémoire joint par `ws://`, pool de 8
+connexions), binaire d'essai optimisé (`cargo test -p lyxal_mail --release --test it --
+--ignored --nocapture --test-threads 1 smtp_load`). Chemin complet : dialogue SMTP sur une socket
+locale (`EHLO` une fois par connexion, puis `MAIL FROM`, `RCPT TO` et `DATA` par message, sans
+délai de Nagle comme dans l'hôte), contrôles SPF, DKIM, DMARC et nom inverse (résolveur
+`StaticResolver` : aucun délai de réseau DNS), chaîne de remise sans antivirus, écriture chiffrée
+sur disque, inscription ; messages de 10 Kio. Latence : de la fin des données (`CRLF.CRLF`) à la
+réponse `250`. Objectifs (§10.5 du plan du lot 5) entre parenthèses.
+
+| Mesure | Débit | Latence fin des données → `250` (p50 / p95) | Refus |
+| :--- | :-: | :-: | :-: |
+| Un client, un compte, 200 messages | 17,9 par seconde | 45,0 / 59,8 ms (p95 ≤ 100 ms : **tenu**) | 0 |
+| Un compte, 20 clients, 1 000 messages | 58,6 par seconde (≥ 100 : **non tenu**) | 314,7 / 368,4 ms | 0 (objectif 0 : **tenu**) ; 103 lots, 12 au plus |
+| 100 comptes, 50 clients, 3 000 messages | 88,6 par seconde (≥ 300 : **non tenu** ; ≥ 200 sur serveur : **non tenu**) | 458,0 / 842,0 ms | 0 ; aucun conflit rejoué |
+
+Ce que montrent les mesures : la session ajoute environ 10 ms par message à la remise seule
+(résolution du destinataire, lecture MIME, contrôles, en-têtes), et le débit reste celui de la
+remise mesurée plus haut (105 remises par seconde sur ces 4 cœurs) : la base et l'écriture
+chiffrée en sont le facteur limitant, partagé ici avec les clients. L'objectif de 300 remises par
+seconde (seuil C5) n'est **pas** atteint sur cette machine ; il reste à mesurer sur la machine de
+référence (base et hôte séparés, plus de cœurs), et les pistes déjà relevées (moins
+d'allers-retours P8, scellement depuis le cache P7) attendent une décision (`ROADMAP.md`). Non
+mesurés : deux nœuds par la session SMTP (mesurés par la remise seule, plus haut), 1 000
+sessions ouvertes et lentes (mémoire), résolveur DNS réel, antivirus réel.
 
 ## État actuel : service Rust
 
@@ -333,7 +364,10 @@ Il n'est pas encore activé par l'hôte (5d).
 | `AccountQueue`, `QueueStats`, `MAX_BATCH` | Ordre des inscriptions par compte dans le nœud (S11) : 1 024 compartiments, un tour d'écriture chacun ; les inscriptions d'un compte qui attendent déjà sont inscrites ensemble, 32 au plus par appel, sans délai ajouté ; lot refusé en entier (hors conflit rejoué) : repris élément par élément ; relevé des lots, conflits rejoués et lots repris |
 | `MailContent`, `OpenedContent` | Lecture d'un message, entière ou par plage d'octets du message brut (une partie MIME par ses positions) : `fn::mail_content_open` contrôle les droits de l'appelant, `lyxal_storage` ne déchiffre que les segments de la plage ; un segment altéré met fin au flux par une erreur, jamais par une fin normale |
 | `MailMaintenance`, `MaintenanceReport` | Un passage, interrompu entre deux appels à l'arrêt du serveur : `fn::mail_content_expire`, `fn::mail_tombstone_purge`, `fn::mail_delivery_purge`, `fn::mail_account_purge_step` par paquets ; exécutée par `lyxal_scheduler` (tâche `mail.maintenance` de l'hôte, toutes les 10 minutes) |
-| `MailModule`, `MailHealthCheck`, `RequiredHost` | `LyxalModule` du module (descripteur égal au manifeste) ; sonde : réglages lisibles (sinon « malade »), support de stockage et service de clés des fichiers présents (sinon « dégradé »), et, avec `with_required_host`, un nœud vivant de l'hôte requis (`RequiredHost` : `lyxal_server`, lu dans `runtime_node` par `PresenceStore`) vu depuis moins de `REQUIRED_HOST_ABSENCE_LIMIT` (10 minutes ; sinon « dégradé », « aucun nœud lyxal_server vivant… ») ; l'hôte la compose avec celle des écoutes (une sonde par module) |
+| `DeliveryPipeline`, `ReceivedMessage`, `RecipientTarget`, `DeliveryVerdict`, `PipelineResult`, `AccountOutcome` | Chaîne de remise d'un message reçu (S9, S10), ordre fixé par le type (champs nommés `antivirus`, `spam`, `filters`, `index`, `encryption`) : une analyse antivirus par message sur le clair avant tout dépôt (`ContentScanner` de `lyxal_storage` ; infecté : refus définitif, aucune quarantaine ; injoignable : refus temporaire ; sans antivirus : `not_scanned`), anti-spam vide (`none`), filtres (dossier « Junk » si la quarantaine DMARC est appliquée), index vide, puis dépôt chiffré par compte (`MailIngest::receive`), en parallèle ; un compte désigné par plusieurs destinataires (adresse et alias) n'est servi qu'une fois, sous la plus petite de ces adresses (empreinte d'idempotence indépendante de l'ordre des `RCPT TO`) ; réponse unique : tout inscrit (ou déjà inscrit) → accepté, un échec → refus temporaire (S8) |
+| `smtp::SmtpInboundHandler`, `SmtpConfig`, `SmtpServices` | Réception SMTP (`SessionHandler` de l'écoute `smtp`), décrite ci-dessous (« `lyxal_mail::smtp` ») |
+| `smtp::BlockList`, `BlockRefreshWorker`, `Network`, `Offence` | Liste de blocage du nœud (S18) : réseaux de `mail_network_block` relus toutes les 30 s par le worker `lyxal_mail:mail.block_refresh` (criticité `Optional` ; un échec garde la dernière liste, compté), appliqués par l'hôte à l'acceptation ; bannissement d'une adresse (`/32`, `/64`) après 3 sessions fautives en 10 minutes (trop d'erreurs, recherche d'adresses, contrebande), écrit en base par `fn::mail_block_create` (durée calculée par la base) et appliqué aussitôt sur le nœud |
+| `MailModule`, `MailHealthCheck`, `RequiredHost` | `LyxalModule` du module (descripteur égal au manifeste) ; sonde : réglages lisibles (sinon « malade »), support de stockage et service de clés des fichiers présents (sinon « dégradé »), antivirus de la chaîne joignable (`with_scanner`), DNS qui répond sur le nom témoin `smtp.hostname` (`with_dns_probe`, une requête par minute au plus ; une absence est une réponse, seule une panne dégrade), et, avec `with_required_host`, un nœud vivant de l'hôte requis (`RequiredHost` : `lyxal_server`, lu dans `runtime_node` par `PresenceStore`) vu depuis moins de `REQUIRED_HOST_ABSENCE_LIMIT` (10 minutes ; sinon « dégradé », « aucun nœud lyxal_server vivant… ») ; l'hôte la compose avec celle des écoutes (une sonde par module) |
 | `MailError` | Code `MAIL_*` (dont `MAIL_MESSAGE_MALFORMED`, `MAIL_CONTENT_UNAVAILABLE` à réessayer, et `Refused` : code de l'élément refusé d'un lot de remise) ou `STORAGE_*` propagé ; `is_retryable()`, `is_business()` ; aucune adresse, aucun sujet, aucun contenu |
 
 **Chiffrement obligatoire (décision M1).** Sans support de stockage ou sans clé maîtresse du
@@ -343,7 +377,8 @@ l'organisation (créé par ailleurs avant la première remise : `lyxal_storage` 
 nom) fait refuser chaque dépôt avant toute écriture (`MAIL_CONTENT_UNAVAILABLE`) jusqu'à ce que
 l'administrateur le supprime ; le bucket est cherché sur toutes les pages de la liste des buckets
 de l'organisation. Hiérarchie des clés : clé maîtresse du coffre-fort →
-clé « fichiers » de l'organisation (`lyxal_secrets`, sans cache, M19) → clé propre à chaque
+clé « fichiers » de l'organisation (`lyxal_secrets` ; cache des ouvertures de 60 s activé par
+l'hôte, S13) → clé propre à chaque
 message (scellée dans la fiche de `lyxal_storage`) → segments de 64 Kio du `.eml`. Un message
 remis à plusieurs comptes a un contenu par compte (M14).
 
@@ -413,6 +448,59 @@ planificateur, planification non recréée au redémarrage, aucun événement `s
 sans clé : sonde « dégradé », dépôt refusé à réessayer ; sans clé avec un bucket chiffré en
 base : démarrage refusé (`GROUPWARE_MASTER_KEY_MISSING`).
 
+## État actuel : `lyxal_mail::smtp` (réception SMTP)
+
+`SmtpInboundHandler` sert l'écoute `protocol = "smtp"` de `lyxal-groupware` (port 25). L'hôte lui
+remet `SmtpServices` : session système (`MailStore`), résolveur DNS du nœud (`HickoryResolver`,
+un par nœud), chaîne de remise (`DeliveryPipeline`, antivirus de `[storage.antivirus]`), budget
+mémoire des connexions, liste de blocage. Syntaxe : `lyxal_mail_proto::smtp`. Écrit pour Lyxal sur
+le modèle de Stalwart (`smtp/inbound`) et de Mox (`smtpserver`), sans code repris (`SOURCES.md`).
+
+| Étape | Comportement |
+| :--- | :--- |
+| Accueil | `220 <hostname> ESMTP` (aucun nom ni version de logiciel) ; nom inverse demandé aussitôt (contrôle avancé pendant que la session attend le client, aucune tâche hors de la session) |
+| `EHLO` / `HELO` | Nom de domaine (converti en forme ASCII) ou adresse entre crochets, sinon `501 5.5.4` ; un nom qui ne correspond pas à l'adresse n'est jamais refusé ; SPF de l'identité HELO lancé ; extensions (S5) : `PIPELINING`, `SIZE`, `8BITMIME`, `SMTPUTF8`, `ENHANCEDSTATUSCODES`, `STARTTLS` (écoute `starttls`, une fois), `CHUNKING` ; jamais `DSN`, `AUTH`, `BINARYMIME`, `REQUIRETLS` |
+| États (§7.1) | Avant `EHLO` : `EHLO`, `HELO`, `QUIT`, `NOOP`, `RSET`, `HELP` seulement (`503 5.5.1`) ; `VRFY` → `252 2.5.0` ; `EXPN`, `AUTH`, `LHLO`, `ETRN`, `ATRN`, `BURL` → `502 5.5.1` ; `MAIL` imbriqué, `RCPT` sans `MAIL` → `503 5.5.1` ; `DATA` sans destinataire → `554 5.5.1` |
+| `STARTTLS` | `220 2.0.0` puis mise à niveau par l'hôte ; octets reçus derrière la commande : fermeture (injection) ; état remis à « Accueil » (RFC 3207 §4.2) |
+| `MAIL FROM` | Paramètres DSN et `BODY=BINARYMIME` → `555 5.5.4` ; `SIZE` au-delà de `max_message_bytes` → `552 5.3.4` ; `max_messages_per_session` atteint → `421 4.7.0` ; cadence par réseau (`messages_per_network_per_minute`, `/32`, `/26`, `/21`) → `450 4.7.1` ; SPF de `MAIL FROM` lancé |
+| `RCPT TO` | `fn::mail_recipient_resolve` (domaine en forme ASCII, `idna`, S16) : domaine étranger, adresse littérale, route source → `550 5.7.1` (aucun relais) ; inconnu, partie locale UTF-8 → `550 5.1.1` ; désactivé → `550 5.2.1` ; quota plein → `452 4.2.2` ; `SIZE` au-delà de la taille de l'organisation → `552 5.3.4` ; `max_recipients` → `452 4.5.3` ; base indisponible → `451 4.3.0` ; à partir du 5ᵉ refus, chaque réponse retardée d'une seconde ; au 20ᵉ, `421 4.7.0`, fermeture et récidive comptée |
+| `DATA` / `BDAT` | Données avant `354` → `554 5.5.0` et fermeture ; fin reconnue sur `CRLF.CRLF` seulement ; mémoire réservée par pas de 64 Kio (classe « réception SMTP » ; épuisée → `452 4.3.1`), gardée jusqu'à la réponse et agrandie, avant de la faire, pour la copie à ranger avec nos en-têtes ; au-delà de la taille, lecture jusqu'au bout sans garder les octets → `552 5.3.4` ; CR ou LF isolé (contrebande, S7) → `500 5.5.2`, session poursuivie, erreur et récidive comptées ; octet nul → `554 5.6.0` ; délai entre blocs `data_timeout_seconds`, débit minimal après 30 s |
+| Contrôles du message | Lecture MIME (`554 5.6.0`) ; exactement un `From` (`550 5.6.0`) ; plus de 50 `Received` → `554 5.4.6` ; DKIM, DMARC (avec le SPF de `MAIL FROM`), nom inverse ; politique (S6) : DMARC `reject` → `550 5.7.1`, `quarantine` → « Junk », `temperror` avec `reject` → `451 4.7.5`, `dmarc_enforce = false` → résultat seulement ; jamais de refus sur SPF ou DKIM seuls |
+| En-têtes ajoutés | `Return-Path`, `Received` (nom annoncé, nom inverse confirmé et valide seulement, adresse, notre nom, `ESMTP` / `ESMTPS` / `UTF8SMTP` / `UTF8SMTPS`, identifiant, version et suite TLS, date ; aucun destinataire), `Authentication-Results` (après retrait de ceux qui portent notre `authserv-id`) |
+| Remise et réponse | `DeliveryPipeline` puis réponse unique : `250 2.0.0 Ok <identifiant>`, infecté `554 5.7.1`, message que nos en-têtes font passer au-delà de la taille de l'organisation `552 5.3.4`, échec partiel ou antivirus injoignable `451 4.3.0` (nouvel essai sans doublon, S8) |
+| Fin de session | `QUIT` → `221 2.0.0` ; `max_errors` erreurs → `421 4.7.0` et récidive comptée ; attente d'une commande au-delà de `command_timeout_seconds` ou de `session_max_seconds` → `421 4.4.2` ; arrêt du nœud → `421 4.3.2` à la commande suivante |
+
+Réglages (`SmtpConfig`, section `[smtp]` de l'hôte, décision S19) : `hostname` (obligatoire),
+`max_message_bytes` (50 Mio), `max_recipients` (100), `max_messages_per_session` (50),
+`max_errors` (10), `max_line_bytes` (4 096), `command_timeout_seconds` (300),
+`data_timeout_seconds` (180), `session_max_seconds` (1 800), `data_min_bytes_per_second`
+(1 024), `messages_per_network_per_minute` (60, 180, 540), `dmarc_enforce` (vrai).
+
+Journal : une ligne par transaction (identifiant de session, réseau masqué `/24` ou `/48`,
+résultats SPF, DKIM, DMARC, nom inverse, nombre de destinataires, taille, décision, code) ; ni
+adresse, ni sujet, ni contenu. Mesures (`SmtpInboundHandler::snapshot`, `/metrics` de l'hôte) :
+sessions, messages acceptés, refusés par motif (relais, inconnu, désactivé, quota, taille, DMARC,
+antivirus, contrebande, limites, illisible, politique, temporaire), destinataires acceptés et
+refusés par motif, résultats SPF / DKIM / DMARC, remises dupliquées évitées, nombre et durée des
+remises, lots, conflits rejoués et lots repris de l'ordre des inscriptions, requêtes et pannes
+DNS, bannissements écrits, réseaux bloqués, relectures de la liste en échec. Les succès du cache
+DNS ne sont pas mesurés (`hickory-resolver` ne les expose pas).
+
+Vérification : `cargo test -p lyxal_mail` (`tests/it/smtp.rs`, dialogues scriptés sur une vraie
+socket, base embarquée, `StaticResolver`) : réception de bout en bout (extensions annoncées,
+en-têtes ajoutés, `Authentication-Results` forgé retiré, bourrage retiré, résultats de réception,
+événement, mesures) ; conformité par commande et par état ; `PIPELINING` (réponses dans l'ordre,
+groupe qui finit par `DATA`) et `BDAT` ; refus sans relais (domaine étranger, `%`, route source,
+adresse littérale, UTF-8 avec et sans `SMTPUTF8`, `max_recipients`) ; variantes de contrebande et
+données avant `354` ; usurpation (notre domaine en `p=reject` sans DKIM, DKIM valide d'un autre
+domaine, plusieurs domaines dans un `From`, `From` multiple ou absent), quarantaine, boucle,
+`dmarc_enforce = false` ; antivirus (EICAR refusé, injoignable → `451`) ; échec partiel → `451`
+puis nouvel essai sans doublon, alias et adresse directe vers le même compte ; limites (taille,
+messages par session, cadence) ; bannissement après trois sessions fautives, relu par un second
+nœud ; recherche d'adresses ralentie puis fermée ; STARTTLS (injection refusée, état remis à
+zéro, `ESMTPS` et `tls` dans le message rangé). Mesures de charge : « Mesures de la réception
+SMTP » plus haut.
+
 ## État actuel : `lyxal_mail::net`
 
 | Élément | Rôle |
@@ -434,9 +522,9 @@ transposés, plafond rendu même sur annulation, budget mémoire dont une propri
 lignes de refus, mise à niveau STARTTLS refusée sur entrée déjà lue). L'usage réel (sockets,
 runtime) est essayé par `cargo test -p lyxal-groupware`.
 
-## État actuel : `lyxal_mail::dns` et `lyxal_mail::auth` (lot 5b)
+## État actuel : `lyxal_mail::dns` et `lyxal_mail::auth`
 
-Contrôles employés par la session SMTP entrante (lot 5d), non encore branchés dans l'hôte.
+Contrôles employés par la session SMTP entrante (`lyxal_mail::smtp`).
 
 | Élément | Rôle |
 | :--- | :--- |
@@ -514,7 +602,7 @@ dans [`SOURCES.md`](SOURCES.md). Les conséquences de licence sont traitées par
 | 0 — Cadre | Ce dossier, les sources figées, le tri du code propriétaire, les mesures de SurrealDB |
 | 3 — Hôte et socle réseau (réalisé) | Squelette du module (`lyxal_mail::net`) ; écoutes supervisées, TLS implicite, STARTTLS, certificats rechargés à chaud et PROXY protocol dans `apps/lyxal-groupware` |
 | 4 — Socle courrier (réalisé) | Modèle de données SurrealQL : domaines, adresses, alias, boîtes, messages, quotas, droits, erreurs, événements ; service Rust de dépôt et de lecture, chiffrement au repos (niveau A) par `lyxal_storage`, maintenance par `lyxal_scheduler` |
-| 5 — Réception SMTP | Serveur SMTP entrant, SPF / DKIM / DMARC, antivirus, remise en boîte |
+| 5 — Réception SMTP (réalisé) | Serveur SMTP entrant, SPF / DKIM / DMARC, antivirus, remise en boîte |
 | 6 — Envoi | File par destination, envoi vers les MX, dépôt authentifié, signature DKIM, avis de non-remise |
 | 7 — Transport sûr et rapports | MTA-STS, DANE, TLS-RPT, rapports DMARC, ARC |
 | 8 — IMAP | Serveur IMAP4rev2 et rev1, extensions |

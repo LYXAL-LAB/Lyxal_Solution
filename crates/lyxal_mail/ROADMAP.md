@@ -1,7 +1,7 @@
 # Feuille de route — `lyxal_mail`
 
-Évolutions à venir du crate (socle courrier réalisé au lot 4, contrat réseau au lot 3). Son
-objet et son état actuel sont décrits par le [`README.md`](README.md), les
+Évolutions à venir du crate (contrat réseau réalisé au lot 3, socle courrier au lot 4,
+réception SMTP au lot 5). Son objet et son état actuel sont décrits par le [`README.md`](README.md), les
 études et les mesures par [`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md), la provenance des
 sources par [`SOURCES.md`](SOURCES.md). Le programme est décrit par `implementation_plan.md` à la
 racine du dépôt ; chaque lot a son propre plan, validé par le CTO avant toute ligne de code
@@ -11,7 +11,6 @@ racine du dépôt ; chaque lot a son propre plan, validé par le CTO avant toute
 
 | Lot | Contenu pour ce crate | Sources principales | Prérequis |
 | :- | :--- | :--- | :--- |
-| 5 — Réception SMTP | Serveur SMTP entrant, refus dès `RCPT TO`, SPF / DKIM / DMARC, `Authentication-Results`, antivirus, remise en boîte, événement `mail.message.received` ; ordre de remise fixé : antivirus → anti-spam → filtres → index → chiffrement | Stalwart `smtp/inbound` ; Mox `smtpserver` | lots 2, 3, 4 |
 | 6 — Envoi | File par destination, tentatives, envoi vers les MX, dépôt authentifié (587 / 465), signature DKIM, avis de non-remise, adresses de retour signées, contrat public de dépôt | Stalwart `smtp/queue`, `smtp/outbound` ; Mox `queue`, `smtpclient`, `dsn` ; KumoMTA | lots 1, 5 |
 | 7 — Transport sûr et rapports | MTA-STS, DANE, TLS-RPT, rapports DMARC reçus et émis, ARC | Stalwart `smtp/reporting`, `outbound/{dane,mta_sts}` ; Mox | lot 6 |
 | 8 — IMAP | IMAP4rev2 et rev1, extensions (IDLE, CONDSTORE, QRESYNC, MOVE, UIDPLUS, SPECIAL-USE, QUOTA, ACL…) | Stalwart `imap` ; Mox `imapserver` | lots 1, 4 |
@@ -37,18 +36,29 @@ Mesures et essais détaillés dans [`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md
   version, par plan, décision P14) est à inscrire dans les procédures d'exploitation. La crate
   déclare `MIT/Apache-2.0` sans mentionner la MPL-2.0 de la liste qu'elle embarque : à confirmer
   par le CTO (repli : fichier de la liste sous MPL-2.0, exception nommée dans `deny.toml`).
-  `PublicSuffixList` (liste fournie par l'appelant) ne sert plus qu'aux essais : à garder ou à
-  retirer avec le branchement de la session SMTP (5d).
+  `PublicSuffixList` (liste fournie par l'appelant) ne sert qu'aux essais
+  (`SmtpInboundHandler::with_suffix_list`, essais DMARC) ; la session SMTP de l'hôte emploie
+  `EmbeddedSuffixList` : à retirer, ou à garder comme liste chargée d'un fichier, avec la décision
+  sur la licence.
 * **Domaines d'auteur multiples (lot 5).** DMARC évalue au plus 10 domaines distincts de `From` ;
-  au-delà, les domaines sont ignorés : refus ou non d'un tel message à décider avec la session
-  SMTP (5d).
-* **Liste de blocage et bannissement (lot 5).** Table et fonctions en place (5c) ; restent à la
-  session SMTP (5d) : lecture par chaque nœud toutes les 30 s, bannissement après récidive. Un
-  réseau est rangé tel qu'il est donné (`fn::validation_cidr` valide la syntaxe, sans ramener
-  l'adresse à son réseau : `192.0.2.7/24` et `192.0.2.0/24` sont deux entrées) : forme canonique
-  à produire par l'appelant, ou primitive de `lyxal_core` à demander au CTO. Les entrées échues
-  ne sont pas purgées (elles portent le nombre de récidives) : durée de conservation à décider.
-  Les compteurs de cadence restent par nœud (lot 3).
+  au-delà, les domaines sont ignorés et le message est jugé sur les 10 premiers. Refuser un tel
+  message est une décision de politique nouvelle, non prise au lot 5 : à décider par le CTO.
+* **Liste de blocage (lot 5).** Lue par chaque nœud toutes les 30 s et appliquée à
+  l'acceptation ; bannissement après trois sessions fautives en 10 minutes. Un bannissement
+  automatique est rangé ramené à son réseau (`/32`, `/64`) ; une entrée manuelle est rangée telle
+  qu'elle est donnée (`fn::validation_cidr` valide la syntaxe sans ramener l'adresse à son réseau :
+  `192.0.2.7/24` et `192.0.2.0/24` sont deux entrées, toutes deux appliquées comme `192.0.2.0/24`
+  par les nœuds) : forme canonique à produire par l'appelant (route d'administration, lot 13), ou
+  primitive de `lyxal_core` à demander au CTO. Les entrées échues ne sont pas purgées (elles
+  portent le nombre de récidives) : durée de conservation à décider. Les compteurs de récidive et
+  de cadence restent par nœud.
+* **Données envoyées avant `354` (lot 5).** Refusées par `554 5.5.0` puis la connexion est
+  fermée (le plan disait « transaction annulée ») : la suite ne peut plus être lue comme des
+  commandes. À confirmer par le CTO.
+* **Réception SMTP, non mesuré (lot 5).** Mémoire d'un nœud avec 1 000 sessions ouvertes et
+  lentes ; deux vrais hôtes recevant par SMTP dans un même compte ; résolveur DNS réel ;
+  antivirus réel. Banc SMTP Python contre le vrai binaire (§10.5 du plan du lot 5) non écrit : les
+  mesures de charge passent par `tests/it/smtp_load.rs` (même chemin, dans le processus).
 
 ## Points relevés au lot 4, à décider avant les protocoles
 
@@ -62,7 +72,11 @@ Mesures : [`README.md`](README.md), section « Mesures ».
   boîte, à mesurer au lot 8.
 * **Débit de remise (décisions C5, P7, P8, S11, S12).** Objectif P10 tenu (une remise seule en
   37 ms, environ 105 remises par seconde sur 4 cœurs partagés ; `README.md`, « Mesures de la
-  remise »). Restent, à décider après une mesure sur une base persistante :
+  remise »). Par la session SMTP (lot 5) : 88,6 messages par seconde (100 comptes, 50 clients),
+  58,6 dans un compte (20 clients), fin des données → `250` en 45 ms (p50) : l'objectif C5 de
+  300 par seconde n'est **pas** atteint sur 4 cœurs partagés (`README.md`, « Mesures de la
+  réception SMTP ») ; à mesurer sur la machine de référence. Restent, à décider après une mesure
+  sur une base persistante :
   * moins d'allers-retours (P8) : `fn::mail_delivery_open` (ouverture du courrier et du fichier
     en une transaction), clôture groupée dans `fn::mail_delivery_commit`, écriture par
     `StorageService` d'un fichier déjà ouvert ; gain mesuré dans la base 34,5 → 31,1 ms, gain de
@@ -71,8 +85,7 @@ Mesures : [`README.md`](README.md), section « Mesures ».
     d'interdire la destruction d'une clé retirée depuis moins que la garde du cache (60 s) plus
     une marge ; gain estimé 2,5 ms par remise.
   Non mesurés : base persistante (cinq validations de transaction par remise), base et hôte sur
-  deux machines, plus de 4 cœurs, support S3, session SMTP et contrôles d'authenticité (5d),
-  messages réels ; cause du refus isolé `SURREAL_DATABASE_ERROR` (une remise sur 3 000, pool de
+  deux machines, plus de 4 cœurs, support S3, messages réels ; cause du refus isolé `SURREAL_DATABASE_ERROR` (une remise sur 3 000, pool de
   4) non cherchée. Hors débit de remise : les 515 autres appels de
   `fn::validation_object_execute` paient le chargement de tout le catalogue (décision P2).
 * **Plage de 1 000 UID sous la session d'un membre.** Environ 0,3 ms de plus par fiche que sous
@@ -81,17 +94,17 @@ Mesures : [`README.md`](README.md), section « Mesures ».
 * **Contention entre deux nœuds (décisions M6, S11).** Le compteur reste par compte ; dans un
   nœud, l'ordre par compte supprime les conflits. Entre deux nœuds simulés dans un processus
   (base embarquée, un compte, 20 clients) : 1 remise refusée sur 1 000 après rejeu (0,1 %, sous
-  le seuil de 1 % du repli), 199 conflits rejoués. À mesurer de nouveau avec deux vrais hôtes et
-  la session SMTP (5d), y compris les conflits sur les compteurs de volume de `lyxal_storage`.
+  le seuil de 1 % du repli), 199 conflits rejoués. À mesurer de nouveau avec deux vrais hôtes
+  recevant par SMTP, y compris les conflits sur les compteurs de volume de `lyxal_storage`.
   Le dépôt par un titulaire (`MailIngest::deliver`, `APPEND` au lot 8) ne passe pas par l'ordre
   par compte : à décider au lot 8.
 * **Domaines internationaux et parties locales UTF-8 (décisions M10, S16).** Adresses de Lyxal
-  en ASCII ; domaines convertis en forme ASCII en Rust par la session SMTP (5d) ; aucune
+  en ASCII ; domaines convertis en forme ASCII en Rust par la session SMTP (`idna`) ; aucune
   extension de `lyxal_core` au lot 5 ; saisie d'un domaine ou d'une adresse en Unicode par un
   administrateur : question rouverte au lot 13.
 * **Alias vers l'extérieur, listes** : lot 6.
 * **Clés « fichiers » (décisions M19, S13).** Cache écrit dans `lyxal_secrets`
-  (`FileKeys::with_cache`), pour les ouvertures seulement ; à activer par l'hôte (5d). Un
+  (`FileKeys::with_cache`), pour les ouvertures seulement, activé par `lyxal-groupware`. Un
   scellement relit toujours le trousseau (2,5 ms par remise) : le sceller depuis le cache
   demanderait qu'une clé « fichiers » retirée ne puisse pas être détruite avant un délai plus
   long que la garde du cache (règle de `lyxal_secrets` à décider par le CTO).
@@ -174,6 +187,10 @@ Moyens à fournir par le CTO (décision P11), avant le lot 22 et dès le lot 6 p
 | :- | :--- | :--- | :--- |
 | 5 | Domaine, MX, IP avec port 25 entrant | Envoyer depuis Gmail, Outlook.com et Yahoo vers une adresse du domaine | Message remis en boîte ; `Authentication-Results` exact (SPF, DKIM, DMARC) ; destinataire inconnu refusé dès `RCPT TO` ; essai de relais refusé |
 | 5 | Idem | Laisser le port 25 ouvert une semaine | Aucun relais ouvert ; limites par IP tenues ; mémoire stable |
+| 5 | Idem, liste de diffusion | Envoyer depuis un domaine en `p=reject` par une liste de diffusion | Refus attendu sans ARC (`550 5.7.1`), puis remise avec `smtp.dmarc_enforce = false` |
+| 5 | Idem, serveurs Postfix et Exim réels | Envoyer depuis chacun (en clair et en STARTTLS) | Message remis ; dialogues sans erreur au journal |
+| 5 | Idem, `swaks` | Variantes de contrebande SMTP contre le serveur exposé | Chaque variante refusée (`500 5.5.2`), bannissement après récidive |
+| 5 | ClamAV réel (`[storage.antivirus]`) | Envoyer la signature EICAR | Refus `554 5.7.1`, aucun dépôt ; `clamd` arrêté : `451 4.3.0` et sonde « dégradé » |
 | 6 | Port 25 sortant, DNS inverse, SPF, DKIM, DMARC publiés | Envoyer vers Gmail, Outlook.com et Yahoo | Message en boîte de réception (pas en indésirables) ; SPF, DKIM et DMARC « pass » dans les en-têtes reçus |
 | 6 | Idem | Envoyer vers une adresse inexistante | Avis de non-remise reçu et rattaché ; événement `mail.message.bounced` |
 | 7 | DNSSEC et TLSA, politique MTA-STS, adresse TLS-RPT | Recevoir d'un expéditeur qui applique MTA-STS et DANE ; attendre les rapports | Livraison en TLS vérifié ; rapports TLS et DMARC reçus et lus |

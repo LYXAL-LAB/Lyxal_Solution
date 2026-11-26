@@ -1,6 +1,6 @@
 //! Bout en bout du binaire `lyxal-groupware` : démarrage sur une configuration d'essai (base
 //! embarquée, support disque et clé maîtresse du coffre-fort passés par l'environnement),
-//! `/live`, `/ready`, `/health`, `/metrics`, refus poli sur le port SMTP, puis arrêt par SIGTERM.
+//! `/live`, `/ready`, `/health`, `/metrics`, réception SMTP (accueil, relais refusé), puis arrêt par SIGTERM.
 
 use crate::support::{first_line, toml};
 use std::fs;
@@ -52,7 +52,9 @@ async fn binary_serves_health_and_mail_ports_then_stops_on_sigterm() {
     let directory = tempfile::tempdir().unwrap();
     let config = directory.path().join("config");
     fs::create_dir(&config).unwrap();
-    let text = toml("binary", "[limits]\ndrain_seconds = 2\n")
+    // Serveur DNS d'essai : le binaire n'interroge jamais le vrai DNS
+    let dns = crate::support::fake_dns().await;
+    let text = toml("binary", &format!("[limits]\ndrain_seconds = 2\n{dns}"))
         .replace("127.0.0.1:0\"\ngraceful", &format!("127.0.0.1:{http_port}\"\ngraceful"))
         + &format!(
             "\n[[listeners]]\nid = \"smtp\"\nprotocol = \"smtp\"\nbind = [\"127.0.0.1:{smtp_port}\"]\ntls = \"none\"\n"
@@ -111,10 +113,15 @@ async fn binary_serves_health_and_mail_ports_then_stops_on_sigterm() {
     let mut smtp = TcpStream::connect(format!("127.0.0.1:{smtp_port}"))
         .await
         .expect("port SMTP");
-    assert_eq!(
-        first_line(&mut smtp).await,
-        "421 4.3.2 Service not available, try again later"
-    );
+    assert_eq!(first_line(&mut smtp).await, "220 mx.lyxal.test ESMTP");
+    // Aucun relais : un domaine qui n'est pas à l'installation est refusé dès `RCPT TO`
+    smtp.write_all(b"HELO client.ailleurs.test\r\nMAIL FROM:<paul@ailleurs.test>\r\nRCPT TO:<qui@ailleurs.test>\r\nQUIT\r\n")
+        .await
+        .unwrap();
+    for expected in ["250 mx.lyxal.test", "250 2.1.0", "550 5.7.1", "221 2.0.0"] {
+        let line = first_line(&mut smtp).await;
+        assert!(line.starts_with(expected), "{expected} : {line}");
+    }
     let (status, body) = http_get(http, "/metrics").await.expect("/metrics");
     assert_eq!(status, 200);
     let metrics: serde_json::Value = serde_json::from_str(&body).expect("JSON");

@@ -60,6 +60,135 @@ pub struct GroupwareConfig {
     /// Courrier : support de ses fichiers, maintenance.
     #[serde(default)]
     pub mail: MailConfig,
+    /// Réception SMTP (écoutes `smtp`) : nom de l'hôte, limites, politique DMARC.
+    #[serde(default)]
+    pub smtp: SmtpSection,
+    /// Résolveur DNS du nœud (contrôles SPF, DKIM, DMARC, nom inverse).
+    #[serde(default)]
+    pub dns: DnsSection,
+}
+
+/// Réception SMTP (plan du lot 5, §7.6 et §11.2) : valeurs par défaut et bornes de
+/// `lyxal_mail::smtp::SmtpConfig`. `hostname` est obligatoire dès qu'une écoute `smtp` existe
+/// (bannière, `Received`, `authserv-id`).
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields, default)]
+pub struct SmtpSection {
+    pub hostname: Option<String>,
+    pub max_message_bytes: u64,
+    pub max_recipients: usize,
+    pub max_messages_per_session: u32,
+    pub max_errors: u32,
+    pub max_line_bytes: usize,
+    pub command_timeout_seconds: u64,
+    pub data_timeout_seconds: u64,
+    pub session_max_seconds: u64,
+    pub data_min_bytes_per_second: u64,
+    /// Messages par minute et par réseau : `/32`, `/26`, `/21` (IPv6 : `/64`, `/48`, `/32`).
+    pub messages_per_network_per_minute: [u64; 3],
+    /// `true` : applique `reject` et `quarantine` de DMARC ; `false` : résultat seulement.
+    pub dmarc_enforce: bool,
+}
+
+impl Default for SmtpSection {
+    fn default() -> Self {
+        use lyxal_mail::smtp as d;
+        Self {
+            hostname: None,
+            max_message_bytes: d::DEFAULT_MAX_MESSAGE_BYTES,
+            max_recipients: d::DEFAULT_MAX_RECIPIENTS,
+            max_messages_per_session: d::DEFAULT_MAX_MESSAGES_PER_SESSION,
+            max_errors: d::DEFAULT_MAX_ERRORS,
+            max_line_bytes: d::DEFAULT_MAX_LINE_BYTES,
+            command_timeout_seconds: d::DEFAULT_COMMAND_TIMEOUT.as_secs(),
+            data_timeout_seconds: d::DEFAULT_DATA_TIMEOUT.as_secs(),
+            session_max_seconds: d::DEFAULT_SESSION_MAX.as_secs(),
+            data_min_bytes_per_second: d::DEFAULT_DATA_MIN_BYTES_PER_SECOND,
+            messages_per_network_per_minute: d::DEFAULT_MESSAGES_PER_NETWORK_PER_MINUTE,
+            dmarc_enforce: true,
+        }
+    }
+}
+
+impl SmtpSection {
+    /// Réglages de la réception ; `None` sans `hostname`.
+    pub fn smtp_config(&self) -> Option<lyxal_mail::smtp::SmtpConfig> {
+        let hostname = self.hostname.as_ref()?;
+        Some(lyxal_mail::smtp::SmtpConfig {
+            max_message_bytes: self.max_message_bytes,
+            max_recipients: self.max_recipients,
+            max_messages_per_session: self.max_messages_per_session,
+            max_errors: self.max_errors,
+            max_line_bytes: self.max_line_bytes,
+            command_timeout: Duration::from_secs(self.command_timeout_seconds),
+            data_timeout: Duration::from_secs(self.data_timeout_seconds),
+            session_max: Duration::from_secs(self.session_max_seconds),
+            data_min_bytes_per_second: self.data_min_bytes_per_second,
+            messages_per_network_per_minute: self.messages_per_network_per_minute,
+            dmarc_enforce: self.dmarc_enforce,
+            ..lyxal_mail::smtp::SmtpConfig::new(hostname.clone())
+        })
+    }
+}
+
+/// Résolveur DNS (décision S3) : serveurs (`ip:port`, ou `ip` pour le port 53 ; vide : ceux du
+/// système), délai par requête (5 s, 1 à 30), essais (2, 1 à 5), réponses en cache (16 384,
+/// 0 à 1 000 000).
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields, default)]
+pub struct DnsSection {
+    pub servers: Vec<String>,
+    pub timeout_seconds: u64,
+    pub attempts: usize,
+    pub cache_size: u64,
+}
+
+impl Default for DnsSection {
+    fn default() -> Self {
+        let defaults = lyxal_mail::dns::DnsConfig::default();
+        Self {
+            servers: Vec::new(),
+            timeout_seconds: defaults.timeout.as_secs(),
+            attempts: defaults.attempts,
+            cache_size: defaults.cache_size,
+        }
+    }
+}
+
+impl DnsSection {
+    /// Réglages du résolveur ; le message nomme le réglage ou le serveur à corriger.
+    pub fn dns_config(&self) -> Result<lyxal_mail::dns::DnsConfig, GroupwareError> {
+        let servers = self
+            .servers
+            .iter()
+            .map(|server| {
+                server
+                    .parse::<SocketAddr>()
+                    .or_else(|_| {
+                        server
+                            .parse::<std::net::IpAddr>()
+                            .map(|ip| SocketAddr::new(ip, 53))
+                    })
+                    .map_err(|_| GroupwareError::Configuration {
+                        message: format!(
+                            "dns.servers : « {server} » n'est pas une adresse ip ou ip:port"
+                        ),
+                    })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let config = lyxal_mail::dns::DnsConfig {
+            servers,
+            timeout: Duration::from_secs(self.timeout_seconds),
+            attempts: self.attempts,
+            cache_size: self.cache_size,
+        };
+        config
+            .validate()
+            .map_err(|error| GroupwareError::Configuration {
+                message: format!("dns : {error}"),
+            })?;
+        Ok(config)
+    }
 }
 
 /// Planificateur (`lyxal_scheduler`) : places de chaque exécuteur de file sur ce nœud,
@@ -405,6 +534,7 @@ impl GroupwareConfig {
         self.validate_limits()?;
         self.validate_tls()?;
         self.validate_services()?;
+        self.validate_smtp()?;
 
         let mut ids = BTreeSet::new();
         let mut addresses = BTreeSet::from([self.http.bind]);
@@ -497,6 +627,34 @@ impl GroupwareConfig {
             );
         }
         Ok(())
+    }
+
+    /// `[smtp]` et `[dns]` : contrôlés dès qu'ils sont donnés ; `smtp.hostname` est obligatoire
+    /// avec une écoute `smtp`.
+    fn validate_smtp(&self) -> Result<(), GroupwareError> {
+        self.dns.dns_config()?;
+        let has_smtp = self
+            .listeners
+            .iter()
+            .any(|listener| listener.protocol == MailProtocol::Smtp);
+        match self.smtp.smtp_config() {
+            Some(config) => config
+                .validate()
+                .map_err(|error| GroupwareError::Configuration {
+                    message: error.to_string(),
+                }),
+            None if has_smtp => Err(GroupwareError::Configuration {
+                message: "smtp.hostname est obligatoire avec une écoute smtp (bannière, Received, Authentication-Results)".into(),
+            }),
+            None => Ok(()),
+        }
+    }
+
+    /// Réception SMTP de ce nœud, s'il a une écoute `smtp`.
+    pub fn has_smtp_listener(&self) -> bool {
+        self.listeners
+            .iter()
+            .any(|listener| listener.protocol == MailProtocol::Smtp)
     }
 
     fn validate_services(&self) -> Result<(), GroupwareError> {

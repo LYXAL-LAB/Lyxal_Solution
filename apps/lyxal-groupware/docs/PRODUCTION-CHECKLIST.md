@@ -27,8 +27,23 @@
 - [ ] `LYXAL_ENV=production` ; journal JSON ; `observability.log_client_ip = "network"` ;
 - [ ] port HTTP de santé lié à une adresse interne (`127.0.0.1:8090` par défaut) ; `/live`,
       `/ready`, `/health`, `/metrics` supervisés ;
-- [ ] écoutes de courrier déclarées une à une ; **port 25 fermé sur Internet avant le lot 5** ;
-      pare-feu ouvert pour les seuls ports déclarés ;
+- [ ] écoutes de courrier déclarées une à une ; pare-feu ouvert pour les seuls ports déclarés ;
+      ports des protocoles pas encore écrits (soumission, IMAP, POP3, ManageSieve) fermés sur
+      Internet ;
+- [ ] réception SMTP (port 25) : `smtp.hostname` renseigné (nom du MX du domaine, égal au DNS
+      inverse de l'adresse publique) ; enregistrement MX publié ; hébergeur qui laisse passer le
+      port 25 entrant ; écoute `smtp` en `starttls` avec un certificat couvrant `hostname` ;
+      envoi d'essai vers une adresse inconnue (`550 5.1.1`) et vers un domaine extérieur
+      (`550 5.7.1`, aucun relais) ;
+- [ ] résolveur DNS : résolveur récursif local recommandé (`[dns] servers`), ou
+      `/etc/resolv.conf` lisible ; `/health` sans « DNS en panne » ;
+- [ ] politique DMARC : `smtp.dmarc_enforce = false` pendant la mise en service si des listes de
+      diffusion légitimes sont attendues (aucune vérification ARC avant le lot 7), puis `true` ;
+- [ ] antivirus (`[storage.antivirus]`) joignable : sinon chaque message reçu est refusé
+      temporairement (`451 4.3.0`) et la sonde de `lyxal_mail` est « dégradé » ;
+- [ ] limites SMTP (`[smtp]` : taille, destinataires, messages par session et par réseau,
+      erreurs, délais) ajustées au trafic ; supervision des refus et des bannissements
+      (`/metrics`, `mail.smtp`) ;
 - [ ] ports inférieurs à 1024 ouverts par la capacité `CAP_NET_BIND_SERVICE` (systemd :
       `AmbientCapabilities=CAP_NET_BIND_SERVICE`, ou conteneur), le programme tournant sous un
       compte sans droits ;

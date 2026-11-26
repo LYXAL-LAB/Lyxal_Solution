@@ -166,6 +166,33 @@ IF !record::exists(error_definition:GROUPWARE_MASTER_KEY_MISSING) THEN (
     }
 ) END;
 
+IF !record::exists(error_definition:GROUPWARE_DNS_UNAVAILABLE) THEN (
+    CREATE error_definition:GROUPWARE_DNS_UNAVAILABLE CONTENT {
+        code: "GROUPWARE_DNS_UNAVAILABLE",
+        module: "groupware",
+        domain: "dns",
+        category: "dependency",
+        severity: "error",
+        message: "The DNS resolver could not be configured",
+        default_language: "fr",
+        http_status: 500,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Résolveur DNS indisponible",
+                description: "Une écoute smtp est déclarée, mais le résolveur DNS du nœud ne peut pas être construit : configuration DNS du système illisible (/etc/resolv.conf) ou aucun serveur DNS. Sans DNS, SPF, DKIM et DMARC ne peuvent pas être contrôlés ; l'hôte s'arrête avant de démarrer ses écoutes.",
+                resolution: "Corriger /etc/resolv.conf, ou déclarer les serveurs dans la section [dns] (servers = [\"127.0.0.1:53\"]) ; un résolveur récursif local est recommandé."
+            },
+            en: {
+                label: "DNS resolver unavailable",
+                description: "The DNS resolver could not be configured.",
+                resolution: "Fix /etc/resolv.conf, or list the servers in the [dns] section; a local recursive resolver is recommended."
+            }
+        }
+    }
+) END;
+
 IF !record::exists(error_definition:GROUPWARE_SHUTDOWN_SIGNAL_FAILED) THEN (
     CREATE error_definition:GROUPWARE_SHUTDOWN_SIGNAL_FAILED CONTENT {
         code: "GROUPWARE_SHUTDOWN_SIGNAL_FAILED",

@@ -31,7 +31,7 @@ use surrealdb::Surreal;
 
 /// Variable de la clé maîtresse lue par l'hôte (propre à ces essais : aucun autre essai ne
 /// déclare `secrets.master_key`).
-const MASTER_KEY_VAR: &str = "LYXAL_GROUPWARE__SECRETS__MASTER_KEY";
+pub(crate) const MASTER_KEY_VAR: &str = "LYXAL_GROUPWARE__SECRETS__MASTER_KEY";
 
 const MESSAGE: &str = "From: Paul <paul@ailleurs.test>\r\n\
 To: Jean <jean@alpha.test>\r\n\
@@ -42,7 +42,7 @@ Message-ID: <essai-1@ailleurs.test>\r\n\
 Bonjour.\r\n";
 
 /// Clé AES-256 d'essai en Base64 canonique (44 caractères).
-fn test_master_key() -> String {
+pub(crate) fn test_master_key() -> String {
     const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let bytes: Vec<u8> = (0..32u8)
         .map(|i| i.wrapping_mul(37).wrapping_add(11))
@@ -89,7 +89,7 @@ fn config(database: &str, root: &std::path::Path, with_key: bool) -> GroupwareCo
         .expect("configuration valide")
 }
 
-async fn start(config: &GroupwareConfig, client: &Surreal<Any>) -> Started {
+pub(crate) async fn start(config: &GroupwareConfig, client: &Surreal<Any>) -> Started {
     runtime::start(
         config,
         &client.clone().into(),
@@ -124,7 +124,7 @@ async fn run(client: &Surreal<Any>, query: &str) {
 
 /// Organisation, domaine vérifié, compte de courrier de jean ; rend son compte et sa boîte de
 /// réception.
-async fn account(client: &Surreal<Any>, started: &Started) -> (String, String) {
+pub(crate) async fn account(client: &Surreal<Any>, started: &Started) -> (String, String) {
     run(
         client,
         "CREATE auth_organization:alpha CONTENT { slug: 'alpha', name: 'Alpha BTP' };

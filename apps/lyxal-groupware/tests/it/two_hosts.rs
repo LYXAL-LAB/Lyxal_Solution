@@ -18,7 +18,6 @@ use lyxal_groupware::net::bind::bind_listeners;
 use lyxal_host::config::{DatabaseConfig, SecretPassword};
 use lyxal_host::database::{connect_database, Database};
 use lyxal_host::{health::HealthRegistry, health::HealthState, metrics::Metrics};
-use lyxal_mail::net::{refusal_line, MailProtocol, RefusalReason};
 use lyxal_runtime::{DesiredRuntimeState, ForeignModule, ModuleId, RuntimeReconciler};
 use lyxal_server::config::AppConfig;
 use lyxal_server::context::AppContext;
@@ -305,15 +304,10 @@ async fn two_hosts(server_database: &Database, groupware_database: &Database, ba
         }]
     );
 
-    // Les ports de courrier répondent
+    // La réception SMTP répond (lot 5)
     let address = groupware.mail.local_addrs("smtp")[0];
     let (_stream, reply) = greeting(address).await;
-    assert_eq!(
-        reply.as_bytes(),
-        refusal_line(MailProtocol::Smtp, RefusalReason::Unavailable)
-            .strip_suffix(b"\r\n")
-            .unwrap()
-    );
+    assert_eq!(reply, "220 mx.lyxal.test ESMTP");
 
     // Arrêt de lyxal-groupware : nœud retiré, lyxal-server reste sain
     groupware
