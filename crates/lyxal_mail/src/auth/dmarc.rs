@@ -17,7 +17,8 @@ use crate::dns::{MailResolver, MAX_NAME_BYTES, MAX_POLICY_TXT_BYTES};
 use lyxal_mail_proto::mime::{AddressEntry, Envelope};
 use std::time::Duration;
 
-/// Nombre maximal de domaines d'auteur évalués par message (les suivants sont ignorés).
+/// Nombre maximal de domaines d'auteur évalués par message ; la session SMTP refuse un message
+/// qui en annonce davantage (`550 5.7.1`).
 pub const MAX_AUTHOR_DOMAINS: usize = 10;
 /// Délai total de l'évaluation DMARC d'un message.
 const DMARC_TIMEOUT: Duration = Duration::from_secs(20);

@@ -40,9 +40,6 @@ Mesures et essais détaillés dans [`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md
   (`SmtpInboundHandler::with_suffix_list`, essais DMARC) ; la session SMTP de l'hôte emploie
   `EmbeddedSuffixList` : à retirer, ou à garder comme liste chargée d'un fichier, avec la décision
   sur la licence.
-* **Domaines d'auteur multiples (lot 5).** DMARC évalue au plus 10 domaines distincts de `From` ;
-  au-delà, les domaines sont ignorés et le message est jugé sur les 10 premiers. Refuser un tel
-  message est une décision de politique nouvelle, non prise au lot 5 : à décider par le CTO.
 * **Liste de blocage (lot 5).** Lue par chaque nœud toutes les 30 s et appliquée à
   l'acceptation ; bannissement après trois sessions fautives en 10 minutes. Un bannissement
   automatique est rangé ramené à son réseau (`/32`, `/64`) ; une entrée manuelle est rangée telle
@@ -52,9 +49,6 @@ Mesures et essais détaillés dans [`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md
   primitive de `lyxal_core` à demander au CTO. Les entrées échues ne sont pas purgées (elles
   portent le nombre de récidives) : durée de conservation à décider. Les compteurs de récidive et
   de cadence restent par nœud.
-* **Données envoyées avant `354` (lot 5).** Refusées par `554 5.5.0` puis la connexion est
-  fermée (le plan disait « transaction annulée ») : la suite ne peut plus être lue comme des
-  commandes. À confirmer par le CTO.
 * **Réception SMTP, non mesuré (lot 5).** Mémoire d'un nœud avec 1 000 sessions ouvertes et
   lentes ; deux vrais hôtes recevant par SMTP dans un même compte ; résolveur DNS réel ;
   antivirus réel. Banc SMTP Python contre le vrai binaire (§10.5 du plan du lot 5) non écrit : les

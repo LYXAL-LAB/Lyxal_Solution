@@ -711,6 +711,16 @@ async fn dmarc_policy_rejects_quarantines_or_reports() {
         .transaction("paul@ailleurs.test", &["jean@alpha.test"], &both)
         .await;
     assert!(reply.starts_with("550 5.7.1"), "{reply}");
+    // Plus de 10 domaines d'auteur : refus, aucun domaine n'échappe à DMARC
+    let authors = (0..11)
+        .map(|index| format!("a@d{index}.test"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let crowded = message(&authors, "onze-auteurs", "Corps.");
+    let reply = client
+        .transaction("paul@ailleurs.test", &["jean@alpha.test"], &crowded)
+        .await;
+    assert!(reply.starts_with("550 5.7.1"), "{reply}");
     // Plusieurs champs From : refus
     let double = format!(
         "From: <autre@ailleurs.test>\r\n{}",
