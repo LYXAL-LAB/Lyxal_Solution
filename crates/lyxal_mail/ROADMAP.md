@@ -60,14 +60,13 @@ Mesures : [`README.md`](README.md), section « Mesures ».
 * **Effacement des messages `\Deleted` d'un grand dossier.** `fn::mail_message_expunge` sans liste
   lit les messages `\Deleted` par l'index `(dossier, deleted)` : coût non mesuré sur une grande
   boîte, à mesurer au lot 8.
-* **Débit de remise (décisions C5, P7, S11, S12) : objectif non atteint.** Plan validé :
+* **Débit de remise (décisions C5, P7, S11, S12).** Plan validé :
   `docs/14-roadmap/implementation_plan_performance.md` (objectif de la décision P10 : 80 remises
-  par seconde sur 4 cœurs partagés, une remise seule en 42 ms au plus). Sous-lot 1 fait (contrôles
-  par fermetures) : une remise seule 37 ms, 24,7 remises par seconde sur une connexion
-  (`README.md`, « Mesures de la remise »). Restent : pool de connexions à la base (sous-lot 2),
-  compteurs de volume de `lyxal_storage` sans conflit et retrait du tour d'écriture par
-  organisation (sous-lot 3), inscription allégée (sous-lot 4), moins d'allers-retours (sous-lot
-  5, à décider après une mesure sur base persistante).
+  par seconde sur 4 cœurs partagés, une remise seule en 42 ms au plus). Sous-lots 1 à 3 faits
+  (contrôles par fermetures, pool de connexions à la base, compteurs de volume de
+  `lyxal_storage` répartis) : chiffres dans `README.md`, « Mesures de la remise ». Restent :
+  inscription allégée (sous-lot 4), moins d'allers-retours (sous-lot 5, à décider après une
+  mesure sur base persistante).
 * **Plage de 1 000 UID sous la session d'un membre.** Environ 0,3 ms de plus par fiche que sous
   la session système, non expliqué par la règle de lecture (13 µs) : à analyser avant le lot 8
   (`FETCH` de grandes plages).

@@ -39,8 +39,8 @@ use crate::store::StorageStore;
 pub const PART_SIZE: usize = 8 * 1024 * 1024;
 
 /// Essais d'une écriture de fiche refusée pour conflit de transaction : les compteurs de volume
-/// d'une portée sont écrits par toutes ses écritures, des écritures simultanées peuvent se
-/// heurter.
+/// d'une portée sont répartis sur 64 lignes, deux écritures simultanées qui tirent la même se
+/// heurtent ; chaque essai tire une nouvelle ligne.
 const CONFLICT_ATTEMPTS: u32 = 6;
 
 /// Attente avant un nouvel essai : croissante, avec une part tirée de l'horloge pour que des

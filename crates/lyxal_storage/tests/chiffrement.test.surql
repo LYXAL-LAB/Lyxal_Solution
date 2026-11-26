@@ -166,8 +166,16 @@ CREATE storage_object CONTENT { bucket: type::record((SELECT VALUE chiffre FROM 
 {
     LET $chiffre = type::record((SELECT VALUE chiffre FROM ONLY passe:ids));
     LET $clair = type::record((SELECT VALUE clair FROM ONLY passe:ids));
-    RETURN (SELECT objects, bytes, reserved FROM ONLY storage_usage:["alpha"]) == { objects: 2, bytes: 110, reserved: 0 }
-        AND (SELECT objects, bytes, reserved, bucket, tenant FROM ONLY type::record("storage_usage", ["alpha", record::id($chiffre)])) == { objects: 2, bytes: 110, reserved: 0, bucket: $chiffre, tenant: auth_organization:alpha }
+    LET $scope_lines = (SELECT * FROM storage_usage WHERE scope_key = "alpha" AND bucket IS NONE);
+    LET $bucket_lines = (SELECT * FROM storage_usage WHERE bucket = $chiffre);
+    -- Compteurs répartis : le volume est la somme des lignes (64 au plus), une ligne seule ne dit rien
+    RETURN { objects: math::sum($scope_lines.objects), bytes: math::sum($scope_lines.bytes), reserved: math::sum($scope_lines.reserved) } == { objects: 2, bytes: 110, reserved: 0 }
+        AND { objects: math::sum($bucket_lines.objects), bytes: math::sum($bucket_lines.bytes), reserved: math::sum($bucket_lines.reserved) } == { objects: 2, bytes: 110, reserved: 0 }
+        AND array::len($scope_lines) >= 1 AND array::len($scope_lines) <= 64
+        AND array::all($scope_lines, |$line| $line.tenant == auth_organization:alpha AND $line.shard >= 0 AND $line.shard <= 63 AND $line.id == type::record("storage_usage", ["scope", "alpha", $line.shard]))
+        AND array::all($bucket_lines, |$line| $line.tenant == auth_organization:alpha AND $line.scope_key == "alpha" AND $line.id == type::record("storage_usage", ["bucket", record::id($chiffre), $line.shard]))
+        AND fn::storage_scope_usage({ tenant: auth_organization:alpha }) == { objects: 2, bytes: 110, reserved: 0 }
+        AND fn::storage_scope_usage({ tenant: auth_organization:alpha, bucket: $chiffre }) == { objects: 2, bytes: 110, reserved: 0 }
         AND fn::storage_scope_usage({ tenant: auth_organization:alpha, bucket: $clair }) == { objects: 0, bytes: 0, reserved: 0 }
         AND fn::storage_object_usage({ tenant: "auth_organization:alpha" }).data == { objects: 2, bytes: 110, reserved_bytes: 0, quota_bytes: NONE }
         AND fn::storage_bucket_get({ bucket: <string> $chiffre }).data.usage == { objects: 2, bytes: 110 };
@@ -189,17 +197,17 @@ RETURN fn::storage_usage_verify({ tenant: "auth_organization:alpha" }).data.{ va
 
 -- test: aucune écriture directe des compteurs par un utilisateur
 -- en tant que: admin
-RETURN (UPDATE storage_usage:["alpha"] SET bytes = 0) == []
-    AND (CREATE storage_usage CONTENT { scope_key: "alpha", bytes: 1 }) == []
-    AND (DELETE storage_usage:["alpha"] RETURN BEFORE) == []
-    AND (SELECT VALUE bytes FROM ONLY storage_usage:["alpha"]) == 110;
+RETURN (UPDATE storage_usage SET bytes = 0 WHERE scope_key = "alpha") == []
+    AND (CREATE storage_usage CONTENT { scope_key: "alpha", shard: 0, bytes: 1 }) == []
+    AND (DELETE storage_usage WHERE scope_key = "alpha" RETURN BEFORE) == []
+    AND math::sum(SELECT VALUE bytes FROM storage_usage WHERE scope_key = "alpha" AND bucket IS NONE) == 110;
 
 -- test: une autre organisation ne lit pas les compteurs d'alpha
 -- en tant que: autre
 RETURN (SELECT VALUE id FROM storage_usage WHERE scope_key = "alpha") == [];
 
--- préparation: compteur faussé par une écriture de la session root
-UPDATE storage_usage:["alpha"] SET bytes = 1;
+-- préparation: compteur faussé par une écriture de la session root (une ligne de la portée)
+UPDATE (SELECT VALUE id FROM storage_usage WHERE scope_key = "alpha" AND bucket IS NONE ORDER BY id LIMIT 1) SET bytes -= 109;
 
 -- test: le contrôle de cohérence signale l'écart sans le corriger
 -- en tant que: worker
@@ -211,7 +219,7 @@ UPDATE storage_usage:["alpha"] SET bytes = 1;
 
 -- préparation: compteur rétabli ; quota de l'organisation
 {
-    UPDATE storage_usage:["alpha"] SET bytes = 110;
+    UPDATE (SELECT VALUE id FROM storage_usage WHERE scope_key = "alpha" AND bucket IS NONE ORDER BY id LIMIT 1) SET bytes += 109;
     fn::storage_settings_set({ tenant: "auth_organization:alpha", quota_bytes: 150 });
 };
 
@@ -235,11 +243,54 @@ CREATE storage_object CONTENT { bucket: type::record((SELECT VALUE clair FROM ON
         RETURN (UPDATE ONLY $object.id SET state = "available", size = $size, content_type = "message/rfc822", blake3 = "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262", content_key = "enc:v2:beta-files-1:QUJD", pending_expires_at = NONE).stored_size;
     });
     RETURN $stored == [63, 65598, 65599, 65616, 131151]
-        AND (SELECT objects, bytes FROM ONLY storage_usage:["beta"]) == { objects: 5, bytes: 327680 };
+        AND fn::storage_scope_usage({ tenant: auth_organization:beta }).{ objects, bytes } == { objects: 5, bytes: 327680 };
+};
+
+-- test: 200 fiches ouvertes, écrites puis purgées : variations réparties sur plusieurs lignes, sommes égales aux fiches
+{
+    LET $bucket = (CREATE ONLY storage_bucket CONTENT { tenant: auth_organization:beta, name: "passage" }).id;
+    FOR $n IN <array>(0..200) {
+        LET $object = (CREATE ONLY storage_object CONTENT { bucket: $bucket, tenant: auth_organization:beta, key: string::concat("p", <string> $n), backend: "default", filename: "p.txt", declared_size: 7, state: "pending", pending_expires_at: time::now() + 1h });
+        UPDATE ONLY $object.id SET state = "available", size = 5, content_type = "text/plain", blake3 = "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262", pending_expires_at = NONE;
+        IF $n % 2 = 0 { DELETE $object.id; };
+    };
+    LET $lines = (SELECT * FROM storage_usage WHERE bucket = $bucket);
+    RETURN array::len($lines) > 8 AND array::len($lines) <= 64
+        AND array::len(array::distinct($lines.shard)) == array::len($lines)
+        AND fn::storage_scope_usage({ tenant: auth_organization:beta, bucket: $bucket }) == { objects: 100, bytes: 500, reserved: 0 }
+        AND fn::storage_scope_usage({ tenant: auth_organization:beta }) == { objects: 105, bytes: 328180, reserved: 0 }
+        AND fn::storage_usage_verify({ tenant: "auth_organization:beta" }).data.{ valid, mismatches } == { valid: true, mismatches: [] }
+        AND fn::storage_bucket_get({ bucket: <string> $bucket }).data.usage == { objects: 100, bytes: 500 };
+};
+
+-- test: le bucket vidé puis supprimé emporte ses lignes de compteurs, celles de la portée restent
+{
+    LET $bucket = (SELECT VALUE id FROM ONLY storage_bucket WHERE scope_key = "beta" AND name = "passage" LIMIT 1);
+    DELETE storage_object WHERE bucket = $bucket;
+    LET $emptied = array::len(SELECT VALUE id FROM storage_usage WHERE bucket = $bucket) > 8
+        AND fn::storage_scope_usage({ tenant: auth_organization:beta, bucket: $bucket }) == { objects: 0, bytes: 0, reserved: 0 };
+    LET $deleted = fn::storage_bucket_delete({ bucket: <string> $bucket });
+    RETURN $emptied AND $deleted.ok
+        AND (SELECT VALUE id FROM storage_usage WHERE bucket = $bucket) == []
+        AND fn::storage_scope_usage({ tenant: auth_organization:beta }).{ objects, bytes, reserved } == { objects: 5, bytes: 327680, reserved: 0 }
+        AND fn::storage_usage_verify({ tenant: "auth_organization:beta" }).data.valid == true;
+};
+
+-- test: les lignes d'un bucket à clé numérique ne se mêlent pas à celles de la portée
+{
+    LET $bucket = (CREATE ONLY storage_bucket:7 CONTENT { tenant: auth_organization:beta, name: "numerique" }).id;
+    CREATE storage_object CONTENT { bucket: $bucket, tenant: auth_organization:beta, key: "n.txt", backend: "default", filename: "n.txt", declared_size: 9, state: "pending", pending_expires_at: time::now() + 1h };
+    RETURN fn::storage_scope_usage({ tenant: auth_organization:beta, bucket: $bucket }) == { objects: 0, bytes: 0, reserved: 9 }
+        AND fn::storage_scope_usage({ tenant: auth_organization:beta }) == { objects: 5, bytes: 327680, reserved: 9 }
+        AND fn::storage_usage_verify({ tenant: "auth_organization:beta" }).data.valid == true;
 };
 
 -- test: l'organisation supprimée emporte ses compteurs
 {
+    LET $lines_before = array::len(SELECT VALUE id FROM storage_usage WHERE scope_key = "alpha");
     DELETE auth_organization:alpha;
-    RETURN array::len(SELECT VALUE id FROM storage_usage WHERE scope_key = "alpha") == 0;
+    -- Les fiches supprimées avec l'organisation ne recréent aucune ligne
+    RETURN $lines_before >= 2
+        AND array::len(SELECT VALUE id FROM storage_usage WHERE scope_key = "alpha") == 0
+        AND array::len(SELECT VALUE id FROM storage_object WHERE scope_key = "alpha") == 0;
 };

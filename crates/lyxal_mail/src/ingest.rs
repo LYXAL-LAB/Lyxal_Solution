@@ -52,7 +52,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
-use crate::delivery::{AccountQueue, DeliveryOutcome, QueueStats, WriteTurns};
+use crate::delivery::{AccountQueue, DeliveryOutcome, QueueStats};
 use crate::error::{MailError, MailResult};
 use crate::mime::{delivery_item, message_params, DeliveryFlags};
 use crate::models::{
@@ -151,7 +151,6 @@ pub struct MailIngest {
     memory: Option<MemoryBudget>,
     queue: Arc<AccountQueue>,
     buckets: Arc<Mutex<HashMap<String, String>>>,
-    writes: Arc<WriteTurns>,
 }
 
 impl MailIngest {
@@ -167,7 +166,6 @@ impl MailIngest {
             limits: MimeLimits::default(),
             memory: None,
             buckets: Arc::new(Mutex::new(HashMap::new())),
-            writes: Arc::new(WriteTurns::new()),
         }
     }
 
@@ -331,9 +329,6 @@ impl MailIngest {
     ) -> MailResult<String> {
         let scope = tenant.to_sql();
         let bucket = self.bucket(&scope, bucket_name).await?;
-        // Une écriture à la fois par organisation dans le nœud : les compteurs de volume de
-        // `lyxal_storage` sont écrits par chaque fichier de l'organisation
-        let turn = self.writes.wait(&scope).await;
         let written = self
             .storage
             .put(
@@ -347,7 +342,6 @@ impl MailIngest {
                 futures::stream::iter([Ok::<Bytes, Infallible>(raw)]),
             )
             .await;
-        drop(turn);
         match written {
             Ok(object) => Ok(object.id.to_sql()),
             Err(error) => {

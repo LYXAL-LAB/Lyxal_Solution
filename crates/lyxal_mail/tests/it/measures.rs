@@ -22,6 +22,7 @@ use lyxal_mail::models::{
     DeliveryReservation, DeliveryRole, EnvelopeAddress, MailDatetime, MessageEnvelope, Reception,
 };
 use lyxal_mail::{delivery_key, DeliveryOutcome, MailIngest, QueueStats, ReceivedDelivery};
+use lyxal_storage::models::UsageVerifyParams;
 use lyxal_storage::PutRequest;
 use lyxal_surreal::{RecordId, ToSql};
 use std::collections::BTreeMap;
@@ -129,7 +130,7 @@ async fn load(
     total: usize,
     nodes: usize,
 ) {
-    // Nœuds : chacun a son ordre des inscriptions et ses tours d'écriture (même base)
+    // Nœuds : chacun a son ordre des inscriptions (même base)
     let mut ingests = vec![bench.ingest.clone()];
     for _ in 1..nodes {
         ingests.push(MailIngest::new(
@@ -211,6 +212,17 @@ async fn load(
             "RETURN array::len(SELECT VALUE id FROM mail_message WHERE origin = 'delivery');",
         )
         .await;
+    // Cohérence en fin de mesure : compteurs de volume de chaque organisation égaux aux fiches
+    for organization in &warmed {
+        let report = bench
+            .storage_store
+            .usage_verify(UsageVerifyParams {
+                tenant: Some(format!("auth_organization:{organization}")),
+            })
+            .await
+            .expect("contrôle des compteurs de volume");
+        assert!(report.valid, "{organization} : {report:?}");
+    }
     println!(
         "MESURE {label} : {} remises en {:.2} s, {:.1} par seconde ; latence p50 {:.1} ms, p95 {:.1} ms ; refusées : {} {:?} ; lots : {} appels pour {} messages (plus grand lot : {}), conflits rejoués : {}, lots repris : {} ; messages inscrits : {}",
         latencies.len(),

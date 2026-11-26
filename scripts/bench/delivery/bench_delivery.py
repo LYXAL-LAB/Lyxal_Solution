@@ -107,8 +107,9 @@ class Bench:
         with urllib.request.urlopen(request, timeout=self.timeout) as response:
             return json.load(response)["token"]
 
-    def organisation(self, slug: str, accounts: int) -> dict:
-        """Crée une organisation, son domaine de courrier, son bucket chiffré et ses comptes."""
+    def organisation(self, slug: str, accounts: int, quota: int | None = None) -> dict:
+        """Crée une organisation, son domaine de courrier, son bucket chiffré et ses comptes ;
+        `quota` : quota de volume de l'organisation, en octets (aucun par défaut)."""
         body = f"""
 CREATE auth_organization:{slug} CONTENT {{ slug: '{slug}', name: 'Organisation {slug}' }};
 CREATE auth_organization_domain:{slug} CONTENT {{ organization: auth_organization:{slug}, domain: '{slug}.test', state: 'verified', challenge_hash: '{CHALLENGE_HASH}' }};
@@ -122,8 +123,10 @@ RELATE auth_identity:{slug}u{index}->auth_member_of->auth_organization:{slug};
 LET $account{index} = fn::mail_account_create({{ identity: 'auth_identity:{slug}u{index}', domain: <string> $domain.data.id, local_part: 'u{index}' }});
 """
         made = ", ".join(f"$account{index}" for index in range(accounts))
+        settings = "{ ok: true }" if quota is None else f"fn::storage_settings_set({{ tenant: 'auth_organization:{slug}', quota_bytes: {quota} }})"
         body += f"""
-RETURN {{ errors: [$domain, $bucket, {made}].map(|$made| $made.error)[WHERE $this IS NOT NONE],
+LET $settings = {settings};
+RETURN {{ errors: [$domain, $bucket, $settings, {made}].map(|$made| $made.error)[WHERE $this IS NOT NONE],
     bucket: <string> $bucket.data.id, accounts: [{made}].map(|$made| <string> $made.data.account.id) }};
 """
         layout = self.sql(body)[-1]["result"]
@@ -270,22 +273,24 @@ def deliver_until(bench: Bench, token: str, organisation: dict, account: str, na
 
 
 def check_consistency(bench: Bench) -> None:
-    """Compteurs des comptes égaux aux messages inscrits, UID uniques dans chaque dossier."""
+    """Compteurs des comptes égaux aux messages inscrits, UID uniques dans chaque dossier,
+    compteurs de volume de chaque organisation égaux aux fiches (`fn::storage_usage_verify`)."""
     gaps = bench.sql("""
 RETURN {
     accounts: (SELECT VALUE id FROM mail_account WHERE message_count != count(SELECT VALUE id FROM mail_message WHERE account = $parent.id)),
-    mailboxes: (SELECT VALUE id FROM mail_mailbox WHERE total != array::len(array::distinct(SELECT VALUE uid FROM mail_message WHERE mailbox = $parent.id)))
+    mailboxes: (SELECT VALUE id FROM mail_mailbox WHERE total != array::len(array::distinct(SELECT VALUE uid FROM mail_message WHERE mailbox = $parent.id))),
+    volumes: (SELECT VALUE id FROM auth_organization).map(|$tenant| fn::storage_usage_verify({ tenant: <string> $tenant }))[WHERE !$this.ok OR !$this.data.valid]
 };
 """)[-1]["result"]
-    if gaps["accounts"] or gaps["mailboxes"]:
+    if gaps["accounts"] or gaps["mailboxes"] or gaps["volumes"]:
         raise RuntimeError(f"Incohérence en fin de banc : {json.dumps(gaps, ensure_ascii=False)[:1500]}")
-    print("Cohérence : compteurs des comptes égaux aux messages, UID uniques par dossier.", flush=True)
+    print("Cohérence : compteurs des comptes égaux aux messages, UID uniques par dossier, compteurs de volume égaux aux fiches.", flush=True)
 
 
-def measure_clients(bench: Bench, counts: list[int], seconds: float) -> dict:
+def measure_clients(bench: Bench, counts: list[int], seconds: float, quota: int | None) -> dict:
     """Débit selon le nombre de clients, dans des organisations distinctes puis dans une seule."""
     most = max(counts)
-    organisations = [bench.organisation(f"org{index}", most if index == 0 else 1) for index in range(most)]
+    organisations = [bench.organisation(f"org{index}", most if index == 0 else 1, quota) for index in range(most)]
     token = bench.root_token()
     report = {}
     print(f"\nMontée en clients ({seconds:.0f} s par palier, une connexion HTTP par client)")
@@ -339,6 +344,7 @@ def main() -> int:
     parser.add_argument("--warmup", type=int, default=10, help="remises ou transactions écartées en tête de mesure")
     parser.add_argument("--clients", default="1,2,4,8,16", help="paliers de la mesure « clients »")
     parser.add_argument("--seconds", type=float, default=12, help="durée d'un palier de la mesure « clients »")
+    parser.add_argument("--quota", type=int, help="quota de volume de chaque organisation de la mesure « clients », en octets (aucun par défaut)")
     parser.add_argument("--timeout", type=float, default=600, help="durée maximale d'une requête du banc, en secondes")
     parser.add_argument("--ref", help="révision Git dont les modules sont mesurés (mesure « avant »)")
     parser.add_argument("--out", type=Path)
@@ -359,7 +365,7 @@ def main() -> int:
         if "appels" in wanted:
             report["appels"] = measure_calls(Bench(server, "appels", args.timeout), with_fields, args.repeat, args.warmup)
         if "clients" in wanted:
-            report["clients"] = measure_clients(Bench(server, "clients", args.timeout), [int(c) for c in args.clients.split(",")], args.seconds)
+            report["clients"] = measure_clients(Bench(server, "clients", args.timeout), [int(c) for c in args.clients.split(",")], args.seconds, args.quota)
     if args.out:
         args.out.write_text(json.dumps(report, indent=2, ensure_ascii=False))
     return 0

@@ -70,6 +70,9 @@ DEFINE FUNCTION OVERWRITE fn::storage_usage_share($object: any) -> object {
 -- ----------------------------------------------------------------------------
 -- fn::storage_usage_apply (interne)
 -- ----------------------------------------------------------------------------
+-- Compteurs répartis (schema/06_storage_usage.surql) : la variation va dans une ligne tirée au
+-- sort parmi 64, la même pour la portée et pour le bucket (un seul tirage : deux écritures
+-- simultanées ne se heurtent que si elles tirent le même numéro, une fois sur 64).
 
 DEFINE FUNCTION OVERWRITE fn::storage_usage_apply($previous: any, $next: any) -> option<string> {
     LET $old = fn::storage_usage_share($previous);
@@ -77,31 +80,33 @@ DEFINE FUNCTION OVERWRITE fn::storage_usage_apply($previous: any, $next: any) ->
     LET $delta = { objects: $new.objects - $old.objects, bytes: $new.bytes - $old.bytes, reserved: $new.reserved - $old.reserved };
     IF $delta.objects = 0 AND $delta.bytes = 0 AND $delta.reserved = 0 { RETURN NONE; };
     LET $object = $next ?? $previous;
-    LET $rows = [
-        { id: type::record("storage_usage", [$object.scope_key]), bucket: NONE },
-        { id: type::record("storage_usage", [$object.scope_key, record::id($object.bucket)]), bucket: $object.bucket }
-    ];
-    IF $next IS NONE {
-        -- Fiche supprimée (purge, ou suppression avec son bucket ou son organisation) : une ligne
-        -- déjà partie avec son organisation ou son bucket n'est pas recréée
-        FOR $row IN $rows {
-            UPDATE $row.id SET objects += $delta.objects, bytes += $delta.bytes, reserved += $delta.reserved;
-        };
-        RETURN NONE;
-    };
-    FOR $row IN $rows {
-        UPSERT $row.id SET tenant = $object.tenant, scope_key = $object.scope_key, bucket = $row.bucket,
+    -- Fiche supprimée avec son organisation : les lignes de la portée et de ses buckets sont
+    -- parties avec elle, rien n'est recréé. Fiche supprimée avec son seul bucket : de même pour
+    -- les lignes du bucket (la suppression est de toute façon refusée par
+    -- storage_object_bucket_guard)
+    IF $next IS NONE AND $object.tenant IS NOT NONE AND !record::exists($object.tenant) { RETURN NONE; };
+    LET $shard = rand::int(0, 63);
+    UPSERT type::record("storage_usage", ["scope", $object.scope_key, $shard])
+        SET tenant = $object.tenant, scope_key = $object.scope_key, bucket = NONE, shard = $shard,
             objects += $delta.objects, bytes += $delta.bytes, reserved += $delta.reserved;
+    IF $next IS NOT NONE OR record::exists($object.bucket) {
+        UPSERT type::record("storage_usage", ["bucket", record::id($object.bucket), $shard])
+            SET tenant = $object.tenant, scope_key = $object.scope_key, bucket = $object.bucket, shard = $shard,
+                objects += $delta.objects, bytes += $delta.bytes, reserved += $delta.reserved;
     };
     -- Quota de la portée, contrôlé après l'écriture quand le volume augmente (vaut aussi pour une
-    -- écriture directe dans la table)
+    -- écriture directe dans la table). La somme est celle de l'instantané de la transaction :
+    -- deux écritures simultanées qui tirent deux numéros différents ne se voient pas et peuvent
+    -- dépasser ensemble le quota, de leur taille au plus
     IF $delta.bytes + $delta.reserved > 0 {
         LET $quota = fn::storage_settings_effective({ tenant: $object.tenant }).quota_bytes;
-        LET $usage = (SELECT bytes, reserved FROM ONLY $rows[0].id);
-        IF $quota IS NOT NONE AND $usage.bytes + $usage.reserved > $quota { RETURN "STORAGE_QUOTA_EXCEEDED"; };
+        IF $quota IS NOT NONE {
+            LET $usage = fn::storage_scope_usage({ tenant: $object.tenant });
+            IF $usage.bytes + $usage.reserved > $quota { RETURN "STORAGE_QUOTA_EXCEEDED"; };
+        };
     };
     RETURN NONE;
-} COMMENT "Interne : compteurs de volume de la portée et du bucket mis à jour pour une fiche passée de $previous à $next (NONE : créée ou supprimée), appelée par l'événement storage_object_usage ; NONE, ou STORAGE_QUOTA_EXCEEDED si le volume augmente au-delà du quota de la portée";
+} COMMENT "Interne : compteurs de volume de la portée et du bucket mis à jour pour une fiche passée de $previous à $next (NONE : créée ou supprimée), appelée par l'événement storage_object_usage ; la variation est ajoutée à une ligne tirée au sort parmi 64 (même numéro pour la portée et le bucket) ; NONE, ou STORAGE_QUOTA_EXCEEDED si le volume augmente au-delà du quota de la portée (somme lue dans l'instantané de la transaction : deux écritures simultanées peuvent le dépasser ensemble de leur taille)";
 
 -- ----------------------------------------------------------------------------
 -- fn::storage_scope_usage (interne)
@@ -109,13 +114,18 @@ DEFINE FUNCTION OVERWRITE fn::storage_usage_apply($previous: any, $next: any) ->
 
 DEFINE FUNCTION OVERWRITE fn::storage_scope_usage($params: object) -> object {
     LET $scope = IF $params.tenant IS NONE { "installation" } ELSE { <string> record::id($params.tenant) };
-    LET $row = IF $params.bucket IS NONE {
-        type::record("storage_usage", [$scope])
+    -- Somme des lignes de la portée ou du bucket (64 au plus, lues par plage d'identifiants)
+    LET $lines = IF $params.bucket IS NONE {
+        (SELECT objects, bytes, reserved FROM storage_usage:["scope", $scope, 0]..=["scope", $scope, 63])
     } ELSE {
-        type::record("storage_usage", [$scope, record::id($params.bucket)])
+        LET $bucket_key = record::id($params.bucket);
+        (SELECT objects, bytes, reserved FROM storage_usage:["bucket", $bucket_key, 0]..=["bucket", $bucket_key, 63])
     };
-    LET $usage = (SELECT objects, bytes, reserved FROM ONLY $row) ?? { objects: 0, bytes: 0, reserved: 0 };
     -- La fiche except n'est comptée nulle part : sa propre réservation est retirée
     LET $own = IF $params.except IS NONE { fn::storage_usage_share(NONE) } ELSE { fn::storage_usage_share(SELECT * FROM ONLY $params.except) };
-    RETURN { objects: $usage.objects - $own.objects, bytes: $usage.bytes - $own.bytes, reserved: $usage.reserved - $own.reserved };
-} COMMENT "Volume d'une portée ou d'un bucket ({ tenant, bucket, except }), lu dans les compteurs tenus à jour (storage_usage) : { objects, bytes } des fichiers disponibles ou en quarantaine, reserved : tailles annoncées des écritures en attente ; la part de la fiche except est retirée";
+    RETURN {
+        objects: math::sum($lines.objects) - $own.objects,
+        bytes: math::sum($lines.bytes) - $own.bytes,
+        reserved: math::sum($lines.reserved) - $own.reserved
+    };
+} COMMENT "Volume d'une portée ou d'un bucket ({ tenant, bucket, except }), somme des lignes de compteurs tenues à jour (storage_usage, 64 au plus) : { objects, bytes } des fichiers disponibles ou en quarantaine, reserved : tailles annoncées des écritures en attente ; la part de la fiche except est retirée";

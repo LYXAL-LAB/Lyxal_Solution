@@ -50,39 +50,11 @@ pub fn delivery_key(recipient: &str, sender: &str, received: &[u8]) -> String {
     hasher.finalize_hex()
 }
 
-/// Compartiment d'une clé (compte, organisation) dans une table de [`COMPARTMENTS`] entrées.
+/// Compartiment d'un compte dans une table de [`COMPARTMENTS`] entrées.
 fn compartment_of(key: &str) -> usize {
     let mut hasher = DefaultHasher::new();
     key.hash(&mut hasher);
     usize::try_from(hasher.finish() % COMPARTMENTS as u64).unwrap_or(0)
-}
-
-/// Tour d'écriture des fichiers par organisation dans le nœud. `lyxal_storage` tient les
-/// compteurs de volume d'une organisation (`storage_usage`) à chaque écriture de fichier : deux
-/// écritures simultanées dans le bucket du courrier d'une même organisation se heurtent sur ces
-/// compteurs, quel que soit le compte. Les écritures d'une organisation passent donc une à une
-/// dans le nœud ; entre deux nœuds, `lyxal_storage` rejoue les conflits.
-pub(crate) struct WriteTurns {
-    turns: Box<[tokio::sync::Mutex<()>]>,
-}
-
-impl WriteTurns {
-    pub(crate) fn new() -> Self {
-        Self {
-            turns: (0..COMPARTMENTS)
-                .map(|_| tokio::sync::Mutex::new(()))
-                .collect(),
-        }
-    }
-
-    /// Attend le tour d'écriture de l'organisation (`tenant` : `auth_organization:<clé>`) ; le
-    /// tour est rendu quand la garde est lâchée.
-    pub(crate) async fn wait(&self, tenant: &str) -> Option<tokio::sync::MutexGuard<'_, ()>> {
-        match self.turns.get(compartment_of(tenant)) {
-            Some(turn) => Some(turn.lock().await),
-            None => None,
-        }
-    }
 }
 
 /// Issue de la remise d'un message à un compte.
