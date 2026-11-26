@@ -225,138 +225,98 @@ dossier, une fiche de la vue par date par message.
 
 ### Mesures de la remise (`tests/it/measures.rs`, `scripts/bench/delivery/`)
 
-Mesures du 26 novembre 2026, après les sous-lots 1 à 3 du plan de performance
-(`docs/14-roadmap/implementation_plan_performance.md` : contrôle des paramètres par
-`fn::validation_fields_execute` dans les neuf fonctions du chemin de remise ; pool de connexions
-de la session système ; compteurs de volume de `lyxal_storage` répartis sur 64 lignes, sans
-ordre des écritures de fichiers dans le nœud). Machine de développement à 4 cœurs, base et banc
-sur la même machine ; une série par mesure, trois pour la dernière colonne (la première est
-donnée, les deux autres entre parenthèses). Objectifs (décision P10 du plan) : une remise seule en 42 ms au plus ;
-80 remises par seconde sur 4 cœurs partagés, 110 sur 4 cœurs réservés à la base, aucune refusée.
+Mesures du 26 novembre 2026. Machine de développement à 4 cœurs, base et banc sur la même
+machine ; deux séries par mesure (séparées par « ; »). Objectifs (décision P10) : une remise seule
+en 42 ms au plus ; 80 remises par seconde sur 4 cœurs partagés, aucune refusée. La colonne
+« Départ » est la révision `2ed5fbb33`, avant les corrections de performance.
+
+Corrections en place :
+
+* contrôle des paramètres des neuf fonctions du chemin de remise par
+  `fn::validation_fields_execute` (les validateurs nommés seulement) ;
+* éléments d'un lot de `fn::mail_delivery_commit` contrôlés par appels directs des primitives
+  (`fn::mail_delivery_item_check`, `fn::validation_checks_report`), fichier et résumé de son
+  bucket lus en un appel (`fn::storage_object_get` avec `with_bucket`) ;
+* pool de connexions de la session système (`[database] connections`,
+  `lyxal_surreal::SurrealPool`) ;
+* compteurs de volume de `lyxal_storage` répartis sur 64 lignes, sans ordre des écritures de
+  fichiers dans le nœud.
 
 **Banc Rust** : binaire d'essai optimisé (`cargo test -p lyxal_mail --release --test it --
 --ignored --nocapture --test-threads 1 measures`), messages de 10 Kio remis par
 `MailIngest::receive` (le chemin de la session SMTP, **sans** le dialogue SMTP ni les contrôles
 d'authenticité, livrés en 5d), support disque. Serveur SurrealDB 3.3.4 en mémoire joint par
 `ws://` (`LYXAL_SURREAL_WS_URL`, `LYXAL_SURREAL_USER`, `LYXAL_SURREAL_PASS`), pool de
-`LYXAL_SURREAL_CONNECTIONS` connexions (une par défaut) ; sans ces variables, base embarquée
-dans le processus (`mem://`).
+`LYXAL_SURREAL_CONNECTIONS` connexions (8 ici ; une par défaut) ; sans ces variables, base
+embarquée dans le processus (`mem://`).
 
-| Mesure | Avant le plan (une connexion) | Sous-lot 1, une connexion | Sous-lots 1 et 2, pool de 8 | Sous-lots 1 à 3, pool de 8 |
-| :--- | :-: | :-: | :-: | :-: |
-| Une remise, sans concurrence (moyenne de 300) | 96 ms : ouverture 9,0 ; fichier chiffré 38,4 ; inscription 48,2 | 36,5 ms : ouverture 4,3 ; fichier chiffré 14,8 ; inscription 17,3 | 37,2 ms : ouverture 4,4 ; fichier chiffré 15,2 ; inscription 17,6 | **36,1 ms** (35,6 ; 36,8) : ouverture 4,1 ; fichier chiffré 14,3 ; inscription 17,6 |
-| `FileKeys::seal` | 13,1 ms | 2,4 ms (p95 3,1) | 2,6 ms (p95 2,8) | 2,3 ms (p95 2,5) |
-| 100 comptes d'une organisation, 50 clients, 3 000 remises | 11,8 par seconde | 29,2 par seconde ; p50 1 690 ms, p95 1 855 ms | 62,3 par seconde ; p50 794 ms, p95 882 ms | **99,5 par seconde** (99,6 ; 101,2) ; p50 363 ms, p95 1 384 ms ; aucune refusée |
-| 100 comptes de deux organisations, 50 clients, 3 000 remises | 11,5 par seconde | 30,1 par seconde | 101,0 par seconde ; p50 487 ms, p95 854 ms | **99,1 par seconde** (96,1 ; 99,4) ; p50 331 ms, p95 1 567 ms ; aucune refusée |
-| Un compte, 20 clients, 1 000 remises | 10,9 par seconde | 26,9 par seconde ; aucun lot | 65,0 par seconde ; p50 300 ms ; 505 appels (lot de 3 au plus) | **66,3 par seconde** (64,6 ; 64,3) ; p50 297 ms ; 102 appels (lot de 12 au plus) |
-| Deux nœuds simulés (deux services de remise sur la même base), un compte, 20 clients, 1 000 remises | — | 25,8 par seconde ; 5 refusées (0,5 %) ; 39 conflits rejoués | 45,7 par seconde ; 10 refusées (1,0 %) ; 239 conflits rejoués, 37 lots repris élément par élément | **53,5 par seconde** (53,1 ; 59,9) ; **1 refusée (0,1 %)**, aucune aux deux autres séries ; 140 conflits rejoués, 32 lots repris élément par élément |
+| Mesure | Départ (une connexion) | Aujourd'hui (pool de 8) |
+| :--- | :-: | :-: |
+| Une remise, sans concurrence (moyenne de 300) | 96 ms : ouverture 9,0 ; fichier chiffré 38,4 ; inscription 48,2 | **36,7 ; 38,2 ms** |
+| `FileKeys::seal` | 13,1 ms | 2,3 ms (p95 2,5) |
+| 100 comptes d'une organisation, 50 clients, 3 000 remises | 11,8 par seconde | **108,7 ; 104,2 par seconde**, aucune refusée |
+| 100 comptes de deux organisations, 50 clients, 3 000 remises | 11,5 par seconde | **103,0 ; 107,1 par seconde**, aucune refusée |
+| Un compte, 20 clients, 1 000 remises | 10,9 par seconde | 61,1 ; 61,9 par seconde (lots de 14 au plus) |
+| Deux nœuds simulés (deux services de remise sur la même base), un compte, 20 clients, 1 000 remises | — | 62,1 ; 56,4 par seconde ; 1 refusée sur 1 000, puis aucune |
 
-Aucune remise refusée sur un nœud dans ces séries. Les deux objectifs sur 4 cœurs partagés sont
-tenus : une remise seule en 36 ms (pour 42), 99 remises par seconde dans une organisation (pour
-80), aucune refusée. Une organisation va maintenant aussi vite que deux : les fichiers d'une
-organisation ne passent plus un à un. Sur deux nœuds, les remises refusées
-(`SURREAL_DATABASE_ERROR` : un conflit d'écriture qui survit aux rejeux) descendent de 1,0 % à
-0,1 %, 0 % et 0 %, sous le seuil de 1 % de la décision S11 (la ligne en conflit de la remise
-refusée n'a pas été cherchée) ; les conflits rejoués qui restent sont ceux
-de la fiche du compte, écrite par les deux nœuds (décision M6). En fin de chaque mesure, les
+Les objectifs sur 4 cœurs partagés sont tenus. Sur deux nœuds, les remises refusées
+(`SURREAL_DATABASE_ERROR` : un conflit d'écriture qui survit aux rejeux) restent sous le seuil de
+1 % de la décision S11 (la ligne en conflit n'a pas été cherchée) ; les conflits rejoués sont
+ceux de la fiche du compte, écrite par les deux nœuds (décision M6). En fin de chaque mesure, les
 compteurs de volume de chaque organisation sont égaux aux fiches (`fn::storage_usage_verify`).
-Base embarquée du binaire d'essai, après le sous-lot 1 (non refait) : une remise 70,6 ms, 28,3
-remises par seconde pour 100 comptes d'une organisation.
+La base embarquée du binaire d'essai est près de deux fois plus lente que le serveur (une remise :
+70,6 ms contre 37 ms, mesure antérieure aux deux dernières corrections) : ses chiffres ne valent
+pas pour une installation, qui joint un serveur.
 
 **Banc SurrealQL** (`scripts/bench/delivery/bench_delivery.py`, temps de calcul de la base seule,
-relevé dans le serveur, chaque appel public dans sa transaction ; « avant le plan » :
-`--ref 2ed5fbb33`) :
+relevé dans le serveur, chaque appel public dans sa transaction ; départ : `--ref 2ed5fbb33`) :
 
-| Appel d'une remise (moyenne de 100) | Avant le plan | Sous-lot 1 | Sous-lots 1 à 3 |
-| :--- | :-: | :-: | :-: |
-| `fn::mail_delivery_begin` | 6,4 ms | 3,5 ms | 3,9 ms |
-| `fn::storage_object_begin` | 8,6 ms | 5,0 ms | 5,4 ms |
-| `fn::secrets_tenant_key_ring` (lue par `FileKeys::seal`) | 11,4 ms | 2,0 ms | 2,1 ms |
-| `fn::storage_object_commit` | 8,5 ms | 4,9 ms | 5,4 ms |
-| `fn::mail_delivery_commit` (un message) | 39,7 ms | 15,8 ms | 17,4 ms |
-| **Total base** | **74,6 ms** | **31,3 ms** | **34,2 ms** |
-
-Les compteurs répartis ne changent pas le coût d'un appel : la dernière colonne a été relevée
-une autre fois que la précédente, et la révision d'avant le sous-lot 3 remesurée à la suite donne
-les mêmes temps (deux séries de 300 remises : total 31,8 et 30,9 ms avant, 31,1 et 30,9 ms après).
+| Appel d'une remise (moyenne de 100) | Départ | Aujourd'hui |
+| :--- | :-: | :-: |
+| `fn::mail_delivery_begin` | 6,4 ms | 3,9 ms |
+| `fn::storage_object_begin` | 8,6 ms | 5,4 ms |
+| `fn::secrets_tenant_key_ring` (lue par `FileKeys::seal`) | 11,4 ms | 2,1 ms |
+| `fn::storage_object_commit` | 8,5 ms | 5,4 ms |
+| `fn::mail_delivery_commit` (un message) | 39,7 ms | 15,4 ; 15,0 ms |
+| **Total base** | **74,6 ms** | **31,9 ; 31,0 ms** |
+| Par message, lot de 8 / 16 / 32, enveloppe de 3 destinataires | — | 10,7 / 9,9 / 10,1 ms ; 10,5 / 10,5 / 10,2 ms |
+| Par message, lot de 8, enveloppe de 150 destinataires | — | 15,8 ; 17,0 ms |
 
 | Remises par seconde, une connexion par client | 1 client | 2 | 4 | 8 | 16 |
 | :--- | :-: | :-: | :-: | :-: | :-: |
-| Une organisation par client, avant le plan | 12,9 | 24,9 | 51,3 | 52,1 | 49,6 |
-| Une organisation par client, sous-lot 1 | 30,2 | 58,8 | 116,8 | 114,0 | 111,6 |
-| Une organisation par client, sous-lots 1 à 3 | 30,0 | 57,4 | 115,3 | 113,3 | 111,5 |
-| Une seule organisation, avant le plan | 13,2 | 19,3 | 24,0 | 21,0 | 17,2 |
-| Une seule organisation, sous-lot 1 | 29,3 | 34,3 | 50,7 | 51,6 | 46,0 |
-| Une seule organisation, sous-lot 1, remesuré avec la ligne suivante | 28,6 | 37,4 | 48,7 | 49,3 | 44,7 |
-| Une seule organisation, sous-lots 1 à 3 | 30,1 | 58,9 | 111,5 | 107,0 | 105,2 |
-| Une seule organisation, sous-lots 1 à 3, quota défini (`--quota`, autre série) | 26,7 | 49,6 | 106,1 | 101,9 | 99,7 |
+| Une organisation par client, départ | 12,9 | 24,9 | 51,3 | 52,1 | 49,6 |
+| Une organisation par client, aujourd'hui | 30,0 | 57,4 | 115,3 | 113,3 | 111,5 |
+| Une seule organisation, départ | 13,2 | 19,3 | 24,0 | 21,0 | 17,2 |
+| Une seule organisation, aujourd'hui | 30,1 | 58,9 | 111,5 | 107,0 | 105,2 |
+| Une seule organisation, quota défini (`--quota`) | 26,7 | 49,6 | 106,1 | 101,9 | 99,7 |
 
-Le banc ne rejoue pas une transaction refusée. Dans une seule organisation, avant le sous-lot 3,
-les transactions de deux clients se refusaient sur les deux lignes de compteurs `storage_usage` :
-281 à 1 075 remises refusées par palier de 12 s (960 à 4 clients, pour 584 remises faites). Avec
-les compteurs répartis : 5, 34, 44 et 115 refusées à 2, 4, 8 et 16 clients (2,5 % à 4 clients),
-autant avec un quota défini (9, 33, 44, 120) : la somme des 64 lignes lue pour le quota n'ajoute
-pas de conflit. Ce sont ces conflits que `lyxal_storage` rejoue (aucune remise refusée au banc
-Rust). Une organisation atteint le débit d'organisations séparées (111 pour 115 à 4 clients).
+Le banc ne rejoue pas une transaction refusée : 5, 34, 44 et 115 refusées à 2, 4, 8 et 16
+clients dans une seule organisation (2,5 % à 4 clients ; 960 à 4 clients avant la répartition des
+compteurs), autant avec un quota défini. Ce sont ces conflits que `lyxal_storage` rejoue (aucune
+remise refusée au banc Rust).
 
 Ce que montrent les mesures :
 
 * **Le contrôle des paramètres pesait plus de la moitié d'une remise.** En SurrealDB 3.3, une
   définition de fonction est relue et réanalysée à chaque transaction, et une fonction qui ne
-  fait que lire charge tout son graphe d'appels : `fn::validation_object_execute` faisait charger
-  les 177 validateurs du Core à chaque appel public (7 à 9 ms). Les neuf fonctions du chemin de
-  remise ne nomment plus que les validateurs qu'elles utilisent (`fn::validation_fields_execute`,
-  `crates/lyxal_core/Readme.md`). Les autres fonctions publiques du courrier paient encore ce
-  coût.
-* **Une seule connexion ne se partage pas les cœurs du serveur** : ses requêtes s'entrelacent
-  (deux transactions simultanées peuvent déjà s'y heurter), mais le débit d'un nœud y reste
-  proche d'une remise à la fois (29 par seconde pour 37 ms par remise), quel que soit le nombre
-  de clients, et rien ne se groupe. Avec le pool de la session système (`[database] connections`,
-  `lyxal_surreal::SurrealPool`), les appels se répartissent sur les cœurs : 62 à 101 remises par
-  seconde avec 8 connexions avant le sous-lot 3, 96 à 100 après.
-* **Compteurs de volume de `lyxal_storage`** : chaque fichier écrivait les deux mêmes lignes de
-  son organisation (ouverture, puis fin d'écriture), et le nœud faisait passer une à une les
-  écritures de fichiers d'une organisation pour ne pas les voir refusées (62 remises par seconde).
-  Les compteurs sont maintenant répartis sur 64 lignes par organisation et par bucket, une ligne
-  tirée au sort par écriture (`crates/lyxal_storage/README.md`, « Compteurs de volume ») : le
-  nœud n'ordonne plus les fichiers, et le débit d'une organisation passe de 62 à 99 remises par
-  seconde (99,5 ; 99,6 ; 101,2). Le quota de volume est contrôlé sur l'instantané de la transaction : deux écritures
-  simultanées peuvent le dépasser ensemble de leur taille.
-* **L'inscription reste le premier poste** (`fn::mail_delivery_commit` : 16 à 18 ms avant le
-  sous-lot 4, 15 ms après ; voir ci-dessous).
-* **La base embarquée du binaire d'essai est près de deux fois plus lente que le serveur** (une
-  remise : 70,6 ms contre 37,1 ms) : ses chiffres ne valent pas pour une installation, qui joint
-  un serveur.
-
-**Sous-lot 4 (inscription allégée, décisions P4 et P6).** Les éléments d'un lot de
-`fn::mail_delivery_commit` sont contrôlés par appels directs des primitives du Core
-(`fn::mail_delivery_item_check`) et `fn::validation_checks_report`, sans fermeture par contrôle ;
-le fichier et le résumé de son bucket sont lus par un seul appel
-(`fn::storage_object_get` avec `with_bucket`). Contrat inchangé : 356 appels (paramètres
-invalides de toutes sortes, éléments valides, doublons, erreurs d'élément) donnent les mêmes
-résultats avant et après. Mesures du 26 novembre 2026, deux séries avant
-(`--ref 1900411dc`) et deux après, même machine, seule :
-
-| Mesure | Avant le sous-lot 4 | Après |
-| :--- | :-: | :-: |
-| `fn::mail_delivery_commit`, un message (banc SurrealQL, moyenne de 100) | 18,4 ; 18,3 ms | **15,4 ; 15,0 ms** |
-| Par message, lot de 8 / 16 / 32, enveloppe de 3 destinataires | 12,0 / 11,4 / 11,8 ms ; 12,0 / 13,6 / 11,9 ms | **10,7 / 9,9 / 10,1 ms ; 10,5 / 10,5 / 10,2 ms** |
-| Par message, lot de 8, enveloppe de 150 destinataires | 18,7 ; 19,3 ms | **15,8 ; 17,0 ms** |
-| Banc Rust, une remise seule | 46,1 (premier passage) ; 38,2 ms | 36,7 ; 38,2 ms |
-| Banc Rust, 100 comptes d'une organisation | 96,4 ; 110,6 par seconde | 108,7 ; 104,2 par seconde |
-| Banc Rust, 100 comptes de deux organisations | 93,4 ; 102,0 par seconde | 103,0 ; 107,1 par seconde |
-| Banc Rust, un compte, 20 clients | 62,4 ; 64,3 par seconde | 61,1 ; 61,9 par seconde |
-| Banc Rust, deux nœuds, un compte | 48,7 ; 60,8 par seconde, aucune refusée | 62,1 ; 56,4 par seconde, 1 refusée sur 1 000 puis aucune |
-
-Recette du plan tenue : 10,1 à 10,2 ms par message dans un lot de 32 (12 au plus), 15,8 à
-17,0 ms dans un lot de 8 à 150 destinataires (18 au plus). Au banc Rust, l'écart reste dans la
-dispersion d'une série à l'autre : le gain de 3 ms par inscription est faible devant une remise
-entière (ouverture, fichier chiffré, aller-retour), et les lots y restent petits (un à deux
-messages, 14 au plus pour un seul compte). `MAX_BATCH` reste à 32 (décision P11).
+  fait que lire charge tout son graphe d'appels : `fn::validation_object_execute` fait charger
+  les 177 validateurs du Core à chaque appel public (7 à 9 ms). Les autres fonctions publiques du
+  courrier paient encore ce coût.
+* **Une seule connexion ne se partage pas les cœurs du serveur** : ses requêtes s'entrelacent,
+  mais le débit d'un nœud y reste proche d'une remise à la fois (29 par seconde). Avec le pool,
+  les appels se répartissent sur les cœurs.
+* **Compteurs de volume de `lyxal_storage`** : deux lignes par organisation faisaient passer une
+  à une les écritures de fichiers d'une organisation (62 remises par seconde). Répartis sur 64
+  lignes (`crates/lyxal_storage/README.md`, « Compteurs de volume »), une organisation va aussi
+  vite que deux. Le quota de volume est contrôlé sur l'instantané de la transaction : deux
+  écritures simultanées peuvent le dépasser ensemble de leur taille.
+* **L'inscription reste le premier poste** (`fn::mail_delivery_commit`, 15 ms). Au banc Rust,
+  l'allègement de l'inscription (3 ms) reste dans la dispersion d'une série à l'autre : les lots y
+  sont petits. `MAX_BATCH` reste à 32 (décision P11).
 
 **Clés « fichiers » (décision S13).** `FileKeys::seal` : 2,5 ms en moyenne sur le serveur (p95
 2,9 ms ; 3,7 ms sur la base embarquée), `FileKeys::open` : 2,5 ms, presque entièrement la lecture
-du trousseau en base (`fn::secrets_tenant_key_ring`, 13 ms avant le sous-lot 1) ; le scellement
+du trousseau en base (`fn::secrets_tenant_key_ring`) ; le scellement
 pèse 7 % d'une remise. Avec le cache de `lyxal_secrets` (`FileKeys::with_cache`), une ouverture
 coûte 0,01 ms (299 succès pour 300 appels) ; un scellement coûte toujours 2,4 ms, parce que la
 règle du cache (ne jamais sceller par une clé qui n'est plus active) impose de relire le

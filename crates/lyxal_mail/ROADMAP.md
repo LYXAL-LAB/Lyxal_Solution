@@ -60,13 +60,21 @@ Mesures : [`README.md`](README.md), section « Mesures ».
 * **Effacement des messages `\Deleted` d'un grand dossier.** `fn::mail_message_expunge` sans liste
   lit les messages `\Deleted` par l'index `(dossier, deleted)` : coût non mesuré sur une grande
   boîte, à mesurer au lot 8.
-* **Débit de remise (décisions C5, P7, S11, S12).** Plan validé :
-  `docs/14-roadmap/implementation_plan_performance.md` (objectif de la décision P10 : 80 remises
-  par seconde sur 4 cœurs partagés, une remise seule en 42 ms au plus). Sous-lots 1 à 3 faits
-  (contrôles par fermetures, pool de connexions à la base, compteurs de volume de
-  `lyxal_storage` répartis) : chiffres dans `README.md`, « Mesures de la remise ». Restent :
-  inscription allégée (sous-lot 4), moins d'allers-retours (sous-lot 5, à décider après une
-  mesure sur base persistante).
+* **Débit de remise (décisions C5, P7, P8, S11, S12).** Objectif P10 tenu (une remise seule en
+  37 ms, environ 105 remises par seconde sur 4 cœurs partagés ; `README.md`, « Mesures de la
+  remise »). Restent, à décider après une mesure sur une base persistante :
+  * moins d'allers-retours (P8) : `fn::mail_delivery_open` (ouverture du courrier et du fichier
+    en une transaction), clôture groupée dans `fn::mail_delivery_commit`, écriture par
+    `StorageService` d'un fichier déjà ouvert ; gain mesuré dans la base 34,5 → 31,1 ms, gain de
+    débit estimé à 5 à 10 % ;
+  * scellement d'une clé de fichier depuis le cache des clés « fichiers » (P7), qui exige
+    d'interdire la destruction d'une clé retirée depuis moins que la garde du cache (60 s) plus
+    une marge ; gain estimé 2,5 ms par remise.
+  Non mesurés : base persistante (cinq validations de transaction par remise), base et hôte sur
+  deux machines, plus de 4 cœurs, support S3, session SMTP et contrôles d'authenticité (5d),
+  messages réels ; cause du refus isolé `SURREAL_DATABASE_ERROR` (une remise sur 3 000, pool de
+  4) non cherchée. Hors débit de remise : les 515 autres appels de
+  `fn::validation_object_execute` paient le chargement de tout le catalogue (décision P2).
 * **Plage de 1 000 UID sous la session d'un membre.** Environ 0,3 ms de plus par fiche que sous
   la session système, non expliqué par la règle de lecture (13 µs) : à analyser avant le lot 8
   (`FETCH` de grandes plages).
