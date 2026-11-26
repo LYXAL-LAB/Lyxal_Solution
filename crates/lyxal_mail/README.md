@@ -220,69 +220,91 @@ du compte sérialise ses écritures. Repli du §19 du plan à décider sur cette
 Cohérence vérifiée en fin de banc : compteurs du compte égaux aux messages, UID uniques dans le
 dossier, une fiche de la vue par date par message.
 
-### Mesures de la remise (lot 5c, `tests/it/measures.rs`)
+### Mesures de la remise (`tests/it/measures.rs`, `scripts/bench/delivery/`)
 
-Mesures du 25 novembre 2026, machine de développement à 4 cœurs, binaire d'essai optimisé
-(`cargo test -p lyxal_mail --release --test it -- --ignored --nocapture --test-threads 1
-measures`), messages de 10 Kio remis par `MailIngest::receive` (le chemin de la session SMTP,
-**sans** le dialogue SMTP ni les contrôles d'authenticité, livrés en 5d), support disque, un
-nœud. Trois moteurs : base embarquée dans le processus (`mem://`) ; serveur SurrealDB 3.3.4 en
-mémoire joint par `ws://` (`LYXAL_SURREAL_WS_URL`, `LYXAL_SURREAL_USER`, `LYXAL_SURREAL_PASS`) sur
-une connexion ; le même serveur avec une connexion par service (courrier, stockage, coffre-fort :
-`LYXAL_SURREAL_CONNECTIONS=services`). Une seule série par mesure. Objectifs : plan du lot 5,
-§10.5.
+Mesures des 25 et 26 novembre 2026, après le sous-lot 1 du plan de performance
+(`docs/14-roadmap/implementation_plan_performance.md` : contrôle des paramètres par
+`fn::validation_fields_execute` dans les neuf fonctions du chemin de remise). Machine de
+développement à 4 cœurs, **occupée par d'autres travaux pendant une partie des séries** ; une
+seule série par mesure. Objectifs (décision P10 du plan) : une remise seule en 42 ms au plus ;
+80 remises par seconde sur 4 cœurs partagés, 110 sur 4 cœurs réservés à la base, aucune refusée.
 
-| Mesure | Base embarquée | Serveur, une connexion | Serveur, une connexion par service | Objectif |
+**Banc Rust** : binaire d'essai optimisé (`cargo test -p lyxal_mail --release --test it --
+--ignored --nocapture --test-threads 1 measures`), messages de 10 Kio remis par
+`MailIngest::receive` (le chemin de la session SMTP, **sans** le dialogue SMTP ni les contrôles
+d'authenticité, livrés en 5d), support disque, un nœud. Trois moteurs : base embarquée dans le
+processus (`mem://`) ; serveur SurrealDB 3.3.4 en mémoire joint par `ws://`
+(`LYXAL_SURREAL_WS_URL`, `LYXAL_SURREAL_USER`, `LYXAL_SURREAL_PASS`) sur une connexion ; le même
+serveur avec une connexion par service (`LYXAL_SURREAL_CONNECTIONS=services`).
+
+| Mesure | Base embarquée | Serveur, une connexion | Serveur, une connexion par service | Avant le sous-lot 1 (serveur, une connexion) |
 | :--- | :-: | :-: | :-: | :-: |
-| 100 comptes d'une organisation, 50 clients, 3 000 remises | 15,0 par seconde ; p50 3 296 ms, p95 3 667 ms | 11,8 par seconde ; p50 4 107 ms, p95 4 775 ms | 16,9 par seconde ; p50 2 196 ms, p95 8 371 ms | ≥ 300 (embarquée), ≥ 200 (serveur) : **non tenu** |
-| 100 comptes de deux organisations, 50 clients, 3 000 remises | 22,0 par seconde | 11,5 par seconde | 17,0 par seconde | — |
-| Un compte, 20 clients, 1 000 remises | 14,9 par seconde ; **0 refusée** ; 133 appels pour 1 000 messages (lot de 11 au plus) | 10,9 par seconde ; **0 refusée** ; aucun lot (1 000 appels) | 25,1 par seconde ; **0 refusée** ; 286 appels (lot de 6 au plus) | ≥ 100 par seconde : **non tenu** ; 0 refusée : **tenu** |
-| Deux nœuds simulés (deux services de remise sur la même base), un compte, 20 clients, 1 000 remises | 12,8 par seconde ; **1 refusée (0,1 %)** après rejeu ; 199 conflits rejoués, 38 lots repris élément par élément | non mesuré (une connexion exécute ses requêtes une à une : aucun conflit possible) | non mesuré | ≤ 1 % : **tenu** sur cette série (repli du §10.3 non déclenché) |
-| Une remise, sans concurrence (moyenne de 300) | 160 ms : ouverture 12,3 ; fichier chiffré 56,4 ; inscription 91,3 | 96 ms : ouverture 9,0 ; fichier chiffré 38,4 ; inscription 48,2 | 93 ms | p95 ≤ 100 ms de la fin de `DATA` à `250` : à mesurer avec la session (5d) |
+| Une remise, sans concurrence (moyenne de 300) | 70,6 ms : ouverture 7,8 ; fichier chiffré 25,6 ; inscription 37,1 | **37,1 ms** : ouverture 4,3 ; fichier chiffré 15,1 ; inscription 17,7 | 37,0 ms | 96 ms : ouverture 9,0 ; fichier chiffré 38,4 ; inscription 48,2 |
+| 100 comptes d'une organisation, 50 clients, 3 000 remises | 28,3 par seconde ; p50 1 906 ms, p95 2 073 ms | **24,7 par seconde** ; p50 1 936 ms, p95 2 182 ms | 34,2 par seconde ; p50 1 360 ms, p95 2 772 ms | 11,8 par seconde |
+| 100 comptes de deux organisations, 50 clients, 3 000 remises | 31,8 par seconde | 27,1 par seconde | 36,7 par seconde | 11,5 par seconde |
+| Un compte, 20 clients, 1 000 remises | 26,4 par seconde ; 0 refusée ; 105 appels (lot de 11 au plus) | 23,2 par seconde ; 0 refusée ; aucun lot (1 000 appels) | 47,4 par seconde ; 0 refusée ; 134 appels (lot de 12 au plus) | 10,9 par seconde |
+| Deux nœuds simulés (deux services de remise sur la même base), un compte, 20 clients, 1 000 remises | 19,3 par seconde ; 1 refusée (0,1 %, `SURREAL_DATABASE_ERROR`) après rejeu ; 172 conflits rejoués, 40 lots repris élément par élément | non mesuré (une connexion exécute ses requêtes une à une : aucun conflit possible) | non mesuré | — |
 
-Aucun conflit de transaction entre les remises d'un nœud dans ces séries (ordre par compte, et
-tour d'écriture des fichiers par organisation). **Le débit visé n'est pas atteint, d'un facteur
-proche de vingt.** Ce que montrent les mesures :
+Une remise seule tient l'objectif (37 ms pour 42). Le débit ne le tient pas encore : il attend le
+pool de connexions et les compteurs de volume sans conflit (sous-lots 2 et 3 du plan). Aucune
+remise refusée ni conflit de transaction sur un nœud dans ces séries.
 
-* **Le temps de calcul de la base par remise** (93 à 96 ms sur le serveur, lecture MIME : 0,05 ms)
-  borne le débit : quatre cœurs donnent au mieux une quarantaine de remises par seconde, quel que
-  soit l'ordre des écritures. Il se répartit entre `fn::mail_delivery_begin` (9 ms), les deux
-  fonctions de `lyxal_storage` et la lecture du trousseau des clés « fichiers » (38 ms en tout,
-  dont 13 ms pour le trousseau) et `fn::mail_delivery_commit` (48 ms).
-* **Le moteur de validation de `lyxal_core`** en est la première part. Mesuré dans la base
-  (30 appels en boucle, sans aller-retour) : un objet d'un champ 2,0 ms, les 4 champs de
-  l'ouverture 2,8 ms, un élément de remise en contrôle allégé 10,7 ms (12,8 ms par `each` ; 6,5 ms
-  par élément dans un lot de 8), contre 0,05 ms pour la primitive `fn::validation_record` seule.
-  Chaque fonction appelée par une remise paie ce coût (`fn::storage_object_get` : 3,4 ms ;
-  `fn::event_publish` : 7,0 ms ; `fn::error_result` : 0,13 ms ; `fn::mail_can` : 0,04 ms).
-* **Contrôle allégé (décision S12), mesuré des deux façons** par une requête isolée : contrôle
-  allégé 22 à 25 ms, validation complète de l'enveloppe 34 ms avec 5 adresses et 94 à 99 ms avec
-  67 adresses (base embarquée : 39 à 40 ms, 62 ms et 187 ms). Le contrôle allégé ne dépend plus du
-  nombre d'adresses, mais l'objectif de 2 ms par élément n'est pas atteint : il est hors de portée
-  du moteur tel qu'il est (2 ms pour un seul champ).
-* **Un serveur SurrealDB exécute une à une les requêtes d'une même connexion** (mesuré : des
-  connexions distinctes se partagent les cœurs, 31, 58, 107 puis 114 requêtes par seconde pour 1,
-  2, 4 et 8 connexions). Avec une seule connexion, le débit d'un nœud est celui d'une remise à la
-  fois (11 à 12 par seconde) et rien ne se groupe ; avec une connexion par service, l'écriture
-  des fichiers et l'inscription avancent ensemble et les inscriptions d'un compte se groupent.
-* **Compteurs de volume de `lyxal_storage`** : sans le tour d'écriture par organisation, avec 20
-  clients simultanés dans une organisation, des remises étaient refusées pour conflit de
-  transaction après les six essais de `lyxal_storage` (constaté par l'essai des remises
-  concurrentes, non chiffré) ; avec lui, aucune, mais les écritures de fichiers d'une
-  organisation passent une à une (38 ms chacune sur le serveur, soit 26 par seconde au plus).
+**Banc SurrealQL** (`scripts/bench/delivery/bench_delivery.py`, temps de calcul de la base seule,
+relevé dans le serveur, chaque appel public dans sa transaction ; « avant » : `--ref 2ed5fbb33`) :
+
+| Appel d'une remise (moyenne de 100) | Avant | Après |
+| :--- | :-: | :-: |
+| `fn::mail_delivery_begin` | 6,4 ms | 3,5 ms |
+| `fn::storage_object_begin` | 8,6 ms | 5,0 ms |
+| `fn::secrets_tenant_key_ring` (lue par `FileKeys::seal`) | 11,4 ms | 2,0 ms |
+| `fn::storage_object_commit` | 8,5 ms | 4,9 ms |
+| `fn::mail_delivery_commit` (un message) | 39,7 ms | 15,8 ms |
+| **Total base** | **74,6 ms** | **31,3 ms** |
+
+| Remises par seconde, une connexion par client | 1 client | 2 | 4 | 8 | 16 |
+| :--- | :-: | :-: | :-: | :-: | :-: |
+| Une organisation par client, avant | 12,9 | 24,9 | 51,3 | 52,1 | 49,6 |
+| Une organisation par client, après | 30,2 | 58,8 | 116,8 | 114,0 | 111,6 |
+| Une seule organisation, avant | 13,2 | 19,3 | 24,0 | 21,0 | 17,2 |
+| Une seule organisation, après | 29,3 | 34,3 | 50,7 | 51,6 | 46,0 |
+
+Dans une seule organisation, les transactions de deux clients se refusent sur les compteurs
+`storage_usage` : 82 à 433 remises refusées par palier de 12 s avant, 291 à 1 068 après (le banc
+ne les rejoue pas, et n'a pas le tour d'écriture du nœud).
+
+Ce que montrent les mesures :
+
+* **Le contrôle des paramètres pesait plus de la moitié d'une remise.** En SurrealDB 3.3, une
+  définition de fonction est relue et réanalysée à chaque transaction, et une fonction qui ne
+  fait que lire charge tout son graphe d'appels : `fn::validation_object_execute` faisait charger
+  les 177 validateurs du Core à chaque appel public (7 à 9 ms). Les neuf fonctions du chemin de
+  remise ne nomment plus que les validateurs qu'elles utilisent (`fn::validation_fields_execute`,
+  `crates/lyxal_core/Readme.md`). Les autres fonctions publiques du courrier paient encore ce
+  coût.
+* **Un serveur SurrealDB exécute une à une les requêtes d'une même connexion** : avec une seule
+  connexion, le débit d'un nœud reste celui d'une remise à la fois (24,7 par seconde pour 37 ms
+  par remise), quel que soit le nombre de clients, et rien ne se groupe. Des connexions
+  distinctes se partagent les cœurs (117 remises par seconde à 4 connexions, pas plus au-delà).
+* **Compteurs de volume de `lyxal_storage`** : chaque fichier écrit les deux mêmes lignes de son
+  organisation. Sans le tour d'écriture par organisation du nœud, les remises simultanées d'une
+  organisation se refusent pour conflit de transaction (banc SurrealQL ci-dessus) ; avec lui,
+  aucune, mais les écritures de fichiers d'une organisation passent une à une (15 ms chacune sur
+  le serveur).
+* **L'inscription reste le premier poste** (`fn::mail_delivery_commit` : 16 à 18 ms), dont
+  environ 4 ms pour le contrôle de ses paramètres (24 champs, objets imbriqués compris ; mesure
+  isolée, deuxième appel d'une transaction), allégé au sous-lot 4 du plan.
 * **La base embarquée du binaire d'essai est près de deux fois plus lente que le serveur** (une
-  remise : 160 ms contre 96 ms ; un élément validé par une requête isolée : 39 ms contre 22 ms) :
-  ses chiffres ne valent pas pour une installation, qui joint un serveur.
+  remise : 70,6 ms contre 37,1 ms) : ses chiffres ne valent pas pour une installation, qui joint
+  un serveur.
 
-**Clés « fichiers » (décision S13).** `FileKeys::seal` : 13,1 ms en moyenne sur le serveur (p95
-14,8 ms ; 21,8 ms sur la base embarquée), `FileKeys::open` : 13,1 ms, dont 12,6 à 13,1 ms pour la
-seule lecture du trousseau en base (`fn::secrets_tenant_key_ring`) ; le scellement pèse 14 % d'une
-remise. Le seuil de la décision (2 ms ou 10 %) est dépassé : le cache est écrit dans
-`lyxal_secrets` (`FileKeys::with_cache`). Avec lui, une ouverture coûte 0,05 ms (299 succès pour
-300 appels) ; un scellement coûte toujours 12,4 ms, parce que la règle du cache (ne jamais
-sceller par une clé qui n'est plus active) impose de relire le trousseau. **Le cache ne réduit
-donc pas le coût d'une remise** ; il sert les lectures (lot 8). Il n'est pas encore activé par
-l'hôte (5d).
+**Clés « fichiers » (décision S13).** `FileKeys::seal` : 2,5 ms en moyenne sur le serveur (p95
+2,9 ms ; 3,7 ms sur la base embarquée), `FileKeys::open` : 2,5 ms, presque entièrement la lecture
+du trousseau en base (`fn::secrets_tenant_key_ring`, 13 ms avant le sous-lot 1) ; le scellement
+pèse 7 % d'une remise. Avec le cache de `lyxal_secrets` (`FileKeys::with_cache`), une ouverture
+coûte 0,01 ms (299 succès pour 300 appels) ; un scellement coûte toujours 2,4 ms, parce que la
+règle du cache (ne jamais sceller par une clé qui n'est plus active) impose de relire le
+trousseau. **Le cache ne réduit donc pas le coût d'une remise** ; il sert les lectures (lot 8).
+Il n'est pas encore activé par l'hôte (5d).
 
 ## État actuel : service Rust
 

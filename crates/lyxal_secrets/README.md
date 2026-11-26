@@ -65,10 +65,11 @@ clé maîtresse du coffre-fort (LYXAL__SECRETS__MASTER_KEY ; ancienne clé en le
   fichier) est fourni par le module qui range les fichiers ; le coffre-fort ne lit aucune de ses
   tables.
 * **Cache des clés « fichiers »** (`FileKeys::with_cache`, facultatif, activé par l'hôte ;
-  décisions M19 et S13 du programme courrier). Mesure du 25 novembre 2026 (serveur SurrealDB
-  3.3.4 en mémoire, `ws://`) : `seal` et `open` coûtent chacun environ 13 ms, presque entièrement
-  la lecture du trousseau en base (`fn::secrets_tenant_key_ring`, 12,9 ms), soit 15 % d'une
-  remise de courrier : au-dessus du seuil fixé (2 ms ou 10 %). Avec le cache, une clé
+  décisions M19 et S13 du programme courrier). Mesure du 26 novembre 2026 (serveur SurrealDB
+  3.3.4 en mémoire, `ws://`) : `seal` et `open` coûtent chacun environ 2,5 ms, presque entièrement
+  la lecture du trousseau en base (`fn::secrets_tenant_key_ring`), soit 7 % d'une remise de
+  courrier (13 ms et 15 % avant que cette fonction ne contrôle ses paramètres par
+  `fn::validation_fields_execute`). Avec le cache, une clé
   « fichiers » ouverte est gardée en mémoire **60 secondes** au plus
   (`FILE_KEY_CACHE_SECONDS`), par organisation et identifiant de clé, **1 024 entrées** au plus
   (`FILE_KEY_CACHE_ENTRIES` ; cache plein : entrées échues retirées, puis la plus ancienne),
@@ -263,7 +264,8 @@ Aucune table n'a de `CHANGEFEED` ni d'historique natif : une version détruite d
 | Worker | `secrets_purge_due`, `secrets_due_list`, `secrets_due_mark`, `secrets_access_due`, `secrets_share_due` |
 
 Toutes renvoient `fn::result_ok` ou `fn::error_result` ; entrées validées par
-`fn::validation_object_execute` de `lyxal_core` ; écritures vérifiées (`SECRETS_WRITE_FORBIDDEN`).
+`fn::validation_object_execute` de `lyxal_core` (`fn::secrets_tenant_key_ring`, lue à chaque fichier
+chiffré : `fn::validation_fields_execute`) ; écritures vérifiées (`SECRETS_WRITE_FORBIDDEN`).
 
 ## Erreurs (`SECRETS_*`)
 

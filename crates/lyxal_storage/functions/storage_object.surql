@@ -101,18 +101,15 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_update_refusal($before: object, $af
 -- ----------------------------------------------------------------------------
 
 DEFINE FUNCTION OVERWRITE fn::storage_object_begin($params: object) {
-    LET $report = fn::validation_object_execute($params, {
-        fields: {
-            bucket: { pipeline: [{ rule: "record", options: { expected_table: "storage_bucket" } }], required: true },
-            key: { pipeline: [{ rule: "lyxal_storage_path", options: { allow_file_extension: true, max_length: 512 } }], required: true },
-            filename: { pipeline: [{ rule: "filename", options: { min_length: 1, max_length: 255 } }], required: true },
-            declared_type: { pipeline: [{ rule: "mime_type" }] },
-            declared_size: { pipeline: [{ rule: "integer", options: { min_value: 0 } }] },
-            resumable: { pipeline: [{ rule: "boolean" }], default: false },
-            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
-        },
-        unknown_keys: "reject"
-    }, 40);
+    LET $report = fn::validation_fields_execute($params, {
+        bucket: { checks: [|$v: any| fn::validation_record($v, "storage_bucket")], required: true },
+        key: { checks: [|$v: any| fn::validation_lyxal_storage_path($v, NONE, true, 512)], required: true },
+        filename: { checks: [|$v: any| fn::validation_filename($v, 1, 255)], required: true },
+        declared_type: { checks: [|$v: any| fn::validation_mime_type($v, NONE)] },
+        declared_size: { checks: [|$v: any| fn::validation_integer($v, 0, NONE)] },
+        resumable: { checks: [|$v: any| fn::validation_boolean($v)], default: false },
+        language: { checks: [|$v: any| fn::validation_language_code($v, false, NONE)], default: "fr" }
+    }, "reject");
     IF !$report.valid {
         RETURN fn::error_result("STORAGE_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
@@ -154,18 +151,15 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_begin($params: object) {
 -- ----------------------------------------------------------------------------
 
 DEFINE FUNCTION OVERWRITE fn::storage_object_commit($params: object) {
-    LET $report = fn::validation_object_execute($params, {
-        fields: {
-            object: { pipeline: [{ rule: "record", options: { expected_table: "storage_object" } }], required: true },
-            size: { pipeline: [{ rule: "integer", options: { min_value: 0 } }], required: true },
-            content_type: { pipeline: [{ rule: "mime_type" }], required: true },
-            blake3: { pipeline: [{ rule: "checksum", options: { algorithm: "blake3" } }], required: true },
-            content_key: { pipeline: [{ rule: "required_string", options: { min_length: 8, max_length: 4096 } }, { rule: "starts_with", options: { prefixes: ["enc:v2:"], case_sensitive: true, trim_value: false } }] },
-            claim: { pipeline: [{ rule: "uuid" }] },
-            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
-        },
-        unknown_keys: "reject"
-    }, 40);
+    LET $report = fn::validation_fields_execute($params, {
+        object: { checks: [|$v: any| fn::validation_record($v, "storage_object")], required: true },
+        size: { checks: [|$v: any| fn::validation_integer($v, 0, NONE)], required: true },
+        content_type: { checks: [|$v: any| fn::validation_mime_type($v, NONE)], required: true },
+        blake3: { checks: [|$v: any| fn::validation_checksum($v, "blake3")], required: true },
+        content_key: { checks: [|$v: any| fn::validation_required_string($v, 8, 4096), |$v: any| fn::validation_starts_with($v, ["enc:v2:"], true, false)] },
+        claim: { checks: [|$v: any| fn::validation_uuid($v)] },
+        language: { checks: [|$v: any| fn::validation_language_code($v, false, NONE)], default: "fr" }
+    }, "reject");
     IF !$report.valid {
         RETURN fn::error_result("STORAGE_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
@@ -211,15 +205,12 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_commit($params: object) {
 -- ----------------------------------------------------------------------------
 
 DEFINE FUNCTION OVERWRITE fn::storage_object_get($params: object) {
-    LET $report = fn::validation_object_execute($params, {
-        fields: {
-            object: { pipeline: [{ rule: "record", options: { expected_table: "storage_object" } }] },
-            bucket: { pipeline: [{ rule: "record", options: { expected_table: "storage_bucket" } }] },
-            key: { pipeline: [{ rule: "lyxal_storage_path", options: { allow_file_extension: true, max_length: 512 } }] },
-            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
-        },
-        unknown_keys: "reject"
-    }, 20);
+    LET $report = fn::validation_fields_execute($params, {
+        object: { checks: [|$v: any| fn::validation_record($v, "storage_object")] },
+        bucket: { checks: [|$v: any| fn::validation_record($v, "storage_bucket")] },
+        key: { checks: [|$v: any| fn::validation_lyxal_storage_path($v, NONE, true, 512)] },
+        language: { checks: [|$v: any| fn::validation_language_code($v, false, NONE)], default: "fr" }
+    }, "reject");
     IF !$report.valid OR ($report.value.object IS NONE AND ($report.value.bucket IS NONE OR $report.value.key IS NONE)) {
         RETURN fn::error_result("STORAGE_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };

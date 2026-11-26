@@ -6,23 +6,20 @@
 DEFINE FUNCTION OVERWRITE fn::event_publish(
     $params: object
 ) {
-    LET $report = fn::validation_object_execute($params, {
-        fields: {
-            event_id: { pipeline: [{ rule: "uuid" }], required: true },
-            event_type: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 128 } }, { rule: "regex", options: { pattern: "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$" } }], required: true },
-            version: { pipeline: [{ rule: "integer", options: { min_value: 1 } }], default: 1 },
-            producer: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 64 } }, { rule: "regex", options: { pattern: "^[a-z][a-z0-9_]*$" } }], required: true },
-            source: { pipeline: [{ rule: "record_id" }] },
-            context: { pipeline: [{ rule: "is_object" }], default: { instance_id: "default", namespace: "default", database: "default" } },
-            correlation_id: { pipeline: [{ rule: "uuid" }] },
-            causation_id: { pipeline: [{ rule: "uuid" }] },
-            payload: { pipeline: [{ rule: "is_object" }], default: {} },
-            metadata: { pipeline: [{ rule: "is_object" }], default: {} },
-            auto_fanout: { pipeline: [{ rule: "boolean" }], default: true },
-            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
-        },
-        unknown_keys: "reject"
-    }, 20);
+    LET $report = fn::validation_fields_execute($params, {
+        event_id: { checks: [|$v: any| fn::validation_uuid($v)], required: true },
+        event_type: { checks: [|$v: any| fn::validation_required_string($v, 1, 128), |$v: any| fn::validation_regex($v, "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$")], required: true },
+        version: { checks: [|$v: any| fn::validation_integer($v, 1, NONE)], default: 1 },
+        producer: { checks: [|$v: any| fn::validation_required_string($v, 1, 64), |$v: any| fn::validation_regex($v, "^[a-z][a-z0-9_]*$")], required: true },
+        source: { checks: [|$v: any| fn::validation_record_id($v, NONE)] },
+        context: { checks: [|$v: any| fn::validation_object($v)], default: { instance_id: "default", namespace: "default", database: "default" } },
+        correlation_id: { checks: [|$v: any| fn::validation_uuid($v)] },
+        causation_id: { checks: [|$v: any| fn::validation_uuid($v)] },
+        payload: { checks: [|$v: any| fn::validation_object($v)], default: {} },
+        metadata: { checks: [|$v: any| fn::validation_object($v)], default: {} },
+        auto_fanout: { checks: [|$v: any| fn::validation_boolean($v)], default: true },
+        language: { checks: [|$v: any| fn::validation_language_code($v, false, NONE)], default: "fr" }
+    }, "reject");
     IF !$report.valid {
         RETURN fn::error_result("EVENT_INVALID_PARAMETERS", $params.language, { fields: $report.by_field });
     };

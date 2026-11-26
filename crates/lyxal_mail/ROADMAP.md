@@ -60,16 +60,14 @@ Mesures : [`README.md`](README.md), section « Mesures ».
 * **Effacement des messages `\Deleted` d'un grand dossier.** `fn::mail_message_expunge` sans liste
   lit les messages `\Deleted` par l'index `(dossier, deleted)` : coût non mesuré sur une grande
   boîte, à mesurer au lot 8.
-* **Débit de remise (décisions C5, P7, S11, S12) : objectif non atteint, à décider avant 5d.**
-  Mesures du lot 5c (`README.md`, « Mesures de la remise ») : 11 à 25 remises par seconde sur un
-  serveur SurrealDB, pour 300 visées ; aucune remise refusée sur un nœud. Une remise coûte 93 à
-  96 ms de calcul à la base. Pistes, toutes hors du plan du lot 5 et à décider par le CTO :
-  coût du moteur de validation de `lyxal_core` (2 ms pour un champ, 10,7 ms pour un élément de
-  remise ; `fn::event_publish` 7 ms, fonctions de `lyxal_storage` 3,4 ms chacune) ; plusieurs
-  connexions à la base par hôte (un serveur exécute une à une les requêtes d'une connexion) ;
-  compteurs de volume de `lyxal_storage` écrits par chaque fichier d'une organisation (les
-  écritures d'une organisation passent une à une dans le nœud) ; lecture du trousseau des clés
-  « fichiers » à chaque scellement (13 ms).
+* **Débit de remise (décisions C5, P7, S11, S12) : objectif non atteint.** Plan validé :
+  `docs/14-roadmap/implementation_plan_performance.md` (objectif de la décision P10 : 80 remises
+  par seconde sur 4 cœurs partagés, une remise seule en 42 ms au plus). Sous-lot 1 fait (contrôles
+  par fermetures) : une remise seule 37 ms, 24,7 remises par seconde sur une connexion
+  (`README.md`, « Mesures de la remise »). Restent : pool de connexions à la base (sous-lot 2),
+  compteurs de volume de `lyxal_storage` sans conflit et retrait du tour d'écriture par
+  organisation (sous-lot 3), inscription allégée (sous-lot 4), moins d'allers-retours (sous-lot
+  5, à décider après une mesure sur base persistante).
 * **Plage de 1 000 UID sous la session d'un membre.** Environ 0,3 ms de plus par fiche que sous
   la session système, non expliqué par la règle de lecture (13 µs) : à analyser avant le lot 8
   (`FETCH` de grandes plages).
@@ -87,7 +85,7 @@ Mesures : [`README.md`](README.md), section « Mesures ».
 * **Alias vers l'extérieur, listes** : lot 6.
 * **Clés « fichiers » (décisions M19, S13).** Cache écrit dans `lyxal_secrets`
   (`FileKeys::with_cache`), pour les ouvertures seulement ; à activer par l'hôte (5d). Un
-  scellement relit toujours le trousseau (13 ms par remise) : le sceller depuis le cache
+  scellement relit toujours le trousseau (2,5 ms par remise) : le sceller depuis le cache
   demanderait qu'une clé « fichiers » retirée ne puisse pas être détruite avant un délai plus
   long que la garde du cache (règle de `lyxal_secrets` à décider par le CTO).
 * **Contenus en attente en retard dans la sonde.** La sonde ne compte pas les contenus `pending`

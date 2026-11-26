@@ -10,7 +10,8 @@
 -- inscription, fiche d'idempotence et compteurs de 1 à 32 messages du compte : une transaction).
 -- Le service de remise ordonne les remises d'un même compte dans le nœud (décision S11) : le
 -- compteur de modifications reste par compte (décision M6), sans conflit entre remises d'un nœud.
--- Contrôle des paramètres (décision S12) : le moteur de lyxal_core valide les champs scalaires,
+-- Contrôle des paramètres (décision S12) : lyxal_core (fn::validation_fields_execute, contrôles par
+-- fermetures : ces fonctions sont appelées à chaque remise) valide les champs scalaires,
 -- la forme des listes et la taille sérialisée de l'enveloppe et de la structure ; leur forme
 -- détaillée est garantie par le schéma de mail_message. fn::mail_message_create, appelable par un
 -- titulaire, garde la validation complète.
@@ -30,13 +31,10 @@ DEFINE FUNCTION OVERWRITE fn::mail_recipient_accounts($targets: array<record<mai
 -- ----------------------------------------------------------------------------
 
 DEFINE FUNCTION OVERWRITE fn::mail_recipient_resolve($params: object) {
-    LET $report = fn::validation_object_execute($params, {
-        fields: {
-            address: { pipeline: [{ rule: "required_string", options: { min_length: 3, max_length: 254 } }, { rule: "ascii", options: { trim_value: true, allow_blank: false } }], required: true },
-            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
-        },
-        unknown_keys: "reject"
-    }, 20);
+    LET $report = fn::validation_fields_execute($params, {
+        address: { checks: [|$v: any| fn::validation_required_string($v, 3, 254), |$v: any| fn::validation_ascii($v, true, false)], required: true },
+        language: { checks: [|$v: any| fn::validation_language_code($v, false, NONE)], default: "fr" }
+    }, "reject");
     IF !$report.valid {
         RETURN fn::error_result("MAIL_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
@@ -79,15 +77,12 @@ DEFINE FUNCTION OVERWRITE fn::mail_recipient_resolve($params: object) {
 -- ----------------------------------------------------------------------------
 
 DEFINE FUNCTION OVERWRITE fn::mail_delivery_begin($params: object) {
-    LET $report = fn::validation_object_execute($params, {
-        fields: {
-            account: { pipeline: [{ rule: "record", options: { expected_table: "mail_account" } }], required: true },
-            size: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 5368709120 } }], required: true },
-            delivery_key: { pipeline: [{ rule: "hexadecimal", options: { min_length: 64, max_length: 64, allow_prefix: false } }], required: true },
-            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
-        },
-        unknown_keys: "reject"
-    }, 20);
+    LET $report = fn::validation_fields_execute($params, {
+        account: { checks: [|$v: any| fn::validation_record($v, "mail_account")], required: true },
+        size: { checks: [|$v: any| fn::validation_integer($v, 1, 5368709120)], required: true },
+        delivery_key: { checks: [|$v: any| fn::validation_hexadecimal($v, 64, 64, false)], required: true },
+        language: { checks: [|$v: any| fn::validation_language_code($v, false, NONE)], default: "fr" }
+    }, "reject");
     IF !$report.valid {
         RETURN fn::error_result("MAIL_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
@@ -120,34 +115,29 @@ DEFINE FUNCTION OVERWRITE fn::mail_delivery_begin($params: object) {
 -- ----------------------------------------------------------------------------
 
 DEFINE FUNCTION OVERWRITE fn::mail_delivery_commit($params: object) {
-    LET $text = |$max| { pipeline: [{ rule: "optional_string", options: { max_length: $max } }] };
-    LET $ids = |$max| { pipeline: [{ rule: "array_of_strings", options: { allow_empty: true, max_length: 2048 } }, { rule: "array_length", options: { max_length: $max } }], default: [] };
-    LET $report = fn::validation_object_execute($params, {
-        fields: {
-            account: { pipeline: [{ rule: "record", options: { expected_table: "mail_account" } }], required: true },
-            items: { pipeline: [{ rule: "array_length", options: { min_length: 1, max_length: 32 } }, { rule: "each", options: { pipeline: [{ rule: "is_object" }, { rule: "object", options: { schema: {
-                fields: {
-                    content: { pipeline: [{ rule: "record", options: { expected_table: "mail_content" } }], required: true },
-                    object: { pipeline: [{ rule: "record", options: { expected_table: "storage_object" } }], required: true },
-                    role: { pipeline: [{ rule: "enum", options: { allowed: ["inbox", "junk"], case_sensitive: true } }], default: "inbox" },
-                    received_at: { pipeline: [{ rule: "datetime", options: { min_value: d"1970-01-01T00:00:00Z" } }], required: true },
-                    delivery_key: { pipeline: [{ rule: "hexadecimal", options: { min_length: 64, max_length: 64, allow_prefix: false } }], required: true },
-                    message_id: $text(2048),
-                    in_reply_to: $ids(100),
-                    references: $ids(1000),
-                    base_subject: $text(16384),
-                    is_report: { pipeline: [{ rule: "boolean" }], default: false },
-                    envelope: { pipeline: [{ rule: "is_object" }, { rule: "max_serialized_length", options: { max_length: 262144 } }], required: true },
-                    structure: { pipeline: [{ rule: "is_object" }, { rule: "max_serialized_length", options: { max_length: 1048576 } }], required: true },
-                    has_attachment: { pipeline: [{ rule: "boolean" }], default: false },
-                    reception: fn::mail_reception_rule()
-                },
-                unknown_keys: "reject"
-            } } }] } }], required: true },
-            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
-        },
-        unknown_keys: "reject"
-    }, 60);
+    LET $text = |$max: int| { checks: [|$v: any| fn::validation_optional_string($v, NONE, $max)] };
+    LET $ids = |$max: int| { checks: [|$v: any| fn::validation_array_of_strings($v, true, NONE, 2048), |$v: any| fn::validation_array_length($v, NONE, $max)], default: [] };
+    LET $item = |$v: any| fn::validation_fields_execute($v, {
+        content: { checks: [|$w: any| fn::validation_record($w, "mail_content")], required: true },
+        object: { checks: [|$w: any| fn::validation_record($w, "storage_object")], required: true },
+        role: { checks: [|$w: any| fn::validation_enum($w, ["inbox", "junk"], true)], default: "inbox" },
+        received_at: { checks: [|$w: any| fn::validation_datetime($w, d"1970-01-01T00:00:00Z", NONE)], required: true },
+        delivery_key: { checks: [|$w: any| fn::validation_hexadecimal($w, 64, 64, false)], required: true },
+        message_id: $text(2048),
+        in_reply_to: $ids(100),
+        references: $ids(1000),
+        base_subject: $text(16384),
+        is_report: { checks: [|$w: any| fn::validation_boolean($w)], default: false },
+        envelope: { checks: [|$w: any| fn::validation_object($w), |$w: any| fn::validation_max_serialized_length($w, 262144)], required: true },
+        structure: { checks: [|$w: any| fn::validation_object($w), |$w: any| fn::validation_max_serialized_length($w, 1048576)], required: true },
+        has_attachment: { checks: [|$w: any| fn::validation_boolean($w)], default: false },
+        reception: fn::mail_reception_rule()
+    }, "reject");
+    LET $report = fn::validation_fields_execute($params, {
+        account: { checks: [|$v: any| fn::validation_record($v, "mail_account")], required: true },
+        items: { checks: [|$v: any| fn::validation_array_length($v, 1, 32), |$v: any| array::map($v, $item)], required: true },
+        language: { checks: [|$v: any| fn::validation_language_code($v, false, NONE)], default: "fr" }
+    }, "reject");
     IF !$report.valid {
         LET $language = IF type::is_string($params.language) { $params.language } ELSE { NONE };
         RETURN IF ($report.by_field.items ?? []) CONTAINS "CORE_VALIDATION_TOO_LONG" {
@@ -199,20 +189,17 @@ DEFINE FUNCTION OVERWRITE fn::mail_delivery_key($account: record<mail_account>, 
 } COMMENT "Interne : identifiant de la fiche d'idempotence d'une remise (mail_delivery:⟨<clé du compte>_<empreinte>⟩)";
 
 DEFINE FUNCTION OVERWRITE fn::mail_reception_rule() -> object {
-    LET $word = |$allowed| { pipeline: [{ rule: "enum", options: { allowed: $allowed, case_sensitive: true } }], required: true };
-    RETURN { pipeline: [{ rule: "is_object" }, { rule: "object", options: { schema: {
-        fields: {
-            spf: $word(["none", "neutral", "pass", "fail", "softfail", "temperror", "permerror"]),
-            dkim: $word(["none", "pass", "fail", "neutral", "policy", "temperror", "permerror"]),
-            dmarc: $word(["none", "pass", "fail", "temperror", "permerror"]),
-            iprev: $word(["pass", "fail", "temperror", "permerror"]),
-            antivirus: $word(["clean", "not_scanned"]),
-            spam: $word(["none"]),
-            tls: { pipeline: [{ rule: "boolean" }], required: true }
-        },
-        unknown_keys: "reject"
-    } } }], required: true };
-} COMMENT "Interne : règle d'entrée des résultats de la réception d'un message ({ spf, dkim, dmarc, iprev : mots de résultat de la RFC 8601 ; antivirus : clean ou not_scanned ; spam : none (lot 11) ; tls }), tous exigés, pour fn::validation_object_execute";
+    LET $word = |$allowed: array| { checks: [|$v: any| fn::validation_enum($v, $allowed, true)], required: true };
+    RETURN { checks: [|$v: any| fn::validation_fields_execute($v, {
+        spf: $word(["none", "neutral", "pass", "fail", "softfail", "temperror", "permerror"]),
+        dkim: $word(["none", "pass", "fail", "neutral", "policy", "temperror", "permerror"]),
+        dmarc: $word(["none", "pass", "fail", "temperror", "permerror"]),
+        iprev: $word(["pass", "fail", "temperror", "permerror"]),
+        antivirus: $word(["clean", "not_scanned"]),
+        spam: $word(["none"]),
+        tls: { checks: [|$w: any| fn::validation_boolean($w)], required: true }
+    }, "reject")], required: true };
+} COMMENT "Interne : règle d'entrée des résultats de la réception d'un message ({ spf, dkim, dmarc, iprev : mots de résultat de la RFC 8601 ; antivirus : clean ou not_scanned ; spam : none (lot 11) ; tls }), tous exigés, pour fn::validation_fields_execute";
 
 DEFINE FUNCTION OVERWRITE fn::mail_delivery_item($account: record<mail_account>, $item: object, $settings: object, $language: string) -> object {
     LET $fail = |$code, $details| { error: fn::error_result($code, $language, $details).error };

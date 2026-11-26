@@ -29,14 +29,11 @@ DEFINE FUNCTION OVERWRITE fn::secrets_key_is_active($scope_key: string, $key_id:
 -- ----------------------------------------------------------------------------
 
 DEFINE FUNCTION OVERWRITE fn::secrets_tenant_key_ring($params: object) {
-    LET $report = fn::validation_object_execute($params, {
-        fields: {
-            tenant: { pipeline: [{ rule: "record", options: { expected_table: "auth_organization" } }] },
-            purpose: { pipeline: [{ rule: "enum", options: { allowed: ["secrets", "files"], case_sensitive: true } }], required: true },
-            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
-        },
-        unknown_keys: "reject"
-    }, 20);
+    LET $report = fn::validation_fields_execute($params, {
+        tenant: { checks: [|$v: any| fn::validation_record($v, "auth_organization")] },
+        purpose: { checks: [|$v: any| fn::validation_enum($v, ["secrets", "files"], true)], required: true },
+        language: { checks: [|$v: any| fn::validation_language_code($v, false, NONE)], default: "fr" }
+    }, "reject");
     IF !$report.valid {
         RETURN fn::error_result("SECRETS_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };

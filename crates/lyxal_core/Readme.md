@@ -25,10 +25,10 @@ Ces éléments appartiennent aux modules. Le Core fournit les briques ; les modu
 
 ```text
 lyxal_core/
-├── manifest.toml            (id lyxal_core, version 0.1.0, 485 fonctions déclarées)
+├── manifest.toml            (id lyxal_core, version 0.1.0, 486 fonctions déclarées)
 ├── Readme.md
 └── functions/
-    ├── validations/   functions/ (196) · tests/ (196)   fn::validation_*
+    ├── validations/   functions/ (198) · tests/ (198)   fn::validation_*
     ├── sanitize/      functions/ (98) · tests/ (98)     fn::sanitize_*
     ├── security/      functions/ (71) · tests/ (71)     fn::security_*
     └── utils/         functions/ (119) · tests/ (119)   fn::utils_*
@@ -191,7 +191,7 @@ Un seul moteur exécute les pipelines de tous les domaines. Il ne connaît aucun
 
 | Domaine | Catalogue | Points d'entrée | Résultat |
 | :--- | :--- | :--- | :--- |
-| `validations` | `fn::validation_step_catalog()` : 177 règles, une par validateur à une seule valeur | `fn::validation_pipeline_execute($value, $pipeline, $max_steps)`, `fn::validation_object_execute($value, $schema, $max_steps)` | rapport `{ valid, value, errors, warnings, by_field }` ; ne lève jamais pour une donnée invalide |
+| `validations` | `fn::validation_step_catalog()` : 177 règles, une par validateur à une seule valeur | `fn::validation_pipeline_execute($value, $pipeline, $max_steps)`, `fn::validation_object_execute($value, $schema, $max_steps)` ; sans catalogue : `fn::validation_fields_execute($value, $fields, $unknown_keys)` (contrôles par fermetures, ci-dessous) | rapport `{ valid, value, errors, warnings, by_field }` ; ne lève jamais pour une donnée invalide |
 | `sanitize` | `fn::sanitize_step_catalog()` : 94 règles, une par fonction de valeurs (sauf `date_range`), plus `default` | `fn::sanitize_pipeline_execute($value, $pipeline, $max_steps)`, `fn::sanitize_object_execute($value, $schema, $max_steps)` | valeur nettoyée ; donnée non nettoyable → `CORE_SANITIZE_INVALID_TYPE` |
 | `security` | `fn::security_step_catalog()` : 22 règles (masquage et empreintes, détections, `permission_check`) | `fn::security_pipeline_execute($value, $pipeline, $max_steps)`, `fn::security_object_execute($value, $schema, $max_steps)` | `{ value, findings, score, decisions, allowed, errors }` |
 
@@ -206,6 +206,59 @@ LET $report = fn::validation_object_execute($params, $schema, 20);
 IF !$report.valid { RETURN fn::error_result("CONTACT_INVALID", $params.language, { fields: $report.by_field }); };
 LET $clean = fn::sanitize_object_execute($report.value, { fields: { email: { pipeline: [{ rule: "lowercase" }] } } }, 20);
 ```
+
+### Contrôles par fermetures : `fn::validation_fields_execute`
+
+En SurrealDB 3.3, une définition de fonction est relue et réanalysée à chaque transaction, et
+l'appel d'une fonction qui ne fait que lire charge tout son graphe d'appels :
+`fn::validation_object_execute` fait charger les 177 validateurs du catalogue même si un seul
+sert (7 à 9 ms au premier appel d'une transaction, puis 1,5 ms par objet). Pour une fonction
+appelée souvent, `fn::validation_fields_execute($value, $fields, $unknown_keys)` valide le même
+objet avec des contrôles remis par l'appelant, qui ne nomme que les validateurs qu'il utilise :
+
+```surql
+LET $report = fn::validation_fields_execute($params, {
+    account: { checks: [|$v: any| fn::validation_record($v, "mail_account")], required: true },
+    size: { checks: [|$v: any| fn::validation_integer($v, 1, 5368709120)], required: true },
+    language: { checks: [|$v: any| fn::validation_language_code($v, false, NONE)], default: "fr" }
+}, "reject");
+IF !$report.valid { RETURN fn::error_result("MAIL_INVALID_PARAMETERS", NONE, { fields: $report.by_field }); };
+```
+
+* **Champ** : `{ checks, required, nullable, default }`, comme un champ de schéma du moteur, où
+  `checks` (tableau de fermetures) remplace `pipeline`. Champ absent : valeur par défaut, sinon
+  `CORE_VALIDATION_REQUIRED` s'il est exigé ; `NULL` : `CORE_VALIDATION_NULL` sauf `nullable`.
+* **Contrôle** : une fermeture qui reçoit la valeur du champ (normalisée par le contrôle
+  précédent) et rend le résultat d'un validateur (`{ valid, value, code, details }`). Les
+  contrôles d'un champ s'arrêtent à la première erreur.
+* **Objet imbriqué** : le contrôle rend le rapport d'un autre appel de la fonction ; ses erreurs
+  passent sous le chemin du champ (`reception.spf`).
+* **Éléments d'un tableau** : le contrôle rend un tableau de résultats ou de rapports, un par
+  élément (`|$v: any| array::map($v, |$item: any| fn::validation_fields_execute($item, { … }, "reject"))`) ;
+  leurs erreurs passent sous l'élément (`items[0].content`). La forme du tableau (type,
+  longueur) se contrôle avant, par `fn::validation_array_length` par exemple.
+* **Clés inconnues** (`$unknown_keys`) : `reject`, `strip` ou `keep`, comme `unknown_keys` d'un schéma.
+* **Rapport** : `{ valid, value, errors, warnings, by_field }`, celui de
+  `fn::validation_object_execute` pour les mêmes contrôles ; seul `errors[].rule` diffère (une
+  fermeture n'a pas de nom de règle) : `required`, `nullable`, `unknown_keys`, `is_object`, ou
+  `checks[<rang>]`, rang du contrôle en erreur.
+* **Erreurs de programmation** : `CORE_INVALID_ARGUMENT` (aucun champ, définition invalide, clé
+  de définition inconnue, contrôle qui ne rend pas un résultat), `CORE_UNSUPPORTED_OPTION`
+  (`$unknown_keys` inconnu). Un contrôle qui n'est pas une fermeture est refusé par la base à
+  son appel.
+* **Limites** : pas de `when` ni de `one_of` (une fermeture écrit la condition), pas de catalogue,
+  d'optimiseur ni de traces. Lire une valeur la recopie, fermetures comprises : une définition
+  qui porte de grandes fermetures (objets imbriqués) coûte plus cher à chaque lecture, et pour
+  les éléments d'un grand lot le coût monte avec la taille du lot.
+
+Mesures (`scripts/bench/delivery/bench_delivery.py --only appels`, SurrealDB 3.3.4 en mémoire,
+machine de développement à 4 cœurs, médianes de 100 transactions, premier appel de la
+transaction puis deuxième) :
+
+| Cas | `fn::validation_object_execute` | `fn::validation_fields_execute` | Validateurs appelés directement |
+| :--- | :-: | :-: | :-: |
+| Un champ (`record`) | 8,7 puis 1,3 ms | 0,7 puis 0,3 ms | — |
+| Les 4 champs de `fn::mail_delivery_begin` | 10,2 puis 2,6 ms | 1,3 puis 0,8 ms | 0,3 puis 0,1 ms |
 
 ### Fonctionnement
 
@@ -281,7 +334,7 @@ Aucun module ne l'appelle encore. L'adoption se fera à la reprise de chaque mod
 
 `scripts/ci/test_lyxal_core.py` démarre un serveur SurrealDB 3.3.4 jetable et :
 
-1. charge les 485 fonctions et vérifie qu'elles sont toutes définies ;
+1. charge les 486 fonctions et vérifie qu'elles sont toutes définies ;
 2. vérifie que chaque fonction a son fichier `<nom>.test.surql`, et inversement ;
 3. exécute chaque fichier de tests.
 

@@ -363,6 +363,7 @@ functions = [
     "functions/validations/functions/execution_timeout.surql",
     "functions/validations/functions/exists.surql",
     "functions/validations/functions/extension.surql",
+    "functions/validations/functions/fields_execute.surql",
     "functions/validations/functions/filename.surql",
     "functions/validations/functions/filesize.surql",
     "functions/validations/functions/first_name.surql",
