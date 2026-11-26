@@ -25,7 +25,7 @@ gestion de fichiers de SurrealDB : [`MODELE_SOURCES.md`](MODELE_SOURCES.md).
 | `storage_object` | fiche d'un fichier : bucket, clé (`plans/2026/a.pdf`), auteur (`owner` : identité ; `owner_application` : application d'un compte de service), nom d'origine, taille et type annoncés, taille réelle, type réel, empreinte BLAKE3 et taille des octets stockés (`stored_size`) posés à la fin de l'écriture, état, support et emplacement des octets (`backend`, `path`) ; dans un bucket chiffré, clé du fichier scellée (`content_key`, illisible hors session système et worker) et clé qui la scelle (`content_key_id`, lisible) |
 | `storage_reclaim` | préfixe d'octets à retirer : bucket supprimé, ou parties d'un envoi reprenable qui n'est plus en cours |
 | `storage_upload_part` | partie reçue d'un envoi reprenable : envoi, position, taille, nom de ses octets sur le support ; une seule partie par position (index unique) |
-| `storage_usage` | compteurs de volume, une ligne par portée (`storage_usage:[<portée>]`) et une par bucket (`storage_usage:[<portée>, <clé du bucket>]`) : fichiers disponibles ou en quarantaine (`objects`, `bytes`) et tailles annoncées des écritures en attente (`reserved`) ; aucune écriture directe |
+| `storage_usage` | compteurs de volume répartis : 64 lignes au plus par portée (`storage_usage:["scope", <portée>, <numéro>]`) et 64 au plus par bucket (`storage_usage:["bucket", <clé du bucket>, <numéro>]`), numéro (`shard`) de 0 à 63 ; le volume est la **somme** des lignes : fichiers disponibles ou en quarantaine (`objects`, `bytes`) et tailles annoncées des écritures en attente (`reserved`) ; aucune écriture directe |
 
 Portée : champ `tenant` (organisation `lyxal_auth`, absent pour l'installation) et `scope_key`
 (`installation` ou clé de l'organisation). Les buckets, les fiches et les réglages d'une
@@ -113,14 +113,31 @@ en quarantaine et les tailles annoncées des écritures en attente.
 
 **Compteurs de volume** (`storage_usage`) : tenus par l'événement `storage_object_usage` dans la
 transaction de chaque écriture d'une fiche, quelle qu'en soit l'origine (ouverture, fin
-d'écriture, quarantaine, suppression, expiration, purge, écriture directe, suppression avec le
-bucket ou l'organisation). Le quota et les volumes (`fn::storage_object_usage`,
-`fn::storage_bucket_get`) les lisent, sans relire les fiches ; un volume qui augmente au-delà du
-quota fait échouer l'écriture, même directe (`STORAGE_QUOTA_EXCEEDED`). Toutes les écritures
-d'une portée passent par sa ligne : deux écritures simultanées peuvent se heurter, le service
-Rust rejoue alors l'ouverture et la fin d'écriture (six essais au plus, attente croissante).
-`fn::storage_usage_verify` (worker) recompte les fiches d'une portée et signale les écarts, sans
-les corriger. Les listes restent paginées après lecture des fiches correspondantes.
+d'écriture, quarantaine, suppression, expiration, purge, écriture directe). Le quota et les
+volumes (`fn::storage_object_usage`, `fn::storage_bucket_get`) les lisent, sans relire les
+fiches ; un volume qui augmente au-delà du quota fait échouer l'écriture, même directe
+(`STORAGE_QUOTA_EXCEEDED`). `fn::storage_usage_verify` (worker) recompte les fiches d'une portée
+et signale les écarts, sans les corriger. Les listes restent paginées après lecture des fiches
+correspondantes.
+
+* **Compteurs répartis.** Le volume d'une portée, comme celui d'un bucket, est réparti sur 64
+  lignes au plus. Chaque écriture d'une fiche tire un numéro au sort (0 à 63) et ajoute sa
+  variation à la ligne de ce numéro de la portée et à celle du bucket (un seul tirage pour les
+  deux), créées à la première écriture. Le volume est la somme des lignes, lue par plage
+  d'identifiants (`fn::storage_scope_usage`, 64 lignes au plus). Une ligne seule ne veut rien
+  dire et peut être négative : la réservation d'un fichier est ajoutée à une ligne à l'ouverture
+  et retirée d'une autre à la fin de l'écriture.
+* **Conflits.** Deux écritures simultanées d'une portée ne se heurtent plus que si elles tirent
+  le même numéro (une fois sur 64 pour deux écritures). Le service Rust rejoue alors l'ouverture,
+  la fin d'écriture ou la suppression (six essais au plus, attente croissante).
+* **Quota approché.** Le quota est contrôlé sur la somme vue par la transaction (son instantané).
+  Deux écritures simultanées qui tirent deux numéros différents ne se voient pas : elles peuvent
+  être acceptées toutes les deux et dépasser ensemble le quota, de la somme de leurs tailles au
+  plus. Le dépassement est borné par les écritures en cours au même instant ; l'écriture suivante
+  est refusée. Une écriture seule n'est jamais acceptée au-delà du quota.
+* **Suppression.** Les lignes d'un bucket partent avec lui, celles d'une portée avec son
+  organisation (`REFERENCE ON DELETE CASCADE`) ; les fiches supprimées avec l'organisation ne
+  recréent aucune ligne.
 
 **Bucket chiffré** (`encrypted`, fixé à la création) : chaque fichier est chiffré au repos par
 une clé propre (32 octets tirés par `OsRng`), au format de flux v1 de `lyxal_crypto` (en-tête de
@@ -212,11 +229,11 @@ l'installation.
 | `storage_usage_verify` | `tenant` | `{ valid, checked, mismatches: [{ bucket, counted, recorded }] }` : compteurs de la portée et de ses buckets comparés aux fiches recomptées ; rien n'est corrigé | worker |
 
 Fonctions internes : `fn::storage_can`, `fn::storage_settings_effective`,
-`fn::storage_scope_usage` (compteurs d'une portée ou d'un bucket), `fn::storage_usage_share`,
-`fn::storage_usage_apply` (compteurs mis à jour, quota contrôlé), `fn::storage_object_limits`,
-`fn::storage_object_is_author`, `fn::storage_object_update_refusal`, `fn::storage_upload_offset`,
-`fn::storage_upload_claimed`, `fn::storage_upload_allowed`, `fn::storage_upload_view`,
-`fn::storage_upload_part_refusal`.
+`fn::storage_scope_usage` (somme des lignes de compteurs d'une portée ou d'un bucket),
+`fn::storage_usage_share`, `fn::storage_usage_apply` (variation ajoutée à une ligne tirée au sort,
+quota contrôlé), `fn::storage_object_limits`, `fn::storage_object_is_author`,
+`fn::storage_object_update_refusal`, `fn::storage_upload_offset`, `fn::storage_upload_claimed`,
+`fn::storage_upload_allowed`, `fn::storage_upload_view`, `fn::storage_upload_part_refusal`.
 
 ## 4. Erreurs (`error/<thème>/`)
 
@@ -329,7 +346,7 @@ bucket `lyxal-mail` du courrier).
   fichier tronqué ou recopié d'une autre fiche détectés au bon segment ; refus sans clé maîtresse ;
   antivirus et type réel sur le clair ; rotation de la clé « fichiers », rescellement sans
   réécriture puis destruction de l'ancienne clé, retardée par une écriture en attente) ; écritures
-  simultanées dans une portée avec compteurs exacts. Un essai sur un vrai service ClamAV
+  simultanées dans une portée avec compteurs exacts (6, puis 1 000 à raison de 50 à la fois). Un essai sur un vrai service ClamAV
   n'est pas dans les contrôles automatiques : `ClamAvScanner` sur `127.0.0.1:3310` après
   `clamd` démarré, à lancer à la main.
 * Non couvert par un test automatique : le refus au-delà de 10 000 parties
@@ -343,6 +360,16 @@ bucket `lyxal-mail` du courrier).
 * `apps/lyxal-server` : démarrage avec et sans dossier de stockage (`startup.rs`) ; routes des
   fichiers de bout en bout, sur disque et sur S3, bucket chiffré avec et sans clé maîtresse
   (`storage_routes.rs`).
-* Non mesuré : la contention des compteurs de volume sous de nombreuses écritures simultanées
-  d'une même portée (mesure prévue au banc du courrier, lot 4c).
+* Compteurs de volume sous charge (`tests/it/encryption.rs`,
+  `thousand_simultaneous_writes_keep_the_counters_exact`) : 1 000 écritures, 50 à la fois, dans
+  une organisation, puis quota, suppression d'un bucket et de l'organisation. Sur la base
+  embarquée par défaut ; sur un serveur `surreal` 3.3.4 avec un pool de connexions quand
+  `LYXAL_SURREAL_WS_URL`, `LYXAL_SURREAL_USER`, `LYXAL_SURREAL_PASS` et
+  `LYXAL_SURREAL_CONNECTIONS` sont posés. Le 26 novembre 2026, sur serveur (pool de 8) : aucune
+  écriture refusée, compteurs égaux aux fiches, huit séries. Sur la base embarquée du binaire
+  d'essai non optimisé, une écriture sur 1 000 épuise ses six essais dans une série sur deux
+  environ (trois séries sur six relevées) ; le test admet 1 % de refus pour conflit et exige des
+  compteurs exacts pour les fichiers acceptés. Débit de la
+  remise du courrier dans une organisation : `crates/lyxal_mail/README.md`, « Mesures de la
+  remise ».
 * `scripts/ci/ci_local.sh` rejoue la CI complète.

@@ -259,18 +259,16 @@ DEFINE FUNCTION OVERWRITE fn::storage_usage_verify($params: object) {
         RETURN { objects: $total.objects + $share.objects, bytes: $total.bytes + $share.bytes, reserved: $total.reserved + $share.reserved };
     };
     LET $objects = (SELECT bucket, state, size, declared_size FROM storage_object WHERE scope_key = $scope);
-    LET $recorded = |$row: record| (SELECT objects, bytes, reserved FROM ONLY $row) ?? $zero;
-    LET $scope_counted = array::fold($objects, $zero, $add);
-    LET $scope_line = { bucket: NONE, counted: $scope_counted, recorded: $recorded(type::record("storage_usage", [$scope])) };
+    LET $scope_line = { bucket: NONE, counted: array::fold($objects, $zero, $add), recorded: fn::storage_scope_usage({ tenant: $p.tenant }) };
     LET $bucket_lines = array::map((SELECT VALUE id FROM storage_bucket WHERE scope_key = $scope ORDER BY id), |$bucket| {
         bucket: $bucket,
         counted: array::fold(array::filter($objects, |$o| $o.bucket = $bucket), $zero, $add),
-        recorded: $recorded(type::record("storage_usage", [$scope, record::id($bucket)]))
+        recorded: fn::storage_scope_usage({ tenant: $p.tenant, bucket: $bucket })
     });
     LET $lines = array::concat([$scope_line], $bucket_lines);
     LET $mismatches = array::filter($lines, |$line| $line.counted != $line.recorded);
     RETURN fn::result_ok({ valid: array::len($mismatches) = 0, checked: array::len($lines), mismatches: $mismatches });
-} COMMENT "Contrôle de cohérence des compteurs de volume d'une portée ({ tenant }) : fiches recomptées une à une, comparées à la ligne de la portée et à celle de chaque bucket : { valid, checked, mismatches: [{ bucket (NONE : portée), counted, recorded }] } ; rien n'est corrigé. Opération lourde, à la demande. Droit : worker";
+} COMMENT "Contrôle de cohérence des compteurs de volume d'une portée ({ tenant }) : fiches recomptées une à une, comparées à la somme des lignes de compteurs de la portée et à celle de chaque bucket : { valid, checked, mismatches: [{ bucket (NONE : portée), counted, recorded }] } ; rien n'est corrigé. Opération lourde, à la demande. Droit : worker";
 
 -- ----------------------------------------------------------------------------
 -- fn::storage_encrypted_bucket_exists

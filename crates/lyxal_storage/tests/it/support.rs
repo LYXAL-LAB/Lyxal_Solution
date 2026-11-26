@@ -9,10 +9,12 @@ use lyxal_storage::models::BucketCreateParams;
 use lyxal_storage::{
     BackendConfig, Backends, OpenedObject, PutRequest, StorageService, StorageStore,
 };
-use lyxal_surreal::ToSql;
+use lyxal_surreal::{RootCredentials, SecretString, SurrealConnectOptions, SurrealPool, ToSql};
 use std::convert::Infallible;
+use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
@@ -25,6 +27,13 @@ pub async fn installed_client() -> Surreal<Any> {
         .use_db("test")
         .await
         .expect("ns/db");
+    install(&client).await;
+    client
+}
+
+/// Installe le socle, `lyxal_event`, `lyxal_auth`, `lyxal_secrets` et `lyxal_storage` dans la
+/// base de `client`, comme le fait l'hôte.
+async fn install(client: &Surreal<Any>) {
     let crates = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .expect("dossier crates")
@@ -41,7 +50,7 @@ pub async fn installed_client() -> Surreal<Any> {
         .iter()
         .map(|(m, p)| (m, p as &dyn ResourceProvider))
         .collect();
-    lyxal_runtime::schema::install_batch(&client, &batch)
+    lyxal_runtime::schema::install_batch(client, &batch)
         .await
         .expect("noyau");
     for name in [
@@ -51,11 +60,47 @@ pub async fn installed_client() -> Surreal<Any> {
         "lyxal_storage",
     ] {
         let (manifest, provider) = load(name);
-        lyxal_runtime::schema::install_resources(&client, &manifest, &provider)
+        lyxal_runtime::schema::install_resources(client, &manifest, &provider)
             .await
             .unwrap_or_else(|e| panic!("{name} : {e}"));
     }
-    client
+}
+
+/// Pool de connexions de la session système sur un serveur SurrealDB 3.3.4 réel, si
+/// `LYXAL_SURREAL_WS_URL` (`ws://hôte:port`), `LYXAL_SURREAL_USER` et `LYXAL_SURREAL_PASS`
+/// (compte racine du serveur d'essai) sont posés ; une base neuve par appel, modules installés.
+/// `LYXAL_SURREAL_CONNECTIONS=<nombre>` connexions (une par défaut). Sinon `None`.
+async fn remote() -> Option<SurrealPool> {
+    let url = std::env::var("LYXAL_SURREAL_WS_URL").ok()?;
+    let username = std::env::var("LYXAL_SURREAL_USER").expect("LYXAL_SURREAL_USER");
+    let password = std::env::var("LYXAL_SURREAL_PASS").expect("LYXAL_SURREAL_PASS");
+    let connections = match std::env::var("LYXAL_SURREAL_CONNECTIONS") {
+        Ok(text) => text
+            .parse::<NonZeroUsize>()
+            .expect("LYXAL_SURREAL_CONNECTIONS : nombre de connexions, 1 au moins"),
+        Err(_) => NonZeroUsize::MIN,
+    };
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("horloge")
+        .as_nanos();
+    let pool = SurrealPool::connect(
+        &SurrealConnectOptions {
+            endpoint: url,
+            credentials: Some(RootCredentials::new(
+                username,
+                SecretString::new(password).expect("mot de passe"),
+            )),
+            namespace: "storage".to_string(),
+            database: format!("essai_{nanos}"),
+            connect_timeout: Duration::from_secs(15),
+        },
+        connections,
+    )
+    .await
+    .expect("connexions ws://");
+    install(pool.fixed()).await;
+    Some(pool)
 }
 
 /// Lecteur de test : ressource lue sous le dossier source d'un module.
@@ -142,7 +187,28 @@ pub fn s3_config(endpoint: &str, secret: &str) -> BackendConfig {
 }
 
 pub async fn bench(kind: Kind) -> Bench {
-    let client = installed_client().await;
+    bench_with(SurrealPool::from(installed_client().await), kind).await
+}
+
+/// Banc des écritures simultanées : sur le serveur SurrealDB désigné par `LYXAL_SURREAL_WS_URL`
+/// s'il est posé (pool de la session système, comme dans l'hôte), sinon sur la base embarquée.
+/// Rend aussi le nom du moteur.
+pub async fn load_bench(kind: Kind) -> (Bench, String) {
+    match remote().await {
+        Some(pool) => {
+            let engine = format!(
+                "serveur SurrealDB (ws://), pool de {} connexion(s)",
+                pool.size()
+            );
+            (bench_with(pool, kind).await, engine)
+        }
+        None => (bench(kind).await, "base embarquée (mem://)".to_string()),
+    }
+}
+
+/// Banc sur une base installée ; le store reçoit le pool de la session système.
+async fn bench_with(database: SurrealPool, kind: Kind) -> Bench {
+    let client = database.fixed().clone();
     let (config, root) = match kind {
         Kind::Memory => (BackendConfig::Memory, None),
         Kind::Disk => {
@@ -161,7 +227,7 @@ pub async fn bench(kind: Kind) -> Bench {
         }
     };
     let backends = Arc::new(Backends::new().with("default", config).expect("support"));
-    let store = StorageStore::new(client.clone());
+    let store = StorageStore::new(database);
     Bench {
         service: StorageService::new(store.clone(), backends.clone()),
         client,

@@ -10,14 +10,15 @@ use lyxal_crypto::{stream_ciphertext_len, EncryptionKey, KeyId, ResolvedKey};
 use lyxal_runtime::worker::CancellationToken;
 use lyxal_secrets::{FileKeys, MasterKeys, RotatorRegistry, SecretsMaintenance, SecretsStore};
 use lyxal_storage::models::{
-    BucketCreateParams, ObjectBeginParams, ObjectGetParams, ObjectRefParams, UsageVerifyParams,
+    BucketCreateParams, BucketRefParams, ObjectBeginParams, ObjectGetParams, ObjectRefParams,
+    ObjectUsageParams, SettingsSetParams, UsageVerifyParams,
 };
 use lyxal_storage::{ByteRange, PutRequest, StorageCleanup, StorageService};
 use lyxal_surreal::{SurrealValue, ToSql};
 use object_store::ObjectStoreExt;
 use std::sync::Arc;
 
-use crate::support::{bench, chunks, read_all, request, Bench, Kind, KINDS};
+use crate::support::{bench, chunks, load_bench, read_all, request, Bench, Kind, KINDS};
 
 /// Contenu de quatre segments (le dernier incomplet), sans motif répété.
 fn content(len: usize) -> Vec<u8> {
@@ -549,4 +550,195 @@ async fn simultaneous_writes_keep_the_counters_exact() {
         .expect("contrôle");
     assert!(report.valid, "{report:?}");
     assert_eq!(report.checked, 2);
+}
+
+/// Lignes de compteurs comptées par une requête de la session système.
+async fn usage_lines(bench: &Bench, filter: &str) -> usize {
+    let lines: Option<i64> = bench
+        .client
+        .query(format!(
+            "RETURN count(SELECT VALUE id FROM storage_usage WHERE {filter});"
+        ))
+        .await
+        .expect("requête")
+        .take(0)
+        .expect("nombre de lignes");
+    usize::try_from(lines.expect("nombre")).expect("nombre positif")
+}
+
+/// Compteurs répartis sous charge : 1 000 écritures, 50 à la fois, dans une organisation et un
+/// bucket, sans aucun ordre imposé par l'appelant. Les sommes des lignes sont égales aux fiches,
+/// le quota refuse au dépassement, un bucket puis l'organisation emportent leurs lignes. Sur le
+/// serveur désigné par `LYXAL_SURREAL_WS_URL` (pool de `LYXAL_SURREAL_CONNECTIONS` connexions)
+/// s'il est posé, sinon sur la base embarquée.
+///
+/// Une écriture peut encore être refusée : deux écritures qui tirent la même ligne parmi 64 se
+/// heurtent, et le service ne rejoue que six fois. Sur la base embarquée d'un binaire d'essai
+/// non optimisé (transactions dix fois plus longues que sur un serveur), environ une écriture
+/// sur 1 000 épuise ses essais à 50 écritures à la fois. Le test admet donc 1 % d'écritures
+/// refusées, pour conflit de transaction seulement, et exige que les compteurs soient exacts
+/// pour les fichiers acceptés : une écriture refusée ne laisse rien.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn thousand_simultaneous_writes_keep_the_counters_exact() {
+    const TOTAL: usize = 1_000;
+    const CLIENTS: usize = 50;
+    const ALPHA: &str = "auth_organization:alpha";
+    let (bench, engine) = load_bench(Kind::Memory).await;
+    bench
+        .run("CREATE auth_organization:alpha CONTENT { slug: 'alpha', name: 'Alpha BTP' };")
+        .await;
+    let bucket_of = |name: &'static str| {
+        let store = bench.store.clone();
+        async move {
+            store
+                .bucket_create(BucketCreateParams::named(Some(ALPHA.to_string()), name))
+                .await
+                .expect("bucket")
+                .id
+                .to_sql()
+        }
+    };
+    let bucket = bucket_of("volume").await;
+    let started = std::time::Instant::now();
+    let results: Vec<(usize, Result<_, _>)> = futures::stream::iter(0..TOTAL)
+        .map(|i| {
+            let service = bench.service.clone();
+            let bucket = bucket.clone();
+            async move {
+                let written = service
+                    .put(
+                        request(&bucket, &format!("a/{i}.txt")),
+                        chunks(&[&content(100 + i % 7)]),
+                    )
+                    .await;
+                (i, written)
+            }
+        })
+        .buffer_unordered(CLIENTS)
+        .collect()
+        .await;
+    let refused: Vec<String> = results
+        .iter()
+        .filter_map(|(_, result)| result.as_ref().err().map(ToString::to_string))
+        .collect();
+    println!(
+        "{TOTAL} écritures, {CLIENTS} à la fois, {engine} : {:.1} s, {} refusée(s) {refused:?}",
+        started.elapsed().as_secs_f64(),
+        refused.len()
+    );
+    assert!(
+        refused.len() * 100 <= TOTAL
+            && refused
+                .iter()
+                .all(|error| error.contains("Transaction conflict")),
+        "écritures refusées : {refused:?}"
+    );
+    let accepted: Vec<usize> = results
+        .iter()
+        .filter_map(|(i, result)| result.is_ok().then_some(*i))
+        .collect();
+    let objects = i64::try_from(accepted.len()).expect("nombre");
+    let bytes: i64 = accepted
+        .iter()
+        .map(|i| i64::try_from(100 + i % 7).expect("taille"))
+        .sum();
+    let usage_of = || async {
+        bench
+            .store
+            .object_usage(ObjectUsageParams {
+                tenant: Some(ALPHA.to_string()),
+            })
+            .await
+            .expect("volume")
+    };
+    let verify = || async {
+        bench
+            .store
+            .usage_verify(UsageVerifyParams {
+                tenant: Some(ALPHA.to_string()),
+            })
+            .await
+            .expect("contrôle")
+    };
+    let usage = usage_of().await;
+    assert_eq!(
+        (usage.objects, usage.bytes, usage.reserved_bytes),
+        (objects, bytes, 0)
+    );
+    let report = verify().await;
+    assert!(report.valid, "{report:?}");
+    assert_eq!(report.checked, 2);
+    // Répartition : plusieurs lignes, 64 au plus pour la portée et autant pour le bucket
+    let scope_lines = usage_lines(&bench, "scope_key = 'alpha' AND bucket IS NONE").await;
+    let bucket_lines = usage_lines(&bench, "scope_key = 'alpha' AND bucket IS NOT NONE").await;
+    assert!((32..=64).contains(&scope_lines), "{scope_lines} lignes");
+    assert_eq!(scope_lines, bucket_lines);
+
+    // Quota : 10 octets libres ; 11 octets refusés, 10 acceptés, puis plus rien
+    bench
+        .store
+        .settings_set(SettingsSetParams {
+            tenant: Some(ALPHA.to_string()),
+            quota_bytes: Some(bytes + 10),
+            ..SettingsSetParams::default()
+        })
+        .await
+        .expect("quota");
+    let put = |key: &'static str, len: usize| {
+        let service = bench.service.clone();
+        let bucket = bucket.clone();
+        async move {
+            service
+                .put(request(&bucket, key), chunks(&[&content(len)]))
+                .await
+        }
+    };
+    let over = put("q/onze.txt", 11).await.expect_err("au-delà du quota");
+    assert_eq!(over.code(), "STORAGE_QUOTA_EXCEEDED");
+    put("q/dix.txt", 10).await.expect("au quota");
+    let full = put("q/un.txt", 1).await.expect_err("quota atteint");
+    assert_eq!(full.code(), "STORAGE_QUOTA_EXCEEDED");
+    // Les écritures refusées n'ont rien laissé dans les compteurs
+    let usage = usage_of().await;
+    assert_eq!(
+        (usage.objects, usage.bytes, usage.reserved_bytes),
+        (objects + 1, bytes + 10, 0)
+    );
+    assert!(verify().await.valid);
+
+    // Un bucket vidé puis supprimé emporte ses lignes ; celles de la portée restent
+    let other = bucket_of("passage").await;
+    bench
+        .store
+        .settings_set(SettingsSetParams {
+            tenant: Some(ALPHA.to_string()),
+            clear: vec!["quota_bytes".to_string()],
+            ..SettingsSetParams::default()
+        })
+        .await
+        .expect("quota retiré");
+    bench
+        .service
+        .put(request(&other, "p/1.txt"), chunks(&[&content(40)]))
+        .await
+        .expect("écriture");
+    let key = other.trim_start_matches("storage_bucket:");
+    let of_other = format!("bucket = storage_bucket:{key}");
+    assert!(usage_lines(&bench, &of_other).await >= 1);
+    bench
+        .run(&format!("DELETE storage_object WHERE {of_other};"))
+        .await;
+    bench
+        .store
+        .bucket_delete(BucketRefParams { bucket: other })
+        .await
+        .expect("bucket supprimé");
+    assert_eq!(usage_lines(&bench, &of_other).await, 0);
+    let usage = usage_of().await;
+    assert_eq!((usage.objects, usage.bytes), (objects + 1, bytes + 10));
+    assert!(verify().await.valid);
+
+    // L'organisation supprimée emporte ses 64 lignes et celles de ses buckets
+    bench.run("DELETE auth_organization:alpha;").await;
+    assert_eq!(usage_lines(&bench, "scope_key = 'alpha'").await, 0);
 }

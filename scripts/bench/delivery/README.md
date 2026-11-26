@@ -25,7 +25,9 @@ Binaire : `${LYXAL_SURREAL_BIN:-surreal}` (version de référence du workspace :
 `scripts/ci/install_surreal.sh`). Le banc démarre un serveur jetable en mémoire, y installe
 `lyxal_mail` et ses dépendances depuis leurs manifestes (comme
 `scripts/ci/test_lyxal_modules.py`), mesure, puis arrête le serveur. Options : `--deliveries`,
-`--repeat`, `--warmup`, `--clients` (paliers), `--seconds` (durée d'un palier), `--timeout`.
+`--repeat`, `--warmup`, `--clients` (paliers), `--seconds` (durée d'un palier), `--quota` (quota
+de volume posé sur chaque organisation de la mesure `clients`, en octets : le quota est alors lu à
+chaque écriture de fichier), `--timeout`.
 
 ## Ce qui est mesuré
 
@@ -36,10 +38,11 @@ instruction d'une requête HTTP `/sql` est sa propre transaction, comme un appel
 | :--- | :--- |
 | `remise` | Une remise de 10 Kio, poste par poste, chaque appel dans sa transaction : `fn::mail_delivery_begin`, `fn::storage_object_begin`, `fn::secrets_tenant_key_ring` (lu par `FileKeys::seal`), `fn::storage_object_commit`, `fn::mail_delivery_commit` (un message). Moyenne et médiane, et total des moyennes (« total base ») |
 | `appels` | Premier et deuxième appel d'une même expression dans une transaction : le premier paie la lecture et l'analyse des définitions de fonctions (refaites à chaque transaction en SurrealDB 3.3), le deuxième non. Validateur seul, moteur par nom de règle, exécuteur à fermetures, lectures publiques, publication d'un événement. Médianes |
-| `clients` | Débit pendant 12 s avec 1, 2, 4, 8 et 16 clients, une connexion HTTP chacun (jeton de la session système) : un client par organisation, puis tous dans la même organisation (un compte chacun). Remises refusées comptées par cause (conflits d'écriture des compteurs `storage_usage`) |
+| `clients` | Débit pendant 12 s avec 1, 2, 4, 8 et 16 clients, une connexion HTTP chacun (jeton de la session système) : un client par organisation, puis tous dans la même organisation (un compte chacun). Remises refusées comptées par cause : le banc ne rejoue pas un conflit de transaction, alors que `lyxal_storage` (lignes de compteurs `storage_usage` tirées au sort parmi 64) et le service de remise les rejouent |
 
 En fin de mesure `clients`, le banc contrôle la cohérence : compteurs des comptes égaux aux
-messages inscrits, UID uniques dans chaque dossier.
+messages inscrits, UID uniques dans chaque dossier, compteurs de volume de chaque organisation
+égaux aux fiches (`fn::storage_usage_verify`).
 
 ## Limites
 

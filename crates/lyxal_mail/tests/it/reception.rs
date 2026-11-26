@@ -3,7 +3,9 @@
 //! Remise d'un message reçu par SMTP, par les services Rust : résolution du destinataire,
 //! remise chiffrée et inscrite, nouvel essai sans doublon, alias (un événement par compte),
 //! dossier « Junk », élément refusé sans fichier laissé, remises concurrentes dans un compte
-//! (UID uniques, compteurs exacts, écriture groupée), lot dont un élément sort du schéma,
+//! (UID uniques, compteurs exacts, écriture groupée), remises concurrentes dans plusieurs comptes
+//! d'une organisation (aucune refusée, compteurs de volume exacts), lot dont un élément sort du
+//! schéma,
 //! maintenance des fiches d'idempotence, liste de blocage, attrape-tout et postmaster.
 
 use bytes::Bytes;
@@ -18,6 +20,7 @@ use lyxal_mail::{
     delivery_key, AccountQueue, DeliveryOutcome, MailError, ReceivedDelivery, MAX_BATCH,
 };
 use lyxal_runtime::worker::CancellationToken;
+use lyxal_storage::models::{ObjectUsageParams, UsageVerifyParams};
 use lyxal_storage::PutRequest;
 use lyxal_surreal::{ToSql, Value};
 use std::convert::Infallible;
@@ -415,6 +418,77 @@ async fn concurrent_deliveries_into_one_account_are_ordered_and_grouped() {
     assert_eq!(stats.split_batches, 0);
     assert!(stats.batches < stats.items, "{stats:?}");
     assert!(stats.largest_batch > 1 && stats.largest_batch <= MAX_BATCH as u64);
+}
+
+/// Les fichiers d'une organisation s'écrivent sans ordre imposé par le nœud : les compteurs de
+/// volume de `lyxal_storage` sont répartis sur 64 lignes, et un conflit restant est rejoué par
+/// `lyxal_storage`. Vingt clients remettent en même temps dans huit comptes d'une organisation :
+/// aucune remise refusée, compteurs des comptes et du stockage égaux aux fiches.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn concurrent_deliveries_into_one_organization_are_all_accepted() {
+    const CLIENTS: usize = 20;
+    const EACH: usize = 10;
+    const NAMES: [&str; 8] = ["jean", "marie", "luc", "anne", "paul", "lea", "hugo", "zoe"];
+    let bench = bench().await;
+    let domain = bench.domain("alpha").await;
+    let mut accounts = Vec::new();
+    for name in NAMES {
+        let person = bench.person(name, "alpha", &domain).await;
+        accounts.push((person.account, format!("{name}@alpha.test")));
+    }
+    let accounts = Arc::new(accounts);
+    let ingest = Arc::new(bench.ingest.clone());
+    let mut clients = tokio::task::JoinSet::new();
+    for client in 0..CLIENTS {
+        let ingest = ingest.clone();
+        let accounts = accounts.clone();
+        clients.spawn(async move {
+            for index in 0..EACH {
+                let (account, address) = &accounts[(client + index) % accounts.len()];
+                let message = raw("Organisation", &format!("org-{client}-{index}"));
+                let key = delivery_key(address, "paul@ailleurs.test", &message);
+                match ingest
+                    .receive(received(account, "alpha", message, key))
+                    .await
+                {
+                    Ok(DeliveryOutcome::Delivered { .. }) => {}
+                    other => panic!("remise refusée : {other:?}"),
+                }
+            }
+        });
+    }
+    while let Some(done) = clients.join_next().await {
+        done.expect("client");
+    }
+    let total = (CLIENTS * EACH) as i64;
+    assert_eq!(
+        count(
+            &bench,
+            "(SELECT VALUE id FROM mail_message WHERE origin = 'delivery')"
+        )
+        .await,
+        total
+    );
+    for (account, _) in accounts.iter() {
+        assert!(coherent(&bench, account).await, "{account}");
+    }
+    // Compteurs de volume : un fichier disponible par message, sommes égales aux fiches
+    let usage = bench
+        .storage_store
+        .object_usage(ObjectUsageParams {
+            tenant: Some("auth_organization:alpha".to_string()),
+        })
+        .await
+        .expect("volume");
+    assert_eq!((usage.objects, usage.reserved_bytes), (total, 0));
+    let report = bench
+        .storage_store
+        .usage_verify(UsageVerifyParams {
+            tenant: Some("auth_organization:alpha".to_string()),
+        })
+        .await
+        .expect("contrôle");
+    assert!(report.valid, "{report:?}");
 }
 
 /// Élément de lot construit à la main sur un contenu réservé et un fichier écrit.
