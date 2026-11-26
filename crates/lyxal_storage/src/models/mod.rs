@@ -19,7 +19,7 @@ pub use keys::{
     RekeyListParams, Rekeyed, UsageCounts, UsageMismatch, UsageReport, UsageVerifyParams,
 };
 pub use object::{
-    BegunObject, ObjectBeginParams, ObjectCommitParams, ObjectGetParams, ObjectList,
+    BegunObject, BucketSummary, ObjectBeginParams, ObjectCommitParams, ObjectGetParams, ObjectList,
     ObjectListParams, ObjectRefParams, ObjectState, ObjectUsageParams, ScopeUsage, StoredObject,
 };
 pub use settings::{

@@ -48,6 +48,9 @@
     LET $oi = fn::storage_object_begin({ bucket: <string> $i, key: "i.pdf", filename: "i.pdf", declared_size: 5 }).data.id;
     fn::storage_object_commit({ object: <string> $oa, size: 5, content_type: "application/pdf", blake3: "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262" });
     fn::storage_object_commit({ object: <string> $oi, size: 5, content_type: "application/pdf", blake3: "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262" });
+    -- Table de passage : identifiants des deux fichiers, pour une identité qui ne les voit pas
+    DEFINE TABLE OVERWRITE passe SCHEMALESS PERMISSIONS FULL;
+    CREATE passe:ids CONTENT { alpha: <string> $oa, installation: <string> $oi };
 };
 
 -- test: permissions et rôles créés par le seed
@@ -130,6 +133,41 @@ RETURN (SELECT VALUE key FROM storage_object) == ["i.pdf"]
     AND fn::storage_bucket_list({}).data.items.name == ["modeles"]
     AND fn::storage_object_usage({}).data.bytes == 5
     AND fn::storage_bucket_list({ tenant: "auth_organization:alpha" }).error.code == "STORAGE_PERMISSION_DENIED";
+
+-- test: résumé du bucket sur demande (with_bucket) : absent par défaut, rendu au lecteur du fichier, par identifiant ou par adresse, fn::storage_object_open compris
+-- en tant que: lecteur
+{
+    LET $b = (SELECT VALUE id FROM ONLY storage_bucket WHERE name = "plans" LIMIT 1);
+    LET $o = (SELECT VALUE alpha FROM ONLY passe:ids);
+    LET $summary = { name: "plans", tenant: auth_organization:alpha, encrypted: false };
+    RETURN fn::storage_object_get({ object: $o }).data.bucket_summary IS NONE
+        AND fn::storage_object_get({ object: $o, with_bucket: false }).data.bucket_summary IS NONE
+        AND fn::storage_object_get({ object: $o, with_bucket: true }).data.{ key, bucket, bucket_summary } == { key: "a.pdf", bucket: $b, bucket_summary: $summary }
+        AND fn::storage_object_get({ bucket: <string> $b, key: "a.pdf", with_bucket: true }).data.bucket_summary == $summary
+        AND fn::storage_object_open({ object: $o, with_bucket: true }).data.bucket_summary == $summary
+        AND fn::storage_object_get({ object: $o, with_bucket: "oui" }).error.{ code, fields: details.fields } == { code: "STORAGE_INVALID_PARAMETERS", fields: { with_bucket: ["CORE_VALIDATION_TYPE"] } };
+};
+
+-- test: résumé du bucket : le fichier d'une autre organisation ou de l'installation reste introuvable, rien du bucket n'est rendu
+-- en tant que: autre
+RETURN ["alpha", "installation"].all(|$name| fn::storage_object_get({ object: (SELECT * FROM ONLY passe:ids)[$name], with_bucket: true }).{ data, code: error.code } == { data: NONE, code: "STORAGE_OBJECT_NOT_FOUND" });
+
+-- test: résumé du bucket : un membre sans permission n'obtient rien
+-- en tant que: membre
+RETURN fn::storage_object_get({ object: (SELECT VALUE alpha FROM ONLY passe:ids), with_bucket: true }).error.code == "STORAGE_OBJECT_NOT_FOUND";
+
+-- test: résumé du bucket d'un fichier de l'installation : sans organisation ; le fichier d'alpha reste introuvable
+-- en tant que: plateforme
+{
+    LET $summary = fn::storage_object_get({ object: (SELECT VALUE installation FROM ONLY passe:ids), with_bucket: true }).data.bucket_summary;
+    RETURN $summary.{ name, encrypted } == { name: "modeles", encrypted: false } AND $summary.tenant IS NONE
+        AND fn::storage_object_get({ object: (SELECT VALUE alpha FROM ONLY passe:ids), with_bucket: true }).error.code == "STORAGE_OBJECT_NOT_FOUND";
+};
+
+-- test: résumé du bucket : le worker le lit dans toute portée
+-- en tant que: worker
+RETURN fn::storage_object_get({ object: (SELECT VALUE alpha FROM ONLY passe:ids), with_bucket: true }).data.bucket_summary == { name: "plans", tenant: auth_organization:alpha, encrypted: false }
+    AND fn::storage_object_get({ object: (SELECT VALUE installation FROM ONLY passe:ids), with_bucket: true }).data.bucket_summary.name == "modeles";
 
 -- test: écritures directes filtrées par les permissions des tables
 -- en tant que: lecteur

@@ -11,7 +11,9 @@
 -- Le service de remise ordonne les remises d'un même compte dans le nœud (décision S11) : le
 -- compteur de modifications reste par compte (décision M6), sans conflit entre remises d'un nœud.
 -- Contrôle des paramètres (décision S12) : lyxal_core (fn::validation_fields_execute, contrôles par
--- fermetures : ces fonctions sont appelées à chaque remise) valide les champs scalaires,
+-- fermetures : ces fonctions sont appelées à chaque remise ; pour les éléments d'un lot de
+-- fn::mail_delivery_commit, primitives appelées directement et fn::validation_checks_report,
+-- décision P4) valide les champs scalaires,
 -- la forme des listes et la taille sérialisée de l'enveloppe et de la structure ; leur forme
 -- détaillée est garantie par le schéma de mail_message. fn::mail_message_create, appelable par un
 -- titulaire, garde la validation complète.
@@ -115,29 +117,14 @@ DEFINE FUNCTION OVERWRITE fn::mail_delivery_begin($params: object) {
 -- ----------------------------------------------------------------------------
 
 DEFINE FUNCTION OVERWRITE fn::mail_delivery_commit($params: object) {
-    LET $text = |$max: int| { checks: [|$v: any| fn::validation_optional_string($v, NONE, $max)] };
-    LET $ids = |$max: int| { checks: [|$v: any| fn::validation_array_of_strings($v, true, NONE, 2048), |$v: any| fn::validation_array_length($v, NONE, $max)], default: [] };
-    LET $item = |$v: any| fn::validation_fields_execute($v, {
-        content: { checks: [|$w: any| fn::validation_record($w, "mail_content")], required: true },
-        object: { checks: [|$w: any| fn::validation_record($w, "storage_object")], required: true },
-        role: { checks: [|$w: any| fn::validation_enum($w, ["inbox", "junk"], true)], default: "inbox" },
-        received_at: { checks: [|$w: any| fn::validation_datetime($w, d"1970-01-01T00:00:00Z", NONE)], required: true },
-        delivery_key: { checks: [|$w: any| fn::validation_hexadecimal($w, 64, 64, false)], required: true },
-        message_id: $text(2048),
-        in_reply_to: $ids(100),
-        references: $ids(1000),
-        base_subject: $text(16384),
-        is_report: { checks: [|$w: any| fn::validation_boolean($w)], default: false },
-        envelope: { checks: [|$w: any| fn::validation_object($w), |$w: any| fn::validation_max_serialized_length($w, 262144)], required: true },
-        structure: { checks: [|$w: any| fn::validation_object($w), |$w: any| fn::validation_max_serialized_length($w, 1048576)], required: true },
-        has_attachment: { checks: [|$w: any| fn::validation_boolean($w)], default: false },
-        reception: fn::mail_reception_rule()
-    }, "reject");
-    LET $report = fn::validation_fields_execute($params, {
-        account: { checks: [|$v: any| fn::validation_record($v, "mail_account")], required: true },
-        items: { checks: [|$v: any| fn::validation_array_length($v, 1, 32), |$v: any| array::map($v, $item)], required: true },
-        language: { checks: [|$v: any| fn::validation_language_code($v, false, NONE)], default: "fr" }
-    }, "reject");
+    -- Primitives du Core appelées directement, rapport par fn::validation_checks_report (décision P4) :
+    -- sans fermeture par contrôle, le coût d'un élément ne monte ni avec le lot ni avec son enveloppe
+    LET $sized = fn::validation_array_length($params.items, 1, 32);
+    LET $report = fn::validation_checks_report($params, {
+        account: fn::validation_record($params.account, "mail_account"),
+        items: IF $sized.valid { array::map($sized.value, |$item: any| fn::mail_delivery_item_check($item)) } ELSE { $sized },
+        language: fn::validation_language_code(IF $params.language IS NONE { "fr" } ELSE { $params.language }, false, NONE)
+    });
     IF !$report.valid {
         LET $language = IF type::is_string($params.language) { $params.language } ELSE { NONE };
         RETURN IF ($report.by_field.items ?? []) CONTAINS "CORE_VALIDATION_TOO_LONG" {
@@ -181,25 +168,47 @@ DEFINE FUNCTION OVERWRITE fn::mail_delivery_purge($params: object) {
 } COMMENT "Maintenance ({ limit : 1 000 }) : fiches d'idempotence des remises échues (7 jours) retirées ; { removed }. Droit : session système, compte de service";
 
 -- ----------------------------------------------------------------------------
--- Remise d'un élément, clé d'idempotence, règle d'entrée (internes)
+-- Remise d'un élément, clé d'idempotence, contrôle d'un élément (internes)
 -- ----------------------------------------------------------------------------
 
 DEFINE FUNCTION OVERWRITE fn::mail_delivery_key($account: record<mail_account>, $delivery_key: string) -> record<mail_delivery> {
     RETURN type::record("mail_delivery", string::concat(<string> record::id($account), "_", $delivery_key));
 } COMMENT "Interne : identifiant de la fiche d'idempotence d'une remise (mail_delivery:⟨<clé du compte>_<empreinte>⟩)";
 
-DEFINE FUNCTION OVERWRITE fn::mail_reception_rule() -> object {
-    LET $word = |$allowed: array| { checks: [|$v: any| fn::validation_enum($v, $allowed, true)], required: true };
-    RETURN { checks: [|$v: any| fn::validation_fields_execute($v, {
-        spf: $word(["none", "neutral", "pass", "fail", "softfail", "temperror", "permerror"]),
-        dkim: $word(["none", "pass", "fail", "neutral", "policy", "temperror", "permerror"]),
-        dmarc: $word(["none", "pass", "fail", "temperror", "permerror"]),
-        iprev: $word(["pass", "fail", "temperror", "permerror"]),
-        antivirus: $word(["clean", "not_scanned"]),
-        spam: $word(["none"]),
-        tls: { checks: [|$w: any| fn::validation_boolean($w)], required: true }
-    }, "reject")], required: true };
-} COMMENT "Interne : règle d'entrée des résultats de la réception d'un message ({ spf, dkim, dmarc, iprev : mots de résultat de la RFC 8601 ; antivirus : clean ou not_scanned ; spam : none (lot 11) ; tls }), tous exigés, pour fn::validation_fields_execute";
+DEFINE FUNCTION OVERWRITE fn::mail_delivery_item_check($item: any) -> object {
+    -- Champ facultatif à sa valeur par défaut s'il est absent (NULL reste refusé) ; contrôles
+    -- enchaînés : le second ne porte que sur la valeur admise par le premier
+    LET $in_reply_to = fn::validation_array_of_strings(IF $item.in_reply_to IS NONE { [] } ELSE { $item.in_reply_to }, true, NONE, 2048);
+    LET $references = fn::validation_array_of_strings(IF $item.references IS NONE { [] } ELSE { $item.references }, true, NONE, 2048);
+    LET $envelope = fn::validation_object($item.envelope);
+    LET $structure = fn::validation_object($item.structure);
+    LET $reception = $item.reception;
+    RETURN fn::validation_checks_report($item, {
+        content: fn::validation_record($item.content, "mail_content"),
+        object: fn::validation_record($item.object, "storage_object"),
+        role: fn::validation_enum(IF $item.role IS NONE { "inbox" } ELSE { $item.role }, ["inbox", "junk"], true),
+        received_at: fn::validation_datetime($item.received_at, d"1970-01-01T00:00:00Z", NONE),
+        delivery_key: fn::validation_hexadecimal($item.delivery_key, 64, 64, false),
+        message_id: fn::validation_optional_string($item.message_id, NONE, 2048),
+        in_reply_to: IF $in_reply_to.valid { fn::validation_array_length($in_reply_to.value, NONE, 100) } ELSE { $in_reply_to },
+        references: IF $references.valid { fn::validation_array_length($references.value, NONE, 1000) } ELSE { $references },
+        base_subject: fn::validation_optional_string($item.base_subject, NONE, 16384),
+        is_report: fn::validation_boolean(IF $item.is_report IS NONE { false } ELSE { $item.is_report }),
+        envelope: IF $envelope.valid { fn::validation_max_serialized_length($envelope.value, 262144) } ELSE { $envelope },
+        structure: IF $structure.valid { fn::validation_max_serialized_length($structure.value, 1048576) } ELSE { $structure },
+        has_attachment: fn::validation_boolean(IF $item.has_attachment IS NONE { false } ELSE { $item.has_attachment }),
+        -- Résultats de la réception : mots de la RFC 8601, tous exigés
+        reception: fn::validation_checks_report($reception, {
+            spf: fn::validation_enum($reception.spf, ["none", "neutral", "pass", "fail", "softfail", "temperror", "permerror"], true),
+            dkim: fn::validation_enum($reception.dkim, ["none", "pass", "fail", "neutral", "policy", "temperror", "permerror"], true),
+            dmarc: fn::validation_enum($reception.dmarc, ["none", "pass", "fail", "temperror", "permerror"], true),
+            iprev: fn::validation_enum($reception.iprev, ["pass", "fail", "temperror", "permerror"], true),
+            antivirus: fn::validation_enum($reception.antivirus, ["clean", "not_scanned"], true),
+            spam: fn::validation_enum($reception.spam, ["none"], true),
+            tls: fn::validation_boolean($reception.tls)
+        })
+    });
+} COMMENT "Interne : contrôle d'un élément de fn::mail_delivery_commit par appels directs des primitives de lyxal_core et fn::validation_checks_report (décision P4) : content, object, received_at, delivery_key, envelope, structure (objets, 256 Kio et 1 Mio sérialisés au plus) et reception ({ spf, dkim, dmarc, iprev : mots de la RFC 8601 ; antivirus : clean ou not_scanned ; spam : none (lot 11) ; tls }, tous exigés) exigés ; role (inbox par défaut, ou junk), message_id (2 048 caractères), in_reply_to (100) et references (1 000 identifiants de 2 048 caractères, [] par défaut), base_subject (16 384), is_report et has_attachment (false par défaut) ; clés inconnues refusées. Rapport { valid, value, errors, warnings, by_field } de lyxal_core";
 
 DEFINE FUNCTION OVERWRITE fn::mail_delivery_item($account: record<mail_account>, $item: object, $settings: object, $language: string) -> object {
     LET $fail = |$code, $details| { error: fn::error_result($code, $language, $details).error };
@@ -216,12 +225,11 @@ DEFINE FUNCTION OVERWRITE fn::mail_delivery_item($account: record<mail_account>,
     LET $content = (SELECT id, tenant, account, key, size, state, protection, expires_at FROM ONLY $item.content);
     IF $content == NONE OR $content.account != $account { RETURN $fail("MAIL_CONTENT_NOT_FOUND", { content: <string> $item.content }); };
     IF $content.state != "pending" OR $content.expires_at <= time::now() { RETURN $fail("MAIL_CONTENT_STATE_INVALID", { state: $content.state, expected: "pending" }); };
-    LET $object = fn::storage_object_get({ object: <string> $item.object });
+    LET $object = fn::storage_object_get({ object: <string> $item.object, with_bucket: true });
     IF !$object.ok { RETURN $fail("MAIL_CONTENT_UNAVAILABLE", { storage: $object.error.code }); };
-    LET $bucket = fn::storage_bucket_get({ bucket: <string> $object.data.bucket });
-    IF !$bucket.ok { RETURN $fail("MAIL_CONTENT_UNAVAILABLE", { storage: $bucket.error.code }); };
+    LET $bucket = $object.data.bucket_summary;
     IF $object.data.state != "available" OR $object.data.key != $content.key OR $object.data.size != $content.size
-        OR $bucket.data.name != "lyxal-mail" OR $bucket.data.tenant != $content.tenant OR !$bucket.data.encrypted {
+        OR $bucket.name != "lyxal-mail" OR $bucket.tenant != $content.tenant OR !$bucket.encrypted {
         RETURN $fail("MAIL_CONTENT_STATE_INVALID", { object: <string> $item.object });
     };
     -- Compte et dossier relus : l'élément précédent du lot les a fait avancer

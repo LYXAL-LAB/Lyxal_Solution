@@ -531,7 +531,7 @@ Avant toute implémentation, Antigravity doit vérifier les points suivants.
 * [ ] `security` a été vérifié.
 * [ ] `utils` a été vérifié.
 * [ ] Aucune primitive Core n'est dupliquée localement.
-* [ ] Les entrées sont validées, nettoyées et contrôlées par `lyxal_core` (primitives, ou moteur `fn::*_object_execute` / `fn::*_pipeline_execute` / `fn::validation_fields_execute`) ; aucun validateur générique, pipeline ou schéma réécrit localement ; aucune donnée invalide signalée par `THROW` (`AGENTS.md` §5.7.8).
+* [ ] Les entrées sont validées, nettoyées et contrôlées par `lyxal_core` (primitives, ou moteur `fn::*_object_execute` / `fn::*_pipeline_execute` / `fn::validation_fields_execute` ; `fn::validation_checks_report` pour les seules fonctions du worker appelées par lots, sur décision du CTO) ; aucun validateur générique, pipeline ou schéma réécrit localement ; aucune donnée invalide signalée par `THROW` (`AGENTS.md` §5.7.8).
 
 ## SurrealQL
 

@@ -1,7 +1,7 @@
 //! Appels typés du store : réglages, buckets, listes, volume.
 
 use lyxal_storage::models::{
-    BucketCreateParams, BucketListParams, BucketRefParams, BucketUpdateParams,
+    BucketCreateParams, BucketListParams, BucketRefParams, BucketSummary, BucketUpdateParams,
     EncryptedBucketExistsParams, ObjectGetParams, ObjectListParams, ObjectState, ObjectUsageParams,
     ReclaimDoneParams, SettingsGetParams, SettingsSetParams,
 };
@@ -95,6 +95,19 @@ async fn settings_buckets_and_usage_go_through_typed_calls() {
         .await
         .expect("fiche");
     assert_eq!(read.path, stored.path);
+    assert_eq!(read.bucket_summary, None);
+    let located = store
+        .object_get(ObjectGetParams::by_id(stored.id.to_sql()).with_bucket())
+        .await
+        .expect("fiche et résumé du bucket");
+    assert_eq!(
+        located.bucket_summary,
+        Some(BucketSummary {
+            name: "plans".to_string(),
+            tenant: None,
+            encrypted: false,
+        })
+    );
     let usage = store
         .object_usage(ObjectUsageParams::default())
         .await

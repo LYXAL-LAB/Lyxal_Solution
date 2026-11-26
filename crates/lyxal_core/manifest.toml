@@ -328,6 +328,7 @@ functions = [
     "functions/validations/functions/bytes.surql",
     "functions/validations/functions/card_pan.surql",
     "functions/validations/functions/certificate_pem.surql",
+    "functions/validations/functions/checks_report.surql",
     "functions/validations/functions/checksum.surql",
     "functions/validations/functions/cidr.surql",
     "functions/validations/functions/company_name.surql",
