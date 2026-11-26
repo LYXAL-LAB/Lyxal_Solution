@@ -205,8 +205,8 @@ l'installation.
 | `storage_bucket_delete` | **bucket** | `{ deleted }` ; refusé s'il porte une fiche | gestion |
 | `storage_object_begin` | **bucket**, **key**, **filename**, `declared_type`, `declared_size`, `resumable` (envoi reprenable : `declared_size` obligatoire ; refusé dans un bucket chiffré) | fiche `pending`, `max_size` (taille maximale acceptée) et `encrypted` | écriture |
 | `storage_object_commit` | **object**, **size**, **content_type**, **blake3** (des octets stockés), `content_key` (bucket chiffré : clé du fichier scellée, obligatoire ; refusée ailleurs), `claim` (envoi reprenable : jeton de la réservation) | fiche `available` | worker, ou l'appelant qui a ouvert l'écriture (son identité, ou son application pour un compte de service) |
-| `storage_object_get` | **object**, ou **bucket** et **key** | fiche (par adresse : fichier non supprimé) | lecture |
-| `storage_object_open` | **object**, ou **bucket** et **key** | fiche d'un fichier à servir ; refus s'il n'est pas `available` | lecture |
+| `storage_object_get` | **object**, ou **bucket** et **key** ; `with_bucket` (`false`) | fiche (par adresse : fichier non supprimé) ; avec `with_bucket: true`, `bucket_summary` (`{ name, tenant, encrypted }` du bucket du fichier, pour qui contrôle où le fichier est rangé sans appeler `storage_bucket_get`) | lecture |
+| `storage_object_open` | **object**, ou **bucket** et **key** ; `with_bucket` | fiche d'un fichier à servir ; refus s'il n'est pas `available` | lecture |
 | `storage_object_list` | **bucket**, `prefix`, `state` (`available`), `limit`, `start` | `{ items, total }`, triés par clé puis par identifiant (ordre total, y compris entre fichiers supprimés de même clé) | lecture |
 | `storage_object_delete` | **object** | fiche `deleted` | écriture |
 | `storage_object_usage` | `tenant` | `{ objects, bytes, reserved_bytes, quota_bytes }` (compteurs) | lecture |

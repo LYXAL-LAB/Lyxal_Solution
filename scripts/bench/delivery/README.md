@@ -11,7 +11,7 @@ changement du chemin de remise, et à chaque changement de version de SurrealDB.
 ## Lancement
 
 ```bash
-# Les trois mesures sur la copie de travail (environ 3 minutes)
+# Les quatre mesures sur la copie de travail (environ 5 minutes)
 python3 -I scripts/bench/delivery/bench_delivery.py --out /tmp/apres.json
 
 # Les mêmes sur une autre révision (mesure « avant »)
@@ -19,13 +19,15 @@ python3 -I scripts/bench/delivery/bench_delivery.py --ref <révision> --out /tmp
 
 # Une partie seulement
 python3 -I scripts/bench/delivery/bench_delivery.py --only remise,appels --deliveries 300
+python3 -I scripts/bench/delivery/bench_delivery.py --only lots --lots 8x3,32x3,8x150
 ```
 
 Binaire : `${LYXAL_SURREAL_BIN:-surreal}` (version de référence du workspace : 3.3.4,
 `scripts/ci/install_surreal.sh`). Le banc démarre un serveur jetable en mémoire, y installe
 `lyxal_mail` et ses dépendances depuis leurs manifestes (comme
 `scripts/ci/test_lyxal_modules.py`), mesure, puis arrête le serveur. Options : `--deliveries`,
-`--repeat`, `--warmup`, `--clients` (paliers), `--seconds` (durée d'un palier), `--quota` (quota
+`--repeat`, `--warmup`, `--lots` (formes des lots : `<messages>x<destinataires>`), `--batches`
+(lots par forme), `--clients` (paliers), `--seconds` (durée d'un palier), `--quota` (quota
 de volume posé sur chaque organisation de la mesure `clients`, en octets : le quota est alors lu à
 chaque écriture de fichier), `--timeout`.
 
@@ -38,6 +40,7 @@ instruction d'une requête HTTP `/sql` est sa propre transaction, comme un appel
 | :--- | :--- |
 | `remise` | Une remise de 10 Kio, poste par poste, chaque appel dans sa transaction : `fn::mail_delivery_begin`, `fn::storage_object_begin`, `fn::secrets_tenant_key_ring` (lu par `FileKeys::seal`), `fn::storage_object_commit`, `fn::mail_delivery_commit` (un message). Moyenne et médiane, et total des moyennes (« total base ») |
 | `appels` | Premier et deuxième appel d'une même expression dans une transaction : le premier paie la lecture et l'analyse des définitions de fonctions (refaites à chaque transaction en SurrealDB 3.3), le deuxième non. Validateur seul, moteur par nom de règle, exécuteur à fermetures, lectures publiques, publication d'un événement. Médianes |
+| `lots` | `fn::mail_delivery_commit` seule, selon la taille du lot (8, 16 et 32 messages, enveloppe de 3 destinataires) et celle de l'enveloppe (lot de 8, 150 destinataires) : contenus réservés et fichiers écrits hors mesure, puis une inscription du lot mesurée. Médiane du lot et par message |
 | `clients` | Débit pendant 12 s avec 1, 2, 4, 8 et 16 clients, une connexion HTTP chacun (jeton de la session système) : un client par organisation, puis tous dans la même organisation (un compte chacun). Remises refusées comptées par cause : le banc ne rejoue pas un conflit de transaction, alors que `lyxal_storage` (lignes de compteurs `storage_usage` tirées au sort parmi 64) et le service de remise les rejouent |
 
 En fin de mesure `clients`, le banc contrôle la cohérence : compteurs des comptes égaux aux

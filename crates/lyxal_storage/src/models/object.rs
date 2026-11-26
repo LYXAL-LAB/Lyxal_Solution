@@ -84,6 +84,20 @@ pub struct StoredObject {
     pub created_at: StorageDatetime,
     /// Dernière modification.
     pub updated_at: StorageDatetime,
+    /// Résumé du bucket du fichier, rendu par `fn::storage_object_get` et
+    /// `fn::storage_object_open` quand il est demandé ([`ObjectGetParams::with_bucket`]).
+    pub bucket_summary: Option<BucketSummary>,
+}
+
+/// Résumé du bucket d'un fichier : ce qu'il faut pour contrôler où le fichier est rangé.
+#[derive(Debug, Clone, PartialEq, Eq, SurrealValue)]
+pub struct BucketSummary {
+    /// Nom du bucket.
+    pub name: String,
+    /// Organisation (absente pour l'installation).
+    pub tenant: Option<StorageRecordId>,
+    /// Bucket chiffré.
+    pub encrypted: bool,
 }
 
 /// Paramètres de `fn::storage_object_begin`.
@@ -153,6 +167,8 @@ pub struct ObjectGetParams {
     pub bucket: Option<String>,
     /// Clé dans le bucket.
     pub key: Option<String>,
+    /// Rendre aussi le résumé du bucket du fichier ([`StoredObject::bucket_summary`]).
+    pub with_bucket: bool,
 }
 
 impl ObjectGetParams {
@@ -167,10 +183,16 @@ impl ObjectGetParams {
     /// Fiche désignée par son adresse.
     pub fn by_address(bucket: impl Into<String>, key: impl Into<String>) -> Self {
         Self {
-            object: None,
             bucket: Some(bucket.into()),
             key: Some(key.into()),
+            ..Self::default()
         }
+    }
+
+    /// Demande aussi le résumé du bucket du fichier.
+    pub fn with_bucket(mut self) -> Self {
+        self.with_bucket = true;
+        self
     }
 }
 

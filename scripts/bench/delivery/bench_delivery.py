@@ -4,13 +4,15 @@
 Démarre un serveur `surreal` jetable en mémoire, y installe `lyxal_mail` et ses dépendances comme
 le fait `scripts/ci/test_lyxal_modules.py`, puis mesure **dans le serveur** (`time::now()` avant
 et après chaque appel) les fonctions publiques qu'une remise appelle. Chaque instruction d'une
-requête HTTP `/sql` est sa propre transaction, comme un appel de `call_fn`. Trois mesures :
+requête HTTP `/sql` est sa propre transaction, comme un appel de `call_fn`. Quatre mesures :
 
   * `remise`  : une remise, poste par poste (`fn::mail_delivery_begin`,
     `fn::storage_object_begin`, `fn::secrets_tenant_key_ring`, `fn::storage_object_commit`,
     `fn::mail_delivery_commit`), chaque appel dans sa transaction ; moyenne et médiane ;
   * `appels`  : premier et deuxième appel d'une même expression dans une transaction (le
     premier paie le chargement des définitions de fonctions, le deuxième non) ; médianes ;
+  * `lots`    : `fn::mail_delivery_commit` seule, par message, selon la taille du lot (8, 16 et
+    32 messages) et celle de l'enveloppe (3 ou 150 destinataires) ; médianes ;
   * `clients` : débit avec 1 à 16 clients, une connexion HTTP chacun, chacun dans son
     organisation (`organisations`) puis tous dans la même (`organisation`).
 
@@ -22,6 +24,7 @@ entière). `--ref` mesure les modules d'une autre révision Git (mesure « avant
     python3 -I scripts/bench/delivery/bench_delivery.py --out apres.json
     python3 -I scripts/bench/delivery/bench_delivery.py --ref <révision> --out avant.json
     python3 -I scripts/bench/delivery/bench_delivery.py --only remise,appels --deliveries 300
+    python3 -I scripts/bench/delivery/bench_delivery.py --only lots --lots 8x3,32x3,8x150
 
 Binaire : `${LYXAL_SURREAL_BIN:-surreal}` (3.3.4).
 """
@@ -135,9 +138,25 @@ RETURN {{ errors: [$domain, $bucket, $settings, {made}].map(|$made| $made.error)
         return {"slug": slug, "bucket": layout["bucket"], "accounts": layout["accounts"]}
 
 
+def item(begin: str, opened: str, key: str, tag: str, to: list[tuple[str, str]], cc: list[tuple[str, str]]) -> str:
+    """Élément de `fn::mail_delivery_commit` : contenu réservé (`begin`) et fichier écrit (`opened`), variables de la requête."""
+    def people(rows: list[tuple[str, str]]) -> str:
+        return "[" + ", ".join(f"{{ name: '{name}', address: '{address}' }}" for name, address in rows) + "]"
+    return f"""{{
+    content: <string> {begin}.data.content, object: <string> {opened}.data.id, role: 'inbox', received_at: time::now(), delivery_key: '{key}',
+    message_id: 'm{tag}@ailleurs.test', in_reply_to: [], references: [], base_subject: 'compte rendu de chantier', is_report: false,
+    envelope: {{ date: time::now(), subject: 'Compte rendu de chantier {tag}', message_id: 'm{tag}@ailleurs.test',
+        from: [{{ name: 'Paul', address: 'paul@ailleurs.test' }}],
+        to: {people(to)},
+        cc: {people(cc)} }},
+    structure: {{ }}, has_attachment: false,
+    reception: {{ spf: 'pass', dkim: 'pass', dmarc: 'pass', iprev: 'pass', antivirus: 'not_scanned', spam: 'none', tls: true }} }}"""
+
+
 def delivery(organisation: dict, account: str, tag: str) -> str:
     """Requête d'une remise : cinq appels publics, chacun dans sa transaction, et leurs durées."""
     key, checksum = secrets.token_hex(32), secrets.token_hex(32)
+    one = item("$begin", "$opened", key, tag, [("Jean", "jean@alpha.test"), ("Marie", "marie@alpha.test")], [("Chantier", "chantier@alpha.test")])
     return f"""
 LET $t0 = time::now();
 LET $begin = fn::mail_delivery_begin({{ account: '{account}', size: 10240, delivery_key: '{key}' }});
@@ -148,21 +167,59 @@ LET $ring = fn::secrets_tenant_key_ring({{ tenant: 'auth_organization:{organisat
 LET $t3 = time::now();
 LET $written = fn::storage_object_commit({{ object: <string> $opened.data.id, size: 10240, content_type: 'message/rfc822', blake3: '{checksum}', content_key: '{CONTENT_KEY}' }});
 LET $t4 = time::now();
-LET $commit = fn::mail_delivery_commit({{ account: '{account}', items: [{{
-    content: <string> $begin.data.content, object: <string> $opened.data.id, role: 'inbox', received_at: time::now(), delivery_key: '{key}',
-    message_id: 'm{tag}@ailleurs.test', in_reply_to: [], references: [], base_subject: 'compte rendu de chantier', is_report: false,
-    envelope: {{ date: time::now(), subject: 'Compte rendu de chantier {tag}', message_id: 'm{tag}@ailleurs.test',
-        from: [{{ name: 'Paul', address: 'paul@ailleurs.test' }}],
-        to: [{{ name: 'Jean', address: 'jean@alpha.test' }}, {{ name: 'Marie', address: 'marie@alpha.test' }}],
-        cc: [{{ name: 'Chantier', address: 'chantier@alpha.test' }}] }},
-    structure: {{ }}, has_attachment: false,
-    reception: {{ spf: 'pass', dkim: 'pass', dmarc: 'pass', iprev: 'pass', antivirus: 'not_scanned', spam: 'none', tls: true }} }}] }});
+LET $commit = fn::mail_delivery_commit({{ account: '{account}', items: [{one}] }});
 LET $t5 = time::now();
 RETURN {{
     errors: [$begin.error, $opened.error, $ring.error, $written.error, $commit.error, $commit.data.items[0].error][WHERE $this IS NOT NONE],
     micros: [duration::micros($t1 - $t0), duration::micros($t2 - $t1), duration::micros($t3 - $t2), duration::micros($t4 - $t3), duration::micros($t5 - $t4)]
 }};
 """
+
+
+def batch(organisation: dict, account: str, tag: str, size: int, recipients: int) -> str:
+    """Requête d'un lot : `size` contenus réservés et fichiers écrits (hors mesure), puis une seule
+    `fn::mail_delivery_commit` mesurée ; enveloppe de `recipients` destinataires par message."""
+    to = [(f"Destinataire {index}", f"destinataire{index}@alpha.test") for index in range(recipients)]
+    body, items = "", []
+    for index in range(size):
+        key, checksum = secrets.token_hex(32), secrets.token_hex(32)
+        body += f"""
+LET $begin{index} = fn::mail_delivery_begin({{ account: '{account}', size: 10240, delivery_key: '{key}' }});
+LET $opened{index} = fn::storage_object_begin({{ bucket: '{organisation["bucket"]}', key: $begin{index}.data.storage_key, filename: 'message.eml', declared_type: 'message/rfc822', declared_size: 10240, resumable: false }});
+LET $written{index} = fn::storage_object_commit({{ object: <string> $opened{index}.data.id, size: 10240, content_type: 'message/rfc822', blake3: '{checksum}', content_key: '{CONTENT_KEY}' }});
+"""
+        items.append(item(f"$begin{index}", f"$opened{index}", key, f"{tag}x{index}", to, []))
+    prepared = ", ".join(f"$begin{index}.error, $opened{index}.error, $written{index}.error" for index in range(size))
+    return body + f"""
+LET $t0 = time::now();
+LET $commit = fn::mail_delivery_commit({{ account: '{account}', items: [{", ".join(items)}] }});
+LET $t1 = time::now();
+RETURN {{
+    errors: array::concat([{prepared}, $commit.error], $commit.data.items.error ?? [])[WHERE $this IS NOT NONE],
+    inscribed: count($commit.data.items[WHERE duplicate == false]),
+    micros: duration::micros($t1 - $t0)
+}};
+"""
+
+
+def measure_batches(bench: Bench, shapes: list[tuple[int, int]], repeat: int, warmup: int) -> dict:
+    """`fn::mail_delivery_commit` par message selon la taille du lot et de l'enveloppe : médianes en millisecondes."""
+    organisation = bench.organisation("gamma", len(shapes))
+    report = {}
+    print(f"\nfn::mail_delivery_commit par message, selon le lot (médianes de {repeat} lots, ms)")
+    print(f"{'':<34} {'par message':>12} {'lot entier':>12}")
+    for account, (size, recipients) in zip(organisation["accounts"], shapes):
+        samples = []
+        for index in range(warmup + repeat):
+            outcome = bench.sql(batch(organisation, account, f"l{size}r{recipients}n{index}", size, recipients))[-1]["result"]
+            if outcome["errors"] or outcome["inscribed"] != size:
+                raise RuntimeError(f"Lot refusé ({outcome['inscribed']} inscrits sur {size}) : {json.dumps(outcome['errors'], ensure_ascii=False)[:2000]}")
+            if index >= warmup:
+                samples.append(outcome["micros"] / 1000)
+        label = f"lot de {size}, {recipients} destinataires"
+        report[label] = {"per_message_ms": round(statistics.median(samples) / size, 2), "batch_ms": round(statistics.median(samples), 2)}
+        print(f"{label:<34} {report[label]['per_message_ms']:>12.2f} {report[label]['batch_ms']:>12.2f}", flush=True)
+    return report
 
 
 def measure_delivery(bench: Bench, deliveries: int, warmup: int) -> dict:
@@ -338,10 +395,12 @@ def use_revision(ref: str, workdir: Path) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--only", default="remise,appels,clients", help="mesures à faire, séparées par des virgules")
+    parser.add_argument("--only", default="remise,appels,lots,clients", help="mesures à faire, séparées par des virgules")
     parser.add_argument("--deliveries", type=int, default=100, help="remises de la mesure « remise »")
     parser.add_argument("--repeat", type=int, default=100, help="transactions par cas de la mesure « appels »")
     parser.add_argument("--warmup", type=int, default=10, help="remises ou transactions écartées en tête de mesure")
+    parser.add_argument("--lots", default="8x3,16x3,32x3,8x150", help="formes de la mesure « lots » : <messages>x<destinataires de l'enveloppe>")
+    parser.add_argument("--batches", type=int, default=20, help="lots par forme de la mesure « lots » (3 de plus sont écartés en tête)")
     parser.add_argument("--clients", default="1,2,4,8,16", help="paliers de la mesure « clients »")
     parser.add_argument("--seconds", type=float, default=12, help="durée d'un palier de la mesure « clients »")
     parser.add_argument("--quota", type=int, help="quota de volume de chaque organisation de la mesure « clients », en octets (aucun par défaut)")
@@ -350,7 +409,7 @@ def main() -> int:
     parser.add_argument("--out", type=Path)
     args = parser.parse_args()
     wanted = set(args.only.split(","))
-    unknown = wanted - {"remise", "appels", "clients"}
+    unknown = wanted - {"remise", "appels", "lots", "clients"}
     if unknown:
         parser.error(f"mesure inconnue : {', '.join(sorted(unknown))}")
 
@@ -364,6 +423,9 @@ def main() -> int:
             report["remise"] = measure_delivery(Bench(server, "remise", args.timeout), args.deliveries, args.warmup)
         if "appels" in wanted:
             report["appels"] = measure_calls(Bench(server, "appels", args.timeout), with_fields, args.repeat, args.warmup)
+        if "lots" in wanted:
+            shapes = [tuple(int(part) for part in shape.split("x")) for shape in args.lots.split(",")]
+            report["lots"] = measure_batches(Bench(server, "lots", args.timeout), shapes, args.batches, 3)
         if "clients" in wanted:
             report["clients"] = measure_clients(Bench(server, "clients", args.timeout), [int(c) for c in args.clients.split(",")], args.seconds, args.quota)
     if args.out:

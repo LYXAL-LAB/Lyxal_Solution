@@ -25,10 +25,10 @@ Ces éléments appartiennent aux modules. Le Core fournit les briques ; les modu
 
 ```text
 lyxal_core/
-├── manifest.toml            (id lyxal_core, version 0.1.0, 486 fonctions déclarées)
+├── manifest.toml            (id lyxal_core, version 0.1.0, 487 fonctions déclarées)
 ├── Readme.md
 └── functions/
-    ├── validations/   functions/ (198) · tests/ (198)   fn::validation_*
+    ├── validations/   functions/ (199) · tests/ (199)   fn::validation_*
     ├── sanitize/      functions/ (98) · tests/ (98)     fn::sanitize_*
     ├── security/      functions/ (71) · tests/ (71)     fn::security_*
     └── utils/         functions/ (119) · tests/ (119)   fn::utils_*
@@ -191,7 +191,7 @@ Un seul moteur exécute les pipelines de tous les domaines. Il ne connaît aucun
 
 | Domaine | Catalogue | Points d'entrée | Résultat |
 | :--- | :--- | :--- | :--- |
-| `validations` | `fn::validation_step_catalog()` : 177 règles, une par validateur à une seule valeur | `fn::validation_pipeline_execute($value, $pipeline, $max_steps)`, `fn::validation_object_execute($value, $schema, $max_steps)` ; sans catalogue : `fn::validation_fields_execute($value, $fields, $unknown_keys)` (contrôles par fermetures, ci-dessous) | rapport `{ valid, value, errors, warnings, by_field }` ; ne lève jamais pour une donnée invalide |
+| `validations` | `fn::validation_step_catalog()` : 177 règles, une par validateur à une seule valeur | `fn::validation_pipeline_execute($value, $pipeline, $max_steps)`, `fn::validation_object_execute($value, $schema, $max_steps)` ; sans catalogue : `fn::validation_fields_execute($value, $fields, $unknown_keys)` (contrôles par fermetures, ci-dessous) ; pour les lots du worker : `fn::validation_checks_report($value, $checks)` (résultats déjà calculés, ci-dessous) | rapport `{ valid, value, errors, warnings, by_field }` ; ne lève jamais pour une donnée invalide |
 | `sanitize` | `fn::sanitize_step_catalog()` : 94 règles, une par fonction de valeurs (sauf `date_range`), plus `default` | `fn::sanitize_pipeline_execute($value, $pipeline, $max_steps)`, `fn::sanitize_object_execute($value, $schema, $max_steps)` | valeur nettoyée ; donnée non nettoyable → `CORE_SANITIZE_INVALID_TYPE` |
 | `security` | `fn::security_step_catalog()` : 22 règles (masquage et empreintes, détections, `permission_check`) | `fn::security_pipeline_execute($value, $pipeline, $max_steps)`, `fn::security_object_execute($value, $schema, $max_steps)` | `{ value, findings, score, decisions, allowed, errors }` |
 
@@ -259,6 +259,56 @@ transaction puis deuxième) :
 | :--- | :-: | :-: | :-: |
 | Un champ (`record`) | 8,7 puis 1,3 ms | 0,7 puis 0,3 ms | — |
 | Les 4 champs de `fn::mail_delivery_begin` | 10,2 puis 2,6 ms | 1,3 puis 0,8 ms | 0,3 puis 0,1 ms |
+
+### Résultats déjà calculés : `fn::validation_checks_report`
+
+Chaque contrôle de `fn::validation_fields_execute` est un appel de fermeture, qui recopie ses
+variables : pour les éléments d'un lot, le coût par élément monte avec la taille du lot et celle
+des valeurs. Une fonction du worker appelée par lots (éléments de `fn::mail_delivery_commit`)
+appelle donc elle-même les validateurs, un par champ, et remet leurs résultats à
+`fn::validation_checks_report($value, $checks)`, qui en fait le rapport sans aucune fermeture
+quand tout est satisfait. Forme réservée à ces fonctions, sur décision du CTO (`.agents/AGENTS.md`
+§5.7.8) ; ailleurs, `fn::validation_fields_execute`.
+
+```surql
+DEFINE FUNCTION OVERWRITE fn::stock_move_check($move: any) -> object {
+    LET $labels = fn::validation_array_of_strings(IF $move.labels IS NONE { [] } ELSE { $move.labels }, true, NONE, 64);
+    RETURN fn::validation_checks_report($move, {
+        item: fn::validation_record($move.item, "stock_item"),
+        quantity: fn::validation_integer($move.quantity, 1, 100000),
+        note: fn::validation_optional_string($move.note, NONE, 500),
+        labels: IF $labels.valid { fn::validation_array_length($labels.value, NONE, 20) } ELSE { $labels }
+    });
+};
+-- Dans la fonction publique : la forme du tableau d'abord, puis un rapport par élément
+LET $sized = fn::validation_array_length($params.moves, 1, 32);
+LET $report = fn::validation_checks_report($params, {
+    moves: IF $sized.valid { array::map($sized.value, |$move: any| fn::stock_move_check($move)) } ELSE { $sized },
+    language: fn::validation_language_code(IF $params.language IS NONE { "fr" } ELSE { $params.language }, false, NONE)
+});
+IF !$report.valid { RETURN fn::error_result("STOCK_INVALID_PARAMETERS", NONE, { fields: $report.by_field }); };
+```
+
+* **`$checks`** : `{ <champ>: résultat }`, où le résultat a l'une des formes que rend un contrôle
+  de `fn::validation_fields_execute` : résultat d'un validateur (`{ valid, value, code, details }`),
+  rapport d'un objet imbriqué (erreurs sous le chemin du champ, `reception.spf`), ou tableau de
+  l'un ou de l'autre (erreurs sous l'élément, `items[0].content`).
+* **Champ exigé, facultatif, par défaut** : écrits par l'appelant. Un validateur appelé sur une
+  valeur absente rend `CORE_VALIDATION_REQUIRED` et sur `NULL` `CORE_VALIDATION_NULL`, comme
+  l'exécuteur ; un champ facultatif se contrôle par un validateur qui accepte `NONE`
+  (`fn::validation_optional_string`) ou sur sa valeur par défaut
+  (`IF $v IS NONE { <défaut> } ELSE { $v }` ; `??` remplacerait aussi `NULL`, que l'exécuteur
+  refuse). Plusieurs contrôles d'un champ s'enchaînent par `IF $premier.valid { … } ELSE { $premier }`.
+* **Clés inconnues** : toute clé de `$value` absente de `$checks` est refusée
+  (`CORE_VALIDATION_NOT_ALLOWED`) ; il n'y a pas de mode `strip` ni `keep`.
+* **Rapport** : `{ valid, value, errors, warnings, by_field }`, celui de
+  `fn::validation_fields_execute` en mode `reject` pour les mêmes contrôles (mêmes codes, mêmes
+  chemins, même `by_field` ; `errors[].rule` vaut `check`, `unknown_keys` ou `is_object`). `errors`
+  et `warnings` sont gardés pour que le rapport se remette tel quel, comme résultat d'un champ, à
+  l'une ou l'autre des deux fonctions ; ils ne coûtent rien quand tout est satisfait. `value` :
+  valeurs normalisées ; un champ en erreur garde la valeur reçue.
+* **Erreurs de programmation** : `CORE_INVALID_ARGUMENT` (`$checks` vide, résultat d'un champ qui
+  n'est ni un résultat de validateur ni un rapport).
 
 ### Fonctionnement
 
@@ -334,7 +384,7 @@ Aucun module ne l'appelle encore. L'adoption se fera à la reprise de chaque mod
 
 `scripts/ci/test_lyxal_core.py` démarre un serveur SurrealDB 3.3.4 jetable et :
 
-1. charge les 486 fonctions et vérifie qu'elles sont toutes définies ;
+1. charge les 487 fonctions et vérifie qu'elles sont toutes définies ;
 2. vérifie que chaque fonction a son fichier `<nom>.test.surql`, et inversement ;
 3. exécute chaque fichier de tests.
 

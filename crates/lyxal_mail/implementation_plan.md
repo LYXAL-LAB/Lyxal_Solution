@@ -470,7 +470,8 @@ compteur nouveau.
 
 Fonctions internes : `fn::mail_recipient_accounts` (comptes d'une adresse, alias développé),
 `fn::mail_delivery_item` (un élément de `fn::mail_delivery_commit`, pour rester sous 300 lignes),
-`fn::mail_reception_rule` (règle du moteur pour `reception`). `fn::mail_content_begin`,
+`fn::mail_delivery_item_check` (contrôle d'un élément par les primitives du Core et
+`fn::validation_checks_report`, plan de performance, décision P4). `fn::mail_content_begin`,
 `fn::mail_content_attach` et `fn::mail_message_create` restent pour `APPEND` (lot 8) et les
 essais ; `fn::mail_message_create` pose `origin: "append"`.
 

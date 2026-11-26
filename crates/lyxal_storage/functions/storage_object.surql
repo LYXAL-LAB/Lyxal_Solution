@@ -209,6 +209,7 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_get($params: object) {
         object: { checks: [|$v: any| fn::validation_record($v, "storage_object")] },
         bucket: { checks: [|$v: any| fn::validation_record($v, "storage_bucket")] },
         key: { checks: [|$v: any| fn::validation_lyxal_storage_path($v, NONE, true, 512)] },
+        with_bucket: { checks: [|$v: any| fn::validation_boolean($v)], default: false },
         language: { checks: [|$v: any| fn::validation_language_code($v, false, NONE)], default: "fr" }
     }, "reject");
     IF !$report.valid OR ($report.value.object IS NONE AND ($report.value.bucket IS NONE OR $report.value.key IS NONE)) {
@@ -221,8 +222,12 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_get($params: object) {
         (SELECT * FROM ONLY storage_object WHERE bucket = $p.bucket AND slot = $p.key LIMIT 1)
     };
     IF $object == NONE { RETURN fn::error_result("STORAGE_OBJECT_NOT_FOUND", $p.language, {}); };
-    RETURN fn::result_ok($object);
-} COMMENT "Fiche d'un fichier, par son identifiant ({ object }) ou par son adresse ({ bucket, key }, fichier non supprimé) ; l'état dit si le fichier peut être servi (available seulement). Droit : lecture";
+    IF !$p.with_bucket { RETURN fn::result_ok($object); };
+    -- Résumé du bucket : un appelant qui contrôle où le fichier est rangé n'appelle pas fn::storage_bucket_get
+    LET $bucket = (SELECT name, tenant, encrypted FROM ONLY $object.bucket);
+    IF $bucket == NONE { RETURN fn::error_result("STORAGE_BUCKET_NOT_FOUND", $p.language, { bucket: <string> $object.bucket }); };
+    RETURN fn::result_ok(object::extend($object, { bucket_summary: $bucket }));
+} COMMENT "Fiche d'un fichier, par son identifiant ({ object }) ou par son adresse ({ bucket, key }, fichier non supprimé) ; l'état dit si le fichier peut être servi (available seulement) ; with_bucket: true ajoute bucket_summary ({ name, tenant (absent pour l'installation), encrypted } du bucket du fichier ; bucket illisible : STORAGE_BUCKET_NOT_FOUND). Droit : lecture";
 
 -- ----------------------------------------------------------------------------
 -- fn::storage_object_open
@@ -236,7 +241,7 @@ DEFINE FUNCTION OVERWRITE fn::storage_object_open($params: object) {
         RETURN fn::error_result("STORAGE_OBJECT_NOT_AVAILABLE", $params.language ?? "fr", { state: $found.data.state });
     };
     RETURN $found;
-} COMMENT "Fiche d'un fichier à servir ({ object }, ou { bucket, key }) : comme fn::storage_object_get, mais refus si le fichier n'est pas à l'état available (STORAGE_OBJECT_NOT_AVAILABLE) ; backend et path disent où lire ses octets. Droit : lecture";
+} COMMENT "Fiche d'un fichier à servir ({ object }, ou { bucket, key } ; with_bucket) : comme fn::storage_object_get, mais refus si le fichier n'est pas à l'état available (STORAGE_OBJECT_NOT_AVAILABLE) ; backend et path disent où lire ses octets. Droit : lecture";
 
 -- ----------------------------------------------------------------------------
 -- fn::storage_object_list

@@ -451,15 +451,18 @@ RETURN (SELECT VALUE [origin, reception] FROM ONLY passe:append) == ["append", N
     };
 };
 
--- test: règle d'entrée des résultats de réception (interne) : sept champs exigés, mots de la RFC 8601
+-- test: contrôle d'un élément (interne) : résultats de réception, sept champs exigés, mots de la RFC 8601 ; valeurs par défaut des facultatifs
 {
-    LET $check = |$reception| fn::validation_fields_execute({ r: $reception }, { r: fn::mail_reception_rule() }, "reject");
     LET $full = { spf: "softfail", dkim: "policy", dmarc: "temperror", iprev: "permerror", antivirus: "clean", spam: "none", tls: false };
-    LET $reports = [$full, NONE, object::remove($full, "tls"), object::extend($full, { iprev: "none" }), object::extend($full, { domaine: "alpha.test" })].map(|$reception| $check($reception));
+    LET $item = { content: "mail_content:essai", object: "storage_object:essai", received_at: d"2026-11-03T09:00:00Z", delivery_key: fn::essai_cle(1), envelope: {}, structure: {} };
+    LET $reports = [$full, NONE, object::remove($full, "tls"), object::extend($full, { iprev: "none" }), object::extend($full, { domaine: "alpha.test" })]
+        .map(|$reception| fn::mail_delivery_item_check(object::extend($item, { reception: $reception })));
     RETURN $reports.valid == [true, false, false, false, false]
-        AND $reports[2].by_field.keys() == ["r.tls"]
-        AND $reports[3].by_field.keys() == ["r.iprev"]
-        AND $reports[4].by_field.keys() == ["r.domaine"];
+        AND $reports[0].value == object::extend($item, { content: mail_content:essai, object: storage_object:essai, reception: $full, role: "inbox", in_reply_to: [], references: [], is_report: false, has_attachment: false })
+        AND $reports[1].by_field == { reception: ["CORE_VALIDATION_REQUIRED"] }
+        AND $reports[2].by_field == { "reception.tls": ["CORE_VALIDATION_REQUIRED"] }
+        AND $reports[3].by_field.keys() == ["reception.iprev"]
+        AND $reports[4].by_field == { "reception.domaine": ["CORE_VALIDATION_NOT_ALLOWED"] };
 };
 
 -- test: élément remis directement (interne) : mêmes contrôles, sans validation des entrées

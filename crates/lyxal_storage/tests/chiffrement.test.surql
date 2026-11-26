@@ -63,6 +63,11 @@ RETURN fn::storage_encrypted_bucket_exists({}).error.code == "STORAGE_PERMISSION
         AND fn::storage_object_begin({ bucket: (SELECT VALUE clair FROM ONLY passe:ids), key: "p.pdf", filename: "p.pdf" }).data.encrypted == false;
 };
 
+-- test: résumé du bucket d'un fichier (with_bucket) : bucket chiffré ou en clair
+-- en tant que: admin
+RETURN fn::storage_object_get({ object: (SELECT VALUE m1 FROM ONLY passe:objets), with_bucket: true }).data.bucket_summary == { name: "courrier", tenant: auth_organization:alpha, encrypted: true }
+    AND fn::storage_object_get({ bucket: (SELECT VALUE clair FROM ONLY passe:ids), key: "p.pdf", with_bucket: true }).data.bucket_summary.encrypted == false;
+
 -- test: fin d'écriture : clé scellée exigée dans un bucket chiffré, refusée ailleurs
 -- en tant que: admin
 {

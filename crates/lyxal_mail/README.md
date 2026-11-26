@@ -131,12 +131,15 @@ Fonctions internes (`COMMENT` « Interne ») : `fn::mail_can`, `fn::mail_setting
 `fn::mail_message_key`, `fn::mail_message_key_text`, `fn::mail_message_date_key_text`,
 `fn::mail_message_uid_page`, `fn::mail_message_date_page`, `fn::mail_recipient_accounts`,
 `fn::mail_delivery_item` (un élément d'un lot : tous les contrôles avant les écritures),
-`fn::mail_delivery_key`, `fn::mail_reception_rule`.
+`fn::mail_delivery_key`, `fn::mail_delivery_item_check` (contrôle d'un élément d'un lot).
 
-**Contrôle allégé des paramètres de remise (décision S12).** `fn::mail_delivery_commit`, appelée
-par le seul service de remise, fait valider par le moteur de `lyxal_core` les champs scalaires de
+**Contrôle allégé des paramètres de remise (décisions S12, P4).** `fn::mail_delivery_commit`,
+appelée par le seul service de remise, fait valider par `lyxal_core` les champs scalaires de
 chaque élément, la forme des listes d'identifiants, les résultats de réception et la taille
-sérialisée de l'enveloppe (256 Kio) et de la structure (1 Mio) ; la forme détaillée de l'enveloppe
+sérialisée de l'enveloppe (256 Kio) et de la structure (1 Mio) : primitives du Core appelées
+directement pour chaque élément (`fn::mail_delivery_item_check`) et rapport par
+`fn::validation_checks_report`, sans fermeture par contrôle, pour que le coût d'un élément ne
+monte ni avec la taille du lot ni avec celle de l'enveloppe ; la forme détaillée de l'enveloppe
 est garantie par le schéma de `mail_message`. Une valeur hors schéma fait refuser l'écriture par
 la base (erreur de la base, pas un code `MAIL_*` : SurrealQL ne rattrape pas une erreur) et annule
 le lot ; le service de remise reprend alors le lot élément par élément, et l'élément en cause
@@ -319,12 +322,37 @@ Ce que montrent les mesures :
   nœud n'ordonne plus les fichiers, et le débit d'une organisation passe de 62 à 99 remises par
   seconde (99,5 ; 99,6 ; 101,2). Le quota de volume est contrôlé sur l'instantané de la transaction : deux écritures
   simultanées peuvent le dépasser ensemble de leur taille.
-* **L'inscription reste le premier poste** (`fn::mail_delivery_commit` : 16 à 18 ms), dont
-  environ 4 ms pour le contrôle de ses paramètres (24 champs, objets imbriqués compris ; mesure
-  isolée, deuxième appel d'une transaction), allégé au sous-lot 4 du plan.
+* **L'inscription reste le premier poste** (`fn::mail_delivery_commit` : 16 à 18 ms avant le
+  sous-lot 4, 15 ms après ; voir ci-dessous).
 * **La base embarquée du binaire d'essai est près de deux fois plus lente que le serveur** (une
   remise : 70,6 ms contre 37,1 ms) : ses chiffres ne valent pas pour une installation, qui joint
   un serveur.
+
+**Sous-lot 4 (inscription allégée, décisions P4 et P6).** Les éléments d'un lot de
+`fn::mail_delivery_commit` sont contrôlés par appels directs des primitives du Core
+(`fn::mail_delivery_item_check`) et `fn::validation_checks_report`, sans fermeture par contrôle ;
+le fichier et le résumé de son bucket sont lus par un seul appel
+(`fn::storage_object_get` avec `with_bucket`). Contrat inchangé : 356 appels (paramètres
+invalides de toutes sortes, éléments valides, doublons, erreurs d'élément) donnent les mêmes
+résultats avant et après. Mesures du 26 novembre 2026, deux séries avant
+(`--ref 1900411dc`) et deux après, même machine, seule :
+
+| Mesure | Avant le sous-lot 4 | Après |
+| :--- | :-: | :-: |
+| `fn::mail_delivery_commit`, un message (banc SurrealQL, moyenne de 100) | 18,4 ; 18,3 ms | **15,4 ; 15,0 ms** |
+| Par message, lot de 8 / 16 / 32, enveloppe de 3 destinataires | 12,0 / 11,4 / 11,8 ms ; 12,0 / 13,6 / 11,9 ms | **10,7 / 9,9 / 10,1 ms ; 10,5 / 10,5 / 10,2 ms** |
+| Par message, lot de 8, enveloppe de 150 destinataires | 18,7 ; 19,3 ms | **15,8 ; 17,0 ms** |
+| Banc Rust, une remise seule | 46,1 (premier passage) ; 38,2 ms | 36,7 ; 38,2 ms |
+| Banc Rust, 100 comptes d'une organisation | 96,4 ; 110,6 par seconde | 108,7 ; 104,2 par seconde |
+| Banc Rust, 100 comptes de deux organisations | 93,4 ; 102,0 par seconde | 103,0 ; 107,1 par seconde |
+| Banc Rust, un compte, 20 clients | 62,4 ; 64,3 par seconde | 61,1 ; 61,9 par seconde |
+| Banc Rust, deux nœuds, un compte | 48,7 ; 60,8 par seconde, aucune refusée | 62,1 ; 56,4 par seconde, 1 refusée sur 1 000 puis aucune |
+
+Recette du plan tenue : 10,1 à 10,2 ms par message dans un lot de 32 (12 au plus), 15,8 à
+17,0 ms dans un lot de 8 à 150 destinataires (18 au plus). Au banc Rust, l'écart reste dans la
+dispersion d'une série à l'autre : le gain de 3 ms par inscription est faible devant une remise
+entière (ouverture, fichier chiffré, aller-retour), et les lots y restent petits (un à deux
+messages, 14 au plus pour un seul compte). `MAX_BATCH` reste à 32 (décision P11).
 
 **Clés « fichiers » (décision S13).** `FileKeys::seal` : 2,5 ms en moyenne sur le serveur (p95
 2,9 ms ; 3,7 ms sur la base embarquée), `FileKeys::open` : 2,5 ms, presque entièrement la lecture
