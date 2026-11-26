@@ -11,13 +11,15 @@ seul binaire de Lyxal OS qui lie des crates AGPL (`lyxal_mail`) et porte du code
 (provenance : [`SOURCES.md`](SOURCES.md)). Aucun paquet sous licence permissive ne dépend de lui
 (contrôle `scripts/ci/check_agpl_isolation.py`).
 
-**État : lots 3 (hôte et socle réseau) et 4 (socle courrier) du programme courrier réalisés.**
-L'hôte porte les services du courrier (dépôt d'un message chiffré au repos, lecture, maintenance
-exécutée par `lyxal_scheduler`) et les modules dont ils ont besoin (coffre-fort, stockage,
-planificateur, §2). Aucun protocole n'existe encore : chaque port de courrier répond par un
-**refus poli et standard** (« service indisponible, réessayez plus tard ») puis ferme, en clair
-ou après la poignée de main TLS selon l'écoute. L'hôte offre aux protocoles à venir le TLS implicite, la mise à niveau STARTTLS, le
-PROXY protocol, des certificats rechargés à chaud, les limites et le budget mémoire. Feuille de
+**État : lots 3 (hôte et socle réseau), 4 (socle courrier) et 5 (réception SMTP) du programme
+courrier réalisés.** L'hôte porte les services du courrier (réception SMTP, dépôt d'un message
+chiffré au repos, lecture, maintenance exécutée par `lyxal_scheduler`) et les modules dont ils ont
+besoin (coffre-fort, stockage, planificateur, §2). Les écoutes `smtp` sont servies par la
+réception SMTP de `lyxal_mail` (§4 bis) ; les autres protocoles n'existent pas encore : leurs
+ports répondent par un **refus poli et standard** (« service indisponible, réessayez plus
+tard ») puis ferment, en clair ou après la poignée de main TLS selon l'écoute. L'hôte offre aux
+protocoles le TLS implicite, la mise à niveau STARTTLS, le PROXY protocol, des certificats
+rechargés à chaud, les limites, le budget mémoire et la liste de blocage de l'installation. Feuille de
 route : [`ROADMAP.md`](ROADMAP.md).
 
 Le démarrage commun aux hôtes (configuration en couches, base et refus de l'accès anonyme,
@@ -108,6 +110,8 @@ arrête le démarrage, sans être écrite au journal).
 | `storage` | section commune aux hôtes (`lyxal_host::services`) : `disk.root` (support `default`, dossier partagé avec `lyxal-server`), `[storage.s3.<nom>]` (`endpoint`, `region`, `bucket`, `access_key_id`, `secret_access_key` par l'environnement seulement, `path_style`, `allow_http`), `antivirus` (`address` ou `socket`, `timeout_seconds`) : **les mêmes supports nommés que `lyxal-server`** |
 | `scheduler` | `workers` (places de chaque exécuteur de file sur ce nœud, 4 par défaut, de 1 à 64) |
 | `mail` | `storage_backend` (support des fichiers du courrier, `default` par défaut ; doit exister dans `[storage]` dès qu'un support est déclaré) |
+| `smtp` | réception SMTP (§4 bis) : `hostname` (**obligatoire** dès qu'une écoute `smtp` existe : bannière, `Received`, `authserv-id` ; nom de domaine en forme ASCII, celui du MX et du DNS inverse de l'adresse publique), `max_message_bytes` (52 428 800, de 1 Mio à 1 Gio, annoncé par `SIZE`), `max_recipients` (100, 1 à 1 000), `max_messages_per_session` (50, 1 à 1 000), `max_errors` (10, 1 à 100), `max_line_bytes` (4 096, 512 à 65 536), `command_timeout_seconds` (300, 30 à 3 600), `data_timeout_seconds` (180, 30 à 3 600), `session_max_seconds` (1 800, 60 à 86 400), `data_min_bytes_per_second` (1 024, 0 à 1 Mio), `messages_per_network_per_minute` (`[60, 180, 540]`, 1 à 1 000 000), `dmarc_enforce` (`true` ; `false` : résultat DMARC seulement, pour une mise en service progressive) |
+| `dns` | résolveur du nœud (`hickory-resolver`, sans DNSSEC) : `servers` (`ip` ou `ip:port` ; vide : ceux du système, `/etc/resolv.conf`), `timeout_seconds` (5, 1 à 30), `attempts` (2, 1 à 5), `cache_size` (16 384, 0 à 1 000 000) ; un résolveur récursif local (Unbound) est recommandé |
 
 Listes dans l'environnement (valeurs séparées par `,`) : `LIMITS__CONNECTIONS_PER_NETWORK`,
 `LIMITS__CONNECTIONS_PER_MINUTE`, `LIMITS__DENY_NETWORKS`, `LIMITS__ALLOW_NETWORKS`,
@@ -119,14 +123,18 @@ au moins une adresse par écoute ; modes TLS par protocole (§5.1) ; au moins un
 déclaré dès qu'une écoute est chiffrée ; noms de certificat uniques et non vides ; réseaux
 lisibles ; bornes ci-dessous ; `drain_seconds` inférieur à `runtime.module_stop_timeout_seconds` ;
 noms de supports S3 (`snake_case`), antivirus (`address` ou `socket`, délai de 1 à 300 s),
-`scheduler.workers` (1 à 64), `mail.storage_backend` déclaré ; une clé maîtresse sans
-identifiant, ou une ancienne clé sans clé active, arrête le démarrage.
+`scheduler.workers` (1 à 64), `mail.storage_backend` déclaré, `smtp.hostname` présent avec une
+écoute `smtp`, bornes de `[smtp]` et de `[dns]`, serveurs DNS lisibles ; une clé maîtresse sans
+identifiant, ou une ancienne clé sans clé active, arrête le démarrage. Avec une écoute `smtp`, un
+résolveur impossible à construire (configuration DNS du système illisible, aucun serveur)
+arrête le démarrage (`GROUPWARE_DNS_UNAVAILABLE`).
 
 `default.toml` : port HTTP local, **aucune écoute de courrier**. `development.toml` : les huit
 écoutes sur `127.0.0.1` et des ports non privilégiés (2525, 2587, 2465, 1143, 1993, 1110, 1995,
 4190), avec un certificat de développement **à fournir** (commande `openssl` en tête du
-fichier). `production.toml` : aucune écoute active ; exemples commentés (`[tls]`, port 25 au
-lot 5, 465 au lot 6, 993 derrière un répartiteur au lot 8).
+fichier), et `smtp.hostname = "localhost"`. `production.toml` : aucune écoute active ; exemples
+commentés (`[tls]`, `[smtp]`, `[dns]`, port 25, 465 au lot 6, 993 derrière un répartiteur au
+lot 8).
 
 ## 4. Écoutes et acceptation
 
@@ -146,11 +154,11 @@ Pipeline, dans l'ordre :
 | :- | :--- | :--- |
 | 1 | Plafond de l'écoute | fermeture immédiate, sans écriture |
 | 2 | PROXY : depuis un réseau de `proxy_networks`, en-tête v1 ou v2 exigé (§5.3) | fermeture, refus `proxy_header` compté |
-| 3 | `deny_networks`, puis `allow_networks` si non vide | refus `blocked` |
+| 3 | `deny_networks`, puis `allow_networks` si non vide, puis liste de blocage de l'installation (`mail_network_block`, relue toutes les 30 s) | refus `blocked` |
 | 4 | Sauf `exempt_networks` : connexions nouvelles par minute, puis connexions ouvertes, par réseau | refus `rate_limited` / `too_many_connections` |
 | 5 | Budget mémoire : réservation de base de la connexion | refus `memory_budget` |
 | 6 | TLS implicite : poignée de main sous délai | fermeture (alerte TLS envoyée par `rustls`) |
-| 7 | Remise à la session du protocole (au lot 3 : refus « service indisponible ») | — |
+| 7 | Remise à la session du protocole : réception SMTP pour `smtp` (§4 bis), refus « service indisponible » pour les protocoles pas encore écrits | — |
 
 Les étapes 3 et 4 s'appliquent à l'adresse du client : celle de l'en-tête PROXY s'il y en a un.
 
@@ -162,6 +170,28 @@ ManageSieve `BYE`. Les lignes ne contiennent ni l'adresse du client ni le détai
 compteurs et réservations sont rendus à la fin de la connexion, quelle qu'en soit l'issue.
 Écriture bloquée (client qui ne lit plus) : connexion fermée après 60 s. Délais d'inactivité
 transmis aux sessions : SMTP 300 s, IMAP 1 800 s, POP3 600 s, ManageSieve 300 s.
+
+## 4 bis. Réception SMTP (lot 5)
+
+Les écoutes `protocol = "smtp"` sont servies par `lyxal_mail::smtp::SmtpInboundHandler`
+(comportement complet : README de `lyxal_mail`, « `lyxal_mail::smtp` »). L'hôte lui remet :
+
+* la session système (`MailStore` du pool) : résolution des destinataires, bannissements ;
+* un résolveur DNS par nœud (`HickoryResolver`, section `[dns]`), partagé par toutes les sessions ;
+* la chaîne de remise (`DeliveryPipeline`) : antivirus de `[storage.antivirus]` en première étape
+  (une analyse par message ; le stockage du courrier n'analyse plus chaque copie, décision S9),
+  puis dépôt chiffré par le service du courrier ;
+* le budget mémoire des connexions (classe « réception SMTP » pour les messages) ;
+* la liste de blocage du nœud, relue toutes les 30 s par le worker `lyxal_mail:mail.block_refresh`
+  (criticité `Optional`) et appliquée à l'étape 3 de l'acceptation de toutes les écoutes.
+
+Les clés « fichiers » ouvertes sont gardées 60 s en mémoire (`FileKeys::with_cache`, lectures).
+La sonde de `lyxal_mail` passe à « dégradé » si l'antivirus configuré ne répond pas, si le DNS est
+en panne sur le nom témoin `smtp.hostname` (une requête par minute au plus) ou si aucun nœud
+`lyxal_server` n'est vivant depuis 10 minutes. `/metrics` ajoute, sous `mail.smtp`, les mesures de
+la réception (messages acceptés et refusés par motif, destinataires, résultats SPF / DKIM / DMARC,
+remises dupliquées évitées, durée des remises, ordre des inscriptions, DNS, bannissements), sans
+aucune adresse.
 
 ## 5. TLS et PROXY
 
@@ -243,8 +273,10 @@ Le budget a deux classes (réception SMTP, lecture), chacune gardant un quart du
 connexions réservent dans la classe « lecture », soit trois quarts du budget au plus.
 
 **Limite connue** : les compteurs sont en mémoire, **par nœud**, partagés par les écoutes du
-nœud. Avec plusieurs nœuds derrière un répartiteur, les limites s'additionnent. Bannissement
-automatique et liste de blocage en base : lot 5.
+nœud. Avec plusieurs nœuds derrière un répartiteur, les limites s'additionnent. Seuls les
+bannissements sont partagés, par la liste de blocage de l'installation en base (§4 bis) ; les
+limites propres à SMTP (messages par session, par minute et par réseau, erreurs, délais) sont
+dans la section `[smtp]` (§3).
 
 ## 7. Santé, mesures, journal
 
@@ -255,10 +287,11 @@ automatique et liste de blocage en base : lot 5.
   ouvertes, plafond, refus par raison (en-têtes PROXY refusés compris), connexions venues par
   PROXY, poignées de main TLS en échec, sessions en échec, erreurs d'acceptation ; budget mémoire
   utilisé ; réseaux suivis ; certificats (nombre, rechargements réussis et refusés, état
-  « dégradé »). Aucune adresse IP.
+  « dégradé ») ; réception SMTP (`mail.smtp`, §4 bis). Aucune adresse IP.
 * Sonde de `lyxal_mail` (une seule par module : `MailListenersHealthCheck` composée avec
   `MailHealthCheck`) : d'abord le service du courrier (« malade » si ses réglages sont
-  illisibles, « dégradé » sans support de stockage ou sans clé maîtresse, ou quand aucun nœud
+  illisibles, « dégradé » sans support de stockage ou sans clé maîtresse, antivirus configuré
+  injoignable, DNS en panne sur le nom témoin `smtp.hostname`, ou quand aucun nœud
   `lyxal_server` vivant n'est listé dans `runtime_node` depuis plus de 10 minutes : message
   « aucun nœud lyxal_server vivant… », §9), puis les écoutes
   (« dégradé » si le dernier rechargement des certificats a échoué, au-delà de 90 % du budget
@@ -284,11 +317,14 @@ installées avec le socle (hors empreinte du socle), contrôlées contre `src/er
 | `GROUPWARE_BIND_FAILED` | Port de courrier ou port HTTP indisponible |
 | `GROUPWARE_TLS_CERTIFICATE_INVALID` | Certificat illisible ou invalide, nom non couvert, clé lisible par d'autres comptes : arrêt au démarrage ; au rechargement, l'ancien reste et la santé passe à « dégradé » |
 | `GROUPWARE_MASTER_KEY_MISSING` | Aucune clé maîtresse du coffre-fort alors qu'un bucket chiffré existe dans la base : arrêt après l'installation des modules, rien n'est démarré |
+| `GROUPWARE_DNS_UNAVAILABLE` | Écoute `smtp` déclarée, mais résolveur DNS impossible à construire (configuration DNS du système illisible, aucun serveur) : arrêt avant l'installation des modules |
 | `GROUPWARE_SHUTDOWN_SIGNAL_FAILED` | Signal d'arrêt indisponible |
 | `GROUPWARE_TELEMETRY_INIT_FAILED` | Journal non initialisé |
 
 Une erreur du runtime garde son code `RUNTIME_*`. Les erreurs du transport (`NetError` de
-`lyxal_mail`) restent internes : jamais renvoyées à un client ni écrites en base.
+`lyxal_mail`) restent internes : jamais renvoyées à un client ni écrites en base. Les codes
+`MAIL_*` de la réception ne sont jamais rendus à un serveur expéditeur : la session SMTP les
+traduit en réponses SMTP.
 
 ## 9. Exploitation
 
@@ -313,6 +349,13 @@ Une erreur du runtime garde son code `RUNTIME_*`. Les erreurs du transport (`Net
   n'est jamais rescellée : la sonde de `lyxal_mail` passe à « dégradé » quand aucun nœud
   `lyxal_server` vivant (battement de moins de 30 s dans `runtime_node`) n'a été vu par ce nœud
   depuis plus de 10 minutes, et le redevient sain au premier battement vu.
+* **Port 25 (réception SMTP)** : `smtp.hostname` est le nom du MX du domaine et celui du DNS
+  inverse de l'adresse publique ; certains hébergeurs bloquent le port 25 entrant. Résolveur DNS :
+  un résolveur récursif local (Unbound ou équivalent) est recommandé (les résolveurs publics
+  limitent les requêtes). Mise en service progressive : `smtp.dmarc_enforce = false` donne les
+  résultats DMARC sans les appliquer. Vérification : `swaks --to adresse@domaine --server hôte`
+  ou `openssl s_client -connect hôte:25 -starttls smtp`. Liste de blocage : entrées manuelles par
+  `fn::mail_block_create` (`mail.installation.manage`), relues par chaque nœud en 30 s au plus.
 * **Certificats** : fichier de clé en mode 0600 ou 0400, propriété du compte du service ;
   vérification par `openssl s_client -connect hôte:993 -servername mail.exemple.fr` (TLS
   implicite) ou `openssl s_client -connect hôte:587 -starttls smtp` (STARTTLS).
@@ -345,9 +388,14 @@ maintenance exécutée par le planificateur, planification non recréée au red�
 événement `storage.object.*` ; sans clé : sonde « dégradé » et dépôt refusé à réessayer ; sans
 clé et avec un bucket chiffré en base : démarrage refusé, `GROUPWARE_MASTER_KEY_MISSING`, aucun
 nœud inscrit, puis démarrage avec la clé) ; réglages du coffre-fort et du stockage (clés
-refusées dans les fichiers, supports, antivirus, exécuteurs, support du courrier) ; **deux hôtes** avec le vrai `lyxal-server` (décision G16) sur base
-embarquée et sur `ws://` ; bout en bout du binaire (démarrage, routes HTTP, refus SMTP, arrêt par
-SIGTERM).
+refusées dans les fichiers, supports, antivirus, exécuteurs, support du courrier) ; réception
+SMTP (`smtp_reception` : message envoyé par le client `lettre` puis lu par le service du
+courrier, en-têtes ajoutés, événement sans adresse, mesures ; relais refusé ; réseau de la liste
+de blocage refusé à l'acceptation ; STARTTLS réel par `openssl s_client -starttls smtp` et message
+marqué `ESMTPS` ; réglages `[smtp]` et `[dns]`) ; **deux hôtes** avec le vrai `lyxal-server`
+(décision G16) sur base embarquée et sur `ws://` ; bout en bout du binaire (démarrage, routes
+HTTP, accueil SMTP et relais refusé, arrêt par SIGTERM). Les essais n'interrogent jamais le vrai
+DNS : un serveur DNS d'essai (réponse « n'existe pas » à toute question) est désigné par `[dns]`.
 
 Les essais TLS utilisent le client `openssl s_client` (outil OpenSSL requis sur la machine
 d'essai) : le garde-fou C12 refuse toute configuration `rustls`, même cliente, hors de

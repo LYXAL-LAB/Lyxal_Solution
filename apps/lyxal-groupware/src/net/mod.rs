@@ -21,6 +21,7 @@ use lyxal_mail::net::{
     ConnectionLimiter, IpRateLimiter, MailProtocol, MemoryBudget, SessionHandler, TlsMode,
     WindowLimit,
 };
+use lyxal_mail::smtp::{BlockList, SmtpInboundHandler};
 use lyxal_runtime::health::{HealthCheckResult, HealthStatus, ModuleHealthCheck};
 use lyxal_runtime::worker::LyxalWorker;
 use lyxal_runtime::{ModuleContext, ModuleId, RuntimeError};
@@ -62,6 +63,8 @@ pub(crate) struct Acceptance {
     /// Connexions ouvertes par réseau (fenêtre sans fin).
     open: Arc<IpRateLimiter>,
     budget: MemoryBudget,
+    /// Liste de blocage de l'installation (relue toutes les 30 s), en plus de `deny`.
+    blocks: BlockList,
     deny: Vec<IpNetwork>,
     allow: Vec<IpNetwork>,
     exempt: Vec<IpNetwork>,
@@ -73,7 +76,7 @@ pub(crate) struct Acceptance {
 }
 
 impl Acceptance {
-    fn new(config: &GroupwareConfig) -> Self {
+    fn new(config: &GroupwareConfig, budget: MemoryBudget, blocks: BlockList) -> Self {
         let limits = &config.limits;
         Self {
             rate: IpRateLimiter::with_max_tracked_networks(
@@ -90,7 +93,8 @@ impl Acceptance {
                 }],
                 limits.max_tracked_networks,
             )),
-            budget: MemoryBudget::new(limits.memory_budget_bytes),
+            budget,
+            blocks,
             deny: limits.deny_networks.clone(),
             allow: limits.allow_networks.clone(),
             exempt: limits.exempt_networks.clone(),
@@ -162,6 +166,8 @@ pub struct MailNet {
     acceptance: Arc<Acceptance>,
     listeners: Vec<Arc<Listener>>,
     certificates: Option<Arc<Certificates>>,
+    /// Réception SMTP du nœud, pour ses mesures.
+    smtp: Option<SmtpInboundHandler>,
 }
 
 impl MailNet {
@@ -174,7 +180,27 @@ impl MailNet {
         certificates: Option<Arc<Certificates>>,
         handler_for: &dyn Fn(MailProtocol) -> Arc<dyn SessionHandler>,
     ) -> Result<Self, GroupwareError> {
-        let acceptance = Arc::new(Acceptance::new(config));
+        Self::with_shared(
+            config,
+            bound,
+            certificates,
+            MemoryBudget::new(config.limits.memory_budget_bytes),
+            BlockList::new(),
+            handler_for,
+        )
+    }
+
+    /// Comme [`MailNet::new`], avec le budget mémoire `budget` (partagé avec la réception SMTP)
+    /// et la liste de blocage `blocks` (relue par le worker `mail.block_refresh`).
+    pub fn with_shared(
+        config: &GroupwareConfig,
+        bound: Vec<BoundListener>,
+        certificates: Option<Arc<Certificates>>,
+        budget: MemoryBudget,
+        blocks: BlockList,
+        handler_for: &dyn Fn(MailProtocol) -> Arc<dyn SessionHandler>,
+    ) -> Result<Self, GroupwareError> {
+        let acceptance = Arc::new(Acceptance::new(config, budget, blocks));
         let listeners = bound
             .into_iter()
             .map(|bound| {
@@ -230,7 +256,14 @@ impl MailNet {
             acceptance,
             listeners,
             certificates,
+            smtp: None,
         })
+    }
+
+    /// Mesures de la réception SMTP ajoutées à celles des écoutes (`/metrics`).
+    pub fn with_smtp_metrics(mut self, smtp: Option<SmtpInboundHandler>) -> Self {
+        self.smtp = smtp;
+        self
     }
 
     /// Workers des écoutes (`lyxal_mail:mail.listener.<id>`) et, si des certificats sont
@@ -299,6 +332,7 @@ impl MailNet {
             },
             tracked_networks: self.acceptance.rate.tracked() + self.acceptance.open.tracked(),
             certificates: self.certificates.as_ref().map(|c| c.snapshot()),
+            smtp: self.smtp.as_ref().map(SmtpInboundHandler::snapshot),
         }
     }
 
@@ -317,6 +351,9 @@ pub struct MailSnapshot {
     pub tracked_networks: usize,
     /// Certificats et rechargements ; absent sans écoute chiffrée.
     pub certificates: Option<CertificatesSnapshot>,
+    /// Réception SMTP (messages acceptés, refusés par motif, résultats d'authenticité, remises,
+    /// DNS, bannissements) ; absent sans écoute `smtp`.
+    pub smtp: Option<BTreeMap<String, u64>>,
 }
 
 /// Budget mémoire des connexions.

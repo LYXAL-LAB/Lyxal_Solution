@@ -1,6 +1,6 @@
 # `lyxal_mail_proto` — syntaxes du courrier
 
-**État : lot 5 du programme courrier, partie 5a (syntaxe SMTP).** Crate Rust membre du
+**État : lot 5 du programme courrier, réalisé (syntaxe SMTP).** Crate Rust membre du
 workspace, sous licence `AGPL-3.0-only`. Il contient deux modules : `mime`, la lecture d'un
 message (lot 4), et `smtp`, la syntaxe SMTP côté serveur (lot 5). Les syntaxes des autres
 protocoles arrivent avec les lots qui les servent (voir [`ROADMAP.md`](ROADMAP.md)).
@@ -8,7 +8,7 @@ protocoles arrivent avec les lots qui les servent (voir [`ROADMAP.md`](ROADMAP.m
 Le programme courrier, agendas et contacts (architecture, 23 lots, décisions F1 à F5 et P1 à P15
 du CTO) est décrit par `implementation_plan.md` à la racine du dépôt. Utilisé par le dépôt d'un
 message de `lyxal_mail` (`MailIngest`), qui range enveloppe et structure en base, et par la
-session SMTP entrante de `lyxal_mail` (lot 5, partie 5d).
+session SMTP entrante de `lyxal_mail` (`lyxal_mail::smtp`, lot 5).
 
 ## Objet
 
@@ -73,7 +73,7 @@ des messages joints encodés est décodé pour être lu.
 ## Syntaxe SMTP (`lyxal_mail_proto::smtp`)
 
 Lecture des commandes d'un serveur expéditeur et écriture de nos réponses (RFC 5321), pour la
-réception sur le port 25 (plan `crates/lyxal_mail/implementation_plan.md` §4). Aucune décision
+réception sur le port 25 (§4 du plan du lot 5). Aucune décision
 de session ici : états, destinataires, politique et délais appartiennent à `lyxal_mail::smtp`.
 
 | Élément | Rôle |

@@ -80,7 +80,7 @@ async fn host_starts_serves_health_and_drains_on_shutdown() {
             "RETURN count(SELECT * FROM error_definition WHERE string::starts_with(code, 'GROUPWARE_'));"
         )
         .await,
-        8
+        9
     );
 
     // Santé et mesures

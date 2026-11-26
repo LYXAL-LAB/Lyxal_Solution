@@ -86,7 +86,8 @@ pub(super) async fn serve(
 
     // Listes statiques
     let denied = acceptance.deny.iter().any(|net| net.contains(ip))
-        || (!acceptance.allow.is_empty() && !acceptance.allow.iter().any(|net| net.contains(ip)));
+        || (!acceptance.allow.is_empty() && !acceptance.allow.iter().any(|net| net.contains(ip)))
+        || acceptance.blocks.contains(ip);
     if denied {
         return refuse(&listener, stream, ip, RefusalReason::Blocked).await;
     }

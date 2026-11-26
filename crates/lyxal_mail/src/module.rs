@@ -8,10 +8,11 @@ use lyxal_runtime::health::{HealthCheckResult, ModuleHealthCheck};
 use lyxal_runtime::presence::{PresenceConfig, PresenceStore};
 use lyxal_runtime::types::ModuleId;
 use lyxal_runtime::{LyxalModule, ModuleContext, RuntimeError};
-use lyxal_storage::StorageService;
-use std::sync::{Mutex, PoisonError};
+use lyxal_storage::{ContentScanner, StorageService};
+use std::sync::{Arc, Mutex, PoisonError};
 use std::time::{Duration, Instant};
 
+use crate::dns::MailResolver;
 use crate::models::SettingsGetParams;
 use crate::store::MailStore;
 use crate::MODULE_ID;
@@ -140,6 +141,37 @@ pub struct MailHealthCheck {
     store: MailStore,
     storage: StorageService,
     required_host: Option<RequiredHost>,
+    scanner: Option<Arc<dyn ContentScanner>>,
+    dns: Option<DnsProbe>,
+}
+
+/// Intervalle entre deux requêtes DNS de la sonde (nom témoin de l'installation).
+pub const DNS_PROBE_INTERVAL: Duration = Duration::from_secs(60);
+
+/// Requête DNS témoin de la sonde : le nom de l'hôte (`smtp.hostname`), interrogé une fois par
+/// minute au plus ; une absence (`NXDOMAIN`, aucun enregistrement) est une réponse, seule une
+/// panne fait passer la sonde à « dégradé ».
+struct DnsProbe {
+    resolver: Arc<dyn MailResolver>,
+    name: String,
+    last: Mutex<Option<(Instant, bool)>>,
+}
+
+impl DnsProbe {
+    async fn answers(&self) -> bool {
+        let cached = *self.last.lock().unwrap_or_else(PoisonError::into_inner);
+        if let Some((at, answers)) = cached {
+            if at.elapsed() < DNS_PROBE_INTERVAL {
+                return answers;
+            }
+        }
+        let answers = match self.resolver.ipv4(&self.name).await {
+            Ok(_) => true,
+            Err(error) => !error.is_temporary(),
+        };
+        *self.last.lock().unwrap_or_else(PoisonError::into_inner) = Some((Instant::now(), answers));
+        answers
+    }
 }
 
 impl MailHealthCheck {
@@ -150,12 +182,32 @@ impl MailHealthCheck {
             store,
             storage,
             required_host: None,
+            scanner: None,
+            dns: None,
         }
     }
 
     /// Hôte dont un nœud doit tourner sur la même base (`lyxal_server`).
     pub fn with_required_host(mut self, host: RequiredHost) -> Self {
         self.required_host = Some(host);
+        self
+    }
+
+    /// Antivirus de la chaîne de remise : injoignable, la sonde passe à « dégradé » (les
+    /// messages sont refusés temporairement).
+    pub fn with_scanner(mut self, scanner: Arc<dyn ContentScanner>) -> Self {
+        self.scanner = Some(scanner);
+        self
+    }
+
+    /// Résolveur DNS de la réception : une panne sur le nom témoin `name` (nom de l'hôte) fait
+    /// passer la sonde à « dégradé ».
+    pub fn with_dns_probe(mut self, resolver: Arc<dyn MailResolver>, name: String) -> Self {
+        self.dns = Some(DnsProbe {
+            resolver,
+            name,
+            last: Mutex::new(None),
+        });
         self
     }
 }
@@ -195,6 +247,30 @@ impl ModuleHealthCheck for MailHealthCheck {
                         .to_string(),
                 ),
             ));
+        }
+        if let Some(scanner) = &self.scanner {
+            if let Err(error) = scanner.ping().await {
+                return Ok(HealthCheckResult::degraded(
+                    self.module_id.clone(),
+                    elapsed(),
+                    Some(format!(
+                        "MAIL_SCANNER_UNAVAILABLE : antivirus injoignable, messages reçus refusés temporairement ({})",
+                        error.code()
+                    )),
+                ));
+            }
+        }
+        if let Some(dns) = &self.dns {
+            if !dns.answers().await {
+                return Ok(HealthCheckResult::degraded(
+                    self.module_id.clone(),
+                    elapsed(),
+                    Some(format!(
+                        "DNS en panne sur le nom témoin {} : contrôles SPF, DKIM et DMARC en « temperror »",
+                        dns.name
+                    )),
+                ));
+            }
         }
         if let Some(required) = &self.required_host {
             match required.absence().await {

@@ -48,6 +48,9 @@ log_filter = "info"
 json_logs = false
 include_target = false
 include_thread_ids = false
+
+[smtp]
+hostname = "mx.lyxal.test"
 {extra}
 "#
     )
@@ -63,6 +66,37 @@ pub fn try_config(text: &str) -> Result<GroupwareConfig, lyxal_groupware::error:
     let directory = tempfile::tempdir().expect("tempdir");
     fs::write(directory.path().join("default.toml"), text).expect("default.toml");
     GroupwareConfig::load_with_environment(directory.path(), Some(Default::default()))
+}
+
+/// Serveur DNS d'essai sur un port UDP libre de `127.0.0.1` : répond « n'existe pas »
+/// (`NXDOMAIN`) à toute question, sans jamais interroger le vrai DNS. Rend la section `[dns]`
+/// qui le désigne.
+pub async fn fake_dns() -> String {
+    let socket = tokio::net::UdpSocket::bind("127.0.0.1:0")
+        .await
+        .expect("socket DNS");
+    let address = socket.local_addr().expect("adresse DNS");
+    tokio::spawn(async move {
+        let mut buffer = [0u8; 512];
+        while let Ok((read, peer)) = socket.recv_from(&mut buffer).await {
+            if read < 12 {
+                continue;
+            }
+            // En-tête et question seulement (la section additionnelle EDNS est retirée)
+            let mut end = 12;
+            while end < read && buffer[end] != 0 {
+                end += usize::from(buffer[end]) + 1;
+            }
+            let end = (end + 5).min(read);
+            let mut answer = buffer[..end].to_vec();
+            // QR = 1, opcode et RD repris, RA = 1, RCODE = 3 (NXDOMAIN) ; aucune réponse
+            answer[2] = 0x80 | (buffer[2] & 0x79);
+            answer[3] = 0x80 | 0x03;
+            answer[6..12].fill(0);
+            let _ = socket.send_to(&answer, peer).await;
+        }
+    });
+    format!("\n[dns]\nservers = [\"{address}\"]\ntimeout_seconds = 1\nattempts = 1\n")
 }
 
 /// Écoute SMTP en clair sur un port libre de `127.0.0.1`.

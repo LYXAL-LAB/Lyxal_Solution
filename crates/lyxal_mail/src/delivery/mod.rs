@@ -14,6 +14,16 @@
 //!
 //! Aucune règle d'acceptation n'est écrite ici : compte, taille, quota, dossier, idempotence et
 //! compteurs sont contrôlés par les fonctions SurrealQL.
+//!
+//! La chaîne de remise d'un message reçu (antivirus → anti-spam → filtres → index → chiffrement)
+//! est dans [`DeliveryPipeline`].
+
+mod pipeline;
+
+pub use pipeline::{
+    AntivirusStage, DeliveryPipeline, DeliveryVerdict, EncryptionStage, FilterStage, IndexStage,
+    PipelineResult, ReceivedMessage, RecipientTarget, RejectReason, SpamStage,
+};
 
 use lyxal_crypto::Blake3Hasher;
 use std::collections::hash_map::DefaultHasher;

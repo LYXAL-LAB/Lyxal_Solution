@@ -48,6 +48,11 @@ pub enum GroupwareError {
     #[error("un bucket chiffré existe : la clé maîtresse du coffre-fort est obligatoire (LYXAL_GROUPWARE__SECRETS__MASTER_KEY et secrets.master_key_id, même clé que lyxal-server)")]
     MasterKeyMissing,
 
+    /// Résolveur DNS impossible à construire alors qu'une écoute `smtp` existe (configuration
+    /// DNS du système illisible, ou aucun serveur DNS).
+    #[error("résolveur DNS indisponible : {message}")]
+    DnsUnavailable { message: String },
+
     /// Attente du signal d'arrêt impossible.
     #[error("signal d'arrêt indisponible : {message}")]
     ShutdownSignal { message: String },
@@ -140,6 +145,15 @@ const MASTER_KEY_MISSING: GroupwareErrorInfo = GroupwareErrorInfo {
     label: "Clé maîtresse du coffre-fort absente",
 };
 
+const DNS_UNAVAILABLE: GroupwareErrorInfo = GroupwareErrorInfo {
+    code: "GROUPWARE_DNS_UNAVAILABLE",
+    category: "dependency",
+    http_status: 500,
+    retryable: false,
+    message: "The DNS resolver could not be configured",
+    label: "Résolveur DNS indisponible",
+};
+
 const SHUTDOWN_SIGNAL_FAILED: GroupwareErrorInfo = GroupwareErrorInfo {
     code: "GROUPWARE_SHUTDOWN_SIGNAL_FAILED",
     category: "internal",
@@ -166,6 +180,7 @@ pub const GROUPWARE_ERROR_CATALOG: &[GroupwareErrorInfo] = &[
     BIND_FAILED,
     TLS_CERTIFICATE_INVALID,
     MASTER_KEY_MISSING,
+    DNS_UNAVAILABLE,
     SHUTDOWN_SIGNAL_FAILED,
     TELEMETRY_INIT_FAILED,
 ];
@@ -192,6 +207,7 @@ impl GroupwareError {
             Self::Bind { .. } => BIND_FAILED,
             Self::TlsCertificate { .. } => TLS_CERTIFICATE_INVALID,
             Self::MasterKeyMissing => MASTER_KEY_MISSING,
+            Self::DnsUnavailable { .. } => DNS_UNAVAILABLE,
             Self::ShutdownSignal { .. } => SHUTDOWN_SIGNAL_FAILED,
             Self::Telemetry { .. } => TELEMETRY_INIT_FAILED,
         }

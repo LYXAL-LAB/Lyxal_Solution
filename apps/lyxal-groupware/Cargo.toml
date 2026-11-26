@@ -54,6 +54,9 @@ lyxal_host = { workspace = true, features = ["build"] }
 
 [dev-dependencies]
 bytes = "1"
+# Client SMTP réel des essais d'interopérabilité (MIT OR Apache-2.0, déjà dans l'arbre), en clair
+# seulement : aucune fonctionnalité TLS (STARTTLS essayé par `openssl s_client`).
+lettre = { version = "0.11.23", default-features = false, features = ["builder", "smtp-transport", "tokio1"] }
 tempfile.workspace = true
 # Client TLS d'essai : `openssl s_client` lancé par les essais (outil, pas une bibliothèque)
 tokio = { workspace = true, features = ["process"] }

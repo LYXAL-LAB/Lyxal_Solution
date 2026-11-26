@@ -1,6 +1,7 @@
-# Production. Aucune écoute de courrier active : tant qu'aucun protocole n'existe (SMTP au lot 5,
-# IMAP au lot 8…), chaque port ne répondrait qu'un refus poli. Les écoutes ci-dessous sont à
-# décommenter avec le lot du protocole, et la section [tls] avec la première écoute chiffrée.
+# Production. Réception SMTP (port 25) écrite au lot 5 : écoute « smtp » ci-dessous, avec
+# smtp.hostname (obligatoire) et la section [tls] pour STARTTLS. Les autres protocoles (soumission
+# au lot 6, IMAP au lot 8…) ne répondent encore qu'un refus poli : leurs écoutes sont à
+# décommenter avec leur lot.
 
 [application]
 name = "Lyxal Groupware"
@@ -50,7 +51,21 @@ log_client_ip = "network"
 # certificate = "/etc/letsencrypt/live/mail.exemple.fr/fullchain.pem"
 # private_key = "/etc/letsencrypt/live/mail.exemple.fr/privkey.pem"
 
-# Réception SMTP (lot 5) :
+# Réception SMTP (lot 5) : nom de l'hôte (bannière, Received, Authentication-Results ; nom du MX
+# et du DNS inverse de l'adresse publique), limites (valeurs par défaut du plan, décision S19),
+# politique DMARC appliquée (dmarc_enforce = false : résultat seulement, pour la mise en service).
+# Résolveur : celui du système par défaut ; un résolveur récursif local (Unbound) est recommandé.
+# [smtp]
+# hostname = "mx.exemple.fr"
+# dmarc_enforce = true
+# max_message_bytes = 52428800
+# max_recipients = 100
+#
+# [dns]
+# servers = ["127.0.0.1:53"]
+# timeout_seconds = 5
+# attempts = 2
+#
 # [[listeners]]
 # id = "smtp"
 # protocol = "smtp"

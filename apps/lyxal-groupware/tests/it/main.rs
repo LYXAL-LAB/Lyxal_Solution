@@ -15,6 +15,7 @@ mod mail_service;
 mod proxy;
 mod reload;
 mod shutdown;
+mod smtp_reception;
 mod starttls;
 mod support;
 mod tls;

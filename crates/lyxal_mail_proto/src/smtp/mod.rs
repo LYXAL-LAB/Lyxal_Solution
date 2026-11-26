@@ -2,7 +2,7 @@
 
 //! Syntaxe SMTP côté serveur (RFC 5321) : lecture des commandes et de leurs paramètres,
 //! découpage strict des lignes, lecture de `DATA` et de `BDAT`, écriture des réponses et de la
-//! réponse à `EHLO` (lot 5, plan `crates/lyxal_mail/implementation_plan.md` §4).
+//! réponse à `EHLO` (lot 5, §4 de son plan).
 //!
 //! Extensions lues : `PIPELINING` (RFC 2920), `SIZE` (RFC 1870), `8BITMIME` (RFC 6152),
 //! `SMTPUTF8` (RFC 6531), `ENHANCEDSTATUSCODES` (RFC 2034, codes de la RFC 3463), `STARTTLS`

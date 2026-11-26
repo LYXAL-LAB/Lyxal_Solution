@@ -15,7 +15,7 @@ use crate::net::certificates::Certificates;
 use crate::net::MailNet;
 use crate::services::{self, MailHost};
 use lyxal_host::database::Database;
-use lyxal_mail::net::{MailProtocol, SessionHandler, UnavailableHandler};
+use lyxal_mail::net::{MailProtocol, MemoryBudget, SessionHandler, UnavailableHandler};
 use lyxal_runtime::lock::SurrealInstallationLeaseManager;
 use lyxal_runtime::{
     EventEngineConfig, LyxalRuntime, ModuleId, RuntimeConfig, SurrealRuntimeStore,
@@ -31,10 +31,18 @@ pub struct Started {
     pub services: MailHost,
 }
 
-/// Session de chaque protocole au lot 3 : aucun protocole n'existe encore, chaque port répond
-/// par un refus poli « service indisponible » (décision G3).
+/// Session d'un protocole qui n'existe pas encore (`submission`, `imap`, `pop3`,
+/// `managesieve`) : refus poli « service indisponible » (décision G3).
 pub fn unavailable(protocol: MailProtocol) -> Arc<dyn SessionHandler> {
     Arc::new(UnavailableHandler::new(protocol))
+}
+
+/// Session de chaque protocole : réception SMTP (lot 5) pour `smtp`, refus poli pour les autres.
+fn hosted(services: &MailHost, protocol: MailProtocol) -> Arc<dyn SessionHandler> {
+    match (protocol, &services.smtp) {
+        (MailProtocol::Smtp, Some(smtp)) => Arc::new(smtp.clone()),
+        _ => unavailable(protocol),
+    }
 }
 
 /// Construit le runtime, installe le socle et les modules hébergés, inscrit les écoutes
@@ -46,7 +54,7 @@ pub async fn start(
     listeners: Vec<BoundListener>,
     certificates: Option<Arc<Certificates>>,
 ) -> Result<Started, GroupwareError> {
-    start_with(config, database, listeners, certificates, &unavailable).await
+    start_inner(config, database, listeners, certificates, None).await
 }
 
 /// `start`, avec la session de chaque protocole donnée par `handler_for` (protocoles d'essai
@@ -57,6 +65,16 @@ pub async fn start_with(
     listeners: Vec<BoundListener>,
     certificates: Option<Arc<Certificates>>,
     handler_for: &dyn Fn(MailProtocol) -> Arc<dyn SessionHandler>,
+) -> Result<Started, GroupwareError> {
+    start_inner(config, database, listeners, certificates, Some(handler_for)).await
+}
+
+async fn start_inner(
+    config: &GroupwareConfig,
+    database: &Database,
+    listeners: Vec<BoundListener>,
+    certificates: Option<Arc<Certificates>>,
+    handler_for: Option<&dyn Fn(MailProtocol) -> Arc<dyn SessionHandler>>,
 ) -> Result<Started, GroupwareError> {
     // Runtime, baux, moteur d'événements et installation : connexion fixe de la session système
     let client = database.fixed();
@@ -86,11 +104,31 @@ pub async fn start_with(
     ))?;
 
     // Services des modules hébergés : coffre-fort, stockage, planificateur, courrier
-    let services = services::register_services(&runtime, database, config)?;
+    // Budget mémoire des connexions, partagé par l'acceptation et la réception SMTP
+    let budget = MemoryBudget::new(config.limits.memory_budget_bytes);
+    let services = services::register_services(&runtime, database, config, &budget)?;
 
     // Écoutes : un worker par écoute, la relecture des certificats et la sonde de `lyxal_mail`
     // (service du courrier, puis écoutes)
-    let mail = MailNet::new(config, listeners, certificates, handler_for)?;
+    let mail = match handler_for {
+        Some(handler_for) => MailNet::with_shared(
+            config,
+            listeners,
+            certificates,
+            budget,
+            services.mail.blocks.clone(),
+            handler_for,
+        )?,
+        None => MailNet::with_shared(
+            config,
+            listeners,
+            certificates,
+            budget,
+            services.mail.blocks.clone(),
+            &|protocol| hosted(&services.mail, protocol),
+        )?,
+    }
+    .with_smtp_metrics(services.mail.smtp.clone());
     for worker in mail.workers()? {
         runtime.register_worker(worker)?;
     }

@@ -20,6 +20,11 @@ licence : `crates/lyxal_mail/LICENSES/AGPL-3.0-only.txt`.
 | `src/net/proxy.rs` (PROXY protocol) | Stalwart | `3adead9` | idem | `crates/common/src/network/listen.rs` (lecture de l'en-tête par `proxy-header`, depuis `proxy_networks` seulement) | modèle (aucun code repris ; bibliothèque `proxy-header` 0.1.3, MIT) | 3 |
 | `src/net/accept.rs` (pipeline d'acceptation) | Stalwart ; Mox | `3adead9` ; `b32f0de` | idem ; MIT | Stalwart `crates/common/src/network/listen.rs` (`build_session`) ; Mox `smtpserver/server.go` (ordre cadence puis connexions ouvertes) | modèle | 3 |
 
+Lot 5 : le branchement de la réception SMTP (`src/services.rs`, `src/runtime.rs`, sections
+`[smtp]` et `[dns]` de `src/config.rs`, liste de blocage à l'acceptation) et ses essais
+(`tests/it/smtp_reception.rs`, serveur DNS d'essai de `tests/it/support.rs`) sont écrits pour
+Lyxal OS, sans code repris ; la session elle-même est dans `lyxal_mail` (`crates/lyxal_mail/SOURCES.md` §3.3).
+
 Chaque fichier porté garde son en-tête `SPDX-FileCopyrightText` d'origine, déclare
 `SPDX-License-Identifier: AGPL-3.0-only` et décrit ses modifications pour Lyxal OS. Les autres
 fichiers sont écrits pour Lyxal OS. Le code commun aux hôtes vient de `crates/lyxal_host`, qui ne
