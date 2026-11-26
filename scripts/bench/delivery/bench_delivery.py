@@ -240,7 +240,15 @@ def measure_calls(bench: Bench, with_fields: bool, repeat: int, warmup: int) -> 
 
 
 def client(bench: Bench, token: str, organisation: dict, account: str, name: str, stop_at: float, stats: dict) -> None:
-    """Un client : une connexion HTTP gardée ouverte, des remises l'une après l'autre jusqu'à l'échéance."""
+    """Un client ; sa panne (délai, connexion coupée, réponse illisible) est gardée dans `stats["failure"]`."""
+    try:
+        deliver_until(bench, token, organisation, account, name, stop_at, stats)
+    except Exception as failure:  # relevée par measure_clients, qui arrête le banc
+        stats["failure"] = failure
+
+
+def deliver_until(bench: Bench, token: str, organisation: dict, account: str, name: str, stop_at: float, stats: dict) -> None:
+    """Une connexion HTTP gardée ouverte, des remises l'une après l'autre jusqu'à l'échéance."""
     connection = http.client.HTTPConnection("127.0.0.1", bench.server.port, timeout=bench.timeout)
     headers = {"Accept": "application/json", "Authorization": f"Bearer {token}",
                "surreal-ns": mods.NS, "surreal-db": bench.database.db}
@@ -296,6 +304,9 @@ def measure_clients(bench: Bench, counts: list[int], seconds: float) -> dict:
                 thread.start()
             for thread in threads:
                 thread.join()
+            failures = [stat["failure"] for stat in stats if "failure" in stat]
+            if failures:
+                raise RuntimeError(f"{len(failures)} client(s) sur {count} en panne, mesure invalide : {failures[0]!r}")
             elapsed = time.monotonic() - started
             latencies = sorted(latency for stat in stats for latency in stat["latencies"])
             refused = sum((stat["refused"] for stat in stats), collections.Counter())
