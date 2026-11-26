@@ -21,8 +21,9 @@
 mod pipeline;
 
 pub use pipeline::{
-    AntivirusStage, DeliveryPipeline, DeliveryVerdict, EncryptionStage, FilterStage, IndexStage,
-    PipelineResult, ReceivedMessage, RecipientTarget, RejectReason, SpamStage,
+    AccountOutcome, AntivirusStage, DeliveryPipeline, DeliveryVerdict, EncryptionStage,
+    FilterStage, IndexStage, PipelineResult, ReceivedMessage, RecipientTarget, RejectReason,
+    SpamStage,
 };
 
 use lyxal_crypto::Blake3Hasher;

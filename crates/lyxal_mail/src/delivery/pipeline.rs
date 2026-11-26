@@ -24,7 +24,7 @@
 use bytes::Bytes;
 use lyxal_storage::{ContentScanner, ScanVerdict};
 use lyxal_surreal::ToSql;
-use std::collections::BTreeSet;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use crate::delivery::{delivery_key, DeliveryOutcome};
@@ -93,13 +93,22 @@ pub enum RejectReason {
     Infected,
 }
 
+/// Issue de la remise à un compte.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AccountOutcome {
+    /// Compte destinataire.
+    pub account: MailRecordId,
+    /// Message inscrit, ou déjà inscrit.
+    pub outcome: DeliveryOutcome,
+}
+
 /// Issue de la remise d'un message à tous ses comptes.
 #[derive(Debug)]
 pub enum PipelineResult {
     /// Tous les comptes servis (inscrits, ou déjà inscrits).
     Delivered {
         /// Issue par compte.
-        outcomes: Vec<(MailRecordId, DeliveryOutcome)>,
+        outcomes: Vec<AccountOutcome>,
     },
     /// Refus avant tout dépôt (antivirus).
     Rejected {
@@ -278,18 +287,26 @@ impl DeliveryPipeline {
             spam: self.spam.verdict().to_string(),
             tls: message.tls,
         };
-        // Un contenu par compte : un compte désigné par plusieurs destinataires n'est servi
-        // qu'une fois, sous l'adresse du premier
-        let mut seen = BTreeSet::new();
-        let mut deliveries = Vec::new();
+        // Un contenu par compte : un compte désigné par plusieurs destinataires (adresse et
+        // alias) n'est servi qu'une fois, sous la plus petite des adresses qui le désignent ;
+        // l'empreinte d'idempotence ne dépend donc pas de l'ordre des `RCPT TO`
+        let mut chosen: BTreeMap<String, (&RecipientTarget, &MailRecordId)> = BTreeMap::new();
         for recipient in &message.recipients {
-            let key = delivery_key(&recipient.address, &message.sender, &message.received);
             for account in &recipient.accounts {
-                let account_key = account.to_sql();
-                if !seen.insert(account_key.clone()) {
-                    continue;
-                }
-                deliveries.push((
+                chosen
+                    .entry(account.to_sql())
+                    .and_modify(|current| {
+                        if recipient.address < current.0.address {
+                            *current = (recipient, account);
+                        }
+                    })
+                    .or_insert((recipient, account));
+            }
+        }
+        let deliveries: Vec<_> = chosen
+            .into_iter()
+            .map(|(account_key, (recipient, account))| {
+                (
                     account.clone(),
                     ReceivedDelivery {
                         account: account_key,
@@ -297,12 +314,16 @@ impl DeliveryPipeline {
                         role,
                         raw: message.stored.clone(),
                         received_at: Some(message.received_at),
-                        delivery_key: key.clone(),
+                        delivery_key: delivery_key(
+                            &recipient.address,
+                            &message.sender,
+                            &message.received,
+                        ),
                         reception: reception.clone(),
                     },
-                ));
-            }
-        }
+                )
+            })
+            .collect();
         let ingest = &self.encryption.ingest;
         let results =
             futures::future::join_all(deliveries.into_iter().map(
@@ -313,7 +334,7 @@ impl DeliveryPipeline {
         let mut failure: Option<MailError> = None;
         for (account, result) in results {
             match result {
-                Ok(outcome) => outcomes.push((account, outcome)),
+                Ok(outcome) => outcomes.push(AccountOutcome { account, outcome }),
                 Err(error) => {
                     tracing::warn!(code = %error.code(), "remise à un compte en échec : refus temporaire de la transaction");
                     failure.get_or_insert(error);

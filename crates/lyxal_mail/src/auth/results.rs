@@ -135,12 +135,18 @@ fn pvalue(value: &str) -> String {
     quoted
 }
 
-/// Retire de l'en-tête les champs `Authentication-Results` dont l'`authserv-id` est le nôtre
-/// (casse ignorée) ; les autres champs et le corps sont gardés octet pour octet.
-pub fn strip_forged_results(message: &[u8], authserv_id: &str) -> Result<Vec<u8>, HeaderError> {
+/// Message à ranger : `prefix` (nos en-têtes de réception), puis le message sans les champs
+/// `Authentication-Results` dont l'`authserv-id` est le nôtre (casse ignorée) ; les autres
+/// champs et le corps sont gardés octet pour octet. Une seule copie du message est faite.
+pub fn strip_forged_results(
+    message: &[u8],
+    authserv_id: &str,
+    prefix: &[u8],
+) -> Result<Vec<u8>, HeaderError> {
     let headers = MessageHeaders::parse(message)?;
     let base = message.as_ptr() as usize;
-    let mut kept = Vec::with_capacity(message.len());
+    let mut kept = Vec::with_capacity(prefix.len() + message.len());
+    kept.extend_from_slice(prefix);
     let mut position = 0;
     for field in &headers.fields {
         if !field.is(FIELD_NAME)
@@ -291,10 +297,10 @@ mod tests {
             Authentication-Results: autre.example; spf=fail\r\n\
             Authentication-Results: mx.lyxal.test.evil; spf=fail\r\n\
             Subject: s\r\n\r\nAuthentication-Results: mx.lyxal.test; corps garde\r\n";
-        let stripped = strip_forged_results(message, "mx.lyxal.test").unwrap();
+        let stripped = strip_forged_results(message, "mx.lyxal.test", b"X-Nous: 1\r\n").unwrap();
         assert_eq!(
             stripped,
-            b"Received: x\r\n\
+            b"X-Nous: 1\r\nReceived: x\r\n\
             Authentication-Results: autre.example; spf=fail\r\n\
             Authentication-Results: mx.lyxal.test.evil; spf=fail\r\n\
             Subject: s\r\n\r\nAuthentication-Results: mx.lyxal.test; corps garde\r\n"
@@ -302,10 +308,10 @@ mod tests {
         );
         let untouched = b"Subject: s\r\n\r\ncorps\r\n";
         assert_eq!(
-            strip_forged_results(untouched, "mx.lyxal.test").unwrap(),
+            strip_forged_results(untouched, "mx.lyxal.test", b"").unwrap(),
             untouched.to_vec()
         );
-        assert!(strip_forged_results(b" mal\r\n\r\n", "mx.lyxal.test").is_err());
+        assert!(strip_forged_results(b" mal\r\n\r\n", "mx.lyxal.test", b"").is_err());
         assert_eq!(read_authserv_id(b" ((((((((((x))))))))) id;"), None);
     }
 }

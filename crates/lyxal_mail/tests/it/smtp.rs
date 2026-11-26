@@ -16,7 +16,9 @@ use lyxal_crypto::{
     Ed25519SigningKey,
 };
 use lyxal_mail::dns::StaticResolver;
-use lyxal_mail::models::{AccountUpdateParams, AddressCreateParams, BlockActiveParams};
+use lyxal_mail::models::{
+    AccountUpdateParams, AddressCreateParams, BlockActiveParams, SettingsSetParams,
+};
 use lyxal_mail::net::{
     BoxedStream, ConnectionInfo, MailProtocol, MemoryBudget, MemoryClass, NetError, Session,
     SessionHandler, SessionLimits, TlsInfo, TlsState, TlsUpgrade,
@@ -834,7 +836,8 @@ async fn antivirus_and_partial_failures_answer_once() {
     assert!(reply.starts_with("451 4.3.0"), "{reply}");
     assert_eq!(messages_in(&bench, &jean.inbox).await.len(), 1);
     assert!(messages_in(&bench, &marie.inbox).await.is_empty());
-    // Nouvel essai de l'expéditeur après le quota relevé : jean n'a pas de doublon
+    // Nouvel essai de l'expéditeur après le quota relevé, destinataires dans l'ordre inverse :
+    // jean n'a pas de doublon (empreinte choisie indépendamment de l'ordre des RCPT TO)
     bench
         .system
         .account_update(AccountUpdateParams {
@@ -848,7 +851,7 @@ async fn antivirus_and_partial_failures_answer_once() {
     let reply = client
         .transaction(
             "paul@ailleurs.test",
-            &["equipe@alpha.test", "jean@alpha.test"],
+            &["jean@alpha.test", "equipe@alpha.test"],
             &clean,
         )
         .await;
@@ -1040,4 +1043,35 @@ async fn starttls_resets_the_session_and_refuses_injection() {
             .await
     )
     .contains("true"));
+}
+
+#[tokio::test]
+async fn reception_headers_past_the_organisation_size_are_refused_permanently() {
+    let bench = bench().await;
+    let (_, jean, _) = people(&bench).await;
+    bench
+        .system
+        .settings_set(SettingsSetParams {
+            tenant: Some("auth_organization:alpha".to_string()),
+            max_message_bytes: Some(2_048),
+            ..SettingsSetParams::default()
+        })
+        .await
+        .expect("taille de l'organisation");
+    let server = serve(&bench, Options::new()).await;
+    let (mut client, _) = Client::connect(&server).await;
+    client.cmd("EHLO client.ailleurs.test").await;
+    // Juste sous la taille de l'organisation à la fin des données, au-delà une fois nos
+    // en-têtes ajoutés : refus définitif, jamais un `451` qui ferait réessayer sans fin
+    let mut text = message("<paul@ailleurs.test>", "limite", "");
+    while text.len() < 1_990 {
+        text.push_str("Ligne de remplissage du message.\r\n");
+    }
+    assert!(text.len() <= 2_048);
+    let reply = client
+        .transaction("paul@ailleurs.test", &["jean@alpha.test"], &text)
+        .await;
+    assert!(reply.starts_with("552 5.3.4"), "{reply}");
+    assert!(messages_in(&bench, &jean.inbox).await.is_empty());
+    assert_eq!(server.handler.snapshot()["messages_refused.size"], 1);
 }

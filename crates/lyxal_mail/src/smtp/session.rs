@@ -770,7 +770,13 @@ impl SmtpSession {
     /// fin).
     fn keep(&mut self, chunk: &mut Vec<u8>) {
         let budget = &self.shared.budget;
-        let limit = self.shared.config.max_message_bytes + crate::net::MEMORY_GRANULE;
+        // Message reçu, puis sa copie à ranger avec nos en-têtes (`check_and_deliver`)
+        let limit = self
+            .shared
+            .config
+            .max_message_bytes
+            .saturating_mul(2)
+            .saturating_add(crate::net::MEMORY_GRANULE * 2);
         if let Some(transaction) = self.transaction.as_mut() {
             if !transaction.memory_exhausted && !chunk.is_empty() {
                 let needed = (transaction.message.len() + chunk.len()) as u64;
@@ -897,9 +903,11 @@ impl SmtpSession {
             self.refuse(RefusedReason::Limits, outcome.size, 452);
             return Flow::Continue;
         }
+        // La réservation couvre le message reçu jusqu'à la réponse : authentification, puis
+        // remise, qui garde aussi la copie à ranger (réservée avant d'être faite)
         let received = Bytes::from(std::mem::take(&mut transaction.message));
-        transaction.memory = None;
-        self.check_and_deliver(transaction, received).await
+        let memory = transaction.memory.take();
+        self.check_and_deliver(transaction, received, memory).await
     }
 
     fn refuse(&self, reason: RefusedReason, size: u64, code: u16) {
@@ -914,7 +922,12 @@ impl SmtpSession {
         );
     }
 
-    async fn check_and_deliver(&mut self, transaction: &Transaction, received: Bytes) -> Flow {
+    async fn check_and_deliver(
+        &mut self,
+        transaction: &Transaction,
+        received: Bytes,
+        mut memory: Option<MemoryReservation>,
+    ) -> Flow {
         let size = received.len() as u64;
         let Ok(parsed) = parse_mime(&received, &MimeLimits::default()) else {
             self.io.reply(554, "5.6.0", "Malformed message");
@@ -1005,13 +1018,7 @@ impl SmtpSession {
             DmarcDisposition::Accept | DmarcDisposition::Quarantine => {}
         }
 
-        // Nos en-têtes, en tête du message rangé ; les `Authentication-Results` falsifiés retirés
         let hostname = &self.shared.config.hostname;
-        let Ok(stripped) = strip_forged_results(&received, hostname) else {
-            self.io.reply(554, "5.6.0", "Malformed message header");
-            self.refuse(RefusedReason::Malformed, size, 554);
-            return Flow::Continue;
-        };
         self.messages = self.messages.saturating_add(1);
         let id = format!("{}.{}", self.session_label(), self.messages);
         let mut results = AuthenticationResults::new(hostname);
@@ -1039,10 +1046,28 @@ impl SmtpSession {
             &id,
         ));
         header.push_str(&results.to_header());
-        let mut stored = Vec::with_capacity(header.len() + stripped.len());
-        stored.extend_from_slice(header.as_bytes());
-        stored.extend_from_slice(&stripped);
-        drop(stripped);
+        // Copie à ranger (nos en-têtes, puis le message sans les `Authentication-Results`
+        // falsifiés) : réservée dans le budget avant d'être faite, gardée jusqu'à la réponse
+        let needed = size.saturating_mul(2).saturating_add(header.len() as u64);
+        let reserved = memory
+            .get_or_insert_with(|| {
+                self.shared
+                    .budget
+                    .reservation(MemoryClass::SmtpInbound, needed)
+            })
+            .try_reserve_within_limit(needed);
+        if reserved.is_err() {
+            self.io
+                .reply(452, "4.3.1", "Insufficient system storage, try again later");
+            self.shared.metrics.refused(RefusedReason::Limits);
+            log.emit("memory", 452);
+            return Flow::Continue;
+        }
+        let Ok(stored) = strip_forged_results(&received, hostname, header.as_bytes()) else {
+            self.io.reply(554, "5.6.0", "Malformed message header");
+            self.refuse(RefusedReason::Malformed, size, 554);
+            return Flow::Continue;
+        };
 
         let message = ReceivedMessage {
             received,
@@ -1066,8 +1091,8 @@ impl SmtpSession {
             .delivery_time(u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX));
         match result {
             PipelineResult::Delivered { outcomes } => {
-                for (_, outcome) in &outcomes {
-                    if matches!(outcome, crate::DeliveryOutcome::Duplicate { .. }) {
+                for served in &outcomes {
+                    if matches!(served.outcome, crate::DeliveryOutcome::Duplicate { .. }) {
                         self.shared.metrics.duplicate();
                     }
                 }
@@ -1089,6 +1114,18 @@ impl SmtpSession {
                     .reply(554, "5.7.1", "Message rejected: virus detected");
                 self.shared.metrics.refused(RefusedReason::Antivirus);
                 log.emit("infected", 554);
+            }
+            // Nos en-têtes ont fait passer le message au-delà de la taille de l'organisation :
+            // refus définitif, comme à la fin des données (un `451` ferait réessayer sans fin)
+            PipelineResult::TempFail { code, served } if code == "MAIL_MESSAGE_TOO_LARGE" => {
+                self.io.reply(
+                    552,
+                    "5.3.4",
+                    "Message size exceeds fixed maximum message size",
+                );
+                self.shared.metrics.refused(RefusedReason::Size);
+                tracing::info!(session = %self.session_label(), served, "taille de l'organisation dépassée par les en-têtes de réception");
+                log.emit("size", 552);
             }
             PipelineResult::TempFail { code, served } => {
                 self.io
