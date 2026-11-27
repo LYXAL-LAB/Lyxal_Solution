@@ -44,7 +44,10 @@ use crate::submission::SubmissionUser;
 use crate::MailError;
 use lyxal_surreal::{LyxalCallError, LyxalSurrealError};
 
+mod returns;
 mod submission;
+
+use returns::{Authenticity, ForwardTarget};
 
 /// Octets lus au plus par lecture sur la connexion.
 const READ_CHUNK: usize = 16 * 1024;
@@ -82,6 +85,13 @@ struct Transaction {
     smtputf8: bool,
     declared_size: Option<u64>,
     recipients: Vec<RecipientTarget>,
+    /// Réception : adresses de retour de nos envois (avis reçus, §10.3).
+    returns: Vec<crate::dsn::ReturnTarget>,
+    /// Réception : alias qui transfèrent aussi le message vers l'extérieur (§13).
+    forwards: Vec<ForwardTarget>,
+    /// Réception : un destinataire ordinaire est sur un domaine protégé contre la
+    /// rétrodiffusion (§11).
+    backscatter: bool,
     /// Dépôt authentifié : destinataires de l'envoi, dans l'ordre, sans doublon.
     outbound: Vec<SubmissionRecipient>,
     /// Dépôt authentifié : demande d'avis (`RET`, `ENVID`).
@@ -512,6 +522,9 @@ impl SmtpSession {
             smtputf8: mail.smtputf8,
             declared_size: mail.size,
             recipients: Vec::new(),
+            returns: Vec::new(),
+            forwards: Vec::new(),
+            backscatter: false,
             outbound: Vec::new(),
             dsn: None,
             accepted: 0,
@@ -573,10 +586,9 @@ impl SmtpSession {
             .recipient_resolve(RecipientResolveParams { address })
             .await;
         match resolved {
-            // Adresse de retour d'un envoi (lot 6, §11) : son traitement (avis reçus, réponses
-            // automatiques) est branché au sous-lot 6f ; d'ici là, elle reste inconnue
+            // Adresse de retour d'un envoi (lot 6, §11) : avis reçus et réponses automatiques
             Ok(resolved) if resolved.kind == RecipientKind::Return => {
-                self.refuse_recipient(RefusedReason::Unknown).await
+                self.accept_return(resolved, declared).await
             }
             Ok(resolved) => self.accept_recipient(resolved, declared).await,
             Err(error) => match business_code(&error) {
@@ -623,6 +635,18 @@ impl SmtpSession {
         let Some(transaction) = self.transaction.as_mut() else {
             return Flow::Continue;
         };
+        transaction.backscatter |= resolved.backscatter_protection;
+        if !resolved.forward_to.is_empty()
+            && !transaction
+                .forwards
+                .iter()
+                .any(|known| known.alias == resolved.address)
+        {
+            transaction.forwards.push(ForwardTarget {
+                alias: resolved.address.clone(),
+                to: resolved.forward_to.clone(),
+            });
+        }
         if !transaction
             .recipients
             .iter()
@@ -1009,6 +1033,21 @@ impl SmtpSession {
             self.refuse(RefusedReason::Policy, size, 554);
             return Flow::Continue;
         }
+        // Rétrodiffusion (§11, décision E21) : nos envois n'ont jamais une adresse ordinaire en
+        // enveloppe ; un rapport `delivery-status` à expéditeur vide adressé à une adresse
+        // ordinaire d'un domaine protégé est forgé (avis d'un spam qui a usurpé le domaine)
+        if transaction.sender.is_empty()
+            && transaction.backscatter
+            && crate::dsn::is_delivery_report(&received, &parsed)
+        {
+            self.io.reply(
+                550,
+                "5.7.1",
+                "Delivery status notification refused: no message was sent from this address",
+            );
+            self.refuse(RefusedReason::Backscatter, size, 550);
+            return Flow::Continue;
+        }
 
         // Contrôles d'authenticité : SPF et nom inverse déjà lancés, DKIM et DMARC sur le message
         let Some(inbound) = self.inbound() else {
@@ -1058,7 +1097,7 @@ impl SmtpSession {
             dkim: dkim_word.clone(),
             dmarc: dmarc_word.clone(),
             iprev: iprev_word.as_str(),
-            recipients: transaction.recipients.len(),
+            recipients: transaction.recipients.len() + transaction.returns.len(),
             size,
         };
         match disposition {
@@ -1146,7 +1185,14 @@ impl SmtpSession {
             received_at: MailDatetime::now(),
         };
         let started = Instant::now();
-        let result = pipeline.deliver(&message).await;
+        // Seulement des adresses de retour : rien à remettre aux boîtes ordinaires
+        let result = if message.recipients.is_empty() {
+            PipelineResult::Delivered {
+                outcomes: Vec::new(),
+            }
+        } else {
+            pipeline.deliver(&message).await
+        };
         self.shared
             .metrics
             .delivery_time(u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX));
@@ -1156,6 +1202,16 @@ impl SmtpSession {
                     if matches!(served.outcome, crate::DeliveryOutcome::Duplicate { .. }) {
                         self.shared.metrics.duplicate();
                     }
+                }
+                let checks = Authenticity {
+                    spf: &spf,
+                    dkim: &dkim,
+                };
+                if let Some(flow) = self
+                    .after_delivery(transaction, &message, &parsed, checks, &log)
+                    .await
+                {
+                    return flow;
                 }
                 self.shared.metrics.accepted();
                 log.emit(

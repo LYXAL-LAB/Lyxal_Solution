@@ -49,7 +49,8 @@ avant toute ligne de code (`.agents/AGENTS.md` §3).
   le lisent les avis réels de Postfix : lecture des RFC 3461 §4.2, §4.4 et 3464 §2.2.1, §2.3.1
   faite de mémoire, à revérifier.
 * **Lecture tolérante des avis** : formes de Postfix et de Mox couvertes par les essais ; avis
-  de Gmail, Outlook.com, Yahoo et Exim à confronter aux essais réels.
+  de Gmail, Outlook.com, Yahoo et Exim à confronter aux essais réels. Seule la première partie
+  `delivery-status` de l'arbre est lue (un avis qui en joint plusieurs n'est lu qu'en partie).
 * **Fuzzing** : cibles `smtp_reply` et `dsn_parse` lancées 60 s à leur création, longuement au
   lot 21.
 

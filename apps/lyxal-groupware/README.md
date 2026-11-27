@@ -11,9 +11,10 @@ seul binaire de Lyxal OS qui lie des crates AGPL (`lyxal_mail`) et porte du code
 (provenance : [`SOURCES.md`](SOURCES.md)). Aucun paquet sous licence permissive ne dépend de lui
 (contrôle `scripts/ci/check_agpl_isolation.py`).
 
-**État : lots 3 (hôte et socle réseau), 4 (socle courrier) et 5 (réception SMTP) du programme
-courrier réalisés ; lot 6 (envoi) en cours : dépôt authentifié des ports 587 et 465 servi
-(sous-lot 6e, §4 ter) et envoi vers Internet actif (sous-lot 6d, §4 quater).** L'hôte porte les services du courrier (réception SMTP, dépôt d'un message
+**État : lots 3 (hôte et socle réseau), 4 (socle courrier), 5 (réception SMTP) et 6 (envoi)
+du programme courrier réalisés : réception du port 25 avec avis reçus sur les adresses de
+retour, règle contre la rétrodiffusion et transfert des alias vers l'extérieur (§4 bis), dépôt
+authentifié des ports 587 et 465 (§4 ter), envoi vers Internet (§4 quater).** L'hôte porte les services du courrier (réception SMTP, dépôt d'un message
 chiffré au repos, lecture, maintenance exécutée par `lyxal_scheduler`) et les modules dont ils ont
 besoin (coffre-fort, stockage, planificateur, §2). Les écoutes `smtp` sont servies par la
 réception SMTP de `lyxal_mail` (§4 bis), les écoutes `submission` par son dépôt authentifié
@@ -191,12 +192,20 @@ Les écoutes `protocol = "smtp"` sont servies par `lyxal_mail::smtp::SmtpInbound
   (criticité `Optional`) et appliquée à l'étape 3 de l'acceptation de toutes les écoutes.
 
 Les clés « fichiers » ouvertes sont gardées 60 s en mémoire (`FileKeys::with_cache`, lectures).
+Depuis le lot 6 (sous-lot 6f), la même réception accepte les adresses de retour `rp=<jeton>` des
+envois (avis reçus inscrits, remis à l'expéditeur d'un dépôt authentifié), refuse les avis forgés
+vers une adresse ordinaire (`backscatter_protection` du domaine) et met en file le transfert des
+alias à cibles extérieures (`forward_to`) avant de répondre `250` ; ces transferts et leurs avis
+sont envoyés par le worker d'envoi d'un nœud où `[outbound] enabled = true` (§4 quater).
+
 La sonde de `lyxal_mail` passe à « dégradé » si l'antivirus configuré ne répond pas, si le DNS est
-en panne sur le nom témoin `smtp.hostname` (une requête par minute au plus) ou si aucun nœud
-`lyxal_server` n'est vivant depuis 10 minutes. `/metrics` ajoute, sous `mail.smtp`, les mesures de
-la réception (messages acceptés et refusés par motif, destinataires, résultats SPF / DKIM / DMARC,
-remises dupliquées évitées, durée des remises, ordre des inscriptions, DNS, bannissements), sans
-aucune adresse.
+en panne sur le nom témoin `smtp.hostname` (une requête par minute au plus), si aucun nœud
+`lyxal_server` n'est vivant depuis 10 minutes, ou si un transfert d'alias n'a pas été fait dans
+l'heure faute de place dans la limite `forward_messages_per_day` de son organisation.
+`/metrics` ajoute, sous `mail.smtp`, les mesures de la réception (messages acceptés et refusés
+par motif, rétrodiffusion comprise, destinataires, résultats SPF / DKIM / DMARC, remises
+dupliquées évitées, durée des remises, ordre des inscriptions, DNS, bannissements, avis reçus,
+transferts), sans aucune adresse.
 
 ## 4 ter. Dépôt authentifié (lot 6, sous-lot 6e)
 

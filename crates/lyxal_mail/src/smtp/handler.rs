@@ -153,6 +153,11 @@ impl SmtpInboundHandler {
         &self.pipeline
     }
 
+    /// Mesures de la réception (sonde : transferts non faits).
+    pub fn metrics(&self) -> Arc<SmtpMetrics> {
+        self.shared.metrics.clone()
+    }
+
     /// Mesures de la réception (aucune adresse) : compteurs de la session, de l'ordre des
     /// inscriptions (lots, conflits rejoués) et de la liste de blocage.
     pub fn snapshot(&self) -> BTreeMap<String, u64> {

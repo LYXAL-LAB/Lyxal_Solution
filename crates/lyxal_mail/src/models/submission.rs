@@ -336,6 +336,8 @@ pub struct Submission {
     pub eight_bit: bool,
     /// Demande d'avis.
     pub dsn: DsnSettings,
+    /// Transfert : réception d'origine (avis à son expéditeur, §10.2).
+    pub forward: Option<ForwardReception>,
     /// État.
     pub state: SubmissionState,
     /// Destinataires.

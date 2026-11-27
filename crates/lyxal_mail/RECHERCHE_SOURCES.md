@@ -982,8 +982,8 @@ sont une bonne source, sous AGPL comme le reste du crate.
 
 > **Note du lot 0.** L'étude recommandait A dans le programme, B en lot optionnel et « pas
 > d'option C dans ce programme ». Le CTO a validé A et B et a **refusé de mettre C hors
-> programme**. Décisions qui font foi (`crates/lyxal_mail/implementation_plan.md` pendant le
-> lot 0, puis programme à la racine, §5, §7 et §9) :
+> programme**. Décisions qui font foi (plan du lot 0, dans l'historique Git, puis programme à
+> la racine, §5, §7 et §9) :
 >
 > * **Niveau A — dans le programme.** Contenu des messages et des pièces jointes chiffré au
 >   repos avec des clés de la plateforme par organisation (modèle de `lyxal_secrets`), dès le

@@ -15,6 +15,7 @@ use std::time::{Duration, Instant};
 use crate::dns::MailResolver;
 use crate::models::{DkimPendingParams, MailDatetime, QueueStatsParams, SettingsGetParams};
 use crate::outbound::OutboundMetrics;
+use crate::smtp::SmtpMetrics;
 use crate::store::MailStore;
 use crate::MODULE_ID;
 
@@ -145,6 +146,7 @@ pub struct MailHealthCheck {
     scanner: Option<Arc<dyn ContentScanner>>,
     dns: Option<DnsProbe>,
     outbound: Option<OutboundProbe>,
+    reception: Option<ReceptionProbe>,
 }
 
 /// Retard de la plus ancienne échéance de la file d'envoi au-delà duquel la sonde passe à
@@ -175,6 +177,32 @@ impl OutboundProbe {
         state
             .1
             .is_some_and(|seen| seen.elapsed() < UNREADABLE_DEGRADED_FOR)
+    }
+}
+
+/// Durée pendant laquelle un transfert non fait (limite des transferts atteinte) garde la sonde à
+/// « dégradé ».
+pub const FORWARD_LIMITED_DEGRADED_FOR: Duration = Duration::from_secs(3_600);
+
+/// Partie « réception » de la sonde : transferts vers l'extérieur non faits faute de place dans
+/// la limite de l'organisation (`forward_messages_per_day`, plan du lot 6 §13).
+struct ReceptionProbe {
+    metrics: Arc<SmtpMetrics>,
+    limited: Mutex<(u64, Option<Instant>)>,
+}
+
+impl ReceptionProbe {
+    /// Vrai si un transfert a été refusé par la limite depuis moins de
+    /// [`FORWARD_LIMITED_DEGRADED_FOR`].
+    fn limited_recently(&self) -> bool {
+        let count = self.metrics.forwards_limited();
+        let mut state = self.limited.lock().unwrap_or_else(PoisonError::into_inner);
+        if count > state.0 {
+            *state = (count, Some(Instant::now()));
+        }
+        state
+            .1
+            .is_some_and(|seen| seen.elapsed() < FORWARD_LIMITED_DEGRADED_FOR)
     }
 }
 
@@ -218,7 +246,19 @@ impl MailHealthCheck {
             scanner: None,
             dns: None,
             outbound: None,
+            reception: None,
         }
+    }
+
+    /// Réception du port 25 du nœud (lot 6) : « dégradé » si un transfert d'alias vers
+    /// l'extérieur n'a pas été fait dans l'heure, la limite des transferts de son organisation
+    /// étant atteinte (message remis aux comptes de l'alias seulement).
+    pub fn with_reception(mut self, metrics: Arc<SmtpMetrics>) -> Self {
+        self.reception = Some(ReceptionProbe {
+            metrics,
+            limited: Mutex::new((0, None)),
+        });
+        self
     }
 
     /// Envoi du nœud (lot 6) : « dégradé » si l'échéance la plus ancienne de la file a plus de
@@ -390,6 +430,18 @@ impl ModuleHealthCheck for MailHealthCheck {
                         )),
                     ))
                 }
+            }
+        }
+        if let Some(reception) = &self.reception {
+            if reception.limited_recently() {
+                return Ok(HealthCheckResult::degraded(
+                    self.module_id.clone(),
+                    elapsed(),
+                    Some(
+                        "limite des transferts d'une organisation atteinte dans l'heure : messages remis aux comptes des alias sans transfert vers l'extérieur (forward_messages_per_day)"
+                            .to_string(),
+                    ),
+                ));
             }
         }
         if let Some(outbound) = &self.outbound {

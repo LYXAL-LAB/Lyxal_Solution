@@ -333,6 +333,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_submission_get($params: object) {
     };
     LET $p = $report.value;
     LET $row = (SELECT id, tenant, origin, account, sender, header_from, envelope_from, client_reference, content.size AS size, smtputf8, eight_bit, dsn,
+        IF origin = "forward" { forward } ELSE { NONE } AS forward,
         state, recipient_count, open_count, aborted_at, created_at, queued_at, done_at, expires_at FROM ONLY $p.submission);
     IF $row == NONE { RETURN fn::error_result("MAIL_SUBMISSION_NOT_FOUND", $p.language, { submission: <string> $p.submission }); };
     -- Texte des serveurs distants : jamais pour un module (il ne sert que l'issue)
@@ -344,7 +345,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_submission_get($params: object) {
             array::map($recipients, |$r| object::extend($r, { last_result: IF $r.last_result IS NONE { NONE } ELSE { object::remove($r.last_result, "text") } }))
         }
     }));
-} COMMENT "Envoi ({ submission }), sans préfixe, jeton ni contenu, et ses destinataires par rang ({ recipient, rank, address, state, attempts, next_attempt_at, last_result (sans le texte du serveur distant pour un module), delayed_at, final_at }) ; invisible : MAIL_SUBMISSION_NOT_FOUND. Droit : titulaire d'un dépôt authentifié (jamais l'administrateur de l'organisation), mail.relay pour un envoi de module, compte de service";
+} COMMENT "Envoi ({ submission }), sans préfixe, jeton ni contenu (transfert : réception d'origine forward, pour l'avis à son expéditeur), et ses destinataires par rang ({ recipient, rank, address, state, attempts, next_attempt_at, last_result (sans le texte du serveur distant pour un module), delayed_at, final_at }) ; invisible : MAIL_SUBMISSION_NOT_FOUND. Droit : titulaire d'un dépôt authentifié (jamais l'administrateur de l'organisation), mail.relay pour un envoi de module, compte de service";
 
 -- ----------------------------------------------------------------------------
 -- fn::mail_submission_cancel

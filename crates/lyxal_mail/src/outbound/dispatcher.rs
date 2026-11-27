@@ -1157,7 +1157,7 @@ impl Inner {
         loop {
             attempt += 1;
             match self.dsn.produce(due, object).await {
-                Ok(DsnOutcome::Delivered) => {
+                Ok(DsnOutcome::Delivered | DsnOutcome::Queued) => {
                     self.metrics.dsn(true);
                     break;
                 }
@@ -1165,7 +1165,6 @@ impl Inner {
                     self.metrics.dsn(false);
                     break;
                 }
-                Ok(DsnOutcome::Deferred) => break,
                 Err(error) if error.is_retryable() && attempt < 3 => {
                     tokio::time::sleep(Duration::from_millis(200 * attempt)).await;
                 }

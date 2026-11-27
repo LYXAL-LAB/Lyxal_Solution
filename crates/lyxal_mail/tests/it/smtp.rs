@@ -281,7 +281,7 @@ impl Client {
     }
 
     /// Envoie un message par `DATA` (bourrage des points fait ici) et rend la réponse finale.
-    async fn data(&mut self, message: &str) -> String {
+    pub(crate) async fn data(&mut self, message: &str) -> String {
         let reply = self.cmd("DATA").await;
         assert!(reply.starts_with("354 "), "{reply}");
         let mut stuffed = String::new();
@@ -297,7 +297,7 @@ impl Client {
     }
 
     /// Transaction complète : `MAIL FROM`, destinataires, `DATA`.
-    async fn transaction(&mut self, from: &str, to: &[&str], message: &str) -> String {
+    pub(crate) async fn transaction(&mut self, from: &str, to: &[&str], message: &str) -> String {
         let reply = self.cmd(&format!("MAIL FROM:<{from}>")).await;
         assert!(reply.starts_with("250 "), "{reply}");
         for recipient in to {

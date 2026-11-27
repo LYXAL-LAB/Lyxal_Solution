@@ -102,7 +102,7 @@ RETURN [
     fn::mail_queue_release({ claim: "01a21a8f-2d4f-7ce2-9e67-5063e68bfb08", recipients: ["mail_queue_recipient:x"] }),
     fn::mail_queue_dsn_done({ submission: "mail_submission:x", action: "failed", recipients: ["mail_queue_recipient:x"] }),
     fn::mail_queue_stats({}), fn::mail_queue_purge({}), fn::mail_queue_dsn_pending({}),
-    fn::mail_return_record({ submission: "mail_submission:x", items: [{ recipient: "mail_queue_recipient:x", action: "failed" }] })
+    fn::mail_return_record({ submission: "mail_submission:x", items: [{ final_recipient: "x@ailleurs.test", action: "failed" }] })
 ].all(|$r| $r.error.code == "MAIL_PERMISSION_DENIED");
 
 -- test: l'administrateur de l'organisation n'a pas la file

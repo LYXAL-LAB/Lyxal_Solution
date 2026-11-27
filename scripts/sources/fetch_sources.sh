@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Récupère les sources de travail du programme courrier, agendas et contacts, aux commits
-# figés par la décision C2 (crates/lyxal_mail/implementation_plan.md), dans `.sources/<nom>/`.
+# figés par la décision C2 (crates/lyxal_mail/SOURCES.md §1), dans `.sources/<nom>/`.
 #
 # `.sources/` est ignoré par Git : les sources ne sont jamais versées dans le dépôt.
 # Le script ne fait que cloner et vérifier : il n'exécute, ne compile et n'installe rien de ce
@@ -15,7 +15,7 @@
 #   scripts/sources/fetch_sources.sh [--from <dossier>] [nom ...]
 #     --from <dossier>  clone depuis des dépôts locaux `<dossier>/<nom>` (miroir hors ligne)
 #                       au lieu de GitHub ; le commit est vérifié de la même façon.
-#     nom               limite aux sources citées (stalwart, mox, rustical, sabre_dav).
+#     nom               limite aux sources citées (stalwart, mox, rustical, sabre_dav, kumomta).
 #
 # Changer un commit figé est un changement comme un autre (décision P14) : plan, `SOURCES.md`
 # mis à jour, validation du CTO.
@@ -31,6 +31,7 @@ SOURCES=(
     "mox|https://github.com/mjl-/mox|b32f0def9763b2644ad7bd1e8b3894786e80858b|MIT"
     "rustical|https://github.com/lennart-k/rustical|0698bb6b89b51207652eb60973a86364c3446ecb|AGPL-3.0-or-later"
     "sabre_dav|https://github.com/sabre-io/dav|be1d58d6bce7ca33313b02909f9088c93c35db02|BSD-3-Clause"
+    "kumomta|https://github.com/KumoCorp/kumomta|81f191dff64876f84ca949b7e1d7771ba335800b|Apache-2.0"
 )
 
 FROM=""
