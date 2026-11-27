@@ -116,7 +116,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_dkim_signers($params: object) {
     };
     LET $p = $report.value;
     IF !fn::mail_can({ action: "worker" }) { RETURN fn::error_result("MAIL_PERMISSION_DENIED", $p.language, {}); };
-    LET $names = array::distinct(array::map($p.domains, |$d| string::lowercase($d)));
+    LET $names = array::distinct(array::map($p.domains, |$d| fn::sanitize_lowercase($d)));
     LET $domains = (SELECT id, name FROM mail_domain WHERE name IN $names AND state = "active");
     LET $keys = (SELECT domain, selector, algorithm, secret_path FROM mail_dkim_key WHERE domain IN $domains.id AND state = "active" ORDER BY selector);
     RETURN fn::result_ok({ items: array::map($keys, |$k| {

@@ -171,7 +171,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_queue_claim($params: object) {
     LET $p = $report.value;
     IF !fn::mail_can({ action: "worker" }) { RETURN fn::error_result("MAIL_PERMISSION_DENIED", $p.language, {}); };
     LET $now = time::now();
-    LET $picked = fn::mail_queue_due_read($now, $p.limit, array::map($p.exclude_domains, |$d| string::lowercase($d)));
+    LET $picked = fn::mail_queue_due_read($now, $p.limit, array::map($p.exclude_domains, |$d| fn::sanitize_lowercase($d)));
     IF array::len($picked) = 0 { RETURN fn::result_ok({ claim: NONE, items: [] }); };
     LET $claim = <string> rand::uuid::v7();
     LET $until = $now + duration::from_secs($p.lease_seconds);
@@ -310,7 +310,10 @@ DEFINE FUNCTION OVERWRITE fn::mail_queue_fail($params: object) {
     LET $settings = fn::mail_settings_effective({});
     -- Destination injoignable : suspendue 5 min, doublé à chaque échec consécutif, 2 h au plus ;
     -- une réponse de serveur remet le compteur à zéro (décision E7)
-    LET $suspended_until = fn::mail_queue_destination_record($p.destination, $now);
+    -- Destination écrite seulement si le lot tient encore au moins un destinataire : un nœud dont
+    -- la réservation est perdue ne suspend ni ne remet à zéro une destination
+    LET $holds = array::any($p.items, |$i| fn::mail_queue_held($i.recipient, <string> $p.claim, $now) IS NOT NONE);
+    LET $suspended_until = IF $holds { fn::mail_queue_destination_record($p.destination, $now) } ELSE { NONE };
     LET $results = array::map($p.items, |$item| fn::mail_queue_fail_item($item, <string> $p.claim, $now, $settings, $suspended_until));
     LET $written = array::filter($results, |$r| $r IS NOT NONE);
     RETURN fn::mail_queue_lost(array::complement($p.items.recipient, $written.recipient), $p.language, {
@@ -322,7 +325,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_queue_fail($params: object) {
 
 DEFINE FUNCTION OVERWRITE fn::mail_queue_destination_record($destination: any, $now: datetime) -> option<datetime> {
     IF $destination IS NONE { RETURN NONE; };
-    LET $id = type::record("mail_queue_destination", string::lowercase($destination.domain));
+    LET $id = type::record("mail_queue_destination", fn::sanitize_lowercase($destination.domain));
     IF !$destination.unreachable {
         IF record::exists($id) { UPDATE $id SET consecutive_failures = 0, suspended_until = NONE; };
         RETURN NONE;
@@ -490,7 +493,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_return_record($params: object) {
     IF !record::exists($p.submission) { RETURN fn::error_result("MAIL_SUBMISSION_NOT_FOUND", $p.language, { submission: <string> $p.submission }); };
     LET $now = time::now();
     -- Rejet après acceptation : seuls les échecs d'un destinataire remis ou relayé de cet envoi
-    LET $failed = array::filter($p.items, |$i| string::lowercase($i.action) = "failed");
+    LET $failed = array::filter($p.items, |$i| fn::sanitize_lowercase($i.action) = "failed");
     LET $bounced = array::filter(array::map($failed, |$i| (UPDATE ONLY $i.recipient SET state = "bounced",
         last_result = { stage: "bounce", enhanced: $i.status, text: $i.diagnostic, at: $now }
         WHERE submission = $p.submission AND state IN ["delivered", "relayed"])), |$row| $row IS NOT NONE);

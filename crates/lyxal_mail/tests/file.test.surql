@@ -260,6 +260,17 @@ RETURN fn::essai_echeancier()
         AND (SELECT VALUE locked_until FROM ONLY $r1) > time::now() + 29m AND fn::essai_echeancier();
 };
 
+-- test: un nœud dont la réservation est perdue ne suspend pas la destination : MAIL_QUEUE_CLAIM_LOST, destination inchangée
+-- en tant que: worker
+{
+    LET $r1 = fn::mail_queue_recipient_key(type::record(fn::essai_id("a")), 1);
+    LET $initial = (SELECT VALUE [consecutive_failures, suspended_until] FROM ONLY mail_queue_destination:⟨deux.test⟩);
+    LET $stale = fn::mail_queue_fail({ claim: <string> rand::uuid::v7(), items: [{ recipient: <string> $r1, permanent: false, stage: "connect" }], destination: { domain: "deux.test", unreachable: true } });
+    RETURN $stale.error.code == "MAIL_QUEUE_CLAIM_LOST"
+        AND (SELECT VALUE [consecutive_failures, suspended_until] FROM ONLY mail_queue_destination:⟨deux.test⟩) == $initial
+        AND (SELECT VALUE claimed_by FROM ONLY $r1) == "repreneur";
+};
+
 -- test: rendu sans essai compté (arrêt propre, cadence) : échéance donnée, jeton effacé ; lot de 501 refusé
 -- en tant que: worker
 {

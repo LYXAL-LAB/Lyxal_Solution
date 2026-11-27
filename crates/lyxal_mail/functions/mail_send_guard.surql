@@ -59,6 +59,8 @@ DEFINE FUNCTION OVERWRITE fn::mail_submission_refusal($previous: any, $next: any
         IF $prepared AND ($next.origin IN ["submission", "module"] OR !fn::mail_can({ action: "worker" })) { RETURN "MAIL_WRITE_FORBIDDEN"; };
         IF ($next.forward IS NOT NONE) != ($next.origin = "forward") OR ($next.client_reference IS NOT NONE AND $next.origin != "module") { RETURN "MAIL_WRITE_FORBIDDEN"; };
         IF $next.origin = "submission" {
+            -- Hors compte de service : l'envoi est celui du compte de la session, jamais d'un autre
+            IF !fn::mail_can({ action: "worker" }) AND ($next.account IS NONE OR $next.account != fn::mail_session_account(NONE)) { RETURN "MAIL_WRITE_FORBIDDEN"; };
             LET $account = IF $next.account IS NONE { NONE } ELSE { (SELECT tenant, identity, state FROM ONLY $next.account) };
             IF $account == NONE OR $account.tenant != $next.tenant OR $account.identity IS NONE OR $account.identity != $next.owner OR $account.state != "active" { RETURN "MAIL_WRITE_FORBIDDEN"; };
             RETURN IF array::all(fn::mail_sender_allowed($next.tenant, $next.account, array::concat([$next.sender ?? ""], $next.header_from)), |$ok| $ok) { NONE } ELSE { "MAIL_SENDER_FORBIDDEN" };

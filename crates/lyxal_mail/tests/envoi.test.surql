@@ -275,6 +275,19 @@ UPDATE fn::mail_queue_recipient_key(type::record(fn::essai_id("depot")), 0) SET 
     RETURN $created == [] AND (SELECT VALUE [open_count, state] FROM ONLY type::record(fn::essai_id("depot"))) == [2, "queued"];
 };
 
+-- test: création directe d'un envoi au nom d'un autre compte (marie) refusée par la garde : ses compteurs ne bougent pas
+-- en tant que: jean
+-- attendu-erreur: MAIL_WRITE_FORBIDDEN
+{
+    LET $key = string::concat("s", string::replace(<string> rand::uuid::v7(), "-", ""));
+    CREATE type::record("mail_submission", $key) CONTENT {
+        tenant: auth_organization:alpha, origin: "submission", account: type::record(fn::essai_id("marie")), owner: auth_identity:marie,
+        sender: "marie@alpha.test", header_from: ["marie@alpha.test"], content: { key: string::concat("queue/", $key, ".eml"), size: 10 },
+        smtputf8: false, eight_bit: false, dsn: { ret: "hdrs" }, pending_recipients: [{ address: "x@y.test", domain: "y.test" }],
+        recipient_count: 1, created_at: time::now(), pending_expires_at: time::now() + 1h, expires_at: time::now() + 1d
+    };
+};
+
 -- test: annulation par le titulaire : destinataires en attente annulés, envoi fini, aucun événement ; seconde annulation refusée
 -- en tant que: jean
 {

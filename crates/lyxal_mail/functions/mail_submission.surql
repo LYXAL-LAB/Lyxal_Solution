@@ -178,7 +178,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_submission_begin($params: object) {
     IF ($p.tenant IS NOT NONE) != ($p.origin = "dsn") { RETURN $invalid("tenant", "dsn_only"); };
     IF ($p.from = "") != ($p.origin = "dsn") AND $p.origin IN ["module", "forward", "dsn"] { RETURN $invalid("from", IF $p.origin = "dsn" { "empty_required" } ELSE { "required" }); };
     IF ($p.origin = "forward") != ($p.return_token IS NOT NONE) AND $p.origin IN ["forward", "dsn"] { RETURN $invalid("return_token", "forward_only"); };
-    IF array::any($p.recipients, |$r| $r.notify IS NOT NONE AND $r.notify.map(|$w| string::lowercase($w)) CONTAINS "never" AND array::len($r.notify) > 1) { RETURN $invalid("recipients", "notify_never_alone"); };
+    IF array::any($p.recipients, |$r| $r.notify IS NOT NONE AND $r.notify.map(|$w| fn::sanitize_lowercase($w)) CONTAINS "never" AND array::len($r.notify) > 1) { RETURN $invalid("recipients", "notify_never_alone"); };
     LET $sender = IF $p.from = "" { NONE } ELSE { fn::sanitize_lowercase(fn::sanitize_trim($p.from)) };
     LET $header_from = array::distinct(array::map($p.header_from, |$a| fn::sanitize_lowercase(fn::sanitize_trim($a))));
     -- Appelant, organisation et compte selon l'origine, puis droit d'expéditeur
@@ -194,12 +194,12 @@ DEFINE FUNCTION OVERWRITE fn::mail_submission_begin($params: object) {
     LET $row = {
         tenant: $origin.tenant, origin: $p.origin, account: $origin.account, owner: $origin.owner, sender: $sender, header_from: $header_from,
         client_reference: $p.client_reference, content: { key: string::concat("queue/", $key, ".eml"), size: $p.size },
-        smtputf8: $p.smtputf8, eight_bit: $p.eight_bit, dsn: { ret: string::lowercase($p.dsn.ret), envid: $p.dsn.envid }, forward: $p.forward,
+        smtputf8: $p.smtputf8, eight_bit: $p.eight_bit, dsn: { ret: fn::sanitize_lowercase($p.dsn.ret), envid: $p.dsn.envid }, forward: $p.forward,
         pending_recipients: array::map($p.recipients, |$r| {
             LET $at = string::split($r.address, "@");
             LET $domain = fn::sanitize_lowercase(array::last($at));
             RETURN { address: string::concat(array::join(array::slice($at, 0, array::len($at) - 1), "@"), "@", $domain), domain: $domain,
-                notify: IF $r.notify IS NONE { NONE } ELSE { array::map($r.notify, |$w| string::lowercase($w)) }, orcpt: $r.orcpt };
+                notify: IF $r.notify IS NONE { NONE } ELSE { array::map($r.notify, |$w| fn::sanitize_lowercase($w)) }, orcpt: $r.orcpt };
         }),
         recipient_count: array::len($p.recipients), created_at: $now, pending_expires_at: $now + 1h,
         expires_at: $now + duration::from_hours($settings.expire_hours)
