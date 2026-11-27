@@ -98,6 +98,12 @@ pub(super) fn decode_base64(input: &[u8]) -> Option<Vec<u8>> {
 /// espace), non ASCII remplacé par `?` hors d'un avis international, espaces de tête et de fin
 /// retirées, [`MAX_FIELD_BYTES`] octets au plus.
 pub(super) fn sanitize_field(value: &str, international: bool) -> String {
+    sanitize_chars(value, international).trim().to_owned()
+}
+
+/// Comme [`sanitize_field`], sans retirer les espaces des bords : pour une valeur dont les
+/// espaces comptent (`Original-Envelope-Id`, RFC 3464 §2.2.1).
+pub(super) fn sanitize_chars(value: &str, international: bool) -> String {
     let mut out = String::with_capacity(value.len().min(MAX_FIELD_BYTES));
     for ch in value.chars() {
         let ch = match ch {
@@ -111,7 +117,7 @@ pub(super) fn sanitize_field(value: &str, international: bool) -> String {
         }
         out.push(ch);
     }
-    out.trim().to_owned()
+    out
 }
 
 /// Écrit `Nom: valeur` replié aux espaces (lignes de 78 octets visés, [`MAX_DSN_LINE_BYTES`]

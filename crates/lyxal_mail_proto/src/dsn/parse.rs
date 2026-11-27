@@ -12,7 +12,7 @@
 //! compté. Champs répétés : le premier est retenu.
 
 use super::date::parse_date;
-use super::encoding::{decode_base64, decode_quoted_printable, sanitize_field};
+use super::encoding::{decode_base64, decode_quoted_printable, sanitize_chars, sanitize_field};
 use super::{
     DeliveryReport, DsnAction, DsnAddress, DsnDiagnostic, DsnRecipient, MAX_DSN_RECIPIENTS,
     MAX_REPORT_BYTES,
@@ -100,8 +100,11 @@ fn read_report(text: &str, international: bool) -> Result<DeliveryReport, DsnPar
             pending = Some(first);
         } else {
             report.reporting_mta = field(&first, "reporting-mta").and_then(mta_name);
+            // Seule l'espace qui suit le `:` est retirée : l'identifiant est gardé à l'octet près.
             report.original_envelope_id = field(&first, "original-envelope-id")
-                .map(|value| sanitize_field(value, international))
+                .map(|value| {
+                    sanitize_chars(value.strip_prefix(' ').unwrap_or(value), international)
+                })
                 .filter(|value| !value.is_empty());
             report.arrival_date = field(&first, "arrival-date").and_then(date);
         }
@@ -255,12 +258,39 @@ fn date(value: &str) -> Option<time::OffsetDateTime> {
     parse_date(&remove_comments(value))
 }
 
-/// Retire les commentaires entre parenthèses (imbriqués compris), comme Mox.
+/// Retire les commentaires entre parenthèses (imbriqués compris), comme Mox. Une parenthèse
+/// dans une chaîne entre guillemets (`"a(b)"@example.org`) ou échappée par `\` n'ouvre ni ne
+/// ferme un commentaire (RFC 5322 §3.2.2 et §3.2.4).
 fn remove_comments(value: &str) -> String {
     let mut depth = 0usize;
+    let mut quoted = false;
+    let mut escaped = false;
     let mut out = String::with_capacity(value.len());
     for ch in value.chars() {
+        if escaped {
+            escaped = false;
+            if depth == 0 {
+                out.push(ch);
+            }
+            continue;
+        }
+        if ch == '\\' {
+            escaped = true;
+            if depth == 0 {
+                out.push(ch);
+            }
+            continue;
+        }
+        if quoted {
+            out.push(ch);
+            quoted = ch != '"';
+            continue;
+        }
         match ch {
+            '"' if depth == 0 => {
+                quoted = true;
+                out.push(ch);
+            }
             '(' => depth += 1,
             ')' if depth > 0 => depth -= 1,
             _ if depth == 0 => out.push(ch),

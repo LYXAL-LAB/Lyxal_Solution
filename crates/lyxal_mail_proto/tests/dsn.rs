@@ -673,3 +673,33 @@ proptest! {
         }
     }
 }
+
+#[test]
+fn quoted_local_part_and_envelope_id_spaces_read_back() {
+    // Parenthèses d'une partie locale entre guillemets : pas un commentaire. Espaces de bord
+    // d'un `Original-Envelope-Id` : gardées (RFC 3464 §2.2.1).
+    let recipients = vec![failed("\"a(b)\"@example.org")];
+    let from = mailbox("MAILER-DAEMON@smtp.lyxal.example");
+    let to = mailbox("alice@lyxal.example");
+    for envid in ["  id  ", " "] {
+        let raw = DsnBuilder {
+            reporting_mta: "smtp.lyxal.example",
+            from: &from,
+            to: &to,
+            message_id: "dsn.2@smtp.lyxal.example",
+            date: datetime!(2026-11-27 10:00:05 UTC),
+            original_message_id: None,
+            international: false,
+            original_envelope_id: Some(envid),
+            arrival_date: datetime!(2026-11-27 09:00:00 UTC),
+            recipients: &recipients,
+            ret: DsnRet::Headers,
+            original: b"From: alice@lyxal.example\r\nSubject: hi\r\n\r\nBody\r\n",
+        }
+        .build()
+        .expect("avis");
+        let report = read(&raw).expect("relu");
+        assert_eq!(report.original_envelope_id.as_deref(), Some(envid));
+        assert_eq!(report.recipients, recipients);
+    }
+}
