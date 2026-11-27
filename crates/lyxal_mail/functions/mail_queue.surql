@@ -5,9 +5,10 @@
 -- ============================================================================
 -- Appelées par le worker d'envoi (lyxal_mail:mail.outbound) de chaque nœud de lyxal-groupware,
 -- sous la session système ou un compte de service (mail.worker), plan du lot 6 §5 (décisions E2
--- à E7). La réservation (fn::mail_queue_claim) lit une plage bornée de l'échéancier ordonné
--- mail_queue_due, de l'origine à l'instant présent : destinataires échus et destinataires dont
--- le bail a expiré après un arrêt brutal, repris sans essai compté. Toute écriture d'un résultat
+-- à E7). La réservation (fn::mail_queue_claim) lit les baux expirés après un arrêt brutal (index
+-- (state, locked_until), repris sans essai compté), puis les secondes de l'échéancier
+-- mail_queue_due par une plage bornée, de l'origine à l'instant présent, et pour chacune ses
+-- destinataires échus par l'index (state, next_attempt_at), lecture bornée aux deux bouts. Toute écriture d'un résultat
 -- exige le jeton de la réservation et un bail non échu (garde, « fencing ») : sinon le
 -- destinataire est rendu dans lost, ou MAIL_QUEUE_CLAIM_LOST quand tout le lot est perdu, et rien
 -- n'est écrit pour lui. Les éléments des lots du worker sont contrôlés par appels directs des
@@ -27,13 +28,13 @@ DEFINE FUNCTION OVERWRITE fn::mail_queue_recipient_key($submission: record<mail_
     RETURN type::record("mail_queue_recipient", fn::mail_queue_recipient_key_text($submission, $rank));
 } COMMENT "Interne : identifiant du destinataire de rang $rank (0 à 999 ; 1 000 : borne haute exclue d'une plage) de l'envoi $submission (mail_queue_recipient:⟨<clé de l'envoi>_<10^3 + rang>⟩) : les destinataires d'un envoi se lisent par une plage bornée";
 
-DEFINE FUNCTION OVERWRITE fn::mail_queue_due_key($at: datetime, $recipient: record<mail_queue_recipient>) -> record<mail_queue_due> {
-    RETURN type::record("mail_queue_due", string::concat(<string> (10000000000000000 + time::micros($at)), "_", <string> record::id($recipient)));
-} COMMENT "Interne : identifiant de la fiche de l'échéancier d'un destinataire à l'instant $at (mail_queue_due:⟨<10^16 + instant en µs>_<clé du destinataire>⟩, décision E5) : l'ordre des clés est celui des instants, puis des dépôts (clés UUID v7)";
+DEFINE FUNCTION OVERWRITE fn::mail_queue_due_key($at: datetime) -> record<mail_queue_due> {
+    RETURN type::record("mail_queue_due", <string> (10000000000 + time::unix($at)));
+} COMMENT "Interne : identifiant de la seconde de l'échéancier qui contient l'instant $at (mail_queue_due:⟨<10^10 + seconde Unix>⟩, décision E5) : l'ordre des clés est celui des secondes";
 
-DEFINE FUNCTION OVERWRITE fn::mail_queue_due_at($row: any) -> option<datetime> {
-    RETURN IF $row IS NONE { NONE } ELSE IF $row.state = "scheduled" { $row.next_attempt_at } ELSE IF $row.state = "running" { $row.locked_until } ELSE { NONE };
-} COMMENT "Interne : instant sous lequel un destinataire figure dans l'échéancier : son échéance (scheduled), la fin de son bail (running), aucun sinon";
+DEFINE FUNCTION OVERWRITE fn::mail_queue_due_second($at: datetime) -> datetime {
+    RETURN time::floor($at, 1s);
+} COMMENT "Interne : début de la seconde qui contient l'instant $at (champ at d'une fiche de l'échéancier)";
 
 DEFINE FUNCTION OVERWRITE fn::mail_queue_held($recipient: record<mail_queue_recipient>, $claim: string, $now: datetime) -> option<object> {
     LET $row = (SELECT * FROM ONLY $recipient);
@@ -129,29 +130,54 @@ DEFINE FUNCTION OVERWRITE fn::mail_queue_lost($lost: array, $language: string, $
 } COMMENT "Interne : résultat d'un lot gardé par la réservation : MAIL_QUEUE_CLAIM_LOST quand aucun élément n'est tenu ($lost : destinataires perdus ; $result.done : éléments écrits), sinon le résultat et lost";
 
 -- ----------------------------------------------------------------------------
--- fn::mail_queue_due_read (interne)
+-- fn::mail_queue_due_read et ses aides (internes)
 -- ----------------------------------------------------------------------------
 
-DEFINE FUNCTION OVERWRITE fn::mail_queue_due_read($now: datetime, $limit: int, $excluded: array) -> array {
-    LET $upper = string::concat(<string> (10000000000000000 + time::micros($now) + 1), "_");
-    -- Fenêtres successives de 1 000 fiches (10 au plus) : des destinataires d'une destination
-    -- suspendue ou d'un domaine exclu en tête de l'échéancier n'affament pas les autres
-    LET $state = array::fold(<array> (0..10), { rows: [], from: "0", done: false }, |$acc, $step| {
+DEFINE FUNCTION OVERWRITE fn::mail_queue_due_blocked($rows: array, $excluded: array, $now: datetime) -> array {
+    LET $domains = array::distinct($rows.domain);
+    IF array::len($domains) = 0 { RETURN $excluded; };
+    LET $suspended = (SELECT VALUE record::id(id) FROM array::map($domains, |$d| type::record("mail_queue_destination", $d)) WHERE suspended_until > $now);
+    RETURN array::union($excluded, $suspended);
+} COMMENT "Interne : domaines écartés d'une réservation parmi ceux de $rows : domaines saturés du nœud ($excluded) et destinations suspendues à l'instant $now";
+
+DEFINE FUNCTION OVERWRITE fn::mail_queue_due_second_read($second: object, $now: datetime) -> array {
+    -- Égalité sur l'index de la seconde : seuls les destinataires programmés dans cette seconde sont lus
+    LET $key = time::unix($second.at);
+    RETURN (SELECT id, domain, next_attempt_at FROM mail_queue_recipient WHERE due_second = $key AND next_attempt_at <= $now ORDER BY next_attempt_at);
+} COMMENT "Interne : destinataires programmés (scheduled) d'une seconde de l'échéancier ($second : { id, at }) lus par l'index de leur seconde (due_second), échus à l'instant $now, dans l'ordre des échéances : [{ id, domain, next_attempt_at }]";
+
+DEFINE FUNCTION OVERWRITE fn::mail_queue_due_read($now: datetime, $limit: int, $excluded: array) -> object {
+    -- Baux expirés (reprise après un arrêt brutal) : index (state, locked_until), seuls les baux échus sont lus
+    LET $expired = (SELECT id, domain, locked_until FROM mail_queue_recipient WHERE state = "running" AND locked_until <= $now ORDER BY locked_until);
+    LET $blocked = fn::mail_queue_due_blocked($expired, $excluded, $now);
+    LET $start = array::slice(array::filter($expired, |$d| $d.domain NOTINSIDE $blocked), 0, $limit);
+    LET $upper = <string> (10000000000 + time::unix($now) + 1);
+    LET $stale = $now - 1m;
+    -- Secondes de l'échéancier par pages de 100 (10 au plus) : des destinataires d'une destination
+    -- suspendue ou d'un domaine exclu en tête n'affament pas les autres
+    LET $state = array::fold(<array> (0..10), { rows: $start, empty: [], from: "0", done: array::len($start) >= $limit }, |$acc, $step| {
         IF $acc.done { RETURN $acc; };
-        LET $got = (SELECT id, recipient, domain FROM type::record("mail_queue_due", $acc.from..$upper) LIMIT 1001);
-        -- Borne basse incluse : la dernière fiche de la fenêtre précédente est relue, puis écartée
-        LET $fresh = IF $step = 0 { $got } ELSE { array::slice($got, 1) };
-        LET $suspended = (SELECT VALUE record::id(id) FROM array::map(array::distinct($fresh.domain), |$d| type::record("mail_queue_destination", $d)) WHERE suspended_until > $now);
-        LET $blocked = array::union($excluded, $suspended);
-        LET $rows = array::concat($acc.rows, array::filter($fresh, |$d| $d.domain NOTINSIDE $blocked));
+        LET $page = (SELECT id, at FROM type::record("mail_queue_due", $acc.from..$upper) LIMIT 101);
+        -- Borne basse incluse : la dernière seconde de la page précédente est relue, puis écartée
+        LET $fresh = IF $step = 0 { $page } ELSE { array::slice($page, 1) };
+        LET $read = array::fold($fresh, { rows: $acc.rows, empty: $acc.empty }, |$inner, $second| {
+            IF array::len($inner.rows) >= $limit { RETURN $inner; };
+            LET $found = fn::mail_queue_due_second_read($second, $now);
+            LET $unusable = fn::mail_queue_due_blocked($found, $excluded, $now);
+            RETURN {
+                rows: array::concat($inner.rows, array::filter($found, |$d| $d.domain NOTINSIDE $unusable)),
+                empty: IF array::len($found) = 0 AND $second.at < $stale { array::append($inner.empty, $second.id) } ELSE { $inner.empty }
+            };
+        });
         RETURN {
-            rows: $rows,
-            from: IF array::len($got) = 0 { $acc.from } ELSE { <string> record::id(array::last($got).id) },
-            done: array::len($rows) >= $limit OR array::len($fresh) < 1000
+            rows: $read.rows,
+            empty: $read.empty,
+            from: IF array::len($page) = 0 { $acc.from } ELSE { <string> record::id(array::last($page).id) },
+            done: array::len($read.rows) >= $limit OR array::len($fresh) < 100
         };
     });
-    RETURN array::slice($state.rows, 0, $limit);
-} COMMENT "Interne : jusqu'à $limit fiches de l'échéancier échues à l'instant $now (destinataires scheduled échus, baux expirés), dans l'ordre des clés, lues par plages bornées de 1 000 fiches (10 au plus), destinations suspendues et domaines de $excluded écartés : [{ id, recipient, domain }]";
+    RETURN { rows: array::slice($state.rows, 0, $limit), empty: $state.empty };
+} COMMENT "Interne : jusqu'à $limit destinataires échus à l'instant $now : baux expirés d'abord (index (state, locked_until)), puis destinataires programmés lus seconde par seconde (secondes de l'échéancier par plages bornées de 100, 10 pages au plus ; destinataires de chaque seconde par l'index (state, next_attempt_at)), destinations suspendues et domaines de $excluded écartés ; { rows : [{ id, domain }], empty : secondes passées depuis plus d'une minute sans destinataire programmé }";
 
 -- ----------------------------------------------------------------------------
 -- fn::mail_queue_claim
@@ -171,12 +197,15 @@ DEFINE FUNCTION OVERWRITE fn::mail_queue_claim($params: object) {
     LET $p = $report.value;
     IF !fn::mail_can({ action: "worker" }) { RETURN fn::error_result("MAIL_PERMISSION_DENIED", $p.language, {}); };
     LET $now = time::now();
-    LET $picked = fn::mail_queue_due_read($now, $p.limit, array::map($p.exclude_domains, |$d| fn::sanitize_lowercase($d)));
+    LET $due = fn::mail_queue_due_read($now, $p.limit, array::map($p.exclude_domains, |$d| fn::sanitize_lowercase($d)));
+    -- Secondes vides : dix au plus par réservation (un DELETE coûte environ 1 ms, une seconde vide relue coûte une lecture d'index à chaque réservation), le reste par la maintenance
+    IF array::len($due.empty) > 0 { DELETE array::slice($due.empty, 0, 10); };
+    LET $picked = $due.rows;
     IF array::len($picked) = 0 { RETURN fn::result_ok({ claim: NONE, items: [] }); };
     LET $claim = <string> rand::uuid::v7();
     LET $until = $now + duration::from_secs($p.lease_seconds);
     -- Échu (scheduled) ou bail expiré (running) : un destinataire déjà repris par un autre nœud n'est pas rendu
-    LET $taken = array::filter(array::map($picked, |$d| (UPDATE ONLY $d.recipient SET state = "running", claim = $claim, claimed_by = $p.node, locked_until = $until
+    LET $taken = array::filter(array::map($picked, |$d| (UPDATE ONLY $d.id SET state = "running", claim = $claim, claimed_by = $p.node, locked_until = $until
         WHERE (state = "scheduled" AND next_attempt_at <= $now) OR (state = "running" AND locked_until <= $now))), |$row| $row IS NOT NONE);
     IF array::len($taken) = 0 { RETURN fn::result_ok({ claim: NONE, items: [] }); };
     LET $submissions = (SELECT id, tenant, origin, sender, header_from, envelope_from, content, prefix, prepared_at, smtputf8, eight_bit, dsn, created_at, expires_at
@@ -195,7 +224,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_queue_claim($params: object) {
             };
         })
     });
-} COMMENT "Réserve des destinataires de la file ({ node (nœud qui réserve), limit (100 ; 1 à 500), lease_seconds (600 ; 60 à 1 800), exclude_domains (domaines saturés du nœud, 1 000 au plus) }) : lus dans l'ordre de l'échéancier (échéance, puis dépôt) par une plage bornée, destinations suspendues et domaines exclus écartés ; destinataires échus (scheduled) et dont le bail a expiré (running après un arrêt brutal, sans essai compté) passés à running sous un bail et un jeton de réservation tirés ici ; { claim (NONE : rien à faire), locked_until, items : [{ recipient, submission, tenant, origin, rank, address, domain, local, notify, orcpt, attempts, sender, header_from, envelope_from, prepared (faux : fn::mail_queue_prepare avant l'envoi), content { key, object, size }, prefix, smtputf8, eight_bit, dsn, size, created_at, expires_at }] }. Droit : compte de service, session système";
+} COMMENT "Réserve des destinataires de la file ({ node (nœud qui réserve), limit (100 ; 1 à 500), lease_seconds (600 ; 60 à 1 800), exclude_domains (domaines saturés du nœud, 1 000 au plus) }) : baux expirés d'abord, puis échus lus seconde par seconde dans l'ordre de l'échéancier (lectures bornées), destinations suspendues et domaines exclus écartés ; destinataires échus (scheduled) et dont le bail a expiré (running après un arrêt brutal, sans essai compté) passés à running sous un bail et un jeton de réservation tirés ici ; { claim (NONE : rien à faire), locked_until, items : [{ recipient, submission, tenant, origin, rank, address, domain, local, notify, orcpt, attempts, sender, header_from, envelope_from, prepared (faux : fn::mail_queue_prepare avant l'envoi), content { key, object, size }, prefix, smtputf8, eight_bit, dsn, size, created_at, expires_at }] }. Droit : compte de service, session système";
 
 -- ----------------------------------------------------------------------------
 -- fn::mail_queue_renew
@@ -380,11 +409,12 @@ DEFINE FUNCTION OVERWRITE fn::mail_queue_release($params: object) {
     IF !fn::mail_can({ action: "worker" }) { RETURN fn::error_result("MAIL_PERMISSION_DENIED", $p.language, {}); };
     LET $now = time::now();
     LET $claim = <string> $p.claim;
-    LET $at = $p.not_before ?? $now;
+    -- Jamais dans le passé : une seconde passée de l'échéancier peut être retirée
+    LET $at = IF $p.not_before IS NONE OR $p.not_before < $now { $now } ELSE { $p.not_before };
     LET $released = array::filter(array::map($p.recipients, |$r| (UPDATE ONLY $r SET state = "scheduled", next_attempt_at = $at, claim = NONE, locked_until = NONE, claimed_by = NONE
         WHERE state = "running" AND claim = $claim AND locked_until > $now)), |$row| $row IS NOT NONE).id;
     RETURN fn::mail_queue_lost(array::complement($p.recipients, $released), $p.language, { released: array::len($released), done: $released });
-} COMMENT "Rend à la file des destinataires réservés et non commencés ({ claim, recipients : 1 à 500, not_before (échéance, maintenant par défaut : cadence de la destination) }) sans essai compté : arrêt propre, cadence d'une destination, connexion coupée avant leur tour ; { released, lost } ; tous perdus : MAIL_QUEUE_CLAIM_LOST ; plus de 500 : MAIL_QUEUE_BATCH_TOO_LARGE. Droit : compte de service, session système";
+} COMMENT "Rend à la file des destinataires réservés et non commencés ({ claim, recipients : 1 à 500, not_before (échéance, maintenant par défaut et au plus tôt : cadence de la destination) }) sans essai compté : arrêt propre, cadence d'une destination, connexion coupée avant leur tour ; { released, lost } ; tous perdus : MAIL_QUEUE_CLAIM_LOST ; plus de 500 : MAIL_QUEUE_BATCH_TOO_LARGE. Droit : compte de service, session système";
 
 -- ----------------------------------------------------------------------------
 -- fn::mail_queue_dsn_done
@@ -423,16 +453,18 @@ DEFINE FUNCTION OVERWRITE fn::mail_queue_stats($params: object) {
     LET $p = $report.value;
     IF !fn::mail_can({ action: "worker" }) { RETURN fn::error_result("MAIL_PERMISSION_DENIED", $p.language, {}); };
     LET $now = time::now();
-    -- Échus : plage bornée de l'échéancier, comptée jusqu'à 10 000
-    LET $due = (SELECT at FROM type::record("mail_queue_due", "0"..string::concat(<string> (10000000000000000 + time::micros($now) + 1), "_")) LIMIT 10000);
+    -- Échus et baux expirés : index (state, next_attempt_at) et (state, locked_until), lectures bornées à l'instant présent
+    LET $due = (SELECT id, next_attempt_at FROM mail_queue_recipient WHERE state = "scheduled" AND next_attempt_at <= $now ORDER BY next_attempt_at).next_attempt_at;
+    LET $expired = (SELECT id, locked_until FROM mail_queue_recipient WHERE state = "running" AND locked_until <= $now ORDER BY locked_until).locked_until;
+    LET $oldest = array::min(array::concat(array::slice($due, 0, 1), array::slice($expired, 0, 1)));
     RETURN fn::result_ok({
         scheduled: count(SELECT VALUE id FROM mail_queue_recipient WHERE state = "scheduled"),
         running: count(SELECT VALUE id FROM mail_queue_recipient WHERE state = "running"),
-        due: array::len($due),
-        oldest_due_at: $due[0].at,
+        due: array::len($due) + array::len($expired),
+        oldest_due_at: $oldest,
         suspended_destinations: count(SELECT VALUE id FROM mail_queue_destination WHERE suspended_until > $now)
     });
-} COMMENT "Mesures de la file ({ }) : { scheduled, running (index d'état), due (échus ou baux expirés, comptés sur l'échéancier jusqu'à 10 000), oldest_due_at (plus ancienne échéance passée : file bloquée ou trop lente), suspended_destinations }, pour la sonde et /metrics. Droit : compte de service, session système";
+} COMMENT "Mesures de la file ({ }) : { scheduled, running (index d'état), due (échus et baux expirés), oldest_due_at (plus ancienne échéance passée : file bloquée ou trop lente), suspended_destinations }, pour la sonde et /metrics. Droit : compte de service, session système";
 
 -- ----------------------------------------------------------------------------
 -- fn::mail_queue_purge
@@ -463,8 +495,12 @@ DEFINE FUNCTION OVERWRITE fn::mail_queue_purge($params: object) {
     -- Adresses de retour échues, compteurs d'envoi dont la fenêtre est passée
     LET $tokens = (UPDATE mail_submission SET return_token = NONE WHERE return_token IS NOT NONE AND return_expires_at < $now);
     LET $counters = (DELETE mail_send_counter WHERE expires_at < $now RETURN BEFORE);
-    RETURN fn::result_ok({ submissions: array::len($removed), contents: array::len($finished) + array::len($abandoned), tokens: array::len($tokens), counters: array::len($counters) });
-} COMMENT "Maintenance de la file ({ limit : 100 }) : fichiers des envois finis supprimés ; envois finis depuis 14 jours retirés avec leurs destinataires ; dépôts abandonnés ou non clos dans l'heure retirés avec leur fichier (compteurs rendus) ; jetons de retour échus effacés ; compteurs d'envoi échus retirés ; { submissions, contents, tokens, counters }. Droit : session système, ou compte de service qui gère aussi les fichiers (storage.worker)";
+    -- Secondes de l'échéancier passées depuis plus d'une minute et sans destinataire programmé
+    LET $seconds = (SELECT id, at FROM type::record("mail_queue_due", "0"..<string> (10000000000 + time::unix($now - 1m))) LIMIT $p.limit);
+    LET $empty = array::filter($seconds, |$second| array::len(fn::mail_queue_due_second_read($second, $now)) = 0).id;
+    IF array::len($empty) > 0 { DELETE $empty; };
+    RETURN fn::result_ok({ submissions: array::len($removed), contents: array::len($finished) + array::len($abandoned), tokens: array::len($tokens), counters: array::len($counters), seconds: array::len($empty) });
+} COMMENT "Maintenance de la file ({ limit : 100 }) : fichiers des envois finis supprimés ; envois finis depuis 14 jours retirés avec leurs destinataires ; dépôts abandonnés ou non clos dans l'heure retirés avec leur fichier (compteurs rendus) ; jetons de retour échus effacés ; compteurs d'envoi échus retirés ; secondes vides de l'échéancier retirées ; { submissions, contents, tokens, counters, seconds }. Droit : session système, ou compte de service qui gère aussi les fichiers (storage.worker)";
 
 DEFINE FUNCTION OVERWRITE fn::mail_submission_file_remove($row: object) -> bool {
     LET $object = IF $row.content.object IS NOT NONE {

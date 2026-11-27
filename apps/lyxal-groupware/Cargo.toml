@@ -59,8 +59,9 @@ lyxal_host = { workspace = true, features = ["build"] }
 # Réponses AUTH des essais du dépôt (MIT OR Apache-2.0, déjà dans l'arbre)
 base64 = "0.22"
 bytes = "1"
-# Lecture en flux des fichiers déchiffrés par les essais (MIT OR Apache-2.0, déjà dans l'arbre)
+# Flux d'un fichier déposé et syntaxe SMTP des essais de l'envoi (déjà dans l'arbre)
 futures = { version = "0.3", default-features = false, features = ["std"] }
+lyxal_mail_proto.workspace = true
 # Client SMTP réel des essais d'interopérabilité (MIT OR Apache-2.0, déjà dans l'arbre), en clair
 # seulement : aucune fonctionnalité TLS (STARTTLS essayé par `openssl s_client`).
 lettre = { version = "0.11.23", default-features = false, features = ["builder", "smtp-transport", "tokio1"] }

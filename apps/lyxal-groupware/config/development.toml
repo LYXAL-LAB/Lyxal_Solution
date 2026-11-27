@@ -13,8 +13,14 @@
 [smtp]
 hostname = "localhost"
 
+# Envoi (lot 6) : désactivé en développement (aucun envoi sur Internet depuis un poste de
+# développement) ; adresses privées permises pour un faux MX local.
+[outbound]
+enabled = false
+allow_private_networks = true
+
 [tls]
-default = { certificate = "config/tls/development.chain.pem", private_key = "config/tls/development.key.pem" }
+default ={ certificate = "config/tls/development.chain.pem", private_key = "config/tls/development.key.pem" }
 
 [[listeners]]
 id = "smtp"

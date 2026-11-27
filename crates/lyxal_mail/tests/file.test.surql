@@ -80,11 +80,12 @@
         IF !$closed.ok { THROW $closed.error.code; };
         RETURN <string> $begun.data.submission;
     };
-    -- Échéancier égal à la table : une fiche par destinataire scheduled (échéance) ou running (fin du bail), aucune autre
+    -- Échéancier tenu : la seconde de chaque destinataire programmé y figure, et sa clé de lecture (due_second) est posée
     DEFINE FUNCTION OVERWRITE fn::essai_echeancier() -> bool {
-        LET $open = (SELECT id, state, next_attempt_at, locked_until FROM mail_queue_recipient WHERE state IN ["scheduled", "running"]);
-        LET $expected = array::sort::asc(array::map($open, |$r| <string> fn::mail_queue_due_key(IF $r.state = "scheduled" { $r.next_attempt_at } ELSE { $r.locked_until }, $r.id)));
-        RETURN $expected == array::sort::asc((SELECT VALUE <string> id FROM mail_queue_due));
+        LET $scheduled = (SELECT next_attempt_at, due_second FROM mail_queue_recipient WHERE state = "scheduled");
+        LET $others = (SELECT VALUE due_second FROM mail_queue_recipient WHERE state != "scheduled");
+        RETURN $scheduled.all(|$r| record::exists(fn::mail_queue_due_key($r.next_attempt_at)) AND $r.due_second == time::unix($r.next_attempt_at))
+            AND $others.all(|$s| $s IS NONE);
     };
     DEFINE FUNCTION OVERWRITE fn::essai_evenements($kind: string) -> array {
         RETURN (SELECT VALUE payload FROM event_outbox WHERE event_type = $kind ORDER BY created_at);
@@ -134,10 +135,11 @@ RETURN fn::mail_queue_claim({ node: "n1" }).data == { claim: NONE, items: [] }
         AND $third.data == { claim: NONE, items: [] };
 };
 
--- test: réservation : destinataires running sous la fin du bail dans l'échéancier, rien d'échu
+-- test: réservation : destinataires running hors de l'échéancier (clé de seconde retirée), bail de 10 min, rien d'échu
 RETURN fn::essai_echeancier()
-    AND (SELECT VALUE [state, claimed_by] FROM mail_queue_recipient WHERE submission = type::record(fn::essai_id("a")) ORDER BY rank) == [["running", "n1"], ["running", "n2"]]
-    AND (SELECT VALUE at FROM mail_queue_due).all(|$at| $at > time::now() + 9m);
+    AND (SELECT VALUE [state, claimed_by, due_second] FROM mail_queue_recipient WHERE submission = type::record(fn::essai_id("a")) ORDER BY rank) == [["running", "n1", NONE], ["running", "n2", NONE]]
+    AND (SELECT VALUE locked_until FROM mail_queue_recipient WHERE submission = type::record(fn::essai_id("a"))).all(|$at| $at > time::now() + 9m)
+    AND fn::mail_queue_due_read(time::now(), 10, []).rows == [];
 
 -- test: préparation : jeton exigé (expéditeur non vide), garde de la réservation, adresse de retour posée une fois
 -- en tant que: worker
@@ -296,7 +298,7 @@ RETURN fn::essai_echeancier()
     LET $submission = (SELECT state, open_count, done_at, return_expires_at FROM ONLY type::record(fn::essai_id("a")));
     RETURN $failed.data.items[0].state == "expired" AND $row.state == "expired" AND $row.attempts == 4 AND $row.last_result.{ stage, enhanced, code } == { stage: "expired", enhanced: "4.4.7", code: 450 }
         AND $submission.state == "done" AND $submission.open_count == 0 AND $submission.return_expires_at > time::now() + 13d
-        AND fn::essai_echeancier() AND array::len(SELECT * FROM mail_queue_due) == 0;
+        AND fn::essai_echeancier() AND count(SELECT VALUE id FROM mail_queue_recipient WHERE due_second IS NOT NONE) == 0;
 };
 
 -- test: expiration : mail.submission.failed (outcome expired, 4.4.7)
@@ -434,7 +436,8 @@ RETURN array::len(fn::essai_evenements("mail.submission.failed")) == 3 AND array
     FOR $n IN <array> (0..20) { fn::essai_module(array::map(<array> (0..100), |$i| { address: string::concat("p", <string> $n, "_", <string> $i, "@cinq.test") })); };
     UPDATE mail_queue_recipient SET next_attempt_at = time::now() + 1d WHERE domain = "cinq.test";
     LET $claimed = fn::mail_queue_claim({ node: "n1", limit: 500 });
-    RETURN $claimed.data.items.address == ["m1@quatre.test", "m2@quatre.test"] AND fn::essai_echeancier() AND array::len(SELECT * FROM mail_queue_due) == 2002;
+    RETURN $claimed.data.items.address == ["m1@quatre.test", "m2@quatre.test"] AND fn::essai_echeancier()
+        AND count(SELECT VALUE id FROM mail_queue_recipient WHERE due_second IS NOT NONE) == 2000;
 };
 
 -- test: réservation : 1 200 destinataires échus d'une destination suspendue en tête de l'échéancier n'affament pas les autres (fenêtres successives) (session système)
@@ -474,6 +477,24 @@ RETURN array::len(fn::essai_evenements("mail.submission.failed")) == 3 AND array
         AND (SELECT VALUE return_token FROM ONLY type::record(fn::essai_id("j"))) IS NONE;
 };
 
+-- test: maintenance et réservation : secondes passées de l'échéancier retirées quand elles n'ont plus de destinataire programmé, gardées sinon
+{
+    LET $s = type::record(fn::essai_module([{ address: "v1@vieux.test" }]));
+    LET $r = fn::mail_queue_recipient_key($s, 0);
+    UPDATE $r SET next_attempt_at = time::now() - 2m;
+    LET $kept = fn::mail_queue_due_key(time::now() - 2m);
+    -- Douze secondes vides, très anciennes
+    FOR $i IN <array> (1..13) { CREATE type::record("mail_queue_due", <string> (10000000000 + $i)) CONTENT { at: time::from_secs($i) }; };
+    -- La réservation retire dix secondes vides au plus, la maintenance les autres
+    LET $claimed = fn::mail_queue_claim({ node: "n1", limit: 1, exclude_domains: ["vieux.test"] });
+    LET $after_claim = array::map(<array> (1..13), |$i| record::exists(type::record("mail_queue_due", <string> (10000000000 + $i))));
+    LET $purged = fn::mail_queue_purge({});
+    RETURN $after_claim == array::concat(array::repeat(false, 10), [true, true]) AND $purged.data.seconds >= 2
+        AND !record::exists(type::record("mail_queue_due", "10000000012"))
+        AND record::exists($kept) AND fn::essai_echeancier() AND $claimed.ok
+        AND fn::mail_queue_claim({ node: "n1", limit: 10 }).data.items.recipient CONTAINS $r;
+};
+
 -- test: maintenance : envois finis depuis 14 jours retirés avec leurs destinataires
 {
     UPDATE type::record(fn::essai_id("a")) SET done_at = time::now() - 15d;
@@ -490,11 +511,11 @@ RETURN array::len(fn::essai_evenements("mail.submission.failed")) == 3 AND array
     LET $tenth = fn::mail_queue_next_attempt(10, $settings, $now);
     LET $flat = fn::mail_queue_next_attempt(3, object::extend($settings, { retry_jitter_percent: 0 }), $now);
     RETURN $first >= $now + 270s AND $first <= $now + 330s AND $tenth >= $now + 108m AND $tenth <= $now + 132m AND $flat == $now + 20m
-        AND fn::mail_queue_due_at({ state: "scheduled", next_attempt_at: $now, locked_until: NONE }) == $now
-        AND fn::mail_queue_due_at({ state: "running", next_attempt_at: $now - 1h, locked_until: $now }) == $now
-        AND fn::mail_queue_due_at({ state: "failed", next_attempt_at: $now }) IS NONE AND fn::mail_queue_due_at(NONE) IS NONE
+        AND fn::mail_queue_due_second(d"2026-01-01T00:00:00.750Z") == d"2026-01-01T00:00:00Z"
         AND fn::mail_queue_recipient_key_text(mail_submission:sabc, 3) == "sabc_1003"
-        AND fn::mail_queue_due_key(d"2026-01-01T00:00:00Z", mail_queue_recipient:sabc_1003) == type::record("mail_queue_due", string::concat(<string> (10000000000000000 + time::micros(d"2026-01-01T00:00:00Z")), "_sabc_1003"))
+        AND fn::mail_queue_due_key(d"2026-01-01T00:00:00.750Z") == type::record("mail_queue_due", <string> (10000000000 + time::unix(d"2026-01-01T00:00:00Z")))
+        AND fn::mail_queue_due_second_read({ at: d"2000-01-01T00:00:00Z" }, $now) == []
+        AND fn::mail_queue_due_blocked([], ["x.test"], $now) == ["x.test"]
         AND fn::mail_queue_held(mail_queue_recipient:absent, "c", $now) IS NONE
         AND fn::mail_queue_fail_item({ recipient: mail_queue_recipient:absent, permanent: true, stage: "rcpt" }, "c", $now, $settings, NONE) IS NONE
         AND fn::mail_queue_destination_record(NONE, $now) IS NONE
@@ -502,7 +523,7 @@ RETURN array::len(fn::essai_evenements("mail.submission.failed")) == 3 AND array
             == [{ submission: 1, action: "failed", recipients: ["a", "b"] }, { submission: 2, action: "delayed", recipients: ["c"] }]
         AND fn::mail_absent().valid AND fn::mail_absent().value IS NONE
         AND fn::mail_queue_worker_writer()
-        AND fn::mail_queue_due_read($now, 3, []).all(|$d| $d.domain != "bouchon.test") AND array::len(fn::mail_queue_due_read($now, 3, ["bouchon.test"])) <= 3;
+        AND fn::mail_queue_due_read($now, 3, []).rows.all(|$d| $d.domain != "bouchon.test") AND array::len(fn::mail_queue_due_read($now, 3, ["bouchon.test"]).rows) <= 3;
 };
 
 -- test: règles internes : un titulaire n'écrit pas en compte de service

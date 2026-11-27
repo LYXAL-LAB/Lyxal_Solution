@@ -75,7 +75,8 @@ pub struct Reception {
     pub dkim: String,
     /// DMARC : `none`, `pass`, `fail`, `temperror`, `permerror`.
     pub dmarc: String,
-    /// Nom inverse : `pass`, `fail`, `temperror`, `permerror`.
+    /// Nom inverse : `pass`, `fail`, `temperror`, `permerror` ; `none` pour une remise sans
+    /// connexion réseau (route locale, avis de non-remise, lot 6).
     pub iprev: String,
     /// Antivirus : `clean`, ou `not_scanned` (aucun antivirus configuré).
     pub antivirus: String,

@@ -275,6 +275,29 @@ tire de ces projets sont repris comme modèles seulement :
 | `src/smtp/session/submission.rs`, `src/submission/` : dépôt authentifié (`AUTH` sous TLS, droit d'expéditeur sur l'enveloppe et les en-têtes, `Bcc` retiré, `Date` et `Message-ID` ajoutés, `Received` sans adresse IP) | Stalwart | `3adead9` | `AGPL-3.0-only OR LicenseRef-SEL` | `crates/smtp/src/inbound/{auth,mail}.rs` | modèle (plan du lot 6, §8 ; aucun fichier relu ni copié dans ce sous-lot) | 6 |
 | idem : `AUTH` (`=`, `*`), refus de `MAIL` sans authentification, traitement du message soumis | Mox | `b32f0de` | MIT | `smtpserver/server.go` (`cmdAuth`, `submit`) | modèle (plan du lot 6, §8 ; RFC 4954, 6409, 8314) | 6 |
 
+### 3.4. Lot 6d : envoi (`src/outbound/`, `src/dkim.rs`, `src/dsn.rs`)
+
+Le worker d'envoi, la résolution des MX, le client SMTP, le pool de connexions, les limites, le
+relais, la route locale, la préparation des envois, la signature et le provisionnement DKIM et
+les avis produits sont **écrits pour Lyxal** (décision E1, écart X6) depuis le plan du lot 6
+(§5 à §7, §9, §10) et les RFC (5321, 2920, 3207, 3461, 3463, 3464, 6376, 7435, 7505, 8463) ;
+aucun code n'est copié. Modèles :
+
+| Élément de Lyxal | Projet | Commit | Licence | Chemin d'origine (cité par le plan) | Nature |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `outbound/dispatcher.rs` : un enregistrement par destinataire, regroupé par envoi et destination pour une transaction ; reprise sous bail | Mox ; Stalwart | `b32f0de` ; `3adead9` | MIT ; `AGPL-3.0-only OR LicenseRef-SEL` | `queue/queue.go` (`Msg`) ; `crates/smtp/src/queue/{mod,lease}.rs` | modèle |
+| `outbound/client.rs` : accueil, `EHLO` puis `HELO`, `STARTTLS` puis nouvel `EHLO`, `PIPELINING` de `MAIL`, `RCPT`, `DATA`, `RSET` sans destinataire accepté, repli en clair après une poignée de main ratée | Mox | `b32f0de` | MIT | `smtpclient/client.go` | modèle |
+| `outbound/mx.rs` : 5 MX, 2 adresses par MX, IPv4 puis IPv6 | Stalwart | `3adead9` | `AGPL-3.0-only OR LicenseRef-SEL` | `crates/common/src/config/smtp/queue.rs` (`max_mx_hosts`, `max_multihomed`) | valeurs par défaut |
+| `outbound/pool.rs` : connexions par destination, inactivité de 60 s, messages par connexion, débit par destination | KumoMTA | `81f191dff648` | Apache-2.0 | `docs/reference/kumo/make_egress_path/*` | modèle |
+| `dkim.rs` : en-têtes signés et sur-signés | Mox | `b32f0de` | MIT | `mox-/config.go` | liste reprise, étendue (`List-*`, RFC 8058) |
+| `dsn.rs` : avis groupés par envoi, une fois par destinataire | Mox | `b32f0de` | MIT | `queue/dsn.go` | modèle |
+
+### 3.5. Échéancier de la file (mesure du sous-lot 6d)
+
+`schema/14_mail_queue_due.surql` range une fiche par **seconde** programmée (au lieu d'une fiche
+par destinataire, sous-lot 6c) : écrit pour Lyxal, sans modèle extérieur ; raison et mesures dans
+le `README.md` (« Mesure de la réservation »).
+
 Chaque fichier porté garde son en-tête `SPDX-FileCopyrightText` d'origine, déclare sa licence
 retenue (`AGPL-3.0-only` pour Stalwart, `MIT` pour Mox) et décrit ses modifications pour Lyxal
 OS. Textes des licences : `LICENSES/AGPL-3.0-only.txt` (copie de `LICENSES/AGPL-3.0-only.txt` de

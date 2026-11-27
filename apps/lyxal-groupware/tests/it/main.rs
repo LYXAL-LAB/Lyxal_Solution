@@ -12,6 +12,7 @@ mod http_port;
 mod limits;
 mod listeners;
 mod mail_service;
+mod outbound;
 mod proxy;
 mod reload;
 mod shutdown;

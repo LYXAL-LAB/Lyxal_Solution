@@ -81,11 +81,12 @@
         IF !$closed.ok { THROW $closed.error.code; };
         RETURN <string> $begun.data.submission;
     };
-    -- Échéancier égal à la table : une fiche par destinataire scheduled (échéance) ou running (fin du bail), aucune autre
+    -- Échéancier tenu : la seconde de chaque destinataire programmé y figure, et sa clé de lecture (due_second) est posée
     DEFINE FUNCTION OVERWRITE fn::essai_echeancier() -> bool {
-        LET $open = (SELECT id, state, next_attempt_at, locked_until FROM mail_queue_recipient WHERE state IN ["scheduled", "running"]);
-        LET $expected = array::sort::asc(array::map($open, |$r| <string> fn::mail_queue_due_key(IF $r.state = "scheduled" { $r.next_attempt_at } ELSE { $r.locked_until }, $r.id)));
-        RETURN $expected == array::sort::asc((SELECT VALUE <string> id FROM mail_queue_due));
+        LET $scheduled = (SELECT next_attempt_at, due_second FROM mail_queue_recipient WHERE state = "scheduled");
+        LET $others = (SELECT VALUE due_second FROM mail_queue_recipient WHERE state != "scheduled");
+        RETURN $scheduled.all(|$r| record::exists(fn::mail_queue_due_key($r.next_attempt_at)) AND $r.due_second == time::unix($r.next_attempt_at))
+            AND $others.all(|$s| $s IS NONE);
     };
     DEFINE FUNCTION OVERWRITE fn::essai_evenements($kind: string) -> array {
         RETURN (SELECT VALUE payload FROM event_outbox WHERE event_type = $kind ORDER BY created_at);
@@ -225,7 +226,7 @@ RETURN fn::mail_submission_commit({ submission: fn::essai_id("depot"), object: "
             [1, "marie@alpha.test", "alpha.test", true, "scheduled", 0, auth_identity:jean, "submission"]
         ]
         AND $rows[0].id == fn::mail_queue_recipient_key($submission, 0)
-        AND fn::essai_echeancier() AND array::len(SELECT * FROM mail_queue_due) == 2
+        AND fn::essai_echeancier() AND array::len(SELECT * FROM mail_queue_due) >= 1
         AND array::len(SELECT * FROM event_outbox WHERE string::starts_with(event_type, "mail.submission")) == 0;
 };
 

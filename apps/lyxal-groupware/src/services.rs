@@ -15,8 +15,11 @@ use crate::error::GroupwareError;
 use async_trait::async_trait;
 use lyxal_host::database::Database;
 use lyxal_host::services::{master_keys, storage_backends, storage_scanner};
+use lyxal_mail::auth::EmbeddedSuffixList;
+use lyxal_mail::dkim::{DkimKeyCache, DkimProvisioner, ProvisionReport};
 use lyxal_mail::dns::{HickoryResolver, MailResolver};
 use lyxal_mail::net::MemoryBudget;
+use lyxal_mail::outbound::{OutboundDispatcher, OutboundMetrics, OutboundServices};
 use lyxal_mail::smtp::{BlockList, BlockRefreshWorker, SmtpInboundHandler, SmtpServices};
 use lyxal_mail::submission::SubmissionHandler;
 use lyxal_mail::{
@@ -35,7 +38,7 @@ use lyxal_scheduler::{
     SchedulerHealthCheck, SchedulerLeaderWorker, SchedulerStore, TaskFailure, TaskHandler,
     TaskOutput,
 };
-use lyxal_secrets::{FileKeys, SecretsHealthCheck, SecretsStore};
+use lyxal_secrets::{FileKeys, SecretsClient, SecretsHealthCheck, SecretsStore};
 use lyxal_storage::models::EncryptedBucketExistsParams;
 use lyxal_storage::{StorageHealthCheck, StorageService, StorageStore};
 use std::sync::Arc;
@@ -56,6 +59,12 @@ pub const MAIL_MAINTENANCE_SCHEDULE: &str = "mail-maintenance";
 const MAIL_MAINTENANCE_EVERY: Duration = Duration::from_secs(600);
 /// Décalage aléatoire maximal de chaque échéance.
 const JITTER: Duration = Duration::from_secs(30);
+/// Tâche de fond de l'hôte : clés DKIM des domaines (création, activation par le DNS).
+pub const MAIL_DKIM_TASK: &str = "mail.dkim_provision";
+/// Planification de l'installation de `mail.dkim_provision`.
+pub const MAIL_DKIM_SCHEDULE: &str = "mail-dkim-provision";
+/// Intervalle entre deux passages de `mail.dkim_provision`.
+const MAIL_DKIM_EVERY: Duration = Duration::from_secs(600);
 
 /// Services du courrier rendus à l'hôte (et aux protocoles des lots suivants).
 #[derive(Clone)]
@@ -66,6 +75,8 @@ pub struct MailHost {
     pub ingest: MailIngest,
     /// Lecture des messages, entière ou par plage.
     pub content: MailContent,
+    /// Stockage de l'hôte (session système, fichiers chiffrés) : contenus des envois déposés.
+    pub storage: StorageService,
     /// Maintenance, exécutée par la tâche `mail.maintenance`.
     pub maintenance: MailMaintenance,
     /// Réception SMTP du nœud (écoutes `smtp`), si une écoute `smtp` est déclarée.
@@ -75,6 +86,8 @@ pub struct MailHost {
     /// Liste de blocage du nœud, relue toutes les 30 s ; appliquée à l'acceptation de toutes
     /// les écoutes.
     pub blocks: BlockList,
+    /// Mesures de l'envoi, si le worker d'envoi est actif (`outbound.enabled`).
+    pub outbound: Option<Arc<OutboundMetrics>>,
 }
 
 /// Services des modules hébergés à compléter après leur installation.
@@ -116,6 +129,14 @@ pub fn register_services(
             secrets_store.clone(),
             master.clone(),
         )))?;
+    // Clés DKIM et identifiants du relais : coffre-fort, consommateur lyxal_mail
+    let mail_secrets = master.as_ref().map(|keys| {
+        SecretsClient::new(
+            secrets_store.clone(),
+            Some(keys.clone()),
+            lyxal_mail::MODULE_ID,
+        )
+    });
 
     let storage_store = StorageStore::new(database.clone());
     let backends = Arc::new(storage_backends(&config.storage)?);
@@ -131,7 +152,7 @@ pub fn register_services(
     // antivirus sur les écritures du stockage : le message est analysé une fois, en tête de la
     // chaîne de remise (décision S9)
     let storage = StorageService::new(storage_store.clone(), backends).with_file_keys(
-        FileKeys::new(secrets_store, master).with_cache(),
+        FileKeys::new(secrets_store.clone(), master).with_cache(),
         storage_store,
     );
     if let Some(scanner) = &scanner {
@@ -151,18 +172,28 @@ pub fn register_services(
     let mut probe = MailHealthCheck::new(system.clone(), storage.clone()).with_required_host(
         RequiredHost::new(PresenceStore::new(database.fixed().clone()), SERVER_HOST_ID),
     );
-    let smtp = match config.smtp.smtp_config() {
-        Some(smtp_config) if config.has_smtp_listener() => {
+    // Résolveur DNS du nœud, partagé par la réception, l'envoi et les clés DKIM : construit
+    // seulement si ce nœud reçoit (écoute smtp) ou envoie (outbound.enabled)
+    let resolver: Option<Arc<dyn MailResolver>> =
+        if config.has_smtp_listener() || config.outbound.enabled {
             let dns = config.dns.dns_config()?;
-            let resolver: Arc<dyn MailResolver> =
-                Arc::new(HickoryResolver::new(&dns).map_err(|error| {
-                    GroupwareError::DnsUnavailable {
-                        message: error.to_string(),
-                    }
-                })?);
-            let mut pipeline = DeliveryPipeline::new(ingest.clone());
+            Some(Arc::new(HickoryResolver::new(&dns).map_err(|error| {
+                GroupwareError::DnsUnavailable {
+                    message: error.to_string(),
+                }
+            })?))
+        } else {
+            None
+        };
+    // Chaîne de remise du lot 5 : réception, route locale et avis de l'envoi
+    let mut pipeline = DeliveryPipeline::new(ingest.clone());
+    if let Some(scanner) = &scanner {
+        pipeline = pipeline.with_scanner(scanner.clone());
+    }
+    let smtp = match (config.smtp.smtp_config(), &resolver) {
+        (Some(smtp_config), Some(resolver)) if config.has_smtp_listener() => {
+            let resolver = resolver.clone();
             if let Some(scanner) = &scanner {
-                pipeline = pipeline.with_scanner(scanner.clone());
                 probe = probe.with_scanner(scanner.clone());
             }
             probe = probe.with_dns_probe(resolver.clone(), smtp_config.hostname.clone());
@@ -171,7 +202,7 @@ pub fn register_services(
                 SmtpServices {
                     store: system.clone(),
                     resolver,
-                    pipeline,
+                    pipeline: pipeline.clone(),
                     budget: budget.clone(),
                     blocks: blocks.clone(),
                 },
@@ -195,14 +226,47 @@ pub fn register_services(
         budget,
         &blocks,
     )?;
+    // Envoi (lot 6) : worker du nœud, TLS côté client de l'hôte, sonde
+    let outbound = match (&config.smtp.hostname, &resolver) {
+        (Some(hostname), Some(resolver)) if config.outbound.enabled => {
+            let log_domains = config.observability.log_recipient_domain
+                == crate::config::LogRecipientDomain::Full;
+            let outbound_config = config.outbound.outbound_config(
+                hostname,
+                runtime.node_id().as_ref(),
+                log_domains,
+            )?;
+            let worker = OutboundDispatcher::new(
+                outbound_config,
+                OutboundServices {
+                    store: system.clone(),
+                    storage: storage.clone(),
+                    resolver: resolver.clone(),
+                    tls: Some(Arc::new(crate::net::tls::HostTlsConnector::new()?)),
+                    secrets: mail_secrets.clone(),
+                    pipeline: pipeline.clone(),
+                    organizational: Arc::new(EmbeddedSuffixList),
+                    keys: Arc::new(DkimKeyCache::new()),
+                },
+            )?;
+            let metrics = worker.metrics();
+            runtime.register_worker(Arc::new(worker))?;
+            probe = probe.with_outbound(metrics.clone());
+            tracing::info!("envoi du courrier actif sur ce nœud (worker lyxal_mail:mail.outbound)");
+            Some(metrics)
+        }
+        _ => None,
+    };
     let mail = MailHost {
         submission,
         ingest,
-        content: MailContent::new(storage),
+        content: MailContent::new(storage.clone()),
+        storage,
         maintenance: MailMaintenance::new(system.clone(), MAINTENANCE_BATCH),
-        system,
+        system: system.clone(),
         smtp,
         blocks,
+        outbound,
     };
     // `lyxal-server` doit tourner sur la même base : sans lui, les octets des messages effacés et
     // le rescellement des clés attendent (sonde « dégradé » après 10 minutes sans nœud vivant)
@@ -226,6 +290,13 @@ pub fn register_services(
     handlers
         .register(Arc::new(MailMaintenanceHandler {
             maintenance: mail.maintenance.clone(),
+        }))
+        .map_err(|error| install_error(error.code()))?;
+    handlers
+        .register(Arc::new(DkimProvisionHandler {
+            provisioner: mail_secrets.zip(resolver).map(|(secrets, resolver)| {
+                DkimProvisioner::new(system, secrets_store, secrets, resolver, MAINTENANCE_BATCH)
+            }),
         }))
         .map_err(|error| install_error(error.code()))?;
 
@@ -285,13 +356,18 @@ pub async fn complete_services(
     let mut params =
         ScheduleCreateParams::new(MAIL_MAINTENANCE_SCHEDULE, MAIL_MAINTENANCE_TASK, spec);
     params.overlap = Some(Overlap::Skip);
-    match SchedulerClient::new(SchedulerStore::new(database.clone()))
-        .schedule(params)
-        .await
-    {
-        Ok(_) => tracing::info!(task = MAIL_MAINTENANCE_TASK, "tâche de fond planifiée"),
-        Err(error) if error.is_code("SCHEDULER_SCHEDULE_EXISTS") => {}
-        Err(error) => return Err(install_error(error.code())),
+    let client = SchedulerClient::new(SchedulerStore::new(database.clone()));
+    let mut dkim_spec = ScheduleSpec::new("UTC");
+    dkim_spec.every = vec![MAIL_DKIM_EVERY.into()];
+    dkim_spec.jitter = Some(JITTER.into());
+    let mut dkim = ScheduleCreateParams::new(MAIL_DKIM_SCHEDULE, MAIL_DKIM_TASK, dkim_spec);
+    dkim.overlap = Some(Overlap::Skip);
+    for (task, params) in [(MAIL_MAINTENANCE_TASK, params), (MAIL_DKIM_TASK, dkim)] {
+        match client.schedule(params).await {
+            Ok(_) => tracing::info!(task, "tâche de fond planifiée"),
+            Err(error) if error.is_code("SCHEDULER_SCHEDULE_EXISTS") => {}
+            Err(error) => return Err(install_error(error.code())),
+        }
     }
     let state = services
         .scheduler
@@ -338,6 +414,9 @@ impl TaskHandler for MailMaintenanceHandler {
                     deliveries,
                     accounts,
                     messages,
+                    submissions,
+                    queue_contents,
+                    queue_records,
                 } = report;
                 let mut result = Object::new();
                 for (name, value) in [
@@ -347,6 +426,9 @@ impl TaskHandler for MailMaintenanceHandler {
                     ("deliveries", deliveries),
                     ("accounts", accounts),
                     ("messages", messages),
+                    ("submissions", submissions),
+                    ("queue_contents", queue_contents),
+                    ("queue_records", queue_records),
                 ] {
                     result.insert(name, count(value).into_value());
                 }
@@ -357,6 +439,43 @@ impl TaskHandler for MailMaintenanceHandler {
             }
             Err(error) => Err(failure(&error)),
         }
+    }
+}
+
+/// Handler de la tâche `mail.dkim_provision` : clés DKIM des domaines actifs (RSA 2 048 bits et
+/// Ed25519), rangées dans le coffre-fort, puis activées quand le DNS montre l'enregistrement.
+/// Sans clé maîtresse, rien n'est fait (aucune clé ne pourrait être rangée).
+struct DkimProvisionHandler {
+    provisioner: Option<DkimProvisioner>,
+}
+
+#[async_trait]
+impl TaskHandler for DkimProvisionHandler {
+    fn task(&self) -> &str {
+        MAIL_DKIM_TASK
+    }
+
+    async fn run(&self, _ctx: RunContext) -> Result<TaskOutput, TaskFailure> {
+        let mut result = Object::new();
+        let Some(provisioner) = &self.provisioner else {
+            result.insert("skipped", "master_key_missing".to_string().into_value());
+            return Ok(TaskOutput::with_result(SchedulerValue::Object(result)));
+        };
+        let ProvisionReport {
+            created,
+            activated,
+            pending,
+            failed,
+        } = provisioner.run().await.map_err(|error| failure(&error))?;
+        for (name, value) in [
+            ("created", created),
+            ("activated", activated),
+            ("pending", pending),
+            ("failed", failed),
+        ] {
+            result.insert(name, count(value).into_value());
+        }
+        Ok(TaskOutput::with_result(SchedulerValue::Object(result)))
     }
 }
 

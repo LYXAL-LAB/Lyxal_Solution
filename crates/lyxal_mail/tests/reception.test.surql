@@ -455,7 +455,7 @@ RETURN (SELECT VALUE [origin, reception] FROM ONLY passe:append) == ["append", N
 {
     LET $full = { spf: "softfail", dkim: "policy", dmarc: "temperror", iprev: "permerror", antivirus: "clean", spam: "none", tls: false };
     LET $item = { content: "mail_content:essai", object: "storage_object:essai", received_at: d"2026-11-03T09:00:00Z", delivery_key: fn::essai_cle(1), envelope: {}, structure: {} };
-    LET $reports = [$full, NONE, object::remove($full, "tls"), object::extend($full, { iprev: "none" }), object::extend($full, { domaine: "alpha.test" })]
+    LET $reports = [$full, NONE, object::remove($full, "tls"), object::extend($full, { iprev: "neutral" }), object::extend($full, { domaine: "alpha.test" })]
         .map(|$reception| fn::mail_delivery_item_check(object::extend($item, { reception: $reception })));
     RETURN $reports.valid == [true, false, false, false, false]
         AND $reports[0].value == object::extend($item, { content: mail_content:essai, object: storage_object:essai, reception: $full, role: "inbox", in_reply_to: [], references: [], is_report: false, has_attachment: false })

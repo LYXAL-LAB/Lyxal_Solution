@@ -13,7 +13,7 @@ seul binaire de Lyxal OS qui lie des crates AGPL (`lyxal_mail`) et porte du code
 
 **État : lots 3 (hôte et socle réseau), 4 (socle courrier) et 5 (réception SMTP) du programme
 courrier réalisés ; lot 6 (envoi) en cours : dépôt authentifié des ports 587 et 465 servi
-(sous-lot 6e, §4 ter).** L'hôte porte les services du courrier (réception SMTP, dépôt d'un message
+(sous-lot 6e, §4 ter) et envoi vers Internet actif (sous-lot 6d, §4 quater).** L'hôte porte les services du courrier (réception SMTP, dépôt d'un message
 chiffré au repos, lecture, maintenance exécutée par `lyxal_scheduler`) et les modules dont ils ont
 besoin (coffre-fort, stockage, planificateur, §2). Les écoutes `smtp` sont servies par la
 réception SMTP de `lyxal_mail` (§4 bis), les écoutes `submission` par son dépôt authentifié
@@ -114,6 +114,7 @@ arrête le démarrage, sans être écrite au journal).
 | `crypto` | section commune aux hôtes (`lyxal_host::services`) : `application_key_id` ; la clé applicative elle-même **seulement** par `LYXAL_GROUPWARE__CRYPTO__APPLICATION_KEY` (32 octets en Base64 canonique) : **la même clé que `lyxal-server`** (`LYXAL__CRYPTO__APPLICATION_KEY`), qui scelle les clés de signature des jetons de `lyxal_auth` ; **obligatoire** dès qu'une écoute `submission` existe (démarrage refusé sinon : `GROUPWARE_APPLICATION_KEY_MISSING`, décision E30) |
 | `mail` | `storage_backend` (support des fichiers du courrier, `default` par défaut ; doit exister dans `[storage]` dès qu'un support est déclaré) |
 | `smtp` | réception SMTP (§4 bis) : `hostname` (**obligatoire** dès qu'une écoute `smtp` existe : bannière, `Received`, `authserv-id` ; nom de domaine en forme ASCII, celui du MX et du DNS inverse de l'adresse publique), `max_message_bytes` (52 428 800, de 1 Mio à 1 Gio, annoncé par `SIZE`), `max_recipients` (100, 1 à 1 000), `max_messages_per_session` (50, 1 à 1 000), `max_errors` (10, 1 à 100), `max_line_bytes` (4 096, 512 à 65 536), `command_timeout_seconds` (300, 30 à 3 600), `data_timeout_seconds` (180, 30 à 3 600), `session_max_seconds` (1 800, 60 à 86 400), `data_min_bytes_per_second` (1 024, 0 à 1 Mio), `messages_per_network_per_minute` (`[60, 180, 540]`, 1 à 1 000 000), `dmarc_enforce` (`true` ; `false` : résultat DMARC seulement, pour une mise en service progressive) |
+| `outbound` | envoi (§4 quater, lot 6) : `enabled` (`false`), `source_ipv4`, `source_ipv6`, `ip_families` (`["ipv4", "ipv6"]`), `smtp_port` (25 ; autre valeur : essais), `allow_private_networks` (`false` ; `true` : essais et développement), `tls` (`opportunistic` ; `disabled` : essais), `max_connections` (100, 1 à 10 000), `connections_per_destination` (4, 1 à 100), `messages_per_connection` (100, 1 à 10 000), `recipients_per_transaction` (100, 1 à 1 000), `claim_batch` (50, 1 à 500), `lease_seconds` (600, 60 à 1 800), `drain_seconds` (30, 1 à 300), délais du dialogue `connect_timeout_seconds` (30), `greeting_timeout_seconds` (300), `ehlo_timeout_seconds` (300), `starttls_timeout_seconds` (60), `mail_timeout_seconds` (300), `rcpt_timeout_seconds` (300), `data_timeout_seconds` (120), `data_block_timeout_seconds` (180), `data_end_timeout_seconds` (600), `idle_timeout_seconds` (60) ; `[[outbound.destinations]]` (`domain`, `connections`, `messages_per_minute`) ; `[outbound.relay]` (`host`, `port`, `tls` = `starttls` ou `implicit`, jamais en clair, vérifié par `webpki-roots` ; `credentials_path` : chemin `lyxal_secrets` de l'installation, `{ "username": …, "password": … }`). `smtp.hostname` est obligatoire avec `enabled = true` |
 | `dns` | résolveur du nœud (`hickory-resolver`, sans DNSSEC) : `servers` (`ip` ou `ip:port` ; vide : ceux du système, `/etc/resolv.conf`), `timeout_seconds` (5, 1 à 30), `attempts` (2, 1 à 5), `cache_size` (16 384, 0 à 1 000 000) ; un résolveur récursif local (Unbound) est recommandé |
 
 Listes dans l'environnement (valeurs séparées par `,`) : `LIMITS__CONNECTIONS_PER_NETWORK`,
@@ -219,7 +220,33 @@ destinataires, délais, limites de session). L'hôte lui remet :
 
 `/metrics` ajoute, sous `mail.submission`, les mesures du dépôt (sessions, messages mis en file
 et refusés par motif, authentifications par issue, usurpations refusées), sans adresse ni compte.
-Le message déposé reste dans la file jusqu'au worker d'envoi (sous-lot 6d).
+Le message déposé est ensuite envoyé par le worker d'envoi (§ 4 quater).
+
+## 4 quater. Envoi (lot 6, sous-lot 6d)
+
+Avec `[outbound] enabled = true`, l'hôte inscrit le worker `lyxal_mail:mail.outbound`
+(`OutboundDispatcher`, README de `lyxal_mail`, « État actuel : worker d'envoi ») et lui remet :
+la session système, le stockage (contenus chiffrés lus en flux), le résolveur du nœud (construit
+dès qu'une écoute `smtp` existe ou que l'envoi est actif), la chaîne de remise du lot 5 (route
+locale, avis), le coffre-fort (consommateur `lyxal_mail` : clés DKIM, identifiants du relais ;
+absent sans clé maîtresse) et le **TLS côté client de l'hôte** (`HostTlsConnector` :
+`tokio_rustls::TlsConnector` sur `lyxal_crypto::tls_client_config`, mode `Opportunistic` vers
+les MX, `WebPki` vers le relais ; règle 10 du §11.3 : seul l'hôte tient `tokio-rustls`).
+
+La tâche `mail.dkim_provision` (`seeds/groupware_tasks.surql`, toutes les 10 minutes, handler de
+l'hôte) crée les clés DKIM des domaines actifs et les active quand le DNS les montre ; sans clé
+maîtresse, elle ne fait rien (`skipped`). La maintenance `mail.maintenance` purge aussi la file
+d'envoi (`fn::mail_queue_purge`). `/metrics` ajoute `mail.outbound` (destinataires remis,
+relayés, retentés et en échec par étape, connexions ouvertes et réutilisées, TLS utilisé, non
+offert, en repli, durée des transactions, destinations injoignables, envois signés et non signés,
+avis produits et supprimés), sans adresse ni domaine ; la sonde de `lyxal_mail` passe à
+« dégradé » quand la file a 15 minutes de retard, qu'une clé DKIM attend sa publication depuis
+24 heures, ou qu'un contenu a été illisible dans l'heure. Journal : destination désignée par une
+empreinte courte, sauf `observability.log_recipient_domain = "full"` (niveau `debug`).
+
+Exigences d'exploitation : port 25 sortant ouvert (sinon `[outbound.relay]`), DNS inverse de
+l'adresse sortante égal à `smtp.hostname`, SPF, enregistrements DKIM publiés
+(`fn::mail_dkim_key_list`), DMARC. Limites par nœud : sur plusieurs nœuds, elles s'additionnent.
 
 ## 5. TLS et PROXY
 

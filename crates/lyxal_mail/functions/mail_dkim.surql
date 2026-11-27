@@ -3,7 +3,7 @@
 -- FONCTIONS : clés DKIM des domaines (fiches publiques)
 -- MODULE    : lyxal_mail
 -- ============================================================================
--- Plan du lot 6, §9 (décision E18). La tâche mail.dkim.provision de lyxal-groupware génère les
+-- Plan du lot 6, §9 (décision E18). La tâche mail.dkim_provision de lyxal-groupware génère les
 -- clés (lyxal_crypto), range la clé privée dans lyxal_secrets (chemin mail/dkim/<domaine>/
 -- <sélecteur>), puis inscrit la fiche publique (fn::mail_dkim_key_create) ; elle l'active quand
 -- l'enregistrement DNS publié est identique (fn::mail_dkim_key_activate). Le worker d'envoi lit
@@ -145,6 +145,6 @@ DEFINE FUNCTION OVERWRITE fn::mail_dkim_pending($params: object) {
         array::filter($algorithms, |$a| !array::any($keys, |$k| $k.domain = $d.id AND $k.algorithm = $a)),
         |$a| { domain: $d.id, name: $d.name, tenant: $d.tenant, algorithm: $a }
     )));
-    LET $pending = (SELECT id AS key, domain, domain.name AS name, selector, algorithm, public_key FROM mail_dkim_key WHERE state = "pending" ORDER BY created_at, key LIMIT $p.limit);
+    LET $pending = (SELECT id AS key, domain, domain.name AS name, selector, algorithm, public_key, created_at FROM mail_dkim_key WHERE state = "pending" ORDER BY created_at, key LIMIT $p.limit);
     RETURN fn::result_ok({ missing: array::slice($missing, 0, $p.limit), pending: $pending });
-} COMMENT "Travail de la tâche mail.dkim.provision ({ limit : 100 }) : { missing : domaines actifs sans clé pending ni active d'un algorithme [{ domain, name, tenant, algorithm }], par nom de domaine puis algorithme ; pending : clés en attente de publication [{ key, domain, name, selector, algorithm, public_key }], les plus anciennes d'abord } ; limit éléments au plus dans chaque liste. Droit : compte de service, session système";
+} COMMENT "Travail de la tâche mail.dkim_provision ({ limit : 100 }) : { missing : domaines actifs sans clé pending ni active d'un algorithme [{ domain, name, tenant, algorithm }], par nom de domaine puis algorithme ; pending : clés en attente de publication [{ key, domain, name, selector, algorithm, public_key, created_at }], les plus anciennes d'abord } ; limit éléments au plus dans chaque liste. Droit : compte de service, session système";

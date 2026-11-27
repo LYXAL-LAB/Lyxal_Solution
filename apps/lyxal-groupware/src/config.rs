@@ -21,7 +21,7 @@ use lyxal_host::services::{
 use lyxal_mail::net::{MailProtocol, TlsMode};
 use serde::{Deserialize, Deserializer};
 use std::collections::BTreeSet;
-use std::net::SocketAddr;
+use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -69,9 +69,203 @@ pub struct GroupwareConfig {
     /// Réception SMTP (écoutes `smtp`) : nom de l'hôte, limites, politique DMARC.
     #[serde(default)]
     pub smtp: SmtpSection,
-    /// Résolveur DNS du nœud (contrôles SPF, DKIM, DMARC, nom inverse).
+    /// Résolveur DNS du nœud (contrôles SPF, DKIM, DMARC, nom inverse ; MX de l'envoi).
     #[serde(default)]
     pub dns: DnsSection,
+    /// Envoi (worker `lyxal_mail:mail.outbound`, lot 6) : limites, délais, TLS, relais.
+    #[serde(default)]
+    pub outbound: OutboundSection,
+}
+
+/// Envoi du courrier (plan du lot 6, §5.4, §6, §16.2) : valeurs par défaut et bornes de
+/// `lyxal_mail::outbound::OutboundConfig`. Désactivé par défaut ; `smtp.hostname` est alors
+/// obligatoire (`EHLO`, `Message-ID`, `Reporting-MTA`).
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields, default)]
+pub struct OutboundSection {
+    pub enabled: bool,
+    pub source_ipv4: Option<Ipv4Addr>,
+    pub source_ipv6: Option<Ipv6Addr>,
+    /// `ipv4`, `ipv6`, dans l'ordre essayé.
+    pub ip_families: Vec<String>,
+    /// Port des MX (25 ; autre valeur : essais seulement).
+    pub smtp_port: u16,
+    /// Adresses privées et de boucle locale permises (essais, développement).
+    pub allow_private_networks: bool,
+    /// `opportunistic` (STARTTLS quand il est annoncé) ou `disabled` (essais seulement).
+    pub tls: String,
+    pub max_connections: u32,
+    pub connections_per_destination: u32,
+    pub messages_per_connection: u32,
+    pub recipients_per_transaction: u32,
+    /// Destinataires réservés par lecture de la file.
+    pub claim_batch: u32,
+    pub lease_seconds: u64,
+    pub drain_seconds: u64,
+    pub connect_timeout_seconds: u64,
+    pub greeting_timeout_seconds: u64,
+    pub ehlo_timeout_seconds: u64,
+    pub starttls_timeout_seconds: u64,
+    pub mail_timeout_seconds: u64,
+    pub rcpt_timeout_seconds: u64,
+    pub data_timeout_seconds: u64,
+    pub data_block_timeout_seconds: u64,
+    pub data_end_timeout_seconds: u64,
+    pub idle_timeout_seconds: u64,
+    pub destinations: Vec<OutboundDestination>,
+    pub relay: Option<OutboundRelay>,
+}
+
+/// Réglage d'une destination.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OutboundDestination {
+    pub domain: String,
+    pub connections: Option<u32>,
+    pub messages_per_minute: Option<u32>,
+}
+
+/// Relais sortant (décision E13) : TLS toujours vérifié, `AUTH PLAIN` si `credentials_path` est
+/// donné (chemin `lyxal_secrets` de l'installation, `{ "username": …, "password": … }`).
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OutboundRelay {
+    pub host: String,
+    pub port: u16,
+    /// `starttls` (587) ou `implicit` (465).
+    pub tls: String,
+    pub credentials_path: Option<String>,
+}
+
+impl Default for OutboundSection {
+    fn default() -> Self {
+        let d = lyxal_mail::outbound::OutboundConfig::new("localhost", "n");
+        let t = d.timeouts;
+        Self {
+            enabled: false,
+            source_ipv4: None,
+            source_ipv6: None,
+            ip_families: vec!["ipv4".into(), "ipv6".into()],
+            smtp_port: d.smtp_port,
+            allow_private_networks: false,
+            tls: "opportunistic".into(),
+            max_connections: d.max_connections,
+            connections_per_destination: d.connections_per_destination,
+            messages_per_connection: d.messages_per_connection,
+            recipients_per_transaction: d.recipients_per_transaction,
+            claim_batch: d.claim_batch,
+            lease_seconds: d.lease.as_secs(),
+            drain_seconds: d.drain_timeout.as_secs(),
+            connect_timeout_seconds: t.connect.as_secs(),
+            greeting_timeout_seconds: t.greeting.as_secs(),
+            ehlo_timeout_seconds: t.ehlo.as_secs(),
+            starttls_timeout_seconds: t.starttls.as_secs(),
+            mail_timeout_seconds: t.mail.as_secs(),
+            rcpt_timeout_seconds: t.rcpt.as_secs(),
+            data_timeout_seconds: t.data.as_secs(),
+            data_block_timeout_seconds: t.data_block.as_secs(),
+            data_end_timeout_seconds: t.data_end.as_secs(),
+            idle_timeout_seconds: d.idle_timeout.as_secs(),
+            destinations: Vec::new(),
+            relay: None,
+        }
+    }
+}
+
+impl OutboundSection {
+    /// Réglages du worker d'envoi du nœud `node`, nommé `hostname`, validés.
+    pub fn outbound_config(
+        &self,
+        hostname: &str,
+        node: &str,
+        log_domains: bool,
+    ) -> Result<lyxal_mail::outbound::OutboundConfig, GroupwareError> {
+        use lyxal_mail::outbound::{
+            DestinationOverride, IpFamily, OutboundConfig, OutboundTls, RelayConfig, RelayTls,
+            Timeouts,
+        };
+        let invalid = |message: String| GroupwareError::Configuration { message };
+        let mut config = OutboundConfig::new(hostname, node);
+        config.source_ipv4 = self.source_ipv4;
+        config.source_ipv6 = self.source_ipv6;
+        config.ip_families = self
+            .ip_families
+            .iter()
+            .map(|family| match family.as_str() {
+                "ipv4" => Ok(IpFamily::Ipv4),
+                "ipv6" => Ok(IpFamily::Ipv6),
+                other => Err(invalid(format!(
+                    "outbound.ip_families : famille inconnue « {other} » (ipv4, ipv6)"
+                ))),
+            })
+            .collect::<Result<_, _>>()?;
+        config.smtp_port = self.smtp_port;
+        config.allow_private_networks = self.allow_private_networks;
+        config.tls = match self.tls.as_str() {
+            "opportunistic" => OutboundTls::Opportunistic,
+            "disabled" => OutboundTls::Disabled,
+            other => {
+                return Err(invalid(format!(
+                    "outbound.tls : mode inconnu « {other} » (opportunistic, disabled)"
+                )))
+            }
+        };
+        config.max_connections = self.max_connections;
+        config.connections_per_destination = self.connections_per_destination;
+        config.messages_per_connection = self.messages_per_connection;
+        config.recipients_per_transaction = self.recipients_per_transaction;
+        config.claim_batch = self.claim_batch;
+        config.lease = Duration::from_secs(self.lease_seconds);
+        config.drain_timeout = Duration::from_secs(self.drain_seconds);
+        config.timeouts = Timeouts {
+            connect: Duration::from_secs(self.connect_timeout_seconds),
+            greeting: Duration::from_secs(self.greeting_timeout_seconds),
+            ehlo: Duration::from_secs(self.ehlo_timeout_seconds),
+            starttls: Duration::from_secs(self.starttls_timeout_seconds),
+            mail: Duration::from_secs(self.mail_timeout_seconds),
+            rcpt: Duration::from_secs(self.rcpt_timeout_seconds),
+            data: Duration::from_secs(self.data_timeout_seconds),
+            data_block: Duration::from_secs(self.data_block_timeout_seconds),
+            data_end: Duration::from_secs(self.data_end_timeout_seconds),
+        };
+        config.idle_timeout = Duration::from_secs(self.idle_timeout_seconds);
+        config.destinations = self
+            .destinations
+            .iter()
+            .map(|destination| DestinationOverride {
+                domain: destination.domain.clone(),
+                connections: destination.connections,
+                messages_per_minute: destination.messages_per_minute,
+            })
+            .collect();
+        config.relay = match &self.relay {
+            None => None,
+            Some(relay) => Some(RelayConfig {
+                host: relay.host.clone(),
+                port: relay.port,
+                tls: match relay.tls.as_str() {
+                    "starttls" => RelayTls::StartTls,
+                    "implicit" => RelayTls::Implicit,
+                    other => {
+                        return Err(invalid(format!(
+                            "outbound.relay.tls : mode inconnu « {other} » (starttls, implicit ; jamais en clair)"
+                        )))
+                    }
+                },
+                credentials_path: relay.credentials_path.clone(),
+            }),
+        };
+        config.log_domains = log_domains;
+        if !(1..=300).contains(&self.drain_seconds) {
+            return Err(invalid(
+                "outbound.drain_seconds doit être compris entre 1 et 300".into(),
+            ));
+        }
+        config
+            .validate()
+            .map_err(|error| invalid(format!("{error}")))?;
+        Ok(config)
+    }
 }
 
 /// Réception SMTP (plan du lot 5, §7.6 et §11.2) : valeurs par défaut et bornes de
@@ -420,6 +614,21 @@ pub struct GroupwareObservability {
     /// `debug` seulement.
     #[serde(default)]
     pub log_client_ip: LogClientIp,
+    /// Domaines des destinataires de l'envoi au journal (décision E28) : `hash` (défaut,
+    /// empreinte courte) ; `full` : en clair, au niveau `debug`, pour le débogage seulement.
+    #[serde(default)]
+    pub log_recipient_domain: LogRecipientDomain,
+}
+
+/// Domaine d'un destinataire de l'envoi dans le journal.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum LogRecipientDomain {
+    /// Empreinte courte BLAKE3 (12 caractères hexadécimaux).
+    #[default]
+    Hash,
+    /// Nom en clair.
+    Full,
 }
 
 impl GroupwareObservability {
@@ -545,6 +754,7 @@ impl GroupwareConfig {
         self.validate_tls()?;
         self.validate_services()?;
         self.validate_smtp()?;
+        self.validate_outbound()?;
 
         let mut ids = BTreeSet::new();
         let mut addresses = BTreeSet::from([self.http.bind]);
@@ -659,6 +869,23 @@ impl GroupwareConfig {
                 message: "smtp.hostname est obligatoire avec une écoute smtp ou submission (bannière, Received, Authentication-Results, Message-ID)".into(),
             }),
             None => Ok(()),
+        }
+    }
+
+    /// `[outbound]` : contrôlé dès qu'il est donné ; `smtp.hostname` obligatoire s'il est actif.
+    fn validate_outbound(&self) -> Result<(), GroupwareError> {
+        match &self.smtp.hostname {
+            Some(hostname) => self
+                .outbound
+                .outbound_config(hostname, "validation", false)
+                .map(|_| ()),
+            None if self.outbound.enabled => Err(GroupwareError::Configuration {
+                message: "smtp.hostname est obligatoire avec outbound.enabled = true (EHLO, Message-ID, Reporting-MTA)".into(),
+            }),
+            None => self
+                .outbound
+                .outbound_config("localhost", "validation", false)
+                .map(|_| ()),
         }
     }
 

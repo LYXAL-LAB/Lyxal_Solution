@@ -95,6 +95,24 @@ impl Mailbox {
         &self.local_part
     }
 
+    /// Partie locale sous la forme de l'enveloppe : telle quelle si c'est une suite d'atomes
+    /// séparés par des points, sinon entre guillemets, `"` et `\` échappés (RFC 5321 §4.1.2).
+    pub fn smtp_local_part(&self) -> String {
+        if is_dot_string(&self.local_part) {
+            return self.local_part.clone();
+        }
+        let mut quoted = String::with_capacity(self.local_part.len() + 2);
+        quoted.push('"');
+        for ch in self.local_part.chars() {
+            if ch == '"' || ch == '\\' {
+                quoted.push('\\');
+            }
+            quoted.push(ch);
+        }
+        quoted.push('"');
+        quoted
+    }
+
     /// Domaine ou adresse littérale.
     pub fn domain(&self) -> &Domain {
         &self.domain
@@ -111,19 +129,7 @@ impl fmt::Display for Mailbox {
     /// Forme de l'enveloppe : la partie locale est remise entre guillemets si elle n'est pas
     /// une suite d'atomes séparés par des points.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if is_dot_string(&self.local_part) {
-            f.write_str(&self.local_part)?;
-        } else {
-            f.write_str("\"")?;
-            for ch in self.local_part.chars() {
-                if ch == '"' || ch == '\\' {
-                    f.write_str("\\")?;
-                }
-                write!(f, "{ch}")?;
-            }
-            f.write_str("\"")?;
-        }
-        write!(f, "@{}", self.domain)
+        write!(f, "{}@{}", self.smtp_local_part(), self.domain)
     }
 }
 

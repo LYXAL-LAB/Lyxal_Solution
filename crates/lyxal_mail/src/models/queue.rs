@@ -357,6 +357,8 @@ pub struct QueuePurged {
     pub tokens: i64,
     /// Compteurs d'envoi retirés.
     pub counters: i64,
+    /// Secondes vides de l'échéancier retirées.
+    pub seconds: i64,
 }
 
 /// Action d'un destinataire dans un avis reçu (RFC 3464).
