@@ -45,8 +45,8 @@ use crate::dsn::{DsnComposer, DsnOutcome};
 use crate::error::{MailError, MailResult};
 use crate::models::{
     AttemptStage, ClaimedRecipient, DeliveredItem, DestinationFailure, DsnDue, DsnNotify,
-    DsnReturn, FailedItem, MailDatetime, QueueClaimParams, QueueCompleteParams, QueueFailParams,
-    QueueOutcome, QueueReleaseParams, QueueRenewParams, RecipientState, TlsInfo,
+    DsnPendingParams, DsnReturn, FailedItem, MailDatetime, QueueClaimParams, QueueCompleteParams,
+    QueueFailParams, QueueOutcome, QueueReleaseParams, QueueRenewParams, RecipientState, TlsInfo,
 };
 use crate::outbound::client::{
     ConnectTarget, Envelope, RcptPlan, RecipientOutcome, RelayCredentials, SmtpConnection,
@@ -62,8 +62,16 @@ use crate::outbound::prepare::Preparer;
 use crate::store::MailStore;
 use crate::MODULE_ID;
 
-/// Renouvellement des baux pendant les envois.
+/// Renouvellement des baux pendant les envois, au plus ; un bail plus court est renouvelé au
+/// tiers de sa durée.
 const RENEW_EVERY: Duration = Duration::from_secs(120);
+/// Reprise des avis finaux dus et non produits (panne du dépôt de l'avis, arrêt du nœud).
+const DSN_RECOVER_EVERY: Duration = Duration::from_secs(300);
+/// Écritures de résultats par appel (`fn::mail_queue_complete`, `fn::mail_queue_fail`).
+const WRITE_BATCH: usize = 100;
+/// Marge du superviseur au-delà du drainage : retour des destinataires et fermeture des
+/// connexions.
+const SHUTDOWN_MARGIN: Duration = Duration::from_secs(15);
 /// Lecture de la file sans réveil.
 const POLL_EVERY: Duration = Duration::from_secs(1);
 /// Lecture de la file après une lecture vide.
@@ -139,6 +147,7 @@ impl OutboundDispatcher {
         let descriptor = WorkerDescriptor::new(WorkerId::new(&module, name)?, module, name)
             .with_description("Envoi du courrier vers les MX, le relais et la route locale")
             .with_criticality(WorkerCriticality::Required)
+            .with_shutdown_timeout(config.drain_timeout + SHUTDOWN_MARGIN)
             .with_restart_policy(RestartPolicy::OnFailure {
                 max_retries: 10,
                 backoff: WorkerRestartBackoff::default(),
@@ -202,6 +211,8 @@ impl LyxalWorker for OutboundDispatcher {
         let inner = &self.inner;
         let mut jobs: JoinSet<()> = JoinSet::new();
         let mut renewed = Instant::now();
+        let renew_every = RENEW_EVERY.min(inner.config.lease / 3);
+        let mut recovered = Instant::now();
         let max_jobs = usize::try_from(inner.config.max_connections).unwrap_or(100);
         while !ctx.is_cancelled() {
             while jobs.try_join_next().is_some() {}
@@ -220,9 +231,13 @@ impl LyxalWorker for OutboundDispatcher {
                     }
                 }
             }
-            if renewed.elapsed() >= RENEW_EVERY {
+            if renewed.elapsed() >= renew_every {
                 inner.renew().await;
                 renewed = Instant::now();
+            }
+            if recovered.elapsed() >= DSN_RECOVER_EVERY {
+                inner.recover_dsn().await;
+                recovered = Instant::now();
             }
             for connection in inner.pool.expired() {
                 connection.quit().await;
@@ -991,21 +1006,26 @@ impl Inner {
                     QueueOutcome::Relayed => self.metrics.relayed(),
                 }
             }
-            match self
-                .services
-                .store
-                .queue_complete(QueueCompleteParams {
-                    claim: job.claim.clone(),
-                    items: delivered,
-                })
-                .await
+            for (items, recipients) in delivered
+                .chunks(WRITE_BATCH)
+                .zip(recipients.chunks(WRITE_BATCH))
             {
-                Ok(result) => {
-                    self.metrics.lost(result.lost.len());
-                    dues.extend(result.dsn);
-                    done.extend(recipients);
+                match self
+                    .services
+                    .store
+                    .queue_complete(QueueCompleteParams {
+                        claim: job.claim.clone(),
+                        items: items.to_vec(),
+                    })
+                    .await
+                {
+                    Ok(result) => {
+                        self.metrics.lost(result.lost.len());
+                        dues.extend(result.dsn);
+                        done.extend_from_slice(recipients);
+                    }
+                    Err(error) => self.write_failed(&MailError::from(error)),
                 }
-                Err(error) => self.write_failed(&MailError::from(error)),
             }
         }
         if !failed.is_empty() {
@@ -1035,27 +1055,34 @@ impl Inner {
                 }
                 _ => None,
             };
-            match self
-                .services
-                .store
-                .queue_fail(QueueFailParams {
-                    claim: job.claim.clone(),
-                    items: failed,
-                    destination,
-                })
-                .await
+            // Compteur de la destination tenu une seule fois par transaction (premier lot)
+            let mut destination = destination;
+            for (items, recipients) in failed
+                .chunks(WRITE_BATCH)
+                .zip(recipients.chunks(WRITE_BATCH))
             {
-                Ok(result) => {
-                    self.metrics.lost(result.lost.len());
-                    for item in &result.items {
-                        if item.state == RecipientState::Expired {
-                            self.metrics.expired();
+                match self
+                    .services
+                    .store
+                    .queue_fail(QueueFailParams {
+                        claim: job.claim.clone(),
+                        items: items.to_vec(),
+                        destination: destination.take(),
+                    })
+                    .await
+                {
+                    Ok(result) => {
+                        self.metrics.lost(result.lost.len());
+                        for item in &result.items {
+                            if item.state == RecipientState::Expired {
+                                self.metrics.expired();
+                            }
                         }
+                        dues.extend(result.dsn);
+                        done.extend_from_slice(recipients);
                     }
-                    dues.extend(result.dsn);
-                    done.extend(recipients);
+                    Err(error) => self.write_failed(&MailError::from(error)),
                 }
-                Err(error) => self.write_failed(&MailError::from(error)),
             }
         }
         if !released.is_empty() {
@@ -1095,27 +1122,57 @@ impl Inner {
                 .find(|item| item.submission == due.submission)
                 .and_then(|item| item.content.object.as_ref())
                 .map(ToSql::to_sql);
-            let mut attempt = 0;
-            loop {
-                attempt += 1;
-                match self.dsn.produce(due, object.as_deref()).await {
-                    Ok(DsnOutcome::Delivered) => {
-                        self.metrics.dsn(true);
-                        break;
-                    }
-                    Ok(DsnOutcome::Suppressed) => {
-                        self.metrics.dsn(false);
-                        break;
-                    }
-                    Ok(DsnOutcome::Deferred) => break,
-                    Err(error) if error.is_retryable() && attempt < 3 => {
-                        tokio::time::sleep(Duration::from_millis(200 * attempt)).await;
-                    }
-                    Err(error) => {
-                        self.metrics.dsn(false);
-                        tracing::warn!(code = %error.code(), "avis de non-remise non produit");
-                        break;
-                    }
+            self.produce_one(due, object.as_deref()).await;
+        }
+    }
+
+    /// Avis finaux restés dus (dépôt de l'avis en panne, nœud arrêté avant de le produire) : repris
+    /// ici ; un avis non produit reste dû pour la reprise suivante.
+    async fn recover_dsn(&self) {
+        let pending = match self
+            .services
+            .store
+            .queue_dsn_pending(DsnPendingParams::default())
+            .await
+        {
+            Ok(pending) => pending,
+            Err(error) => {
+                tracing::warn!(code = %MailError::from(error).code(), "lecture des avis dus en échec");
+                return;
+            }
+        };
+        for item in pending.dsn {
+            let object = item.object.as_ref().map(ToSql::to_sql);
+            let due = DsnDue {
+                submission: item.submission,
+                action: item.action,
+                recipients: item.recipients,
+            };
+            self.produce_one(&due, object.as_deref()).await;
+        }
+    }
+
+    async fn produce_one(&self, due: &DsnDue, object: Option<&str>) {
+        let mut attempt = 0;
+        loop {
+            attempt += 1;
+            match self.dsn.produce(due, object).await {
+                Ok(DsnOutcome::Delivered) => {
+                    self.metrics.dsn(true);
+                    break;
+                }
+                Ok(DsnOutcome::Suppressed) => {
+                    self.metrics.dsn(false);
+                    break;
+                }
+                Ok(DsnOutcome::Deferred) => break,
+                Err(error) if error.is_retryable() && attempt < 3 => {
+                    tokio::time::sleep(Duration::from_millis(200 * attempt)).await;
+                }
+                Err(error) => {
+                    self.metrics.dsn(false);
+                    tracing::warn!(code = %error.code(), "avis de non-remise non produit : repris plus tard");
+                    break;
                 }
             }
         }

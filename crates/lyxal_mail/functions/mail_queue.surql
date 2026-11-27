@@ -68,6 +68,12 @@ DEFINE FUNCTION OVERWRITE fn::mail_queue_dsn_groups($due: array) -> array {
     RETURN array::map($keys, |$k| object::extend($k, { recipients: array::filter($due, |$d| $d.submission = $k.submission AND $d.action = $k.action).recipient }));
 } COMMENT "Interne : avis dus ($due : [{ submission, action, recipient }]) regroupés par envoi et par action : [{ submission, action, recipients }]";
 
+DEFINE FUNCTION OVERWRITE fn::mail_queue_dsn_owe($due: array) -> array {
+    LET $final = array::filter($due, |$d| $d.action != "delayed").recipient;
+    IF array::len($final) > 0 { UPDATE $final SET dsn_owed = true; };
+    RETURN $due;
+} COMMENT "Interne : note les avis finaux de $due ([{ submission, action, recipient }]) comme dus sur leurs destinataires (dsn_owed), pour qu'une panne du dépôt de l'avis ne le perde pas (fn::mail_queue_dsn_pending) ; rend $due";
+
 DEFINE FUNCTION OVERWRITE fn::mail_queue_item_check($kind: string, $item: any) -> object {
     LET $tls = $item.tls;
     LET $optional = |$value: any, $check: any| IF $value IS NONE { fn::mail_absent() } ELSE { $check };
@@ -293,7 +299,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_queue_prepare($params: object) {
     } ELSE { [] };
     LET $submission = (SELECT id, origin, sender, forward FROM ONLY $row.id);
     LET $due = array::filter(array::map($failed, |$r| IF fn::mail_queue_dsn_wanted($submission, $r, "failed") { { submission: $row.id, action: "failed", recipient: $r.id } } ELSE { NONE }), |$d| $d IS NOT NONE);
-    RETURN fn::result_ok({ prepared: true, envelope_from: $updated.envelope_from, failed: array::len($failed), dsn: fn::mail_queue_dsn_groups($due) });
+    RETURN fn::result_ok({ prepared: true, envelope_from: $updated.envelope_from, failed: array::len($failed), dsn: fn::mail_queue_dsn_groups(fn::mail_queue_dsn_owe($due)) });
 } COMMENT "Prépare un envoi à sa première réservation ({ claim, submission, return_token (26 caractères en base 32 de Crockford, tiré par OsRng ; exigé sauf pour un expéditeur vide), prefix (en-têtes DKIM-Signature à placer devant le fichier, 16 Kio au plus), malformed (message illisible) }) : dépôt authentifié ou module, en file, pas encore préparé (sinon MAIL_SUBMISSION_STATE_INVALID), au moins un destinataire tenu par la réservation (sinon MAIL_QUEUE_CLAIM_LOST) ; adresse de retour rp=<jeton>@<domaine de l'expéditeur>, valable 14 jours après la fin de vie de l'envoi ; message illisible : destinataires en attente ou tenus en échec définitif (5.6.0) ; { prepared, envelope_from, failed, dsn : avis dus [{ submission, action, recipients }] }. Droit : compte de service, session système";
 
 -- ----------------------------------------------------------------------------
@@ -315,7 +321,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_queue_complete($params: object) {
         LET $s = array::find($submissions, |$x| $x.id = $r.submission);
         RETURN IF fn::mail_queue_dsn_wanted($s, $r, $r.state) { { submission: $r.submission, action: $r.state, recipient: $r.id } } ELSE { NONE };
     }), |$d| $d IS NOT NONE);
-    RETURN fn::mail_queue_lost(array::complement($p.items.recipient, $written.id), $p.language, { dsn: fn::mail_queue_dsn_groups($due), done: $written.id });
+    RETURN fn::mail_queue_lost(array::complement($p.items.recipient, $written.id), $p.language, { dsn: fn::mail_queue_dsn_groups(fn::mail_queue_dsn_owe($due)), done: $written.id });
 } COMMENT "Écrit les remises réussies d'une transaction ({ claim, items : 1 à 100 × { recipient, outcome (delivered : accepté par le serveur final ou remis par la route locale ; relayed : accepté par un serveur sans DSN), host, code, enhanced, tls { version, verified }, at } }) sous la garde de la réservation ; publie mail.submission.delivered ; { dsn : avis dus (NOTIFY=SUCCESS : delivered par la route locale, relayed) [{ submission, action, recipients }], lost } ; tous perdus : MAIL_QUEUE_CLAIM_LOST ; plus de 100 : MAIL_QUEUE_BATCH_TOO_LARGE. Droit : compte de service, session système";
 
 -- ----------------------------------------------------------------------------
@@ -347,7 +353,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_queue_fail($params: object) {
     LET $written = array::filter($results, |$r| $r IS NOT NONE);
     RETURN fn::mail_queue_lost(array::complement($p.items.recipient, $written.recipient), $p.language, {
         items: array::map($written, |$w| { recipient: $w.recipient, state: $w.state, next_attempt_at: $w.next_attempt_at }),
-        dsn: fn::mail_queue_dsn_groups(array::flatten($written.dsn)),
+        dsn: fn::mail_queue_dsn_groups(fn::mail_queue_dsn_owe(array::flatten($written.dsn))),
         done: $written.recipient
     });
 } COMMENT "Écrit les échecs d'une transaction ({ claim, items : 1 à 100 × { recipient, permanent, stage (dns, connect, tls, greeting, mail, rcpt, data, local, content), code, enhanced, text (assaini, 512 caractères), host }, destination ({ domain, unreachable (aucun MX ni aucune adresse n'a répondu), stage }) }) sous la garde de la réservation : essai compté ; refus définitif → failed ; sinon échéance suivante (réglages de l'installation, après la suspension de la destination), ou expired après la fin de vie de l'envoi (4.4.7) ; premier passage du délai d'avis de retard noté (mail.submission.delayed) ; destination suspendue ou remise à zéro ; { items : [{ recipient, state, next_attempt_at }], dsn : avis dus (failed, expired, delayed) [{ submission, action, recipients }], lost } ; tous perdus : MAIL_QUEUE_CLAIM_LOST ; plus de 100 : MAIL_QUEUE_BATCH_TOO_LARGE. Droit : compte de service, session système";
@@ -434,10 +440,40 @@ DEFINE FUNCTION OVERWRITE fn::mail_queue_dsn_done($params: object) {
     LET $marked = IF $p.action = "delayed" {
         (UPDATE $p.recipients SET delay_sent = true WHERE submission = $p.submission AND !delay_sent)
     } ELSE {
-        (UPDATE $p.recipients SET dsn_sent = true WHERE submission = $p.submission AND !dsn_sent)
+        (UPDATE $p.recipients SET dsn_sent = true, dsn_owed = false WHERE submission = $p.submission AND !dsn_sent)
     };
     RETURN fn::result_ok({ marked: array::len($marked) });
-} COMMENT "Note les avis produits ({ submission, action (failed, delayed, delivered, relayed), recipients : 1 à 1 000 destinataires de l'envoi }) : delay_sent (retard) ou dsn_sent (avis final) ; un avis n'est jamais produit deux fois, même après une reprise ; { marked } (destinataires notés par cet appel). Droit : compte de service, session système";
+} COMMENT "Note les avis produits ({ submission, action (failed, delayed, delivered, relayed), recipients : 1 à 1 000 destinataires de l'envoi }) : delay_sent (retard) ou dsn_sent (avis final) ; un avis n'est jamais produit deux fois, même après une reprise ; avis final : n'est plus dû (dsn_owed) ; { marked } (destinataires notés par cet appel). Droit : compte de service, session système";
+
+-- ----------------------------------------------------------------------------
+-- fn::mail_queue_dsn_pending
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::mail_queue_dsn_pending($params: object) {
+    LET $report = fn::validation_fields_execute($params, {
+        limit: { checks: [|$v: any| fn::validation_integer($v, 1, 1000)], default: 100 },
+        grace_seconds: { checks: [|$v: any| fn::validation_integer($v, 0, 3600)], default: 300 },
+        language: { checks: [|$v: any| fn::validation_language_code($v, false, NONE)], default: "fr" }
+    }, "reject");
+    IF !$report.valid {
+        RETURN fn::error_result("MAIL_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
+    };
+    LET $p = $report.value;
+    IF !fn::mail_can({ action: "worker" }) { RETURN fn::error_result("MAIL_PERMISSION_DENIED", $p.language, {}); };
+    -- Délai de grâce : un avis en cours de production par le worker qui a clos le destinataire n'est pas repris
+    LET $cutoff = time::now() - duration::from_secs($p.grace_seconds);
+    LET $rows = array::filter((SELECT id, submission, state, final_at FROM mail_queue_recipient WHERE dsn_owed = true LIMIT $p.limit), |$r| $r.final_at IS NOT NONE AND $r.final_at < $cutoff);
+    LET $submissions = (SELECT id, origin, content FROM array::distinct($rows.submission));
+    -- Transferts : avis produits par la réception (sous-lot 6f), jamais par cette reprise
+    LET $due = array::filter(array::map($rows, |$r| {
+        LET $s = array::find($submissions, |$x| $x.id = $r.submission);
+        RETURN IF $s IS NONE OR $s.origin = "forward" { NONE } ELSE { { submission: $r.submission, action: IF $r.state IN ["failed", "expired"] { "failed" } ELSE { $r.state }, recipient: $r.id } };
+    }), |$d| $d IS NOT NONE);
+    RETURN fn::result_ok({ dsn: array::map(fn::mail_queue_dsn_groups($due), |$g| {
+        LET $s = array::find($submissions, |$x| $x.id = $g.submission);
+        RETURN object::extend($g, { object: IF $s.content.removed_at IS NONE { $s.content.object } ELSE { NONE } });
+    }) });
+} COMMENT "Avis finaux dus et non produits ({ limit : 100 (1 à 1 000), grace_seconds : 300 (0 à 3 600) }) : destinataires clos depuis plus de grace_seconds dont l'avis n'a pas été produit (panne du dépôt de l'avis, arrêt du nœud), transferts exceptés ; { dsn : [{ submission, action (failed, delivered, relayed), recipients, object (fichier de l'envoi, NONE s'il est retiré) }] }, à produire puis noter par fn::mail_queue_dsn_done. Droit : compte de service, session système";
 
 -- ----------------------------------------------------------------------------
 -- fn::mail_queue_stats
@@ -482,7 +518,10 @@ DEFINE FUNCTION OVERWRITE fn::mail_queue_purge($params: object) {
     IF !fn::mail_can({ action: "worker" }) { RETURN fn::error_result("MAIL_PERMISSION_DENIED", $p.language, {}); };
     LET $now = time::now();
     -- Contenus des envois finis : fichier supprimé aussitôt (il ne sert plus)
-    LET $finished = (SELECT id, tenant, content FROM mail_submission WHERE state = "done" AND content.removed_at IS NONE ORDER BY done_at LIMIT $p.limit);
+    -- Fichier gardé 3 jours au plus tant qu'un avis final reste dû (fn::mail_queue_dsn_pending le joint à l'avis)
+    LET $candidates = (SELECT id, tenant, content, done_at FROM mail_submission WHERE state = "done" AND content.removed_at IS NONE ORDER BY done_at LIMIT $p.limit);
+    LET $finished = array::filter($candidates, |$row| $row.done_at < $now - 3d
+        OR array::len(SELECT VALUE id FROM type::record("mail_queue_recipient", fn::mail_queue_recipient_key_text($row.id, 0)..fn::mail_queue_recipient_key_text($row.id, 1000)) WHERE dsn_owed = true LIMIT 1) = 0);
     FOR $row IN $finished {
         fn::mail_submission_file_remove($row);
         UPDATE $row.id SET content.removed_at = $now;
@@ -500,7 +539,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_queue_purge($params: object) {
     LET $empty = array::filter($seconds, |$second| array::len(fn::mail_queue_due_second_read($second, $now)) = 0).id;
     IF array::len($empty) > 0 { DELETE $empty; };
     RETURN fn::result_ok({ submissions: array::len($removed), contents: array::len($finished) + array::len($abandoned), tokens: array::len($tokens), counters: array::len($counters), seconds: array::len($empty) });
-} COMMENT "Maintenance de la file ({ limit : 100 }) : fichiers des envois finis supprimés ; envois finis depuis 14 jours retirés avec leurs destinataires ; dépôts abandonnés ou non clos dans l'heure retirés avec leur fichier (compteurs rendus) ; jetons de retour échus effacés ; compteurs d'envoi échus retirés ; secondes vides de l'échéancier retirées ; { submissions, contents, tokens, counters, seconds }. Droit : session système, ou compte de service qui gère aussi les fichiers (storage.worker)";
+} COMMENT "Maintenance de la file ({ limit : 100 }) : fichiers des envois finis supprimés (gardés 3 jours au plus tant qu'un avis final reste dû) ; envois finis depuis 14 jours retirés avec leurs destinataires ; dépôts abandonnés ou non clos dans l'heure retirés avec leur fichier (compteurs rendus) ; jetons de retour échus effacés ; compteurs d'envoi échus retirés ; secondes vides de l'échéancier retirées ; { submissions, contents, tokens, counters, seconds }. Droit : session système, ou compte de service qui gère aussi les fichiers (storage.worker)";
 
 DEFINE FUNCTION OVERWRITE fn::mail_submission_file_remove($row: object) -> bool {
     LET $object = IF $row.content.object IS NOT NONE {

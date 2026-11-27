@@ -313,6 +313,35 @@ pub struct DsnDoneParams {
     pub recipients: Vec<String>,
 }
 
+/// Paramètres de `fn::mail_queue_dsn_pending`.
+#[derive(Debug, Clone, Default, SurrealValue)]
+pub struct DsnPendingParams {
+    /// Destinataires lus au plus (100 par défaut, 1 000 au plus).
+    pub limit: Option<i64>,
+    /// Délai de grâce après la clôture du destinataire (300 s par défaut, 3 600 au plus).
+    pub grace_seconds: Option<i64>,
+}
+
+/// Avis final dû et non produit, rendu par `fn::mail_queue_dsn_pending`.
+#[derive(Debug, Clone, PartialEq, Eq, SurrealValue)]
+pub struct DsnPendingDue {
+    /// Envoi.
+    pub submission: MailRecordId,
+    /// Action.
+    pub action: DsnAction,
+    /// Destinataires du même avis.
+    pub recipients: Vec<MailRecordId>,
+    /// Fichier de l'envoi, `None` s'il est retiré.
+    pub object: Option<MailRecordId>,
+}
+
+/// Résultat de `fn::mail_queue_dsn_pending`.
+#[derive(Debug, Clone, PartialEq, Eq, SurrealValue)]
+pub struct DsnPending {
+    /// Avis à produire.
+    pub dsn: Vec<DsnPendingDue>,
+}
+
 /// Résultat de `fn::mail_queue_dsn_done`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, SurrealValue)]
 pub struct DsnMarked {

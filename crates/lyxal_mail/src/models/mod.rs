@@ -52,11 +52,11 @@ pub use message::{
 };
 pub use queue::{
     ClaimedRecipient, DeliveredItem, DestinationFailure, DsnAction, DsnDoneParams, DsnDue,
-    DsnMarked, FailedItem, FailedOutcome, QueueClaim, QueueClaimParams, QueueCompleteParams,
-    QueueCompleted, QueueFailParams, QueueFailed, QueueOutcome, QueuePrepareParams, QueuePrepared,
-    QueuePurgeParams, QueuePurged, QueueReleaseParams, QueueReleased, QueueRenewParams,
-    QueueRenewed, QueueStats, QueueStatsParams, QueuedContent, ReturnAction, ReturnItem,
-    ReturnRecordParams, ReturnRecorded,
+    DsnMarked, DsnPending, DsnPendingDue, DsnPendingParams, FailedItem, FailedOutcome, QueueClaim,
+    QueueClaimParams, QueueCompleteParams, QueueCompleted, QueueFailParams, QueueFailed,
+    QueueOutcome, QueuePrepareParams, QueuePrepared, QueuePurgeParams, QueuePurged,
+    QueueReleaseParams, QueueReleased, QueueRenewParams, QueueRenewed, QueueStats,
+    QueueStatsParams, QueuedContent, ReturnAction, ReturnItem, ReturnRecordParams, ReturnRecorded,
 };
 pub use reception::{
     DeliveriesPurged, DeliveryBeginParams, DeliveryCommitParams, DeliveryCommitResult,

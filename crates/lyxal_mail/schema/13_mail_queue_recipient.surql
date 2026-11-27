@@ -73,6 +73,7 @@ DEFINE FIELD OVERWRITE last_result.at ON TABLE mail_queue_recipient TYPE option<
 DEFINE FIELD OVERWRITE delayed_at ON TABLE mail_queue_recipient TYPE option<datetime> COMMENT "Premier passage du délai d'avis de retard (publie mail.submission.delayed, une fois)";
 DEFINE FIELD OVERWRITE delay_sent ON TABLE mail_queue_recipient TYPE bool DEFAULT false COMMENT "Avis de retard produit (fn::mail_queue_dsn_done)";
 DEFINE FIELD OVERWRITE dsn_sent ON TABLE mail_queue_recipient TYPE bool DEFAULT false COMMENT "Avis final produit (échec, remise, relais)";
+DEFINE FIELD OVERWRITE dsn_owed ON TABLE mail_queue_recipient TYPE bool DEFAULT false COMMENT "Avis final dû et pas encore produit (posé par la clôture du destinataire, effacé par fn::mail_queue_dsn_done) : repris par fn::mail_queue_dsn_pending après une panne";
 DEFINE FIELD OVERWRITE final_at ON TABLE mail_queue_recipient TYPE option<datetime> COMMENT "Entrée dans un état final";
 DEFINE FIELD OVERWRITE created_at ON TABLE mail_queue_recipient TYPE datetime DEFAULT time::now() READONLY COMMENT "Mise en file";
 DEFINE FIELD OVERWRITE updated_at ON TABLE mail_queue_recipient TYPE datetime VALUE time::now() COMMENT "Dernière modification";
@@ -83,3 +84,5 @@ DEFINE INDEX OVERWRITE mail_queue_recipient_state ON TABLE mail_queue_recipient 
 -- un entier : SurrealDB 3.3.4 ne borne une lecture d'index par dates que d'un côté), baux expirés
 DEFINE INDEX OVERWRITE mail_queue_recipient_due ON TABLE mail_queue_recipient FIELDS due_second;
 DEFINE INDEX OVERWRITE mail_queue_recipient_lease ON TABLE mail_queue_recipient FIELDS state, locked_until;
+-- Avis finaux dus et non produits (reprise après une panne du dépôt de l'avis)
+DEFINE INDEX OVERWRITE mail_queue_recipient_dsn_owed ON TABLE mail_queue_recipient FIELDS dsn_owed;

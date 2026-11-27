@@ -101,7 +101,7 @@ RETURN [
     fn::mail_queue_fail({ claim: "01a21a8f-2d4f-7ce2-9e67-5063e68bfb08", items: [{ recipient: "mail_queue_recipient:x", permanent: true, stage: "rcpt" }] }),
     fn::mail_queue_release({ claim: "01a21a8f-2d4f-7ce2-9e67-5063e68bfb08", recipients: ["mail_queue_recipient:x"] }),
     fn::mail_queue_dsn_done({ submission: "mail_submission:x", action: "failed", recipients: ["mail_queue_recipient:x"] }),
-    fn::mail_queue_stats({}), fn::mail_queue_purge({}),
+    fn::mail_queue_stats({}), fn::mail_queue_purge({}), fn::mail_queue_dsn_pending({}),
     fn::mail_return_record({ submission: "mail_submission:x", items: [{ recipient: "mail_queue_recipient:x", action: "failed" }] })
 ].all(|$r| $r.error.code == "MAIL_PERMISSION_DENIED");
 
@@ -377,7 +377,7 @@ RETURN array::len(fn::essai_evenements("mail.submission.delayed")) == 3;
         AND fn::mail_queue_dsn_done({ submission: <string> $s, action: "delivered", recipients: [<string> $r(2)] }).data == { marked: 1 };
 };
 
--- test: échec définitif du premier destinataire : avis failed, une seule fois ; envoi fini
+-- test: échec définitif du premier destinataire : avis failed, une seule fois, dû (repris après une panne) jusqu'à sa production ; envoi fini
 -- en tant que: worker
 {
     LET $s = type::record(fn::essai_id("j"));
@@ -385,8 +385,17 @@ RETURN array::len(fn::essai_evenements("mail.submission.delayed")) == 3;
     UPDATE $r0 SET next_attempt_at = time::now() - 1s;
     LET $claimed = fn::mail_queue_claim({ node: "n1" });
     LET $failed = fn::mail_queue_fail({ claim: $claimed.data.claim, items: [{ recipient: <string> $r0, permanent: true, stage: "data", code: 554, enhanced: "5.7.1" }] });
+    LET $owed = (SELECT VALUE dsn_owed FROM ONLY $r0);
+    -- Délai de grâce : l'avis que le worker est en train de produire n'est pas repris
+    LET $in_grace = fn::mail_queue_dsn_pending({});
+    LET $pending = fn::mail_queue_dsn_pending({ grace_seconds: 0 });
     LET $marked = fn::mail_queue_dsn_done({ submission: <string> $s, action: "failed", recipients: [<string> $r0] });
+    LET $after = fn::mail_queue_dsn_pending({ grace_seconds: 0 });
     RETURN $failed.data.dsn == [{ submission: $s, action: "failed", recipients: [$r0] }] AND $marked.data == { marked: 1 }
+        AND $owed == true AND (SELECT VALUE dsn_owed FROM ONLY $r0) == false
+        AND !array::any($in_grace.data.dsn, |$g| $g.recipients CONTAINS $r0)
+        AND array::any($pending.data.dsn, |$g| $g.submission == $s AND $g.action == "failed" AND $g.recipients == [$r0] AND $g.object IS NOT NONE)
+        AND !array::any($after.data.dsn, |$g| $g.recipients CONTAINS $r0)
         AND (SELECT VALUE state FROM ONLY $s) == "done"
         AND (SELECT VALUE state FROM mail_queue_recipient WHERE submission = $s ORDER BY rank) == ["failed", "failed", "delivered"];
 };
@@ -522,6 +531,7 @@ RETURN array::len(fn::essai_evenements("mail.submission.failed")) == 3 AND array
         AND fn::mail_queue_dsn_groups([{ submission: 1, action: "failed", recipient: "a" }, { submission: 1, action: "failed", recipient: "b" }, { submission: 2, action: "delayed", recipient: "c" }])
             == [{ submission: 1, action: "failed", recipients: ["a", "b"] }, { submission: 2, action: "delayed", recipients: ["c"] }]
         AND fn::mail_absent().valid AND fn::mail_absent().value IS NONE
+        AND fn::mail_queue_dsn_owe([]) == [] AND fn::mail_queue_dsn_owe([{ submission: 1, action: "delayed", recipient: "c" }]) == [{ submission: 1, action: "delayed", recipient: "c" }]
         AND fn::mail_queue_worker_writer()
         AND fn::mail_queue_due_read($now, 3, []).rows.all(|$d| $d.domain != "bouchon.test") AND array::len(fn::mail_queue_due_read($now, 3, ["bouchon.test"]).rows) <= 3;
 };
