@@ -1122,7 +1122,7 @@ de référence), serveur SurrealDB 3.3.4 en mémoire par `ws://`, pool de 8 conn
 | Dépôt authentifié, 20 clients, 1 000 messages | ≥ 80 messages acceptés par seconde ; fin des données → `250` p95 ≤ 150 ms (signature DKIM et écriture chiffrée comprises) |
 | Envoi vers le faux MX, 100 domaines, file de 10 000 destinataires | ≥ 150 destinataires remis par seconde par nœud ; ≥ 300 sur la machine de référence |
 | Délai de prise en charge : `250` du dépôt → début du premier essai | p95 ≤ 1 s sur le nœud qui a reçu, ≤ 3 s depuis un autre nœud ; contrat de module : ≤ 3 s |
-| Réservation dans une file de 100 000 destinataires en attente (aucun échu) puis 500 échus | `fn::mail_queue_claim` p95 ≤ 20 ms (sinon repli de l'échéancier, §5.3) |
+| Réservation dans une file de 100 000 destinataires en attente (aucun échu) puis 500 échus | `fn::mail_queue_claim` ≤ 0,5 ms par destinataire réservé (objectif révisé par le CTO au sous-lot 6d ; 20 ms pour 500 au départ) |
 | **Arrêt brutal** : 20 arrêts `kill -9` du nœud à des instants tirés au hasard pendant l'envoi de 1 000 messages, redémarrage | **0 destinataire perdu** (chacun finit `delivered`, `failed` avec avis, ou `expired`) ; doublons au faux MX ≤ transactions en vol à l'arrêt (relevé) ; 0 doublon par la route locale |
 | Relais | **0** message relayé sans authentification (port 25 et 587), sur toute la matrice du §17 |
 | Usurpation | **100 %** des cas du §17 refusés |

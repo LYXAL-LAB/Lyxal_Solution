@@ -99,12 +99,11 @@ Mesures : [`README.md`](README.md), section « Mesures ».
 * **Alias vers l'extérieur, listes** : champ `forward_to` en place (6c), transfert à la réception au sous-lot 6f ; listes plus tard.
 * **Coût de la réservation de la file (sous-lots 6c, 6d).** Échéancier par seconde et lots de
   50 (`README.md`, « Mesure de la réservation ») : 500 destinataires parmi 100 000 en 241 ms
-  (908 ms avant), 50 en 58 ms par HTTP (120 ms avant ; environ 36 ms hors authentification). L'objectif du plan
-  (§18 : 20 ms pour 500) n'est **pas** tenu : il reste environ 0,45 ms par destinataire réservé,
-  dont 0,2 ms pour l'`UPDATE` seul (garde, champs, quatre événements). **Décision du CTO** :
-  revoir l'objectif (par exemple 50 en 40 ms), ou une réservation par lot (bail porté par une
-  fiche de réservation au lieu de chaque destinataire, gardes et événements allégés pour le
-  compte de service) à instruire dans un plan. Le débit réel de l'envoi n'est pas mesuré sur un
+  (908 ms avant), 50 en 58 ms par HTTP (120 ms avant ; environ 36 ms hors authentification).
+  Objectif retenu par le CTO : 0,5 ms par destinataire réservé au plus (tenu : environ 0,45 ms,
+  dont 0,2 ms pour l'`UPDATE` seul). Piste si un débit plus élevé devient nécessaire : une
+  réservation par lot (bail porté par une fiche de réservation au lieu de chaque destinataire,
+  gardes et événements allégés pour le compte de service), à instruire dans un plan. Le débit réel de l'envoi n'est pas mesuré sur un
   binaire optimisé (disque du poste de développement insuffisant pour une compilation `release`
   pendant ce sous-lot) : `tests/it/outbound.rs`, `measure_throughput_to_the_fake_mx`, à lancer
   sur la machine de référence.

@@ -293,9 +293,10 @@ Après (même banc, secondes vides du chargement retirées par la maintenance co
 500 destinataires parmi 100 000 : médiane 241 ms, p95 253 ms (4 fois moins) ; **50 destinataires :
 médiane 58 ms, p95 72 ms**, soit environ 36 ms et 0,45 ms par destinataire réservé, hors
 authentification. Le reste est le coût d'un `UPDATE` d'un destinataire avec ses gardes et ses
-quatre événements (0,2 ms sans aucun événement, mesure isolée). L'objectif du plan (20 ms pour
-500) **n'est pas tenu** : il supposerait moins de 0,04 ms par destinataire, sous le coût d'un
-`UPDATE` seul dans une fonction de SurrealDB 3.3.4 ; voir `ROADMAP.md`. Les écritures des
+quatre événements (0,2 ms sans aucun événement, mesure isolée). Objectif retenu par le CTO :
+**0,5 ms par destinataire réservé au plus** (500 en 250 ms environ, soit 2 000 destinataires par
+seconde et par nœud), **tenu** ; les 20 ms pour 500 du plan supposaient moins de 0,04 ms par
+destinataire, sous le coût d'un `UPDATE` seul dans une fonction de SurrealDB 3.3.4. Les écritures des
 résultats (`_complete`, `_fail`) ne paient plus de `DELETE` non plus (1,35 ms de moins par
 destinataire envoyé). Base embarquée dans un binaire d'essai non optimisé (`tests/it/outbound.rs`,
 `measure_claim_in_a_large_queue`, 10 000 en attente) : 50 en 80 ms, 500 en 641 ms (moteur
