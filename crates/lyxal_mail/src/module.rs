@@ -146,7 +146,7 @@ pub struct MailHealthCheck {
     scanner: Option<Arc<dyn ContentScanner>>,
     dns: Option<DnsProbe>,
     outbound: Option<OutboundProbe>,
-    reception: Option<ReceptionProbe>,
+    forwards: ForwardLimitProbe,
 }
 
 /// Retard de la plus ancienne échéance de la file d'envoi au-delà duquel la sonde passe à
@@ -184,18 +184,22 @@ impl OutboundProbe {
 /// « dégradé ».
 pub const FORWARD_LIMITED_DEGRADED_FOR: Duration = Duration::from_secs(3_600);
 
-/// Partie « réception » de la sonde : transferts vers l'extérieur non faits faute de place dans
-/// la limite de l'organisation (`forward_messages_per_day`, plan du lot 6 §13).
-struct ReceptionProbe {
-    metrics: Arc<SmtpMetrics>,
+/// Partie « transferts » de la sonde : transferts vers l'extérieur non faits faute de place dans
+/// la limite de l'organisation (`forward_messages_per_day`, plan du lot 6 §13), à la réception du
+/// port 25 comme sur la route locale du worker d'envoi.
+#[derive(Default)]
+struct ForwardLimitProbe {
+    smtp: Option<Arc<SmtpMetrics>>,
+    outbound: Option<Arc<OutboundMetrics>>,
     limited: Mutex<(u64, Option<Instant>)>,
 }
 
-impl ReceptionProbe {
+impl ForwardLimitProbe {
     /// Vrai si un transfert a été refusé par la limite depuis moins de
     /// [`FORWARD_LIMITED_DEGRADED_FOR`].
     fn limited_recently(&self) -> bool {
-        let count = self.metrics.forwards_limited();
+        let count = self.smtp.as_ref().map_or(0, |m| m.forwards_limited())
+            + self.outbound.as_ref().map_or(0, |m| m.forwards_limited());
         let mut state = self.limited.lock().unwrap_or_else(PoisonError::into_inner);
         if count > state.0 {
             *state = (count, Some(Instant::now()));
@@ -246,7 +250,7 @@ impl MailHealthCheck {
             scanner: None,
             dns: None,
             outbound: None,
-            reception: None,
+            forwards: ForwardLimitProbe::default(),
         }
     }
 
@@ -254,17 +258,16 @@ impl MailHealthCheck {
     /// l'extérieur n'a pas été fait dans l'heure, la limite des transferts de son organisation
     /// étant atteinte (message remis aux comptes de l'alias seulement).
     pub fn with_reception(mut self, metrics: Arc<SmtpMetrics>) -> Self {
-        self.reception = Some(ReceptionProbe {
-            metrics,
-            limited: Mutex::new((0, None)),
-        });
+        self.forwards.smtp = Some(metrics);
         self
     }
 
     /// Envoi du nœud (lot 6) : « dégradé » si l'échéance la plus ancienne de la file a plus de
     /// 15 minutes de retard, si une clé DKIM attend sa publication depuis plus de 24 heures, ou
-    /// si un contenu d'envoi a été illisible dans l'heure.
+    /// si un contenu d'envoi a été illisible dans l'heure ; aussi si un transfert d'alias de la
+    /// route locale n'a pas été fait dans l'heure (limite des transferts de l'organisation).
     pub fn with_outbound(mut self, metrics: Arc<OutboundMetrics>) -> Self {
+        self.forwards.outbound = Some(metrics.clone());
         self.outbound = Some(OutboundProbe {
             metrics,
             unreadable: Mutex::new((0, None)),
@@ -432,17 +435,15 @@ impl ModuleHealthCheck for MailHealthCheck {
                 }
             }
         }
-        if let Some(reception) = &self.reception {
-            if reception.limited_recently() {
-                return Ok(HealthCheckResult::degraded(
-                    self.module_id.clone(),
-                    elapsed(),
-                    Some(
-                        "limite des transferts d'une organisation atteinte dans l'heure : messages remis aux comptes des alias sans transfert vers l'extérieur (forward_messages_per_day)"
-                            .to_string(),
-                    ),
-                ));
-            }
+        if self.forwards.limited_recently() {
+            return Ok(HealthCheckResult::degraded(
+                self.module_id.clone(),
+                elapsed(),
+                Some(
+                    "limite des transferts d'une organisation atteinte dans l'heure : messages remis aux comptes des alias sans transfert vers l'extérieur (forward_messages_per_day)"
+                        .to_string(),
+                ),
+            ));
         }
         if let Some(outbound) = &self.outbound {
             if let Some(problem) = self.outbound_problem(outbound).await {

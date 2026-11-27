@@ -160,6 +160,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_submission_begin($params: object) {
             envelope_dkim: { checks: [|$b: any| fn::validation_boolean($b)], required: true }
         }, "reject")] },
         tenant: { checks: [|$v: any| fn::validation_record($v, "auth_organization")] },
+        idempotency_key: { checks: [|$v: any| fn::validation_regex($v, "^[0-9a-f]{64}$")] },
         language: { checks: [|$v: any| fn::validation_language_code($v, false, NONE)], default: "fr" }
     }, "reject");
     IF !$report.valid {
@@ -173,6 +174,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_submission_begin($params: object) {
     LET $worker_origin = $p.origin IN ["forward", "dsn"];
     IF !$worker_origin AND $p.return_token IS NOT NONE { RETURN $invalid("return_token", "forward_or_dsn_only"); };
     IF !$worker_origin AND $p.prefix IS NOT NONE { RETURN $invalid("prefix", "forward_or_dsn_only"); };
+    IF ($p.idempotency_key IS NOT NONE) != $worker_origin { RETURN $invalid("idempotency_key", IF $worker_origin { "required" } ELSE { "forward_or_dsn_only" }); };
     IF $p.client_reference IS NOT NONE AND $p.origin != "module" { RETURN $invalid("client_reference", "module_only"); };
     IF ($p.forward IS NOT NONE) != ($p.origin = "forward") { RETURN $invalid("forward", "forward_only"); };
     IF ($p.tenant IS NOT NONE) != ($p.origin = "dsn") { RETURN $invalid("tenant", "dsn_only"); };
@@ -188,6 +190,25 @@ DEFINE FUNCTION OVERWRITE fn::mail_submission_begin($params: object) {
     LET $max_recipients = IF $p.origin = "submission" { $settings.send_recipients_per_message } ELSE IF $p.origin = "forward" { 10 } ELSE { 100 };
     IF array::len($p.recipients) > $max_recipients { RETURN fn::error_result("MAIL_SUBMISSION_TOO_MANY_RECIPIENTS", $p.language, { max_recipients: $max_recipients }); };
     IF $p.size > $settings.max_message_bytes { RETURN fn::error_result("MAIL_MESSAGE_TOO_LARGE", $p.language, { size: $p.size, max_message_bytes: $settings.max_message_bytes }); };
+    -- Transfert ou avis déjà déposé sous la même clé (nouvel essai de l'expéditeur, remise reprise) :
+    -- envoi en file rendu tel quel, sans second envoi ni compteur pris ; dépôt resté pending (essai
+    -- interrompu) : abandonné (compteurs rendus par l'événement), puis refait
+    LET $known = IF $p.idempotency_key IS NONE { [] } ELSE {
+        (SELECT id, tenant, state, content, envelope_from, recipient_count, queued_at, pending_expires_at FROM mail_submission
+            WHERE idempotency_key = $p.idempotency_key AND origin = $p.origin AND aborted_at IS NONE)
+    };
+    LET $kept = array::find($known, |$k| $k.state != "pending");
+    IF $kept IS NOT NONE {
+        RETURN fn::result_ok({
+            submission: $kept.id, tenant: $kept.tenant, bucket_name: "lyxal-mail", key: $kept.content.key, max_size: $settings.max_message_bytes,
+            return_address: $kept.envelope_from, expires_at: $kept.pending_expires_at,
+            queued: { submission: $kept.id, recipients: $kept.recipient_count, queued_at: $kept.queued_at }
+        });
+    };
+    IF array::len($known) > 0 {
+        LET $released = (UPDATE $known.id SET aborted_at = time::now() RETURN VALUE id);
+        IF array::len($released) != array::len($known) { RETURN fn::error_result("MAIL_WRITE_FORBIDDEN", $p.language, { table: "mail_submission" }); };
+    };
     LET $now = time::now();
     -- Clé s<UUID v7 en hexadécimal> : ordonnée par le temps, écrite sans échappement dans un identifiant
     LET $key = string::concat("s", string::replace(<string> rand::uuid::v7(), "-", ""));
@@ -208,7 +229,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_submission_begin($params: object) {
     LET $over = array::find(fn::mail_send_counters($row, $settings), |$c| ((SELECT VALUE count FROM ONLY $c.id) ?? 0) + $c.amount > $c.limit);
     IF $over IS NOT NONE { RETURN fn::error_result("MAIL_SEND_LIMIT_EXCEEDED", $p.language, { kind: $over.kind, limit: $over.limit }); };
     LET $created = (CREATE ONLY type::record("mail_submission", $key) CONTENT object::extend($row, {
-        return_token: $p.return_token, prefix: $p.prefix,
+        return_token: $p.return_token, prefix: $p.prefix, idempotency_key: $p.idempotency_key,
         envelope_from: IF $p.return_token IS NONE { NONE } ELSE { string::concat("rp=", $p.return_token, "@", array::last(string::split($sender, "@"))) },
         return_expires_at: IF $p.return_token IS NONE { NONE } ELSE { $row.expires_at + 14d },
         prepared_at: IF $worker_origin { $now } ELSE { NONE }
@@ -218,7 +239,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_submission_begin($params: object) {
         submission: $created.id, tenant: $created.tenant, bucket_name: "lyxal-mail", key: $created.content.key,
         max_size: $settings.max_message_bytes, return_address: $created.envelope_from, expires_at: $created.pending_expires_at
     });
-} COMMENT "Ouvre un dépôt dans la file d'envoi ({ origin (submission par défaut ; module ; forward, dsn : compte de service), from (adresse d'enveloppe annoncée, \"\" : expéditeur vide, exigé d'un avis), header_from (1 à 10 adresses des champs From, Sender, Resent-*), recipients (1 à 1 000 × { address, notify, orcpt }), size, smtputf8, eight_bit, dsn ({ ret : hdrs ou full, envid }), client_reference (module : identifiant opaque de 1 à 128 caractères), return_token et prefix (transfert ou avis seulement : le worker prépare les autres envois), forward (transfert : { envelope_from, spf, envelope_dkim }), tenant (avis : organisation) }) : droit de l'appelant et d'expéditeur (dépôt authentifié : adresses du compte de la session, §8.3 ; module : expéditeurs des modules d'un domaine, §12.3 ; MAIL_SENDER_FORBIDDEN, rangs refusés), nombre de destinataires (MAIL_SUBMISSION_TOO_MANY_RECIPIENTS : limite de l'organisation, 100 pour un module, 10 pour un transfert), taille (MAIL_MESSAGE_TOO_LARGE), limites d'envoi (MAIL_SEND_LIMIT_EXCEEDED ; compteurs pris dans la transaction, rendus par fn::mail_submission_abort) ; envoi pending, à clore dans l'heure ; { submission, tenant, bucket_name (lyxal-mail : bucket chiffré de l'organisation, créé par l'hôte s'il manque), key (queue/<clé de l'envoi>.eml), max_size, return_address (transfert seulement ; ailleurs posée par le worker à la préparation), expires_at }. Droit : mail.send (dépôt authentifié), mail.relay ou session système (module), mail.worker (transfert, avis)";
+} COMMENT "Ouvre un dépôt dans la file d'envoi ({ origin (submission par défaut ; module ; forward, dsn : compte de service), from (adresse d'enveloppe annoncée, \"\" : expéditeur vide, exigé d'un avis), header_from (1 à 10 adresses des champs From, Sender, Resent-*), recipients (1 à 1 000 × { address, notify, orcpt }), size, smtputf8, eight_bit, dsn ({ ret : hdrs ou full, envid }), client_reference (module : identifiant opaque de 1 à 128 caractères), return_token et prefix (transfert ou avis seulement : le worker prépare les autres envois), forward (transfert : { envelope_from, spf, envelope_dkim }), tenant (avis : organisation), idempotency_key (transfert ou avis, exigée : 64 chiffres hexadécimaux) }) : droit de l'appelant et d'expéditeur (dépôt authentifié : adresses du compte de la session, §8.3 ; module : expéditeurs des modules d'un domaine, §12.3 ; MAIL_SENDER_FORBIDDEN, rangs refusés), nombre de destinataires (MAIL_SUBMISSION_TOO_MANY_RECIPIENTS : limite de l'organisation, 100 pour un module, 10 pour un transfert), taille (MAIL_MESSAGE_TOO_LARGE), limites d'envoi (MAIL_SEND_LIMIT_EXCEEDED ; compteurs pris dans la transaction, rendus par fn::mail_submission_abort) ; transfert ou avis déjà déposé sous la même clé : envoi en file rendu tel quel (queued : { submission, recipients, queued_at }), sans second envoi ni compteur, dépôt resté pending abandonné puis refait ; envoi pending, à clore dans l'heure ; { submission, tenant, bucket_name (lyxal-mail : bucket chiffré de l'organisation, créé par l'hôte s'il manque), key (queue/<clé de l'envoi>.eml), max_size, return_address (transfert seulement ; ailleurs posée par le worker à la préparation), expires_at }. Droit : mail.send (dépôt authentifié), mail.relay ou session système (module), mail.worker (transfert, avis)";
 
 DEFINE FUNCTION OVERWRITE fn::mail_submission_origin($origin: string, $sender: option<string>, $header_from: array, $tenant: option<record<auth_organization>>) -> object {
     LET $denied = { error: "MAIL_PERMISSION_DENIED", details: {} };

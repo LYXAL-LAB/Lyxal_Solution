@@ -132,6 +132,10 @@ pub struct SubmissionBeginParams {
     pub forward: Option<ForwardReception>,
     /// Avis : organisation (`auth_organization:<clé>`).
     pub tenant: Option<String>,
+    /// Transfert ou avis (exigée) : clé d'idempotence (64 chiffres hexadécimaux), empreinte de
+    /// l'alias ou du destinataire, de l'expéditeur et des octets ; un envoi déjà mis en file sous
+    /// cette clé est rendu tel quel (`queued`).
+    pub idempotency_key: Option<String>,
 }
 
 /// Résultat de `fn::mail_submission_begin` : où écrire le fichier du message.
@@ -151,6 +155,9 @@ pub struct SubmissionReservation {
     pub return_address: Option<String>,
     /// Fin du délai de clôture.
     pub expires_at: MailDatetime,
+    /// Transfert ou avis déjà mis en file sous la même clé d'idempotence : rien à écrire ni à
+    /// clore.
+    pub queued: Option<SubmissionQueued>,
 }
 
 /// Paramètres de `fn::mail_submission_commit`.

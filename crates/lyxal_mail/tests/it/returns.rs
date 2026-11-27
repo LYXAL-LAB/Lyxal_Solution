@@ -6,7 +6,9 @@
 //! transfert d'un alias vers l'extérieur (adresse de retour à jeton, sans SRS ; avis à
 //! l'expéditeur d'origine seulement s'il est authentifié ; limite de l'organisation). Réception
 //! par la session SMTP du port 25 sur une vraie socket, envoi par le worker vers le faux MX du
-//! module `outbound`. Aucun service réel.
+//! module `outbound`. Aucun service réel. Antivirus passé une seule fois avant toute inscription
+//! d'avis ; transfert d'un alias aussi par la route locale (avis à l'expéditeur local) ; transfert
+//! sans doublon après un nouvel essai de l'expéditeur.
 
 use lyxal_mail::dns::MailResolver;
 use lyxal_mail::models::{
@@ -21,7 +23,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::outbound::{outbound, resolver, run, FakeMx, MxScript, Outbound, RcptRule, MESSAGE};
-use crate::smtp::{serve, Client, Options};
+use crate::smtp::{serve, Client, FakeScanner, Options};
 use crate::support::token;
 
 /// Avis de non-remise d'un serveur distant pour `rcpt`, adressé à `to`.
@@ -493,4 +495,250 @@ async fn the_forward_limit_keeps_local_delivery_and_degrades_the_probe() {
         "{:?}",
         result.message
     );
+}
+
+/// Signature d'essai EICAR, reconnue par [`FakeScanner`].
+const EICAR: &str = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
+
+async fn bounced_events(out: &Outbound) -> i64 {
+    count(
+        out,
+        "RETURN count(SELECT id FROM event_outbox WHERE event_type = 'mail.submission.bounced');",
+    )
+    .await
+}
+
+#[tokio::test]
+async fn a_report_is_scanned_once_before_anything_is_recorded() {
+    let out = outbound().await;
+    let jean = out.bench.person("jean", "alpha", &out.domain).await;
+    let mx = FakeMx::start(MxScript::default()).await;
+    let (submission, address) = sent_by_jean(&out, &mx, "paul@ailleurs.test").await;
+    let clean = report(&address, "paul@ailleurs.test", "failed", "5.1.1");
+    let infected = clean.replace("Your message could not be delivered.", EICAR);
+
+    // Antivirus configuré mais injoignable : refus temporaire, comme la réception du lot 5
+    let mut options = Options::new();
+    options.scanner = Some(Arc::new(FakeScanner { available: false }));
+    let server = serve(&out.bench, options).await;
+    let (mut client, _) = Client::connect(&server).await;
+    client.cmd("EHLO mx.distant.test").await;
+    let reply = client.transaction("", &[&address], &clean).await;
+    assert!(reply.starts_with("451 "), "{reply}");
+    assert_eq!(
+        out.states(&submission).await[0].1,
+        RecipientState::Delivered
+    );
+    assert_eq!(bounced_events(&out).await, 0, "rien d'inscrit");
+    assert_eq!(inbox_count(&out, &jean.inbox).await, 0);
+
+    // Avis infecté : refus définitif, rien d'inscrit ni de remis
+    let mut options = Options::new();
+    options.scanner = Some(Arc::new(FakeScanner { available: true }));
+    let server = serve(&out.bench, options).await;
+    let (mut client, _) = Client::connect(&server).await;
+    client.cmd("EHLO mx.distant.test").await;
+    let reply = client.transaction("", &[&address], &infected).await;
+    assert!(reply.starts_with("554 5.7.1"), "{reply}");
+    assert_eq!(
+        out.states(&submission).await[0].1,
+        RecipientState::Delivered
+    );
+    assert_eq!(bounced_events(&out).await, 0, "rien d'inscrit");
+    assert_eq!(inbox_count(&out, &jean.inbox).await, 0);
+
+    // Avis infecté sur l'adresse de retour d'un module (aucune boîte où le remettre) : refusé aussi
+    let module = out.module_send(&["paul@ailleurs.test"], MESSAGE).await;
+    let resolver: Arc<dyn MailResolver> =
+        Arc::new(resolver("mx.ailleurs.test", &["ailleurs.test"]));
+    let running = run(out.worker(&mx, resolver, None));
+    out.wait_final(&module).await;
+    running.stop().await;
+    let (from, _, _) = mx.messages().pop().unwrap();
+    let module_address = from.trim_matches(['<', '>']).to_string();
+    let module_report = report(&module_address, "paul@ailleurs.test", "failed", "5.1.1")
+        .replace("Your message could not be delivered.", EICAR);
+    let reply = client
+        .transaction("", &[&module_address], &module_report)
+        .await;
+    assert!(reply.starts_with("554 5.7.1"), "{reply}");
+    assert_eq!(out.states(&module).await[0].1, RecipientState::Delivered);
+
+    // Avis sain : inscrit et remis
+    let reply = client.transaction("", &[&address], &clean).await;
+    assert!(reply.starts_with("250 "), "{reply}");
+    assert_eq!(out.states(&submission).await[0].1, RecipientState::Bounced);
+    assert_eq!(bounced_events(&out).await, 1);
+    assert_eq!(inbox_count(&out, &jean.inbox).await, 1);
+    assert_eq!(server.handler.snapshot()["messages_refused.antivirus"], 2);
+}
+
+/// Alias `ventes@alpha.test` remis à jean et transféré vers `to`.
+async fn second_alias(out: &Outbound, jean: &crate::support::Person, to: &str) {
+    out.bench
+        .system
+        .address_create(AddressCreateParams {
+            domain: out.domain.clone(),
+            local_part: "ventes".to_string(),
+            kind: "alias".to_string(),
+            account: None,
+            targets: Some(vec![jean.account.clone()]),
+            senders: None,
+            forward_to: Some(vec![to.to_string()]),
+        })
+        .await
+        .expect("alias");
+}
+
+async fn forwards_counted(out: &Outbound) -> i64 {
+    count(
+        out,
+        "RETURN math::sum(SELECT VALUE count FROM mail_send_counter WHERE kind = 'forward_messages');",
+    )
+    .await
+}
+
+#[tokio::test]
+async fn a_retried_transaction_does_not_forward_twice() {
+    let out = outbound().await;
+    let jean = forwarding_alias(&out).await;
+    second_alias(&out, &jean, "commercial@ailleurs.test").await;
+    // Mise en file du second transfert en panne (erreur de la base, pas un refus métier)
+    out.bench
+        .run("DEFINE EVENT OVERWRITE essai_panne ON TABLE mail_submission WHEN $event = 'CREATE' AND $after.sender = 'ventes@alpha.test' THEN { THROW 'panne'; };")
+        .await;
+    let server = serve(&out.bench, Options::new()).await;
+    let (mut client, _) = Client::connect(&server).await;
+    client.cmd("EHLO client.ailleurs.test").await;
+    let message = "From: <x@ailleurs.test>\r\nTo: <equipe@alpha.test>, <ventes@alpha.test>\r\nSubject: Devis\r\nMessage-ID: <devis@ailleurs.test>\r\n\r\nBonjour.\r\n";
+    let recipients = ["equipe@alpha.test", "ventes@alpha.test"];
+    let reply = client
+        .transaction("x@ailleurs.test", &recipients, message)
+        .await;
+    assert!(reply.starts_with("451 "), "{reply}");
+    assert_eq!(forward_submissions(&out, "forward").await.len(), 1);
+    assert_eq!(forwards_counted(&out).await, 1);
+
+    // Nouvel essai de l'expéditeur, panne réparée : le premier transfert n'est pas refait
+    out.bench
+        .run("REMOVE EVENT essai_panne ON TABLE mail_submission;")
+        .await;
+    let reply = client
+        .transaction("x@ailleurs.test", &recipients, message)
+        .await;
+    assert!(reply.starts_with("250 "), "{reply}");
+    assert_eq!(
+        forward_submissions(&out, "forward").await.len(),
+        2,
+        "un transfert par alias, jamais deux"
+    );
+    assert_eq!(
+        forwards_counted(&out).await,
+        2,
+        "limite prise une fois par alias"
+    );
+    // Encore un essai (réponse perdue par l'expéditeur) : rien de nouveau
+    let reply = client
+        .transaction("x@ailleurs.test", &recipients, message)
+        .await;
+    assert!(reply.starts_with("250 "), "{reply}");
+    assert_eq!(forward_submissions(&out, "forward").await.len(), 2);
+    assert_eq!(forwards_counted(&out).await, 2);
+    assert_eq!(
+        inbox_count(&out, &jean.inbox).await,
+        1,
+        "une copie pour jean"
+    );
+}
+
+#[tokio::test]
+async fn a_local_sender_to_a_forwarding_alias_also_reaches_the_outside() {
+    let out = outbound().await;
+    let jean = forwarding_alias(&out).await;
+    second_alias(&out, &jean, "refuse@ailleurs.test").await;
+    let user = out.bench.client.clone();
+    user.authenticate(token(
+        "auth_session:jean",
+        &["mail.mailbox.access", "mail.send"],
+    ))
+    .await
+    .unwrap();
+    let raw = MESSAGE.replace("noreply@alpha.test", "jean@alpha.test");
+    let submission = out
+        .send(
+            &MailStore::new(user),
+            SubmissionOrigin::Submission,
+            "jean@alpha.test",
+            &["equipe@alpha.test", "ventes@alpha.test"],
+            &raw,
+        )
+        .await;
+    let mut rules = HashMap::new();
+    rules.insert("refuse".to_string(), RcptRule::Reject);
+    let mx = FakeMx::start(MxScript {
+        rules,
+        ..MxScript::default()
+    })
+    .await;
+    let resolver: Arc<dyn MailResolver> =
+        Arc::new(resolver("mx.ailleurs.test", &["ailleurs.test"]));
+    let running = run(out.worker(&mx, resolver, None));
+    let states = out.wait_final(&submission).await;
+    assert!(
+        states
+            .iter()
+            .all(|(_, state, _)| *state == RecipientState::Delivered),
+        "{states:?}"
+    );
+    // Route locale : copie pour jean, puis un transfert par alias mis en file
+    let mut forwards = Vec::new();
+    for _ in 0..100 {
+        forwards = forward_submissions(&out, "forward").await;
+        if forwards.len() == 2 {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    }
+    assert_eq!(forwards.len(), 2, "transferts de la route locale");
+    for forward in &forwards {
+        out.wait_final(forward).await;
+    }
+    // Réception d'origine : notre installation (adresse de retour de l'envoi de jean)
+    let origin: Value = out
+        .bench
+        .value(&format!(
+            "RETURN (SELECT VALUE forward FROM ONLY {});",
+            forwards[0]
+        ))
+        .await;
+    let origin = origin.to_sql();
+    assert!(
+        origin.contains("envelope_dkim: true")
+            && origin.contains("spf: 'none'")
+            && origin.contains("envelope_from: 'rp="),
+        "{origin}"
+    );
+    let delivered: Vec<_> = mx
+        .messages()
+        .into_iter()
+        .filter(|(_, recipients, _)| recipients == &vec!["externe@ailleurs.test".to_string()])
+        .collect();
+    assert_eq!(delivered.len(), 1, "destinataire extérieur servi");
+    assert!(String::from_utf8_lossy(&delivered[0].2).contains("with LOCAL id"));
+    // Transfert refusé par le serveur distant : avis à jean, remis dans sa boîte par la route
+    // locale (adresse de retour de son envoi)
+    let mut inbox = 0;
+    for _ in 0..100 {
+        inbox = inbox_count(&out, &jean.inbox).await;
+        if inbox == 2 {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    }
+    running.stop().await;
+    assert_eq!(
+        inbox, 2,
+        "message par les alias, puis avis du transfert refusé"
+    );
+    assert_eq!(forward_submissions(&out, "dsn").await.len(), 1);
 }

@@ -9,6 +9,8 @@
 //! 3. `fn::mail_submission_commit` sous la session système : fichier contrôlé, destinataires en
 //!    file, en une transaction.
 //!
+//! Transfert ou avis (clé d'idempotence) déjà mis en file : `begin` le rend, rien n'est écrit.
+//!
 //! Atomicité : une écriture du fichier en échec fait abandonner l'envoi
 //! (`fn::mail_submission_abort` au nom de l'utilisateur, compteurs rendus) ; une clôture refusée
 //! par la base fait supprimer le fichier, que rien ne référence, et abandonner l'envoi ; une
@@ -42,6 +44,10 @@ impl MailIngest {
         }
         let size = raw.len() as u64;
         let reserved = retry_conflicts(|| caller.submission_begin(params.clone())).await?;
+        // Transfert ou avis déjà mis en file (nouvel essai, reprise) : aucun second envoi
+        if let Some(queued) = reserved.queued {
+            return Ok(queued);
+        }
         let submission = reserved.submission.to_sql();
         let object = match self
             .write_file(

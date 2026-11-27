@@ -73,8 +73,8 @@ impl TlsUpgrade for EchoUpgrade {
 }
 
 /// Antivirus d'essai : reconnaît la signature EICAR, ou ne répond pas.
-struct FakeScanner {
-    available: bool,
+pub(crate) struct FakeScanner {
+    pub(crate) available: bool,
 }
 
 struct FakeScan {
@@ -134,7 +134,7 @@ impl Drop for Server {
 pub(crate) struct Options {
     resolver: StaticResolver,
     pub(crate) config: SmtpConfig,
-    scanner: Option<Arc<dyn ContentScanner>>,
+    pub(crate) scanner: Option<Arc<dyn ContentScanner>>,
     starttls: bool,
 }
 

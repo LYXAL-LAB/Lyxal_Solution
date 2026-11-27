@@ -8,6 +8,8 @@
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use crate::delivery::ForwardResult;
+
 /// Motif d'un message ou d'un destinataire refusé, pour les mesures et le journal.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum RefusedReason {
@@ -37,17 +39,6 @@ pub enum RefusedReason {
     Temporary,
     /// Rétrodiffusion : rapport de non-remise à expéditeur vide vers une adresse ordinaire.
     Backscatter,
-}
-
-/// Issue d'un transfert vers l'extérieur.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ForwardResult {
-    /// Mis en file.
-    Queued,
-    /// Limite des transferts de l'organisation atteinte : non fait.
-    Limited,
-    /// Refusé par la file (alias désactivé entre-temps, adresses illisibles) : non fait.
-    Refused,
 }
 
 impl RefusedReason {
@@ -313,7 +304,6 @@ mod tests {
             bounced: 2,
             counted: 1,
             delivered: true,
-            infected: false,
         });
         metrics.forwarded(ForwardResult::Limited);
         let values = metrics.snapshot();

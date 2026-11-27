@@ -28,4 +28,4 @@ pub use config::{
     DEFAULT_MESSAGES_PER_NETWORK_PER_MINUTE, DEFAULT_SESSION_MAX,
 };
 pub use handler::{SmtpInboundHandler, SmtpServices};
-pub use metrics::{ForwardResult, RefusedReason, SmtpMetrics};
+pub use metrics::{RefusedReason, SmtpMetrics};

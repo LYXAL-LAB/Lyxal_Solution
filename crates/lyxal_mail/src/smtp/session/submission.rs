@@ -589,6 +589,7 @@ impl SmtpSession {
             prefix: None,
             forward: None,
             tenant: None,
+            idempotency_key: None,
         };
         let started = Instant::now();
         let queued = ingest.queue_submission(&store, params, prepared).await;

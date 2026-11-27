@@ -57,7 +57,8 @@ DEFINE FUNCTION OVERWRITE fn::mail_submission_refusal($previous: any, $next: any
         -- déposés par le compte de service
         LET $prepared = $next.prepared_at IS NOT NONE OR $next.return_token IS NOT NONE OR $next.prefix IS NOT NONE OR $next.envelope_from IS NOT NONE;
         IF $prepared AND ($next.origin IN ["submission", "module"] OR !fn::mail_can({ action: "worker" })) { RETURN "MAIL_WRITE_FORBIDDEN"; };
-        IF ($next.forward IS NOT NONE) != ($next.origin = "forward") OR ($next.client_reference IS NOT NONE AND $next.origin != "module") { RETURN "MAIL_WRITE_FORBIDDEN"; };
+        IF ($next.forward IS NOT NONE) != ($next.origin = "forward") OR ($next.client_reference IS NOT NONE AND $next.origin != "module")
+            OR ($next.idempotency_key IS NOT NONE) != ($next.origin IN ["forward", "dsn"]) { RETURN "MAIL_WRITE_FORBIDDEN"; };
         IF $next.origin = "submission" {
             -- Hors compte de service : l'envoi est celui du compte de la session, jamais d'un autre
             IF !fn::mail_can({ action: "worker" }) AND ($next.account IS NONE OR $next.account != fn::mail_session_account(NONE)) { RETURN "MAIL_WRITE_FORBIDDEN"; };
@@ -82,7 +83,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_submission_refusal($previous: any, $next: any
     IF $previous.prepared_at IS NOT NONE AND $next.prepared_at != $previous.prepared_at { RETURN "MAIL_WRITE_FORBIDDEN"; };
     IF $previous.content.object IS NOT NONE AND $next.content.object != $previous.content.object { RETURN "MAIL_WRITE_FORBIDDEN"; };
     RETURN IF $next.content.key != $previous.content.key OR $next.content.size != $previous.content.size OR $next.open_count < 0 { "MAIL_WRITE_FORBIDDEN" } ELSE { NONE };
-} COMMENT "Interne : garde d'une écriture d'un envoi ($previous, $next) : à la création, état pending sans compteur ni fichier, clé du fichier queue/<clé de l'envoi>.eml, un destinataire annoncé par destinataire compté ; préparation (jeton, préfixe, adresse de retour) réservée au compte de service pour un transfert ou un avis ; dépôt authentifié : compte actif de l'organisation, titulaire recopié, toutes les adresses permises (fn::mail_sender_allowed, MAIL_SENDER_FORBIDDEN) ; module : expéditeur et champs d'en-tête parmi les expéditeurs des modules de l'organisation ; avis : expéditeur vide. Ensuite : états pending → queued (fichier lié, destinataires en file) → done (aucun destinataire ouvert) ; abandon une fois et avant la clôture ; préparation, fichier, clé et taille jamais changés";
+} COMMENT "Interne : garde d'une écriture d'un envoi ($previous, $next) : à la création, état pending sans compteur ni fichier, clé du fichier queue/<clé de l'envoi>.eml, un destinataire annoncé par destinataire compté ; préparation (jeton, préfixe, adresse de retour) réservée au compte de service pour un transfert ou un avis ; clé d'idempotence exigée d'un transfert ou d'un avis, refusée ailleurs ; dépôt authentifié : compte actif de l'organisation, titulaire recopié, toutes les adresses permises (fn::mail_sender_allowed, MAIL_SENDER_FORBIDDEN) ; module : expéditeur et champs d'en-tête parmi les expéditeurs des modules de l'organisation ; avis : expéditeur vide. Ensuite : états pending → queued (fichier lié, destinataires en file) → done (aucun destinataire ouvert) ; abandon une fois et avant la clôture ; préparation, fichier, clé et taille jamais changés";
 
 -- ----------------------------------------------------------------------------
 -- fn::mail_submission_apply (interne)

@@ -466,6 +466,7 @@ impl Outbound {
                 prefix: None,
                 forward: None,
                 tenant: None,
+                idempotency_key: None,
             })
             .await
             .expect("dépôt ouvert");
@@ -965,6 +966,7 @@ async fn notify_success_to_a_server_without_dsn_is_relayed() {
             prefix: None,
             forward: None,
             tenant: None,
+            idempotency_key: None,
         })
         .await
         .unwrap();

@@ -159,12 +159,14 @@ impl OutboundDispatcher {
             services.keys.clone(),
             config.hostname.clone(),
         );
+        let metrics = Arc::new(OutboundMetrics::default());
         let local = LocalRoute::new(
             services.store.clone(),
             services.pipeline.clone(),
             services.resolver.clone(),
             services.organizational.clone(),
             config.hostname.clone(),
+            metrics.clone(),
         );
         let dsn = DsnComposer::new(
             services.store.clone(),
@@ -177,7 +179,7 @@ impl OutboundDispatcher {
             inner: Arc::new(Inner {
                 pool: ConnectionPool::new(&config),
                 limiter: DestinationLimiter::new(&config),
-                metrics: Arc::new(OutboundMetrics::default()),
+                metrics,
                 preparer,
                 local,
                 dsn,
@@ -567,6 +569,7 @@ impl Inner {
                     submission: &submission,
                     envelope_from: first.envelope_from.as_deref().unwrap_or_default(),
                     bytes: Bytes::from(bytes),
+                    smtputf8: first.smtputf8,
                     dkim_records: records,
                 },
                 &addresses,

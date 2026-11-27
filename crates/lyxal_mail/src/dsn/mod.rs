@@ -20,9 +20,10 @@
 //!
 //! L'avis est déterministe (identifiant, date, frontière) : une remise reprise après un arrêt
 //! est reconnue par l'empreinte d'idempotence du lot 5 et ne fait pas de doublon. Puis
-//! `fn::mail_queue_dsn_done` le note : jamais produit deux fois. Avis d'un transfert : un arrêt
-//! entre sa mise en file et `fn::mail_queue_dsn_done` le fait mettre en file une seconde fois à
-//! la reprise (fenêtre de deux appels, comme la fenêtre de doublon de l'envoi, §5.3).
+//! `fn::mail_queue_dsn_done` le note : jamais produit deux fois. Avis d'un transfert : sa clé
+//! d'idempotence (empreinte de son destinataire et de ses octets) fait retrouver, à la reprise
+//! après un arrêt entre sa mise en file et `fn::mail_queue_dsn_done`, l'envoi déjà en file : il
+//! n'est jamais mis en file deux fois.
 //!
 //! Les avis **reçus** sur une adresse de retour sont lus par [`BounceProcessor`] (§10.3).
 
@@ -308,6 +309,10 @@ impl DsnComposer {
         origin: String,
     ) -> MailResult<DsnOutcome> {
         let ingest = self.pipeline.ingest();
+        // Avis déterministe : son empreinte (destinataire, expéditeur vide, octets) est sa clé
+        // d'idempotence ; mis en file deux fois (reprise avant `fn::mail_queue_dsn_done`), il est
+        // retrouvé au lieu d'être envoyé une seconde fois
+        let idempotency_key = crate::delivery::delivery_key(&origin, "", &bytes);
         let params = SubmissionBeginParams {
             origin: Some(SubmissionOrigin::Dsn),
             from: String::new(),
@@ -326,6 +331,7 @@ impl DsnComposer {
             prefix: None,
             forward: None,
             tenant: Some(submission.tenant.to_sql()),
+            idempotency_key: Some(idempotency_key),
         };
         match ingest
             .queue_submission(&self.store, params, Bytes::from(bytes))

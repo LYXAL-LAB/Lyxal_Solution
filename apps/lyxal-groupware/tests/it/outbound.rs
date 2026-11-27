@@ -291,6 +291,7 @@ async fn the_host_runs_the_outbound_worker_and_the_dkim_task() {
             prefix: None,
             forward: None,
             tenant: None,
+            idempotency_key: None,
         })
         .await
         .unwrap();

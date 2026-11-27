@@ -109,11 +109,6 @@ Mesures : [`README.md`](README.md), section « Mesures ».
   pendant ce sous-lot) : `tests/it/outbound.rs`, `measure_throughput_to_the_fake_mx`, à lancer
   sur la machine de référence.
 * **Envoi : points ouverts du lot 6.**
-  * Transfert et avis d'un transfert : un arrêt du nœud entre la mise en file d'un transfert et
-    la réponse `250`, ou entre la mise en file de l'avis d'un transfert et
-    `fn::mail_queue_dsn_done`, fait mettre en file une seconde copie (fenêtre de doublon comme
-    celle de l'envoi, RFC 5321 §6.1) ; une clé d'idempotence des envois (comme `delivery_key`
-    de la remise) la fermerait, à décider si la mesure le justifie.
   * Un message mis en quarantaine par DMARC (`p=quarantine`) reçu sur un alias est transféré
     comme les autres (rangé dans « Junk » localement) : à revoir avec l'anti-spam (lot 11).
   * Réponses automatiques reçues sur l'adresse de retour d'un module : écartées ; un module qui

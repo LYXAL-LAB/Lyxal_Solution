@@ -3,8 +3,10 @@
 //! Avis reçus sur une adresse de retour `rp=<jeton>@<domaine>` (plan du lot 6, §10.3 et §11 ;
 //! décision E23).
 //!
-//! Un message arrivé sur le port 25 pour une adresse de retour valide passe la réception du lot 5
-//! (SPF, DKIM, DMARC), puis [`BounceProcessor::process`] :
+//! Un message arrivé pour une adresse de retour valide (port 25, ou route locale) passe la
+//! réception du lot 5 (SPF, DKIM, DMARC) puis l'antivirus, une seule fois pour toute la
+//! transaction (chemin de réception commun, [`crate::delivery::Reception`]) ; infecté ou antivirus
+//! injoignable : rien n'est inscrit. Puis [`BounceProcessor::process`] :
 //!
 //! * rapport `delivery-status` (lu par `lyxal_mail_proto::dsn::parse_dsn`) : ses destinataires
 //!   sont inscrits par `fn::mail_return_record`, qui passe à `bounced` chaque destinataire de
@@ -23,7 +25,9 @@ use lyxal_mail_proto::dsn::{parse_dsn, DsnAction as ProtoAction, DsnParseError};
 use lyxal_mail_proto::mime::ParsedMessage;
 use lyxal_surreal::ToSql;
 
-use crate::delivery::{DeliveryPipeline, PipelineResult, ReceivedMessage, RecipientTarget};
+use crate::delivery::{
+    DeliveryPipeline, PipelineResult, ReceivedMessage, RecipientTarget, Screened,
+};
 use crate::error::{MailError, MailResult};
 use crate::models::{MailRecordId, ReturnAction, ReturnItem, ReturnRecordParams, SubmissionOrigin};
 use crate::store::MailStore;
@@ -61,8 +65,6 @@ pub struct ReturnOutcome {
     pub counted: u64,
     /// Message remis dans la boîte du compte expéditeur.
     pub delivered: bool,
-    /// Message infecté : refusé, rien n'est remis.
-    pub infected: bool,
 }
 
 /// Lecture des avis reçus et remise à l'expéditeur d'un dépôt authentifié.
@@ -103,14 +105,16 @@ impl BounceProcessor {
         Self { store, pipeline }
     }
 
-    /// Traite `message` (reçu par la session SMTP, `parsed` : sa lecture MIME) pour l'adresse de
-    /// retour `target`. Une erreur est temporaire : la session répond `451` et l'expéditeur
-    /// réessaie (inscription et remise rejouables).
+    /// Traite `message` (reçu, `parsed` : sa lecture MIME), déjà admis par la chaîne
+    /// (`screened` : antivirus passé), pour l'adresse de retour `target`. Une erreur est
+    /// temporaire : la session répond `451` et l'expéditeur réessaie (inscription et remise
+    /// rejouables).
     pub async fn process(
         &self,
         target: &ReturnTarget,
         message: &ReceivedMessage,
         parsed: &ParsedMessage,
+        screened: &Screened,
     ) -> MailResult<ReturnOutcome> {
         let mut outcome = ReturnOutcome::default();
         match parse_dsn(&message.received, parsed) {
@@ -176,9 +180,10 @@ impl BounceProcessor {
             }],
             ..message.clone()
         };
-        match self.pipeline.deliver(&deposit).await {
+        match self.pipeline.deposit(&deposit, screened).await {
             PipelineResult::Delivered { .. } => outcome.delivered = true,
-            PipelineResult::Rejected { .. } => outcome.infected = true,
+            // Jamais rendu par un dépôt après la chaîne
+            PipelineResult::Rejected { .. } => {}
             // Compte expéditeur désactivé ou supprimé, message trop grand pour son organisation :
             // rien à remettre, le message est écarté
             PipelineResult::TempFail { code, .. }

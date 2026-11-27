@@ -15,7 +15,7 @@ use super::metrics::SmtpMetrics;
 use super::resolver::CountingResolver;
 use super::session::SmtpSession;
 use crate::auth::{EmbeddedSuffixList, OrganizationalDomain};
-use crate::delivery::DeliveryPipeline;
+use crate::delivery::{DeliveryPipeline, Reception};
 use crate::dns::MailResolver;
 use crate::net::{
     IpRateLimiter, MailProtocol, MemoryBudget, Session, SessionEnd, SessionHandler, WindowLimit,
@@ -54,16 +54,17 @@ pub(crate) struct Shared {
 /// communes ; les contrôles et le traitement du message diffèrent.
 pub(crate) enum Mode {
     /// Réception des autres serveurs (lot 5).
-    Inbound(Inbound),
+    Inbound(Box<Inbound>),
     /// Dépôt authentifié des logiciels de courrier (lot 6, §8).
     Submission(crate::submission::SubmissionShared),
 }
 
-/// Ce que demande la réception : contrôles d'authenticité et chaîne de remise.
+/// Ce que demande la réception : contrôles d'authenticité et chemin de réception commun.
 pub(crate) struct Inbound {
     pub(crate) resolver: Arc<dyn MailResolver>,
     pub(crate) organizational: Arc<dyn OrganizationalDomain>,
-    pub(crate) pipeline: DeliveryPipeline,
+    /// Chemin de réception commun avec la route locale : chaîne de remise, avis reçus, transferts.
+    pub(crate) reception: Reception,
 }
 
 impl Shared {
@@ -123,7 +124,7 @@ impl SmtpInboundHandler {
         let inbound = Inbound {
             resolver: Arc::new(CountingResolver::new(services.resolver, metrics.clone())),
             organizational,
-            pipeline: pipeline.clone(),
+            reception: Reception::new(services.store.clone(), pipeline.clone()),
         };
         Ok(Self {
             shared: Arc::new(Shared::new(
@@ -132,7 +133,7 @@ impl SmtpInboundHandler {
                 services.budget,
                 services.blocks,
                 metrics,
-                Mode::Inbound(inbound),
+                Mode::Inbound(Box::new(inbound)),
             )?),
             pipeline,
         })
