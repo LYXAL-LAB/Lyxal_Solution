@@ -573,7 +573,7 @@ async fn people_submit_mail_on_ports_587_and_465() {
     let snapshot = started.mail.snapshot();
     let metrics = snapshot.submission.expect("mesures du dépôt");
     assert_eq!(metrics["submissions_queued"], 1);
-    assert_eq!(metrics["submission_recipients_queued"], 2);
+    assert_eq!(metrics["submission_recipients_queued"], 3);
     assert_eq!(metrics["submission_spoofing"], 3);
     assert_eq!(metrics["auth_refused.forbidden"], 1);
     assert_eq!(metrics["auth_refused.invalid"], 4);
