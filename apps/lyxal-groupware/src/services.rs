@@ -18,6 +18,7 @@ use lyxal_host::services::{master_keys, storage_backends, storage_scanner};
 use lyxal_mail::dns::{HickoryResolver, MailResolver};
 use lyxal_mail::net::MemoryBudget;
 use lyxal_mail::smtp::{BlockList, BlockRefreshWorker, SmtpInboundHandler, SmtpServices};
+use lyxal_mail::submission::SubmissionHandler;
 use lyxal_mail::{
     DeliveryPipeline, MailContent, MailError, MailHealthCheck, MailIngest, MailMaintenance,
     MailStore, MaintenanceReport, RequiredHost,
@@ -69,6 +70,8 @@ pub struct MailHost {
     pub maintenance: MailMaintenance,
     /// Réception SMTP du nœud (écoutes `smtp`), si une écoute `smtp` est déclarée.
     pub smtp: Option<SmtpInboundHandler>,
+    /// Dépôt authentifié du nœud (écoutes `submission`), si une écoute `submission` est déclarée.
+    pub submission: Option<SubmissionHandler>,
     /// Liste de blocage du nœud, relue toutes les 30 s ; appliquée à l'acceptation de toutes
     /// les écoutes.
     pub blocks: BlockList,
@@ -184,7 +187,16 @@ pub fn register_services(
         }
         _ => None,
     };
+    let submission = crate::submission::submission_handler(
+        config,
+        database,
+        &ingest,
+        scanner.clone(),
+        budget,
+        &blocks,
+    )?;
     let mail = MailHost {
+        submission,
         ingest,
         content: MailContent::new(storage),
         maintenance: MailMaintenance::new(system.clone(), MAINTENANCE_BATCH),

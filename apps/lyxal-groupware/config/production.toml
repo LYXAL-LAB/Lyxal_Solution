@@ -72,7 +72,20 @@ log_client_ip = "network"
 # bind = ["0.0.0.0:25", "[::]:25"]
 # tls = "starttls"
 #
-# Soumission (lot 6) :
+# Dépôt authentifié (lot 6) : ports 587 (STARTTLS exigé) et 465 (TLS implicite), mots de passe
+# d'application de lyxal_auth. La clé applicative de lyxal-server est obligatoire dès qu'une
+# écoute submission existe (sinon GROUPWARE_APPLICATION_KEY_MISSING), par l'environnement
+# seulement : LYXAL_GROUPWARE__CRYPTO__APPLICATION_KEY (même valeur que
+# LYXAL__CRYPTO__APPLICATION_KEY), avec son identifiant :
+# [crypto]
+# application_key_id = "app-2026"
+#
+# [[listeners]]
+# id = "submission"
+# protocol = "submission"
+# bind = ["[::]:587"]
+# tls = "starttls"
+#
 # [[listeners]]
 # id = "submissions"
 # protocol = "submission"

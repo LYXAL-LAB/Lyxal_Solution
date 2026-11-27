@@ -272,6 +272,8 @@ tire de ces projets sont repris comme modèles seulement :
 | `src/smtp/session.rs` : refus de toute fin de ligne isolée (`500 5.5.2`, « possible SMTP smuggling »), données avant `354` refusées, refus unique après les données | Mox | `b32f0de` | MIT | `smtpserver/server.go` | modèle (plan §7.4, décisions S7, S8) | 5 |
 | `src/delivery/pipeline.rs` : remise directe en boîte après les contrôles, au lieu d'une file | Mox | `b32f0de` | MIT | `smtpserver/server.go` (`deliver`) | modèle (plan §3, §12) | 5 |
 | `src/smtp/session.rs` : DMARC de plusieurs domaines d'auteur, le plus sévère l'emporte | Stalwart | `3adead9` | `AGPL-3.0-only OR LicenseRef-SEL` | `crates/smtp/src/inbound/data.rs` (`conflicting_author_domains`) | modèle (plan §6 ; logique dans `src/auth/dmarc.rs`, lot 5b) | 5 |
+| `src/smtp/session/submission.rs`, `src/submission/` : dépôt authentifié (`AUTH` sous TLS, droit d'expéditeur sur l'enveloppe et les en-têtes, `Bcc` retiré, `Date` et `Message-ID` ajoutés, `Received` sans adresse IP) | Stalwart | `3adead9` | `AGPL-3.0-only OR LicenseRef-SEL` | `crates/smtp/src/inbound/{auth,mail}.rs` | modèle (plan du lot 6, §8 ; aucun fichier relu ni copié dans ce sous-lot) | 6 |
+| idem : `AUTH` (`=`, `*`), refus de `MAIL` sans authentification, traitement du message soumis | Mox | `b32f0de` | MIT | `smtpserver/server.go` (`cmdAuth`, `submit`) | modèle (plan du lot 6, §8 ; RFC 4954, 6409, 8314) | 6 |
 
 Chaque fichier porté garde son en-tête `SPDX-FileCopyrightText` d'origine, déclare sa licence
 retenue (`AGPL-3.0-only` pour Stalwart, `MIT` pour Mox) et décrit ses modifications pour Lyxal

@@ -30,6 +30,9 @@ tokio = { workspace = true, features = ["net", "io-util"] }
 tokio-util.workspace = true
 tracing.workspace = true
 lyxal_error.workspace = true
+# Mots de passe d'application du dépôt authentifié (décision E30) : service de lyxal_auth
+# (MIT OR Apache-2.0), lié par cet hôte AGPL seulement.
+lyxal_auth.workspace = true
 lyxal_crypto.workspace = true
 lyxal_host = { workspace = true, features = ["host"] }
 lyxal_mail.workspace = true
@@ -53,7 +56,11 @@ proxy-header = { version = "0.1.3", features = ["tokio"] }
 lyxal_host = { workspace = true, features = ["build"] }
 
 [dev-dependencies]
+# Réponses AUTH des essais du dépôt (MIT OR Apache-2.0, déjà dans l'arbre)
+base64 = "0.22"
 bytes = "1"
+# Lecture en flux des fichiers déchiffrés par les essais (MIT OR Apache-2.0, déjà dans l'arbre)
+futures = { version = "0.3", default-features = false, features = ["std"] }
 # Client SMTP réel des essais d'interopérabilité (MIT OR Apache-2.0, déjà dans l'arbre), en clair
 # seulement : aucune fonctionnalité TLS (STARTTLS essayé par `openssl s_client`).
 lettre = { version = "0.11.23", default-features = false, features = ["builder", "smtp-transport", "tokio1"] }

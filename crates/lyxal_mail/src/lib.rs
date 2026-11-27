@@ -49,6 +49,7 @@ pub mod module;
 pub mod net;
 pub mod smtp;
 pub mod store;
+pub mod submission;
 
 pub use content::{MailContent, OpenedContent};
 pub use delivery::{

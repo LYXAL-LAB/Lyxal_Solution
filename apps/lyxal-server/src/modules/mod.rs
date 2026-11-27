@@ -158,7 +158,8 @@ pub async fn register_services(
     database: &Database,
     config: &AppConfig,
 ) -> Result<HostedServices, ServerError> {
-    let crypto = crate::crypto::application_crypto(&config.crypto)?;
+    let crypto =
+        lyxal_host::services::application_crypto(&config.crypto, crate::config::ENV_PREFIX)?;
     let auth = auth::register_services(runtime, database, config, crypto.clone())?;
     i18n::register_services(runtime, database)?;
     let secrets = secrets::register_services(runtime, database, config)?;

@@ -42,13 +42,59 @@ pub(crate) struct Shared {
     pub(crate) config: SmtpConfig,
     pub(crate) limits: SmtpLimits,
     pub(crate) store: MailStore,
-    pub(crate) resolver: Arc<dyn MailResolver>,
-    pub(crate) organizational: Arc<dyn OrganizationalDomain>,
-    pub(crate) pipeline: DeliveryPipeline,
     pub(crate) budget: MemoryBudget,
     pub(crate) blocks: BlockList,
     pub(crate) metrics: Arc<SmtpMetrics>,
     pub(crate) message_rate: IpRateLimiter,
+    /// Réception du port 25, ou dépôt authentifié des ports 587 et 465.
+    pub(crate) mode: Mode,
+}
+
+/// Rôle des sessions : la machine d'états, la lecture des données et les limites sont
+/// communes ; les contrôles et le traitement du message diffèrent.
+pub(crate) enum Mode {
+    /// Réception des autres serveurs (lot 5).
+    Inbound(Inbound),
+    /// Dépôt authentifié des logiciels de courrier (lot 6, §8).
+    Submission(crate::submission::SubmissionShared),
+}
+
+/// Ce que demande la réception : contrôles d'authenticité et chaîne de remise.
+pub(crate) struct Inbound {
+    pub(crate) resolver: Arc<dyn MailResolver>,
+    pub(crate) organizational: Arc<dyn OrganizationalDomain>,
+    pub(crate) pipeline: DeliveryPipeline,
+}
+
+impl Shared {
+    /// Réglages et limites communs aux deux rôles, sous les réglages `config` (contrôlés ici).
+    pub(crate) fn new(
+        config: SmtpConfig,
+        store: MailStore,
+        budget: MemoryBudget,
+        blocks: BlockList,
+        metrics: Arc<SmtpMetrics>,
+        mode: Mode,
+    ) -> Result<Self, SmtpConfigError> {
+        config.validate()?;
+        let message_rate = IpRateLimiter::with_max_tracked_networks(
+            vec![WindowLimit {
+                window: Duration::from_secs(60),
+                limits: config.messages_per_network_per_minute,
+            }],
+            DEFAULT_MAX_TRACKED_NETWORKS,
+        );
+        Ok(Self {
+            limits: config.syntax_limits(),
+            config,
+            store,
+            budget,
+            blocks,
+            metrics,
+            message_rate,
+            mode,
+        })
+    }
 }
 
 /// Réception SMTP (écoute `protocol = "smtp"`). Clonable : les clones partagent les mesures,
@@ -56,6 +102,7 @@ pub(crate) struct Shared {
 #[derive(Clone)]
 pub struct SmtpInboundHandler {
     shared: Arc<Shared>,
+    pipeline: DeliveryPipeline,
 }
 
 impl SmtpInboundHandler {
@@ -71,28 +118,23 @@ impl SmtpInboundHandler {
         services: SmtpServices,
         organizational: Arc<dyn OrganizationalDomain>,
     ) -> Result<Self, SmtpConfigError> {
-        config.validate()?;
         let metrics = Arc::new(SmtpMetrics::default());
-        let message_rate = IpRateLimiter::with_max_tracked_networks(
-            vec![WindowLimit {
-                window: Duration::from_secs(60),
-                limits: config.messages_per_network_per_minute,
-            }],
-            DEFAULT_MAX_TRACKED_NETWORKS,
-        );
+        let pipeline = services.pipeline;
+        let inbound = Inbound {
+            resolver: Arc::new(CountingResolver::new(services.resolver, metrics.clone())),
+            organizational,
+            pipeline: pipeline.clone(),
+        };
         Ok(Self {
-            shared: Arc::new(Shared {
-                limits: config.syntax_limits(),
-                resolver: Arc::new(CountingResolver::new(services.resolver, metrics.clone())),
+            shared: Arc::new(Shared::new(
                 config,
-                store: services.store,
-                organizational,
-                pipeline: services.pipeline,
-                budget: services.budget,
-                blocks: services.blocks,
+                services.store,
+                services.budget,
+                services.blocks,
                 metrics,
-                message_rate,
-            }),
+                Mode::Inbound(inbound),
+            )?),
+            pipeline,
         })
     }
 
@@ -108,14 +150,14 @@ impl SmtpInboundHandler {
 
     /// Chaîne de remise.
     pub fn pipeline(&self) -> &DeliveryPipeline {
-        &self.shared.pipeline
+        &self.pipeline
     }
 
     /// Mesures de la réception (aucune adresse) : compteurs de la session, de l'ordre des
     /// inscriptions (lots, conflits rejoués) et de la liste de blocage.
     pub fn snapshot(&self) -> BTreeMap<String, u64> {
         let mut values = self.shared.metrics.snapshot();
-        let queue = self.shared.pipeline.ingest().delivery_stats();
+        let queue = self.pipeline.ingest().delivery_stats();
         for (name, value) in [
             ("commit_batches", queue.batches),
             ("commit_items", queue.items),

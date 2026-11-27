@@ -17,6 +17,7 @@ mod reload;
 mod shutdown;
 mod smtp_reception;
 mod starttls;
+mod submission;
 mod support;
 mod tls;
 mod two_hosts;

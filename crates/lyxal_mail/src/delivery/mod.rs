@@ -20,6 +20,7 @@
 
 mod pipeline;
 
+pub(crate) use pipeline::ScanOutcome;
 pub use pipeline::{
     AccountOutcome, AntivirusStage, DeliveryPipeline, DeliveryVerdict, EncryptionStage,
     FilterStage, IndexStage, PipelineResult, ReceivedMessage, RecipientTarget, RejectReason,

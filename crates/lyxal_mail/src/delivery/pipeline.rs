@@ -132,7 +132,7 @@ pub struct AntivirusStage {
 
 /// Résultat de l'antivirus.
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum ScanOutcome {
+pub(crate) enum ScanOutcome {
     Clean,
     NotScanned,
     Infected,
@@ -140,7 +140,14 @@ enum ScanOutcome {
 }
 
 impl AntivirusStage {
-    async fn scan(&self, message: &Bytes) -> ScanOutcome {
+    /// Étape sur l'antivirus de `lyxal_storage`, s'il est configuré (aussi pour le dépôt
+    /// authentifié, plan du lot 6, §8.5).
+    pub(crate) fn new(scanner: Option<Arc<dyn ContentScanner>>) -> Self {
+        Self { scanner }
+    }
+
+    /// Une analyse du message entier, en morceaux de 64 Kio.
+    pub(crate) async fn scan(&self, message: &Bytes) -> ScanOutcome {
         let Some(scanner) = &self.scanner else {
             return ScanOutcome::NotScanned;
         };

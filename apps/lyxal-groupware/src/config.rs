@@ -16,7 +16,7 @@ use crate::error::GroupwareError;
 use lyxal_host::config::{load_layered, DatabaseConfig, ObservabilityConfig, RuntimeTimeouts};
 use lyxal_host::net::IpNetwork;
 use lyxal_host::services::{
-    is_backend_name, validate_storage, SecretsConfig, StorageConfig, SECRET_KEYS,
+    is_backend_name, validate_storage, CryptoConfig, SecretsConfig, StorageConfig, SECRET_KEYS,
 };
 use lyxal_mail::net::{MailProtocol, TlsMode};
 use serde::{Deserialize, Deserializer};
@@ -51,6 +51,12 @@ pub struct GroupwareConfig {
     /// de démarrer (`GROUPWARE_MASTER_KEY_MISSING`).
     #[serde(default)]
     pub secrets: SecretsConfig,
+    /// Clé applicative partagée avec `lyxal-server` (section commune aux hôtes,
+    /// `lyxal_host::services`) : vérification des mots de passe d'application du dépôt
+    /// authentifié (décision E30). Obligatoire dès qu'une écoute `submission` existe
+    /// (`GROUPWARE_APPLICATION_KEY_MISSING`).
+    #[serde(default)]
+    pub crypto: CryptoConfig,
     /// Supports des fichiers et antivirus, section commune aux hôtes (`lyxal_host::services`).
     #[serde(default)]
     pub storage: StorageConfig,
@@ -495,7 +501,11 @@ impl GroupwareConfig {
         directory: impl AsRef<Path>,
         variables: Option<config::Map<String, String>>,
     ) -> Result<Self, GroupwareError> {
-        let secret_keys = [&["database.password"], SECRET_KEYS].concat();
+        let secret_keys = [
+            &["database.password", "crypto.application_key"],
+            SECRET_KEYS,
+        ]
+        .concat();
         let value: Self = load_layered(
             directory.as_ref(),
             ENV_PREFIX,
@@ -630,13 +640,15 @@ impl GroupwareConfig {
     }
 
     /// `[smtp]` et `[dns]` : contrôlés dès qu'ils sont donnés ; `smtp.hostname` est obligatoire
-    /// avec une écoute `smtp`.
+    /// avec une écoute `smtp` ou `submission` ; `crypto.application_key_id` avec la clé.
     fn validate_smtp(&self) -> Result<(), GroupwareError> {
         self.dns.dns_config()?;
-        let has_smtp = self
-            .listeners
-            .iter()
-            .any(|listener| listener.protocol == MailProtocol::Smtp);
+        if self.crypto.application_key.is_some() && self.crypto.application_key_id.is_none() {
+            return Err(GroupwareError::Configuration {
+                message: "crypto.application_key_id est obligatoire avec la clé applicative".into(),
+            });
+        }
+        let has_smtp = self.has_smtp_listener() || self.has_submission_listener();
         match self.smtp.smtp_config() {
             Some(config) => config
                 .validate()
@@ -644,7 +656,7 @@ impl GroupwareConfig {
                     message: error.to_string(),
                 }),
             None if has_smtp => Err(GroupwareError::Configuration {
-                message: "smtp.hostname est obligatoire avec une écoute smtp (bannière, Received, Authentication-Results)".into(),
+                message: "smtp.hostname est obligatoire avec une écoute smtp ou submission (bannière, Received, Authentication-Results, Message-ID)".into(),
             }),
             None => Ok(()),
         }
@@ -655,6 +667,13 @@ impl GroupwareConfig {
         self.listeners
             .iter()
             .any(|listener| listener.protocol == MailProtocol::Smtp)
+    }
+
+    /// Dépôt authentifié de ce nœud, s'il a une écoute `submission` (ports 587 et 465).
+    pub fn has_submission_listener(&self) -> bool {
+        self.listeners
+            .iter()
+            .any(|listener| listener.protocol == MailProtocol::Submission)
     }
 
     fn validate_services(&self) -> Result<(), GroupwareError> {

@@ -1,11 +1,14 @@
 use crate::error::ServerError;
-use lyxal_host::config::{
-    load_layered, DatabaseConfig, ObservabilityConfig, RuntimeTimeouts, SecretPassword,
-};
+use lyxal_host::config::{load_layered, DatabaseConfig, ObservabilityConfig, RuntimeTimeouts};
 use lyxal_host::net::IpNetwork;
-use lyxal_host::services::{validate_storage, SecretsConfig, StorageConfig, SECRET_KEYS};
+use lyxal_host::services::{
+    validate_storage, CryptoConfig, SecretsConfig, StorageConfig, SECRET_KEYS,
+};
 use serde::Deserialize;
 use std::{net::IpAddr, path::Path};
+
+/// Préfixe des variables d'environnement de l'hôte (`LYXAL__*`).
+pub const ENV_PREFIX: &str = "LYXAL";
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -69,19 +72,6 @@ pub struct AuthConfig {
     /// Identifiant de partie de confiance des passkeys (domaine) ; défaut : hôte de `public_url`.
     #[serde(default)]
     pub passkey_rp_id: Option<String>,
-}
-
-/// Trousseau applicatif de l'hôte (secrets des notifications, liens d'invitation) : clé AES-256
-/// de 32 octets en Base64 canonique (44 caractères), jamais dans les fichiers de configuration,
-/// uniquement par `LYXAL__CRYPTO__APPLICATION_KEY` (lue par `lyxal_crypto::EnvironmentKeyProvider`),
-/// et son identifiant `application_key_id` (ex. `app-2026`), qui figure dans chaque enveloppe.
-#[derive(Clone, Debug, Default, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct CryptoConfig {
-    #[serde(default)]
-    pub application_key: Option<SecretPassword>,
-    #[serde(default)]
-    pub application_key_id: Option<String>,
 }
 
 /// Planificateur (`lyxal_scheduler`) : places de chaque exécuteur de file sur ce nœud (W3),
@@ -172,7 +162,7 @@ impl AppConfig {
     ) -> Result<Self, ServerError> {
         let value: Self = load_layered(
             directory.as_ref(),
-            "LYXAL",
+            ENV_PREFIX,
             SECRET_KEYS,
             // Seules ces clés sont des listes ; les autres restent des chaînes
             &[

@@ -31,16 +31,18 @@ pub struct Started {
     pub services: MailHost,
 }
 
-/// Session d'un protocole qui n'existe pas encore (`submission`, `imap`, `pop3`,
-/// `managesieve`) : refus poli « service indisponible » (décision G3).
+/// Session d'un protocole qui n'existe pas encore (`imap`, `pop3`, `managesieve`) : refus poli
+/// « service indisponible » (décision G3).
 pub fn unavailable(protocol: MailProtocol) -> Arc<dyn SessionHandler> {
     Arc::new(UnavailableHandler::new(protocol))
 }
 
-/// Session de chaque protocole : réception SMTP (lot 5) pour `smtp`, refus poli pour les autres.
+/// Session de chaque protocole : réception SMTP (lot 5) pour `smtp`, dépôt authentifié (lot 6)
+/// pour `submission`, refus poli pour les autres.
 fn hosted(services: &MailHost, protocol: MailProtocol) -> Arc<dyn SessionHandler> {
-    match (protocol, &services.smtp) {
-        (MailProtocol::Smtp, Some(smtp)) => Arc::new(smtp.clone()),
+    match (protocol, &services.smtp, &services.submission) {
+        (MailProtocol::Smtp, Some(smtp), _) => Arc::new(smtp.clone()),
+        (MailProtocol::Submission, _, Some(submission)) => Arc::new(submission.clone()),
         _ => unavailable(protocol),
     }
 }
@@ -128,7 +130,8 @@ async fn start_inner(
             &|protocol| hosted(&services.mail, protocol),
         )?,
     }
-    .with_smtp_metrics(services.mail.smtp.clone());
+    .with_smtp_metrics(services.mail.smtp.clone())
+    .with_submission_metrics(services.mail.submission.clone());
     for worker in mail.workers()? {
         runtime.register_worker(worker)?;
     }

@@ -22,8 +22,6 @@ use std::sync::Arc;
 
 pub const MODULE_ID: &str = lyxal_secrets::MODULE_ID;
 
-/// Préfixe des variables d'environnement de l'hôte.
-const ENV_PREFIX: &str = "LYXAL";
 /// Éléments traités par paquet.
 const MAINTENANCE_BATCH: u32 = 200;
 
@@ -87,7 +85,10 @@ impl SecretsHost {
 /// Trousseau maître du coffre-fort (`LYXAL__SECRETS__MASTER_KEY` et, pendant une rotation,
 /// `LYXAL__SECRETS__PREVIOUS_MASTER_KEY`) ; `None` sans clé.
 pub fn master_keys(config: &SecretsConfig) -> Result<Option<MasterKeys>, ServerError> {
-    Ok(lyxal_host::services::master_keys(config, ENV_PREFIX)?)
+    Ok(lyxal_host::services::master_keys(
+        config,
+        crate::config::ENV_PREFIX,
+    )?)
 }
 
 /// Sonde de santé ; rend ce qu'il faut aux modules pour lire leurs secrets et à la maintenance.

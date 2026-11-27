@@ -6,7 +6,7 @@ décrit par `implementation_plan.md` à la racine du dépôt.
 
 | Étape | Thème | Plan ou lot |
 | :--- | :--- | :--- |
-| 1 | Envoi et dépôt authentifié (587, 465) | lot 6 |
+| 1 | Envoi (worker d'envoi, `[outbound]`, DKIM, avis) ; le dépôt authentifié (587, 465) est servi | lot 6 |
 | 2 | IMAP | lot 8 |
 | 3 | POP3 | lot 9 |
 | 4 | ManageSieve (dernier protocole : retrait de `UnavailableHandler`) | lot 10 |

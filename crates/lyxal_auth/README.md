@@ -239,7 +239,9 @@ facteur. L'utilisateur crée donc, depuis son compte, un mot de passe propre à 
 limité à quelques droits d'une organisation, révocable à tout moment. Modèle (comportement
 seulement) : Stalwart et RustiCal ([`MODELE_SOURCES.md`](MODELE_SOURCES.md)). Ce module fournit
 la création, la gestion et la vérification ; les serveurs des protocoles (`lyxal-groupware`,
-lots 3 et suivants du programme courrier) appellent la vérification.
+lots 3 et suivants du programme courrier) appellent la vérification : depuis le lot 6, le dépôt
+authentifié des ports 587 et 465 (`AppProtocol::Smtp`, permission `mail.send` déclarée par
+`lyxal_mail`), sous la clé applicative partagée avec `lyxal-server`.
 
 * **Mot de passe** : 20 signes tirés par `OsRng` dans un alphabet sans ambiguïté
   (`23456789abcdefghjkmnpqrstuvwxyz`, environ 99 bits), affichés en 4 groupes de 5
