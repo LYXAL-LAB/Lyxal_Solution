@@ -8,7 +8,10 @@
 //! 2. pierres tombales plus anciennes que la conservation de leur organisation
 //!    (`fn::mail_tombstone_purge`) ;
 //! 3. fiches d'idempotence des remises échues (`fn::mail_delivery_purge`) ;
-//! 4. comptes en suppression purgés par étapes (`fn::mail_account_purge_step`).
+//! 4. comptes en suppression purgés par étapes (`fn::mail_account_purge_step`) ;
+//! 5. file d'envoi (`fn::mail_queue_purge`) : fichiers des envois finis, envois finis depuis
+//!    14 jours, dépôts abandonnés, jetons de retour et compteurs d'envoi échus, secondes vides de
+//!    l'échéancier.
 //!
 //! Chaque appel est une transaction ; l'arrêt du serveur interrompt la maintenance entre deux
 //! appels (le reste est fait au passage suivant). Un passage s'arrête aussi après un nombre
@@ -18,7 +21,7 @@ use lyxal_runtime::worker::CancellationToken;
 
 use crate::error::MailResult;
 use crate::ingest::retry_conflicts;
-use crate::models::MaintenanceParams;
+use crate::models::{MaintenanceParams, QueuePurgeParams};
 use crate::store::MailStore;
 
 /// Appels au plus par étape et par passage.
@@ -39,6 +42,12 @@ pub struct MaintenanceReport {
     pub accounts: u64,
     /// Messages retirés des comptes purgés.
     pub messages: u64,
+    /// Envois retirés de la file (finis depuis 14 jours, dépôts abandonnés).
+    pub submissions: u64,
+    /// Fichiers d'envois supprimés.
+    pub queue_contents: u64,
+    /// Jetons de retour effacés, compteurs d'envoi et secondes de l'échéancier retirés.
+    pub queue_records: u64,
 }
 
 /// Maintenance du courrier.
@@ -107,6 +116,28 @@ impl MailMaintenance {
             report.accounts += count(step.accounts);
             report.messages += count(step.messages);
             if step.done {
+                break;
+            }
+        }
+        let queue = QueuePurgeParams {
+            limit: Some(self.batch),
+        };
+        for _ in 0..MAX_ROUNDS {
+            if cancellation.is_cancelled() {
+                return Ok(report);
+            }
+            let done = retry_conflicts(|| self.store.queue_purge(queue)).await?;
+            report.submissions += count(done.submissions);
+            report.queue_contents += count(done.contents);
+            report.queue_records += count(done.tokens + done.counters + done.seconds);
+            if done
+                .submissions
+                .max(done.contents)
+                .max(done.tokens)
+                .max(done.counters)
+                .max(done.seconds)
+                < self.batch
+            {
                 break;
             }
         }

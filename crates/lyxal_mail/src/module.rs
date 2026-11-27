@@ -13,7 +13,8 @@ use std::sync::{Arc, Mutex, PoisonError};
 use std::time::{Duration, Instant};
 
 use crate::dns::MailResolver;
-use crate::models::SettingsGetParams;
+use crate::models::{DkimPendingParams, MailDatetime, QueueStatsParams, SettingsGetParams};
+use crate::outbound::OutboundMetrics;
 use crate::store::MailStore;
 use crate::MODULE_ID;
 
@@ -143,6 +144,38 @@ pub struct MailHealthCheck {
     required_host: Option<RequiredHost>,
     scanner: Option<Arc<dyn ContentScanner>>,
     dns: Option<DnsProbe>,
+    outbound: Option<OutboundProbe>,
+}
+
+/// Retard de la plus ancienne échéance de la file d'envoi au-delà duquel la sonde passe à
+/// « dégradé » (file bloquée ou trop lente, plan du lot 6 §16.3).
+pub const QUEUE_LATE_AFTER: Duration = Duration::from_secs(15 * 60);
+/// Âge d'une clé DKIM en attente de publication au-delà duquel la sonde passe à « dégradé ».
+pub const DKIM_PENDING_AFTER: Duration = Duration::from_secs(24 * 3_600);
+/// Durée pendant laquelle un contenu illisible garde la sonde à « dégradé ».
+pub const UNREADABLE_DEGRADED_FOR: Duration = Duration::from_secs(3_600);
+
+/// Partie « envoi » de la sonde : file en retard, clé DKIM non publiée, contenu illisible.
+struct OutboundProbe {
+    metrics: Arc<OutboundMetrics>,
+    unreadable: Mutex<(u64, Option<Instant>)>,
+}
+
+impl OutboundProbe {
+    /// Vrai si un contenu illisible a été vu depuis moins de [`UNREADABLE_DEGRADED_FOR`].
+    fn unreadable_recently(&self) -> bool {
+        let count = self.metrics.unreadable();
+        let mut state = self
+            .unreadable
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        if count > state.0 {
+            *state = (count, Some(Instant::now()));
+        }
+        state
+            .1
+            .is_some_and(|seen| seen.elapsed() < UNREADABLE_DEGRADED_FOR)
+    }
 }
 
 /// Intervalle entre deux requêtes DNS de la sonde (nom témoin de l'installation).
@@ -184,7 +217,19 @@ impl MailHealthCheck {
             required_host: None,
             scanner: None,
             dns: None,
+            outbound: None,
         }
+    }
+
+    /// Envoi du nœud (lot 6) : « dégradé » si l'échéance la plus ancienne de la file a plus de
+    /// 15 minutes de retard, si une clé DKIM attend sa publication depuis plus de 24 heures, ou
+    /// si un contenu d'envoi a été illisible dans l'heure.
+    pub fn with_outbound(mut self, metrics: Arc<OutboundMetrics>) -> Self {
+        self.outbound = Some(OutboundProbe {
+            metrics,
+            unreadable: Mutex::new((0, None)),
+        });
+        self
     }
 
     /// Hôte dont un nœud doit tourner sur la même base (`lyxal_server`).
@@ -209,6 +254,55 @@ impl MailHealthCheck {
             last: Mutex::new(None),
         });
         self
+    }
+}
+
+impl MailHealthCheck {
+    async fn outbound_problem(&self, outbound: &OutboundProbe) -> Option<String> {
+        let now = MailDatetime::now();
+        let age = |at: &MailDatetime| {
+            u64::try_from(now.timestamp().saturating_sub(at.timestamp())).unwrap_or(0)
+        };
+        match self.store.queue_stats(QueueStatsParams {}).await {
+            Ok(stats) => {
+                if let Some(oldest) = &stats.oldest_due_at {
+                    if age(oldest) > QUEUE_LATE_AFTER.as_secs() {
+                        return Some(format!(
+                            "file d'envoi en retard : {} destinataires échus, plus ancienne échéance passée depuis {} s",
+                            stats.due,
+                            age(oldest)
+                        ));
+                    }
+                }
+            }
+            Err(error) => return Some(format!("file d'envoi illisible : {error}")),
+        }
+        match self
+            .store
+            .dkim_pending(DkimPendingParams { limit: Some(100) })
+            .await
+        {
+            Ok(pending) => {
+                if let Some(late) = pending
+                    .pending
+                    .iter()
+                    .find(|key| age(&key.created_at) > DKIM_PENDING_AFTER.as_secs())
+                {
+                    return Some(format!(
+                        "domaine sans clé DKIM active depuis plus de 24 h : enregistrement {}._domainkey à publier (fn::mail_dkim_key_list), messages envoyés non signés",
+                        late.selector
+                    ));
+                }
+            }
+            Err(error) => return Some(format!("clés DKIM illisibles : {error}")),
+        }
+        if outbound.unreadable_recently() {
+            return Some(
+                "contenu d'un envoi illisible dans l'heure (fichier altéré ou stockage indisponible)"
+                    .to_string(),
+            );
+        }
+        None
     }
 }
 
@@ -296,6 +390,15 @@ impl ModuleHealthCheck for MailHealthCheck {
                         )),
                     ))
                 }
+            }
+        }
+        if let Some(outbound) = &self.outbound {
+            if let Some(problem) = self.outbound_problem(outbound).await {
+                return Ok(HealthCheckResult::degraded(
+                    self.module_id.clone(),
+                    elapsed(),
+                    Some(problem),
+                ));
             }
         }
         Ok(HealthCheckResult::healthy(

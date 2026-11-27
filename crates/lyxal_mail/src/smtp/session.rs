@@ -556,7 +556,7 @@ impl SmtpSession {
             ForwardPath::Mailbox(mailbox) => match mailbox.domain() {
                 // Domaine converti en forme ASCII (A-label, S16) ; inconvertible : aucun relais
                 Domain::Name(name) if mailbox.local_part().is_ascii() => to_ascii_domain(name)
-                    .map(|domain| Ok(format!("{}@{domain}", mailbox.local_part()))),
+                    .map(|domain| Ok(format!("{}@{domain}", mailbox.smtp_local_part()))),
                 // Partie locale UTF-8 : aucune adresse de Lyxal ne peut correspondre (S16)
                 Domain::Name(_) => Some(Err(RefusedReason::Unknown)),
                 Domain::Ipv4(_) | Domain::Ipv6(_) => None,
@@ -1241,7 +1241,7 @@ fn business_code(error: &LyxalSurrealError) -> Option<&str> {
 }
 
 /// Mot DKIM du message : `pass` si une signature réussit, sinon le résultat de la première.
-fn dkim_summary(outputs: &[DkimOutput]) -> String {
+pub(crate) fn dkim_summary(outputs: &[DkimOutput]) -> String {
     if outputs
         .iter()
         .any(|output| output.result == DkimResult::Pass)
@@ -1255,7 +1255,7 @@ fn dkim_summary(outputs: &[DkimOutput]) -> String {
 }
 
 /// Mot DMARC du message : le plus défavorable de ses domaines d'auteur.
-fn dmarc_summary(outputs: &[DmarcOutput]) -> String {
+pub(crate) fn dmarc_summary(outputs: &[DmarcOutput]) -> String {
     let rank = |result: DmarcResult| match result {
         DmarcResult::Fail => 4,
         DmarcResult::TempError => 3,
@@ -1310,7 +1310,7 @@ fn received_header(
 }
 
 /// Date RFC 5322 en temps universel (`Thu, 26 Nov 2026 17:27:54 +0000`).
-fn rfc5322_date(time: SystemTime) -> String {
+pub(crate) fn rfc5322_date(time: SystemTime) -> String {
     let seconds = time
         .duration_since(UNIX_EPOCH)
         .map(|elapsed| elapsed.as_secs())

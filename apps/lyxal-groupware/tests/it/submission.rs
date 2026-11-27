@@ -439,6 +439,11 @@ async fn people_submit_mail_on_ports_587_and_465() {
         .command("RCPT TO:<paul@alpha.test>")
         .await
         .starts_with("250"));
+    // Partie locale entre guillemets : gardée sous sa forme d'enveloppe jusqu'à la file
+    assert!(session
+        .command("RCPT TO:<\"john doe\"@ailleurs.test>")
+        .await
+        .starts_with("250"));
     let accepted = session.data(MESSAGE).await;
     assert!(
         accepted.starts_with("250 2.0.0 Ok queued as s"),
@@ -465,14 +470,21 @@ async fn people_submit_mail_on_ports_587_and_465() {
         .expect("destinataires")
         .take(0)
         .expect("états");
-    assert_eq!(recipients, ["scheduled", "scheduled"]);
+    assert_eq!(recipients, ["scheduled", "scheduled", "scheduled"]);
     let local: Vec<bool> = client
         .query(format!("SELECT VALUE local FROM mail_queue_recipient WHERE submission = mail_submission:{key} ORDER BY rank"))
         .await
         .expect("destinataires")
         .take(0)
         .expect("routes");
-    assert_eq!(local, [false, true]);
+    assert_eq!(local, [false, true, false]);
+    let quoted: Vec<String> = client
+        .query(format!("SELECT VALUE address FROM mail_queue_recipient WHERE submission = mail_submission:{key} AND local = false ORDER BY rank"))
+        .await
+        .expect("destinataires")
+        .take(0)
+        .expect("adresses");
+    assert_eq!(quoted, ["x@ailleurs.test", "\"john doe\"@ailleurs.test"]);
     let object: RecordId = value(
         &client,
         &format!("SELECT VALUE content.object FROM ONLY mail_submission:{key}"),
@@ -561,7 +573,7 @@ async fn people_submit_mail_on_ports_587_and_465() {
     let snapshot = started.mail.snapshot();
     let metrics = snapshot.submission.expect("mesures du dépôt");
     assert_eq!(metrics["submissions_queued"], 1);
-    assert_eq!(metrics["submission_recipients_queued"], 2);
+    assert_eq!(metrics["submission_recipients_queued"], 3);
     assert_eq!(metrics["submission_spoofing"], 3);
     assert_eq!(metrics["auth_refused.forbidden"], 1);
     assert_eq!(metrics["auth_refused.invalid"], 4);

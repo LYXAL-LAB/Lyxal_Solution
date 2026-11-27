@@ -11,7 +11,7 @@ racine du dépôt ; chaque lot a son propre plan, validé par le CTO avant toute
 
 | Lot | Contenu pour ce crate | Sources principales | Prérequis |
 | :- | :--- | :--- | :--- |
-| 6 — Envoi | SurrealQL fait (6c : file, dépôt et contrat public, droits d'expéditeur, clés DKIM, adresses de retour) ; dépôt authentifié 587 / 465 fait (6e) ; reste : worker d'envoi vers les MX, TLS, relais, route locale, signature et provisionnement DKIM (6d), avis reçus, rétrodiffusion, transfert d'alias (6f) | Stalwart `smtp/queue`, `smtp/outbound` ; Mox `queue`, `smtpclient`, `dsn` ; KumoMTA | lots 1, 5 |
+| 6 — Envoi | Fait : SurrealQL (6c : file, dépôt et contrat public, droits d'expéditeur, clés DKIM, adresses de retour) ; worker d'envoi (6d : MX, STARTTLS opportuniste, relais, route locale, signature et provisionnement DKIM, avis déposés) ; dépôt authentifié 587 / 465 (6e) ; reste : avis reçus, rétrodiffusion, transfert d'alias et ses avis (6f) | Stalwart `smtp/queue`, `smtp/outbound` ; Mox `queue`, `smtpclient`, `dsn` ; KumoMTA | lots 1, 5 |
 | 7 — Transport sûr et rapports | MTA-STS, DANE, TLS-RPT, rapports DMARC reçus et émis, ARC | Stalwart `smtp/reporting`, `outbound/{dane,mta_sts}` ; Mox | lot 6 |
 | 8 — IMAP | IMAP4rev2 et rev1, extensions (IDLE, CONDSTORE, QRESYNC, MOVE, UIDPLUS, SPECIAL-USE, QUOTA, ACL…) | Stalwart `imap` ; Mox `imapserver` | lots 1, 4 |
 | 9 — Recherche et POP3 | Texte des pièces jointes, index plein texte, recherche IMAP ; POP3 | Stalwart `text-extract`, `pop3`, `store/search` | lot 8 |
@@ -97,7 +97,33 @@ Mesures : [`README.md`](README.md), section « Mesures ».
   extension de `lyxal_core` au lot 5 ; saisie d'un domaine ou d'une adresse en Unicode par un
   administrateur : question rouverte au lot 13.
 * **Alias vers l'extérieur, listes** : champ `forward_to` en place (6c), transfert à la réception au sous-lot 6f ; listes plus tard.
-* **Coût de la réservation de la file (mesure du sous-lot 6c).** `fn::mail_queue_claim` lit l'échéancier par une plage bornée (2 ms pour 1 000 fiches, sans dépendre de la taille de la file) mais coûte environ 1,8 ms par destinataire réservé, dont 1,35 ms pour le `DELETE` de l'ancienne fiche de l'échéancier (tout `DELETE` coûte environ 1,35 ms en SurrealDB 3.3.4, même sur une table simple) : réservation de 500 destinataires parmi 100 000 en attente : médiane 908 ms, p95 1 073 ms (916 ms parmi 10 000), loin de l'objectif de 20 ms du plan (§18). Pistes à mesurer en 6d sur le serveur réel : réserver par lots plus petits (100) au fil de l'envoi, fiches de l'échéancier réutilisées au lieu d'être supprimées (purge groupée des fiches périmées), ou repli sur l'index `(state, next_attempt_at)` prévu par le plan ; décision du CTO si l'objectif est revu.
+* **Coût de la réservation de la file (sous-lots 6c, 6d).** Échéancier par seconde et lots de
+  50 (`README.md`, « Mesure de la réservation ») : 500 destinataires parmi 100 000 en 241 ms
+  (908 ms avant), 50 en 58 ms par HTTP (120 ms avant ; environ 36 ms hors authentification).
+  Objectif retenu par le CTO : 0,5 ms par destinataire réservé au plus (tenu : environ 0,45 ms,
+  dont 0,2 ms pour l'`UPDATE` seul). Piste si un débit plus élevé devient nécessaire : une
+  réservation par lot (bail porté par une fiche de réservation au lieu de chaque destinataire,
+  gardes et événements allégés pour le compte de service), à instruire dans un plan. Le débit réel de l'envoi n'est pas mesuré sur un
+  binaire optimisé (disque du poste de développement insuffisant pour une compilation `release`
+  pendant ce sous-lot) : `tests/it/outbound.rs`, `measure_throughput_to_the_fake_mx`, à lancer
+  sur la machine de référence.
+* **Envoi : points ouverts du sous-lot 6d.**
+  * Avis d'un transfert (`forward`) vers l'expéditeur d'origine authentifié : produit par le
+    sous-lot 6f avec le transfert (le `DsnComposer` les laisse non notés, `Deferred`).
+  * Contenu illisible deux fois de suite → échec définitif `5.3.0` : compté par nœud (mémoire),
+    un autre nœud recommence le compte.
+  * Compteur d'échecs d'une destination remis à zéro seulement par un échec d'une transaction
+    avec réponse du serveur (une remise réussie sans aucun échec ne l'écrit pas) ; sans effet
+    sur la suspension en cours.
+  * Avis de non-remise : `Original-Recipient` (ORCPT) absent des avis produits
+    (`fn::mail_submission_get` ne rend pas l'ORCPT des destinataires).
+  * Essais non écrits : deux nœuds sur la même base (aucun envoi double hors fenêtre de
+    doublon), relais de bout en bout en TLS vérifié (autorité d'essai absente de
+    `webpki-roots` : seul le refus est essayé), 200 envois simultanés de 25 Mio (mémoire), 20
+    arrêts `kill -9` du binaire (un arrêt brutal du worker est essayé), corpus DKIM de 10 Mio ;
+    oracle `mail-auth` (`tools/dkim_oracle/`) non étendu aux signatures produites.
+  * Tâche `mail.dkim_provision` (et non `mail.dkim.provision` du plan) : le nom d'une tâche de
+    `lyxal_scheduler` a deux segments.
 * **Référence d'un module (`client_reference`).** Contrôlée par `fn::validation_identifier` (lettres, chiffres, `_`) comme le prévoit le plan : un identifiant d'enregistrement `table:clé` n'est pas accepté tel quel (le module passe sa clé, ou une forme sans `:`). À revoir avec le plan du fournisseur de `lyxal_notification`.
 * **Clés « fichiers » (décisions M19, S13).** Cache écrit dans `lyxal_secrets`
   (`FileKeys::with_cache`), pour les ouvertures seulement, activé par `lyxal-groupware`. Un

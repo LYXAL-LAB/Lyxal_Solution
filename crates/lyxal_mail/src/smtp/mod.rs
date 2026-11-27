@@ -15,6 +15,7 @@ pub(crate) mod handler;
 mod metrics;
 mod resolver;
 pub(crate) mod session;
+pub(crate) use session::{dkim_summary, dmarc_summary, rfc5322_date};
 
 pub use block::{
     BlockList, BlockRefreshWorker, Network, NetworkParseError, Offence, BAN_OFFENCES, BAN_WINDOW,

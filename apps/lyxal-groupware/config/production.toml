@@ -92,6 +92,24 @@ log_client_ip = "network"
 # bind = ["[::]:465"]
 # tls = "implicit"
 #
+# Envoi (lot 6, worker lyxal_mail:mail.outbound) : port 25 sortant ouvert, DNS inverse de
+# l'adresse sortante égal à smtp.hostname, SPF du domaine, enregistrements DKIM publiés (rendus par
+# fn::mail_dkim_key_list ; clés créées par la tâche mail.dkim_provision), DMARC. Limites par nœud
+# (sur plusieurs nœuds, elles s'additionnent). Sans port 25 sortant : relais du fournisseur.
+# [outbound]
+# enabled = true
+# ip_families = ["ipv4", "ipv6"]
+# max_connections = 100
+# connections_per_destination = 4
+# [[outbound.destinations]]
+# domain = "gmail.com"
+# messages_per_minute = 600
+# [outbound.relay]
+# host = "smtp.fournisseur.example"
+# port = 465
+# tls = "implicit"
+# credentials_path = "mail/relay"   # lyxal_secrets, installation : { "username": …, "password": … }
+#
 # IMAP (lot 8), derrière un répartiteur qui envoie l'en-tête PROXY :
 # [[listeners]]
 # id = "imaps"

@@ -15,12 +15,14 @@ description = "Serveur de courrier de Lyxal OS : modèle de données SurrealQL, 
 lyxal_crypto.workspace = true
 lyxal_mail_proto.workspace = true
 lyxal_runtime.workspace = true
+# Clés DKIM et identifiants du relais sortant (lot 6) : coffre-fort de l'hôte
+lyxal_secrets.workspace = true
 lyxal_storage.workspace = true
 lyxal_surreal.workspace = true
 async-trait.workspace = true
 surrealdb.workspace = true
 thiserror.workspace = true
-tokio = { workspace = true, features = ["io-util"] }
+tokio = { workspace = true, features = ["io-util", "net"] }
 tokio-util.workspace = true
 tracing.workspace = true
 # Identifiant `Message-ID` des messages déposés (UUID v7, plan du lot 6, §8.5).
@@ -40,11 +42,19 @@ idna = "1.1"
 # figée (la liste est celle du jour de publication de la crate) ; mise à jour par plan (décision
 # P14). Licence déclarée de la crate : MIT/Apache-2.0 ; données de la liste : MPL-2.0 (Mozilla).
 psl = "=2.1.263"
+# Jetons des adresses de retour (128 bits, règle 7 du §11.3 : OsRng seulement).
+rand_core = { version = "0.6", features = ["getrandom"] }
+# Identifiants du relais sortant rangés en JSON dans lyxal_secrets ({ username, password }).
+serde.workspace = true
+serde_json.workspace = true
+# Mots de passe du relais sortant effacés de la mémoire (déjà dans l'arbre par lyxal_crypto).
+zeroize = "1.8"
+# Dates des avis de non-remise (lyxal_mail_proto::dsn ; MIT OR Apache-2.0, déjà dans l'arbre).
+time = { version = "0.3", default-features = false, features = ["std"] }
 
 [dev-dependencies]
 proptest = "1.5"
 # Dialogues SMTP des essais sur une vraie socket
 tokio = { workspace = true, features = ["net", "io-util"] }
-lyxal_secrets.workspace = true
-serde_json.workspace = true
 tempfile.workspace = true
+tracing-subscriber.workspace = true

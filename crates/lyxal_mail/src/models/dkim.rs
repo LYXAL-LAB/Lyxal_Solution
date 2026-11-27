@@ -181,6 +181,8 @@ pub struct DkimPendingKey {
     pub algorithm: DkimAlgorithm,
     /// Clé publique attendue dans le DNS.
     pub public_key: String,
+    /// Création de la clé (sonde : domaine sans clé active depuis plus de 24 h).
+    pub created_at: MailDatetime,
 }
 
 /// Résultat de `fn::mail_dkim_pending`.

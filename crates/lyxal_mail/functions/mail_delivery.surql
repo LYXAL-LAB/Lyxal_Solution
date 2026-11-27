@@ -218,13 +218,13 @@ DEFINE FUNCTION OVERWRITE fn::mail_delivery_item_check($item: any) -> object {
             spf: fn::validation_enum($reception.spf, ["none", "neutral", "pass", "fail", "softfail", "temperror", "permerror"], true),
             dkim: fn::validation_enum($reception.dkim, ["none", "pass", "fail", "neutral", "policy", "temperror", "permerror"], true),
             dmarc: fn::validation_enum($reception.dmarc, ["none", "pass", "fail", "temperror", "permerror"], true),
-            iprev: fn::validation_enum($reception.iprev, ["pass", "fail", "temperror", "permerror"], true),
+            iprev: fn::validation_enum($reception.iprev, ["none", "pass", "fail", "temperror", "permerror"], true),
             antivirus: fn::validation_enum($reception.antivirus, ["clean", "not_scanned"], true),
             spam: fn::validation_enum($reception.spam, ["none"], true),
             tls: fn::validation_boolean($reception.tls)
         })
     });
-} COMMENT "Interne : contrôle d'un élément de fn::mail_delivery_commit par appels directs des primitives de lyxal_core et fn::validation_checks_report (décision P4) : content, object, received_at, delivery_key, envelope, structure (objets, 256 Kio et 1 Mio sérialisés au plus) et reception ({ spf, dkim, dmarc, iprev : mots de la RFC 8601 ; antivirus : clean ou not_scanned ; spam : none (lot 11) ; tls }, tous exigés) exigés ; role (inbox par défaut, ou junk), message_id (2 048 caractères), in_reply_to (100) et references (1 000 identifiants de 2 048 caractères, [] par défaut), base_subject (16 384), is_report et has_attachment (false par défaut) ; clés inconnues refusées. Rapport { valid, value, errors, warnings, by_field } de lyxal_core";
+} COMMENT "Interne : contrôle d'un élément de fn::mail_delivery_commit par appels directs des primitives de lyxal_core et fn::validation_checks_report (décision P4) : content, object, received_at, delivery_key, envelope, structure (objets, 256 Kio et 1 Mio sérialisés au plus) et reception ({ spf, dkim, dmarc, iprev : mots de la RFC 8601, iprev none pour une remise sans réseau ; antivirus : clean ou not_scanned ; spam : none (lot 11) ; tls }, tous exigés) exigés ; role (inbox par défaut, ou junk), message_id (2 048 caractères), in_reply_to (100) et references (1 000 identifiants de 2 048 caractères, [] par défaut), base_subject (16 384), is_report et has_attachment (false par défaut) ; clés inconnues refusées. Rapport { valid, value, errors, warnings, by_field } de lyxal_core";
 
 DEFINE FUNCTION OVERWRITE fn::mail_delivery_item($account: record<mail_account>, $item: object, $settings: object, $language: string) -> object {
     LET $fail = |$code, $details| { error: fn::error_result($code, $language, $details).error };

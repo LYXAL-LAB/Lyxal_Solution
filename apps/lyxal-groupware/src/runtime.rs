@@ -131,7 +131,8 @@ async fn start_inner(
         )?,
     }
     .with_smtp_metrics(services.mail.smtp.clone())
-    .with_submission_metrics(services.mail.submission.clone());
+    .with_submission_metrics(services.mail.submission.clone())
+    .with_outbound_metrics(services.mail.outbound.clone());
     for worker in mail.workers()? {
         runtime.register_worker(worker)?;
     }

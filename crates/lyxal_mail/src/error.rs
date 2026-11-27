@@ -6,6 +6,7 @@
 //! de contenu de message.
 
 use lyxal_mail_proto::mime::MimeError;
+use lyxal_secrets::SecretsError;
 use lyxal_storage::StorageError;
 use lyxal_surreal::{LyxalCallError, LyxalSurrealError};
 use thiserror::Error;
@@ -19,6 +20,12 @@ pub enum MailError {
     /// Échec du stockage des fichiers (code `STORAGE_*`).
     #[error("{0}")]
     Storage(Box<StorageError>),
+    /// Échec du coffre-fort (code `SECRETS_*`) : clé DKIM ou identifiants du relais.
+    #[error("{0}")]
+    Secrets(Box<SecretsError>),
+    /// Échec cryptographique (clé DKIM illisible, signature impossible) ; aucune donnée.
+    #[error("cryptographie : {0}")]
+    Crypto(lyxal_crypto::CryptoError),
     /// Message illisible : vide, sans en-tête, ou au-delà des limites de lecture MIME
     /// (`MAIL_MESSAGE_MALFORMED`).
     #[error("message illisible : {0}")]
@@ -54,6 +61,8 @@ impl MailError {
                     .unwrap_or_else(|| "ERROR_INVALID_FUNCTION_RESPONSE".to_string()),
             },
             Self::Storage(error) => error.code(),
+            Self::Secrets(error) => error.code(),
+            Self::Crypto(_) => "MAIL_DKIM_KEY_UNAVAILABLE".to_string(),
             Self::Malformed(_) => "MAIL_MESSAGE_MALFORMED".to_string(),
             Self::Unavailable(_) => "MAIL_CONTENT_UNAVAILABLE".to_string(),
             Self::Refused { code, .. } => code.clone(),
@@ -70,8 +79,9 @@ impl MailError {
                 LyxalSurrealError::Call(LyxalCallError::Business(_))
             ),
             Self::Storage(error) => error.is_business(),
+            Self::Secrets(error) => error.is_business(),
             Self::Refused { .. } => true,
-            Self::Malformed(_) | Self::Unavailable(_) => false,
+            Self::Malformed(_) | Self::Unavailable(_) | Self::Crypto(_) => false,
         }
     }
 
@@ -88,10 +98,23 @@ impl MailError {
                 }
             },
             Self::Storage(error) => error.is_retryable(),
+            Self::Secrets(error) => error.is_retryable(),
             Self::Unavailable(_) => true,
             Self::Refused { retryable, .. } => *retryable,
-            Self::Malformed(_) => false,
+            Self::Malformed(_) | Self::Crypto(_) => false,
         }
+    }
+}
+
+impl From<SecretsError> for MailError {
+    fn from(error: SecretsError) -> Self {
+        Self::Secrets(Box::new(error))
+    }
+}
+
+impl From<lyxal_crypto::CryptoError> for MailError {
+    fn from(error: lyxal_crypto::CryptoError) -> Self {
+        Self::Crypto(error)
     }
 }
 

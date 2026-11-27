@@ -96,7 +96,7 @@ DEFINE FIELD OVERWRITE reception ON TABLE mail_message
 DEFINE FIELD OVERWRITE reception.spf ON TABLE mail_message TYPE option<string> ASSERT $value IS NONE OR $value IN ["none", "neutral", "pass", "fail", "softfail", "temperror", "permerror"] COMMENT "SPF (RFC 7208)";
 DEFINE FIELD OVERWRITE reception.dkim ON TABLE mail_message TYPE option<string> ASSERT $value IS NONE OR $value IN ["none", "pass", "fail", "neutral", "policy", "temperror", "permerror"] COMMENT "DKIM (RFC 6376) : résultat retenu parmi les signatures";
 DEFINE FIELD OVERWRITE reception.dmarc ON TABLE mail_message TYPE option<string> ASSERT $value IS NONE OR $value IN ["none", "pass", "fail", "temperror", "permerror"] COMMENT "DMARC (RFC 7489)";
-DEFINE FIELD OVERWRITE reception.iprev ON TABLE mail_message TYPE option<string> ASSERT $value IS NONE OR $value IN ["pass", "fail", "temperror", "permerror"] COMMENT "Nom inverse (RFC 8601 §3)";
+DEFINE FIELD OVERWRITE reception.iprev ON TABLE mail_message TYPE option<string> ASSERT $value IS NONE OR $value IN ["none", "pass", "fail", "temperror", "permerror"] COMMENT "Nom inverse (RFC 8601 §3) ; none : remise sans connexion réseau (route locale, avis de non-remise, lot 6)";
 DEFINE FIELD OVERWRITE reception.antivirus ON TABLE mail_message TYPE option<string> ASSERT $value IS NONE OR $value IN ["clean", "not_scanned"] COMMENT "Antivirus : clean, ou not_scanned (aucun antivirus configuré)";
 DEFINE FIELD OVERWRITE reception.spam ON TABLE mail_message TYPE option<string> ASSERT $value IS NONE OR $value IN ["none"] COMMENT "Verdict anti-spam (réservé au lot 11 : none)";
 DEFINE FIELD OVERWRITE reception.tls ON TABLE mail_message TYPE option<bool> COMMENT "Reçu sous TLS";

@@ -10,12 +10,13 @@ antivirus), dépose un message brut (lecture MIME, écriture **chiffrée au repo
 `lyxal_storage`, inscription), le relit en entier ou par plage, remet un message reçu à un compte
 (ordre par compte dans le nœud, écriture groupée, événement `mail.message.received`) et fait la
 maintenance (contenus abandonnés et libérés, effacements échus, fiches d'idempotence échues,
-comptes supprimés). Envoi (lot 6, en cours) : la partie SurrealQL est faite (sous-lot 6c : file
-d'envoi, dépôt et contrat public des modules, droits d'expéditeur, clés DKIM, adresses de retour,
-§ « État actuel : envoi ») et le dépôt authentifié des ports 587 et 465 aussi (sous-lot 6e,
-§ « `lyxal_mail::submission` ») : un message déposé reste dans la file tant que le worker
-d'envoi (6d) n'est pas livré ; le port 25 ne relaie rien, aucun avis de non-remise n'est
-produit. Le module est installé et démarré par
+comptes supprimés). Envoi (lot 6, en cours) : SurrealQL de la file (sous-lot 6c) et worker
+d'envoi (sous-lot 6d : MX, STARTTLS opportuniste, relais facultatif, route locale entre
+organisations, signature et provisionnement DKIM, avis déposés dans la boîte de l'expéditeur,
+§ « État actuel : envoi » et « État actuel : worker d'envoi ») ; un module envoie par le contrat
+public de dépôt, un logiciel de courrier par le dépôt authentifié des ports 587 et 465 (6e,
+§ « `lyxal_mail::submission` ») ; les avis reçus, la rétrodiffusion et le transfert (6f)
+restent à livrer. Le port 25 ne relaie toujours rien. Le module est installé et démarré par
 l'hôte `apps/lyxal-groupware`, qui le porte par son `MailModule`, héberge ses dépendances
 (`lyxal_auth`, `lyxal_secrets`, `lyxal_storage`) et `lyxal_scheduler` (maintenance), et lui
 rattache ses écoutes (workers `lyxal_mail:mail.listener.<id>`), servies pour `smtp` par
@@ -201,7 +202,7 @@ réception (6f) s'appuient sur ces fonctions.
 | :--- | :--- |
 | `mail_submission` | Envoi `mail_submission:s<UUID v7 en hexadécimal>` : origine (`submission` : dépôt authentifié ; `module` : contrat public ; `forward` : transfert ; `dsn` : avis vers l'extérieur), compte et titulaire, expéditeur, adresses des champs d'en-tête contrôlées, adresse d'enveloppe et jeton de retour (unique, lisible du compte de service seulement), référence du module appelant, contenu (fichier chiffré `queue/<clé>.eml` du bucket `lyxal-mail`), préfixe (`DKIM-Signature`, compte de service seulement), demande d'avis (`RET`, `ENVID`), réception d'origine d'un transfert (`spf`, `envelope_dkim`), états `pending` → `queued` → `done`, destinataires ouverts, abandon, fin de vie (`expire_hours`) |
 | `mail_queue_recipient` | Destinataire en file `⟨<clé de l'envoi>_<10^3 + rang>⟩` : adresse, domaine, route locale, `NOTIFY`, `ORCPT`, état (`scheduled`, `running`, `delivered`, `relayed`, `failed`, `expired`, `canceled`, `bounced`), essais, échéance, bail et jeton de réservation (compte de service seulement), dernier résultat (étape, codes, texte assaini, serveur, TLS), retard, avis produits |
-| `mail_queue_due` | Échéancier ordonné `⟨<10^16 + µs>_<clé du destinataire>⟩` (E5) : un destinataire `scheduled` sous son échéance, `running` sous la fin de son bail ; tenu par les événements des destinataires, fermé à l'écriture directe |
+| `mail_queue_due` | Échéancier par seconde `⟨<10^10 + seconde Unix>⟩` (E5, mesure du sous-lot 6d) : une fiche par seconde où des destinataires sont programmés, posée par l'événement des destinataires, jamais remise à jour ; les destinataires d'une seconde se lisent par l'index d'égalité `due_second` (calculé), les baux expirés par l'index `(state, locked_until)` ; secondes vides retirées par la réservation (dix au plus) et la maintenance ; fermé à l'écriture directe |
 | `mail_queue_destination` | Suspension d'une destination injoignable (5 min doublé, 2 h au plus) et échecs consécutifs |
 | `mail_dkim_key` | Fiche publique d'une clé DKIM (`rsa-sha256` 2 048 bits, `ed25519-sha256`) : sélecteur, `p=`, chemin du secret `mail/dkim/<domaine>/<sélecteur>` (compte de service seulement), `pending` → `active` |
 | `mail_send_counter` | Limites d'envoi : messages et destinataires d'un compte par jour UTC, messages des modules d'une organisation par heure, transferts par jour ; pris par l'événement de création d'un envoi, rendus à l'abandon, purgés |
@@ -259,14 +260,81 @@ reprise d'un bail expiré, tentatives, retard, expiration, suspension, avis dus 
 `tests/it/queue.rs` (wrappers, reprise d'un bail, contrat des modules appelé par le nom des
 fonctions sans type de `lyxal_mail`).
 
-**Mesure de la réservation** (binaire `surreal` 3.3.4, serveur en mémoire, une connexion,
-`scripts/ci` + script d'essai du sous-lot, 27 novembre 2026) : la plage de l'échéancier se lit en
-2 ms pour 1 000 fiches, quelle que soit la taille de la file ; une réservation coûte environ
-1,8 ms **par destinataire réservé** (garde et échéancier de chaque écriture, dont 1,35 ms pour le
-`DELETE` de l'ancienne fiche de l'échéancier, coût de la base en 3.3.4 pour tout `DELETE`).
-Réservation de 500 destinataires échus dans une file de 100 000 en attente : médiane 908 ms,
-p95 1 073 ms (20 réservations rendues aussitôt) ; 916 ms dans une file de 10 000 : le coût ne
-dépend pas de la taille de la file. Objectif du plan (20 ms) non tenu : voir `ROADMAP.md`.
+**Mesure de la réservation** (binaire `surreal` 3.3.4, serveur en mémoire par HTTP, une
+requête par appel, session racine : chaque requête paie environ 22 ms d'authentification
+Basic, comprises dans les chiffres ; machine de développement à 4 cœurs partagés ; banc Python du
+sous-lot, file de 100 000 destinataires programmés le lendemain, puis 500 échus ; 20
+réservations rendues aussitôt). Avant (sous-lot 6c, une fiche de l'échéancier par destinataire,
+retirée à chaque réservation et à chaque résultat) : 1,8 ms par destinataire réservé, dont
+1,35 ms pour le `DELETE` ; 500 destinataires : médiane 908 ms, p95 1 073 ms ; même code relancé
+au sous-lot 6d dans une file de 10 000 : 500 en 944 ms (p95 1 031 ms), **50 en 120 ms (p95
+144 ms)**. Cause mesurée au sous-lot 6d : un `DELETE` coûte environ 1 ms dans une
+base de Lyxal OS quelle que soit la table, proportionnellement au nombre de tables définies (0,14
+ms avec 100 tables, 0,27 ms avec 100 tables à champs `REFERENCE`, 0,01 ms dans une base vide),
+même par lot (`DELETE` de 500 fiches en une instruction : même coût par fiche) ; un `UPDATE` ou
+un `CREATE` coûte environ 0,015 ms. Choix (voies du plan comparées, `ROADMAP.md`) :
+
+* **index seul** (repli du plan) écarté tel quel : dans une fonction, SurrealDB 3.3.4 n'applique
+  pas `LIMIT` au parcours d'un index (constat P1, confirmé : 20 000 échus lus pour en rendre 500,
+  65 ms de plus) et ne borne une lecture d'index par dates que d'un côté (l'autre borne est un
+  filtre : avec 100 000 programmés plus tard, toute la fin de l'index est parcourue) ; une borne
+  exactement à la seconde ronde ne rendait même aucune ligne dans une fonction ;
+* **fiches réutilisées** : impossible pour une clé qui porte l'instant (l'identifiant d'une fiche
+  ne change pas) ; garder les fiches périmées et les purger plus tard reporterait le même
+  `DELETE` (environ 2 par destinataire envoyé) sur la maintenance ;
+* **retenu : échéancier par seconde** (fiches jamais retirées à la réservation, plage
+  d'identifiants bornée qui respecte `LIMIT`) + **égalité d'index** sur un entier calculé
+  (`due_second`) pour les destinataires d'une seconde + **lots plus petits** (50 par
+  réservation, réglage `outbound.claim_batch`, plusieurs lectures au fil de l'envoi). Le `DELETE`
+  ne reste qu'une fois par seconde passée et vide (dix au plus par réservation, le reste par la
+  maintenance).
+
+Après (même banc, secondes vides du chargement retirées par la maintenance comme en service) :
+500 destinataires parmi 100 000 : médiane 241 ms, p95 253 ms (4 fois moins) ; **50 destinataires :
+médiane 58 ms, p95 72 ms**, soit environ 36 ms et 0,45 ms par destinataire réservé, hors
+authentification. Le reste est le coût d'un `UPDATE` d'un destinataire avec ses gardes et ses
+quatre événements (0,2 ms sans aucun événement, mesure isolée). Objectif retenu par le CTO :
+**0,5 ms par destinataire réservé au plus** (500 en 250 ms environ, soit 2 000 destinataires par
+seconde et par nœud), **tenu** ; les 20 ms pour 500 du plan supposaient moins de 0,04 ms par
+destinataire, sous le coût d'un `UPDATE` seul dans une fonction de SurrealDB 3.3.4. Les écritures des
+résultats (`_complete`, `_fail`) ne paient plus de `DELETE` non plus (1,35 ms de moins par
+destinataire envoyé). Base embarquée dans un binaire d'essai non optimisé (`tests/it/outbound.rs`,
+`measure_claim_in_a_large_queue`, 10 000 en attente) : 50 en 80 ms, 500 en 641 ms (moteur
+SurrealDB compilé sans optimisation : non représentatif).
+
+## État actuel : worker d'envoi (sous-lot 6d du lot 6)
+
+Plan : `implementation_plan.md` du crate, §5 à §7, §9, §10, §16. Rust : `src/outbound/`,
+`src/dkim.rs`, `src/dsn.rs` (écrits pour Lyxal sur le modèle de Mox, Stalwart et KumoMTA :
+`SOURCES.md` §3.4).
+
+| Élément | Rôle |
+| :--- | :--- |
+| `OutboundDispatcher` | Worker `lyxal_mail:mail.outbound` (criticité `Required`), un par nœud : réservation par lots de `claim_batch` (50), domaines saturés du nœud écartés ; préparation des envois pas encore préparés ; groupes (envoi, destination) de `recipients_per_transaction` au plus, un envoi par groupe dans le `JoinSet` du worker ; résultat écrit **après chaque transaction** ; avis dus produits ; bail renouvelé toutes les 2 minutes ; lecture de la file toutes les secondes (5 s après une lecture vide), réveil immédiat par `waker()` ; arrêt propre : envois drainés (`drain_timeout`), destinataires non écrits rendus sans essai compté, connexions closes par `QUIT` ; arrêt brutal : baux expirés repris par la réservation suivante |
+| `Preparer` | À la première réservation, sous la garde du jeton : fichier lu en flux (empreinte du corps `relaxed`), en-tête contrôlé (un `From`, adresses égales à celles du dépôt, sinon message illisible `5.6.0`), `Message-ID` et `Date` ajoutés s'ils manquent, signatures DKIM des domaines d'auteur (2 au plus), jeton de retour (`OsRng`), préfixe rangé par `fn::mail_queue_prepare` |
+| `MxPlan` | MX du résolveur du nœud, triés et mélangés entre préférences égales, 5 MX et 2 adresses par MX, IPv4 puis IPv6 ; MX implicite ; MX nul `5.1.10` et domaine inexistant `5.1.2` définitifs ; panne DNS réessayée ; adresses privées, réservées et du nœud refusées hors essais (`4.4.4`, réessayé) |
+| `SmtpConnection` | Accueil, `EHLO` (repli `HELO`), `STARTTLS` opportuniste puis nouvel `EHLO` (une reconnexion en clair après une poignée de main ratée), `AUTH PLAIN` du relais, `PIPELINING` (sinon une commande à la fois), `SIZE`, 8 bits et `SMTPUTF8` contrôlés avant l'envoi (`5.3.4`, `5.6.3`, `5.6.7`), paramètres DSN transmis si `DSN` est annoncé, délais de la RFC 5321 §4.5.3.2, contenu bourré au fil de sa lecture (préfixe puis fichier déchiffré), arrêt avant le `.` final sur un segment altéré |
+| `ConnectionPool`, `DestinationLimiter` | Connexions gardées 60 s par (serveur, adresse, mode TLS), `messages_per_connection` au plus ; connexions du nœud et par destination, messages par minute d'une destination réglée (rendus sans essai compté avec la prochaine place) |
+| Relais | `[outbound.relay]` : TLS vérifié (`webpki-roots`), STARTTLS exigé ou TLS implicite, `AUTH PLAIN`, identifiants JSON lus dans `lyxal_secrets` à chaque connexion ; tout envoi extérieur y passe (destination unique `relay`) |
+| `LocalRoute` | Domaine actif de l'installation : remise par la chaîne de réception du lot 5 sans réseau ; résolution au moment de la remise (inconnu `5.1.1`, désactivé `5.2.1`, quota `4.2.2`) ; DKIM vérifié contre les clés actives du domaine expéditeur (servies depuis le coffre-fort, sans DNS), DMARC calculé, SPF et `iprev` `none` ; idempotence de la remise du lot 5 |
+| `DkimKeyCache`, `sign_headers`, `DkimProvisioner`, `ReturnToken` | Clés ouvertes 10 minutes ; `DKIM-Signature` `relaxed/relaxed` RSA et Ed25519 (liste de Mox étendue, sur-signée, `t=`, ni `x=` ni `l=`) par `lyxal_crypto::dkim` ; tâche `mail.dkim_provision` (clés générées, `export_pkcs8` vers `lyxal_secrets`, fiche `pending`, activée quand le TXT publié est identique) ; jeton de 128 bits en base 32 de Crockford |
+| `DsnComposer` | Avis des dépôts authentifiés déposés dans la boîte de réception du compte expéditeur (`MAILER-DAEMON@<smtp.hostname>`, déterministe : une reprise ne fait pas de doublon), puis notés (`fn::mail_queue_dsn_done`) ; rien pour un module ; compte sans boîte : aucun avis, compté |
+| `OutboundMetrics`, sonde | Compteurs nommés sans adresse ni domaine (`/metrics` de l'hôte) ; sonde « dégradé » si l'échéance la plus ancienne a plus de 15 minutes de retard, si une clé DKIM attend sa publication depuis plus de 24 heures, ou si un contenu a été illisible dans l'heure |
+
+Journal (décision E28) : une ligne par transaction (envoi, nombre de destinataires, destination
+désignée par une empreinte BLAKE3 de 12 caractères, sauf `log_recipient_domain = "full"`, route,
+étape, durée), sans adresse ni contenu. Changements de 6c faits ici : échéancier par seconde (voir
+ci-dessus), `iprev` `none` accepté pour une remise sans réseau (route locale, avis),
+`created_at` rendu par `fn::mail_dkim_pending` (sonde), `seconds` rendu par
+`fn::mail_queue_purge`, `not_before` de `fn::mail_queue_release` jamais dans le passé.
+
+Essais : `tests/it/outbound.rs` contre un faux MX scripté sur une socket locale (envoi signé
+vérifié par notre vérificateur, en-tête sur-signé ajouté → `fail`, `PIPELINING`, STARTTLS et
+repli en clair par un TLS d'essai, refus temporaire puis nouvel essai, refus définitif et avis
+dans la boîte de l'expéditeur relu par `parse_dsn`, MX nul, arrêt brutal pendant la fin des
+données puis reprise sans perte, route locale vers une autre organisation avec DKIM `pass`,
+`NOTIFY=SUCCESS` vers un serveur sans `DSN` → `relayed`) ; mesures `#[ignore]` (débit,
+réservation). STARTTLS réel (`tokio-rustls`) : essais de l'hôte `lyxal-groupware`.
 
 ## Mesures (`scripts/bench/mailbox/bench_mail_module.py`)
 

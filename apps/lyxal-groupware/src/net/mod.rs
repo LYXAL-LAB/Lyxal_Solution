@@ -171,6 +171,7 @@ pub struct MailNet {
     smtp: Option<SmtpInboundHandler>,
     /// Dépôt authentifié du nœud, pour ses mesures.
     submission: Option<SubmissionHandler>,
+    outbound: Option<Arc<lyxal_mail::outbound::OutboundMetrics>>,
 }
 
 impl MailNet {
@@ -261,6 +262,7 @@ impl MailNet {
             certificates,
             smtp: None,
             submission: None,
+            outbound: None,
         })
     }
 
@@ -273,6 +275,16 @@ impl MailNet {
     /// Mesures du dépôt authentifié ajoutées à celles des écoutes (`/metrics`).
     pub fn with_submission_metrics(mut self, submission: Option<SubmissionHandler>) -> Self {
         self.submission = submission;
+        self
+    }
+
+    /// Mesures de l'envoi ajoutées à celles des écoutes (`/metrics`), si le worker d'envoi est
+    /// actif sur ce nœud.
+    pub fn with_outbound_metrics(
+        mut self,
+        outbound: Option<Arc<lyxal_mail::outbound::OutboundMetrics>>,
+    ) -> Self {
+        self.outbound = outbound;
         self
     }
 
@@ -344,6 +356,7 @@ impl MailNet {
             certificates: self.certificates.as_ref().map(|c| c.snapshot()),
             smtp: self.smtp.as_ref().map(SmtpInboundHandler::snapshot),
             submission: self.submission.as_ref().map(SubmissionHandler::snapshot),
+            outbound: self.outbound.as_ref().map(|metrics| metrics.snapshot()),
         }
     }
 
@@ -369,6 +382,9 @@ pub struct MailSnapshot {
     /// mis en file, refus par motif ; aucune adresse ni aucun compte) ; absent sans écoute
     /// `submission`.
     pub submission: Option<BTreeMap<String, u64>>,
+    /// Envoi (destinataires remis, retentés, en échec par étape, connexions, TLS, avis, clés
+    /// DKIM, réservations), sans adresse ni domaine ; absent si l'envoi n'est pas actif.
+    pub outbound: Option<BTreeMap<String, u64>>,
 }
 
 /// Budget mémoire des connexions.

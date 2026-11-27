@@ -173,6 +173,10 @@ pub enum NetError {
     /// Budget mémoire épuisé.
     #[error("budget mémoire épuisé")]
     MemoryBudget,
+    /// Dialogue illisible avec un serveur distant (réponse mal formée, commande impossible à
+    /// écrire) : catégorie de l'erreur, sans donnée du serveur.
+    #[error("dialogue illisible : {0}")]
+    Protocol(String),
 }
 
 /// Une connexion acceptée, remise au protocole.

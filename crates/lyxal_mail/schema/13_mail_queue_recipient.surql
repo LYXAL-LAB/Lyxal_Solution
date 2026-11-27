@@ -11,7 +11,7 @@
 -- locale), relayed (accepté par un serveur sans DSN avec NOTIFY=SUCCESS), failed (refus
 -- définitif), expired (fin de vie de l'envoi), canceled (annulé par l'expéditeur) ; bounced
 -- (avis reçu après acceptation). Un bail échu rend le destinataire réservable, sans essai compté.
--- L'échéancier mail_queue_due, les compteurs de l'envoi et les événements mail.submission.*
+-- L'échéancier mail_queue_due (secondes programmées), les compteurs de l'envoi et les événements mail.submission.*
 -- sont tenus par les événements de la table. Le jeton de réservation n'est lisible que du compte
 -- de service. Écritures : compte de service et session système ; création par la clôture d'un
 -- dépôt (mail.relay pour un envoi de module) ; annulation par l'expéditeur (garde).
@@ -45,6 +45,7 @@ DEFINE FIELD OVERWRITE state ON TABLE mail_queue_recipient
 
 DEFINE FIELD OVERWRITE attempts ON TABLE mail_queue_recipient TYPE int DEFAULT 0 ASSERT $value >= 0 COMMENT "Essais comptés (un bail repris ou un destinataire rendu ne compte pas)";
 DEFINE FIELD OVERWRITE next_attempt_at ON TABLE mail_queue_recipient TYPE datetime COMMENT "Échéance du prochain essai (état scheduled)";
+DEFINE FIELD OVERWRITE due_second ON TABLE mail_queue_recipient TYPE option<int> VALUE IF state = "scheduled" { time::unix(next_attempt_at) } ELSE { NONE } COMMENT "Seconde Unix de l'échéance d'un destinataire programmé (scheduled), aucune sinon : clé de lecture de l'échéancier mail_queue_due (calculée)";
 DEFINE FIELD OVERWRITE locked_until ON TABLE mail_queue_recipient TYPE option<datetime> COMMENT "Fin du bail de réservation (état running)";
 DEFINE FIELD OVERWRITE claim ON TABLE mail_queue_recipient
     TYPE option<string>
@@ -72,9 +73,16 @@ DEFINE FIELD OVERWRITE last_result.at ON TABLE mail_queue_recipient TYPE option<
 DEFINE FIELD OVERWRITE delayed_at ON TABLE mail_queue_recipient TYPE option<datetime> COMMENT "Premier passage du délai d'avis de retard (publie mail.submission.delayed, une fois)";
 DEFINE FIELD OVERWRITE delay_sent ON TABLE mail_queue_recipient TYPE bool DEFAULT false COMMENT "Avis de retard produit (fn::mail_queue_dsn_done)";
 DEFINE FIELD OVERWRITE dsn_sent ON TABLE mail_queue_recipient TYPE bool DEFAULT false COMMENT "Avis final produit (échec, remise, relais)";
+DEFINE FIELD OVERWRITE dsn_owed ON TABLE mail_queue_recipient TYPE bool DEFAULT false COMMENT "Avis final dû et pas encore produit (posé par la clôture du destinataire, effacé par fn::mail_queue_dsn_done) : repris par fn::mail_queue_dsn_pending après une panne";
 DEFINE FIELD OVERWRITE final_at ON TABLE mail_queue_recipient TYPE option<datetime> COMMENT "Entrée dans un état final";
 DEFINE FIELD OVERWRITE created_at ON TABLE mail_queue_recipient TYPE datetime DEFAULT time::now() READONLY COMMENT "Mise en file";
 DEFINE FIELD OVERWRITE updated_at ON TABLE mail_queue_recipient TYPE datetime VALUE time::now() COMMENT "Dernière modification";
 
 DEFINE INDEX OVERWRITE mail_queue_recipient_submission ON TABLE mail_queue_recipient FIELDS submission;
 DEFINE INDEX OVERWRITE mail_queue_recipient_state ON TABLE mail_queue_recipient FIELDS state;
+-- Réservation (décision E5) : destinataires programmés d'une seconde de l'échéancier (égalité sur
+-- un entier : SurrealDB 3.3.4 ne borne une lecture d'index par dates que d'un côté), baux expirés
+DEFINE INDEX OVERWRITE mail_queue_recipient_due ON TABLE mail_queue_recipient FIELDS due_second;
+DEFINE INDEX OVERWRITE mail_queue_recipient_lease ON TABLE mail_queue_recipient FIELDS state, locked_until;
+-- Avis finaux dus et non produits (reprise après une panne du dépôt de l'avis)
+DEFINE INDEX OVERWRITE mail_queue_recipient_dsn_owed ON TABLE mail_queue_recipient FIELDS dsn_owed;

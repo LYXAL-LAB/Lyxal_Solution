@@ -3962,6 +3962,7 @@ dependencies = [
  "lyxal_error",
  "lyxal_host",
  "lyxal_mail",
+ "lyxal_mail_proto",
  "lyxal_runtime",
  "lyxal_scheduler",
  "lyxal_secrets",
@@ -4184,14 +4185,19 @@ dependencies = [
  "lyxal_surreal",
  "proptest",
  "psl",
+ "rand_core 0.6.4",
+ "serde",
  "serde_json",
  "surrealdb",
  "tempfile",
  "thiserror 1.0.69",
+ "time",
  "tokio",
  "tokio-util",
  "tracing",
+ "tracing-subscriber",
  "uuid",
+ "zeroize",
 ]
 
 [[package]]

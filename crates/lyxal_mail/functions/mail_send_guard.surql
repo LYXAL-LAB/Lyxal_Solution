@@ -7,7 +7,7 @@
 -- écriture des envois et des destinataires en file, quelle qu'en soit l'origine. Un événement
 -- s'exécute avec les droits de la base mais voit l'identité de l'appelant : la garde refuse ce
 -- qui casserait un invariant (THROW du code rendu) ; les effets tiennent les compteurs d'envoi,
--- l'échéancier ordonné (mail_queue_due) et le compte des destinataires ouverts de l'envoi.
+-- l'échéancier par seconde (mail_queue_due) et le compte des destinataires ouverts de l'envoi.
 
 -- ----------------------------------------------------------------------------
 -- fn::mail_queue_worker_writer (interne)
@@ -155,14 +155,10 @@ DEFINE FUNCTION OVERWRITE fn::mail_submission_event_payload($recipient: object) 
 
 DEFINE FUNCTION OVERWRITE fn::mail_queue_recipient_apply($previous: any, $next: any) -> none {
     LET $row = $next ?? $previous;
-    -- Échéancier : fiche refaite quand l'instant change (échéance, fin de bail), retirée dans un état final
-    LET $old_at = fn::mail_queue_due_at($previous);
-    LET $new_at = fn::mail_queue_due_at($next);
-    LET $old_key = IF $old_at IS NONE { NONE } ELSE { fn::mail_queue_due_key($old_at, $row.id) };
-    LET $new_key = IF $new_at IS NONE { NONE } ELSE { fn::mail_queue_due_key($new_at, $row.id) };
-    IF $old_key != $new_key {
-        IF $old_key IS NOT NONE { DELETE $old_key; };
-        IF $new_key IS NOT NONE { CREATE $new_key CONTENT { recipient: $row.id, domain: $row.domain, at: $new_at }; };
+    -- Échéancier : seconde de l'échéance posée si elle manque (jamais remise à jour ni retirée ici)
+    IF $next IS NOT NONE AND $next.state = "scheduled" AND ($previous IS NONE OR $previous.state != "scheduled" OR $previous.next_attempt_at != $next.next_attempt_at) {
+        LET $second = fn::mail_queue_due_key($next.next_attempt_at);
+        IF !record::exists($second) { CREATE $second CONTENT { at: fn::mail_queue_due_second($next.next_attempt_at) }; };
     };
     -- Destinataires ouverts de l'envoi ; le dernier fini termine l'envoi (jeton de retour : 14 jours)
     LET $final = ["delivered", "relayed", "failed", "expired", "canceled", "bounced"];
@@ -176,4 +172,4 @@ DEFINE FUNCTION OVERWRITE fn::mail_queue_recipient_apply($previous: any, $next: 
         };
     };
     RETURN NONE;
-} COMMENT "Interne : effets d'une écriture d'un destinataire en file ($previous, $next) : fiche de l'échéancier mail_queue_due sous l'échéance (scheduled) ou la fin du bail (running), refaite quand l'instant change, retirée dans les autres états (décision E5) ; compte des destinataires ouverts de l'envoi ; au dernier destinataire fini d'un envoi en file : envoi done, adresse de retour valable 14 jours";
+} COMMENT "Interne : effets d'une écriture d'un destinataire en file ($previous, $next) : seconde de l'échéance posée dans l'échéancier mail_queue_due quand un destinataire y est programmé et qu'elle manque (décision E5 ; aucun retrait ici : un DELETE coûte environ 1 ms) ; compte des destinataires ouverts de l'envoi ; au dernier destinataire fini d'un envoi en file : envoi done, adresse de retour valable 14 jours";

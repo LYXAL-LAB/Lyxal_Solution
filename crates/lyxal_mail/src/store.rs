@@ -29,12 +29,13 @@ use crate::models::{
 use crate::models::{
     DkimKey, DkimKeyActivateParams, DkimKeyCreateParams, DkimKeyListParams, DkimKeyPage,
     DkimPending, DkimPendingParams, DkimSigners, DkimSignersParams, DsnDoneParams, DsnMarked,
-    QueueClaim, QueueClaimParams, QueueCompleteParams, QueueCompleted, QueueFailParams,
-    QueueFailed, QueuePrepareParams, QueuePrepared, QueuePurgeParams, QueuePurged,
-    QueueReleaseParams, QueueReleased, QueueRenewParams, QueueRenewed, QueueStats,
-    QueueStatsParams, ReturnRecordParams, ReturnRecorded, SenderCheck, SenderCheckParams,
-    Submission, SubmissionBeginParams, SubmissionCanceled, SubmissionCommitParams,
-    SubmissionQueued, SubmissionRefParams, SubmissionReleased, SubmissionReservation,
+    DsnPending, DsnPendingParams, QueueClaim, QueueClaimParams, QueueCompleteParams,
+    QueueCompleted, QueueFailParams, QueueFailed, QueuePrepareParams, QueuePrepared,
+    QueuePurgeParams, QueuePurged, QueueReleaseParams, QueueReleased, QueueRenewParams,
+    QueueRenewed, QueueStats, QueueStatsParams, ReturnRecordParams, ReturnRecorded, SenderCheck,
+    SenderCheckParams, Submission, SubmissionBeginParams, SubmissionCanceled,
+    SubmissionCommitParams, SubmissionQueued, SubmissionRefParams, SubmissionReleased,
+    SubmissionReservation,
 };
 
 /// Store de `lyxal_mail` sur un client SurrealDB (`Surreal<Any>`), ou sur le pool de
@@ -361,6 +362,11 @@ impl MailStore {
     /// `fn::mail_queue_dsn_done` : avis produits notés.
     pub async fn queue_dsn_done(&self, params: DsnDoneParams) -> Call<DsnMarked> {
         self.call_fn("mail_queue_dsn_done", params).await
+    }
+
+    /// `fn::mail_queue_dsn_pending` : avis finaux dus et non produits (reprise après une panne).
+    pub async fn queue_dsn_pending(&self, params: DsnPendingParams) -> Call<DsnPending> {
+        self.call_fn("mail_queue_dsn_pending", params).await
     }
 
     /// `fn::mail_queue_stats` : mesures de la file.

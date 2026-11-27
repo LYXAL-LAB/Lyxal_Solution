@@ -132,6 +132,60 @@ impl lyxal_mail::net::TlsUpgrade for HostTlsUpgrade {
     }
 }
 
+/// TLS côté client de l'envoi (STARTTLS vers les MX, relais sortant) : `tokio_rustls::
+/// TlsConnector` sur les configurations de `lyxal_crypto::tls_client_config` (règle 10 du §11.3),
+/// une par mode de vérification, construites au démarrage.
+pub struct HostTlsConnector {
+    opportunistic: tokio_rustls::TlsConnector,
+    verified: tokio_rustls::TlsConnector,
+}
+
+impl HostTlsConnector {
+    /// Connecteurs des deux modes (`Opportunistic` pour les MX, `WebPki` pour le relais).
+    pub fn new() -> Result<Self, GroupwareError> {
+        let build = |verification| {
+            lyxal_crypto::tls_client_config(&lyxal_crypto::TlsClientOptions {
+                verification,
+                ..lyxal_crypto::TlsClientOptions::default()
+            })
+            .map(tokio_rustls::TlsConnector::from)
+            .map_err(|error| GroupwareError::Configuration {
+                message: format!("configuration TLS de l'envoi : {error}"),
+            })
+        };
+        Ok(Self {
+            opportunistic: build(lyxal_crypto::TlsServerVerification::Opportunistic)?,
+            verified: build(lyxal_crypto::TlsServerVerification::WebPki)?,
+        })
+    }
+}
+
+#[async_trait]
+impl lyxal_mail::outbound::TlsConnectorProvider for HostTlsConnector {
+    async fn connect(
+        &self,
+        stream: BoxedStream,
+        server_name: &str,
+        verification: lyxal_crypto::TlsServerVerification,
+        timeout: Duration,
+    ) -> Result<(BoxedStream, lyxal_crypto::TlsPeerInfo), NetError> {
+        let connector = match verification {
+            lyxal_crypto::TlsServerVerification::Opportunistic => &self.opportunistic,
+            lyxal_crypto::TlsServerVerification::WebPki => &self.verified,
+        };
+        // SNI : nom du serveur, jamais une adresse IP (RFC 6066 §3)
+        let name = lyxal_crypto::rustls::pki_types::ServerName::try_from(server_name.to_string())
+            .map_err(|_| NetError::TlsHandshake("nom de serveur invalide".into()))?;
+        let tls = tokio::time::timeout(timeout, connector.connect(name, stream))
+            .await
+            .map_err(|_| NetError::Timeout)?
+            .map_err(|error| NetError::TlsHandshake(error.to_string()))?;
+        let info = lyxal_crypto::tls_peer_info(tls.get_ref().1, verification)
+            .ok_or_else(|| NetError::TlsHandshake("poignée de main inachevée".into()))?;
+        Ok((Box::new(tls), info))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::alpn;
