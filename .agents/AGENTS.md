@@ -818,7 +818,7 @@ lyxal_core
 Noyau Technique & Moteur
 lyxal_error
 lyxal_surreal
-lyxal_crypto (AES-256-GCM, chiffrement de fichiers en flux, TLS côté serveur, SHA-256, BLAKE3, Argon2id, HMAC, HKDF, signatures RSA et Ed25519, DKIM)
+lyxal_crypto (AES-256-GCM, chiffrement de fichiers en flux, TLS côté serveur et côté client, SHA-256, BLAKE3, Argon2id, HMAC, HKDF, signatures RSA et Ed25519, DKIM)
 lyxal_parsing (lecture CSV, XML, JSON en flux avec rejets explicites, sans base ni logique métier)
 lyxal_event
 lyxal_runtime (Manifeste, Installation, Migrations, Cycle de vie, Workers, Santé, Baux, Réconciliation)

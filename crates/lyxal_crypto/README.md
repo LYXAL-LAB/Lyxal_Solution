@@ -4,7 +4,8 @@ Crate Rust unique pour la cryptographie de Lyxal OS (`.agents/rules/lyxal_standa
 §11.3) : secrets applicatifs chiffrés en AES-256-GCM (enveloppe `enc:v2`), chiffrement de
 fichiers de toute taille en flux (format v1, segments AES-256-GCM de 64 Kio, clé propre à chaque
 fichier scellée par `enc:v2`, lecture d'une plage), configuration TLS côté serveur (`rustls`,
-fournisseur `aws-lc-rs`, certificats choisis par nom et remplacés à chaud), Argon2id,
+fournisseur `aws-lc-rs`, certificats choisis par nom et remplacés à chaud) et côté client (TLS
+opportuniste du courrier ou serveur vérifié contre les autorités de `webpki-roots`), Argon2id,
 HMAC-SHA256, HKDF-SHA256, SHA-256, BLAKE3, TOTP (RFC 6238), signatures RSA (RS256, génération
 de clés de 2048 à 4096 bits) et Ed25519, DKIM (RFC 6376, 8301, 8463 : canonicalisation, empreinte
 du corps, signature et vérification `rsa-sha256` / `ed25519-sha256`) et, pour les notifications
@@ -88,6 +89,27 @@ let options = TlsServerOptions { alpn_protocols: vec![b"imap".to_vec()], ..Defau
 let config = tls_server_config(store.clone(), &options)?; // Arc<rustls::ServerConfig>
 // Rechargement : store.insert(...) à nouveau ; les poignées de main suivantes le voient.
 # let _ = config;
+# Ok(())
+# }
+```
+
+Configuration TLS d'un client (envoi vers un serveur de courrier ; l'hôte branche
+`tokio_rustls::TlsConnector` après `STARTTLS`) :
+
+```rust,no_run
+use lyxal_crypto::rustls::pki_types::ServerName;
+use lyxal_crypto::{tls_client_config, tls_peer_info, TlsClientOptions, TlsServerVerification};
+# async fn send<S>(tcp: S) -> Result<(), Box<dyn std::error::Error>>
+# where S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin {
+let options = TlsClientOptions {
+    verification: TlsServerVerification::Opportunistic, // RFC 7435 ; WebPki pour un relais
+    ..Default::default()
+};
+let config = tls_client_config(&options)?; // Arc<rustls::ClientConfig>
+let connector = tokio_rustls::TlsConnector::from(config);
+let stream = connector.connect(ServerName::try_from("mx.example.org")?.to_owned(), tcp).await?;
+let info = tls_peer_info(stream.get_ref().1, options.verification); // version, suite, verified
+# let _ = info;
 # Ok(())
 # }
 ```

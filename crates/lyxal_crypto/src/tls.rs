@@ -1,7 +1,8 @@
-//! Server-side TLS (lot 2 of the mail programme, P6 a; CTO decisions C3 and C7).
+//! Server-side TLS (lot 2 of the mail programme, P6 a; CTO decisions C3 and C7) and client-side
+//! TLS (lot 6, decision E12).
 //!
-//! `lyxal_crypto` builds the complete `rustls` server configuration; hosts only plug
-//! connections (`tokio_rustls::TlsAcceptor`, STARTTLS). Fixed settings: `aws-lc-rs` provider
+//! `lyxal_crypto` builds the complete `rustls` server and client configurations; hosts only
+//! plug connections (`tokio_rustls::TlsAcceptor` / `TlsConnector`, STARTTLS). Fixed settings: `aws-lc-rs` provider
 //! passed explicitly (never `ServerConfig::builder()`, which panics when both `rustls`
 //! providers are active, as in the workspace), TLS 1.2 and 1.3 only, no 0-RTT, no client
 //! certificate, no key log. Certificates are chosen by name (SNI, one-level wildcard) with an
@@ -11,18 +12,24 @@
 use crate::{CryptoError, SecretBytes};
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
-use rustls::client::verify_server_name;
+use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier};
+use rustls::client::{verify_server_name, ClientConnection, Resumption};
 use rustls::crypto::aws_lc_rs;
+use rustls::crypto::{verify_tls12_signature, verify_tls13_signature, WebPkiSupportedAlgorithms};
 use rustls::server::{
     ClientHello, NoServerSessionStorage, ParsedCertificate, ResolvesServerCert,
     ServerSessionMemoryCache,
 };
 use rustls::sign::CertifiedKey;
-use rustls::{NoKeyLog, ServerConfig, SignatureAlgorithm, SignatureScheme};
+use rustls::time_provider::{DefaultTimeProvider, TimeProvider};
+use rustls::{
+    ClientConfig, DigitallySignedStruct, NoKeyLog, ProtocolVersion, RootCertStore, ServerConfig,
+    SignatureAlgorithm, SignatureScheme,
+};
 use rustls_pki_types::pem::PemObject;
 use rustls_pki_types::{
     CertificateDer, PrivateKeyDer, PrivatePkcs1KeyDer, PrivatePkcs8KeyDer, PrivateSec1KeyDer,
-    ServerName,
+    ServerName, UnixTime,
 };
 use std::collections::HashMap;
 use std::fmt;
@@ -343,7 +350,7 @@ fn normalize_name(server_name: &str) -> Result<String, CryptoError> {
     }
 }
 
-/// Lowest TLS version accepted by the server.
+/// Lowest TLS version accepted (server or client configuration).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum TlsMinVersion {
     /// TLS 1.2 and 1.3 (1.3 preferred).
@@ -382,19 +389,8 @@ pub fn tls_server_config(
     store: Arc<TlsCertificateStore>,
     options: &TlsServerOptions,
 ) -> Result<Arc<ServerConfig>, CryptoError> {
-    if options.alpn_protocols.len() > MAX_ALPN_PROTOCOLS
-        || options
-            .alpn_protocols
-            .iter()
-            .any(|name| name.is_empty() || name.len() > 255)
-        || options.session_cache_entries > MAX_SESSION_CACHE_ENTRIES
-    {
-        return Err(CryptoError::InputTooLarge);
-    }
-    let versions: &[&'static rustls::SupportedProtocolVersion] = match options.min_version {
-        TlsMinVersion::Tls12 => &[&rustls::version::TLS13, &rustls::version::TLS12],
-        TlsMinVersion::Tls13 => &[&rustls::version::TLS13],
-    };
+    check_bounds(&options.alpn_protocols, options.session_cache_entries)?;
+    let versions = protocol_versions(options.min_version);
     // Never ServerConfig::builder(): no process-level provider exists when both rustls
     // providers are compiled in (workspace), and that constructor panics.
     let mut config = ServerConfig::builder_with_provider(Arc::new(aws_lc_rs::default_provider()))
@@ -413,4 +409,345 @@ pub fn tls_server_config(
         config.session_storage = ServerSessionMemoryCache::new(options.session_cache_entries);
     }
     Ok(Arc::new(config))
+}
+
+/// ALPN names (0 to 8 names of 1 to 255 bytes) and session cache (65 536 entries at most).
+fn check_bounds(
+    alpn_protocols: &[Vec<u8>],
+    session_cache_entries: usize,
+) -> Result<(), CryptoError> {
+    if alpn_protocols.len() > MAX_ALPN_PROTOCOLS
+        || alpn_protocols
+            .iter()
+            .any(|name| name.is_empty() || name.len() > 255)
+        || session_cache_entries > MAX_SESSION_CACHE_ENTRIES
+    {
+        return Err(CryptoError::InputTooLarge);
+    }
+    Ok(())
+}
+
+fn protocol_versions(
+    min_version: TlsMinVersion,
+) -> &'static [&'static rustls::SupportedProtocolVersion] {
+    const TLS12_AND_13: &[&rustls::SupportedProtocolVersion] =
+        &[&rustls::version::TLS13, &rustls::version::TLS12];
+    const TLS13_ONLY: &[&rustls::SupportedProtocolVersion] = &[&rustls::version::TLS13];
+    match min_version {
+        TlsMinVersion::Tls12 => TLS12_AND_13,
+        TlsMinVersion::Tls13 => TLS13_ONLY,
+    }
+}
+
+/// How a client configuration authenticates the server.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TlsServerVerification {
+    /// Encryption without authentication of the server (RFC 7435, opportunistic TLS of mail
+    /// transfer): chain, validity dates and name are not checked; the handshake signature is
+    /// always checked against the public key of the certificate presented. Protects against
+    /// passive eavesdropping only (SECURITY.md).
+    Opportunistic,
+    /// Chain checked against the authorities of `webpki-roots` (fixed version; the system
+    /// roots are never read), validity dates checked against the clock, name checked against
+    /// the server name given to the connection (outbound relay; lot 7: MTA-STS).
+    WebPki,
+}
+
+/// Settings of a client configuration.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TlsClientOptions {
+    /// Server authentication; `WebPki` by default.
+    pub verification: TlsServerVerification,
+    /// Lowest version; `Tls12` by default.
+    pub min_version: TlsMinVersion,
+    /// ALPN names offered in preference order, 0 to 8 names of 1 to 255 bytes; empty by default
+    /// (no ALPN).
+    pub alpn_protocols: Vec<Vec<u8>>,
+    /// Client-side session cache, 0 to 65 536 entries (0 disables resumption); 256 by default.
+    pub session_cache_entries: usize,
+}
+impl Default for TlsClientOptions {
+    fn default() -> Self {
+        Self {
+            verification: TlsServerVerification::WebPki,
+            min_version: TlsMinVersion::Tls12,
+            alpn_protocols: Vec::new(),
+            session_cache_entries: 256,
+        }
+    }
+}
+
+/// `rustls` client configuration ready for `tokio_rustls::TlsConnector` (host side): provider
+/// `aws-lc-rs` passed explicitly (never `ClientConfig::builder()`), TLS 1.2 and 1.3 (or 1.3
+/// only), no 0-RTT, no client certificate, no key log, SNI sent for DNS names (never for an IP
+/// address, RFC 6066 §3), server authenticated as `options.verification` says. ALPN or cache
+/// settings out of bounds: `InputTooLarge`.
+pub fn tls_client_config(options: &TlsClientOptions) -> Result<Arc<ClientConfig>, CryptoError> {
+    build_client_config(options, webpki_root_store, Arc::new(DefaultTimeProvider))
+}
+
+/// Trust anchors of the `webpki-roots` crate (version fixed in Cargo.toml).
+fn webpki_root_store() -> RootCertStore {
+    RootCertStore {
+        roots: webpki_roots::TLS_SERVER_ROOTS.to_vec(),
+    }
+}
+
+/// Body of [`tls_client_config`]; roots and clock are parameters so that unit tests check the
+/// `WebPki` path against the test authority at a fixed date.
+fn build_client_config(
+    options: &TlsClientOptions,
+    roots: fn() -> RootCertStore,
+    time_provider: Arc<dyn TimeProvider>,
+) -> Result<Arc<ClientConfig>, CryptoError> {
+    check_bounds(&options.alpn_protocols, options.session_cache_entries)?;
+    let provider = Arc::new(aws_lc_rs::default_provider());
+    let algorithms = provider.signature_verification_algorithms;
+    // Never ClientConfig::builder(): no process-level provider exists when both rustls
+    // providers are compiled in (workspace), and that constructor panics.
+    let builder = ClientConfig::builder_with_details(provider, time_provider)
+        .with_protocol_versions(protocol_versions(options.min_version))
+        .map_err(|_| CryptoError::EncryptionFailed)?;
+    let builder = match options.verification {
+        TlsServerVerification::WebPki => builder.with_root_certificates(roots()),
+        TlsServerVerification::Opportunistic => builder
+            .dangerous()
+            .with_custom_certificate_verifier(Arc::new(OpportunisticVerifier { algorithms })),
+    };
+    let mut config = builder.with_no_client_auth();
+    config.enable_early_data = false;
+    config.enable_sni = true;
+    config.key_log = Arc::new(NoKeyLog {});
+    config.alpn_protocols = options.alpn_protocols.clone();
+    config.resumption = if options.session_cache_entries == 0 {
+        Resumption::disabled()
+    } else {
+        Resumption::in_memory_sessions(options.session_cache_entries)
+    };
+    Ok(Arc::new(config))
+}
+
+/// Verifier of the `Opportunistic` mode: any readable end-entity certificate is accepted
+/// (no chain, date or name check), but the handshake signature is verified by the `aws-lc-rs`
+/// algorithms against the key of that certificate, as `WebPkiServerVerifier` does.
+#[derive(Debug)]
+struct OpportunisticVerifier {
+    algorithms: WebPkiSupportedAlgorithms,
+}
+impl ServerCertVerifier for OpportunisticVerifier {
+    fn verify_server_cert(
+        &self,
+        end_entity: &CertificateDer<'_>,
+        _intermediates: &[CertificateDer<'_>],
+        _server_name: &ServerName<'_>,
+        _ocsp_response: &[u8],
+        _now: UnixTime,
+    ) -> Result<ServerCertVerified, rustls::Error> {
+        ParsedCertificate::try_from(end_entity)?;
+        Ok(ServerCertVerified::assertion())
+    }
+    fn verify_tls12_signature(
+        &self,
+        message: &[u8],
+        cert: &CertificateDer<'_>,
+        dss: &DigitallySignedStruct,
+    ) -> Result<HandshakeSignatureValid, rustls::Error> {
+        verify_tls12_signature(message, cert, dss, &self.algorithms)
+    }
+    fn verify_tls13_signature(
+        &self,
+        message: &[u8],
+        cert: &CertificateDer<'_>,
+        dss: &DigitallySignedStruct,
+    ) -> Result<HandshakeSignatureValid, rustls::Error> {
+        verify_tls13_signature(message, cert, dss, &self.algorithms)
+    }
+    fn supported_verify_schemes(&self) -> Vec<SignatureScheme> {
+        self.algorithms.supported_schemes()
+    }
+}
+
+/// What a finished client handshake negotiated, for logs, metrics and trace headers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TlsPeerInfo {
+    /// `TLSv1.2` or `TLSv1.3`.
+    pub version: &'static str,
+    /// Cipher suite, `rustls` name (e.g. `TLS13_AES_256_GCM_SHA384`).
+    pub cipher_suite: &'static str,
+    /// Whether the server was authenticated (`WebPki` mode).
+    pub verified: bool,
+}
+
+/// Negotiated version and cipher suite of `connection`, made with a configuration of
+/// [`tls_client_config`] in mode `verification` (a connection does not record its verifier).
+/// `None` while the handshake is in progress.
+pub fn tls_peer_info(
+    connection: &ClientConnection,
+    verification: TlsServerVerification,
+) -> Option<TlsPeerInfo> {
+    if connection.is_handshaking() {
+        return None;
+    }
+    let version = match connection.protocol_version()? {
+        ProtocolVersion::TLSv1_2 => "TLSv1.2",
+        ProtocolVersion::TLSv1_3 => "TLSv1.3",
+        _ => return None,
+    };
+    let cipher_suite = connection.negotiated_cipher_suite()?.suite().as_str()?;
+    Some(TlsPeerInfo {
+        version,
+        cipher_suite,
+        verified: verification == TlsServerVerification::WebPki,
+    })
+}
+
+#[cfg(test)]
+mod client_tests {
+    //! `WebPki` path checked against the test authority at fixed dates (the public function
+    //! only trusts `webpki-roots`, which no test certificate chains to).
+    use super::*;
+    use rustls::server::ServerConnection;
+    use rustls::{CertificateError, Error};
+
+    macro_rules! fixture {
+        ($name:literal) => {
+            include_bytes!(concat!("../tests/fixtures/tls_test_only/", $name)).as_slice()
+        };
+    }
+
+    /// 2027-01-01T00:00:00Z: inside the validity of the test certificates.
+    const VALID: u64 = 1_798_761_600;
+    /// 2040-01-01T00:00:00Z: after the end of their validity (2036).
+    const EXPIRED: u64 = 2_208_988_800;
+
+    #[derive(Debug)]
+    struct FixedTime(u64);
+    impl TimeProvider for FixedTime {
+        fn current_time(&self) -> Option<UnixTime> {
+            Some(UnixTime::since_unix_epoch(std::time::Duration::from_secs(
+                self.0,
+            )))
+        }
+    }
+
+    fn test_roots() -> RootCertStore {
+        let mut roots = RootCertStore::empty();
+        for certificate in CertificateDer::pem_slice_iter(fixture!("ca.pem")) {
+            roots.add(certificate.unwrap()).unwrap();
+        }
+        roots
+    }
+
+    fn client(verification: TlsServerVerification, at: u64) -> Arc<ClientConfig> {
+        let options = TlsClientOptions {
+            verification,
+            ..TlsClientOptions::default()
+        };
+        build_client_config(&options, test_roots, Arc::new(FixedTime(at))).unwrap()
+    }
+
+    fn server() -> Arc<ServerConfig> {
+        let key = TlsCertifiedKey::from_pem(
+            fixture!("p256.chain.pem"),
+            SecretBytes::new(fixture!("p256.key.pem").to_vec()).unwrap(),
+        )
+        .unwrap();
+        tls_server_config(
+            TlsCertificateStore::new(Some(key)),
+            &TlsServerOptions::default(),
+        )
+        .unwrap()
+    }
+
+    fn handshake(client: Arc<ClientConfig>, name: &str) -> Result<ClientConnection, Error> {
+        let mut client =
+            ClientConnection::new(client, ServerName::try_from(name.to_owned()).unwrap())?;
+        let mut server = ServerConnection::new(server())?;
+        for _ in 0..8 {
+            let mut flight = Vec::new();
+            while client.wants_write() {
+                client.write_tls(&mut flight).unwrap();
+            }
+            let mut reader = flight.as_slice();
+            while !reader.is_empty() {
+                server.read_tls(&mut reader).unwrap();
+                server.process_new_packets()?;
+            }
+            let mut flight = Vec::new();
+            while server.wants_write() {
+                server.write_tls(&mut flight).unwrap();
+            }
+            let mut reader = flight.as_slice();
+            while !reader.is_empty() {
+                client.read_tls(&mut reader).unwrap();
+                client.process_new_packets()?;
+            }
+        }
+        assert!(!client.is_handshaking());
+        Ok(client)
+    }
+
+    #[test]
+    fn webpki_accepts_a_chain_to_a_trusted_root_with_the_right_name() {
+        let connection = handshake(
+            client(TlsServerVerification::WebPki, VALID),
+            "mail.example.test",
+        )
+        .unwrap();
+        let info = tls_peer_info(&connection, TlsServerVerification::WebPki).unwrap();
+        assert!(info.verified);
+        assert_eq!(info.version, "TLSv1.3");
+    }
+
+    #[test]
+    fn webpki_refuses_a_wrong_name() {
+        let error = handshake(
+            client(TlsServerVerification::WebPki, VALID),
+            "other.example.test",
+        )
+        .unwrap_err();
+        assert!(
+            matches!(
+                error,
+                Error::InvalidCertificate(CertificateError::NotValidForNameContext { .. })
+            ),
+            "{error:?}"
+        );
+    }
+
+    #[test]
+    fn webpki_refuses_an_expired_certificate() {
+        let error = handshake(
+            client(TlsServerVerification::WebPki, EXPIRED),
+            "mail.example.test",
+        )
+        .unwrap_err();
+        assert!(
+            matches!(
+                error,
+                Error::InvalidCertificate(CertificateError::ExpiredContext { .. })
+            ),
+            "{error:?}"
+        );
+    }
+
+    #[test]
+    fn opportunistic_ignores_dates_and_names() {
+        for (name, at) in [
+            ("mail.example.test", EXPIRED),
+            ("other.example.test", VALID),
+        ] {
+            let connection =
+                handshake(client(TlsServerVerification::Opportunistic, at), name).unwrap();
+            let info = tls_peer_info(&connection, TlsServerVerification::Opportunistic).unwrap();
+            assert!(!info.verified);
+        }
+    }
+
+    #[test]
+    fn public_webpki_roots_are_the_fixed_crate_roots() {
+        let roots = webpki_root_store();
+        assert_eq!(roots.len(), webpki_roots::TLS_SERVER_ROOTS.len());
+        assert!(roots.len() > 100);
+    }
 }

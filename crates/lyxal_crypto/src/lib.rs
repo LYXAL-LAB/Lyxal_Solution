@@ -120,8 +120,9 @@ pub use password::{
     hash_password, verify_password, PasswordHash, PasswordVerification, MAX_PASSWORD_BYTES,
     MAX_PHC_BYTES,
 };
-/// Exact `rustls` version used by [`tls_server_config`], re-exported so that hosts build their
-/// `TlsAcceptor` on the same types. Hosts never build a TLS configuration themselves.
+/// Exact `rustls` version used by [`tls_server_config`] and [`tls_client_config`], re-exported so
+/// that hosts build their `TlsAcceptor` / `TlsConnector` on the same types. Hosts never build a
+/// TLS configuration themselves.
 pub use rustls;
 pub use signing::{
     EcdsaP256SigningKey, Ed25519PublicKey, Ed25519SigningKey, RsaModulusBits, RsaPublicKey,
@@ -132,7 +133,8 @@ pub use stream::{
     STREAM_HEADER_BYTES, STREAM_SEGMENT_BYTES, STREAM_TAG_BYTES,
 };
 pub use tls::{
-    tls_server_config, TlsCertificateStore, TlsCertifiedKey, TlsMinVersion, TlsServerOptions,
+    tls_client_config, tls_peer_info, tls_server_config, TlsCertificateStore, TlsCertifiedKey,
+    TlsClientOptions, TlsMinVersion, TlsPeerInfo, TlsServerOptions, TlsServerVerification,
 };
 pub use totp::{
     totp_generate, totp_uri, totp_verify, TotpAlgorithm, TotpConfig, TotpSecret,

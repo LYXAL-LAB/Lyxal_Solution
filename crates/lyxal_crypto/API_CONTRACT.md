@@ -350,6 +350,49 @@ remplacement à chaud ; reprise de session ; clés et chaînes invalides ; non-r
 `panic!` de `ServerConfig::builder()` avec les deux fournisseurs actifs ; poignée de main de bout
 en bout par `tokio-rustls` (`TlsAcceptor`) sur un tube en mémoire.
 
+## TLS client (lot 6, E12)
+
+Extension validée par le CTO le 27 novembre 2026 (programme courrier, lot 6, décision E12,
+question Q1 ; décision C8 du lot 2). `lyxal_crypto` construit **toute** la configuration TLS des
+clients ; les hôtes ne font que brancher les connexions (`tokio_rustls::TlsConnector`, après
+`STARTTLS`) avec la version de `rustls` réexportée. Le vérificateur du mode opportuniste n'existe
+que dans ce crate ; aucun vérificateur de certificat n'est construit ailleurs.
+
+- `TlsServerVerification::{Opportunistic, WebPki}` :
+  - `Opportunistic` (RFC 7435, TLS opportuniste du courrier, comme `smtp_tls_security_level =
+    may` de Postfix) : toute feuille X.509 lisible est acceptée, sans contrôle de la chaîne, des
+    dates ni du nom ; la **signature de la poignée de main** (`ServerKeyExchange` en TLS 1.2,
+    `CertificateVerify` en TLS 1.3) est toujours vérifiée par les algorithmes du fournisseur
+    `aws-lc-rs` contre la clé du certificat présenté (`BadSignature` sinon). Ne protège que
+    d'une écoute passive (SECURITY.md).
+  - `WebPki` : chaîne vérifiée contre les autorités de la crate `webpki-roots` (version figée
+    `=1.0.11` ; les racines du système ne sont jamais lues), dates contrôlées à l'horloge du
+    système, nom contrôlé contre le `ServerName` de la connexion ; sans liste de révocation.
+- `TlsClientOptions { verification, min_version: TlsMinVersion, alpn_protocols: Vec<Vec<u8>>,
+  session_cache_entries: usize }`, `Default` = `WebPki`, `Tls12`, aucun ALPN, 256 entrées.
+- `tls_client_config(&TlsClientOptions) -> Result<Arc<ClientConfig>>` : fournisseur `aws-lc-rs`
+  passé à `ClientConfig::builder_with_details` (jamais `ClientConfig::builder()`, même raison que
+  le serveur) ; TLS 1.3 et 1.2 (ou 1.3 seul) ; pas de 0-RTT (`enable_early_data = false`), pas de
+  certificat client, aucun journal des clés de session ; SNI envoyé pour un nom DNS, jamais pour
+  une adresse IP (RFC 6066 §3, règle de `rustls`) : l'appelant passe le nom du MX ; cache de
+  sessions de la taille demandée (0 : aucune reprise). Mêmes bornes que le serveur (ALPN de plus
+  de 8 noms, nom vide ou de plus de 255 octets, cache de plus de 65 536 entrées :
+  `InputTooLarge`).
+- `TlsPeerInfo { version: &'static str, cipher_suite: &'static str, verified: bool }` ;
+  `tls_peer_info(&ClientConnection, TlsServerVerification) -> Option<TlsPeerInfo>` : version
+  (`TLSv1.2`, `TLSv1.3`) et suite (nom de `rustls`, par exemple `TLS13_AES_256_GCM_SHA384`)
+  négociées ; `verified` vaut `true` en mode `WebPki` ; `None` tant que la poignée de main n'est
+  pas finie. Le mode est passé par l'appelant : une connexion `rustls` ne garde pas son
+  vérificateur.
+
+Tests : poignées de main réelles en mémoire contre le serveur de `tls_server_config` ; mode
+opportuniste : certificat auto-signé, autorité inconnue et nom faux acceptés, date échue
+acceptée, signature de poignée de main falsifiée refusée en TLS 1.2 et 1.3 ; mode `WebPki` :
+auto-signé et autorité inconnue refusés (`UnknownIssuer`) ; chaîne valide acceptée, nom faux et
+certificat échu refusés (essais unitaires, autorité de test à date fixe) ; TLS 1.2 et 1.3,
+minimum 1.3 ; SNI (nom DNS envoyé, adresse IP jamais) ; reprise de session ; bornes ; aucun
+fournisseur de processus installé ; bout en bout par `tokio-rustls` (`TlsConnector`).
+
 ## Chiffrement de fichiers en flux (P6 i)
 
 Extension validée par le CTO le 20 novembre 2026 (programme courrier, lot 2, décisions C9 et
