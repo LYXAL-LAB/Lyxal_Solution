@@ -376,8 +376,9 @@ impl SmtpSession {
             ForwardPath::Postmaster => None,
             ForwardPath::Mailbox(mailbox) => match mailbox.domain() {
                 // Partie locale gardée sous sa forme d'enveloppe (guillemets, échappements)
-                Domain::Name(name) => to_ascii_domain(name)
-                    .map(|domain| (mailbox.smtp_local_part(), domain)),
+                Domain::Name(name) => {
+                    to_ascii_domain(name).map(|domain| (mailbox.smtp_local_part(), domain))
+                }
                 Domain::Ipv4(_) | Domain::Ipv6(_) => None,
             },
         };
