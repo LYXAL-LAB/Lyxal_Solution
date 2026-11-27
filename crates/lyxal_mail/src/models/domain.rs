@@ -27,6 +27,10 @@ pub struct Domain {
     pub postmaster: Option<MailRecordId>,
     /// Adresses et alias du domaine (compteur tenu).
     pub address_count: i64,
+    /// Parties locales sous lesquelles les modules envoient (contrat public de dépôt).
+    pub module_senders: Vec<String>,
+    /// Refus des avis à expéditeur vide adressés à une adresse ordinaire (rétrodiffusion).
+    pub backscatter_protection: bool,
     /// Création.
     pub created_at: MailDatetime,
     /// Dernière modification.
@@ -84,6 +88,11 @@ pub struct DomainUpdateParams {
     /// Compte qui reçoit `postmaster@<domaine>` (`mail_account:<clé>`), actif et de la même
     /// organisation.
     pub postmaster: Option<String>,
+    /// Parties locales sous lesquelles les modules envoient (0 à 20), jamais une adresse
+    /// inscrite du domaine.
+    pub module_senders: Option<Vec<String>>,
+    /// Refus des avis à expéditeur vide adressés à une adresse ordinaire (vrai par défaut).
+    pub backscatter_protection: Option<bool>,
     /// Champs à effacer : `catch_all`, `postmaster`.
     pub clear: Vec<String>,
 }

@@ -26,6 +26,34 @@ DEFINE FUNCTION OVERWRITE fn::mail_can($params: object) -> bool {
             OR fn::auth_has_permission({ permission: "mail.domain.manage", tenant: $params.tenant })
             OR fn::auth_has_permission({ permission: "mail.worker" });
     };
+    -- Envoi (lot 6) : déposer sous ses adresses (mail.send), par le contrat des modules
+    -- (mail.relay), ou en origine forward / dsn (compte de service)
+    IF $params.action = "send" { RETURN $params.tenant IS NOT NONE AND fn::auth_has_permission({ permission: "mail.send", tenant: $params.tenant }); };
+    IF $params.action = "relay" { RETURN fn::auth_has_permission({ permission: "mail.relay" }); };
+    IF $params.action = "submit" {
+        RETURN IF $params.origin = "submission" {
+            $params.tenant IS NOT NONE AND fn::auth_has_permission({ permission: "mail.send", tenant: $params.tenant })
+        } ELSE IF $params.origin = "module" {
+            fn::auth_has_permission({ permission: "mail.relay" })
+        } ELSE {
+            fn::auth_has_permission({ permission: "mail.worker" })
+        };
+    };
+    IF $params.action = "sender" {
+        -- Titulaire qui envoie : l'identité du compte (account, ou identity) est celle de la
+        -- session, avec mail.send dans l'organisation (lecture de ses adresses et de son compte)
+        LET $holder = IF $params.account IS NONE { $params.identity } ELSE { (SELECT VALUE identity FROM ONLY $params.account) };
+        RETURN $params.tenant IS NOT NONE AND $holder IS NOT NONE AND $auth IS NOT NONE AND $holder = $auth.identity
+            AND fn::auth_has_permission({ permission: "mail.send", tenant: $params.tenant });
+    };
+    IF $params.action = "submission" {
+        -- Titulaire d'un dépôt authentifié (jamais l'administrateur de l'organisation, M11),
+        -- mail.relay pour les envois des modules, sinon compte de service
+        IF $params.origin = "submission" AND $params.owner IS NOT NONE AND $auth IS NOT NONE AND $params.owner = $auth.identity
+            AND fn::auth_has_permission({ permission: "mail.send", tenant: $params.tenant }) { RETURN true; };
+        IF $params.origin = "module" AND fn::auth_has_permission({ permission: "mail.relay" }) { RETURN true; };
+        RETURN fn::auth_has_permission({ permission: "mail.worker" });
+    };
     IF $params.action = "mailbox" {
         -- Titulaire : l'identité du compte est celle de la session (lue sur le compte, sauf si
         -- l'appelant la fournit : permissions de mail_account elle-même) ; sinon compte de service
@@ -36,7 +64,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_can($params: object) -> bool {
         RETURN fn::auth_has_permission({ permission: "mail.worker" });
     };
     RETURN false;
-} COMMENT "Interne : vrai si l'appelant peut effectuer l'action ({ action, tenant, account, identity }) : session système → toujours ; worker → mail.worker ; manage → mail.domain.manage dans l'organisation (mail.installation.manage sans tenant), jamais le contenu des boîtes (décision M11) ; settings → lecture des limites (installation : tous ; organisation : ses membres qui ont une boîte, ses administrateurs, le compte de service) ; mailbox → mail.mailbox.access dans l'organisation et identité du compte (account, ou identity) égale à celle de la session, ou mail.worker. Jamais d'erreur";
+} COMMENT "Interne : vrai si l'appelant peut effectuer l'action ({ action, tenant, account, identity }) : session système → toujours ; worker → mail.worker ; manage → mail.domain.manage dans l'organisation (mail.installation.manage sans tenant), jamais le contenu des boîtes (décision M11) ; settings → lecture des limites (installation : tous ; organisation : ses membres qui ont une boîte, ses administrateurs, le compte de service) ; mailbox → mail.mailbox.access dans l'organisation et identité du compte (account, ou identity) égale à celle de la session, ou mail.worker ; send → mail.send dans l'organisation ; sender → titulaire du compte (account, ou identity) avec mail.send ; relay → mail.relay ; submit (création d'un envoi, { tenant, origin }) → mail.send (submission), mail.relay (module), mail.worker (forward, dsn) ; submission (lecture et écriture d'un envoi, { tenant, owner, origin }) → titulaire d'un dépôt authentifié avec mail.send, mail.relay pour un envoi de module, ou mail.worker. Jamais d'erreur";
 
 -- ----------------------------------------------------------------------------
 -- fn::mail_settings_effective (interne)
@@ -53,9 +81,20 @@ DEFINE FUNCTION OVERWRITE fn::mail_settings_effective($params: object) -> object
         tombstone_retention_days: $own.tombstone_retention_days ?? $base.tombstone_retention_days ?? 30,
         max_mailboxes_per_account: $own.max_mailboxes_per_account ?? $base.max_mailboxes_per_account ?? 1000,
         max_addresses_per_account: $own.max_addresses_per_account ?? $base.max_addresses_per_account ?? 100,
-        max_keywords_per_message: $own.max_keywords_per_message ?? $base.max_keywords_per_message ?? 50
+        max_keywords_per_message: $own.max_keywords_per_message ?? $base.max_keywords_per_message ?? 50,
+        -- Limites d'envoi : celle de l'organisation, plafonnée par celle de l'installation (E16)
+        send_recipients_per_message: math::min([$own.send_recipients_per_message ?? 1000, $base.send_recipients_per_message ?? 100]),
+        send_messages_per_day: math::min([$own.send_messages_per_day ?? 1000000, $base.send_messages_per_day ?? 1000]),
+        send_recipients_per_day: math::min([$own.send_recipients_per_day ?? 10000000, $base.send_recipients_per_day ?? 2000]),
+        module_messages_per_hour: math::min([$own.module_messages_per_hour ?? 10000000, $base.module_messages_per_hour ?? 10000]),
+        forward_messages_per_day: math::min([$own.forward_messages_per_day ?? 10000000, $base.forward_messages_per_day ?? 10000]),
+        -- File d'envoi : installation seulement (E6)
+        retry_intervals: $base.retry_intervals ?? [5, 10, 20, 40, 80, 120],
+        retry_jitter_percent: $base.retry_jitter_percent ?? 10,
+        delay_notice_hours: $base.delay_notice_hours ?? 4,
+        expire_hours: $base.expire_hours ?? 120
     };
-} COMMENT "Interne : réglages effectifs ({ tenant }) : organisation, sinon installation, sinon valeurs par défaut (décision M18 : message de 50 Mio au plus, aucun quota par défaut ; 30 jours de conservation des effacements, M17 ; 1 000 dossiers, 100 adresses par compte, 50 mots-clés par message)";
+} COMMENT "Interne : réglages effectifs ({ tenant }) : organisation, sinon installation, sinon valeurs par défaut (décision M18 : message de 50 Mio au plus, aucun quota par défaut ; 30 jours de conservation des effacements, M17 ; 1 000 dossiers, 100 adresses par compte, 50 mots-clés par message). Envoi (lot 6) : limites de l'organisation plafonnées par celles de l'installation (100 destinataires par message, 1 000 messages et 2 000 destinataires par compte et par jour, 10 000 messages des modules par heure, 10 000 transferts par jour) ; file réglée par l'installation (essais après 5, 10, 20, 40, 80 puis 120 min, ± 10 %, avis de retard à 4 h, expiration à 120 h)";
 
 -- ----------------------------------------------------------------------------
 -- fn::mail_session_account (interne)

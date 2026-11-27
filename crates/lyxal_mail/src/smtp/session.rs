@@ -35,7 +35,7 @@ use crate::auth::{
     SpfResult, SpfVerifier, MAX_AUTHOR_DOMAINS,
 };
 use crate::delivery::{PipelineResult, ReceivedMessage, RecipientTarget, RejectReason};
-use crate::models::{MailDatetime, RecipientResolveParams, ResolvedRecipient};
+use crate::models::{MailDatetime, RecipientKind, RecipientResolveParams, ResolvedRecipient};
 use crate::net::{MemoryClass, MemoryReservation, NetError, Session, SessionEnd, TlsState};
 use crate::MailError;
 use lyxal_surreal::{LyxalCallError, LyxalSurrealError};
@@ -529,6 +529,11 @@ impl SmtpSession {
             .recipient_resolve(RecipientResolveParams { address })
             .await;
         match resolved {
+            // Adresse de retour d'un envoi (lot 6, §11) : son traitement (avis reçus, réponses
+            // automatiques) est branché au sous-lot 6f ; d'ici là, elle reste inconnue
+            Ok(resolved) if resolved.kind == RecipientKind::Return => {
+                self.refuse_recipient(RefusedReason::Unknown).await
+            }
             Ok(resolved) => self.accept_recipient(resolved, declared).await,
             Err(error) => match business_code(&error) {
                 Some("MAIL_RELAY_DENIED") => self.refuse_recipient(RefusedReason::Relay).await,

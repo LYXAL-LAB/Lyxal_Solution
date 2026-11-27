@@ -44,11 +44,14 @@ DEFINE FUNCTION OVERWRITE fn::mail_write_refusal($table: string, $previous: any,
             LET $found = fn::auth_organization_domain_get({ domain: <string> $next.auth_domain });
             LET $auth_domain = IF $found.ok { $found.data } ELSE { NONE };
             IF $auth_domain == NONE OR $auth_domain.organization != $next.tenant OR $auth_domain.domain != $next.name OR $next.address_count != 0
-                OR $next.catch_all IS NOT NONE OR $next.postmaster IS NOT NONE { RETURN "MAIL_WRITE_FORBIDDEN"; };
+                OR $next.catch_all IS NOT NONE OR $next.postmaster IS NOT NONE OR array::len($next.module_senders) > 0 { RETURN "MAIL_WRITE_FORBIDDEN"; };
             RETURN IF $auth_domain.state != "verified" { "MAIL_DOMAIN_NOT_VERIFIED" } ELSE { NONE };
         };
         -- Un domaine qui porte des adresses ne se supprime qu'avec son organisation
         IF $next IS NONE { RETURN IF $previous.address_count > 0 AND record::exists($previous.tenant) { "MAIL_DOMAIN_NOT_EMPTY" } ELSE { NONE }; };
+        -- Expéditeurs des modules (lot 6, §12.3) : jamais une adresse inscrite du domaine
+        LET $added = array::complement($next.module_senders, $previous.module_senders);
+        IF array::len($added) > 0 AND array::len(SELECT VALUE id FROM mail_address WHERE domain = $next.id AND local_part IN $added LIMIT 1) > 0 { RETURN "MAIL_MODULE_SENDER_CONFLICT"; };
         -- Attrape-tout et postmaster : posés sur un compte actif de la même organisation
         LET $posed = array::filter(["catch_all", "postmaster"], |$f| $next[$f] IS NOT NONE AND $next[$f] != $previous[$f]);
         RETURN IF array::all($posed, |$f| (SELECT VALUE id FROM ONLY $next[$f] WHERE tenant = $next.tenant AND state = "active") IS NOT NONE) { NONE } ELSE { "MAIL_WRITE_FORBIDDEN" };
@@ -59,6 +62,9 @@ DEFINE FUNCTION OVERWRITE fn::mail_write_refusal($table: string, $previous: any,
             LET $owner = IF $previous.account IS NONE { NONE } ELSE { (SELECT state, primary_address FROM ONLY $previous.account) };
             RETURN IF $owner IS NOT NONE AND $owner.state != "deleting" AND $owner.primary_address = $previous.id { "MAIL_ADDRESS_IS_PRIMARY" } ELSE { NONE };
         };
+        -- Envoi (lot 6) : préfixe réservé, expéditeurs des modules, senders et forward_to des alias
+        LET $sending = fn::mail_address_send_refusal($previous, $next);
+        IF $sending IS NOT NONE { RETURN $sending; };
         IF $previous IS NONE {
             LET $domain = (SELECT tenant, name FROM ONLY $next.domain);
             IF $domain == NONE OR $domain.tenant != $next.tenant OR $next.address != string::concat($next.local_part, "@", $domain.name) { RETURN "MAIL_WRITE_FORBIDDEN"; };
@@ -189,6 +195,7 @@ DEFINE FUNCTION OVERWRITE fn::mail_counters_apply($table: string, $previous: any
             DELETE mail_address WHERE account = $next.id;
             DELETE mail_address WHERE kind = "alias" AND targets CONTAINS $next.id AND array::len(targets) = 1;
             UPDATE mail_address SET targets = array::complement(targets, [$next.id]) WHERE kind = "alias" AND targets CONTAINS $next.id;
+            UPDATE mail_address SET senders = array::complement(senders, [$next.id]) WHERE kind = "alias" AND senders CONTAINS $next.id;
             UPDATE $next.id SET primary_address = NONE;
             UPDATE mail_domain SET catch_all = NONE WHERE catch_all = $next.id;
             UPDATE mail_domain SET postmaster = NONE WHERE postmaster = $next.id;

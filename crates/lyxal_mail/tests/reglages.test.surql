@@ -67,7 +67,9 @@
 -- test: valeurs par défaut du module
 RETURN fn::mail_settings_effective({}) == {
         max_message_bytes: 52428800, default_quota_bytes: NONE, tombstone_retention_days: 30,
-        max_mailboxes_per_account: 1000, max_addresses_per_account: 100, max_keywords_per_message: 50
+        max_mailboxes_per_account: 1000, max_addresses_per_account: 100, max_keywords_per_message: 50,
+        send_recipients_per_message: 100, send_messages_per_day: 1000, send_recipients_per_day: 2000, module_messages_per_hour: 10000, forward_messages_per_day: 10000,
+        retry_intervals: [5, 10, 20, 40, 80, 120], retry_jitter_percent: 10, delay_notice_hours: 4, expire_hours: 120
     }
     AND fn::mail_settings_get({}).data == { own: NONE, effective: fn::mail_settings_effective({}) };
 
@@ -93,7 +95,9 @@ RETURN fn::mail_settings_set({ max_message_bytes: 4096 }).error.code == "MAIL_PE
     RETURN $saved.ok AND $read.own.default_quota_bytes == 1000 AND $read.own.max_message_bytes IS NONE
         AND $read.effective == {
             max_message_bytes: 1048576, default_quota_bytes: 1000, tombstone_retention_days: 10,
-            max_mailboxes_per_account: 1000, max_addresses_per_account: 100, max_keywords_per_message: 5
+            max_mailboxes_per_account: 1000, max_addresses_per_account: 100, max_keywords_per_message: 5,
+            send_recipients_per_message: 100, send_messages_per_day: 1000, send_recipients_per_day: 2000, module_messages_per_hour: 10000, forward_messages_per_day: 10000,
+            retry_intervals: [5, 10, 20, 40, 80, 120], retry_jitter_percent: 10, delay_notice_hours: 4, expire_hours: 120
         };
 };
 

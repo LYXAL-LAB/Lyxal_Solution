@@ -66,6 +66,55 @@ DEFINE FIELD OVERWRITE postmaster ON TABLE mail_settings
     ASSERT $value IS NONE OR ($this.tenant IS NONE AND string::len($value) >= 3 AND string::len($value) <= 254 AND $value == string::lowercase($value))
     COMMENT "Installation seulement : adresse inscrite (minuscules) qui reçoit le destinataire postmaster écrit sans domaine ; NONE : ce destinataire est inconnu";
 
+-- Envoi (lot 6, décisions E6, E16) : limites d'une organisation, plafonnées par celles de
+-- l'installation (fn::mail_settings_effective rend la plus petite) ; tentatives et expiration de
+-- la file réglées par l'installation seulement.
+
+DEFINE FIELD OVERWRITE send_recipients_per_message ON TABLE mail_settings
+    TYPE option<int>
+    ASSERT $value IS NONE OR ($value >= 1 AND $value <= 1000)
+    COMMENT "Destinataires d'un message déposé par un compte, au plus (1 à 1 000)";
+
+DEFINE FIELD OVERWRITE send_messages_per_day ON TABLE mail_settings
+    TYPE option<int>
+    ASSERT $value IS NONE OR ($value >= 1 AND $value <= 1000000)
+    COMMENT "Messages déposés par un compte et par jour UTC, au plus (1 à 1 000 000)";
+
+DEFINE FIELD OVERWRITE send_recipients_per_day ON TABLE mail_settings
+    TYPE option<int>
+    ASSERT $value IS NONE OR ($value >= 1 AND $value <= 10000000)
+    COMMENT "Destinataires des messages d'un compte par jour UTC, au plus (1 à 10 000 000)";
+
+DEFINE FIELD OVERWRITE module_messages_per_hour ON TABLE mail_settings
+    TYPE option<int>
+    ASSERT $value IS NONE OR ($value >= 1 AND $value <= 10000000)
+    COMMENT "Messages déposés par les modules pour l'organisation, par heure UTC, au plus (1 à 10 000 000)";
+
+DEFINE FIELD OVERWRITE forward_messages_per_day ON TABLE mail_settings
+    TYPE option<int>
+    ASSERT $value IS NONE OR ($value >= 0 AND $value <= 10000000)
+    COMMENT "Transferts d'alias vers l'extérieur de l'organisation par jour UTC, au plus (0 à 10 000 000 ; 0 : aucun transfert)";
+
+DEFINE FIELD OVERWRITE retry_intervals ON TABLE mail_settings
+    TYPE option<array<int>>
+    ASSERT $value IS NONE OR ($this.tenant IS NONE AND array::len($value) >= 1 AND array::len($value) <= 16 AND array::all($value, |$m| $m >= 1 AND $m <= 1440))
+    COMMENT "Installation seulement : délais entre deux essais d'un destinataire, en minutes (1 à 1 440 chacun, 16 au plus ; le dernier se répète)";
+
+DEFINE FIELD OVERWRITE retry_jitter_percent ON TABLE mail_settings
+    TYPE option<int>
+    ASSERT $value IS NONE OR ($this.tenant IS NONE AND $value >= 0 AND $value <= 50)
+    COMMENT "Installation seulement : décalage aléatoire de chaque délai, en pour cent (0 à 50)";
+
+DEFINE FIELD OVERWRITE delay_notice_hours ON TABLE mail_settings
+    TYPE option<int>
+    ASSERT $value IS NONE OR ($this.tenant IS NONE AND $value >= 1 AND $value <= 72)
+    COMMENT "Installation seulement : âge d'un envoi encore en file qui donne l'avis de retard, en heures (1 à 72)";
+
+DEFINE FIELD OVERWRITE expire_hours ON TABLE mail_settings
+    TYPE option<int>
+    ASSERT $value IS NONE OR ($this.tenant IS NONE AND $value >= 1 AND $value <= 720)
+    COMMENT "Installation seulement : durée de vie d'un envoi en file, en heures (1 à 720) ; au-delà, ses destinataires expirent";
+
 DEFINE FIELD OVERWRITE created_at ON TABLE mail_settings
     TYPE datetime
     DEFAULT time::now()

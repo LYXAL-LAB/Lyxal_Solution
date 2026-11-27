@@ -18,6 +18,7 @@ DEFINE TABLE OVERWRITE mail_account
     SCHEMAFULL
     PERMISSIONS
         FOR select WHERE fn::mail_can({ action: "mailbox", tenant: tenant, identity: identity }) OR fn::mail_can({ action: "manage", tenant: tenant })
+            OR fn::mail_can({ action: "sender", tenant: tenant, identity: identity })
         FOR create WHERE fn::mail_can({ action: "manage", tenant: tenant })
         FOR update WHERE fn::mail_can({ action: "mailbox", tenant: tenant, identity: identity }) OR fn::mail_can({ action: "manage", tenant: tenant })
         FOR delete WHERE fn::mail_can({ action: "worker" })

@@ -138,3 +138,30 @@ IF !record::exists(error_definition:MAIL_DOMAIN_NOT_EMPTY) THEN (
         }
     }
 ) END;
+
+IF !record::exists(error_definition:MAIL_MODULE_SENDER_CONFLICT) THEN (
+    CREATE error_definition:MAIL_MODULE_SENDER_CONFLICT CONTENT {
+        code: "MAIL_MODULE_SENDER_CONFLICT",
+        module: "mail",
+        domain: "domaines",
+        category: "conflict",
+        severity: "error",
+        message: "Module sender conflicts with an address",
+        default_language: "fr",
+        http_status: 409,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Expéditeur de module en conflit",
+                description: "Cette partie locale est à la fois un expéditeur des modules et une adresse inscrite.",
+                resolution: "Retirez l'adresse, ou choisissez un autre expéditeur des modules."
+            },
+            en: {
+                label: "Module sender conflicts with an address",
+                description: "This local part is both a module sender and a registered address.",
+                resolution: "Remove the address, or choose another module sender."
+            }
+        }
+    }
+) END;

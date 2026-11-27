@@ -2,7 +2,8 @@
 # en SurrealQL (domaines, comptes, adresses, alias, dossiers, contenus, messages, pierres
 # tombales, réglages, droits, erreurs, événements) ; lot 3 : contrat réseau des sessions en Rust.
 # Porté dans l'hôte par un ManifestModule (lot 4d : MailModule), auquel sont rattachés les
-# workers des écoutes (`lyxal_mail:mail.listener.<id>`).
+# workers des écoutes (`lyxal_mail:mail.listener.<id>`). Lot 6c : file d'envoi, dépôt (contrat public
+# des modules), droits d'expéditeur, clés DKIM, adresses de retour, en SurrealQL.
 manifest_version = 1
 id = "lyxal_mail"
 name = "Lyxal Mail"
@@ -45,7 +46,13 @@ schemas = [
     "schema/08_mail_tombstone.surql",
     "schema/09_mail_message_date.surql",
     "schema/10_mail_delivery.surql",
-    "schema/11_mail_network_block.surql"
+    "schema/11_mail_network_block.surql",
+    "schema/12_mail_submission.surql",
+    "schema/13_mail_queue_recipient.surql",
+    "schema/14_mail_queue_due.surql",
+    "schema/15_mail_queue_destination.surql",
+    "schema/16_mail_dkim_key.surql",
+    "schema/17_mail_send_counter.surql"
 ]
 functions = [
     "functions/mail_access.surql",
@@ -56,7 +63,11 @@ functions = [
     "functions/mail_message.surql",
     "functions/mail_content.surql",
     "functions/mail_delivery.surql",
-    "functions/mail_block.surql"
+    "functions/mail_block.surql",
+    "functions/mail_submission.surql",
+    "functions/mail_queue.surql",
+    "functions/mail_send_guard.surql",
+    "functions/mail_dkim.surql"
 ]
 error_definitions = [
     "error/parametres/error_parametres.surql",
@@ -69,7 +80,10 @@ error_definitions = [
     "error/contenus/error_contenus.surql",
     "error/quotas/error_quotas.surql",
     "error/reception/error_reception.surql",
-    "error/blocage/error_blocage.surql"
+    "error/blocage/error_blocage.surql",
+    "error/envoi/error_envoi.surql",
+    "error/file/error_file.surql",
+    "error/dkim/error_dkim.surql"
 ]
 events = ["events/mail_guards.surql", "events/mail_events.surql"]
 seeds = ["seeds/mail_auth.surql"]

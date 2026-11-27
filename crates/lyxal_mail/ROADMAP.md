@@ -11,7 +11,7 @@ racine du dépôt ; chaque lot a son propre plan, validé par le CTO avant toute
 
 | Lot | Contenu pour ce crate | Sources principales | Prérequis |
 | :- | :--- | :--- | :--- |
-| 6 — Envoi | File par destination, tentatives, envoi vers les MX, dépôt authentifié (587 / 465), signature DKIM, avis de non-remise, adresses de retour signées, contrat public de dépôt | Stalwart `smtp/queue`, `smtp/outbound` ; Mox `queue`, `smtpclient`, `dsn` ; KumoMTA | lots 1, 5 |
+| 6 — Envoi | SurrealQL fait (6c : file, dépôt et contrat public, droits d'expéditeur, clés DKIM, adresses de retour) ; reste : worker d'envoi vers les MX, TLS, relais, route locale, signature et provisionnement DKIM (6d), dépôt authentifié 587 / 465 (6e), avis reçus, rétrodiffusion, transfert d'alias (6f) | Stalwart `smtp/queue`, `smtp/outbound` ; Mox `queue`, `smtpclient`, `dsn` ; KumoMTA | lots 1, 5 |
 | 7 — Transport sûr et rapports | MTA-STS, DANE, TLS-RPT, rapports DMARC reçus et émis, ARC | Stalwart `smtp/reporting`, `outbound/{dane,mta_sts}` ; Mox | lot 6 |
 | 8 — IMAP | IMAP4rev2 et rev1, extensions (IDLE, CONDSTORE, QRESYNC, MOVE, UIDPLUS, SPECIAL-USE, QUOTA, ACL…) | Stalwart `imap` ; Mox `imapserver` | lots 1, 4 |
 | 9 — Recherche et POP3 | Texte des pièces jointes, index plein texte, recherche IMAP ; POP3 | Stalwart `text-extract`, `pop3`, `store/search` | lot 8 |
@@ -96,7 +96,9 @@ Mesures : [`README.md`](README.md), section « Mesures ».
   en ASCII ; domaines convertis en forme ASCII en Rust par la session SMTP (`idna`) ; aucune
   extension de `lyxal_core` au lot 5 ; saisie d'un domaine ou d'une adresse en Unicode par un
   administrateur : question rouverte au lot 13.
-* **Alias vers l'extérieur, listes** : lot 6.
+* **Alias vers l'extérieur, listes** : champ `forward_to` en place (6c), transfert à la réception au sous-lot 6f ; listes plus tard.
+* **Coût de la réservation de la file (mesure du sous-lot 6c).** `fn::mail_queue_claim` lit l'échéancier par une plage bornée (2 ms pour 1 000 fiches, sans dépendre de la taille de la file) mais coûte environ 1,8 ms par destinataire réservé, dont 1,35 ms pour le `DELETE` de l'ancienne fiche de l'échéancier (tout `DELETE` coûte environ 1,35 ms en SurrealDB 3.3.4, même sur une table simple) : réservation de 500 destinataires parmi 100 000 en attente : médiane 908 ms, p95 1 073 ms (916 ms parmi 10 000), loin de l'objectif de 20 ms du plan (§18). Pistes à mesurer en 6d sur le serveur réel : réserver par lots plus petits (100) au fil de l'envoi, fiches de l'échéancier réutilisées au lieu d'être supprimées (purge groupée des fiches périmées), ou repli sur l'index `(state, next_attempt_at)` prévu par le plan ; décision du CTO si l'objectif est revu.
+* **Référence d'un module (`client_reference`).** Contrôlée par `fn::validation_identifier` (lettres, chiffres, `_`) comme le prévoit le plan : un identifiant d'enregistrement `table:clé` n'est pas accepté tel quel (le module passe sa clé, ou une forme sans `:`). À revoir avec le plan du fournisseur de `lyxal_notification`.
 * **Clés « fichiers » (décisions M19, S13).** Cache écrit dans `lyxal_secrets`
   (`FileKeys::with_cache`), pour les ouvertures seulement, activé par `lyxal-groupware`. Un
   scellement relit toujours le trousseau (2,5 ms par remise) : le sceller depuis le cache

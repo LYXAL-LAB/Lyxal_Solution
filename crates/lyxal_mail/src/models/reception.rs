@@ -26,9 +26,22 @@ pub struct RecipientAccount {
     pub quota_full: bool,
 }
 
+/// Sorte d'un destinataire résolu.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, SurrealValue)]
+#[surreal(untagged, rename_all = "snake_case")]
+pub enum RecipientKind {
+    /// Boîtes de comptes (adresse, alias, attrape-tout, postmaster).
+    Mailbox,
+    /// Adresse de retour à jeton d'un envoi (`rp=<jeton>@<domaine>`, lot 6 §11) : seuls les
+    /// avis de non-remise et réponses automatiques de cet envoi y arrivent.
+    Return,
+}
+
 /// Résultat de `fn::mail_recipient_resolve`.
 #[derive(Debug, Clone, SurrealValue)]
 pub struct ResolvedRecipient {
+    /// Sorte : boîtes de comptes, ou adresse de retour d'un envoi.
+    pub kind: RecipientKind,
     /// Adresse inscrite qui a servi (adresse demandée pour un attrape-tout).
     pub address: String,
     /// Domaine de courrier (forme ASCII).
@@ -37,8 +50,19 @@ pub struct ResolvedRecipient {
     pub tenant: MailRecordId,
     /// Taille maximale d'un message de l'organisation, en octets.
     pub max_message_bytes: i64,
-    /// Comptes actifs qui reçoivent le message (alias développé), triés.
+    /// Comptes actifs qui reçoivent le message (alias développé), triés ; vide pour une
+    /// adresse de retour.
     pub accounts: Vec<RecipientAccount>,
+    /// Alias : adresses extérieures qui reçoivent aussi le message (transfert, lot 6 §13).
+    pub forward_to: Vec<String>,
+    /// Réglage du domaine contre la rétrodiffusion (lot 6 §11).
+    pub backscatter_protection: bool,
+    /// Adresse de retour : envoi auquel elle appartient.
+    pub submission: Option<MailRecordId>,
+    /// Adresse de retour : origine de l'envoi (`submission`, `module`, `forward`, `dsn`).
+    pub origin: Option<String>,
+    /// Adresse de retour : compte expéditeur d'un dépôt authentifié.
+    pub account: Option<MailRecordId>,
 }
 
 /// Résultats des contrôles d'un message à sa réception, sans domaine ni adresse : mots de

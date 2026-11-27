@@ -49,13 +49,26 @@ DEFINE FUNCTION OVERWRITE fn::mail_recipient_resolve($params: object) {
     IF array::len($parts) < 2 { RETURN fn::error_result("MAIL_RECIPIENT_UNKNOWN", $p.language, {}); };
     LET $local = array::join(array::slice($parts, 0, array::len($parts) - 1), "@");
     -- Aucun relais : seul un domaine de courrier actif de l'installation reçoit (adresse littérale comprise)
-    LET $domain = (SELECT id, tenant, name, state, subaddress_separator, catch_all, postmaster FROM ONLY mail_domain WHERE name = array::last($parts) LIMIT 1);
+    LET $domain = (SELECT id, tenant, name, state, subaddress_separator, catch_all, postmaster, backscatter_protection FROM ONLY mail_domain WHERE name = array::last($parts) LIMIT 1);
     IF $domain == NONE OR $domain.state != "active" { RETURN fn::error_result(IF $bare { "MAIL_RECIPIENT_UNKNOWN" } ELSE { "MAIL_RELAY_DENIED" }, $p.language, {}); };
     IF !fn::validation_email($address, 254).valid { RETURN fn::error_result("MAIL_RECIPIENT_UNKNOWN", $p.language, {}); };
+    -- Adresse de retour (lot 6, §11) : rp=<jeton> d'un envoi, sur le domaine de son adresse
+    -- d'enveloppe, jusqu'à 14 jours après sa fin ; jeton inconnu ou échu : adresse inconnue
+    IF string::starts_with($local, "rp=") {
+        LET $sent = (SELECT id, tenant, origin, account, envelope_from, return_expires_at FROM ONLY mail_submission WHERE return_token = string::slice($local, 3) LIMIT 1);
+        IF $sent == NONE OR $sent.envelope_from != $address OR $sent.return_expires_at IS NONE OR $sent.return_expires_at <= time::now() {
+            RETURN fn::error_result("MAIL_RECIPIENT_UNKNOWN", $p.language, {});
+        };
+        RETURN fn::result_ok({
+            kind: "return", address: $address, domain: $domain.name, tenant: $sent.tenant,
+            max_message_bytes: fn::mail_settings_effective({ tenant: $sent.tenant }).max_message_bytes, accounts: [],
+            submission: $sent.id, origin: $sent.origin, account: $sent.account, forward_to: [], backscatter_protection: $domain.backscatter_protection
+        });
+    };
     -- Adresse exacte, sinon sans sa sous-adresse (jean+factures → jean)
-    LET $exact = (SELECT address, kind, account, targets, state FROM ONLY mail_address WHERE address = $address LIMIT 1);
+    LET $exact = (SELECT address, kind, account, targets, forward_to, state FROM ONLY mail_address WHERE address = $address LIMIT 1);
     LET $plain = IF $domain.subaddress_separator IS NOT NONE AND string::contains($local, $domain.subaddress_separator) { string::split($local, $domain.subaddress_separator)[0] } ELSE { $local };
-    LET $row = $exact ?? (IF $plain = $local { NONE } ELSE { (SELECT address, kind, account, targets, state FROM ONLY mail_address WHERE address = string::concat($plain, "@", $domain.name) LIMIT 1) });
+    LET $row = $exact ?? (IF $plain = $local { NONE } ELSE { (SELECT address, kind, account, targets, forward_to, state FROM ONLY mail_address WHERE address = string::concat($plain, "@", $domain.name) LIMIT 1) });
     -- Une adresse inscrite mais désactivée n'est jamais rattrapée par l'attrape-tout
     IF $row IS NOT NONE AND $row.state != "active" { RETURN fn::error_result("MAIL_RECIPIENT_UNKNOWN", $p.language, {}); };
     -- Sans adresse inscrite : compte postmaster du domaine, sinon attrape-tout (aucun par défaut)
@@ -68,11 +81,14 @@ DEFINE FUNCTION OVERWRITE fn::mail_recipient_resolve($params: object) {
     LET $accounts = array::filter($found, |$a| $a.state = "active");
     IF array::len($accounts) = 0 { RETURN fn::error_result(IF array::len($found) = 0 { "MAIL_RECIPIENT_UNKNOWN" } ELSE { "MAIL_RECIPIENT_DISABLED" }, $p.language, {}); };
     RETURN fn::result_ok({
+        kind: "mailbox",
         address: IF $row IS NONE { $address } ELSE { $row.address },
         domain: $domain.name, tenant: $domain.tenant, max_message_bytes: $settings.max_message_bytes,
-        accounts: array::map($accounts, |$a| { account: $a.account, quota_full: $a.quota_full })
+        accounts: array::map($accounts, |$a| { account: $a.account, quota_full: $a.quota_full }),
+        forward_to: IF $row IS NONE { [] } ELSE { $row.forward_to ?? [] },
+        backscatter_protection: $domain.backscatter_protection
     });
-} COMMENT "Résout un destinataire ({ address : ASCII, domaine en forme ASCII }) : casse ignorée ; domaine de courrier actif de l'installation, sinon MAIL_RELAY_DENIED (aucun relais) ; adresse exacte, sinon sans sa sous-adresse (jean+factures → jean) si le domaine en a ; sans adresse inscrite : compte postmaster du domaine pour postmaster@<domaine>, sinon compte attrape-tout du domaine (aucun par défaut) ; postmaster sans domaine : adresse du réglage de l'installation ; alias développé, comptes actifs seulement ; { address (adresse inscrite qui a servi, ou adresse demandée pour un attrape-tout), domain, tenant, max_message_bytes (taille maximale de l'organisation), accounts : [{ account, quota_full }] } ; MAIL_RECIPIENT_UNKNOWN (adresse absente ou désactivée), MAIL_RECIPIENT_DISABLED (comptes désactivés ou en suppression), sans écho de l'adresse. Droit : session système, compte de service";
+} COMMENT "Résout un destinataire ({ address : ASCII, domaine en forme ASCII }) : casse ignorée ; domaine de courrier actif de l'installation, sinon MAIL_RELAY_DENIED (aucun relais) ; adresse exacte, sinon sans sa sous-adresse (jean+factures → jean) si le domaine en a ; sans adresse inscrite : compte postmaster du domaine pour postmaster@<domaine>, sinon compte attrape-tout du domaine (aucun par défaut) ; postmaster sans domaine : adresse du réglage de l'installation ; alias développé, comptes actifs seulement ; { kind: mailbox, address (adresse inscrite qui a servi, ou adresse demandée pour un attrape-tout), domain, tenant, max_message_bytes (taille maximale de l'organisation), accounts : [{ account, quota_full }], forward_to (alias : adresses extérieures qui reçoivent aussi le message, §13), backscatter_protection (réglage du domaine, §11) } ; adresse de retour rp=<jeton> d'un envoi (lot 6, §11) : { kind: return, address, domain, tenant, max_message_bytes, accounts: [], submission, origin, account, forward_to: [], backscatter_protection }, jeton inconnu ou échu : MAIL_RECIPIENT_UNKNOWN ; MAIL_RECIPIENT_UNKNOWN (adresse absente ou désactivée), MAIL_RECIPIENT_DISABLED (comptes désactivés ou en suppression), sans écho de l'adresse. Droit : session système, compte de service";
 
 -- ----------------------------------------------------------------------------
 -- fn::mail_delivery_begin

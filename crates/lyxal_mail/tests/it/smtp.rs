@@ -821,6 +821,8 @@ async fn antivirus_and_partial_failures_answer_once() {
             kind: "alias".to_string(),
             account: None,
             targets: Some(vec![jean.account.clone(), marie.account.clone()]),
+            senders: None,
+            forward_to: None,
         })
         .await
         .expect("alias");

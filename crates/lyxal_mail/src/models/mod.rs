@@ -7,11 +7,14 @@
 mod account;
 mod block;
 mod content;
+mod dkim;
 mod domain;
 mod mailbox;
 mod message;
+mod queue;
 mod reception;
 mod settings;
+mod submission;
 mod types;
 
 pub use account::{
@@ -26,6 +29,11 @@ pub use block::{
 pub use content::{
     AccountPurgeStep, Content, ContentAttachParams, ContentBeginParams, ContentExpired,
     ContentLocation, ContentReservation, MaintenanceParams, TombstonesPurged,
+};
+pub use dkim::{
+    DkimAlgorithm, DkimKey, DkimKeyActivateParams, DkimKeyCreateParams, DkimKeyListParams,
+    DkimKeyPage, DkimKeyState, DkimMissing, DkimPending, DkimPendingKey, DkimPendingParams,
+    DkimRecord, DkimSignerKey, DkimSigners, DkimSignersParams,
 };
 pub use domain::{
     Deleted, Domain, DomainCreateParams, DomainList, DomainListParams, DomainRefParams,
@@ -42,12 +50,27 @@ pub use message::{
     MessagePageNext, MessageRefParams, MessageVersion, MoveResult, MovedMessage, RemovedEntry,
     ThreadGetParams, ThreadMessages, TransferParams,
 };
+pub use queue::{
+    ClaimedRecipient, DeliveredItem, DestinationFailure, DsnAction, DsnDoneParams, DsnDue,
+    DsnMarked, FailedItem, FailedOutcome, QueueClaim, QueueClaimParams, QueueCompleteParams,
+    QueueCompleted, QueueFailParams, QueueFailed, QueueOutcome, QueuePrepareParams, QueuePrepared,
+    QueuePurgeParams, QueuePurged, QueueReleaseParams, QueueReleased, QueueRenewParams,
+    QueueRenewed, QueueStats, QueueStatsParams, QueuedContent, ReturnAction, ReturnItem,
+    ReturnRecordParams, ReturnRecorded,
+};
 pub use reception::{
     DeliveriesPurged, DeliveryBeginParams, DeliveryCommitParams, DeliveryCommitResult,
     DeliveryItem, DeliveryItemError, DeliveryItemResult, DeliveryReservation, DeliveryRole,
-    Reception, RecipientAccount, RecipientResolveParams, ResolvedRecipient,
+    Reception, RecipientAccount, RecipientKind, RecipientResolveParams, ResolvedRecipient,
 };
 pub use settings::{
     EffectiveSettings, SettingsGetParams, SettingsSetParams, SettingsView, StoredSettings,
+};
+pub use submission::{
+    AttemptResult, AttemptStage, DsnNotify, DsnRequest, DsnReturn, DsnSettings, ForwardReception,
+    QueuedRecipient, RecipientState, SenderCheck, SenderCheckParams, Submission,
+    SubmissionBeginParams, SubmissionCanceled, SubmissionCommitParams, SubmissionOrigin,
+    SubmissionQueued, SubmissionRecipient, SubmissionRefParams, SubmissionReleased,
+    SubmissionReservation, SubmissionState, TlsInfo,
 };
 pub use types::{MailDatetime, MailRecordId, MailValue};

@@ -65,6 +65,10 @@ pub struct Address {
     pub account: Option<MailRecordId>,
     /// Comptes visés par un alias.
     pub targets: Vec<MailRecordId>,
+    /// Alias : comptes qui peuvent écrire sous l'alias.
+    pub senders: Vec<MailRecordId>,
+    /// Alias : adresses extérieures qui reçoivent aussi le message.
+    pub forward_to: Vec<String>,
     /// État : `active` ou `disabled`.
     pub state: String,
     /// Création.
@@ -182,6 +186,10 @@ pub struct AddressCreateParams {
     pub account: Option<String>,
     /// Comptes visés par un alias (1 à 50).
     pub targets: Option<Vec<String>>,
+    /// Alias seulement : comptes de l'organisation qui peuvent écrire sous l'alias (0 à 50).
+    pub senders: Option<Vec<String>>,
+    /// Alias seulement : adresses extérieures qui reçoivent aussi le message (0 à 10).
+    pub forward_to: Option<Vec<String>>,
 }
 
 /// Paramètres de `fn::mail_address_update` : un champ absent est conservé.
@@ -193,6 +201,10 @@ pub struct AddressUpdateParams {
     pub state: Option<String>,
     /// Comptes visés (alias seulement).
     pub targets: Option<Vec<String>>,
+    /// Comptes qui peuvent écrire sous l'alias (alias seulement, 0 à 50).
+    pub senders: Option<Vec<String>>,
+    /// Adresses extérieures qui reçoivent aussi le message (alias seulement, 0 à 10).
+    pub forward_to: Option<Vec<String>>,
 }
 
 /// Paramètres de `fn::mail_address_delete`.

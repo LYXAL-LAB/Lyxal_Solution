@@ -12,13 +12,16 @@
 -- ON DELETE REJECT bloquerait (essayé sur SurrealDB 3.3.4). Réception (lot 5) : un compte
 -- attrape-tout (catch_all, aucun par défaut, décision S17) reçoit les adresses inconnues du
 -- domaine ; un compte postmaster reçoit postmaster@<domaine> quand aucune adresse postmaster
--- n'est inscrite. Tous deux sont des comptes actifs de la même organisation (garde).
+-- n'est inscrite. Tous deux sont des comptes actifs de la même organisation (garde). Envoi (lot 6) :
+-- lisible des membres qui envoient (mail.send : droit d'expéditeur) et du compte de service des
+-- modules (mail.relay : expéditeurs des modules).
 
 DEFINE TABLE OVERWRITE mail_domain
     TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
         FOR select WHERE fn::mail_can({ action: "manage", tenant: tenant }) OR fn::mail_can({ action: "worker" })
+            OR fn::mail_can({ action: "send", tenant: tenant }) OR fn::mail_can({ action: "relay" })
         FOR create, update, delete WHERE fn::mail_can({ action: "manage", tenant: tenant })
     COMMENT "Domaines de courrier d'une organisation";
 
@@ -62,6 +65,18 @@ DEFINE FIELD OVERWRITE postmaster ON TABLE mail_domain
     TYPE option<record<mail_account>>
     REFERENCE ON DELETE UNSET
     COMMENT "Compte qui reçoit postmaster@<domaine> quand aucune adresse postmaster n'est inscrite (RFC 5321 §4.5.1) ; compte actif de la même organisation (garde) ; effacé quand le compte part en suppression";
+
+DEFINE FIELD OVERWRITE module_senders ON TABLE mail_domain
+    TYPE array<string>
+    DEFAULT []
+    ASSERT array::len($value) <= 20 AND array::len(array::distinct($value)) = array::len($value)
+        AND array::all($value, |$l| string::len($l) >= 1 AND string::len($l) <= 64 AND $l == string::lowercase($l) AND !string::starts_with($l, "rp="))
+    COMMENT "Parties locales sous lesquelles les modules envoient (contrat public de dépôt, lot 6 §12 : noreply, notifications…), 20 au plus ; jamais une adresse inscrite du domaine (garde, MAIL_MODULE_SENDER_CONFLICT)";
+
+DEFINE FIELD OVERWRITE backscatter_protection ON TABLE mail_domain
+    TYPE bool
+    DEFAULT true
+    COMMENT "Refus des rapports de non-remise à expéditeur vide adressés à une adresse ordinaire du domaine (rétrodiffusion, lot 6 §11) ; à couper si une partie du courrier du domaine part par un autre serveur avec ses vraies adresses en enveloppe";
 
 DEFINE FIELD OVERWRITE address_count ON TABLE mail_domain
     TYPE int
