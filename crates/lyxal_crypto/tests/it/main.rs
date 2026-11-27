@@ -23,5 +23,6 @@ mod secrets_v2;
 mod signatures;
 mod stream_proptests;
 mod stream_v1;
+mod tls_client;
 mod tls_server;
 mod totp_vectors;

@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 rust-version = "1.85"
 license.workspace = true
-description = "Moteur de chiffrement AES-256-GCM, chiffrement de fichiers en flux, TLS côté serveur, hachage, HMAC, HKDF, Argon2id, signatures RSA, Ed25519 et ES256, DKIM, chiffrement Web Push et gestion des clés du Noyau Technique Lyxal OS"
+description = "Moteur de chiffrement AES-256-GCM, chiffrement de fichiers en flux, TLS côté serveur et client, hachage, HMAC, HKDF, Argon2id, signatures RSA, Ed25519 et ES256, DKIM, chiffrement Web Push et gestion des clés du Noyau Technique Lyxal OS"
 
 [dependencies]
 aes-gcm = { version = "=0.10.3", features = ["zeroize"] }
@@ -37,6 +37,10 @@ aws-lc-rs = { version = "1.19", default-features = false, features = ["aws-lc-sy
 # sont actifs, cas du workspace). Déjà dans l'arbre par surrealdb, reqwest et lettre.
 rustls = { version = "0.23.46", default-features = false, features = ["std", "tls12", "aws_lc_rs"] }
 rustls-pki-types = { version = "1.15", features = ["std"] }
+# Autorités du mode vérifié de tls_client_config (lot 6, décision E12, question Q1) : version
+# figée, identique d'un nœud à l'autre (les racines du système ne sont jamais lues). Déjà dans
+# l'arbre par lettre (lyxal_notification) ; licence CDLA-Permissive-2.0 admise dans deny.toml.
+webpki-roots = "=1.0.11"
 
 [dev-dependencies]
 tempfile = { workspace = true }

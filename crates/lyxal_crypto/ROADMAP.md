@@ -1,7 +1,7 @@
 # Feuille de route — `lyxal_crypto`
 
 Évolutions prévues de la fondation cryptographique. L'état actuel (API figée, enveloppe `enc:v2`,
-format de flux v1, TLS côté serveur, signatures RSA et Ed25519, DKIM, contrats, fixtures et
+format de flux v1, TLS côté serveur et client, signatures RSA et Ed25519, DKIM, contrats, fixtures et
 fuzzing en CI) est décrit dans le
 [`README.md`](README.md), [`API_CONTRACT.md`](API_CONTRACT.md) et [`SECURITY.md`](SECURITY.md).
 Aucune étape ne démarre sans ordre du CTO et `implementation_plan.md` validé
@@ -24,7 +24,6 @@ X25519MLKEM768 sont déjà négociés **à l'intérieur** de TLS (décision C3).
 
 Chacune entre par le plan de son lot, validé par le CTO :
 
-- [ ] TLS côté client (envoi vers les serveurs de courrier : TLS opportuniste) — lot 6 (C8) ;
 - [ ] ARC (P6 e) et vérificateur de certificat pour DANE et MTA-STS (P6 f) — lot 7 ;
 - [ ] SCRAM-SHA-256 (P6 h) — lot 8 ;
 - [ ] OpenPGP (P6 j) — lot 12 bis ;
@@ -40,6 +39,6 @@ elle est revue par un tiers avant la première mise en production (décision C14
 Critères d'acceptation :
 
 - [ ] audit externe de l'API, de l'enveloppe `enc:v2`, du format de flux v1, de la configuration
-      TLS côté serveur, de DKIM, de la gestion des clés et des dépendances (dont AWS-LC) ;
+      TLS côtés serveur et client, de DKIM, de la gestion des clés et des dépendances (dont AWS-LC) ;
 - [ ] chaque constat corrigé ou accepté par le CTO, avec justification ;
 - [ ] `SECURITY.md` mis à jour (périmètre audité, limites connues).

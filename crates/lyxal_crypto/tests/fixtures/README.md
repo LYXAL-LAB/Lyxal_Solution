@@ -9,7 +9,7 @@ Tout ce dossier est réservé aux tests : aucune clé ni aucun certificat ne doi
 | `dkim/mail_auth/` | Corpus DKIM de `mail-auth` 0.16.0 (`001.txt` : message de la RFC 8463 annexe A ; `002.txt`, `003.txt`), copié tel quel avec ses licences `Apache-2.0 OR MIT` ; format : enregistrements DNS, ligne vide, message en fins de ligne LF |
 | `dkim/lyxal_signed_test_only.txt` | Message signé pour ces tests (même format) : `ed25519-sha256` simple/simple avec la clé de la RFC 8463, `rsa-sha256` relaxed/relaxed avec `rsa2048_test_only` ; signatures calculées par OpenSSL (Python `cryptography` 50.0.1) avec une canonicalisation écrite depuis la RFC 6376 (celle de `tools/check_dkim_fixtures.py`) |
 | `dkim/rsa768_test_only.spki.hex`, `dkim/rsa6144_test_only.spki.hex` | Clés publiques RSA (SubjectPublicKeyInfo en hexadécimal) trop courte et trop longue pour DKIM, générées par `openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:768` (resp. `6144`) puis `openssl pkey -pubout -outform DER` ; clés privées détruites |
-| `tls_test_only/` | Autorité de test (`ca.pem`, sa clé est détruite après génération) et certificats de serveur avec leurs clés, pour `tests/it/tls_server.rs` et la cible de fuzzing `tls_pem` |
+| `tls_test_only/` | Autorité de test (`ca.pem`, sa clé est détruite après génération), certificats de serveur avec leurs clés et un certificat auto-signé, pour `tests/it/tls_server.rs`, `tests/it/tls_client.rs`, les essais unitaires de `src/tls.rs` et la cible de fuzzing `tls_pem` |
 
 ## Certificats TLS de test
 
@@ -47,6 +47,16 @@ openssl pkcs8 -topk8 -nocrypt -in p256.key.pem -outform DER -out p256.key.der
 openssl x509 -in p256.chain.pem -outform DER -out p256.leaf.der
 openssl pkcs8 -topk8 -v2 aes-256-cbc -passout pass:test-only -in p256.key.pem -out p256.encrypted.key.pem
 rm -f ca.key.pem ca.srl
+```
+
+Certificat auto-signé (TLS côté client, généré le 27 novembre 2026 par OpenSSL 3.0.13, valide
+dix ans) :
+
+```sh
+openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -out selfsigned.key.pem
+openssl req -x509 -new -key selfsigned.key.pem -sha256 -days 3650 -subj "/CN=selfsigned" \
+  -addext "basicConstraints=critical,CA:FALSE" -addext "extendedKeyUsage=serverAuth" \
+  -addext "subjectAltName=DNS:mail.example.test" -out selfsigned.chain.pem
 ```
 
 `p256_next` sert au remplacement à chaud (même nom, autre clé) ; `p521` et `rsa1024` aux refus

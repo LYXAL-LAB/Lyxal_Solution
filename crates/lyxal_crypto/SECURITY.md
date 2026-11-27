@@ -3,7 +3,7 @@
 Cette bibliothèque n'est pas certifiée. RustCrypto fournit les primitives symétriques ; AWS-LC
 (`aws-lc-rs`, code C et assembleur issu de BoringSSL, appelé par FFI) est le seul moteur
 asymétrique (signatures RSA, ECDSA P-256 et Ed25519, génération de clés, ECDH du Web Push,
-HMAC-SHA1 des retours Twilio) et, avec `rustls`, fait le TLS côté serveur ; le crate encadre
+HMAC-SHA1 des retours Twilio) et, avec `rustls`, fait le TLS côté serveur et côté client ; le crate encadre
 leurs contrats. La crate `rsa` n'est jamais utilisée (calcul en temps variable,
 RUSTSEC-2023-0071 « Marvin ») ; `ring` n'est plus une dépendance du crate. Aucun code unsafe propre n'est autorisé
 (`forbid(unsafe_code)`) ; les dépendances peuvent comporter des backends unsafe, C ou
@@ -172,6 +172,24 @@ certificats (fichiers de certbot, `lyxal_secrets`) appartient à l'hôte. Rustls
 TLS 1.0 / 1.1 ni suites CBC ni échange de clés RSA (RFC 8996, 9325) : de vieux clients ne
 peuvent pas se connecter. X25519, ChaCha20-Poly1305 et l'échange hybride X25519MLKEM768 sont
 négociés à l'intérieur de TLS seulement (C3), jamais offerts comme primitives aux modules.
+
+## TLS côté client
+
+La configuration est construite par `tls_client_config` seulement (garde-fou CI) : TLS 1.2 et
+1.3, pas de 0-RTT, pas de certificat client, aucun journal des clés de session, fournisseur
+`aws-lc-rs` explicite.
+
+- **Mode opportuniste** (`Opportunistic`, RFC 7435) : le certificat n'est **pas** authentifié
+  (ni chaîne, ni dates, ni nom). Seule la signature de la poignée de main est vérifiée contre la
+  clé du certificat présenté : la connexion est chiffrée avec la clé de qui a répondu. Il ne
+  protège donc **que d'une écoute passive** ; un attaquant actif sur le chemin (DNS falsifié,
+  détournement de route) présente son propre certificat et lit le courrier, ou retire
+  `STARTTLS` de la réponse `EHLO` (repli en clair). C'est la pratique des serveurs de courrier
+  tant que le domaine destinataire ne publie ni MTA-STS ni DANE (lot 7) ; `verified: false` est
+  noté à chaque envoi.
+- **Mode vérifié** (`WebPki`) : chaîne, dates et nom vérifiés contre les autorités figées de
+  `webpki-roots` (les mêmes sur chaque nœud ; mise à jour par la version de la crate). Pas de
+  liste de révocation ni d'OCSP : un certificat révoqué mais non échu est accepté.
 
 ## Validation et signalement
 
