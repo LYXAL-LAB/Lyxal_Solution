@@ -4,6 +4,10 @@ Plan détaillé du lot 6 du programme courrier, agendas et contacts (`implementa
 racine, §4, §5 ligne « 6. Envoi », décisions **P2**, **P3**, **P6**, **P11**, **P12** ; décisions
 **S1** à **S20** du lot 5) : le serveur envoie enfin du courrier, sans fournisseur.
 
+> **Validé par le CTO le 27 novembre 2026** : plan, décisions **E1** à **E32** et réponses
+> recommandées aux questions **Q1** à **Q5**. Question **Q3** : solution B validée ; les questions
+> de licence relèvent du CTO et ne bloquent pas le travail.
+
 | Brique | Ce que c'est, en clair | Où |
 | :--- | :--- | :--- |
 | TLS côté client | Chiffrer la connexion vers un serveur de courrier distant (STARTTLS) | `lyxal_crypto` (extension C8 prévue au lot 2, détail à valider ici) |
