@@ -11,7 +11,7 @@ racine du dépôt ; chaque lot a son propre plan, validé par le CTO avant toute
 
 | Lot | Contenu pour ce crate | Sources principales | Prérequis |
 | :- | :--- | :--- | :--- |
-| 6 — Envoi | SurrealQL fait (6c : file, dépôt et contrat public, droits d'expéditeur, clés DKIM, adresses de retour) ; reste : worker d'envoi vers les MX, TLS, relais, route locale, signature et provisionnement DKIM (6d), dépôt authentifié 587 / 465 (6e), avis reçus, rétrodiffusion, transfert d'alias (6f) | Stalwart `smtp/queue`, `smtp/outbound` ; Mox `queue`, `smtpclient`, `dsn` ; KumoMTA | lots 1, 5 |
+| 6 — Envoi | SurrealQL fait (6c : file, dépôt et contrat public, droits d'expéditeur, clés DKIM, adresses de retour) ; dépôt authentifié 587 / 465 fait (6e) ; reste : worker d'envoi vers les MX, TLS, relais, route locale, signature et provisionnement DKIM (6d), avis reçus, rétrodiffusion, transfert d'alias (6f) | Stalwart `smtp/queue`, `smtp/outbound` ; Mox `queue`, `smtpclient`, `dsn` ; KumoMTA | lots 1, 5 |
 | 7 — Transport sûr et rapports | MTA-STS, DANE, TLS-RPT, rapports DMARC reçus et émis, ARC | Stalwart `smtp/reporting`, `outbound/{dane,mta_sts}` ; Mox | lot 6 |
 | 8 — IMAP | IMAP4rev2 et rev1, extensions (IDLE, CONDSTORE, QRESYNC, MOVE, UIDPLUS, SPECIAL-USE, QUOTA, ACL…) | Stalwart `imap` ; Mox `imapserver` | lots 1, 4 |
 | 9 — Recherche et POP3 | Texte des pièces jointes, index plein texte, recherche IMAP ; POP3 | Stalwart `text-extract`, `pop3`, `store/search` | lot 8 |
@@ -107,6 +107,14 @@ Mesures : [`README.md`](README.md), section « Mesures ».
 * **Contenus en attente en retard dans la sonde.** La sonde ne compte pas les contenus `pending`
   restés au-delà de leur délai (aucune fonction publique ne les compte ; la maintenance les
   retire) : fonction à ajouter si l'exploitation en a besoin.
+* **Dépôt authentifié (sous-lot 6e), non mesuré.** Coût de l'ouverture d'une session SurrealDB
+  au nom de l'utilisateur (objectif ≤ 20 ms p95, plan §18 ; sinon repli sur la session système et
+  `fn::auth_session_check`) et débit du dépôt (≥ 80 messages par seconde, 20 clients) : banc
+  `tests/it/submission_load.rs` non écrit ; essais avec Thunderbird, Apple Mail, Outlook et un
+  client Android (`AUTH LOGIN` d'Outlook) : essais réels du lot 6. La limite de destinataires de
+  l'organisation (`send_recipients_per_message`) n'est connue qu'à la fin des données (refus
+  `550 5.5.3`) : `RCPT TO` n'applique que `smtp.max_recipients` (`452 4.5.3`) ; la lire dès
+  `AUTH` demande un droit de lecture des réglages pour `mail.send` (à décider).
 * **Essais encore à écrire.** Dépôt sur un serveur SurrealDB 3.3.4 réel (`ws://`) ; panne
   simulée entre chaque étape du dépôt (le banc couvre le refus de l'inscription et l'abandon
   d'un contenu) ; suppression d'une identité puis purge du compte, suppression d'une

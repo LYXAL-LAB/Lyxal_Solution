@@ -166,6 +166,33 @@ IF !record::exists(error_definition:GROUPWARE_MASTER_KEY_MISSING) THEN (
     }
 ) END;
 
+IF !record::exists(error_definition:GROUPWARE_APPLICATION_KEY_MISSING) THEN (
+    CREATE error_definition:GROUPWARE_APPLICATION_KEY_MISSING CONTENT {
+        code: "GROUPWARE_APPLICATION_KEY_MISSING",
+        module: "groupware",
+        domain: "auth",
+        category: "internal",
+        severity: "error",
+        message: "A submission listener is declared: the application key is required",
+        default_language: "fr",
+        http_status: 500,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Clé applicative absente",
+                description: "Une écoute submission (ports 587 et 465) est déclarée, mais la clé applicative de lyxal-server n'est pas fournie : les mots de passe d'application ne peuvent pas être vérifiés. L'hôte refuse de démarrer.",
+                resolution: "Fournir la clé applicative de lyxal-server : variable LYXAL_GROUPWARE__CRYPTO__APPLICATION_KEY (même valeur que LYXAL__CRYPTO__APPLICATION_KEY) et crypto.application_key_id, ou retirer l'écoute submission."
+            },
+            en: {
+                label: "Application key missing",
+                description: "A submission listener is declared: the application key is required to verify application passwords.",
+                resolution: "Provide the lyxal-server application key: LYXAL_GROUPWARE__CRYPTO__APPLICATION_KEY (same value as LYXAL__CRYPTO__APPLICATION_KEY) and crypto.application_key_id, or remove the submission listener."
+            }
+        }
+    }
+) END;
+
 IF !record::exists(error_definition:GROUPWARE_DNS_UNAVAILABLE) THEN (
     CREATE error_definition:GROUPWARE_DNS_UNAVAILABLE CONTENT {
         code: "GROUPWARE_DNS_UNAVAILABLE",

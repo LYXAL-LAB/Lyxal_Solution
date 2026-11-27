@@ -11,10 +11,10 @@
 mod block;
 mod checks;
 mod config;
-mod handler;
+pub(crate) mod handler;
 mod metrics;
 mod resolver;
-mod session;
+pub(crate) mod session;
 
 pub use block::{
     BlockList, BlockRefreshWorker, Network, NetworkParseError, Offence, BAN_OFFENCES, BAN_WINDOW,

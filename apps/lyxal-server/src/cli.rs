@@ -24,7 +24,6 @@
 //! Sans argument, le binaire démarre le serveur.
 
 use crate::config::AppConfig;
-use crate::crypto;
 use crate::error::ServerError;
 use crate::modules::auth::{self, AuthHost};
 use lyxal_host::database;
@@ -551,7 +550,8 @@ fn check_summary(report: &CheckReport) -> String {
 async fn connect() -> Result<Arc<AuthHost>, ServerError> {
     let config = AppConfig::load()?;
     let client = database::connect_database(&config.database).await?;
-    let crypto = crypto::application_crypto(&config.crypto)?;
+    let crypto =
+        lyxal_host::services::application_crypto(&config.crypto, crate::config::ENV_PREFIX)?;
     auth::host(&client, &config, crypto)?.ok_or(ServerError::AuthDisabled)
 }
 

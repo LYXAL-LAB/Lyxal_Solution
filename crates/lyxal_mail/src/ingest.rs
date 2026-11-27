@@ -187,6 +187,11 @@ impl MailIngest {
         self.storage.is_configured() && self.storage.encryption_available()
     }
 
+    /// Session système de l'hôte.
+    pub(crate) fn system(&self) -> &MailStore {
+        &self.system
+    }
+
     /// Relevé de l'ordre des inscriptions des remises (lots, conflits rejoués).
     pub fn delivery_stats(&self) -> QueueStats {
         self.queue.stats()
@@ -319,7 +324,7 @@ impl MailIngest {
     /// Écrit le fichier chiffré d'un message à la clé réservée, dans le bucket du courrier de
     /// l'organisation ; rend sa fiche (`storage_object:<clé>`). Un refus du stockage fait
     /// oublier le bucket gardé en mémoire (retiré ou remplacé entre-temps : relu au dépôt suivant).
-    async fn write_file(
+    pub(crate) async fn write_file(
         &self,
         tenant: &MailRecordId,
         bucket_name: &str,
@@ -356,7 +361,7 @@ impl MailIngest {
     /// Lien ou inscription refusés : sur un refus de la base (l'écriture n'a pas eu lieu), le
     /// fichier, que rien ne référence, est supprimé ; sur une panne, il est laissé à la
     /// maintenance. Rend l'erreur d'origine ; un échec de la suppression est journalisé.
-    async fn abandon(&self, object: &str, error: MailError) -> MailError {
+    pub(crate) async fn abandon(&self, object: &str, error: MailError) -> MailError {
         if error.is_business() {
             if let Err(removal) = self.storage.delete(object).await {
                 tracing::warn!(object, code = %removal.code(), "fichier d'un dépôt refusé non supprimé : retiré par la maintenance");

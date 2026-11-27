@@ -12,9 +12,10 @@ antivirus), dépose un message brut (lecture MIME, écriture **chiffrée au repo
 maintenance (contenus abandonnés et libérés, effacements échus, fiches d'idempotence échues,
 comptes supprimés). Envoi (lot 6, en cours) : la partie SurrealQL est faite (sous-lot 6c : file
 d'envoi, dépôt et contrat public des modules, droits d'expéditeur, clés DKIM, adresses de retour,
-§ « État actuel : envoi ») ; rien n'est encore envoyé vers l'extérieur tant que le worker d'envoi
-et le dépôt authentifié (6d, 6e) ne sont pas livrés : aucun relais, aucun avis de non-remise,
-tout refus se fait pendant la session. Le module est installé et démarré par
+§ « État actuel : envoi ») et le dépôt authentifié des ports 587 et 465 aussi (sous-lot 6e,
+§ « `lyxal_mail::submission` ») : un message déposé reste dans la file tant que le worker
+d'envoi (6d) n'est pas livré ; le port 25 ne relaie rien, aucun avis de non-remise n'est
+produit. Le module est installé et démarré par
 l'hôte `apps/lyxal-groupware`, qui le porte par son `MailModule`, héberge ses dépendances
 (`lyxal_auth`, `lyxal_secrets`, `lyxal_storage`) et `lyxal_scheduler` (maintenance), et lui
 rattache ses écoutes (workers `lyxal_mail:mail.listener.<id>`), servies pour `smtp` par
@@ -584,6 +585,45 @@ messages par session, cadence) ; bannissement après trois sessions fautives, re
 nœud ; recherche d'adresses ralentie puis fermée ; STARTTLS (injection refusée, état remis à
 zéro, `ESMTPS` et `tls` dans le message rangé). Mesures de charge : « Mesures de la réception
 SMTP » plus haut.
+
+## État actuel : `lyxal_mail::submission` (dépôt authentifié, sous-lot 6e)
+
+Plan : `implementation_plan.md` du crate, §8 (décisions E14 à E17). Écoutes `protocol =
+"submission"` de l'hôte : port 587 (STARTTLS exigé) et port 465 (TLS implicite, RFC 8314),
+servies par `SubmissionHandler`. La session est celle de la réception (même machine d'états,
+mêmes lectures de `DATA` et de `BDAT`, fins de ligne, budget mémoire, délais et limites de
+session de `SmtpConfig`), dans son rôle « dépôt » :
+
+| Étape | Règle | Réponses |
+| :--- | :--- | :--- |
+| `EHLO` | `AUTH PLAIN LOGIN` annoncé **seulement sous TLS** ; `DSN` annoncé ; jamais `REQUIRETLS` | |
+| Avant TLS | `AUTH` et `MAIL` refusés | `530 5.7.0 Must issue a STARTTLS command first` |
+| `AUTH PLAIN` / `LOGIN` | échange de `lyxal_mail_proto` ; mot de passe d'application vérifié par l'hôte (`SubmissionAuthenticator`, service de `lyxal_auth`, droits recalculés par la base) ; permission `mail.send` exigée | `235 2.7.0` ; faux, révoqué ou sans `mail.send` : `535 5.7.8` ; adresse bloquée par `lyxal_auth` : `421 4.7.0` ; base indisponible : `454 4.7.0` ; troisième échec : `421 4.7.0` et fermeture ; déjà authentifié : `503 5.5.1` |
+| `MAIL FROM` | `AUTH` exigé ; `RET`, `ENVID`, `AUTH=` acceptés ; adresse contrôlée par `fn::mail_sender_check` **au nom de l'utilisateur** | `530 5.7.0 Authentication required` ; usurpation : `550 5.7.1 Sender address not allowed` |
+| `RCPT TO` | domaine extérieur : aucune vérification ; domaine de l'installation : `fn::mail_recipient_resolve` (session système) ; `NOTIFY`, `ORCPT` gardés ; adresse littérale, route source, `postmaster` seul refusés | inconnu `550 5.1.1`, désactivé `550 5.2.1`, invalide `553 5.1.3`, au-delà de `smtp.max_recipients` `452 4.5.3` |
+| Fin des données | lecture MIME ; exactement un `From`, un `Sender` au plus ; chaque adresse de `From`, `Sender`, `Resent-From`, `Resent-Sender` (10 au plus) contrôlée par `fn::mail_sender_check` ; antivirus ; `Received: from <EHLO> by <hostname> with ESMTPSA id <session>.<n>` **sans adresse IP ni compte** ; `Bcc` et `Resent-Bcc` retirés ; `Date` et `Message-ID: <UUID v7@hostname>` ajoutés s'ils manquent ; puis `MailIngest::queue_submission` | `250 2.0.0 Ok queued as <clé de l'envoi>` **après** l'inscription ; illisible `554 5.6.0` ; `From` absent, multiple ou sans adresse `550 5.6.0` ; usurpation `550 5.7.1` ; infecté `554 5.7.1` ; limite d'envoi `451 4.7.1` ; destinataires au-delà de la limite de l'organisation `550 5.5.3` ; taille `552 5.3.4` ; toute panne `451 4.3.0` |
+
+`MailIngest::queue_submission` : `fn::mail_submission_begin` au nom de l'utilisateur, fichier
+chiffré écrit par `lyxal_storage` (bucket `lyxal-mail` de l'organisation, créé s'il manque) et
+`fn::mail_submission_commit` sous la session système ; écriture en échec ou clôture refusée :
+envoi abandonné (`fn::mail_submission_abort`, compteurs rendus) et fichier supprimé ; panne dont
+on ne sait pas si la clôture a eu lieu : rien n'est supprimé, la maintenance retire l'envoi
+`pending` au bout d'une heure. La signature DKIM, l'adresse de retour et le préfixe sont posés
+par le worker d'envoi à la première réservation (`fn::mail_queue_prepare`).
+
+**Aucun bannissement réseau** sur le dépôt (ni pour les échecs d'authentification, ni pour les
+autres fautes : un bureau entier partage souvent une adresse) ; la liste de blocage de
+l'installation reste appliquée à l'acceptation, et `lyxal_auth` bloque l'adresse après trop
+d'échecs de mots de passe d'application. Journal : une ligne par authentification (issue,
+réseau masqué) et par dépôt (session, destinataires, taille, décision, code), sans identifiant,
+mot de passe, adresse, sujet ni contenu. Mesures (`SubmissionHandler::snapshot`) : sessions,
+messages mis en file et refusés par motif, destinataires, authentifications par issue
+(`auth_refused.invalid`, `.forbidden`, `.locked`, `.unavailable`, `.malformed`), commandes
+refusées avant TLS ou avant `AUTH`, usurpations refusées (`submission_spoofing`).
+
+Essais : unitaires (adresses d'expéditeur, groupes, mots encodés, domaines Unicode, `Bcc`
+retiré, `Date` et `Message-ID` ajoutés) ; dans l'hôte, sur de vraies sockets
+(`apps/lyxal-groupware/tests/it/submission.rs`).
 
 ## État actuel : `lyxal_mail::net`
 

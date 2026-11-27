@@ -12,10 +12,12 @@ seul binaire de Lyxal OS qui lie des crates AGPL (`lyxal_mail`) et porte du code
 (contrôle `scripts/ci/check_agpl_isolation.py`).
 
 **État : lots 3 (hôte et socle réseau), 4 (socle courrier) et 5 (réception SMTP) du programme
-courrier réalisés.** L'hôte porte les services du courrier (réception SMTP, dépôt d'un message
+courrier réalisés ; lot 6 (envoi) en cours : dépôt authentifié des ports 587 et 465 servi
+(sous-lot 6e, §4 ter).** L'hôte porte les services du courrier (réception SMTP, dépôt d'un message
 chiffré au repos, lecture, maintenance exécutée par `lyxal_scheduler`) et les modules dont ils ont
 besoin (coffre-fort, stockage, planificateur, §2). Les écoutes `smtp` sont servies par la
-réception SMTP de `lyxal_mail` (§4 bis) ; les autres protocoles n'existent pas encore : leurs
+réception SMTP de `lyxal_mail` (§4 bis), les écoutes `submission` par son dépôt authentifié
+(§4 ter) ; les autres protocoles n'existent pas encore : leurs
 ports répondent par un **refus poli et standard** (« service indisponible, réessayez plus
 tard ») puis ferment, en clair ou après la poignée de main TLS selon l'écoute. L'hôte offre aux
 protocoles le TLS implicite, la mise à niveau STARTTLS, le PROXY protocol, des certificats
@@ -93,7 +95,7 @@ Fichiers `config/{default,development,production}.toml`, choisis par `LYXAL_ENV`
 `LYXAL_GROUPWARE__<SECTION>__<CLÉ>` (décision G5 : un réglage de `lyxal-server`, préfixe
 `LYXAL__`, ne s'applique jamais ici). Clés inconnues refusées partout. Identifiants de la base
 par `LYXAL_GROUPWARE__DATABASE__USERNAME` et `LYXAL_GROUPWARE__DATABASE__PASSWORD` seulement ;
-clés maîtresses du coffre-fort et clé secrète d'un support S3 aussi (une valeur dans un fichier
+clés maîtresses du coffre-fort, clé applicative et clé secrète d'un support S3 aussi (une valeur dans un fichier
 arrête le démarrage, sans être écrite au journal).
 
 | Section | Réglages |
@@ -109,6 +111,7 @@ arrête le démarrage, sans être écrite au journal).
 | `secrets` | section commune aux hôtes (`lyxal_host::services`) : `master_key_id`, `previous_master_key_id` ; les clés elles-mêmes **seulement** par `LYXAL_GROUPWARE__SECRETS__MASTER_KEY` et `LYXAL_GROUPWARE__SECRETS__PREVIOUS_MASTER_KEY` (32 octets en Base64 canonique, lues par `lyxal_crypto::EnvironmentKeyProvider`) : **la même clé que `lyxal-server`** (`LYXAL__SECRETS__MASTER_KEY`), sans quoi les fichiers écrits par l'un ne s'ouvrent pas chez l'autre |
 | `storage` | section commune aux hôtes (`lyxal_host::services`) : `disk.root` (support `default`, dossier partagé avec `lyxal-server`), `[storage.s3.<nom>]` (`endpoint`, `region`, `bucket`, `access_key_id`, `secret_access_key` par l'environnement seulement, `path_style`, `allow_http`), `antivirus` (`address` ou `socket`, `timeout_seconds`) : **les mêmes supports nommés que `lyxal-server`** |
 | `scheduler` | `workers` (places de chaque exécuteur de file sur ce nœud, 4 par défaut, de 1 à 64) |
+| `crypto` | section commune aux hôtes (`lyxal_host::services`) : `application_key_id` ; la clé applicative elle-même **seulement** par `LYXAL_GROUPWARE__CRYPTO__APPLICATION_KEY` (32 octets en Base64 canonique) : **la même clé que `lyxal-server`** (`LYXAL__CRYPTO__APPLICATION_KEY`), qui scelle les clés de signature des jetons de `lyxal_auth` ; **obligatoire** dès qu'une écoute `submission` existe (démarrage refusé sinon : `GROUPWARE_APPLICATION_KEY_MISSING`, décision E30) |
 | `mail` | `storage_backend` (support des fichiers du courrier, `default` par défaut ; doit exister dans `[storage]` dès qu'un support est déclaré) |
 | `smtp` | réception SMTP (§4 bis) : `hostname` (**obligatoire** dès qu'une écoute `smtp` existe : bannière, `Received`, `authserv-id` ; nom de domaine en forme ASCII, celui du MX et du DNS inverse de l'adresse publique), `max_message_bytes` (52 428 800, de 1 Mio à 1 Gio, annoncé par `SIZE`), `max_recipients` (100, 1 à 1 000), `max_messages_per_session` (50, 1 à 1 000), `max_errors` (10, 1 à 100), `max_line_bytes` (4 096, 512 à 65 536), `command_timeout_seconds` (300, 30 à 3 600), `data_timeout_seconds` (180, 30 à 3 600), `session_max_seconds` (1 800, 60 à 86 400), `data_min_bytes_per_second` (1 024, 0 à 1 Mio), `messages_per_network_per_minute` (`[60, 180, 540]`, 1 à 1 000 000), `dmarc_enforce` (`true` ; `false` : résultat DMARC seulement, pour une mise en service progressive) |
 | `dns` | résolveur du nœud (`hickory-resolver`, sans DNSSEC) : `servers` (`ip` ou `ip:port` ; vide : ceux du système, `/etc/resolv.conf`), `timeout_seconds` (5, 1 à 30), `attempts` (2, 1 à 5), `cache_size` (16 384, 0 à 1 000 000) ; un résolveur récursif local (Unbound) est recommandé |
@@ -124,7 +127,7 @@ déclaré dès qu'une écoute est chiffrée ; noms de certificat uniques et non 
 lisibles ; bornes ci-dessous ; `drain_seconds` inférieur à `runtime.module_stop_timeout_seconds` ;
 noms de supports S3 (`snake_case`), antivirus (`address` ou `socket`, délai de 1 à 300 s),
 `scheduler.workers` (1 à 64), `mail.storage_backend` déclaré, `smtp.hostname` présent avec une
-écoute `smtp`, bornes de `[smtp]` et de `[dns]`, serveurs DNS lisibles ; une clé maîtresse sans
+écoute `smtp` ou `submission`, `crypto.application_key_id` présent avec la clé applicative, bornes de `[smtp]` et de `[dns]`, serveurs DNS lisibles ; une clé maîtresse sans
 identifiant, ou une ancienne clé sans clé active, arrête le démarrage. Avec une écoute `smtp`, un
 résolveur impossible à construire (configuration DNS du système illisible, aucun serveur)
 arrête le démarrage (`GROUPWARE_DNS_UNAVAILABLE`).
@@ -133,8 +136,9 @@ arrête le démarrage (`GROUPWARE_DNS_UNAVAILABLE`).
 écoutes sur `127.0.0.1` et des ports non privilégiés (2525, 2587, 2465, 1143, 1993, 1110, 1995,
 4190), avec un certificat de développement **à fournir** (commande `openssl` en tête du
 fichier), et `smtp.hostname = "localhost"`. `production.toml` : aucune écoute active ; exemples
-commentés (`[tls]`, `[smtp]`, `[dns]`, port 25, 465 au lot 6, 993 derrière un répartiteur au
-lot 8).
+commentés (`[tls]`, `[smtp]`, `[dns]`, `[crypto]`, ports 25, 587 et 465, 993 derrière un
+répartiteur au lot 8). Les écoutes `submission` de `development.toml` demandent la clé
+applicative de développement de `lyxal-server` dans l'environnement.
 
 ## 4. Écoutes et acceptation
 
@@ -192,6 +196,30 @@ en panne sur le nom témoin `smtp.hostname` (une requête par minute au plus) ou
 la réception (messages acceptés et refusés par motif, destinataires, résultats SPF / DKIM / DMARC,
 remises dupliquées évitées, durée des remises, ordre des inscriptions, DNS, bannissements), sans
 aucune adresse.
+
+## 4 ter. Dépôt authentifié (lot 6, sous-lot 6e)
+
+Les écoutes `protocol = "submission"` (587 en `starttls`, 465 en `implicit` ; `none` refusé, §5.1)
+sont servies par `lyxal_mail::submission::SubmissionHandler` (comportement complet : README de
+`lyxal_mail`, « `lyxal_mail::submission` »), avec les réglages de `[smtp]` (`hostname`, taille,
+destinataires, délais, limites de session). L'hôte lui remet :
+
+* la vérification des mots de passe d'application (décision E30) : `AppPasswordService` de
+  `lyxal_auth`, construit sur la session système et la **clé applicative** de `lyxal-server`
+  (`[crypto]`, environnement seulement ; sans elle et avec une écoute `submission`, démarrage
+  refusé : `GROUPWARE_APPLICATION_KEY_MISSING`) ; adresse IP réelle du client (après PROXY),
+  protocole `smtp`, connexion chiffrée ; permission `mail.send` exigée ;
+* pour chaque connexion réussie, un client SurrealDB **au nom de l'utilisateur** : clone de la
+  connexion fixe, authentifié par le jeton d'accès (accès `lyxal_auth_<emplacement>` défini par
+  `lyxal-server`), renouvelé par `AppPasswordService::renew` une minute avant son expiration ;
+  le pool reste à la session système ;
+* la session système (destinataires des domaines de l'installation, fichier et clôture du
+  dépôt), le service du courrier (écriture chiffrée), l'antivirus de `[storage.antivirus]`, le
+  budget mémoire et la liste de blocage du nœud (aucun bannissement écrit par le dépôt).
+
+`/metrics` ajoute, sous `mail.submission`, les mesures du dépôt (sessions, messages mis en file
+et refusés par motif, authentifications par issue, usurpations refusées), sans adresse ni compte.
+Le message déposé reste dans la file jusqu'au worker d'envoi (sous-lot 6d).
 
 ## 5. TLS et PROXY
 
@@ -317,6 +345,7 @@ installées avec le socle (hors empreinte du socle), contrôlées contre `src/er
 | `GROUPWARE_BIND_FAILED` | Port de courrier ou port HTTP indisponible |
 | `GROUPWARE_TLS_CERTIFICATE_INVALID` | Certificat illisible ou invalide, nom non couvert, clé lisible par d'autres comptes : arrêt au démarrage ; au rechargement, l'ancien reste et la santé passe à « dégradé » |
 | `GROUPWARE_MASTER_KEY_MISSING` | Aucune clé maîtresse du coffre-fort alors qu'un bucket chiffré existe dans la base : arrêt après l'installation des modules, rien n'est démarré |
+| `GROUPWARE_APPLICATION_KEY_MISSING` | Écoute `submission` déclarée sans la clé applicative de `lyxal-server` (mots de passe d'application) : arrêt avant l'installation des modules |
 | `GROUPWARE_DNS_UNAVAILABLE` | Écoute `smtp` déclarée, mais résolveur DNS impossible à construire (configuration DNS du système illisible, aucun serveur) : arrêt avant l'installation des modules |
 | `GROUPWARE_SHUTDOWN_SIGNAL_FAILED` | Signal d'arrêt indisponible |
 | `GROUPWARE_TELEMETRY_INIT_FAILED` | Journal non initialisé |
@@ -392,7 +421,14 @@ refusées dans les fichiers, supports, antivirus, exécuteurs, support du courri
 SMTP (`smtp_reception` : message envoyé par le client `lettre` puis lu par le service du
 courrier, en-têtes ajoutés, événement sans adresse, mesures ; relais refusé ; réseau de la liste
 de blocage refusé à l'acceptation ; STARTTLS réel par `openssl s_client -starttls smtp` et message
-marqué `ESMTPS` ; réglages `[smtp]` et `[dns]`) ; **deux hôtes** avec le vrai `lyxal-server`
+marqué `ESMTPS` ; réglages `[smtp]` et `[dns]`) ; dépôt authentifié (`submission` : ports 587
+en STARTTLS et 465 en TLS implicite par le client TLS de `lyxal_crypto`, `AUTH` et `MAIL` refusés
+avant TLS, mauvais mot de passe et mot de passe sans `mail.send` refusés (`535`), trois échecs
+(`421`), usurpation de `MAIL FROM`, de `From` et de `Sender` refusée, destinataire inconnu de
+l'installation refusé, envoi inscrit dans la file (`queued`, fichier chiffré relu : `Bcc` retiré,
+`Date` et `Message-ID` ajoutés, `Received` sans adresse IP), limite de destinataires de
+l'organisation, panne de la base (`451`, rien en file), mesures ; démarrage refusé sans clé
+applicative) ; **deux hôtes** avec le vrai `lyxal-server`
 (décision G16) sur base embarquée et sur `ws://` ; bout en bout du binaire (démarrage, routes
 HTTP, accueil SMTP et relais refusé, arrêt par SIGTERM). Les essais n'interrogent jamais le vrai
 DNS : un serveur DNS d'essai (réponse « n'existe pas » à toute question) est désigné par `[dns]`.

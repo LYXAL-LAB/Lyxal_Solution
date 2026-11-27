@@ -23,6 +23,8 @@ thiserror.workspace = true
 tokio = { workspace = true, features = ["io-util"] }
 tokio-util.workspace = true
 tracing.workspace = true
+# Identifiant `Message-ID` des messages déposés (UUID v7, plan du lot 6, §8.5).
+uuid.workspace = true
 bytes = "1"
 futures = { version = "0.3", default-features = false, features = ["std"] }
 # Valeurs `b=`, `bh=` et `p=` de DKIM en Base64 (MIT OR Apache-2.0, déjà dans l'arbre).

@@ -22,6 +22,10 @@ protocol = "smtp"
 bind = ["127.0.0.1:2525"]
 tls = "starttls"
 
+# Dépôt authentifié (ports 2587 et 2465, mots de passe d'application) : la clé applicative de
+# lyxal-server est obligatoire, par l'environnement seulement (mêmes valeurs que
+# LYXAL__CRYPTO__APPLICATION_KEY et LYXAL__CRYPTO__APPLICATION_KEY_ID) :
+#   LYXAL_GROUPWARE__CRYPTO__APPLICATION_KEY, LYXAL_GROUPWARE__CRYPTO__APPLICATION_KEY_ID
 [[listeners]]
 id = "submission"
 protocol = "submission"

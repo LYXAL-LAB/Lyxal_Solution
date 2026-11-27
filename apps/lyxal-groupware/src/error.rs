@@ -48,6 +48,11 @@ pub enum GroupwareError {
     #[error("un bucket chiffré existe : la clé maîtresse du coffre-fort est obligatoire (LYXAL_GROUPWARE__SECRETS__MASTER_KEY et secrets.master_key_id, même clé que lyxal-server)")]
     MasterKeyMissing,
 
+    /// Écoute `submission` déclarée sans la clé applicative partagée avec `lyxal-server`
+    /// (mots de passe d'application, décision E30).
+    #[error("une écoute submission est déclarée : la clé applicative est obligatoire (LYXAL_GROUPWARE__CRYPTO__APPLICATION_KEY et crypto.application_key_id, même clé que lyxal-server)")]
+    ApplicationKeyMissing,
+
     /// Résolveur DNS impossible à construire alors qu'une écoute `smtp` existe (configuration
     /// DNS du système illisible, ou aucun serveur DNS).
     #[error("résolveur DNS indisponible : {message}")]
@@ -145,6 +150,15 @@ const MASTER_KEY_MISSING: GroupwareErrorInfo = GroupwareErrorInfo {
     label: "Clé maîtresse du coffre-fort absente",
 };
 
+const APPLICATION_KEY_MISSING: GroupwareErrorInfo = GroupwareErrorInfo {
+    code: "GROUPWARE_APPLICATION_KEY_MISSING",
+    category: "internal",
+    http_status: 500,
+    retryable: false,
+    message: "A submission listener is declared: the application key is required",
+    label: "Clé applicative absente",
+};
+
 const DNS_UNAVAILABLE: GroupwareErrorInfo = GroupwareErrorInfo {
     code: "GROUPWARE_DNS_UNAVAILABLE",
     category: "dependency",
@@ -180,6 +194,7 @@ pub const GROUPWARE_ERROR_CATALOG: &[GroupwareErrorInfo] = &[
     BIND_FAILED,
     TLS_CERTIFICATE_INVALID,
     MASTER_KEY_MISSING,
+    APPLICATION_KEY_MISSING,
     DNS_UNAVAILABLE,
     SHUTDOWN_SIGNAL_FAILED,
     TELEMETRY_INIT_FAILED,
@@ -207,6 +222,7 @@ impl GroupwareError {
             Self::Bind { .. } => BIND_FAILED,
             Self::TlsCertificate { .. } => TLS_CERTIFICATE_INVALID,
             Self::MasterKeyMissing => MASTER_KEY_MISSING,
+            Self::ApplicationKeyMissing => APPLICATION_KEY_MISSING,
             Self::DnsUnavailable { .. } => DNS_UNAVAILABLE,
             Self::ShutdownSignal { .. } => SHUTDOWN_SIGNAL_FAILED,
             Self::Telemetry { .. } => TELEMETRY_INIT_FAILED,

@@ -1,6 +1,6 @@
-//! Sections de configuration et construction des services communs aux hôtes : clé maîtresse du
-//! coffre-fort (`[secrets]`, `lyxal_secrets`), supports des fichiers et antivirus (`[storage]`,
-//! `lyxal_storage`).
+//! Sections de configuration et construction des services communs aux hôtes : clé applicative
+//! (`[crypto]`, jetons d'accès de `lyxal_auth`), clé maîtresse du coffre-fort (`[secrets]`,
+//! `lyxal_secrets`), supports des fichiers et antivirus (`[storage]`, `lyxal_storage`).
 //!
 //! Les deux hôtes (`lyxal-server`, `lyxal-groupware`) partagent la même base : ces sections
 //! reçoivent les mêmes valeurs dans les deux (même clé maîtresse, mêmes supports nommés), sans
@@ -9,7 +9,10 @@
 
 use crate::config::SecretPassword;
 use crate::HostError;
-use lyxal_crypto::{EnvironmentKeyProvider, KeyId, ResolvedKey};
+use lyxal_crypto::{
+    CryptoEngine, EnvironmentKeyProvider, KeyId, KeyRingBuilder, KeyUse, ResolvedKey,
+    StaticKeyResolver,
+};
 use lyxal_secrets::MasterKeys;
 use lyxal_storage::{BackendConfig, Backends, ClamAvScanner, ContentScanner, ScannerConfig};
 use serde::Deserialize;
@@ -28,6 +31,49 @@ pub const SECRET_KEYS: &[&str] = &[
     "secrets.master_key",
     "secrets.previous_master_key",
 ];
+
+/// Clé applicative de l'installation, la même pour les hôtes qui vérifient des connexions
+/// (`lyxal-server` ; `lyxal-groupware` pour les mots de passe d'application du courrier) : clé
+/// AES-256 de 32 octets en Base64 canonique (44 caractères), uniquement par la variable
+/// `<préfixe>__CRYPTO__APPLICATION_KEY` (lue par `lyxal_crypto::EnvironmentKeyProvider`), et son
+/// identifiant `application_key_id` (ex. `app-2026`), qui figure dans chaque enveloppe. Elle
+/// scelle les clés de signature des jetons d'accès de `lyxal_auth`.
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CryptoConfig {
+    #[serde(default)]
+    pub application_key: Option<SecretPassword>,
+    #[serde(default)]
+    pub application_key_id: Option<String>,
+}
+
+/// Trousseau applicatif : une clé active lue dans `<env_prefix>__CRYPTO__APPLICATION_KEY`.
+/// `None` si la clé n'est pas fournie ; une clé fournie mais invalide (ou sans identifiant)
+/// arrête le démarrage.
+pub fn application_crypto(
+    config: &CryptoConfig,
+    env_prefix: &str,
+) -> Result<Option<Arc<CryptoEngine<StaticKeyResolver>>>, HostError> {
+    if config.application_key.is_none() {
+        return Ok(None);
+    }
+    let key = load_key(
+        &format!("{env_prefix}__CRYPTO__APPLICATION_KEY"),
+        "crypto.application_key",
+        "crypto.application_key_id",
+        config.application_key_id.as_deref(),
+    )?;
+    let mut builder = KeyRingBuilder::new();
+    builder
+        .insert_resolved(key, KeyUse::Active)
+        .map_err(|e| configuration_error("crypto.application_key", e))?;
+    let ring = builder
+        .build()
+        .map_err(|e| configuration_error("crypto.application_key", e))?;
+    Ok(Some(Arc::new(CryptoEngine::new(StaticKeyResolver::new(
+        Arc::new(ring),
+    )))))
+}
 
 /// Clé maîtresse du coffre-fort (`lyxal_secrets`), la même pour tous les hôtes d'une base :
 /// clé AES-256 de 32 octets en Base64 canonique (44 caractères), jamais dans les fichiers de

@@ -26,7 +26,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use super::block::{Network, Offence};
 use super::checks::Checks;
-use super::handler::Shared;
+use super::handler::{Inbound, Mode, Shared};
 use super::metrics::RefusedReason;
 use crate::auth::{
     author_domains, is_valid_domain, sample_roll, strip_forged_results, to_ascii_domain,
@@ -35,10 +35,16 @@ use crate::auth::{
     SpfResult, SpfVerifier, MAX_AUTHOR_DOMAINS,
 };
 use crate::delivery::{PipelineResult, ReceivedMessage, RecipientTarget, RejectReason};
-use crate::models::{MailDatetime, RecipientKind, RecipientResolveParams, ResolvedRecipient};
+use crate::models::{
+    DsnRequest, MailDatetime, RecipientKind, RecipientResolveParams, ResolvedRecipient,
+    SubmissionRecipient,
+};
 use crate::net::{MemoryClass, MemoryReservation, NetError, Session, SessionEnd, TlsState};
+use crate::submission::SubmissionUser;
 use crate::MailError;
 use lyxal_surreal::{LyxalCallError, LyxalSurrealError};
+
+mod submission;
 
 /// Octets lus au plus par lecture sur la connexion.
 const READ_CHUNK: usize = 16 * 1024;
@@ -76,6 +82,10 @@ struct Transaction {
     smtputf8: bool,
     declared_size: Option<u64>,
     recipients: Vec<RecipientTarget>,
+    /// Dépôt authentifié : destinataires de l'envoi, dans l'ordre, sans doublon.
+    outbound: Vec<SubmissionRecipient>,
+    /// Dépôt authentifié : demande d'avis (`RET`, `ENVID`).
+    dsn: Option<DsnRequest>,
     /// `RCPT TO` acceptés (une adresse répétée compte à chaque fois).
     accepted: usize,
     /// Plus petite taille maximale des organisations des destinataires.
@@ -189,6 +199,10 @@ pub(crate) struct SmtpSession {
     messages: u32,
     ip: IpAddr,
     started: Instant,
+    /// Dépôt authentifié : utilisateur authentifié par `AUTH`.
+    user: Option<Box<dyn SubmissionUser>>,
+    /// Dépôt authentifié : échecs de `AUTH` dans la session.
+    auth_failures: u32,
 }
 
 impl SmtpSession {
@@ -213,6 +227,8 @@ impl SmtpSession {
             messages: 0,
             ip,
             started: Instant::now(),
+            user: None,
+            auth_failures: 0,
         }
     }
 
@@ -233,14 +249,35 @@ impl SmtpSession {
         format!("{:x}", self.io.session.info.session_id)
     }
 
+    /// Réception du port 25 : ses contrôles et sa chaîne de remise ; `None` pour le dépôt.
+    fn inbound(&self) -> Option<&Inbound> {
+        match &self.shared.mode {
+            Mode::Inbound(inbound) => Some(inbound),
+            Mode::Submission(_) => None,
+        }
+    }
+
+    /// Faute comptée pour le bannissement du réseau (réception seulement : aucun bannissement
+    /// réseau sur le dépôt authentifié, où un bureau entier partage souvent une adresse).
+    async fn offence(&mut self, offence: Offence) {
+        if self.inbound().is_some() {
+            self.shared
+                .blocks
+                .record_offence(&self.shared.store, self.ip, offence)
+                .await;
+        }
+    }
+
     /// Sert la connexion jusqu'à sa fin.
     pub(crate) async fn run(mut self) -> SessionEnd {
         self.shared.metrics.session();
-        let resolver = self.shared.resolver.clone();
-        let ip = self.ip;
-        self.checks
-            .iprev
-            .start(async move { Iprev::new(resolver.as_ref()).check(ip).await });
+        if let Some(inbound) = self.inbound() {
+            let resolver = inbound.resolver.clone();
+            let ip = self.ip;
+            self.checks
+                .iprev
+                .start(async move { Iprev::new(resolver.as_ref()).check(ip).await });
+        }
         match Response::greeting(&self.shared.config.hostname) {
             Ok(greeting) => self.io.response(&greeting),
             Err(_) => self.io.reply(421, "4.3.2", "Service not available"),
@@ -293,10 +330,7 @@ impl SmtpSession {
                 self.io
                     .reply(421, "4.7.0", "Too many errors, closing connection");
                 self.shared.metrics.refused(RefusedReason::Limits);
-                self.shared
-                    .blocks
-                    .record_offence(&self.shared.store, self.ip, Offence::Errors)
-                    .await;
+                self.offence(Offence::Errors).await;
                 return Flow::Close;
             }
         }
@@ -345,6 +379,7 @@ impl SmtpSession {
             Request::Data => self.data().await,
             Request::Bdat { size, last } => self.bdat(size, last).await,
             Request::StartTls => self.start_tls().await,
+            Request::Auth { mechanism, initial } => self.auth(&mechanism, initial).await,
             Request::Vrfy => {
                 self.io.reply(
                     252,
@@ -353,12 +388,9 @@ impl SmtpSession {
                 );
                 Flow::Continue
             }
-            Request::Expn
-            | Request::Auth { .. }
-            | Request::Lhlo
-            | Request::Etrn
-            | Request::Atrn
-            | Request::Burl => self.not_implemented(),
+            Request::Expn | Request::Lhlo | Request::Etrn | Request::Atrn | Request::Burl => {
+                self.not_implemented()
+            }
         }
     }
 
@@ -375,9 +407,9 @@ impl SmtpSession {
             literal => literal.to_string(),
         };
         self.reset_transaction();
-        if self.helo.as_deref() != Some(name.as_str()) {
+        let resolver = self.inbound().map(|inbound| inbound.resolver.clone());
+        if let Some(resolver) = resolver.filter(|_| self.helo.as_deref() != Some(name.as_str())) {
             if matches!(host, Domain::Name(_)) {
-                let resolver = self.shared.resolver.clone();
                 let (ip, helo) = (self.ip, name.clone());
                 self.checks.helo_spf.start(async move {
                     SpfVerifier::new(resolver.as_ref())
@@ -392,10 +424,15 @@ impl SmtpSession {
         self.phase = Phase::Ready;
         let hostname = &self.shared.config.hostname;
         let response = if extended {
-            let extensions = Extensions::inbound(
-                self.shared.config.max_message_bytes,
-                self.io.session.can_start_tls(),
-            );
+            let max = self.shared.config.max_message_bytes;
+            let starttls = self.io.session.can_start_tls();
+            let extensions = match &self.shared.mode {
+                Mode::Inbound(_) => Extensions::inbound(max, starttls),
+                // `AUTH` annoncé seulement sous TLS (RFC 4954 §4, plan §8.1)
+                Mode::Submission(_) => {
+                    Extensions::submission(max, starttls, self.io.session.info.tls.is_tls())
+                }
+            };
             ehlo_response(hostname, &extensions)
         } else {
             lyxal_mail_proto::smtp::helo_response(hostname)
@@ -416,6 +453,9 @@ impl SmtpSession {
     }
 
     async fn mail(&mut self, mail: MailFrom) -> Flow {
+        let Some(resolver) = self.inbound().map(|inbound| inbound.resolver.clone()) else {
+            return self.submission_mail(mail).await;
+        };
         if self.transaction.is_some() {
             return self.bad_sequence("Nested MAIL command");
         }
@@ -457,7 +497,6 @@ impl SmtpSession {
             ReversePath::Null => String::new(),
             ReversePath::Mailbox(mailbox) => mailbox.to_string(),
         };
-        let resolver = self.shared.resolver.clone();
         let (ip, helo, identity) = (
             self.ip,
             self.helo.clone().unwrap_or_default(),
@@ -473,6 +512,8 @@ impl SmtpSession {
             smtputf8: mail.smtputf8,
             declared_size: mail.size,
             recipients: Vec::new(),
+            outbound: Vec::new(),
+            dsn: None,
             accepted: 0,
             max_bytes: config.max_message_bytes,
             chunks: None,
@@ -486,6 +527,9 @@ impl SmtpSession {
     }
 
     async fn rcpt(&mut self, rcpt: RcptTo) -> Flow {
+        if self.inbound().is_none() {
+            return self.submission_rcpt(rcpt).await;
+        }
         let Some(transaction) = &self.transaction else {
             return self.bad_sequence("Send MAIL first");
         };
@@ -610,10 +654,7 @@ impl SmtpSession {
                 "4.7.0",
                 "Too many invalid recipients, closing connection",
             );
-            self.shared
-                .blocks
-                .record_offence(&self.shared.store, self.ip, Offence::Harvest)
-                .await;
+            self.offence(Offence::Harvest).await;
             return Flow::Close;
         }
         if self.refused_recipients >= HARVEST_DELAY_FROM {
@@ -637,7 +678,7 @@ impl SmtpSession {
                 self.bad_sequence("Send MAIL first");
                 false
             }
-            Some(transaction) if transaction.recipients.is_empty() => {
+            Some(transaction) if transaction.accepted == 0 => {
                 self.io.reply(554, "5.5.1", "No valid recipients");
                 self.error();
                 false
@@ -691,7 +732,7 @@ impl SmtpSession {
         let usable = self
             .transaction
             .as_ref()
-            .is_some_and(|transaction| !transaction.recipients.is_empty());
+            .is_some_and(|transaction| transaction.accepted > 0);
         if !usable {
             // Le morceau suit la commande : il est lu puis oublié (RFC 3030 §2)
             if let Some(flow) = self.discard(size).await {
@@ -882,10 +923,7 @@ impl SmtpSession {
             self.io.response(&error.response());
             self.error();
             self.refuse(RefusedReason::Smuggling, outcome.size, 500);
-            self.shared
-                .blocks
-                .record_offence(&self.shared.store, self.ip, Offence::Smuggling)
-                .await;
+            self.offence(Offence::Smuggling).await;
             return Flow::Continue;
         }
         if outcome.oversized || outcome.size > transaction.max_bytes {
@@ -912,6 +950,9 @@ impl SmtpSession {
         // remise, qui garde aussi la copie à ranger (réservée avant d'être faite)
         let received = Bytes::from(std::mem::take(&mut transaction.message));
         let memory = transaction.memory.take();
+        if self.inbound().is_none() {
+            return self.submit(transaction, received, memory).await;
+        }
         self.check_and_deliver(transaction, received, memory).await
     }
 
@@ -970,7 +1011,14 @@ impl SmtpSession {
         }
 
         // Contrôles d'authenticité : SPF et nom inverse déjà lancés, DKIM et DMARC sur le message
-        let resolver = self.shared.resolver.clone();
+        let Some(inbound) = self.inbound() else {
+            return Flow::Continue;
+        };
+        let (resolver, organizational, pipeline) = (
+            inbound.resolver.clone(),
+            inbound.organizational.clone(),
+            inbound.pipeline.clone(),
+        );
         let spf = match self.checks.mail_spf.result().await {
             Some(output) => output.clone(),
             None => SpfOutput {
@@ -984,7 +1032,7 @@ impl SmtpSession {
         let dkim = DkimVerifier::new(resolver.as_ref())
             .verify_headers(&headers)
             .await;
-        let dmarc = DmarcVerifier::new(resolver.as_ref(), self.shared.organizational.as_ref())
+        let dmarc = DmarcVerifier::new(resolver.as_ref(), organizational.as_ref())
             .verify(&domains, &spf, &dkim)
             .await;
         drop(headers);
@@ -1098,7 +1146,7 @@ impl SmtpSession {
             received_at: MailDatetime::now(),
         };
         let started = Instant::now();
-        let result = self.shared.pipeline.deliver(&message).await;
+        let result = pipeline.deliver(&message).await;
         self.shared
             .metrics
             .delivery_time(u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX));

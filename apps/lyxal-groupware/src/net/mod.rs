@@ -22,6 +22,7 @@ use lyxal_mail::net::{
     WindowLimit,
 };
 use lyxal_mail::smtp::{BlockList, SmtpInboundHandler};
+use lyxal_mail::submission::SubmissionHandler;
 use lyxal_runtime::health::{HealthCheckResult, HealthStatus, ModuleHealthCheck};
 use lyxal_runtime::worker::LyxalWorker;
 use lyxal_runtime::{ModuleContext, ModuleId, RuntimeError};
@@ -168,6 +169,8 @@ pub struct MailNet {
     certificates: Option<Arc<Certificates>>,
     /// Réception SMTP du nœud, pour ses mesures.
     smtp: Option<SmtpInboundHandler>,
+    /// Dépôt authentifié du nœud, pour ses mesures.
+    submission: Option<SubmissionHandler>,
 }
 
 impl MailNet {
@@ -257,12 +260,19 @@ impl MailNet {
             listeners,
             certificates,
             smtp: None,
+            submission: None,
         })
     }
 
     /// Mesures de la réception SMTP ajoutées à celles des écoutes (`/metrics`).
     pub fn with_smtp_metrics(mut self, smtp: Option<SmtpInboundHandler>) -> Self {
         self.smtp = smtp;
+        self
+    }
+
+    /// Mesures du dépôt authentifié ajoutées à celles des écoutes (`/metrics`).
+    pub fn with_submission_metrics(mut self, submission: Option<SubmissionHandler>) -> Self {
+        self.submission = submission;
         self
     }
 
@@ -333,6 +343,7 @@ impl MailNet {
             tracked_networks: self.acceptance.rate.tracked() + self.acceptance.open.tracked(),
             certificates: self.certificates.as_ref().map(|c| c.snapshot()),
             smtp: self.smtp.as_ref().map(SmtpInboundHandler::snapshot),
+            submission: self.submission.as_ref().map(SubmissionHandler::snapshot),
         }
     }
 
@@ -354,6 +365,10 @@ pub struct MailSnapshot {
     /// Réception SMTP (messages acceptés, refusés par motif, résultats d'authenticité, remises,
     /// DNS, bannissements) ; absent sans écoute `smtp`.
     pub smtp: Option<BTreeMap<String, u64>>,
+    /// Dépôt authentifié (sessions, authentifications par issue, usurpations refusées, messages
+    /// mis en file, refus par motif ; aucune adresse ni aucun compte) ; absent sans écoute
+    /// `submission`.
+    pub submission: Option<BTreeMap<String, u64>>,
 }
 
 /// Budget mémoire des connexions.
