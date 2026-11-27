@@ -331,8 +331,11 @@ tâche nouvelle `mail.dkim.provision` (toutes les 10 min, §9.3).
   `LIMIT` au parcours d'un index dans une fonction (constat du lot 4, décision P1). Une vue tenue
   par les événements de `mail_queue_recipient` (comme `mail_message_date`) range chaque
   destinataire `scheduled` sous un identifiant ordonné `mail_queue_due:⟨<10^16 + échéance en µs>_
-  <clé du destinataire>⟩` ; la réservation lit une **plage d'identifiants bornée** (de l'origine
-  à l'instant présent), lue par fenêtres de 1 000 au plus. Repli, si la mesure (§18) montre que
+  <clé du destinataire>⟩`, et chaque destinataire `running` sous la **fin de son bail**
+  (`locked_until`, clé refaite à chaque réservation et à chaque renouvellement) ; un destinataire
+  dans un autre état n'y figure pas. La réservation lit une **plage d'identifiants bornée** (de
+  l'origine à l'instant présent), lue par fenêtres de 1 000 au plus : elle y trouve à la fois les
+  destinataires échus et ceux dont le bail a expiré. Repli, si la mesure (§18) montre que
   l'index `(state, next_attempt_at)` tient l'objectif sur une file de 100 000 messages en attente :
   index seul, vue retirée.
 * **Garde** (« fencing ») : toute écriture d'un résultat (`fn::mail_queue_complete`, `_fail`,
@@ -340,7 +343,8 @@ tâche nouvelle `mail.dkim.provision` (toutes les 10 min, §9.3).
   sinon `MAIL_QUEUE_CLAIM_LOST`, et le worker abandonne ce destinataire sans rien écrire.
 * **Renouvellement** : toutes les 2 min pendant un envoi long (gros message, serveur lent).
 * **Reprise après arrêt brutal** : un destinataire `running` dont le bail est échu redevient
-  réservable (aucune tâche de secours : la réservation le reprend), sans essai compté si aucun
+  réservable : son entrée de l'échéancier, rangée sous la fin du bail, devient échue, et la
+  réservation le reprend (aucune tâche de secours), sans essai compté si aucun
   résultat n'a été écrit. Arrêt propre : `fn::mail_queue_release` rend aussitôt les destinataires
   non commencés, sans essai compté.
 * **Résultat écrit aussitôt** après chaque transaction SMTP (avant la suivante sur la même
@@ -595,14 +599,18 @@ Dans l'ordre, sur le message en mémoire (budget du lot 3, classe « réception 
 5. `Received: from <EHLO> by <hostname> with ESMTPSA id <session> ; <date>` (`ESMTPSA` /
    `UTF8SMTPSA`, RFC 3848), **sans** l'adresse IP du client ni le compte (vie privée de
    l'expéditeur, comme les grands fournisseurs) ;
-6. signature DKIM (§9.2) ;
-7. adresse de retour `rp=<jeton>@<domaine du MAIL FROM>` (§11) ;
-8. `fn::mail_submission_begin` → `StorageService::put` (chiffré, bucket `lyxal-mail` de
+6. `fn::mail_submission_begin` → `StorageService::put` (chiffré, bucket `lyxal-mail` de
    l'organisation, clé `queue/<UUID v7>.eml`, décision **E29**) → `fn::mail_submission_commit` ;
-   le préfixe (`Received`, `DKIM-Signature`) est rangé en base sur l'envoi (modèle Mox
-   `MsgPrefix`), le fichier garde les octets reçus modifiés par les étapes 3 seulement ;
-9. `250 2.0.0 Ok <identifiant>` après l'inscription ; toute panne avant : `451 4.3.0` (le
+   le fichier garde les octets reçus modifiés par les étapes 3 et 5 ; la session de
+   l'utilisateur ne fournit ni jeton de retour ni préfixe ;
+7. `250 2.0.0 Ok <identifiant>` après l'inscription ; toute panne avant : `451 4.3.0` (le
    logiciel réessaie) ; aucun message accepté puis perdu.
+
+**Préparation par le worker** (comme pour un module, §12.3) : la signature DKIM (§9.2), l'adresse
+de retour `rp=<jeton>@<domaine du MAIL FROM>` (§11) et le préfixe (`DKIM-Signature`, rangé en base
+sur l'envoi, modèle Mox `MsgPrefix`) sont faits à la première réservation par
+`fn::mail_queue_prepare`, sous la garde de la réservation, jamais avec les droits de
+l'utilisateur.
 
 Destinataires : aucune vérification d'existence pendant la session pour un domaine extérieur ;
 un destinataire d'un domaine de l'installation est résolu dès `RCPT TO` (`fn::mail_recipient_resolve`) et
@@ -695,7 +703,7 @@ un avis n'est jamais produit deux fois, même après une reprise.
 | :--- | :--- |
 | `submission` (dépôt authentifié) | **Déposé directement dans la boîte de réception du compte expéditeur** par la chaîne de remise du lot 5 (expéditeur `MAILER-DAEMON@<smtp.hostname>`, idempotence par empreinte), jamais envoyé sur Internet. Compte désactivé ou supprimé : aucun avis, compté |
 | `module` (contrat du §12) | Aucun message : événements `mail.submission.*` seulement |
-| `forward` (transfert, §13) | Envoyé à l'expéditeur d'origine par la file (envoi d'origine `dsn`, `MAIL FROM:<>`), **seulement si** la réception d'origine avait SPF `pass` ou DMARC `pass` (expéditeur authentifié) ; sinon aucun avis, compté (`dsn_suppressed`) : un avis vers une adresse forgée serait de la rétrodiffusion |
+| `forward` (transfert, §13) | Envoyé à l'expéditeur d'origine par la file (envoi d'origine `dsn`, `MAIL FROM:<>`), **seulement si** l'adresse d'enveloppe d'origine est authentifiée : SPF `pass` sur l'identité `MAIL FROM`, ou signature DKIM valide dont le domaine `d=` est celui de l'adresse d'enveloppe ou son domaine d'organisation. Un DMARC `pass` obtenu par le seul `From` ne suffit pas : il ne prouve rien sur l'adresse d'enveloppe ; sinon aucun avis, compté (`dsn_suppressed`) : un avis vers une adresse forgée serait de la rétrodiffusion |
 | `dsn` | Jamais d'avis sur un avis |
 
 ### 10.3. Avis reçus (décision **E23**)
@@ -820,9 +828,9 @@ tenues (skill `lyxal-surrealdb`) : jamais `LET $event`, `$before`, `$after`, `$v
 
 | Table | Contenu |
 | :--- | :--- |
-| `mail_submission` (nouvelle) | `mail_submission:⟨<UUID v7>⟩` ; `tenant` ; `origin` (`submission`, `module`, `forward`, `dsn`, immuable) ; `account` (dépôt authentifié) et `owner` (titulaire, recopié, règle de lecture P1 du lot 4) ; `sender` (adresse annoncée), `header_from` (1 à 10 adresses), `envelope_from` (adresse de retour, ou vide pour `<>`), `return_token` (index unique, `option`), `return_expires_at` ; `client_reference` (`option`, module) ; `content` (`bucket`, `object`, `key`, `size`) ; `prefix` (`option<string>`, 16 Kio au plus, lisible par le compte de service seulement) ; `smtputf8`, `eight_bit` ; `dsn` (`ret` `hdrs` / `full`, `envid` en `xtext` décodé, 100 caractères au plus) ; `require_tls` (`option<bool>`, réservé au lot 7) ; `forward` (`option<object>` : adresse d'enveloppe d'origine, `spf`, `dmarc` de la réception) ; `state` (`pending`, `queued`, `done`) ; `recipient_count`, `open_count` ; `created_at`, `queued_at`, `done_at`, `expires_at` (dépôt + `expire_hours`) |
+| `mail_submission` (nouvelle) | `mail_submission:⟨<UUID v7>⟩` ; `tenant` ; `origin` (`submission`, `module`, `forward`, `dsn`, immuable) ; `account` (dépôt authentifié) et `owner` (titulaire, recopié, règle de lecture P1 du lot 4) ; `sender` (adresse annoncée), `header_from` (1 à 10 adresses), `envelope_from` (adresse de retour, ou vide pour `<>`), `return_token` (index unique, `option`), `return_expires_at` ; `client_reference` (`option`, module) ; `content` (`bucket`, `object`, `key`, `size`) ; `prefix` (`option<string>`, 16 Kio au plus, lisible par le compte de service seulement) ; `smtputf8`, `eight_bit` ; `dsn` (`ret` `hdrs` / `full`, `envid` en `xtext` décodé, 100 caractères au plus) ; `require_tls` (`option<bool>`, réservé au lot 7) ; `forward` (`option<object>` : adresse d'enveloppe d'origine, `spf` de la réception, `envelope_dkim` : vrai si une signature DKIM valide porte le domaine de l'enveloppe) ; `state` (`pending`, `queued`, `done`) ; `recipient_count`, `open_count` ; `created_at`, `queued_at`, `done_at`, `expires_at` (dépôt + `expire_hours`) |
 | `mail_queue_recipient` (nouvelle) | `mail_queue_recipient:⟨<clé de l'envoi>_<10^3 + rang>⟩` ; `tenant`, `owner`, `submission`, `rank` ; `address`, `domain` (forme ASCII), `local` (domaine de l'installation au dépôt) ; `notify` (`never` ou sous-ensemble de `success`, `failure`, `delay` ; absent = défaut), `orcpt` ; `state` (§5.2) ; `attempts`, `next_attempt_at`, `locked_until`, `claim` (jeton de réservation, lisible par le compte de service seulement) ; `last_result` (`stage` : `dns`, `connect`, `tls`, `greeting`, `mail`, `rcpt`, `data`, `local`, `content`, `expired` ; `code`, `enhanced`, `text` assaini de 512 octets, `host`, `tls` { `version`, `verified` }, `at`) ; `delay_sent`, `dsn_sent`, `final_at` |
-| `mail_queue_due` (nouvelle, vue) | Échéancier ordonné (décision **E5**) : `mail_queue_due:⟨<10^16 + échéance en µs>_<clé du destinataire>⟩`, `recipient`, `domain` ; tenu par l'événement de `mail_queue_recipient` (ligne posée pour `scheduled`, retirée sinon), fermé à l'écriture directe |
+| `mail_queue_due` (nouvelle, vue) | Échéancier ordonné (décision **E5**) : `mail_queue_due:⟨<10^16 + échéance en µs>_<clé du destinataire>⟩`, `recipient`, `domain` ; tenu par l'événement de `mail_queue_recipient` (ligne posée pour `scheduled` sous l'échéance et pour `running` sous la fin du bail, retirée dans les autres états), fermé à l'écriture directe |
 | `mail_queue_destination` (nouvelle) | `mail_queue_destination:⟨<domaine>⟩` ; `suspended_until`, `consecutive_failures`, `last_failure` (`stage`, `at`) ; compte de service et session système seulement |
 | `mail_dkim_key` (nouvelle) | `mail_dkim_key:⟨<clé du domaine>_<sélecteur>⟩` ; `tenant`, `domain`, `selector` (`slug`, 63 caractères au plus), `algorithm` (`rsa-sha256`, `ed25519-sha256`), `bits` (2048 pour RSA), `public_key` (Base64 de `p=`, 1 Kio au plus), `secret_path`, `state` (`pending`, `active` ; lot 13 : `retiring`, `retired`), `dns_checked_at`, `activated_at`, `created_at` ; supprimée avec le domaine |
 | `mail_send_counter` (nouvelle) | `mail_send_counter:⟨<portée>_<fenêtre>⟩` ; `kind` (`account_messages`, `account_recipients`, `module_messages`, `forward_messages`), `count`, `expires_at` ; écrite par les fonctions de dépôt, purgée par la maintenance |
@@ -843,14 +851,14 @@ titulaire).
 | Fonction | Paramètres → résultat | Droit |
 | :--- | :--- | :--- |
 | `fn::mail_sender_check` | `{ addresses: [1..10], language }` → `{ allowed, refused: [rang] }` (§8.3) | `mail.send` (compte de la session) |
-| `fn::mail_submission_begin` | `{ origin (submission, module ; forward, dsn : système et mail.worker), from, header_from: [1..10], recipients: [1..1000 × { address, notify, orcpt }], size, smtputf8, eight_bit, dsn: { ret, envid }, client_reference, return_token, prefix, forward, language }` → `{ submission, tenant, bucket, key, object, return_address }` ; contrôles : droit, expéditeur (§8.3 ou §12.3), limites et compteurs réservés (§8.4), taille de l'organisation, bucket `lyxal-mail` créé s'il manque (chiffré, sans événements, S14), réservation `storage_object_begin` ; `return_token` et `prefix` acceptés du compte de service et de la session système seulement | `mail.send` ; `mail.relay` ou session système (module) ; `mail.worker` (transfert, avis) |
+| `fn::mail_submission_begin` | `{ origin (submission, module ; forward, dsn : système et mail.worker), from, header_from: [1..10], recipients: [1..1000 × { address, notify, orcpt }], size, smtputf8, eight_bit, dsn: { ret, envid }, client_reference, return_token, prefix, forward, language }` → `{ submission, tenant, bucket, key, object, return_address }` (`return_address` vide sauf pour un transfert ou un avis : ailleurs, le worker la pose à la préparation) ; contrôles : droit, expéditeur (§8.3 ou §12.3), limites et compteurs réservés (§8.4), taille de l'organisation, bucket `lyxal-mail` créé s'il manque (chiffré, sans événements, S14), réservation `storage_object_begin` ; `return_token` et `prefix` acceptés du compte de service et de la session système seulement | `mail.send` ; `mail.relay` ou session système (module) ; `mail.worker` (transfert, avis) |
 | `fn::mail_submission_commit` | `{ submission, language }` → `{ submission, recipients, queued_at }` ; **une transaction** : fichier écrit et clos (`storage_object_commit` vérifié), destinataires créés (`local` posé par la résolution des domaines de l'installation), échéancier, état `queued` | le même appelant que `begin` |
 | `fn::mail_submission_abort` | `{ submission, language }` → `{ released }` ; compteurs rendus, fichier supprimé ; un envoi `pending` non clos est retiré par la maintenance après 1 h | idem |
 | `fn::mail_submission_get` | `{ submission, language }` → envoi (sans préfixe ni contenu) et ses destinataires (`state`, `attempts`, `last_result` sans texte distant pour un appelant module, `final_at`) | titulaire ; `mail.relay` pour ses envois `module` ; `mail.worker` |
 | `fn::mail_submission_cancel` | `{ submission, language }` → `{ canceled }` : destinataires `scheduled` → `canceled` (un destinataire en cours d'envoi n'est pas interrompu) | idem |
 | `fn::mail_queue_claim` | `{ node, limit (1..500), lease_seconds (60..1800), exclude_domains: [0..1000], language }` → `{ claim, items: [{ recipient, submission, tenant, origin, rank, address, domain, local, notify, orcpt, attempts, envelope_from, content, prefix, smtputf8, eight_bit, dsn, size, created_at }] }` ; lecture par l'échéancier (§5.3) | `mail.worker`, session système |
 | `fn::mail_queue_renew` | `{ claim, recipients: [1..500], lease_seconds, language }` → `{ renewed }` | idem |
-| `fn::mail_queue_prepare` | `{ claim, submission, return_token, prefix, malformed, language }` → `{ prepared }` (envoi `module`, §12.3) | idem |
+| `fn::mail_queue_prepare` | `{ claim, submission, return_token, prefix, malformed, language }` → `{ prepared }` (envois `submission` et `module`, §8.5 et §12.3) | idem |
 | `fn::mail_queue_complete` | `{ claim, items: [1..100 × { recipient, outcome (delivered, relayed), host, code, enhanced, tls, at }], language }` → `{ dsn: [{ submission, action, recipients }] }` | idem |
 | `fn::mail_queue_fail` | `{ claim, items: [1..100 × { recipient, permanent, stage, code, enhanced, text, host }], destination: { domain, unreachable }, language }` → `{ items: [{ recipient, state, next_attempt_at }], dsn: [...] }` ; échéance suivante, retard, expiration, suspension de la destination (§5.4, §5.5) | idem |
 | `fn::mail_queue_release` | `{ claim, recipients: [1..500], not_before, language }` → `{ released }` (arrêt propre, cadence : sans essai compté) | idem |
