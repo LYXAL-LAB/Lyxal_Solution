@@ -225,6 +225,8 @@ async fn an_alias_delivers_to_each_account_and_junk_is_honoured() {
             kind: "alias".to_string(),
             account: None,
             targets: Some(vec![jean.account.clone(), marie.account.clone()]),
+            senders: None,
+            forward_to: None,
         })
         .await
         .expect("alias");

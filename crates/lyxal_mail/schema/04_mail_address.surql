@@ -6,8 +6,10 @@
 -- ============================================================================
 -- Une adresse appartient à un domaine de courrier de l'organisation. Sorte account : elle remet
 -- dans un compte ; sorte alias : dans 1 à 50 comptes de la même organisation (les alias vers des
--- adresses extérieures viennent au lot 6). Partie locale en ASCII et en minuscules (décision M10).
--- Le titulaire d'un compte lit ses propres adresses ; l'administrateur les gère.
+-- adresses extérieures : forward_to, lot 6 §13). Partie locale en ASCII et en minuscules (décision
+-- M10) ; le préfixe rp= est réservé aux adresses de retour (MAIL_ADDRESS_RESERVED). Un alias ne
+-- donne le droit d'écrire en son nom qu'aux comptes de sa liste senders (lot 6 §8.3). Le
+-- titulaire d'un compte lit ses propres adresses ; l'administrateur les gère.
 
 DEFINE TABLE OVERWRITE mail_address
     TYPE NORMAL
@@ -15,6 +17,8 @@ DEFINE TABLE OVERWRITE mail_address
     PERMISSIONS
         FOR select WHERE fn::mail_can({ action: "manage", tenant: tenant })
             OR (account IS NOT NONE AND fn::mail_can({ action: "mailbox", tenant: tenant, account: account }))
+            OR (account IS NOT NONE AND fn::mail_can({ action: "sender", tenant: tenant, account: account }))
+            OR (kind = "alias" AND array::len(senders) > 0 AND senders CONTAINS fn::mail_session_account(NONE))
             OR fn::mail_can({ action: "worker" })
         FOR create, update, delete WHERE fn::mail_can({ action: "manage", tenant: tenant })
     COMMENT "Adresses des comptes et alias";
@@ -63,6 +67,18 @@ DEFINE FIELD OVERWRITE targets ON TABLE mail_address
     ASSERT array::len($value) <= 50
     COMMENT "Comptes d'un alias (1 à 50, de la même organisation) ; vide pour une adresse de compte";
 
+DEFINE FIELD OVERWRITE senders ON TABLE mail_address
+    TYPE array<record<mail_account>>
+    DEFAULT []
+    ASSERT array::len($value) <= 50
+    COMMENT "Alias seulement : comptes de l'organisation qui peuvent écrire sous l'alias (0 à 50, aucun par défaut : faire partie d'un alias ne donne pas le droit d'écrire en son nom) ; vide pour une adresse de compte";
+
+DEFINE FIELD OVERWRITE forward_to ON TABLE mail_address
+    TYPE array<string>
+    DEFAULT []
+    ASSERT array::len($value) <= 10 AND array::all($value, |$a| string::len($a) <= 254 AND $a == string::lowercase($a))
+    COMMENT "Alias seulement : adresses extérieures (domaine hors de l'installation, minuscules) qui reçoivent aussi le message, par la file d'envoi (0 à 10, lot 6 §13) ; vide pour une adresse de compte";
+
 DEFINE FIELD OVERWRITE state ON TABLE mail_address
     TYPE string
     DEFAULT "active"
@@ -84,3 +100,4 @@ DEFINE INDEX OVERWRITE mail_address_address ON TABLE mail_address FIELDS address
 DEFINE INDEX OVERWRITE mail_address_account ON TABLE mail_address FIELDS account;
 DEFINE INDEX OVERWRITE mail_address_domain ON TABLE mail_address FIELDS domain, local_part;
 DEFINE INDEX OVERWRITE mail_address_targets ON TABLE mail_address FIELDS targets;
+DEFINE INDEX OVERWRITE mail_address_senders ON TABLE mail_address FIELDS senders;

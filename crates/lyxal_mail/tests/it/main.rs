@@ -8,6 +8,7 @@
 mod delivery;
 mod health;
 mod measures;
+mod queue;
 mod reception;
 mod smtp;
 mod smtp_load;

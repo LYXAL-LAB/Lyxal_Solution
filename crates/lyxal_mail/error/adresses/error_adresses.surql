@@ -219,3 +219,30 @@ IF !record::exists(error_definition:MAIL_RECIPIENT_DISABLED) THEN (
         }
     }
 ) END;
+
+IF !record::exists(error_definition:MAIL_ADDRESS_RESERVED) THEN (
+    CREATE error_definition:MAIL_ADDRESS_RESERVED CONTENT {
+        code: "MAIL_ADDRESS_RESERVED",
+        module: "mail",
+        domain: "adresses",
+        category: "validation",
+        severity: "error",
+        message: "Reserved address",
+        default_language: "fr",
+        http_status: 400,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Adresse réservée",
+                description: "Une adresse qui commence par rp= est réservée aux adresses de retour.",
+                resolution: "Choisissez une autre partie locale."
+            },
+            en: {
+                label: "Reserved address",
+                description: "An address starting with rp= is reserved for return addresses.",
+                resolution: "Choose another local part."
+            }
+        }
+    }
+) END;

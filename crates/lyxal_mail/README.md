@@ -10,8 +10,11 @@ antivirus), dépose un message brut (lecture MIME, écriture **chiffrée au repo
 `lyxal_storage`, inscription), le relit en entier ou par plage, remet un message reçu à un compte
 (ordre par compte dans le nœud, écriture groupée, événement `mail.message.received`) et fait la
 maintenance (contenus abandonnés et libérés, effacements échus, fiches d'idempotence échues,
-comptes supprimés). Rien n'est encore envoyé vers l'extérieur (lot 6) : aucun relais, aucun avis
-de non-remise, tout refus se fait pendant la session. Le module est installé et démarré par
+comptes supprimés). Envoi (lot 6, en cours) : la partie SurrealQL est faite (sous-lot 6c : file
+d'envoi, dépôt et contrat public des modules, droits d'expéditeur, clés DKIM, adresses de retour,
+§ « État actuel : envoi ») ; rien n'est encore envoyé vers l'extérieur tant que le worker d'envoi
+et le dépôt authentifié (6d, 6e) ne sont pas livrés : aucun relais, aucun avis de non-remise,
+tout refus se fait pendant la session. Le module est installé et démarré par
 l'hôte `apps/lyxal-groupware`, qui le porte par son `MailModule`, héberge ses dépendances
 (`lyxal_auth`, `lyxal_secrets`, `lyxal_storage`) et `lyxal_scheduler` (maintenance), et lui
 rattache ses écoutes (workers `lyxal_mail:mail.listener.<id>`), servies pour `smtp` par
@@ -37,7 +40,7 @@ CASCADE`) : une organisation supprimée emporte tout son courrier. Seule la list
 | `mail_settings` | Réglages de l'installation et des organisations : taille d'un message (50 Mio par défaut), quota par défaut (aucun), conservation des effacements (30 jours, 7 à 365), dossiers par compte (1 000), adresses par compte (100), mots-clés par message (50) ; installation seulement : `postmaster`, adresse inscrite qui reçoit le destinataire `postmaster` écrit sans domaine (RFC 5321 §4.5.1, S17) |
 | `mail_domain` | Domaine de courrier repris d'un domaine **vérifié** de `lyxal_auth` (M9), forme ASCII seulement (M10), état, séparateur de sous-adresse (`+` ou aucun), nombre d'adresses ; `catch_all` (compte attrape-tout, **aucun par défaut**, S17) et `postmaster` (compte qui reçoit `postmaster@<domaine>` sans adresse inscrite), comptes actifs de la même organisation, effacés quand le compte part en suppression ; le retrait du domaine dans `lyxal_auth` est refusé tant qu'il sert au courrier (`MAIL_DOMAIN_EXISTS`), sauf avec l'organisation |
 | `mail_account` | Compte d'un membre (une identité par organisation), état (`active`, `disabled`, `deleting`), adresse principale, quota, compteurs du compte : messages, volume, **numéro de modification du compte** (M6), prochaine UIDVALIDITY, plancher des changements, dossiers, adresses |
-| `mail_address` | Adresse d'un compte ou alias vers 1 à 50 comptes de l'organisation ; partie locale ASCII en minuscules |
+| `mail_address` | Adresse d'un compte ou alias vers 1 à 50 comptes de l'organisation ; partie locale ASCII en minuscules, préfixe `rp=` réservé (`MAIL_ADDRESS_RESERVED`) ; alias : `senders` (comptes qui peuvent écrire sous l'alias, aucun par défaut), `forward_to` (0 à 10 adresses extérieures, transfert du lot 6f) |
 | `mail_mailbox` | Dossier : chemin (`/`), parent, rôle SPECIAL-USE, abonnement, ordre, UIDVALIDITY, prochain UID, compteurs (total, non lus, volume, `HIGHESTMODSEQ`) |
 | `mail_content` | Contenu d'un message (fichier `.eml` de `lyxal_storage`) : clé `<compte>/<UUID v7>.eml`, fiche de stockage, état `pending` → `stored` → `released`, taille, `protection` (`platform` ; `openpgp`, `client` réservés, M15), lecteurs (`refs`) |
 | `mail_message` | Message d'un dossier (un seul, M5), d'identifiant ordonné `mail_message:⟨<clé du dossier>_<10^10 + UID>⟩` (décision P1) : UID, identifiant JMAP (`email_id`, gardé par un déplacement), numéros de modification, fil immuable (M7), dates, drapeaux système en booléens, mots-clés en minuscules triés, `Message-ID`, sujet de base, enveloppe typée et structure MIME facultatives (M8) ; `origin` (immuable : `delivery`, `append`, `copy`, `move`, `import`) et, pour un message reçu seulement, `reception` : résultats `spf`, `dkim`, `dmarc`, `iprev` (mots de la RFC 8601), `antivirus`, `spam`, `tls`, sans domaine ni adresse |
@@ -45,6 +48,7 @@ CASCADE`) : une organisation supprimée emporte tout son courrier. Seule la list
 | `mail_network_block` | Liste de blocage de l'installation (S18) : réseau (plage CIDR, unique), motif (`manual`, `errors`, `harvest`, `smuggling`), récidives (`strikes`), fin (`expires_at` ; absente : entrée manuelle sans fin), auteur d'une entrée manuelle |
 | `mail_tombstone` | Effacements (message effacé ou déplacé hors d'un dossier, dossier supprimé) avec leur numéro de modification, pour `QRESYNC` et `Email/changes` |
 | `mail_message_date` | Vue des messages d'un dossier par date interne, d'identifiant ordonné `⟨<clé du dossier>_<10^16 + µs>_<10^10 + UID>⟩`, tenue par les événements des messages, fermée à l'écriture directe (pages par date) |
+| `mail_submission`, `mail_queue_recipient`, `mail_queue_due`, `mail_queue_destination`, `mail_dkim_key`, `mail_send_counter` | Envoi (lot 6) : voir « État actuel : envoi » |
 
 ### Droits (`fn::mail_can`, seed `seeds/mail_auth.surql`)
 
@@ -53,7 +57,9 @@ CASCADE`) : une organisation supprimée emporte tout son courrier. Seule la list
 | `mail.mailbox.access` | organisation | oui | membre, administrateur | sa propre boîte (identité du compte = identité de la session) |
 | `mail.domain.manage` | organisation | non | administrateur | domaines, comptes, adresses, alias, réglages ; **jamais** le contenu des boîtes (M11) |
 | `mail.installation.manage` | installation | non | administrateur de la plateforme | réglages de l'installation (dont `postmaster`), entrées manuelles de la liste de blocage, sa lecture et ses retraits |
-| `mail.worker` | installation | non | aucun (compte de service) | résolution des destinataires, remise et dépôt dans tout compte, bannissements automatiques et lecture des réseaux bloqués, maintenance |
+| `mail.worker` | installation | non | aucun (compte de service) | résolution des destinataires, remise et dépôt dans tout compte, bannissements automatiques et lecture des réseaux bloqués, maintenance ; file d'envoi, clés DKIM, avis reçus |
+| `mail.send` | organisation | oui | membre, administrateur | envoyer sous ses propres adresses (§8.3 du plan du lot 6), lire et annuler ses envois |
+| `mail.relay` | installation | non | aucun (compte de service d'un module) | déposer par le contrat public sous les expéditeurs des modules d'un domaine, lire et annuler ces envois |
 
 Une fiche invisible est « introuvable ». Les fonctions qui touchent aux fichiers (lien d'un
 contenu, maintenance) passent par les fonctions publiques de `lyxal_storage` : elles s'exécutent
@@ -150,8 +156,9 @@ le lot ; le service de remise reprend alors le lot élément par élément, et l
 
 ### Erreurs et événements
 
-47 codes `MAIL_*` en master data (`error/<thème>/`, traduits en français et en anglais ;
-`MAIL_CONTENT_UNAVAILABLE` et `MAIL_SCANNER_UNAVAILABLE` à réessayer), dont 8 pour la réception :
+58 codes `MAIL_*` en master data (`error/<thème>/`, traduits en français et en anglais ;
+`MAIL_CONTENT_UNAVAILABLE`, `MAIL_SCANNER_UNAVAILABLE`, `MAIL_QUEUE_CLAIM_LOST` et
+`MAIL_SEND_LIMIT_EXCEEDED` à réessayer), dont 11 pour l'envoi (« État actuel : envoi ») et 8 pour la réception :
 `MAIL_RELAY_DENIED`, `MAIL_RECIPIENT_DISABLED` (thème `adresses`), `MAIL_DELIVERY_REJECTED`,
 `MAIL_MESSAGE_INFECTED`, `MAIL_SCANNER_UNAVAILABLE`, `MAIL_DELIVERY_BATCH_TOO_LARGE` (`reception`),
 `MAIL_BLOCK_EXISTS`, `MAIL_BLOCK_NOT_FOUND` (`blocage`) ; ils ne sont jamais rendus à un serveur
@@ -182,6 +189,83 @@ refusées par les gardes ; compteurs égaux au contenu réel ; suppression d'une
 travers des dates éloignées et des égalités, aucune fiche d'un autre compte lue par une plage
 d'identifiants (autre membre, autre organisation, administrateur), vue par date fermée à
 l'écriture directe, identifiant et UID gardés.
+
+## État actuel : envoi (SurrealQL, sous-lot 6c du lot 6)
+
+Plan : `implementation_plan.md` du crate, §5, §8 à §12, §14, §15. Le worker d'envoi, le client
+SMTP, la signature DKIM et le dépôt authentifié (6d, 6e), puis les avis reçus et le transfert à la
+réception (6f) s'appuient sur ces fonctions.
+
+| Table | Contenu |
+| :--- | :--- |
+| `mail_submission` | Envoi `mail_submission:s<UUID v7 en hexadécimal>` : origine (`submission` : dépôt authentifié ; `module` : contrat public ; `forward` : transfert ; `dsn` : avis vers l'extérieur), compte et titulaire, expéditeur, adresses des champs d'en-tête contrôlées, adresse d'enveloppe et jeton de retour (unique, lisible du compte de service seulement), référence du module appelant, contenu (fichier chiffré `queue/<clé>.eml` du bucket `lyxal-mail`), préfixe (`DKIM-Signature`, compte de service seulement), demande d'avis (`RET`, `ENVID`), réception d'origine d'un transfert (`spf`, `envelope_dkim`), états `pending` → `queued` → `done`, destinataires ouverts, abandon, fin de vie (`expire_hours`) |
+| `mail_queue_recipient` | Destinataire en file `⟨<clé de l'envoi>_<10^3 + rang>⟩` : adresse, domaine, route locale, `NOTIFY`, `ORCPT`, état (`scheduled`, `running`, `delivered`, `relayed`, `failed`, `expired`, `canceled`, `bounced`), essais, échéance, bail et jeton de réservation (compte de service seulement), dernier résultat (étape, codes, texte assaini, serveur, TLS), retard, avis produits |
+| `mail_queue_due` | Échéancier ordonné `⟨<10^16 + µs>_<clé du destinataire>⟩` (E5) : un destinataire `scheduled` sous son échéance, `running` sous la fin de son bail ; tenu par les événements des destinataires, fermé à l'écriture directe |
+| `mail_queue_destination` | Suspension d'une destination injoignable (5 min doublé, 2 h au plus) et échecs consécutifs |
+| `mail_dkim_key` | Fiche publique d'une clé DKIM (`rsa-sha256` 2 048 bits, `ed25519-sha256`) : sélecteur, `p=`, chemin du secret `mail/dkim/<domaine>/<sélecteur>` (compte de service seulement), `pending` → `active` |
+| `mail_send_counter` | Limites d'envoi : messages et destinataires d'un compte par jour UTC, messages des modules d'une organisation par heure, transferts par jour ; pris par l'événement de création d'un envoi, rendus à l'abandon, purgés |
+
+`mail_domain` porte `module_senders` (parties locales des modules, jamais une adresse inscrite :
+`MAIL_MODULE_SENDER_CONFLICT`) et `backscatter_protection` ; `mail_settings` les limites d'envoi
+(organisation plafonnée par l'installation : 100 destinataires par message, 1 000 messages et
+2 000 destinataires par compte et par jour, 10 000 messages de modules par heure, 10 000
+transferts par jour) et, pour l'installation seulement, `retry_intervals` (5, 10, 20, 40, 80,
+120 min, le dernier répété), `retry_jitter_percent` (10), `delay_notice_hours` (4),
+`expire_hours` (120).
+
+**Contrat public de dépôt (stable, décision E19, solution B)** pour les autres modules, sans
+dépendance Cargo ni de manifeste : `fn::mail_submission_begin({ origin: "module", from,
+header_from, recipients: [{ address, notify, orcpt }], size, smtputf8, eight_bit, dsn,
+client_reference })` → `{ submission, tenant, bucket_name, key, max_size, return_address,
+expires_at }` ; écriture du fichier par `StorageService::put` (bucket chiffré `lyxal-mail` de
+l'organisation, clé rendue ; l'hôte crée le bucket s'il manque) ; `fn::mail_submission_commit({
+submission, object })` → `{ submission, recipients, queued_at }` ; `fn::mail_submission_abort`,
+`fn::mail_submission_get` (sans texte distant pour un module), `fn::mail_submission_cancel` ;
+issue par les événements `mail.submission.delivered`, `.delayed`, `.failed`, `.bounced` (un par
+destinataire ; charge : `tenant`, `submission`, `recipient`, `rank`, `origin`,
+`client_reference`, `status`, `attempts`, `local`, `at`, et `outcome` ; ni adresse, ni domaine,
+ni texte distant ; aucun pour un avis). Appelant : session système d'un hôte, ou compte de
+service `mail.relay` (qui a aussi `storage.worker` pour clore) ; expéditeur parmi les
+`module_senders` d'un domaine actif ; 100 destinataires, `module_messages_per_hour`.
+
+| Fonction | Rôle | Droit |
+| :--- | :--- | :--- |
+| `fn::mail_sender_check` | Droit d'envoyer sous des adresses (adresses du compte, sous-adresses, alias qui le nomment dans `senders`, domaines actifs de l'organisation), rangs refusés | `mail.send` |
+| `fn::mail_submission_begin` | Dépôt pending : droit, expéditeur (une seule règle, `fn::mail_sender_allowed`, revérifiée par la garde), destinataires, taille, limites | `mail.send`, `mail.relay` ou session système, `mail.worker` (transfert, avis) |
+| `fn::mail_submission_commit` | Fichier contrôlé, destinataires mis en file (route locale posée), une transaction | compte de service, session système ; `mail.relay` pour un module |
+| `fn::mail_submission_abort`, `_get`, `_cancel` | Abandon (compteurs rendus), lecture, annulation des destinataires en attente | titulaire, `mail.relay` (modules), compte de service ; jamais un administrateur |
+| `fn::mail_queue_claim` | Réservation par une plage bornée de l'échéancier : échus et baux expirés (reprise après un arrêt brutal, sans essai compté), destinations suspendues et domaines saturés écartés, jeton et bail | compte de service, session système |
+| `fn::mail_queue_renew`, `_prepare`, `_complete`, `_fail`, `_release` | Bail renouvelé ; préparation à la première réservation (jeton de retour, préfixe, message illisible) ; remises, échecs (échéance suivante, retard une fois, expiration 4.4.7, suspension) ; rendu sans essai ; toujours sous la garde du jeton (`lost`, `MAIL_QUEUE_CLAIM_LOST`) | idem |
+| `fn::mail_queue_dsn_done`, `_stats`, `_purge` | Avis produits notés une fois ; mesures ; maintenance (fichiers des envois finis, envois de plus de 14 jours, dépôts abandonnés, jetons et compteurs échus) | idem |
+| `fn::mail_return_record` | Avis reçu sur une adresse de retour : destinataire remis ou relayé → `bounced` | idem |
+| `fn::mail_dkim_key_create`, `_activate`, `_signers`, `_pending` | Fiches publiques, activation, clés actives d'un message, travail de `mail.dkim.provision` | idem |
+| `fn::mail_dkim_key_list` | Enregistrements DKIM à publier (`<sélecteur>._domainkey.<domaine>`, `v=DKIM1; k=…; p=…`) | `mail.domain.manage`, compte de service |
+
+`fn::mail_recipient_resolve` rend aussi `kind` (`mailbox` ou `return`), `forward_to` et
+`backscatter_protection` : une adresse `rp=<jeton>@<domaine>` valide se résout vers son envoi
+(`kind: return`) ; la session SMTP la refuse comme inconnue jusqu'au sous-lot 6f. Les éléments des
+lots du worker (`_complete`, `_fail`, `_renew`, `_release`, `_dsn_done`, `fn::mail_return_record`)
+sont contrôlés par appels directs des primitives de `lyxal_core` et
+`fn::validation_checks_report` (décision E32) ; les autres fonctions par
+`fn::validation_fields_execute`. Rust : un wrapper d'une ligne par fonction dans `MailStore`,
+modèles `models/{submission,queue,dkim}.rs`.
+
+Banc : `tests/envoi.test.surql`, `file.test.surql`, `dkim.test.surql`, `retours.test.surql`
+(droits d'expéditeur et usurpations, limites et compteurs, clôture, isolement des
+organisations et de l'administrateur, contrat des modules, réservation et garde du jeton,
+reprise d'un bail expiré, tentatives, retard, expiration, suspension, avis dus une fois,
+événements sans donnée personnelle, échéancier égal à la table, adresses de retour) ;
+`tests/it/queue.rs` (wrappers, reprise d'un bail, contrat des modules appelé par le nom des
+fonctions sans type de `lyxal_mail`).
+
+**Mesure de la réservation** (binaire `surreal` 3.3.4, serveur en mémoire, une connexion,
+`scripts/ci` + script d'essai du sous-lot, 27 novembre 2026) : la plage de l'échéancier se lit en
+2 ms pour 1 000 fiches, quelle que soit la taille de la file ; une réservation coûte environ
+1,8 ms **par destinataire réservé** (garde et échéancier de chaque écriture, dont 1,35 ms pour le
+`DELETE` de l'ancienne fiche de l'échéancier, coût de la base en 3.3.4 pour tout `DELETE`).
+Réservation de 500 destinataires échus dans une file de 100 000 en attente : médiane 908 ms,
+p95 1 073 ms (20 réservations rendues aussitôt) ; 916 ms dans une file de 10 000 : le coût ne
+dépend pas de la taille de la file. Objectif du plan (20 ms) non tenu : voir `ROADMAP.md`.
 
 ## Mesures (`scripts/bench/mailbox/bench_mail_module.py`)
 

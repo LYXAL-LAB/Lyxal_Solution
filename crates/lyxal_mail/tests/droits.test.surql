@@ -87,10 +87,11 @@
 UPDATE passe:ids SET m1 = <string> fn::essai_message(fn::essai_id("jean"), fn::essai_id("jean_inbox"), {}).data.id;
 
 -- test: permissions et rôles créés par le seed ; mail.worker n'est attribuée à aucun rôle
-RETURN (SELECT VALUE code FROM auth_permission WHERE module = "lyxal_mail" ORDER BY code) == ["mail.domain.manage", "mail.installation.manage", "mail.mailbox.access", "mail.worker"]
-    AND (SELECT VALUE [scope, app_password ?? false] FROM auth_permission WHERE module = "lyxal_mail" ORDER BY code) == [["organization", false], ["installation", false], ["organization", true], ["installation", false]]
-    AND array::sort((SELECT VALUE ->auth_role_grants->auth_permission.code FROM ONLY auth_role:organization_admin).filter(|$c| string::starts_with($c, "mail."))) == ["mail.domain.manage", "mail.mailbox.access"]
-    AND (SELECT VALUE ->auth_role_grants->auth_permission.code FROM ONLY auth_role:organization_member).filter(|$c| string::starts_with($c, "mail.")) == ["mail.mailbox.access"]
+RETURN (SELECT VALUE code FROM auth_permission WHERE module = "lyxal_mail" ORDER BY code) == ["mail.domain.manage", "mail.installation.manage", "mail.mailbox.access", "mail.relay", "mail.send", "mail.worker"]
+    AND (SELECT VALUE [scope, app_password ?? false] FROM auth_permission WHERE module = "lyxal_mail" ORDER BY code) == [["organization", false], ["installation", false], ["organization", true], ["installation", false], ["organization", true], ["installation", false]]
+    AND array::sort((SELECT VALUE ->auth_role_grants->auth_permission.code FROM ONLY auth_role:organization_admin).filter(|$c| string::starts_with($c, "mail."))) == ["mail.domain.manage", "mail.mailbox.access", "mail.send"]
+    AND array::sort((SELECT VALUE ->auth_role_grants->auth_permission.code FROM ONLY auth_role:organization_member).filter(|$c| string::starts_with($c, "mail."))) == ["mail.mailbox.access", "mail.send"]
+    AND array::len(SELECT * FROM auth_role_grants WHERE out = auth_permission:⟨mail.relay⟩) == 0
     AND (SELECT VALUE ->auth_role_grants->auth_permission.code FROM ONLY auth_role:platform_admin).filter(|$c| string::starts_with($c, "mail.")) == ["mail.installation.manage"]
     AND array::len(SELECT * FROM auth_role_grants WHERE out = auth_permission:⟨mail.worker⟩) == 0;
 
@@ -105,15 +106,15 @@ RETURN (SELECT VALUE code FROM auth_permission WHERE module = "lyxal_mail" ORDER
     IF !record::exists(error_definition:MAIL_QUOTA_EXCEEDED) THEN (
         CREATE error_definition:MAIL_QUOTA_EXCEEDED CONTENT { code: "MAIL_QUOTA_EXCEEDED", module: "mail", message: "x" }
     ) END;
-    RETURN array::len(SELECT * FROM auth_permission WHERE module = "lyxal_mail") == 4
+    RETURN array::len(SELECT * FROM auth_permission WHERE module = "lyxal_mail") == 6
         AND array::len(SELECT * FROM auth_role_grants WHERE out = auth_permission:⟨mail.mailbox.access⟩) == 2
         AND (SELECT VALUE message FROM ONLY error_definition:MAIL_QUOTA_EXCEEDED) == "Mail quota exceeded";
 };
 
--- test: 47 codes d'erreur MAIL_*, traduits en français et en anglais
-RETURN array::len(SELECT * FROM error_definition WHERE module = "mail") == 47
+-- test: 58 codes d'erreur MAIL_*, traduits en français et en anglais
+RETURN array::len(SELECT * FROM error_definition WHERE module = "mail") == 58
     AND (SELECT * FROM error_definition WHERE module = "mail").all(|$e| string::starts_with($e.code, "MAIL_") AND $e.translations.fr.label != NONE AND $e.translations.en.label != NONE)
-    AND (SELECT VALUE code FROM error_definition WHERE module = "mail" AND retryable = true ORDER BY code) == ["MAIL_CONTENT_UNAVAILABLE", "MAIL_SCANNER_UNAVAILABLE"];
+    AND (SELECT VALUE code FROM error_definition WHERE module = "mail" AND retryable = true ORDER BY code) == ["MAIL_CONTENT_UNAVAILABLE", "MAIL_QUEUE_CLAIM_LOST", "MAIL_SCANNER_UNAVAILABLE", "MAIL_SEND_LIMIT_EXCEEDED"];
 
 -- test: la session système peut tout
 RETURN ["worker", "manage", "settings", "mailbox"].all(|$a| fn::mail_can({ action: $a, tenant: auth_organization:alpha, account: type::record(fn::essai_id("jean")) }) AND fn::mail_can({ action: $a }));

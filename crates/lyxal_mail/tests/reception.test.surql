@@ -95,7 +95,7 @@
 -- en tant que: worker
 {
     LET $jean = type::record(fn::essai_id("jean"));
-    LET $expected = { address: "jean@alpha.test", domain: "alpha.test", tenant: auth_organization:alpha, max_message_bytes: 52428800, accounts: [{ account: $jean, quota_full: false }] };
+    LET $expected = { kind: "mailbox", address: "jean@alpha.test", domain: "alpha.test", tenant: auth_organization:alpha, max_message_bytes: 52428800, accounts: [{ account: $jean, quota_full: false }], forward_to: [], backscatter_protection: true };
     RETURN fn::mail_recipient_resolve({ address: "Jean@ALPHA.test" }).data == $expected
         AND fn::mail_recipient_resolve({ address: "jean+devis@alpha.test" }).data == $expected;
 };

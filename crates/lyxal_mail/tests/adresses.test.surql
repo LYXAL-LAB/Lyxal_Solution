@@ -172,7 +172,7 @@ RETURN fn::mail_address_list({ account: fn::essai_id("jean") }).data.items.addre
 {
     LET $jean = type::record(fn::essai_id("jean"));
     LET $marie = type::record(fn::essai_id("marie"));
-    LET $expected = { address: "jean@alpha.test", domain: "alpha.test", tenant: auth_organization:alpha, max_message_bytes: 52428800, accounts: [{ account: $jean, quota_full: false }] };
+    LET $expected = { kind: "mailbox", address: "jean@alpha.test", domain: "alpha.test", tenant: auth_organization:alpha, max_message_bytes: 52428800, accounts: [{ account: $jean, quota_full: false }], forward_to: [], backscatter_protection: true };
     RETURN fn::mail_recipient_resolve({ address: " JEAN@Alpha.Test " }).data == $expected
         AND fn::mail_recipient_resolve({ address: "jean+factures@alpha.test" }).data == $expected
         AND fn::mail_recipient_resolve({ address: "equipe@alpha.test" }).data.accounts.account == array::sort::asc([$jean, $marie])

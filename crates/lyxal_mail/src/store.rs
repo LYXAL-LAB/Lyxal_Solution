@@ -26,6 +26,16 @@ use crate::models::{
     ResolvedRecipient, SettingsGetParams, SettingsSetParams, SettingsView, StoredSettings,
     ThreadGetParams, ThreadMessages, TombstonesPurged, TransferParams,
 };
+use crate::models::{
+    DkimKey, DkimKeyActivateParams, DkimKeyCreateParams, DkimKeyListParams, DkimKeyPage,
+    DkimPending, DkimPendingParams, DkimSigners, DkimSignersParams, DsnDoneParams, DsnMarked,
+    QueueClaim, QueueClaimParams, QueueCompleteParams, QueueCompleted, QueueFailParams,
+    QueueFailed, QueuePrepareParams, QueuePrepared, QueuePurgeParams, QueuePurged,
+    QueueReleaseParams, QueueReleased, QueueRenewParams, QueueRenewed, QueueStats,
+    QueueStatsParams, ReturnRecordParams, ReturnRecorded, SenderCheck, SenderCheckParams,
+    Submission, SubmissionBeginParams, SubmissionCanceled, SubmissionCommitParams,
+    SubmissionQueued, SubmissionRefParams, SubmissionReleased, SubmissionReservation,
+};
 
 /// Store de `lyxal_mail` sur un client SurrealDB (`Surreal<Any>`), ou sur le pool de
 /// connexions de la session système de l'hôte (`SurrealPool`) : chaque appel prend alors le
@@ -280,5 +290,116 @@ impl MailStore {
     /// `fn::mail_account_purge_step` : une étape de la purge d'un compte en suppression.
     pub async fn account_purge_step(&self, params: MaintenanceParams) -> Call<AccountPurgeStep> {
         self.call_fn("mail_account_purge_step", params).await
+    }
+
+    /// `fn::mail_sender_check` : droit du compte de la session d'envoyer sous des adresses.
+    pub async fn sender_check(&self, params: SenderCheckParams) -> Call<SenderCheck> {
+        self.call_fn("mail_sender_check", params).await
+    }
+
+    /// `fn::mail_submission_begin` : dépôt ouvert dans la file d'envoi (fichier à écrire).
+    pub async fn submission_begin(
+        &self,
+        params: SubmissionBeginParams,
+    ) -> Call<SubmissionReservation> {
+        self.call_fn("mail_submission_begin", params).await
+    }
+
+    /// `fn::mail_submission_commit` : fichier contrôlé, destinataires mis en file.
+    pub async fn submission_commit(
+        &self,
+        params: SubmissionCommitParams,
+    ) -> Call<SubmissionQueued> {
+        self.call_fn("mail_submission_commit", params).await
+    }
+
+    /// `fn::mail_submission_abort` : dépôt non clos abandonné, compteurs rendus.
+    pub async fn submission_abort(&self, params: SubmissionRefParams) -> Call<SubmissionReleased> {
+        self.call_fn("mail_submission_abort", params).await
+    }
+
+    /// `fn::mail_submission_get` : envoi et ses destinataires.
+    pub async fn submission_get(&self, params: SubmissionRefParams) -> Call<Submission> {
+        self.call_fn("mail_submission_get", params).await
+    }
+
+    /// `fn::mail_submission_cancel` : destinataires en attente annulés.
+    pub async fn submission_cancel(&self, params: SubmissionRefParams) -> Call<SubmissionCanceled> {
+        self.call_fn("mail_submission_cancel", params).await
+    }
+
+    /// `fn::mail_queue_claim` : destinataires réservés sous bail.
+    pub async fn queue_claim(&self, params: QueueClaimParams) -> Call<QueueClaim> {
+        self.call_fn("mail_queue_claim", params).await
+    }
+
+    /// `fn::mail_queue_renew` : baux renouvelés.
+    pub async fn queue_renew(&self, params: QueueRenewParams) -> Call<QueueRenewed> {
+        self.call_fn("mail_queue_renew", params).await
+    }
+
+    /// `fn::mail_queue_prepare` : envoi préparé (adresse de retour, préfixe).
+    pub async fn queue_prepare(&self, params: QueuePrepareParams) -> Call<QueuePrepared> {
+        self.call_fn("mail_queue_prepare", params).await
+    }
+
+    /// `fn::mail_queue_complete` : remises réussies écrites.
+    pub async fn queue_complete(&self, params: QueueCompleteParams) -> Call<QueueCompleted> {
+        self.call_fn("mail_queue_complete", params).await
+    }
+
+    /// `fn::mail_queue_fail` : échecs écrits, échéances suivantes.
+    pub async fn queue_fail(&self, params: QueueFailParams) -> Call<QueueFailed> {
+        self.call_fn("mail_queue_fail", params).await
+    }
+
+    /// `fn::mail_queue_release` : destinataires rendus sans essai compté.
+    pub async fn queue_release(&self, params: QueueReleaseParams) -> Call<QueueReleased> {
+        self.call_fn("mail_queue_release", params).await
+    }
+
+    /// `fn::mail_queue_dsn_done` : avis produits notés.
+    pub async fn queue_dsn_done(&self, params: DsnDoneParams) -> Call<DsnMarked> {
+        self.call_fn("mail_queue_dsn_done", params).await
+    }
+
+    /// `fn::mail_queue_stats` : mesures de la file.
+    pub async fn queue_stats(&self, params: QueueStatsParams) -> Call<QueueStats> {
+        self.call_fn("mail_queue_stats", params).await
+    }
+
+    /// `fn::mail_queue_purge` : maintenance de la file.
+    pub async fn queue_purge(&self, params: QueuePurgeParams) -> Call<QueuePurged> {
+        self.call_fn("mail_queue_purge", params).await
+    }
+
+    /// `fn::mail_return_record` : avis reçu sur une adresse de retour.
+    pub async fn return_record(&self, params: ReturnRecordParams) -> Call<ReturnRecorded> {
+        self.call_fn("mail_return_record", params).await
+    }
+
+    /// `fn::mail_dkim_key_create` : fiche publique d'une clé DKIM.
+    pub async fn dkim_key_create(&self, params: DkimKeyCreateParams) -> Call<DkimKey> {
+        self.call_fn("mail_dkim_key_create", params).await
+    }
+
+    /// `fn::mail_dkim_key_activate` : clé DKIM active.
+    pub async fn dkim_key_activate(&self, params: DkimKeyActivateParams) -> Call<DkimKey> {
+        self.call_fn("mail_dkim_key_activate", params).await
+    }
+
+    /// `fn::mail_dkim_key_list` : enregistrements DKIM à publier.
+    pub async fn dkim_key_list(&self, params: DkimKeyListParams) -> Call<DkimKeyPage> {
+        self.call_fn("mail_dkim_key_list", params).await
+    }
+
+    /// `fn::mail_dkim_signers` : clés actives des domaines d'un message.
+    pub async fn dkim_signers(&self, params: DkimSignersParams) -> Call<DkimSigners> {
+        self.call_fn("mail_dkim_signers", params).await
+    }
+
+    /// `fn::mail_dkim_pending` : travail de la tâche de provisionnement.
+    pub async fn dkim_pending(&self, params: DkimPendingParams) -> Call<DkimPending> {
+        self.call_fn("mail_dkim_pending", params).await
     }
 }

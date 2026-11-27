@@ -55,3 +55,21 @@ THEN {
     IF $refusal IS NOT NONE { THROW $refusal; };
     fn::mail_counters_apply("mail_message", $before, $after);
 };
+
+-- Envoi (lot 6) : gardes des envois et des destinataires en file ; compteurs d'envoi, échéancier
+-- ordonné et destinataires ouverts de l'envoi tenus dans la même transaction
+DEFINE EVENT OVERWRITE mail_submission_guard ON TABLE mail_submission
+WHEN $event IN ["CREATE", "UPDATE", "DELETE"]
+THEN {
+    LET $refusal = fn::mail_submission_refusal($before, $after);
+    IF $refusal IS NOT NONE { THROW $refusal; };
+    fn::mail_submission_apply($before, $after);
+};
+
+DEFINE EVENT OVERWRITE mail_queue_recipient_guard ON TABLE mail_queue_recipient
+WHEN $event IN ["CREATE", "UPDATE", "DELETE"]
+THEN {
+    LET $refusal = fn::mail_queue_recipient_refusal($before, $after);
+    IF $refusal IS NOT NONE { THROW $refusal; };
+    fn::mail_queue_recipient_apply($before, $after);
+};

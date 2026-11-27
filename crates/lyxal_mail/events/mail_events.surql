@@ -2,7 +2,7 @@
 -- ============================================================================
 -- EVENTS : lyxal_mail — publications
 -- MODULE : lyxal_mail
--- RÔLE   : mail.domain.*, mail.account.*, mail.address.*, mail.message.received, mail.quota.exceeded
+-- RÔLE   : mail.domain.*, mail.account.*, mail.address.*, mail.message.received, mail.quota.exceeded, mail.submission.*
 -- ============================================================================
 -- Publiés par fn::event_publish dans la transaction de la mutation (.agents/AGENTS.md §5.6.1) ;
 -- une publication refusée annule la mutation. Charges utiles sans donnée personnelle :
@@ -144,6 +144,67 @@ THEN {
             quota_bytes: $after.quota_bytes ?? fn::mail_settings_effective({ tenant: $after.tenant }).default_quota_bytes,
             used_bytes: $after.used_bytes
         },
+        metadata: {}
+    });
+    IF !$published.ok { THROW $published.error.code; };
+};
+
+-- Envoi (lot 6, décision E27) : un événement par destinataire, à l'entrée dans un état final ou au
+-- premier retard, jamais pour un avis (origine dsn) ni à la mise en file. Charge sans adresse,
+-- domaine, sujet ni texte distant (fn::mail_submission_event_payload) ; client_reference relie
+-- l'issue au travail du module appelant. Une publication refusée annule l'écriture du résultat :
+-- le worker la refait.
+DEFINE EVENT OVERWRITE mail_submission_delivered_event ON TABLE mail_queue_recipient
+WHEN $event = "UPDATE" AND $after.origin != "dsn" AND $before.state NOTINSIDE ["delivered", "relayed"] AND $after.state IN ["delivered", "relayed"]
+THEN {
+    LET $published = fn::event_publish({
+        event_id: rand::uuid::v7(),
+        event_type: "mail.submission.delivered",
+        producer: "lyxal_mail",
+        source: $after.id,
+        payload: object::extend(fn::mail_submission_event_payload($after), { outcome: $after.state }),
+        metadata: {}
+    });
+    IF !$published.ok { THROW $published.error.code; };
+};
+
+DEFINE EVENT OVERWRITE mail_submission_delayed_event ON TABLE mail_queue_recipient
+WHEN $event = "UPDATE" AND $after.origin != "dsn" AND $before.delayed_at IS NONE AND $after.delayed_at IS NOT NONE
+THEN {
+    LET $published = fn::event_publish({
+        event_id: rand::uuid::v7(),
+        event_type: "mail.submission.delayed",
+        producer: "lyxal_mail",
+        source: $after.id,
+        payload: fn::mail_submission_event_payload($after),
+        metadata: {}
+    });
+    IF !$published.ok { THROW $published.error.code; };
+};
+
+DEFINE EVENT OVERWRITE mail_submission_failed_event ON TABLE mail_queue_recipient
+WHEN $event = "UPDATE" AND $after.origin != "dsn" AND $before.state NOTINSIDE ["failed", "expired"] AND $after.state IN ["failed", "expired"]
+THEN {
+    LET $published = fn::event_publish({
+        event_id: rand::uuid::v7(),
+        event_type: "mail.submission.failed",
+        producer: "lyxal_mail",
+        source: $after.id,
+        payload: object::extend(fn::mail_submission_event_payload($after), { outcome: $after.state }),
+        metadata: {}
+    });
+    IF !$published.ok { THROW $published.error.code; };
+};
+
+DEFINE EVENT OVERWRITE mail_submission_bounced_event ON TABLE mail_queue_recipient
+WHEN $event = "UPDATE" AND $after.origin != "dsn" AND $before.state != "bounced" AND $after.state = "bounced"
+THEN {
+    LET $published = fn::event_publish({
+        event_id: rand::uuid::v7(),
+        event_type: "mail.submission.bounced",
+        producer: "lyxal_mail",
+        source: $after.id,
+        payload: fn::mail_submission_event_payload($after),
         metadata: {}
     });
     IF !$published.ok { THROW $published.error.code; };

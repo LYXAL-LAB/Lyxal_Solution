@@ -29,6 +29,8 @@ DEFINE FUNCTION OVERWRITE fn::mail_account_create($params: object) {
     IF $domain.state != "active" { RETURN fn::error_result("MAIL_DOMAIN_DISABLED", $p.language, { domain: <string> $domain.id }); };
     LET $normalized = fn::mail_address_normalize($p.local_part, $domain.name);
     IF !$normalized.valid { RETURN fn::error_result("MAIL_INVALID_PARAMETERS", $p.language, { fields: { local_part: ["format"] } }); };
+    LET $reserved = fn::mail_local_part_refusal($domain.id, $normalized.local_part);
+    IF $reserved IS NOT NONE { RETURN fn::error_result($reserved, $p.language, {}); };
     -- L'identité est membre actif de l'organisation : contrat public de lyxal_auth, sous les
     -- droits de l'appelant (lecture des membres de l'organisation)
     LET $membership = fn::auth_organization_member_check({ organization: <string> $domain.tenant, identity: <string> $p.identity, language: $p.language });
@@ -210,6 +212,8 @@ DEFINE FUNCTION OVERWRITE fn::mail_address_create($params: object) {
             kind: { pipeline: [{ rule: "enum", options: { allowed: ["account", "alias"], case_sensitive: true } }], required: true },
             account: { pipeline: [{ rule: "record", options: { expected_table: "mail_account" } }] },
             targets: { pipeline: [{ rule: "array_length", options: { min_length: 1, max_length: 50 } }, { rule: "each", options: { pipeline: [{ rule: "record", options: { expected_table: "mail_account" } }] } }, { rule: "array_unique" }] },
+            senders: { pipeline: [{ rule: "array_length", options: { max_length: 50 } }, { rule: "each", options: { pipeline: [{ rule: "record", options: { expected_table: "mail_account" } }] } }, { rule: "array_unique" }] },
+            forward_to: { pipeline: [{ rule: "array_length", options: { max_length: 10 } }, { rule: "each", options: { pipeline: [{ rule: "email", options: { max_length: 254 } }] } }, { rule: "array_unique" }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -222,15 +226,22 @@ DEFINE FUNCTION OVERWRITE fn::mail_address_create($params: object) {
     IF ($p.kind = "account") != ($p.account IS NOT NONE) OR ($p.kind = "alias") != ($p.targets IS NOT NONE) {
         RETURN fn::error_result("MAIL_INVALID_PARAMETERS", $p.language, { fields: { kind: ["account_or_targets"] } });
     };
+    IF $p.kind = "account" AND ($p.senders IS NOT NONE OR $p.forward_to IS NOT NONE) {
+        RETURN fn::error_result("MAIL_INVALID_PARAMETERS", $p.language, { fields: { senders: ["alias_only"] } });
+    };
     LET $domain = (SELECT id, tenant, name, state FROM ONLY $p.domain);
     IF $domain == NONE { RETURN fn::error_result("MAIL_DOMAIN_NOT_FOUND", $p.language, { domain: <string> $p.domain }); };
     IF !fn::mail_can({ action: "manage", tenant: $domain.tenant }) { RETURN fn::error_result("MAIL_PERMISSION_DENIED", $p.language, {}); };
     IF $domain.state != "active" { RETURN fn::error_result("MAIL_DOMAIN_DISABLED", $p.language, { domain: <string> $domain.id }); };
     LET $normalized = fn::mail_address_normalize($p.local_part, $domain.name);
     IF !$normalized.valid { RETURN fn::error_result("MAIL_INVALID_PARAMETERS", $p.language, { fields: { local_part: ["format"] } }); };
+    LET $reserved = fn::mail_local_part_refusal($domain.id, $normalized.local_part);
+    IF $reserved IS NOT NONE { RETURN fn::error_result($reserved, $p.language, {}); };
     IF array::len(SELECT VALUE id FROM mail_address WHERE address = $normalized.address LIMIT 1) > 0 {
         RETURN fn::error_result("MAIL_ADDRESS_EXISTS", $p.language, {});
     };
+    LET $sending = fn::mail_alias_sending_check($domain.tenant, $p.senders, $p.forward_to);
+    IF $sending IS NOT NONE { RETURN fn::error_result($sending.code, $p.language, $sending.details); };
     IF $p.kind = "account" {
         LET $account = (SELECT id, tenant, state, address_count FROM ONLY $p.account);
         IF $account == NONE OR $account.tenant != $domain.tenant { RETURN fn::error_result("MAIL_ACCOUNT_NOT_FOUND", $p.language, { account: <string> $p.account }); };
@@ -243,11 +254,12 @@ DEFINE FUNCTION OVERWRITE fn::mail_address_create($params: object) {
     };
     LET $created = (CREATE ONLY mail_address CONTENT {
         tenant: $domain.tenant, domain: $domain.id, local_part: $normalized.local_part, address: $normalized.address,
-        kind: $p.kind, account: $p.account, targets: $p.targets ?? []
+        kind: $p.kind, account: $p.account, targets: $p.targets ?? [],
+        senders: $p.senders ?? [], forward_to: array::map($p.forward_to ?? [], |$a| fn::sanitize_lowercase($a))
     });
     IF $created == NONE { RETURN fn::error_result("MAIL_WRITE_FORBIDDEN", $p.language, { table: "mail_address" }); };
     RETURN fn::result_ok($created);
-} COMMENT "Crée une adresse ({ domain, local_part, kind : account (avec account) ou alias (avec targets : 1 à 50 comptes de l'organisation) }) : partie locale ASCII en minuscules (décision M10) ; MAIL_ADDRESS_EXISTS, MAIL_ADDRESS_LIMIT (adresses par compte), MAIL_ALIAS_TARGET_INVALID, MAIL_DOMAIN_DISABLED ; publie mail.address.created. Droit : gestion";
+} COMMENT "Crée une adresse ({ domain, local_part, kind : account (avec account) ou alias (avec targets : 1 à 50 comptes de l'organisation, senders : 0 à 50 comptes de l'organisation qui peuvent écrire sous l'alias, forward_to : 0 à 10 adresses extérieures qui reçoivent aussi le message) }) : partie locale ASCII en minuscules (décision M10) ; préfixe rp= réservé (MAIL_ADDRESS_RESERVED), expéditeur des modules du domaine (MAIL_MODULE_SENDER_CONFLICT) ; MAIL_ADDRESS_EXISTS, MAIL_ADDRESS_LIMIT (adresses par compte), MAIL_ALIAS_TARGET_INVALID, MAIL_DOMAIN_DISABLED ; publie mail.address.created. Droit : gestion";
 
 -- ----------------------------------------------------------------------------
 -- fn::mail_address_update
@@ -259,6 +271,8 @@ DEFINE FUNCTION OVERWRITE fn::mail_address_update($params: object) {
             address: { pipeline: [{ rule: "record", options: { expected_table: "mail_address" } }], required: true },
             state: { pipeline: [{ rule: "enum", options: { allowed: ["active", "disabled"], case_sensitive: true } }] },
             targets: { pipeline: [{ rule: "array_length", options: { min_length: 1, max_length: 50 } }, { rule: "each", options: { pipeline: [{ rule: "record", options: { expected_table: "mail_account" } }] } }, { rule: "array_unique" }] },
+            senders: { pipeline: [{ rule: "array_length", options: { max_length: 50 } }, { rule: "each", options: { pipeline: [{ rule: "record", options: { expected_table: "mail_account" } }] } }, { rule: "array_unique" }] },
+            forward_to: { pipeline: [{ rule: "array_length", options: { max_length: 10 } }, { rule: "each", options: { pipeline: [{ rule: "email", options: { max_length: 254 } }] } }, { rule: "array_unique" }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -275,10 +289,14 @@ DEFINE FUNCTION OVERWRITE fn::mail_address_update($params: object) {
         LET $valid = (SELECT VALUE id FROM $p.targets WHERE tenant = $address.tenant AND state != "deleting");
         IF array::len($valid) != array::len($p.targets) { RETURN fn::error_result("MAIL_ALIAS_TARGET_INVALID", $p.language, {}); };
     };
-    LET $updated = (UPDATE ONLY $address.id SET state = $p.state ?? state, targets = $p.targets ?? targets);
+    IF ($p.senders IS NOT NONE OR $p.forward_to IS NOT NONE) AND $address.kind != "alias" { RETURN fn::error_result("MAIL_INVALID_PARAMETERS", $p.language, { fields: { senders: ["alias_only"] } }); };
+    LET $sending = fn::mail_alias_sending_check($address.tenant, $p.senders, $p.forward_to);
+    IF $sending IS NOT NONE { RETURN fn::error_result($sending.code, $p.language, $sending.details); };
+    LET $updated = (UPDATE ONLY $address.id SET state = $p.state ?? state, targets = $p.targets ?? targets, senders = $p.senders ?? senders,
+        forward_to = IF $p.forward_to IS NONE { forward_to } ELSE { array::map($p.forward_to, |$a| fn::sanitize_lowercase($a)) });
     IF $updated == NONE { RETURN fn::error_result("MAIL_WRITE_FORBIDDEN", $p.language, { table: "mail_address" }); };
     RETURN fn::result_ok($updated);
-} COMMENT "Modifie une adresse ({ address, state (active, disabled : non résolue), targets (alias seulement : 1 à 50 comptes de l'organisation) }) ; un champ absent est conservé. Droit : gestion";
+} COMMENT "Modifie une adresse ({ address, state (active, disabled : non résolue), targets (alias seulement : 1 à 50 comptes de l'organisation), senders (alias seulement : 0 à 50 comptes de l'organisation qui peuvent écrire sous l'alias), forward_to (alias seulement : 0 à 10 adresses extérieures) }) ; un champ absent est conservé. Droit : gestion";
 
 -- ----------------------------------------------------------------------------
 -- fn::mail_address_delete
@@ -341,3 +359,20 @@ DEFINE FUNCTION OVERWRITE fn::mail_address_list($params: object) {
     LET $items = array::slice($rows, 0, $p.limit);
     RETURN fn::result_ok({ items: $items, next: IF array::len($rows) > $p.limit { array::last($items).address } ELSE { NONE } });
 } COMMENT "Adresses d'un domaine ({ domain }, droit : gestion) ou d'un compte ({ account }, droit : gestion, ou titulaire du compte), triées par adresse (unique) ; after : curseur (adresse), limit (50, 200 au plus) ; { items, next }";
+
+-- ----------------------------------------------------------------------------
+-- fn::mail_alias_sending_check (interne)
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::mail_alias_sending_check($tenant: record<auth_organization>, $senders: option<array>, $forward_to: option<array>) -> option<object> {
+    IF $senders IS NOT NONE AND array::len($senders) > 0 {
+        LET $valid = (SELECT VALUE id FROM $senders WHERE tenant = $tenant AND state != "deleting");
+        IF array::len($valid) != array::len($senders) { RETURN { code: "MAIL_ALIAS_TARGET_INVALID", details: { field: "senders" } }; };
+    };
+    IF $forward_to IS NOT NONE AND array::len($forward_to) > 0 {
+        -- Une adresse de l'installation passe par targets ; jamais une adresse de retour (rp=)
+        LET $domains = array::map($forward_to, |$a| fn::sanitize_lowercase(array::last(string::split($a, "@"))));
+        IF array::len(SELECT VALUE id FROM mail_domain WHERE name IN $domains LIMIT 1) > 0 { RETURN { code: "MAIL_ALIAS_TARGET_INVALID", details: { field: "forward_to" } }; };
+    };
+    RETURN NONE;
+} COMMENT "Interne : contrôle des champs d'envoi d'un alias ($tenant ; $senders : comptes vivants de l'organisation ; $forward_to : adresses hors des domaines de courrier de l'installation, §13) : NONE, ou { code : MAIL_ALIAS_TARGET_INVALID, details : { field } }";

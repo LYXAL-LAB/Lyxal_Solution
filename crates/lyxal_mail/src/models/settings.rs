@@ -37,6 +37,24 @@ pub struct StoredSettings {
     /// Installation seulement : adresse inscrite qui reçoit le destinataire `postmaster` écrit
     /// sans domaine.
     pub postmaster: Option<String>,
+    /// Destinataires d'un message déposé, au plus (1 à 1 000).
+    pub send_recipients_per_message: Option<i64>,
+    /// Messages déposés par un compte et par jour UTC (1 à 1 000 000).
+    pub send_messages_per_day: Option<i64>,
+    /// Destinataires des messages d'un compte par jour UTC (1 à 10 000 000).
+    pub send_recipients_per_day: Option<i64>,
+    /// Messages des modules d'une organisation par heure UTC (1 à 10 000 000).
+    pub module_messages_per_hour: Option<i64>,
+    /// Transferts d'alias vers l'extérieur d'une organisation par jour UTC (0 à 10 000 000).
+    pub forward_messages_per_day: Option<i64>,
+    /// Installation seulement : délais entre deux essais, en minutes (le dernier se répète).
+    pub retry_intervals: Option<Vec<i64>>,
+    /// Installation seulement : décalage aléatoire des délais, en pour cent (0 à 50).
+    pub retry_jitter_percent: Option<i64>,
+    /// Installation seulement : âge en file qui donne l'avis de retard, en heures (1 à 72).
+    pub delay_notice_hours: Option<i64>,
+    /// Installation seulement : durée de vie d'un envoi en file, en heures (1 à 720).
+    pub expire_hours: Option<i64>,
     /// Création.
     pub created_at: MailDatetime,
     /// Dernière modification.
@@ -44,7 +62,7 @@ pub struct StoredSettings {
 }
 
 /// Réglages effectifs d'une portée (organisation, sinon installation, sinon valeurs par défaut).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, SurrealValue)]
+#[derive(Debug, Clone, PartialEq, Eq, SurrealValue)]
 pub struct EffectiveSettings {
     /// Taille maximale d'un message, en octets.
     pub max_message_bytes: i64,
@@ -58,6 +76,24 @@ pub struct EffectiveSettings {
     pub max_addresses_per_account: i64,
     /// Mots-clés par message.
     pub max_keywords_per_message: i64,
+    /// Destinataires d'un message déposé (plafonné par l'installation).
+    pub send_recipients_per_message: i64,
+    /// Messages déposés par un compte et par jour UTC.
+    pub send_messages_per_day: i64,
+    /// Destinataires des messages d'un compte par jour UTC.
+    pub send_recipients_per_day: i64,
+    /// Messages des modules de l'organisation par heure UTC.
+    pub module_messages_per_hour: i64,
+    /// Transferts d'alias vers l'extérieur de l'organisation par jour UTC.
+    pub forward_messages_per_day: i64,
+    /// Délais entre deux essais, en minutes (installation).
+    pub retry_intervals: Vec<i64>,
+    /// Décalage aléatoire des délais, en pour cent (installation).
+    pub retry_jitter_percent: i64,
+    /// Âge en file qui donne l'avis de retard, en heures (installation).
+    pub delay_notice_hours: i64,
+    /// Durée de vie d'un envoi en file, en heures (installation).
+    pub expire_hours: i64,
 }
 
 /// Résultat de `fn::mail_settings_get`.
@@ -90,6 +126,24 @@ pub struct SettingsSetParams {
     /// Installation seulement : adresse inscrite qui reçoit le destinataire `postmaster` écrit
     /// sans domaine (RFC 5321 §4.5.1).
     pub postmaster: Option<String>,
+    /// Destinataires d'un message déposé, au plus (1 à 1 000).
+    pub send_recipients_per_message: Option<i64>,
+    /// Messages déposés par un compte et par jour UTC (1 à 1 000 000).
+    pub send_messages_per_day: Option<i64>,
+    /// Destinataires des messages d'un compte par jour UTC (1 à 10 000 000).
+    pub send_recipients_per_day: Option<i64>,
+    /// Messages des modules d'une organisation par heure UTC (1 à 10 000 000).
+    pub module_messages_per_hour: Option<i64>,
+    /// Transferts d'alias vers l'extérieur d'une organisation par jour UTC (0 à 10 000 000).
+    pub forward_messages_per_day: Option<i64>,
+    /// Installation seulement : délais entre deux essais, en minutes (le dernier se répète).
+    pub retry_intervals: Option<Vec<i64>>,
+    /// Installation seulement : décalage aléatoire des délais, en pour cent (0 à 50).
+    pub retry_jitter_percent: Option<i64>,
+    /// Installation seulement : âge en file qui donne l'avis de retard, en heures (1 à 72).
+    pub delay_notice_hours: Option<i64>,
+    /// Installation seulement : durée de vie d'un envoi en file, en heures (1 à 720).
+    pub expire_hours: Option<i64>,
     /// Champs à effacer.
     pub clear: Vec<String>,
 }
