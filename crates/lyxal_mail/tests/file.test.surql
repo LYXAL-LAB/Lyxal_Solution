@@ -390,12 +390,12 @@ RETURN array::len(fn::essai_evenements("mail.submission.delayed")) == 3;
     LET $in_grace = fn::mail_queue_dsn_pending({});
     LET $pending = fn::mail_queue_dsn_pending({ grace_seconds: 0 });
     LET $marked = fn::mail_queue_dsn_done({ submission: <string> $s, action: "failed", recipients: [<string> $r0] });
-    LET $after = fn::mail_queue_dsn_pending({ grace_seconds: 0 });
+    LET $once_done = fn::mail_queue_dsn_pending({ grace_seconds: 0 });
     RETURN $failed.data.dsn == [{ submission: $s, action: "failed", recipients: [$r0] }] AND $marked.data == { marked: 1 }
         AND $owed == true AND (SELECT VALUE dsn_owed FROM ONLY $r0) == false
         AND !array::any($in_grace.data.dsn, |$g| $g.recipients CONTAINS $r0)
         AND array::any($pending.data.dsn, |$g| $g.submission == $s AND $g.action == "failed" AND $g.recipients == [$r0] AND $g.object IS NOT NONE)
-        AND !array::any($after.data.dsn, |$g| $g.recipients CONTAINS $r0)
+        AND !array::any($once_done.data.dsn, |$g| $g.recipients CONTAINS $r0)
         AND (SELECT VALUE state FROM ONLY $s) == "done"
         AND (SELECT VALUE state FROM mail_queue_recipient WHERE submission = $s ORDER BY rank) == ["failed", "failed", "delivered"];
 };
