@@ -19,6 +19,7 @@
 
 mod build;
 
+pub(crate) use build::to_offset_date_time;
 use time::OffsetDateTime;
 
 /// Limites appliquées à la lecture d'un message.

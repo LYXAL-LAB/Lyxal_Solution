@@ -161,12 +161,9 @@ fn rfc_transcripts() {
         }
         commands += transcript.verbs.len();
         for reply in &transcript.replies {
-            let lines = parse_reply(reply);
-            assert!(
-                lines.iter().all(|line| line.code == lines[0].code),
-                "{}",
-                path.display()
-            );
+            // Lecteur du client : même code sur chaque ligne, CRLF strict, toute l'entrée lue.
+            let reply = parse_reply(reply);
+            assert!(!reply.lines().is_empty(), "{}", path.display());
         }
     }
     assert!(commands >= 60, "{commands}");

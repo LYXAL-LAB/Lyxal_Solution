@@ -39,11 +39,17 @@ tri pour les crates de Stalwart qui alimentent ce crate (commit figé ; rapport 
 Lot 5 (`smtp`) : `memchr` 2 (`Unlicense OR MIT`, déjà dans l'arbre par `mail-parser`) devient
 une dépendance directe ; aucune autre dépendance.
 
+Lot 6 (`smtp::client`, `AUTH`, `dsn`) : `base64` 0.22 (`MIT OR Apache-2.0`) et `zeroize` 1
+(`Apache-2.0 OR MIT`), déjà dans l'arbre par `lyxal_mail` et `lyxal_crypto`, deviennent des
+dépendances directes ; aucune autre dépendance, aucun paquet ajouté à l'arbre. `mail-auth` n'est
+jamais utilisé.
+
 ## 3. Éléments repris
 
 La lecture MIME (lot 4) est écrite pour Lyxal OS autour de la dépendance `mail-parser`. La
-syntaxe SMTP (lot 5) est écrite pour Lyxal OS sur le **modèle** de Stalwart `smtp-proto` et de
-Mox : aucune ligne de code n'est recopiée (voir §4). Chaque lot ajoute ses lignes.
+syntaxe SMTP (lots 5 et 6) et les avis de non-remise (lot 6) sont écrits pour Lyxal OS sur le
+**modèle** de Stalwart `smtp-proto` et de Mox : aucune ligne de code n'est recopiée (voir §4 et
+§5). Chaque lot ajoute ses lignes.
 
 | Élément de Lyxal (fichier ou dossier) | Projet | Commit | Licence | Chemin d'origine | Nature (porté / modèle / copié) | Lot |
 | :--- | :--- | :--- | :--- | :--- | :--- | :- |
@@ -56,6 +62,15 @@ Mox : aucune ligne de code n'est recopiée (voir §4). Chaque lot ajoute ses lig
 | `src/smtp/error.rs` (codes de réponse et codes étendus) | Mox | `b32f0de` | MIT | `smtp/codes.go`, `smtpserver/server.go` | modèle | 5 |
 | `tests/smtp_data.rs` (`mox_data_reader_cases`) | Mox | `b32f0de` | MIT | `smtp/data_test.go` (`TestDataReader`) | porté (cas d'essai transposés ; un cas inversé par la décision S7) | 5 |
 | `tests/corpus/smtp/rfc*.txt` (11 dialogues) | RFC 5321 (annexe D, §3.3, §4.1), 2920 (§3.2), 3030 (§4.1, §4.2), 1870 (§8), 3207 (§5), 3461, 6531 | — | IETF Trust (Legal Provisions, extraits courts cités) | exemples des RFC | copié (dialogues transcrits, mis au format du corpus) ; `rfc5321-paths` et `rfc3461-dsn` assemblés à partir des adresses et paramètres des normes, `rfc6531`, fin de `rfc3030` et adresses non ASCII écrits pour Lyxal | 5 |
+| `src/smtp/client/reply.rs` (`ReplyReader`) | Stalwart `smtp-proto` ; Mox | `3adead9` ; `b32f0de` | `AGPL-3.0-only OR LicenseRef-SEL`, option AGPL retenue ; MIT | `crates/smtp-proto/src/response/parser.rs` ; `smtpclient/client.go` (`read1`, `readecode`, `parseEcode`) | modèle | 6 |
+| `src/smtp/client/extensions.rs` (`ServerExtensions`) | Stalwart `smtp-proto` ; Mox | `3adead9` ; `b32f0de` | idem ; MIT | `crates/smtp-proto/src/response/parser.rs` (`EhloResponse::parse`) ; `smtpclient/client.go` (`hello`) | modèle | 6 |
+| `src/smtp/client/command.rs` (`ClientCommand`) | Stalwart `smtp-proto` ; Mox | `3adead9` ; `b32f0de` | idem ; MIT | `crates/smtp-proto/src/request/mod.rs` ; `smtpclient/client.go` (`DeliverMultiple`) | modèle | 6 |
+| `src/smtp/client/stuffer.rs` (`DotStuffer`) | Mox | `b32f0de` | MIT | `smtp/data.go` (`DataWrite`) | modèle (CRLF final ajouté au lieu d'être exigé) | 6 |
+| `src/smtp/auth.rs` (`AuthExchange`), commande `AUTH` de `src/smtp/command.rs` | Stalwart `smtp-proto` et `smtp` ; Mox | `3adead9` ; `b32f0de` | idem ; MIT | `crates/smtp-proto/src/request/parser.rs` (`AUTH`) et `crates/smtp/src/inbound/auth.rs` (`handle_sasl_response` : défis `334` de `PLAIN` et `LOGIN` ; fichier `AGPL-3.0-only OR LicenseRef-SEL` de la copie triée) ; `smtpserver/server.go` (`cmdAuth`) | modèle | 6 |
+| `src/smtp/xtext.rs` (xtext, `utf-8-addr-xtext`) | Mox | `b32f0de` | MIT | `dsn/parse.go` (`parseAddress`, séquences `\x{...}`) | modèle | 6 |
+| `src/dsn/` (`DsnBuilder`, `parse_dsn`) | Mox | `b32f0de` | MIT | `dsn/dsn.go` (`Compose`), `dsn/parse.go` (`Parse`, `Decode`, `parseRecipientHeader`, `removeComments`) | modèle | 6 |
+| `tests/smtp_client.rs` (`mox_error_cases`, `ehlo_extensions_mox`) | Mox | `b32f0de` | MIT | `smtpclient/client_test.go` (`TestErrors`, `TestClient`) | porté (réponses des dialogues transposées en lectures) | 6 |
+| `tests/dsn.rs` (`mox_ascii_dsn`, `mox_utf8_dsn`) | Mox | `b32f0de` | MIT | `dsn/dsn_test.go` (`TestDSN`) | porté (messages et vérifications des parties transposés) | 6 |
 
 « Porté » : code repris et adapté. « Modèle » : fonctionnement repris, code réécrit. « Copié » :
 fichier repris tel quel. Les mentions de droit d'auteur et de licence des fichiers portés sont
@@ -85,3 +100,25 @@ espaces en fin de ligne, texte après une adresse littérale de `EHLO`), la long
 locale (128) et la détection des fins de ligne isolées ; la décision S7 est plus stricte que Mox
 (tout LF isolé est refusé). Les fichiers écrits portent `SPDX-License-Identifier: AGPL-3.0-only`
 sans mention de droit d'auteur de Stalwart, aucun code n'étant recopié.
+
+## 5. Client SMTP, `AUTH` et avis : modèle (lot 6, décision E1)
+
+Écrits pour Lyxal OS comme au lot 5 : aucune ligne de Stalwart ni de Mox n'est recopiée. Écarts
+voulus à la source :
+
+* `response/parser.rs` de Stalwart accepte un LF seul comme fin de ligne de réponse ; le
+  `ReplyReader` exige CRLF (comme le serveur, décision S7) et borne lignes et nombre de lignes ;
+* Mox (`DataWrite`) refuse, comme le `DotStuffer`, les CR et LF isolés, mais refuse aussi un
+  contenu sans CRLF final ; le `DotStuffer` l'écrit en flux et ajoute ce CRLF (sans effet sur
+  DKIM, RFC 6376 §3.4.3) ;
+* Mox (`dsn.go`) n'écrit que les en-têtes du message d'origine et ne lit pas `RET`, `ENVID` ;
+  `DsnBuilder` joint le message entier sous `RET=FULL` (256 Kio au plus) et écrit
+  `Original-Envelope-Id` ;
+* Mox (`parse.go`) refuse un avis à un champ répété, sans `Reporting-MTA` ou à l'action
+  inconnue ; `parse_dsn` garde le premier champ, accepte l'absence du groupe du message et
+  ignore (en les comptant) les groupes de destinataire illisibles ;
+* l'échange `AUTH` de Stalwart (`inbound/auth.rs`) accepte un `authzid` quelconque et le confie
+  à l'annuaire ; `AuthExchange` refuse un `authzid` différent de `authcid` (plan §3.2).
+
+Les cas d'essai de Mox transposés (`client_test.go`, `dsn_test.go`) relèvent de l'avis
+`LICENSES/MIT-Mox.txt`.

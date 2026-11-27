@@ -42,10 +42,9 @@ fn multi_line() {
         help.to_bytes(),
         b"214-2.0.0 Commands:\r\n214-2.0.0 EHLO MAIL RCPT\r\n214 2.0.0 End\r\n"
     );
-    let lines = parse_reply(&help.to_bytes());
-    assert_eq!(lines.len(), 3);
-    assert!(lines.iter().all(|line| line.code == 214));
-    assert!(lines[2].last);
+    let reply = parse_reply(&help.to_bytes());
+    assert_eq!(reply, help);
+    assert_eq!(reply.lines().len(), 3);
 
     let none = Response::with_lines(250, None, Vec::<String>::new()).expect("réponse");
     assert_eq!(none.lines().len(), 1);
@@ -85,14 +84,14 @@ fn text_is_sanitized() {
     let bytes = injected.to_bytes();
     assert_eq!(bytes.iter().filter(|&&b| b == b'\n').count(), 1);
     assert_eq!(bytes.iter().filter(|&&b| b == b'\r').count(), 1);
-    let lines = parse_reply(&bytes);
-    assert_eq!(lines.len(), 1);
-    assert!(lines[0].text.contains("??250 2.0.0 OK??MAIL FROM:<?>??t?"));
+    let reply = parse_reply(&bytes);
+    assert_eq!(reply.lines().len(), 1);
+    assert!(reply.lines()[0].contains("??250 2.0.0 OK??MAIL FROM:<?>??t?"));
 
     let long = Response::new(550, status("5.7.1"), &"x".repeat(2000)).expect("réponse");
     let bytes = long.to_bytes();
     assert_eq!(bytes.len(), MAX_REPLY_LINE_BYTES);
-    parse_reply(&bytes);
+    assert_eq!(parse_reply(&bytes), long);
     let long_plain = Response::new(220, None, &"y".repeat(2000)).expect("réponse");
     assert_eq!(long_plain.to_bytes().len(), MAX_REPLY_LINE_BYTES);
 }
@@ -163,4 +162,42 @@ fn ehlo_extensions_s5() {
 
     let bare = ehlo_response("mx.example.org", &Extensions::default()).expect("ehlo");
     assert_eq!(bare.to_bytes(), b"250 mx.example.org\r\n");
+}
+
+/// Décisions E14 et E22 : le dépôt authentifié annonce `DSN`, et `AUTH PLAIN LOGIN` seulement
+/// sur une session chiffrée ; jamais `REQUIRETLS` (décision E26).
+#[test]
+fn ehlo_extensions_submission() {
+    let before_tls = ehlo_response(
+        "smtp.example.org",
+        &Extensions::submission(1 << 20, true, false),
+    )
+    .expect("ehlo");
+    let text = String::from_utf8(before_tls.to_bytes()).expect("ascii");
+    assert!(text.contains("250-STARTTLS\r\n"));
+    assert!(text.contains("250 DSN\r\n"));
+    assert!(!text.contains("AUTH"));
+
+    let after_tls = ehlo_response(
+        "smtp.example.org",
+        &Extensions::submission(1 << 20, false, true),
+    )
+    .expect("ehlo");
+    let text = String::from_utf8(after_tls.to_bytes()).expect("ascii");
+    assert!(!text.contains("STARTTLS"));
+    assert!(text.contains("250-DSN\r\n250 AUTH PLAIN LOGIN\r\n"));
+    assert!(!text.contains("REQUIRETLS"));
+
+    assert!(!Extensions::inbound(1 << 20, true).dsn);
+    assert!(!Extensions::inbound(1 << 20, true).auth);
+}
+
+/// La réponse sur une ligne de texte, pour `Diagnostic-Code`.
+#[test]
+fn diagnostic_text() {
+    let reply =
+        Response::with_lines(550, status("5.1.1"), ["No such user", "", "Bye"]).expect("réponse");
+    assert_eq!(reply.diagnostic(), "550 5.1.1 No such user Bye");
+    let plain = Response::new(421, None, "").expect("réponse");
+    assert_eq!(plain.diagnostic(), "421");
 }

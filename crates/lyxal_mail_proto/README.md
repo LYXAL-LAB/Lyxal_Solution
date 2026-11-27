@@ -1,14 +1,17 @@
 # `lyxal_mail_proto` — syntaxes du courrier
 
-**État : lot 5 du programme courrier, réalisé (syntaxe SMTP).** Crate Rust membre du
-workspace, sous licence `AGPL-3.0-only`. Il contient deux modules : `mime`, la lecture d'un
-message (lot 4), et `smtp`, la syntaxe SMTP côté serveur (lot 5). Les syntaxes des autres
-protocoles arrivent avec les lots qui les servent (voir [`ROADMAP.md`](ROADMAP.md)).
+**État : lot 6 du programme courrier, sous-lot 6b réalisé (client SMTP, `AUTH`, avis).** Crate
+Rust membre du workspace, sous licence `AGPL-3.0-only`. Il contient trois modules : `mime`, la
+lecture d'un message (lot 4) ; `smtp`, la syntaxe SMTP côté serveur (lot 5, `AUTH` au lot 6) et
+côté client (lot 6) ; `dsn`, l'écriture et la lecture des avis de non-remise (lot 6). Les
+syntaxes des autres protocoles arrivent avec les lots qui les servent (voir
+[`ROADMAP.md`](ROADMAP.md)).
 
 Le programme courrier, agendas et contacts (architecture, 23 lots, décisions F1 à F5 et P1 à P15
 du CTO) est décrit par `implementation_plan.md` à la racine du dépôt. Utilisé par le dépôt d'un
 message de `lyxal_mail` (`MailIngest`), qui range enveloppe et structure en base, et par la
-session SMTP entrante de `lyxal_mail` (`lyxal_mail::smtp`, lot 5).
+session SMTP entrante de `lyxal_mail` (`lyxal_mail::smtp`, lot 5) ; le client d'envoi, le dépôt
+authentifié et les avis de `lyxal_mail` (sous-lots 6d à 6f) s'appuient sur la syntaxe du lot 6.
 
 ## Objet
 
@@ -16,7 +19,8 @@ Crate **Rust pur, sans base de données ni logique métier** (comme `lyxal_parsi
 langages du courrier et rend des types Lyxal, rien d'autre. Il n'écoute aucun port, n'ouvre
 aucune session, ne touche pas à SurrealDB et ne décide d'aucune règle (accepter un destinataire,
 ranger un message) : tout cela appartient à [`lyxal_mail`](../lyxal_mail/README.md). Pas de
-`tokio`, pas de cryptographie, aucune clé lue.
+`tokio`, pas de cryptographie, aucune clé lue ; les mots de passe lus par `AUTH` sont seulement
+gardés dans des tampons effacés à leur libération (`zeroize`).
 
 ## Lecture MIME (`lyxal_mail_proto::mime`)
 
@@ -79,13 +83,17 @@ de session ici : états, destinataires, politique et délais appartiennent à `l
 | Élément | Rôle |
 | :--- | :--- |
 | `CommandReceiver` | Accumule une ligne de commande, la contrôle et la lit ; consomme **une ligne au plus** par appel (`Ingested { consumed, item }`) : le reste de l'entrée revient à l'appelant |
-| `parse_command`, `Request` | `EHLO`, `HELO`, `MAIL`, `RCPT`, `DATA`, `BDAT`, `RSET`, `NOOP`, `QUIT`, `STARTTLS`, `VRFY`, `EXPN`, `HELP` ; `LHLO`, `AUTH`, `ETRN`, `ATRN`, `BURL` reconnus pour être refusés (`502`) |
-| `MailFrom`, `RcptTo` | Chemin (`<>`, `<Postmaster>`, boîte, adresse littérale `[IPv4]` / `[IPv6:…]`, route source lue puis signalée), `SIZE`, `BODY` (`7BIT`, `8BITMIME`, `BINARYMIME`), `SMTPUTF8` ; paramètres DSN (`RET`, `ENVID`, `NOTIFY`, `ORCPT`) lus pour être refusés tant que `DSN` n'est pas annoncé ; tout autre paramètre : `555 5.5.4` |
+| `parse_command`, `Request` | `EHLO`, `HELO`, `MAIL`, `RCPT`, `DATA`, `BDAT`, `RSET`, `NOOP`, `QUIT`, `STARTTLS`, `VRFY`, `EXPN`, `HELP`, `AUTH <mécanisme> [réponse initiale]` (nom de mécanisme SASL contrôlé, réponse initiale gardée dans un `SaslData`) ; `LHLO`, `ETRN`, `ATRN`, `BURL` reconnus pour être refusés (`502`) |
+| `MailFrom`, `RcptTo` | Chemin (`<>`, `<Postmaster>`, boîte, adresse littérale `[IPv4]` / `[IPv6:…]`, route source lue puis signalée), `SIZE`, `BODY` (`7BIT`, `8BITMIME`, `BINARYMIME`), `SMTPUTF8`, `AUTH=` (RFC 4954 §5, `uses_auth`) ; paramètres DSN (`RET`, `ENVID`, `NOTIFY`, `ORCPT`, `uses_dsn`) acceptés par la session seulement là où `DSN` est annoncé (dépôt authentifié, décision E22) ; `ENVID` décodé par `decoded_envid`, `ORCPT` par `DsnOrcpt::decode` ; `REQUIRETLS` et tout autre paramètre : `555 5.5.4` (décision E26) |
+| `Mailbox::parse`, `Domain::parse` | Boîte et domaine lus d'une chaîne (adresses en base, nom `EHLO` du client) |
 | `DataReceiver` | Contenu de `DATA` jusqu'à la seule fin `CRLF.CRLF`, bourrage retiré |
 | `BdatReceiver` | Morceaux `BDAT` (RFC 3030) : exactement la taille annoncée, fins de ligne contrôlées sur tout le message |
 | `DataOutcome` | Taille, dépassement de `max_message_bytes`, CR isolé, LF isolé, octet nul |
 | `Response`, `EnhancedStatus` | Réponse sur une ou plusieurs lignes, code étendu (RFC 3463) ; texte assaini (ASCII imprimable, 512 octets par ligne) |
-| `ehlo_response`, `Extensions` | Réponse à `EHLO` : `PIPELINING`, `SIZE`, `8BITMIME`, `SMTPUTF8`, `ENHANCEDSTATUSCODES`, `STARTTLS` (selon l'écoute), `CHUNKING` (décision S5) ; `Response::greeting` : `220 <hostname> ESMTP` |
+| `ehlo_response`, `Extensions` | Réponse à `EHLO` : `PIPELINING`, `SIZE`, `8BITMIME`, `SMTPUTF8`, `ENHANCEDSTATUSCODES`, `STARTTLS` (selon l'écoute), `CHUNKING` (`Extensions::inbound`, décision S5) ; plus `DSN` et `AUTH PLAIN LOGIN` (session chiffrée) pour le dépôt authentifié (`Extensions::submission`, décisions E14, E22) ; `Response::greeting` : `220 <hostname> ESMTP` ; `Response::diagnostic` : la réponse sur une ligne, pour `Diagnostic-Code` |
+| `AuthExchange`, `AuthStep`, `Credentials`, `AuthError` | Échange `AUTH PLAIN` (RFC 4616) et `AUTH LOGIN` : voir plus bas |
+| `CommandReceiver::ingest_line` | Ligne de réponse du client pendant `AUTH`, mêmes contrôles qu'une commande, rendue en `SaslData` |
+| `xtext` | Codage `xtext` (RFC 3461 §4) et adresses `utf-8-addr-xtext` / `utf-8-addr-unitext` (RFC 6533 §3) |
 | `SmtpError` | Refus sans donnée du client ; `response()` donne le code (`500 5.5.1`, `501 5.5.4`, `501 5.1.7`, `501 5.1.3`, `555 5.5.4`, `553 5.6.7`, `500 5.5.2`) |
 | `SmtpLimits` | `max_line_bytes` (4 096 ; 512 à 65 536) et `max_message_bytes` (50 Mio ; 1 Mio à 1 Gio), décision S19 |
 
@@ -125,6 +133,63 @@ UTF-8 permis dans les parties locales et les domaines (U-label) ; `MAIL FROM` no
 selon sa transaction. UTF-8 invalide toujours refusé, jamais converti avec perte. La conversion
 en A-label (`idna`) est faite par `lyxal_mail` (décision S16).
 
+### `AUTH` côté serveur (lot 6, décision E14)
+
+`AuthExchange::start(mécanisme, réponse initiale)` puis, tant qu'il rend un défi `334`,
+`AuthExchange::step` sur la ligne suivante (`CommandReceiver::ingest_line`). Le module ne vérifie
+aucun mot de passe : il rend `Credentials` (identifiant UTF-8, mot de passe en octets), vérifiés
+par `lyxal_mail` (mots de passe d'application de `lyxal_auth`).
+
+* `PLAIN` : `[authzid] NUL authcid NUL passwd` ; `authzid` non vide et différent de `authcid`
+  refusé (`535 5.7.8` : aucune connexion « au nom de ») ; sans réponse initiale, défi `334 ` vide.
+* `LOGIN` : défis `Username:` et `Password:` en Base64 ; l'identifiant peut venir en réponse
+  initiale (anciens Outlook).
+* Réponse initiale `=` : réponse vide ; `*` : annulation (`501 5.0.0`) ; Base64 invalide
+  (`501 5.5.2`) ; élément de plus de 1 024 octets encodés (`500 5.5.6`) ; mécanisme inconnu
+  (`504 5.5.4`) ; échange terminé (`503 5.5.1`).
+* Secrets : réponse initiale, lignes de l'échange et mot de passe dans des tampons effacés à leur
+  libération, masqués dans tout `Debug` (`[REDACTED]`) ; le tampon de ligne du
+  `CommandReceiver` est effacé après chaque ligne et réservé d'un coup (aucune copie laissée par
+  une réallocation).
+
+## Client SMTP (`lyxal_mail_proto::smtp::client`, lot 6)
+
+Syntaxe du client d'envoi de `lyxal_mail::outbound` (plan du lot 6, §3.1) ; aucune connexion
+ouverte, aucune décision (extensions employées, `PIPELINING`, `STARTTLS`, classement des échecs).
+
+| Élément | Rôle |
+| :--- | :--- |
+| `ReplyReader` | Lit une réponse sur une ou plusieurs lignes, **une à la fois** (réponses en `PIPELINING` dans l'ordre ; octets restés après le `220` de `STARTTLS` visibles par l'appelant, `has_partial_reply`) ; même code sur chaque ligne ; code étendu lu seulement si `ENHANCEDSTATUSCODES` est annoncé (`set_enhanced_status_codes`) et si sa classe est celle du code (comme Mox) ; `250` sans texte accepté ; CRLF strict (CR ou LF isolé : erreur de protocole) ; 512 octets par ligne, 1 000 lignes ; rend une `Response` au texte assaini |
+| `ServerExtensions::from_ehlo` | `PIPELINING`, `SIZE [n]`, `8BITMIME`, `SMTPUTF8`, `STARTTLS`, `DSN`, `ENHANCEDSTATUSCODES`, `CHUNKING`, `REQUIRETLS`, `AUTH <mécanismes>` (et forme ancienne `AUTH=`, 32 mécanismes au plus) ; mots inconnus ignorés |
+| `ClientCommand`, `MailCommand`, `RcptCommand` | `EHLO`, `HELO`, `STARTTLS`, `AUTH PLAIN` (relais), `MAIL FROM` (`SIZE`, `BODY`, `SMTPUTF8`, `RET`, `ENVID` en xtext), `RCPT TO` (`NOTIFY`, `ORCPT` relayé tel que reçu ou construit par `DsnOrcpt::for_mailbox`), `DATA`, `RSET`, `NOOP`, `QUIT` ; aucun CR ni LF possible (chemins typés, nom `EHLO` relu, valeurs codées), `BODY=BINARYMIME` refusé (pas de `BDAT`, décision E10) ; mot de passe masqué dans le `Debug` |
+| `DotStuffer` | Bourrage de `DATA` **en flux** : point doublé en début de ligne, `CRLF.CRLF` final (CRLF ajouté si la dernière ligne n'en a pas) ; CR ou LF isolé **refusé** (seconde garde contre la contrebande SMTP vers l'extérieur) |
+
+## Avis de non-remise (`lyxal_mail_proto::dsn`, lot 6)
+
+Plan du lot 6, §3.3. Le module écrit et lit ; il ne décide d'aucun avis (`lyxal_mail::dsn`).
+
+* **Écriture** (`DsnBuilder::build`) : `multipart/report; report-type=delivery-status`
+  (RFC 6522) en trois parties — texte lisible en français puis en anglais (UTF-8,
+  quoted-printable ; nos seules données : adresses, codes étendus, dates), rapport
+  `message/delivery-status` (RFC 3464 : `Reporting-MTA`, `Original-Envelope-Id`, `Arrival-Date` ;
+  par destinataire `Original-Recipient`, `Final-Recipient`, `Action`, `Status`, `Remote-MTA`,
+  `Diagnostic-Code`, `Last-Attempt-Date`, `Will-Retry-Until`), puis les en-têtes du message
+  (`text/rfc822-headers`, `RET=HDRS`) ou le message entier (`message/rfc822`, `RET=FULL`,
+  256 Kio au plus ; au-delà, en-têtes seuls). Variante internationale (RFC 6533) quand l'envoi
+  exigeait `SMTPUTF8` : `message/global-delivery-status`, `message/global-headers`,
+  `message/global`, adresses `utf-8` en clair ; sinon une adresse non ASCII s'écrit en
+  `utf-8-addr-xtext`. En-têtes `From: Mail Delivery System <…>`, `In-Reply-To` et `References`
+  (fil du message d'origine), `Auto-Submitted: auto-replied`. Textes distants (`Remote-MTA`,
+  `Diagnostic-Code`) assainis : caractères de commande retirés, 4 096 octets par champ, lignes
+  repliées sous 998 octets ; aucun ne peut créer un champ.
+* **Lecture** (`parse_dsn(brut, &ParsedMessage)`) : première partie `delivery-status` (ou
+  `global-delivery-status`) de la structure MIME du lot 4, sous `multipart/report` ou non ;
+  codages `7bit`, `8bit`, `base64`, `quoted-printable`. Tolérante aux avis réels : casse des
+  champs, commentaires, fins de ligne LF, groupe du message absent, `Status` absent (déduit de
+  l'action), chevrons autour d'une adresse, groupes illisibles ignorés et comptés
+  (`ignored_recipients`). Bornée : rapport de 64 Kio, 100 destinataires.
+* Dates des champs : `format_date`, `parse_date` (lecteur de `mail-parser`).
+
 ## Essais
 
 `cargo test -p lyxal_mail_proto` :
@@ -149,18 +214,33 @@ en A-label (`idna`) est faite par `lyxal_mail` (décision S16).
 * `tests/smtp_data.rs` : bourrage, fin `CRLF.CRLF` seule, variantes de contrebande, octet nul,
   dépassement de taille, morceaux `BDAT`, cas de Mox `smtp/data_test.go` transposés ;
 * `tests/smtp_responses.rs` : réponses sur une et plusieurs lignes, codes étendus, assainissement,
-  réponse à `EHLO` (S5) ;
+  réponse à `EHLO` (S5, dépôt authentifié), forme `Diagnostic-Code` ;
 * `tests/smtp_corpus.rs` : dialogues tirés des RFC 5321, 2920, 3030, 1870, 3207, 3461, 6531
   (`tests/corpus/smtp/`) lus sous plusieurs découpages ; réponses du serveur relues par le
-  lecteur de réponses des essais (`tests/smtp_support/`, gardé pour les essais jusqu'au client
-  du lot 6) ;
+  `ReplyReader` du client ;
+* `tests/smtp_client.rs` (lot 6) : réponses sur une et plusieurs lignes, codes étendus annoncés ou
+  non, lignes trop longues, 1 000 lignes, CR et LF isolés, une réponse à la fois ; extensions de
+  `EHLO` ; commandes écrites (paramètres DSN en xtext, `ORCPT` relayé puis décodé, refus de CR
+  et LF, `AUTH PLAIN`) ; bourrage ; cas de Mox `smtpclient/client_test.go` transposés ;
+  propriétés `proptest` (bourrer puis lire par le `DataReceiver` du lot 5 redonne les octets ;
+  aucune fin isolée ne passe ; une réponse écrite par `Response::write_to` est relue à
+  l'identique ; aucun arrêt du lecteur) ;
+* `tests/smtp_auth.rs` (lot 6) : commande `AUTH`, échanges `PLAIN` et `LOGIN`, Base64 invalide,
+  `authzid` différent, annulation, longueurs, masquage, `AUTH=`, `REQUIRETLS` refusé ;
+* `tests/dsn.rs` (lot 6) : avis écrits puis relus (cas de Mox `dsn/dsn_test.go` transposés,
+  variante internationale, tous les champs et actions, `RET=FULL` et sa limite, textes distants
+  injectés), avis de forme Postfix, lectures tolérantes (Base64, quoted-printable, LF, groupes
+  illisibles), refus et limites ; propriétés `proptest` (un avis écrit est relu à l'identique ;
+  aucun arrêt de la lecture) ;
 * `tests/smtp_properties.rs` : propriétés `proptest` (aucun arrêt ; une commande par LF quel que
   soit le découpage ; fin de `DATA` sur la première occurrence de `CRLF.CRLF` seulement, contenu
   et fins isolées conformes à un modèle ; aller-retour du bourrage ; `BDAT` exact ; limite de
   ligne) ; 50 000 cas passés lors de la création ;
 * `fuzz/` : cibles `cargo fuzz` `mime_parse` (lot 4), `smtp_request` et `smtp_data` (lot 5),
-  paquet hors du workspace ; cibles SMTP lancées 60 s chacune à leur création (sans incident),
-  longuement au lot 21 (`cargo +nightly-2026-10-20 fuzz run <cible>`).
+  `smtp_reply` (réponses, extensions, réécriture relue à l'identique, bourrage relu par le
+  serveur) et `dsn_parse` (avis, échanges `AUTH`) (lot 6), paquet hors du workspace ; cibles
+  SMTP et d'avis lancées 60 s chacune à leur création (sans incident), longuement au lot 21
+  (`cargo +nightly-2026-10-20 fuzz run <cible>`).
 
 ## Licence
 
@@ -177,10 +257,13 @@ permissive ne dépend de ce crate (`scripts/ci/check_agpl_isolation.py`).
 ## Dépendances
 
 `mail-parser` 1.0.1 (`Apache-2.0 OR MIT` ; dépendances `encodify`, `hashify`, `memchr`,
-`simdutf8`, `encoding_rs`), `memchr` 2 (`Unlicense OR MIT`, syntaxe SMTP), `time`,
-`thiserror` ; en essai, `proptest`. Aucun crate Lyxal, aucune crate cryptographique.
+`simdutf8`, `encoding_rs`), `memchr` 2 (`Unlicense OR MIT`, syntaxe SMTP), `base64` 0.22
+(`MIT OR Apache-2.0`, `AUTH` et avis), `zeroize` 1 (`Apache-2.0 OR MIT`, effacement des mots de
+passe lus), `time`, `thiserror` ; en essai, `proptest`. Aucun crate Lyxal, aucune crate
+cryptographique (`mail-auth` n'est jamais une dépendance).
 
-Consommateurs : `lyxal_mail` (dépôt d'un message, lot 4) et `apps/lyxal-groupware`. `lyxal-server`
+Consommateurs : `lyxal_mail` (dépôt d'un message, lot 4 ; session SMTP, lot 5 ; envoi, dépôt
+authentifié et avis, lot 6) et `apps/lyxal-groupware`. `lyxal-server`
 ne le lie pas.
 
 ## Documents

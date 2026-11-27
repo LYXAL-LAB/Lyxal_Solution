@@ -354,7 +354,7 @@ impl SmtpSession {
                 Flow::Continue
             }
             Request::Expn
-            | Request::Auth
+            | Request::Auth { .. }
             | Request::Lhlo
             | Request::Etrn
             | Request::Atrn
@@ -420,7 +420,7 @@ impl SmtpSession {
             return self.bad_sequence("Nested MAIL command");
         }
         let config = &self.shared.config;
-        if mail.uses_dsn() || mail.body == Some(Body::BinaryMime) {
+        if mail.uses_dsn() || mail.uses_auth() || mail.body == Some(Body::BinaryMime) {
             self.io
                 .response(&SmtpError::UnsupportedParameter.response());
             self.error();

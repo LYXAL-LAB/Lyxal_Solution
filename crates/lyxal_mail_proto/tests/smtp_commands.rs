@@ -54,7 +54,6 @@ fn simple_commands() {
         ("VRFY postmaster\r\n", Request::Vrfy),
         ("EXPN staff\r\n", Request::Expn),
         ("LHLO client.example\r\n", Request::Lhlo),
-        ("AUTH PLAIN dGVzdAB0ZXN0AHRlc3Q=\r\n", Request::Auth),
         ("ETRN example.com\r\n", Request::Etrn),
         ("ATRN example.com\r\n", Request::Atrn),
         ("BURL imap://x LAST\r\n", Request::Burl),
@@ -345,10 +344,6 @@ fn mail_from_parameters() {
             SmtpError::DuplicateParameter("SMTPUTF8"),
         ),
         (
-            "MAIL FROM:<a@b.c> AUTH=<>\r\n",
-            SmtpError::UnsupportedParameter,
-        ),
-        (
             "MAIL FROM:<a@b.c> REQUIRETLS\r\n",
             SmtpError::UnsupportedParameter,
         ),
@@ -611,9 +606,10 @@ fn error_responses_are_well_formed() {
         assert!(response.is_permanent(), "{error:?}");
         let status = response.status().expect("code étendu");
         assert_eq!(u16::from(status.class()), response.code() / 100);
-        let lines = smtp_support::parse_reply(&response.to_bytes());
-        assert_eq!(lines.len(), 1);
-        assert!(lines[0].text.starts_with(&status.to_string()));
+        let reply = smtp_support::parse_reply(&response.to_bytes());
+        assert_eq!(reply, response);
+        assert_eq!(reply.lines().len(), 1);
+        assert_eq!(reply.status(), Some(status));
     }
     let smuggling = SmtpError::BareLf.response();
     assert_eq!(smuggling.code(), 500);
