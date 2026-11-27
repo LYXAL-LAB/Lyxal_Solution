@@ -46,7 +46,7 @@ use crate::support::{bench, token, Bench};
 
 /// Réponse programmée du faux MX à un `RCPT TO` (par partie locale du destinataire).
 #[derive(Clone)]
-enum RcptRule {
+pub(crate) enum RcptRule {
     Accept,
     /// Refus temporaire `n` fois, puis accepté.
     TempFail(u32),
@@ -55,13 +55,13 @@ enum RcptRule {
 
 /// Comportement du faux MX.
 #[derive(Clone)]
-struct MxScript {
-    pipelining: bool,
-    starttls: bool,
-    dsn: bool,
-    rules: HashMap<String, RcptRule>,
+pub(crate) struct MxScript {
+    pub(crate) pipelining: bool,
+    pub(crate) starttls: bool,
+    pub(crate) dsn: bool,
+    pub(crate) rules: HashMap<String, RcptRule>,
     /// Ne répond jamais à la fin des données (arrêt brutal pendant l'envoi).
-    hang_on_data: bool,
+    pub(crate) hang_on_data: bool,
 }
 
 impl Default for MxScript {
@@ -78,9 +78,9 @@ impl Default for MxScript {
 
 /// Ce que le faux MX a reçu.
 #[derive(Default)]
-struct MxLog {
+pub(crate) struct MxLog {
     /// Messages reçus : (expéditeur, destinataires, octets après bourrage retiré).
-    messages: Vec<(String, Vec<String>, Vec<u8>)>,
+    pub(crate) messages: Vec<(String, Vec<String>, Vec<u8>)>,
     /// Lots de commandes reçus en une lecture contenant `MAIL`, `RCPT` et `DATA`.
     pipelined_batches: usize,
     starttls: usize,
@@ -88,15 +88,15 @@ struct MxLog {
     temp_counts: HashMap<String, u32>,
 }
 
-struct FakeMx {
-    port: u16,
-    log: Arc<Mutex<MxLog>>,
-    script: Arc<Mutex<MxScript>>,
+pub(crate) struct FakeMx {
+    pub(crate) port: u16,
+    pub(crate) log: Arc<Mutex<MxLog>>,
+    pub(crate) script: Arc<Mutex<MxScript>>,
     _tasks: JoinSet<()>,
 }
 
 impl FakeMx {
-    async fn start(script: MxScript) -> Self {
+    pub(crate) async fn start(script: MxScript) -> Self {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let port = listener.local_addr().unwrap().port();
         let log = Arc::new(Mutex::new(MxLog::default()));
@@ -118,7 +118,7 @@ impl FakeMx {
         }
     }
 
-    fn messages(&self) -> Vec<(String, Vec<String>, Vec<u8>)> {
+    pub(crate) fn messages(&self) -> Vec<(String, Vec<String>, Vec<u8>)> {
         self.log.lock().unwrap().messages.clone()
     }
 }
@@ -306,7 +306,7 @@ impl TlsConnectorProvider for TestTls {
 // Banc de l'envoi
 // ------------------------------------------------------------------------------------------
 
-const MESSAGE: &str = "From: Alpha <noreply@alpha.test>\r\n\
+pub(crate) const MESSAGE: &str = "From: Alpha <noreply@alpha.test>\r\n\
 To: <paul@ailleurs.test>\r\n\
 Subject: =?utf-8?q?Devis_n=C2=B0_42?=\r\n\
 Content-Type: text/plain; charset=utf-8\r\n\
@@ -327,15 +327,15 @@ fn master() -> MasterKeys {
     .unwrap()
 }
 
-struct Outbound {
-    bench: Bench,
-    domain: String,
-    bucket: String,
+pub(crate) struct Outbound {
+    pub(crate) bench: Bench,
+    pub(crate) domain: String,
+    pub(crate) bucket: String,
     secrets: SecretsClient,
     keys: Arc<DkimKeyCache>,
 }
 
-async fn outbound() -> Outbound {
+pub(crate) async fn outbound() -> Outbound {
     let bench = bench().await;
     let domain = bench.domain("alpha").await;
     bench
@@ -383,7 +383,7 @@ async fn mail_bucket(bench: &Bench, organization: &str) -> String {
         .to_sql()
 }
 
-fn resolver(port_host: &str, domains: &[&str]) -> StaticResolver {
+pub(crate) fn resolver(port_host: &str, domains: &[&str]) -> StaticResolver {
     let mut resolver = StaticResolver::new();
     for domain in domains {
         resolver
@@ -395,7 +395,7 @@ fn resolver(port_host: &str, domains: &[&str]) -> StaticResolver {
 }
 
 impl Outbound {
-    fn worker(
+    pub(crate) fn worker(
         &self,
         mx: &FakeMx,
         resolver: Arc<dyn MailResolver>,
@@ -424,7 +424,7 @@ impl Outbound {
     }
 
     /// Envoi d'un module (contrat public), clos : identifiant.
-    async fn module_send(&self, recipients: &[&str], raw: &str) -> String {
+    pub(crate) async fn module_send(&self, recipients: &[&str], raw: &str) -> String {
         self.send(
             &self.bench.system,
             SubmissionOrigin::Module,
@@ -435,7 +435,7 @@ impl Outbound {
         .await
     }
 
-    async fn send(
+    pub(crate) async fn send(
         &self,
         caller: &MailStore,
         origin: SubmissionOrigin,
@@ -466,6 +466,7 @@ impl Outbound {
                 prefix: None,
                 forward: None,
                 tenant: None,
+                idempotency_key: None,
             })
             .await
             .expect("dépôt ouvert");
@@ -500,7 +501,10 @@ impl Outbound {
         reserved.submission.to_sql()
     }
 
-    async fn states(&self, submission: &str) -> Vec<(String, RecipientState, Option<String>)> {
+    pub(crate) async fn states(
+        &self,
+        submission: &str,
+    ) -> Vec<(String, RecipientState, Option<String>)> {
         self.bench
             .system
             .submission_get(SubmissionRefParams {
@@ -515,7 +519,10 @@ impl Outbound {
     }
 
     /// Attend que tous les destinataires de l'envoi soient dans un état final.
-    async fn wait_final(&self, submission: &str) -> Vec<(String, RecipientState, Option<String>)> {
+    pub(crate) async fn wait_final(
+        &self,
+        submission: &str,
+    ) -> Vec<(String, RecipientState, Option<String>)> {
         self.wait_final_for(submission, 300).await
     }
 
@@ -599,12 +606,12 @@ fn clone_resolver(keys: &[lyxal_mail::models::DkimPendingKey]) -> StaticResolver
     resolver
 }
 
-struct Running {
+pub(crate) struct Running {
     cancel: CancellationToken,
     tasks: JoinSet<Result<(), lyxal_runtime::RuntimeError>>,
 }
 
-fn run(worker: OutboundDispatcher) -> Running {
+pub(crate) fn run(worker: OutboundDispatcher) -> Running {
     let cancel = CancellationToken::new();
     let descriptor = worker.descriptor().clone();
     let ctx = WorkerContext::new(
@@ -619,7 +626,7 @@ fn run(worker: OutboundDispatcher) -> Running {
 }
 
 impl Running {
-    async fn stop(mut self) {
+    pub(crate) async fn stop(mut self) {
         self.cancel.cancel();
         while let Some(result) = self.tasks.join_next().await {
             result.unwrap().unwrap();
@@ -959,6 +966,7 @@ async fn notify_success_to_a_server_without_dsn_is_relayed() {
             prefix: None,
             forward: None,
             tenant: None,
+            idempotency_key: None,
         })
         .await
         .unwrap();

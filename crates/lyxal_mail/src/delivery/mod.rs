@@ -16,16 +16,18 @@
 //! compteurs sont contrôlés par les fonctions SurrealQL.
 //!
 //! La chaîne de remise d'un message reçu (antivirus → anti-spam → filtres → index → chiffrement)
-//! est dans [`DeliveryPipeline`].
+//! est dans [`DeliveryPipeline`] ; le chemin de réception commun au port 25 et à la route locale
+//! (une analyse, remise aux comptes, avis reçus, transferts d'alias) dans [`Reception`].
 
 mod pipeline;
+mod reception;
 
 pub(crate) use pipeline::ScanOutcome;
 pub use pipeline::{
-    AccountOutcome, AntivirusStage, DeliveryPipeline, DeliveryVerdict, EncryptionStage,
-    FilterStage, IndexStage, PipelineResult, ReceivedMessage, RecipientTarget, RejectReason,
-    SpamStage,
+    AccountOutcome, AntivirusStage, DeliveryPipeline, EncryptionStage, FilterStage, IndexStage,
+    PipelineResult, ReceivedMessage, RecipientTarget, RejectReason, Screened, Screening, SpamStage,
 };
+pub use reception::{ForwardResult, ForwardTarget, InboundMessage, Reception, ReceptionResult};
 
 use lyxal_crypto::Blake3Hasher;
 use std::collections::hash_map::DefaultHasher;

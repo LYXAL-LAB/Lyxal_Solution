@@ -102,13 +102,14 @@ DEFINE FUNCTION OVERWRITE fn::mail_queue_item_check($kind: string, $item: any) -
         })
     } ELSE {
         fn::validation_checks_report($item, {
-            recipient: fn::validation_record($item.recipient, "mail_queue_recipient"),
+            final_recipient: fn::validation_required_string($item.final_recipient, 1, 254),
+            original_recipient: fn::validation_optional_string($item.original_recipient, 1, 254),
             action: fn::validation_enum($item.action, ["failed", "delayed", "delivered", "relayed", "expanded"], false),
             status: fn::validation_optional_string($item.status, 5, 16),
             diagnostic: fn::validation_optional_string($item.diagnostic, 1, 512)
         })
     };
-} COMMENT "Interne : contrôle d'un élément d'un lot du worker d'envoi par appels directs des primitives de lyxal_core et fn::validation_checks_report (décision E32) : complete ({ recipient, outcome : delivered ou relayed, host, code 2xx, enhanced, tls { version, verified }, at }), fail ({ recipient, permanent, stage, code 4xx ou 5xx, enhanced, text de 512 caractères, host }), return ({ recipient, action : failed, delayed, delivered, relayed, expanded, status, diagnostic de 512 caractères }) ; clés inconnues refusées. Rapport { valid, value, errors, warnings, by_field } de lyxal_core";
+} COMMENT "Interne : contrôle d'un élément d'un lot du worker d'envoi par appels directs des primitives de lyxal_core et fn::validation_checks_report (décision E32) : complete ({ recipient, outcome : delivered ou relayed, host, code 2xx, enhanced, tls { version, verified }, at }), fail ({ recipient, permanent, stage, code 4xx ou 5xx, enhanced, text de 512 caractères, host }), return ({ final_recipient et original_recipient : adresses lues dans l'avis (254 caractères), action : failed, delayed, delivered, relayed, expanded, status, diagnostic de 512 caractères }) ; clés inconnues refusées. Rapport { valid, value, errors, warnings, by_field } de lyxal_core";
 
 DEFINE FUNCTION OVERWRITE fn::mail_queue_batch_report($params: any, $kind: string, $max: int, $extra: object) -> object {
     LET $sized = fn::validation_array_length($params.items, 1, $max);
@@ -464,16 +465,15 @@ DEFINE FUNCTION OVERWRITE fn::mail_queue_dsn_pending($params: object) {
     LET $cutoff = time::now() - duration::from_secs($p.grace_seconds);
     LET $rows = array::filter((SELECT id, submission, state, final_at FROM mail_queue_recipient WHERE dsn_owed = true LIMIT $p.limit), |$r| $r.final_at IS NOT NONE AND $r.final_at < $cutoff);
     LET $submissions = (SELECT id, origin, content FROM array::distinct($rows.submission));
-    -- Transferts : avis produits par la réception (sous-lot 6f), jamais par cette reprise
     LET $due = array::filter(array::map($rows, |$r| {
         LET $s = array::find($submissions, |$x| $x.id = $r.submission);
-        RETURN IF $s IS NONE OR $s.origin = "forward" { NONE } ELSE { { submission: $r.submission, action: IF $r.state IN ["failed", "expired"] { "failed" } ELSE { $r.state }, recipient: $r.id } };
+        RETURN IF $s IS NONE { NONE } ELSE { { submission: $r.submission, action: IF $r.state IN ["failed", "expired"] { "failed" } ELSE { $r.state }, recipient: $r.id } };
     }), |$d| $d IS NOT NONE);
     RETURN fn::result_ok({ dsn: array::map(fn::mail_queue_dsn_groups($due), |$g| {
         LET $s = array::find($submissions, |$x| $x.id = $g.submission);
         RETURN object::extend($g, { object: IF $s.content.removed_at IS NONE { $s.content.object } ELSE { NONE } });
     }) });
-} COMMENT "Avis finaux dus et non produits ({ limit : 100 (1 à 1 000), grace_seconds : 300 (0 à 3 600) }) : destinataires clos depuis plus de grace_seconds dont l'avis n'a pas été produit (panne du dépôt de l'avis, arrêt du nœud), transferts exceptés ; { dsn : [{ submission, action (failed, delivered, relayed), recipients, object (fichier de l'envoi, NONE s'il est retiré) }] }, à produire puis noter par fn::mail_queue_dsn_done. Droit : compte de service, session système";
+} COMMENT "Avis finaux dus et non produits ({ limit : 100 (1 à 1 000), grace_seconds : 300 (0 à 3 600) }) : destinataires clos depuis plus de grace_seconds dont l'avis n'a pas été produit (panne du dépôt ou de la mise en file de l'avis, arrêt du nœud) ; { dsn : [{ submission, action (failed, delivered, relayed), recipients, object (fichier de l'envoi, NONE s'il est retiré) }] }, à produire puis noter par fn::mail_queue_dsn_done. Droit : compte de service, session système";
 
 -- ----------------------------------------------------------------------------
 -- fn::mail_queue_stats
@@ -567,10 +567,18 @@ DEFINE FUNCTION OVERWRITE fn::mail_return_record($params: object) {
     IF !fn::mail_can({ action: "worker" }) { RETURN fn::error_result("MAIL_PERMISSION_DENIED", $p.language, {}); };
     IF !record::exists($p.submission) { RETURN fn::error_result("MAIL_SUBMISSION_NOT_FOUND", $p.language, { submission: <string> $p.submission }); };
     LET $now = time::now();
+    -- Destinataires de l'envoi (plage bornée) ; un élément de l'avis désigne celui dont l'adresse
+    -- est son adresse finale ou d'origine, casse ignorée
+    LET $known = array::map((SELECT id, address FROM type::record("mail_queue_recipient", fn::mail_queue_recipient_key_text($p.submission, 0)..fn::mail_queue_recipient_key_text($p.submission, 1000))),
+        |$r| { id: $r.id, address: fn::sanitize_lowercase($r.address) });
     -- Rejet après acceptation : seuls les échecs d'un destinataire remis ou relayé de cet envoi
-    LET $failed = array::filter($p.items, |$i| fn::sanitize_lowercase($i.action) = "failed");
+    LET $failed = array::filter(array::map(array::filter($p.items, |$i| fn::sanitize_lowercase($i.action) = "failed"), |$i| {
+        LET $wanted = array::map(array::filter([$i.final_recipient, $i.original_recipient], |$a| $a IS NOT NONE), |$a| fn::sanitize_lowercase($a));
+        LET $found = array::find($known, |$r| $wanted CONTAINS $r.address);
+        RETURN IF $found IS NONE { NONE } ELSE { object::extend($i, { recipient: $found.id }) };
+    }), |$i| $i IS NOT NONE);
     LET $bounced = array::filter(array::map($failed, |$i| (UPDATE ONLY $i.recipient SET state = "bounced",
         last_result = { stage: "bounce", enhanced: $i.status, text: $i.diagnostic, at: $now }
-        WHERE submission = $p.submission AND state IN ["delivered", "relayed"])), |$row| $row IS NOT NONE);
+        WHERE state IN ["delivered", "relayed"])), |$row| $row IS NOT NONE);
     RETURN fn::result_ok({ bounced: array::len($bounced), ignored: array::len($p.items) - array::len($bounced) });
-} COMMENT "Inscrit un avis de non-remise reçu sur une adresse de retour ({ submission, items : 1 à 100 × { recipient, action (failed, delayed, delivered, relayed, expanded), status, diagnostic } }, §10.3) : un échec d'un destinataire de l'envoi déjà remis ou relayé le passe à bounced (mail.submission.bounced) ; les autres éléments sont seulement comptés ; { bounced, ignored }. Droit : compte de service, session système";
+} COMMENT "Inscrit un avis de non-remise reçu sur une adresse de retour ({ submission, items : 1 à 100 × { final_recipient, original_recipient (adresses lues dans l'avis), action (failed, delayed, delivered, relayed, expanded), status, diagnostic } }, §10.3) : un échec qui désigne (adresse finale ou d'origine, casse ignorée) un destinataire de l'envoi déjà remis ou relayé le passe à bounced (mail.submission.bounced) ; les autres éléments sont seulement comptés ; { bounced, ignored }. Droit : compte de service, session système";

@@ -13,12 +13,24 @@
 //!   `MAILER-DAEMON@<smtp.hostname>`), jamais sur Internet ; compte sans boîte (désactivé,
 //!   supprimé) : aucun avis, compté ;
 //! * envoi d'un module : aucun avis (les événements `mail.submission.*` suffisent) ;
-//! * transfert (`forward`, sous-lot 6f) : avis renvoyé à l'expéditeur d'origine authentifié par
-//!   la file ; produit par le transfert lui-même au sous-lot 6f.
+//! * transfert d'un alias (`forward`, §13) : avis **mis en file** vers l'adresse d'enveloppe
+//!   d'origine (envoi d'origine `dsn`, `MAIL FROM:<>`, envoyé par le worker comme tout envoi),
+//!   seulement quand cette adresse est authentifiée (SPF `pass` sur `MAIL FROM`, ou DKIM de son
+//!   domaine : décidé par `fn::mail_queue_dsn_wanted`) ; sinon il n'est jamais dû.
 //!
 //! L'avis est déterministe (identifiant, date, frontière) : une remise reprise après un arrêt
 //! est reconnue par l'empreinte d'idempotence du lot 5 et ne fait pas de doublon. Puis
-//! `fn::mail_queue_dsn_done` le note : jamais produit deux fois.
+//! `fn::mail_queue_dsn_done` le note : jamais produit deux fois. Avis d'un transfert : sa clé
+//! d'idempotence (empreinte de son destinataire et de ses octets) fait retrouver, à la reprise
+//! après un arrêt entre sa mise en file et `fn::mail_queue_dsn_done`, l'envoi déjà en file : il
+//! n'est jamais mis en file deux fois.
+//!
+//! Les avis **reçus** sur une adresse de retour sont lus par [`BounceProcessor`] (§10.3).
+
+mod bounce;
+
+pub(crate) use bounce::is_delivery_report;
+pub use bounce::{BounceProcessor, ReturnOutcome, ReturnTarget};
 
 use bytes::Bytes;
 use lyxal_mail_proto::dsn::{
@@ -33,8 +45,8 @@ use crate::auth::MessageHeaders;
 use crate::delivery::{DeliveryPipeline, PipelineResult, ReceivedMessage, RecipientTarget};
 use crate::error::{MailError, MailResult};
 use crate::models::{
-    DsnAction, DsnDoneParams, DsnDue, DsnReturn, MailDatetime, QueuedRecipient, SubmissionOrigin,
-    SubmissionRefParams,
+    DsnAction, DsnDoneParams, DsnDue, DsnReturn, MailDatetime, QueuedRecipient,
+    SubmissionBeginParams, SubmissionOrigin, SubmissionRecipient, SubmissionRefParams,
 };
 use crate::outbound::content;
 use crate::store::MailStore;
@@ -45,12 +57,13 @@ const MAX_ATTACHED: usize = lyxal_mail_proto::dsn::MAX_RETURNED_BYTES;
 /// Issue d'un avis.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DsnOutcome {
-    /// Avis déposé.
+    /// Avis déposé dans la boîte de l'expéditeur.
     Delivered,
-    /// Aucun avis (module, compte sans boîte, expéditeur vide) ; noté comme produit.
+    /// Avis d'un transfert mis en file vers l'expéditeur d'origine.
+    Queued,
+    /// Aucun avis (module, compte sans boîte, expéditeur vide, adresse d'origine refusée par la
+    /// file) ; noté comme produit.
     Suppressed,
-    /// Avis d'un transfert : produit par le sous-lot 6f.
-    Deferred,
 }
 
 /// Écriture et dépôt des avis de non-remise.
@@ -91,14 +104,13 @@ impl DsnComposer {
                 submission: due.submission.to_sql(),
             })
             .await?;
+        let recipients: Vec<&QueuedRecipient> = submission
+            .recipients
+            .iter()
+            .filter(|recipient| due.recipients.contains(&recipient.recipient))
+            .collect();
         let outcome = match (submission.origin, &submission.account, &submission.sender) {
-            (SubmissionOrigin::Forward, _, _) => return Ok(DsnOutcome::Deferred),
             (SubmissionOrigin::Submission, Some(account), Some(sender)) => {
-                let recipients: Vec<&QueuedRecipient> = submission
-                    .recipients
-                    .iter()
-                    .filter(|recipient| due.recipients.contains(&recipient.recipient))
-                    .collect();
                 let bytes = self
                     .compose(due, &submission, &recipients, sender, object)
                     .await?;
@@ -110,6 +122,21 @@ impl DsnComposer {
                 match self.deposit(bytes, target).await? {
                     true => DsnOutcome::Delivered,
                     false => DsnOutcome::Suppressed,
+                }
+            }
+            (SubmissionOrigin::Forward, _, Some(_)) => {
+                match submission
+                    .forward
+                    .as_ref()
+                    .and_then(|forward| forward.envelope_from.clone())
+                {
+                    Some(origin) => {
+                        let bytes = self
+                            .compose(due, &submission, &recipients, &origin, object)
+                            .await?;
+                        self.queue(bytes, &submission, origin).await?
+                    }
+                    None => DsnOutcome::Suppressed,
                 }
             }
             _ => DsnOutcome::Suppressed,
@@ -132,7 +159,7 @@ impl DsnComposer {
         due: &DsnDue,
         submission: &crate::models::Submission,
         recipients: &[&QueuedRecipient],
-        sender: &str,
+        to: &str,
         object: Option<&str>,
     ) -> MailResult<Vec<u8>> {
         let invalid = || MailError::Unavailable("avis de non-remise impossible à écrire".into());
@@ -251,7 +278,7 @@ impl DsnComposer {
             .ok_or_else(invalid)?;
         let from =
             Mailbox::parse(&format!("MAILER-DAEMON@{}", self.hostname)).ok_or_else(invalid)?;
-        let to = Mailbox::parse(sender).ok_or_else(invalid)?;
+        let to = Mailbox::parse(to).ok_or_else(invalid)?;
         let builder = DsnBuilder {
             reporting_mta: &self.hostname,
             from: &from,
@@ -270,6 +297,53 @@ impl DsnComposer {
             tracing::warn!(%error, "avis de non-remise impossible à écrire");
             invalid()
         })
+    }
+
+    /// Avis d'un transfert mis en file vers l'adresse d'enveloppe d'origine `origin` (envoi
+    /// d'origine `dsn`, expéditeur vide, sous la session système) ; une adresse que la file
+    /// refuse (illisible) : aucun avis, compté.
+    async fn queue(
+        &self,
+        bytes: Vec<u8>,
+        submission: &crate::models::Submission,
+        origin: String,
+    ) -> MailResult<DsnOutcome> {
+        let ingest = self.pipeline.ingest();
+        // Avis déterministe : son empreinte (destinataire, expéditeur vide, octets) est sa clé
+        // d'idempotence ; mis en file deux fois (reprise avant `fn::mail_queue_dsn_done`), il est
+        // retrouvé au lieu d'être envoyé une seconde fois
+        let idempotency_key = crate::delivery::delivery_key(&origin, "", &bytes);
+        let params = SubmissionBeginParams {
+            origin: Some(SubmissionOrigin::Dsn),
+            from: String::new(),
+            header_from: vec![format!("mailer-daemon@{}", self.hostname)],
+            recipients: vec![SubmissionRecipient {
+                address: origin,
+                notify: None,
+                orcpt: None,
+            }],
+            size: i64::try_from(bytes.len()).unwrap_or(i64::MAX),
+            smtputf8: Some(submission.smtputf8),
+            eight_bit: Some(bytes.iter().any(|byte| *byte >= 0x80)),
+            dsn: None,
+            client_reference: None,
+            return_token: None,
+            prefix: None,
+            forward: None,
+            tenant: Some(submission.tenant.to_sql()),
+            idempotency_key: Some(idempotency_key),
+        };
+        match ingest
+            .queue_submission(&self.store, params, Bytes::from(bytes))
+            .await
+        {
+            Ok(_) => Ok(DsnOutcome::Queued),
+            Err(error) if error.is_business() => {
+                tracing::info!(code = %error.code(), "avis d'un transfert refusé par la file : aucun avis");
+                Ok(DsnOutcome::Suppressed)
+            }
+            Err(error) => Err(error),
+        }
     }
 
     /// Dépôt dans la boîte du compte expéditeur ; faux si le compte n'a plus de boîte (aucun

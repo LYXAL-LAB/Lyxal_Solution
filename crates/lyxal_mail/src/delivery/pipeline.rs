@@ -69,21 +69,30 @@ pub struct ReceivedMessage {
     pub received_at: MailDatetime,
 }
 
-/// Décision de la chaîne avant le dépôt.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DeliveryVerdict {
-    /// Remise dans le dossier de ce rôle.
-    Deliver {
-        /// Dossier.
-        role: DeliveryRole,
-    },
+/// Décision de la chaîne avant le dépôt ([`DeliveryPipeline::screen`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Screening {
+    /// Message admis : à remettre par [`DeliveryPipeline::deposit`].
+    Passed(Screened),
     /// Refus définitif (antivirus : message infecté).
-    Reject {
+    Rejected {
         /// Motif.
         reason: RejectReason,
     },
-    /// Refus temporaire (antivirus injoignable) : l'expéditeur réessaie.
-    TempFail,
+    /// Refus temporaire (antivirus configuré mais injoignable) : l'expéditeur réessaie.
+    Unavailable {
+        /// Code de l'erreur de l'antivirus.
+        code: String,
+    },
+}
+
+/// Message admis par la chaîne : dossier choisi et résultat de l'antivirus.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Screened {
+    /// Dossier de remise.
+    pub role: DeliveryRole,
+    /// Analysé par l'antivirus (sain) ; faux : aucun antivirus configuré.
+    pub scanned: bool,
 }
 
 /// Motif d'un refus définitif de la chaîne.
@@ -248,42 +257,38 @@ impl DeliveryPipeline {
         self.antivirus.scanner.as_ref()
     }
 
-    /// Décision de la chaîne (étapes 1 à 4), avant tout dépôt.
-    async fn decide(&self, message: &ReceivedMessage) -> (DeliveryVerdict, bool, Option<String>) {
+    /// Décision de la chaîne (étapes 1 à 4), avant tout dépôt : une seule analyse antivirus du
+    /// message, quel que soit le nombre de comptes, d'adresses de retour et de transferts qui
+    /// suivent (chemin de réception commun, [`crate::delivery::Reception`]).
+    pub async fn screen(&self, message: &ReceivedMessage) -> Screening {
         let scanned = match self.antivirus.scan(&message.received).await {
             ScanOutcome::Infected => {
-                return (
-                    DeliveryVerdict::Reject {
-                        reason: RejectReason::Infected,
-                    },
-                    true,
-                    None,
-                )
+                return Screening::Rejected {
+                    reason: RejectReason::Infected,
+                }
             }
-            ScanOutcome::Unavailable(code) => {
-                return (DeliveryVerdict::TempFail, false, Some(code))
-            }
+            ScanOutcome::Unavailable(code) => return Screening::Unavailable { code },
             ScanOutcome::Clean => true,
             ScanOutcome::NotScanned => false,
         };
         let role = self.filters.mailbox(message);
         self.index.index(message);
-        (DeliveryVerdict::Deliver { role }, scanned, None)
+        Screening::Passed(Screened { role, scanned })
     }
 
     /// Passe le message dans la chaîne puis le remet à chaque compte (en parallèle).
     pub async fn deliver(&self, message: &ReceivedMessage) -> PipelineResult {
-        let (verdict, scanned, unavailable) = self.decide(message).await;
-        let role = match verdict {
-            DeliveryVerdict::Deliver { role } => role,
-            DeliveryVerdict::Reject { reason } => return PipelineResult::Rejected { reason },
-            DeliveryVerdict::TempFail => {
-                return PipelineResult::TempFail {
-                    code: unavailable.unwrap_or_else(|| "MAIL_SCANNER_UNAVAILABLE".to_string()),
-                    served: 0,
-                }
-            }
-        };
+        match self.screen(message).await {
+            Screening::Passed(screened) => self.deposit(message, &screened).await,
+            Screening::Rejected { reason } => PipelineResult::Rejected { reason },
+            Screening::Unavailable { code } => PipelineResult::TempFail { code, served: 0 },
+        }
+    }
+
+    /// Remet à chaque compte (en parallèle) un message déjà passé par [`Self::screen`] : aucune
+    /// seconde analyse.
+    pub async fn deposit(&self, message: &ReceivedMessage, screened: &Screened) -> PipelineResult {
+        let (role, scanned) = (screened.role, screened.scanned);
         let [spf, dkim, dmarc, iprev] = &message.authentication;
         let reception = Reception {
             spf: spf.clone(),

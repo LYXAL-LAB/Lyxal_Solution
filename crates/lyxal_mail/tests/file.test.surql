@@ -102,7 +102,7 @@ RETURN [
     fn::mail_queue_release({ claim: "01a21a8f-2d4f-7ce2-9e67-5063e68bfb08", recipients: ["mail_queue_recipient:x"] }),
     fn::mail_queue_dsn_done({ submission: "mail_submission:x", action: "failed", recipients: ["mail_queue_recipient:x"] }),
     fn::mail_queue_stats({}), fn::mail_queue_purge({}), fn::mail_queue_dsn_pending({}),
-    fn::mail_return_record({ submission: "mail_submission:x", items: [{ recipient: "mail_queue_recipient:x", action: "failed" }] })
+    fn::mail_return_record({ submission: "mail_submission:x", items: [{ final_recipient: "x@ailleurs.test", action: "failed" }] })
 ].all(|$r| $r.error.code == "MAIL_PERMISSION_DENIED");
 
 -- test: l'administrateur de l'organisation n'a pas la file
@@ -411,8 +411,8 @@ RETURN array::len(fn::essai_evenements("mail.submission.delayed")) == 3;
 -- test: avis vers l'extérieur (origine dsn) déposé par le compte de service : expéditeur vide exigé, aucun avis ni événement sur un avis
 -- en tant que: worker
 {
-    LET $begun = fn::mail_submission_begin({ origin: "dsn", from: "", header_from: ["mailer-daemon@mx.lyxal.test"], recipients: [{ address: "origine@ailleurs.test" }], size: 300, tenant: "auth_organization:alpha", prefix: "Received: x\r\n" });
-    LET $refused = fn::mail_submission_begin({ origin: "dsn", from: "a@alpha.test", header_from: ["mailer-daemon@mx.lyxal.test"], recipients: [{ address: "origine@ailleurs.test" }], size: 300, tenant: "auth_organization:alpha" });
+    LET $begun = fn::mail_submission_begin({ origin: "dsn", from: "", header_from: ["mailer-daemon@mx.lyxal.test"], recipients: [{ address: "origine@ailleurs.test" }], size: 300, tenant: "auth_organization:alpha", prefix: "Received: x\r\n", idempotency_key: string::repeat("d", 64) });
+    LET $refused = fn::mail_submission_begin({ origin: "dsn", from: "a@alpha.test", header_from: ["mailer-daemon@mx.lyxal.test"], recipients: [{ address: "origine@ailleurs.test" }], size: 300, tenant: "auth_organization:alpha", idempotency_key: string::repeat("e", 64) });
     fn::essai_garder("avis", <string> $begun.data.submission);
     RETURN $begun.ok AND $begun.data.return_address IS NONE AND $refused.error.code == "MAIL_INVALID_PARAMETERS"
         AND (SELECT VALUE [prepared_at IS NOT NONE, prefix, sender] FROM ONLY $begun.data.submission) == [true, "Received: x\r\n", NONE];
@@ -423,6 +423,9 @@ RETURN array::len(fn::essai_evenements("mail.submission.delayed")) == 3;
 {
     LET $object = fn::essai_fichier(fn::essai_id("avis"));
     fn::mail_submission_commit({ submission: fn::essai_id("avis"), object: $object });
+    -- Avis mis en file une seconde fois (reprise avant fn::mail_queue_dsn_done) : retrouvé, aucun second envoi
+    LET $again = fn::mail_submission_begin({ origin: "dsn", from: "", header_from: ["mailer-daemon@mx.lyxal.test"], recipients: [{ address: "origine@ailleurs.test" }], size: 300, tenant: "auth_organization:alpha", idempotency_key: string::repeat("d", 64) });
+    IF <string> $again.data.queued.submission != fn::essai_id("avis") OR count(SELECT id FROM mail_submission WHERE origin = "dsn") != 1 { THROW "avis mis en file deux fois"; };
     LET $claimed = fn::mail_queue_claim({ node: "n1" });
     LET $failed = fn::mail_queue_fail({ claim: $claimed.data.claim, items: [{ recipient: <string> $claimed.data.items[0].recipient, permanent: true, stage: "rcpt" }] });
     RETURN $claimed.data.items[0].prepared AND $failed.data.dsn == [];

@@ -34,7 +34,9 @@ use crate::auth::{
     DmarcResult, DmarcVerifier, Iprev, IprevResult, MessageHeaders, SpfIdentity, SpfOutput,
     SpfResult, SpfVerifier, MAX_AUTHOR_DOMAINS,
 };
-use crate::delivery::{PipelineResult, ReceivedMessage, RecipientTarget, RejectReason};
+use crate::delivery::{
+    ForwardTarget, InboundMessage, ReceivedMessage, ReceptionResult, RecipientTarget, RejectReason,
+};
 use crate::models::{
     DsnRequest, MailDatetime, RecipientKind, RecipientResolveParams, ResolvedRecipient,
     SubmissionRecipient,
@@ -44,7 +46,10 @@ use crate::submission::SubmissionUser;
 use crate::MailError;
 use lyxal_surreal::{LyxalCallError, LyxalSurrealError};
 
+mod returns;
 mod submission;
+
+use returns::forward_origin;
 
 /// Octets lus au plus par lecture sur la connexion.
 const READ_CHUNK: usize = 16 * 1024;
@@ -82,6 +87,13 @@ struct Transaction {
     smtputf8: bool,
     declared_size: Option<u64>,
     recipients: Vec<RecipientTarget>,
+    /// Réception : adresses de retour de nos envois (avis reçus, §10.3).
+    returns: Vec<crate::dsn::ReturnTarget>,
+    /// Réception : alias qui transfèrent aussi le message vers l'extérieur (§13).
+    forwards: Vec<ForwardTarget>,
+    /// Réception : un destinataire ordinaire est sur un domaine protégé contre la
+    /// rétrodiffusion (§11).
+    backscatter: bool,
     /// Dépôt authentifié : destinataires de l'envoi, dans l'ordre, sans doublon.
     outbound: Vec<SubmissionRecipient>,
     /// Dépôt authentifié : demande d'avis (`RET`, `ENVID`).
@@ -252,7 +264,7 @@ impl SmtpSession {
     /// Réception du port 25 : ses contrôles et sa chaîne de remise ; `None` pour le dépôt.
     fn inbound(&self) -> Option<&Inbound> {
         match &self.shared.mode {
-            Mode::Inbound(inbound) => Some(inbound),
+            Mode::Inbound(inbound) => Some(inbound.as_ref()),
             Mode::Submission(_) => None,
         }
     }
@@ -512,6 +524,9 @@ impl SmtpSession {
             smtputf8: mail.smtputf8,
             declared_size: mail.size,
             recipients: Vec::new(),
+            returns: Vec::new(),
+            forwards: Vec::new(),
+            backscatter: false,
             outbound: Vec::new(),
             dsn: None,
             accepted: 0,
@@ -573,10 +588,9 @@ impl SmtpSession {
             .recipient_resolve(RecipientResolveParams { address })
             .await;
         match resolved {
-            // Adresse de retour d'un envoi (lot 6, §11) : son traitement (avis reçus, réponses
-            // automatiques) est branché au sous-lot 6f ; d'ici là, elle reste inconnue
+            // Adresse de retour d'un envoi (lot 6, §11) : avis reçus et réponses automatiques
             Ok(resolved) if resolved.kind == RecipientKind::Return => {
-                self.refuse_recipient(RefusedReason::Unknown).await
+                self.accept_return(resolved, declared).await
             }
             Ok(resolved) => self.accept_recipient(resolved, declared).await,
             Err(error) => match business_code(&error) {
@@ -623,6 +637,18 @@ impl SmtpSession {
         let Some(transaction) = self.transaction.as_mut() else {
             return Flow::Continue;
         };
+        transaction.backscatter |= resolved.backscatter_protection;
+        if !resolved.forward_to.is_empty()
+            && !transaction
+                .forwards
+                .iter()
+                .any(|known| known.alias == resolved.address)
+        {
+            transaction.forwards.push(ForwardTarget {
+                alias: resolved.address.clone(),
+                to: resolved.forward_to.clone(),
+            });
+        }
         if !transaction
             .recipients
             .iter()
@@ -1009,15 +1035,30 @@ impl SmtpSession {
             self.refuse(RefusedReason::Policy, size, 554);
             return Flow::Continue;
         }
+        // Rétrodiffusion (§11, décision E21) : nos envois n'ont jamais une adresse ordinaire en
+        // enveloppe ; un rapport `delivery-status` à expéditeur vide adressé à une adresse
+        // ordinaire d'un domaine protégé est forgé (avis d'un spam qui a usurpé le domaine)
+        if transaction.sender.is_empty()
+            && transaction.backscatter
+            && crate::dsn::is_delivery_report(&received, &parsed)
+        {
+            self.io.reply(
+                550,
+                "5.7.1",
+                "Delivery status notification refused: no message was sent from this address",
+            );
+            self.refuse(RefusedReason::Backscatter, size, 550);
+            return Flow::Continue;
+        }
 
         // Contrôles d'authenticité : SPF et nom inverse déjà lancés, DKIM et DMARC sur le message
         let Some(inbound) = self.inbound() else {
             return Flow::Continue;
         };
-        let (resolver, organizational, pipeline) = (
+        let (resolver, organizational, reception) = (
             inbound.resolver.clone(),
             inbound.organizational.clone(),
-            inbound.pipeline.clone(),
+            inbound.reception.clone(),
         );
         let spf = match self.checks.mail_spf.result().await {
             Some(output) => output.clone(),
@@ -1058,7 +1099,7 @@ impl SmtpSession {
             dkim: dkim_word.clone(),
             dmarc: dmarc_word.clone(),
             iprev: iprev_word.as_str(),
-            recipients: transaction.recipients.len(),
+            recipients: transaction.recipients.len() + transaction.returns.len(),
             size,
         };
         match disposition {
@@ -1146,16 +1187,36 @@ impl SmtpSession {
             received_at: MailDatetime::now(),
         };
         let started = Instant::now();
-        let result = pipeline.deliver(&message).await;
+        let origin = forward_origin(transaction, &spf, &dkim, organizational.as_ref());
+        let result = reception
+            .receive(InboundMessage {
+                message: &message,
+                parsed: &parsed,
+                returns: &transaction.returns,
+                forwards: &transaction.forwards,
+                origin,
+                smtputf8: transaction.smtputf8,
+            })
+            .await;
         self.shared
             .metrics
             .delivery_time(u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX));
         match result {
-            PipelineResult::Delivered { outcomes } => {
+            ReceptionResult::Accepted {
+                outcomes,
+                returns,
+                forwards,
+            } => {
                 for served in &outcomes {
                     if matches!(served.outcome, crate::DeliveryOutcome::Duplicate { .. }) {
                         self.shared.metrics.duplicate();
                     }
+                }
+                for outcome in &returns {
+                    self.shared.metrics.returned(outcome);
+                }
+                for forward in forwards {
+                    self.shared.metrics.forwarded(forward);
                 }
                 self.shared.metrics.accepted();
                 log.emit(
@@ -1168,7 +1229,7 @@ impl SmtpSession {
                 );
                 self.io.reply(250, "2.0.0", &format!("Ok {id}"));
             }
-            PipelineResult::Rejected {
+            ReceptionResult::Rejected {
                 reason: RejectReason::Infected,
             } => {
                 self.io
@@ -1178,7 +1239,7 @@ impl SmtpSession {
             }
             // Nos en-têtes ont fait passer le message au-delà de la taille de l'organisation :
             // refus définitif, comme à la fin des données (un `451` ferait réessayer sans fin)
-            PipelineResult::TempFail { code, served } if code == "MAIL_MESSAGE_TOO_LARGE" => {
+            ReceptionResult::TempFail { code, served } if code == "MAIL_MESSAGE_TOO_LARGE" => {
                 self.io.reply(
                     552,
                     "5.3.4",
@@ -1188,7 +1249,7 @@ impl SmtpSession {
                 tracing::info!(session = %self.session_label(), served, "taille de l'organisation dépassée par les en-têtes de réception");
                 log.emit("size", 552);
             }
-            PipelineResult::TempFail { code, served } => {
+            ReceptionResult::TempFail { code, served } => {
                 self.io
                     .reply(451, "4.3.0", "Temporary failure, try again later");
                 self.shared.metrics.refused(RefusedReason::Temporary);

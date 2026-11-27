@@ -163,7 +163,8 @@ RETURN fn::mail_submission_begin({ from: "jean@alpha.test", header_from: ["jean@
         AND fn::mail_submission_begin(object::extend($base, { prefix: "DKIM-Signature: a\r\n" })).error.details == { fields: { prefix: ["forward_or_dsn_only"] } }
         AND fn::mail_submission_begin(object::extend($base, { client_reference: "job-1" })).error.code == "MAIL_INVALID_PARAMETERS"
         AND fn::mail_submission_begin(object::extend($base, { forward: { spf: "pass", envelope_dkim: true } })).error.code == "MAIL_INVALID_PARAMETERS"
-        AND fn::mail_submission_begin(object::extend($base, { origin: "forward", forward: { spf: "pass", envelope_dkim: true }, return_token: "0123456789abcdefghjkmnpqrs" })).error.code == "MAIL_PERMISSION_DENIED"
+        AND fn::mail_submission_begin(object::extend($base, { origin: "forward", forward: { spf: "pass", envelope_dkim: true }, return_token: "0123456789abcdefghjkmnpqrs", idempotency_key: string::repeat("0", 64) })).error.code == "MAIL_PERMISSION_DENIED"
+        AND fn::mail_submission_begin(object::extend($base, { idempotency_key: string::repeat("0", 64) })).error.details == { fields: { idempotency_key: ["forward_or_dsn_only"] } }
         AND [
             object::remove($base, "from"), object::extend($base, { recipients: [] }), object::extend($base, { recipients: [{ address: "pas une adresse" }] }),
             object::extend($base, { recipients: [{ address: "x@ailleurs.test", notify: ["jamais"] }] }), object::extend($base, { recipients: [{ address: "x@ailleurs.test", autre: 1 }] }),

@@ -126,7 +126,13 @@ DEFINE FIELD OVERWRITE forward ON TABLE mail_submission
     COMMENT "Transfert seulement : réception d'origine, pour l'avis à son expéditeur (§10.2)";
 DEFINE FIELD OVERWRITE forward.envelope_from ON TABLE mail_submission TYPE option<string> ASSERT $value IS NONE OR string::len($value) <= 254 COMMENT "Adresse d'enveloppe d'origine (NONE : expéditeur vide)";
 DEFINE FIELD OVERWRITE forward.spf ON TABLE mail_submission TYPE option<string> ASSERT $value IS NONE OR $value IN ["none", "neutral", "pass", "fail", "softfail", "temperror", "permerror"] COMMENT "SPF de la réception d'origine (identité MAIL FROM)";
-DEFINE FIELD OVERWRITE forward.envelope_dkim ON TABLE mail_submission TYPE option<bool> COMMENT "Vrai si une signature DKIM valide porte le domaine de l'adresse d'enveloppe d'origine ou son domaine d'organisation";
+DEFINE FIELD OVERWRITE forward.envelope_dkim ON TABLE mail_submission TYPE option<bool> COMMENT "Vrai si une signature DKIM valide porte le domaine de l'adresse d'enveloppe d'origine ou son domaine d'organisation, ou si l'adresse d'enveloppe est une adresse de retour de notre installation (route locale : expéditeur authentifié par l'installation)";
+
+DEFINE FIELD OVERWRITE idempotency_key ON TABLE mail_submission
+    TYPE option<string>
+    READONLY
+    ASSERT $value IS NONE OR string::len($value) = 64
+    COMMENT "Transfert ou avis seulement : clé d'idempotence (empreinte BLAKE3 en hexadécimal de l'alias ou du destinataire, de l'expéditeur et des octets) ; un nouvel essai retrouve l'envoi déjà mis en file (fn::mail_submission_begin)";
 
 DEFINE FIELD OVERWRITE pending_recipients ON TABLE mail_submission
     TYPE array<object>
@@ -183,3 +189,4 @@ DEFINE INDEX OVERWRITE mail_submission_return_token ON TABLE mail_submission FIE
 DEFINE INDEX OVERWRITE mail_submission_state ON TABLE mail_submission FIELDS state, done_at;
 DEFINE INDEX OVERWRITE mail_submission_pending ON TABLE mail_submission FIELDS state, pending_expires_at;
 DEFINE INDEX OVERWRITE mail_submission_return_expires ON TABLE mail_submission FIELDS return_expires_at;
+DEFINE INDEX OVERWRITE mail_submission_idempotency ON TABLE mail_submission FIELDS idempotency_key;

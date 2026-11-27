@@ -409,8 +409,10 @@ pub enum ReturnAction {
 /// Destinataire d'un avis reçu.
 #[derive(Debug, Clone, SurrealValue)]
 pub struct ReturnItem {
-    /// Destinataire de l'envoi (`mail_queue_recipient:<clé>`).
-    pub recipient: String,
+    /// Adresse finale de l'avis (`Final-Recipient`).
+    pub final_recipient: String,
+    /// Adresse d'origine de l'avis (`Original-Recipient`).
+    pub original_recipient: Option<String>,
     /// Action.
     pub action: ReturnAction,
     /// Code étendu (`Status`).

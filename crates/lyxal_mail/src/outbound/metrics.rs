@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 //! Mesures de l'envoi d'un nœud (plan du lot 6, §16.3) : destinataires remis, relayés, retentés,
-//! en échec et expirés par étape, avis produits et supprimés, connexions ouvertes et
+//! en échec et expirés par étape, avis produits et supprimés, transferts d'alias et avis reçus
+//! de la route locale, connexions ouvertes et
 //! réutilisées, TLS utilisé, non offert, en repli, durée des transactions, destinations
 //! suspendues, messages non signés, réservations. **Aucune adresse ni aucun domaine** (décision
 //! E28) : seuls des compteurs nommés.
@@ -9,6 +10,7 @@
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use crate::delivery::ForwardResult;
 use crate::models::AttemptStage;
 
 /// Étapes comptées, dans l'ordre des mesures.
@@ -75,6 +77,10 @@ pub struct OutboundMetrics {
     content_unreadable: AtomicU64,
     dsn_produced: AtomicU64,
     dsn_suppressed: AtomicU64,
+    forwards_queued: AtomicU64,
+    forwards_limited: AtomicU64,
+    forwards_refused: AtomicU64,
+    returns_received: AtomicU64,
     result_write_failures: AtomicU64,
 }
 
@@ -199,6 +205,29 @@ impl OutboundMetrics {
         );
     }
 
+    /// Transfert d'un alias vers l'extérieur fait par la route locale.
+    pub fn forwarded(&self, result: ForwardResult) {
+        add(
+            match result {
+                ForwardResult::Queued => &self.forwards_queued,
+                ForwardResult::Limited => &self.forwards_limited,
+                ForwardResult::Refused => &self.forwards_refused,
+            },
+            1,
+        );
+    }
+
+    /// Message reçu par la route locale sur une adresse de retour (avis d'un transfert).
+    pub fn returned(&self) {
+        add(&self.returns_received, 1);
+    }
+
+    /// Transferts de la route locale non faits faute de place dans la limite de l'organisation
+    /// (sonde).
+    pub fn forwards_limited(&self) -> u64 {
+        self.forwards_limited.load(Ordering::Relaxed)
+    }
+
     /// Résultat non écrit (base indisponible) : le bail expirera et le destinataire sera repris.
     pub fn result_write_failure(&self) {
         add(&self.result_write_failures, 1);
@@ -243,6 +272,10 @@ impl OutboundMetrics {
             ("contents_unreadable", &self.content_unreadable),
             ("dsn_produced", &self.dsn_produced),
             ("dsn_suppressed", &self.dsn_suppressed),
+            ("forwards_queued", &self.forwards_queued),
+            ("forwards_limited", &self.forwards_limited),
+            ("forwards_refused", &self.forwards_refused),
+            ("returns_received", &self.returns_received),
             ("result_write_failures", &self.result_write_failures),
         ] {
             values.insert(name.to_string(), load(counter));

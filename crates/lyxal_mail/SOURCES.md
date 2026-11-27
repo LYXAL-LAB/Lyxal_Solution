@@ -18,6 +18,7 @@ validation du CTO (décision P14).
 | `mox` | Mox | <https://github.com/mjl-/mox> | `b32f0def9763b2644ad7bd1e8b3894786e80858b` | après v0.0.17 (27 oct. 2026) | MIT (`LICENSE.MIT`) ; liste des suffixes publics sous MPL-2.0 |
 | `rustical` | RustiCal | <https://github.com/lennart-k/rustical> | `0698bb6b89b51207652eb60973a86364c3446ecb` | 0.19.1 | `AGPL-3.0-or-later` |
 | `sabre_dav` | sabre/dav | <https://github.com/sabre-io/dav> | `be1d58d6bce7ca33313b02909f9088c93c35db02` | après 4.7.1 (1er nov. 2026) | BSD-3-Clause |
+| `kumomta` | KumoMTA | <https://github.com/KumoCorp/kumomta> | `81f191dff64876f84ca949b7e1d7771ba335800b` | 11 nov. 2026 (ajouté au lot 6, modèle de l'envoi) | Apache-2.0 |
 
 Bibliothèques prises en **dépendances** (crates.io, non copiées) : `mail-parser` 1.0.1,
 `mail-builder` 2.0.1, `mail-send` 0.7.0 — toutes `Apache-2.0 OR MIT`. Elles entrent dans
@@ -28,8 +29,9 @@ l'oracle différentiel `tools/dkim_oracle/`, hors du workspace, en dépend, au c
 `c862df2c6fcd7b9f7eada5fe2d3dc9e6def43429` (0.16.0, 17 nov. 2026, dépôt Git
 <https://github.com/stalwartlabs/mail-auth>).
 
-Les quatre clones ont été faits et vérifiés par le script le 18 novembre 2026, depuis GitHub
-(et, pour l'essai de l'option `--from`, depuis un miroir local).
+Les quatre premiers clones ont été faits et vérifiés par le script le 18 novembre 2026, depuis
+GitHub (et, pour l'essai de l'option `--from`, depuis un miroir local). KumoMTA a été lu pour le
+plan du lot 6 dans un clone partiel hors du dépôt ; son entrée du script n'a pas été rejouée.
 
 ## 2. Code propriétaire de Stalwart : jamais utilisé (décisions F5 et C3)
 
@@ -275,7 +277,7 @@ tire de ces projets sont repris comme modèles seulement :
 | `src/smtp/session/submission.rs`, `src/submission/` : dépôt authentifié (`AUTH` sous TLS, droit d'expéditeur sur l'enveloppe et les en-têtes, `Bcc` retiré, `Date` et `Message-ID` ajoutés, `Received` sans adresse IP) | Stalwart | `3adead9` | `AGPL-3.0-only OR LicenseRef-SEL` | `crates/smtp/src/inbound/{auth,mail}.rs` | modèle (plan du lot 6, §8 ; aucun fichier relu ni copié dans ce sous-lot) | 6 |
 | idem : `AUTH` (`=`, `*`), refus de `MAIL` sans authentification, traitement du message soumis | Mox | `b32f0de` | MIT | `smtpserver/server.go` (`cmdAuth`, `submit`) | modèle (plan du lot 6, §8 ; RFC 4954, 6409, 8314) | 6 |
 
-### 3.4. Lot 6d : envoi (`src/outbound/`, `src/dkim.rs`, `src/dsn.rs`)
+### 3.4. Lot 6d et 6f : envoi, avis reçus et transfert (`src/outbound/`, `src/dkim.rs`, `src/dsn/`, `src/smtp/session/returns.rs`)
 
 Le worker d'envoi, la résolution des MX, le client SMTP, le pool de connexions, les limites, le
 relais, la route locale, la préparation des envois, la signature et le provisionnement DKIM et
@@ -290,7 +292,8 @@ aucun code n'est copié. Modèles :
 | `outbound/mx.rs` : 5 MX, 2 adresses par MX, IPv4 puis IPv6 | Stalwart | `3adead9` | `AGPL-3.0-only OR LicenseRef-SEL` | `crates/common/src/config/smtp/queue.rs` (`max_mx_hosts`, `max_multihomed`) | valeurs par défaut |
 | `outbound/pool.rs` : connexions par destination, inactivité de 60 s, messages par connexion, débit par destination | KumoMTA | `81f191dff648` | Apache-2.0 | `docs/reference/kumo/make_egress_path/*` | modèle |
 | `dkim.rs` : en-têtes signés et sur-signés | Mox | `b32f0de` | MIT | `mox-/config.go` | liste reprise, étendue (`List-*`, RFC 8058) |
-| `dsn.rs` : avis groupés par envoi, une fois par destinataire | Mox | `b32f0de` | MIT | `queue/dsn.go` | modèle |
+| `dsn/mod.rs` : avis groupés par envoi, une fois par destinataire | Mox | `b32f0de` | MIT | `queue/dsn.go` | modèle |
+| `dsn/bounce.rs`, `smtp/session/returns.rs` : avis reçu relié à son envoi par l'identifiant porté dans l'adresse d'enveloppe ; refus des avis à expéditeur vide vers une adresse ordinaire | Mox ; brouillon BATV (`draft-levine-smtp-batv`, idée seulement) | `b32f0de` | MIT | `queue/queue.go` (`FromID`) | modèle (sous-lot 6f ; jeton tiré au hasard et rangé en base, sans HMAC : décision E20) |
 
 ### 3.5. Échéancier de la file (mesure du sous-lot 6d)
 

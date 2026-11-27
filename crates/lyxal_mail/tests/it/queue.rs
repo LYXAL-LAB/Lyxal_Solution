@@ -104,6 +104,7 @@ fn begin(from: &str, recipients: Vec<SubmissionRecipient>, size: usize) -> Submi
         prefix: None,
         forward: None,
         tenant: None,
+        idempotency_key: None,
     }
 }
 

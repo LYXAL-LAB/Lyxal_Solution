@@ -60,7 +60,7 @@ pub struct ResolvedRecipient {
     /// Adresse de retour : envoi auquel elle appartient.
     pub submission: Option<MailRecordId>,
     /// Adresse de retour : origine de l'envoi (`submission`, `module`, `forward`, `dsn`).
-    pub origin: Option<String>,
+    pub origin: Option<super::submission::SubmissionOrigin>,
     /// Adresse de retour : compte expéditeur d'un dépôt authentifié.
     pub account: Option<MailRecordId>,
 }

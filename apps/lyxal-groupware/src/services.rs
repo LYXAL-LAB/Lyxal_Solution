@@ -210,6 +210,8 @@ pub fn register_services(
             .map_err(|error| GroupwareError::Configuration {
                 message: error.to_string(),
             })?;
+            // Transferts d'alias non faits (limite de l'organisation) : sonde « dégradé »
+            probe = probe.with_reception(handler.metrics());
             runtime.register_worker(Arc::new(BlockRefreshWorker::new(
                 blocks.clone(),
                 system.clone(),

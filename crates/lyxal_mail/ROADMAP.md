@@ -1,7 +1,7 @@
 # Feuille de route — `lyxal_mail`
 
 Évolutions à venir du crate (contrat réseau réalisé au lot 3, socle courrier au lot 4,
-réception SMTP au lot 5). Son objet et son état actuel sont décrits par le [`README.md`](README.md), les
+réception SMTP au lot 5, envoi au lot 6). Son objet et son état actuel sont décrits par le [`README.md`](README.md), les
 études et les mesures par [`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md), la provenance des
 sources par [`SOURCES.md`](SOURCES.md). Le programme est décrit par `implementation_plan.md` à la
 racine du dépôt ; chaque lot a son propre plan, validé par le CTO avant toute ligne de code
@@ -11,7 +11,6 @@ racine du dépôt ; chaque lot a son propre plan, validé par le CTO avant toute
 
 | Lot | Contenu pour ce crate | Sources principales | Prérequis |
 | :- | :--- | :--- | :--- |
-| 6 — Envoi | Fait : SurrealQL (6c : file, dépôt et contrat public, droits d'expéditeur, clés DKIM, adresses de retour) ; worker d'envoi (6d : MX, STARTTLS opportuniste, relais, route locale, signature et provisionnement DKIM, avis déposés) ; dépôt authentifié 587 / 465 (6e) ; reste : avis reçus, rétrodiffusion, transfert d'alias et ses avis (6f) | Stalwart `smtp/queue`, `smtp/outbound` ; Mox `queue`, `smtpclient`, `dsn` ; KumoMTA | lots 1, 5 |
 | 7 — Transport sûr et rapports | MTA-STS, DANE, TLS-RPT, rapports DMARC reçus et émis, ARC | Stalwart `smtp/reporting`, `outbound/{dane,mta_sts}` ; Mox | lot 6 |
 | 8 — IMAP | IMAP4rev2 et rev1, extensions (IDLE, CONDSTORE, QRESYNC, MOVE, UIDPLUS, SPECIAL-USE, QUOTA, ACL…) | Stalwart `imap` ; Mox `imapserver` | lots 1, 4 |
 | 9 — Recherche et POP3 | Texte des pièces jointes, index plein texte, recherche IMAP ; POP3 | Stalwart `text-extract`, `pop3`, `store/search` | lot 8 |
@@ -96,7 +95,9 @@ Mesures : [`README.md`](README.md), section « Mesures ».
   en ASCII ; domaines convertis en forme ASCII en Rust par la session SMTP (`idna`) ; aucune
   extension de `lyxal_core` au lot 5 ; saisie d'un domaine ou d'une adresse en Unicode par un
   administrateur : question rouverte au lot 13.
-* **Alias vers l'extérieur, listes** : champ `forward_to` en place (6c), transfert à la réception au sous-lot 6f ; listes plus tard.
+* **Alias vers l'extérieur, listes** : transfert vers l'extérieur fait au lot 6 (sans ARC : un
+  message modifié en chemin ou non signé par son auteur échoue à DMARC chez le destinataire
+  final ; scellement ARC au lot 7) ; listes de diffusion plus tard.
 * **Coût de la réservation de la file (sous-lots 6c, 6d).** Échéancier par seconde et lots de
   50 (`README.md`, « Mesure de la réservation ») : 500 destinataires parmi 100 000 en 241 ms
   (908 ms avant), 50 en 58 ms par HTTP (120 ms avant ; environ 36 ms hors authentification).
@@ -107,9 +108,11 @@ Mesures : [`README.md`](README.md), section « Mesures ».
   binaire optimisé (disque du poste de développement insuffisant pour une compilation `release`
   pendant ce sous-lot) : `tests/it/outbound.rs`, `measure_throughput_to_the_fake_mx`, à lancer
   sur la machine de référence.
-* **Envoi : points ouverts du sous-lot 6d.**
-  * Avis d'un transfert (`forward`) vers l'expéditeur d'origine authentifié : produit par le
-    sous-lot 6f avec le transfert (le `DsnComposer` les laisse non notés, `Deferred`).
+* **Envoi : points ouverts du lot 6.**
+  * Un message mis en quarantaine par DMARC (`p=quarantine`) reçu sur un alias est transféré
+    comme les autres (rangé dans « Junk » localement) : à revoir avec l'anti-spam (lot 11).
+  * Réponses automatiques reçues sur l'adresse de retour d'un module : écartées ; un module qui
+    voudrait les lire demanderait un événement (plan du fournisseur de `lyxal_notification`).
   * Contenu illisible deux fois de suite → échec définitif `5.3.0` : compté par nœud (mémoire),
     un autre nœud recommence le compte.
   * Compteur d'échecs d'une destination remis à zéro seulement par un échec d'une transaction
@@ -117,7 +120,18 @@ Mesures : [`README.md`](README.md), section « Mesures ».
     sur la suspension en cours.
   * Avis de non-remise : `Original-Recipient` (ORCPT) absent des avis produits
     (`fn::mail_submission_get` ne rend pas l'ORCPT des destinataires).
-  * Essais non écrits : deux nœuds sur la même base (aucun envoi double hors fenêtre de
+  * Objectifs du lot 6 encore à mesurer (machine de référence, serveur SurrealDB 3.3.4 par
+    `ws://`, messages de 10 Kio, faux MX local) : envoi ≥ 150 destinataires remis par seconde
+    et par nœud (≥ 300 sur la machine de référence), 100 domaines, file de 10 000 ; délai entre
+    le `250` d'un dépôt et le premier essai p95 ≤ 1 s sur le nœud qui a reçu, ≤ 3 s depuis un
+    autre nœud ou par le contrat de module ; 20 arrêts `kill -9` pendant l'envoi de 1 000
+    messages : aucun destinataire perdu, doublons au faux MX bornés par les transactions en
+    vol ; 200 envois simultanés de 25 Mio sous le budget mémoire.
+  * À relire : numéros de RFC du lot 6 cités de mémoire (3461, 3464, 3834, 3848, 4616, 6522,
+    6533, 7435, 7505, 8098, 8314 ; seul 8689 a été vérifié, dans Mox) ; prise en charge
+    d'Ed25519-SHA256 par Gmail, Outlook.com et Yahoo (d'où la double signature) ; `AUTH LOGIN`
+    encore exigé par Outlook.
+  * Essais non écrits (lot 6) : deux nœuds sur la même base (aucun envoi double hors fenêtre de
     doublon), relais de bout en bout en TLS vérifié (autorité d'essai absente de
     `webpki-roots` : seul le refus est essayé), 200 envois simultanés de 25 Mio (mémoire), 20
     arrêts `kill -9` du binaire (un arrêt brutal du worker est essayé), corpus DKIM de 10 Mio ;
@@ -222,7 +236,12 @@ Moyens à fournir par le CTO (décision P11), avant le lot 22 et dès le lot 6 p
 | 5 | Idem, `swaks` | Variantes de contrebande SMTP contre le serveur exposé | Chaque variante refusée (`500 5.5.2`), bannissement après récidive |
 | 5 | ClamAV réel (`[storage.antivirus]`) | Envoyer la signature EICAR | Refus `554 5.7.1`, aucun dépôt ; `clamd` arrêté : `451 4.3.0` et sonde « dégradé » |
 | 6 | Port 25 sortant, DNS inverse, SPF, DKIM, DMARC publiés | Envoyer vers Gmail, Outlook.com et Yahoo | Message en boîte de réception (pas en indésirables) ; SPF, DKIM et DMARC « pass » dans les en-têtes reçus |
-| 6 | Idem | Envoyer vers une adresse inexistante | Avis de non-remise reçu et rattaché ; événement `mail.message.bounced` |
+| 6 | Idem | Envoyer vers une adresse inexistante de Gmail, Outlook.com et Yahoo | Refus à `RCPT TO` (`mail.submission.failed`) ou avis reçu sur `rp=` et rattaché (`mail.submission.bounced`) ; avis dans la boîte de l'expéditeur |
+| 6 | Idem, serveur de destination arrêté | Envoyer vers un domaine d'essai dont le MX ne répond pas | Tentatives espacées, avis de retard après 4 h, échec et avis après 5 jours |
+| 6 | Idem, Thunderbird, Apple Mail, Outlook, client Android | Dépôt sur 587 et 465 avec un mot de passe d'application | Dépôt accepté (`AUTH LOGIN` d'Outlook compris) ; usurpation refusée avec un message lisible |
+| 6 | Relais d'un fournisseur | Envoi par `[outbound.relay]` | TLS vérifié, message reçu |
+| 6 | Alias transféré vers Gmail | Recevoir d'un domaine en `p=reject` signé, transférer | Remis chez Gmail (DKIM de l'auteur intact) ; avis renvoyé à l'expéditeur authentifié seulement |
+| 6 | Outil public de contrôle (`mail-tester` ou équivalent, choisi par le CTO) | Envoyer un message type | Score sans pénalité d'authentification |
 | 7 | DNSSEC et TLSA, politique MTA-STS, adresse TLS-RPT | Recevoir d'un expéditeur qui applique MTA-STS et DANE ; attendre les rapports | Livraison en TLS vérifié ; rapports TLS et DMARC reçus et lus |
 | 8 | Thunderbird, Apple Mail, Outlook, client Android ; mot de passe d'application | Configurer le compte, lire, classer, supprimer, chercher, laisser en veille | Synchronisation juste entre logiciels ; pas de message en double ni perdu ; IDLE fonctionne |
 | 9, 10 | Idem | Recherche dans le texte et les pièces jointes ; filtre Sieve et réponse d'absence | Résultats justes ; filtre appliqué à la réception |

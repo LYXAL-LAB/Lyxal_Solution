@@ -338,6 +338,9 @@ impl SmtpSession {
             smtputf8: mail.smtputf8,
             declared_size: mail.size,
             recipients: Vec::new(),
+            returns: Vec::new(),
+            forwards: Vec::new(),
+            backscatter: false,
             outbound: Vec::new(),
             dsn: (ret.is_some() || envid.is_some()).then_some(DsnRequest { ret, envid }),
             accepted: 0,
@@ -586,6 +589,7 @@ impl SmtpSession {
             prefix: None,
             forward: None,
             tenant: None,
+            idempotency_key: None,
         };
         let started = Instant::now();
         let queued = ingest.queue_submission(&store, params, prepared).await;

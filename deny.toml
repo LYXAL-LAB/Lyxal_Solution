@@ -3,8 +3,8 @@
 # Lancement : cargo deny check licenses     (scripts/ci/ci_local.sh et la CI le lancent)
 # Version épinglée de l'outil : voir scripts/ci/install_cargo_deny.sh.
 #
-# Décision C4 du lot 0 du programme courrier, agendas et contacts
-# (crates/lyxal_mail/implementation_plan.md). Les alertes de sécurité (`advisories`), les
+# Décision C4 du lot 0 du programme courrier, agendas et contacts (programme :
+# implementation_plan.md à la racine ; plan du lot 0 dans l'historique Git). Les alertes de sécurité (`advisories`), les
 # interdictions (`bans`) et les sources (`sources`) ne sont pas contrôlées ici.
 #
 # Règle : la liste `allow` ne contient que des licences permissives, relevées dans l'arbre

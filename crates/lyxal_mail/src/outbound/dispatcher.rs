@@ -159,12 +159,14 @@ impl OutboundDispatcher {
             services.keys.clone(),
             config.hostname.clone(),
         );
+        let metrics = Arc::new(OutboundMetrics::default());
         let local = LocalRoute::new(
             services.store.clone(),
             services.pipeline.clone(),
             services.resolver.clone(),
             services.organizational.clone(),
             config.hostname.clone(),
+            metrics.clone(),
         );
         let dsn = DsnComposer::new(
             services.store.clone(),
@@ -177,7 +179,7 @@ impl OutboundDispatcher {
             inner: Arc::new(Inner {
                 pool: ConnectionPool::new(&config),
                 limiter: DestinationLimiter::new(&config),
-                metrics: Arc::new(OutboundMetrics::default()),
+                metrics,
                 preparer,
                 local,
                 dsn,
@@ -567,6 +569,7 @@ impl Inner {
                     submission: &submission,
                     envelope_from: first.envelope_from.as_deref().unwrap_or_default(),
                     bytes: Bytes::from(bytes),
+                    smtputf8: first.smtputf8,
                     dkim_records: records,
                 },
                 &addresses,
@@ -1157,7 +1160,7 @@ impl Inner {
         loop {
             attempt += 1;
             match self.dsn.produce(due, object).await {
-                Ok(DsnOutcome::Delivered) => {
+                Ok(DsnOutcome::Delivered | DsnOutcome::Queued) => {
                     self.metrics.dsn(true);
                     break;
                 }
@@ -1165,7 +1168,6 @@ impl Inner {
                     self.metrics.dsn(false);
                     break;
                 }
-                Ok(DsnOutcome::Deferred) => break,
                 Err(error) if error.is_retryable() && attempt < 3 => {
                     tokio::time::sleep(Duration::from_millis(200 * attempt)).await;
                 }

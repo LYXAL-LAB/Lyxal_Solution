@@ -1,22 +1,24 @@
 # `lyxal_mail` — serveur de courrier
 
 **État : socle courrier (lot 4 du programme courrier, réalisé), contrat réseau des sessions
-(lot 3) et réception SMTP (lot 5, réalisé : DNS, SPF, DKIM, DMARC, nom inverse, résolution des
+(lot 3), réception SMTP (lot 5, réalisé : DNS, SPF, DKIM, DMARC, nom inverse, résolution des
 destinataires, remise groupée et idempotente, liste de blocage, session SMTP entrante, chaîne de
-remise).** Le module déclare ses tables, fonctions, gardes, erreurs `MAIL_*`, événements et
+remise) et envoi (lot 6, réalisé : file, envoi vers les MX, dépôt authentifié, DKIM, avis,
+adresses de retour, transfert d'alias).** Le module déclare ses tables, fonctions, gardes, erreurs `MAIL_*`, événements et
 permissions (`manifest.toml`, `[resources]`) ; son service Rust reçoit le courrier d'Internet
 sur le port 25 (session SMTP, refus dès `RCPT TO`, contrôles d'authenticité, politique DMARC,
 antivirus), dépose un message brut (lecture MIME, écriture **chiffrée au repos** par
 `lyxal_storage`, inscription), le relit en entier ou par plage, remet un message reçu à un compte
 (ordre par compte dans le nœud, écriture groupée, événement `mail.message.received`) et fait la
 maintenance (contenus abandonnés et libérés, effacements échus, fiches d'idempotence échues,
-comptes supprimés). Envoi (lot 6, en cours) : SurrealQL de la file (sous-lot 6c) et worker
-d'envoi (sous-lot 6d : MX, STARTTLS opportuniste, relais facultatif, route locale entre
-organisations, signature et provisionnement DKIM, avis déposés dans la boîte de l'expéditeur,
-§ « État actuel : envoi » et « État actuel : worker d'envoi ») ; un module envoie par le contrat
-public de dépôt, un logiciel de courrier par le dépôt authentifié des ports 587 et 465 (6e,
-§ « `lyxal_mail::submission` ») ; les avis reçus, la rétrodiffusion et le transfert (6f)
-restent à livrer. Le port 25 ne relaie toujours rien. Le module est installé et démarré par
+comptes supprimés). Envoi (lot 6) : SurrealQL de la file (sous-lot 6c) et worker d'envoi
+(sous-lot 6d : MX, STARTTLS opportuniste, relais facultatif, route locale entre organisations,
+signature et provisionnement DKIM, avis déposés dans la boîte de l'expéditeur, § « État actuel :
+envoi » et « État actuel : worker d'envoi ») ; un module envoie par le contrat public de dépôt,
+un logiciel de courrier par le dépôt authentifié des ports 587 et 465 (6e, § «
+`lyxal_mail::submission` ») ; les avis reçus sur les adresses de retour, la règle contre la
+rétrodiffusion et le transfert d'un alias vers l'extérieur avec ses avis (6f, § « État actuel :
+retours, rétrodiffusion et transfert »). Le port 25 ne relaie toujours rien. Le module est installé et démarré par
 l'hôte `apps/lyxal-groupware`, qui le porte par son `MailModule`, héberge ses dépendances
 (`lyxal_auth`, `lyxal_secrets`, `lyxal_storage`) et `lyxal_scheduler` (maintenance), et lui
 rattache ses écoutes (workers `lyxal_mail:mail.listener.<id>`), servies pour `smtp` par
@@ -42,7 +44,7 @@ CASCADE`) : une organisation supprimée emporte tout son courrier. Seule la list
 | `mail_settings` | Réglages de l'installation et des organisations : taille d'un message (50 Mio par défaut), quota par défaut (aucun), conservation des effacements (30 jours, 7 à 365), dossiers par compte (1 000), adresses par compte (100), mots-clés par message (50) ; installation seulement : `postmaster`, adresse inscrite qui reçoit le destinataire `postmaster` écrit sans domaine (RFC 5321 §4.5.1, S17) |
 | `mail_domain` | Domaine de courrier repris d'un domaine **vérifié** de `lyxal_auth` (M9), forme ASCII seulement (M10), état, séparateur de sous-adresse (`+` ou aucun), nombre d'adresses ; `catch_all` (compte attrape-tout, **aucun par défaut**, S17) et `postmaster` (compte qui reçoit `postmaster@<domaine>` sans adresse inscrite), comptes actifs de la même organisation, effacés quand le compte part en suppression ; le retrait du domaine dans `lyxal_auth` est refusé tant qu'il sert au courrier (`MAIL_DOMAIN_EXISTS`), sauf avec l'organisation |
 | `mail_account` | Compte d'un membre (une identité par organisation), état (`active`, `disabled`, `deleting`), adresse principale, quota, compteurs du compte : messages, volume, **numéro de modification du compte** (M6), prochaine UIDVALIDITY, plancher des changements, dossiers, adresses |
-| `mail_address` | Adresse d'un compte ou alias vers 1 à 50 comptes de l'organisation ; partie locale ASCII en minuscules, préfixe `rp=` réservé (`MAIL_ADDRESS_RESERVED`) ; alias : `senders` (comptes qui peuvent écrire sous l'alias, aucun par défaut), `forward_to` (0 à 10 adresses extérieures, transfert du lot 6f) |
+| `mail_address` | Adresse d'un compte ou alias vers 1 à 50 comptes de l'organisation ; partie locale ASCII en minuscules, préfixe `rp=` réservé (`MAIL_ADDRESS_RESERVED`) ; alias : `senders` (comptes qui peuvent écrire sous l'alias, aucun par défaut), `forward_to` (0 à 10 adresses extérieures, transférées à la réception) |
 | `mail_mailbox` | Dossier : chemin (`/`), parent, rôle SPECIAL-USE, abonnement, ordre, UIDVALIDITY, prochain UID, compteurs (total, non lus, volume, `HIGHESTMODSEQ`) |
 | `mail_content` | Contenu d'un message (fichier `.eml` de `lyxal_storage`) : clé `<compte>/<UUID v7>.eml`, fiche de stockage, état `pending` → `stored` → `released`, taille, `protection` (`platform` ; `openpgp`, `client` réservés, M15), lecteurs (`refs`) |
 | `mail_message` | Message d'un dossier (un seul, M5), d'identifiant ordonné `mail_message:⟨<clé du dossier>_<10^10 + UID>⟩` (décision P1) : UID, identifiant JMAP (`email_id`, gardé par un déplacement), numéros de modification, fil immuable (M7), dates, drapeaux système en booléens, mots-clés en minuscules triés, `Message-ID`, sujet de base, enveloppe typée et structure MIME facultatives (M8) ; `origin` (immuable : `delivery`, `append`, `copy`, `move`, `import`) et, pour un message reçu seulement, `reception` : résultats `spf`, `dkim`, `dmarc`, `iprev` (mots de la RFC 8601), `antivirus`, `spam`, `tls`, sans domaine ni adresse |
@@ -194,8 +196,9 @@ l'écriture directe, identifiant et UID gardés.
 
 ## État actuel : envoi (SurrealQL, sous-lot 6c du lot 6)
 
-Plan : `implementation_plan.md` du crate, §5, §8 à §12, §14, §15. Le worker d'envoi, le client
-SMTP, la signature DKIM et le dépôt authentifié (6d, 6e), puis les avis reçus et le transfert à la
+Décisions du CTO E2 à E7 et E14 à E32 (plan du lot 6, validé le 27 novembre 2026 et supprimé
+après le lot ; son texte reste dans l'historique Git). Le worker d'envoi, le client SMTP, la
+signature DKIM et le dépôt authentifié (6d, 6e), puis les avis reçus et le transfert à la
 réception (6f) s'appuient sur ces fonctions.
 
 | Table | Contenu |
@@ -233,19 +236,21 @@ service `mail.relay` (qui a aussi `storage.worker` pour clore) ; expéditeur par
 | Fonction | Rôle | Droit |
 | :--- | :--- | :--- |
 | `fn::mail_sender_check` | Droit d'envoyer sous des adresses (adresses du compte, sous-adresses, alias qui le nomment dans `senders`, domaines actifs de l'organisation), rangs refusés | `mail.send` |
-| `fn::mail_submission_begin` | Dépôt pending : droit, expéditeur (une seule règle, `fn::mail_sender_allowed`, revérifiée par la garde), destinataires, taille, limites | `mail.send`, `mail.relay` ou session système, `mail.worker` (transfert, avis) |
+| `fn::mail_submission_begin` | Dépôt pending : droit, expéditeur (une seule règle, `fn::mail_sender_allowed`, revérifiée par la garde), destinataires, taille, limites ; transfert ou avis : clé d'idempotence exigée, envoi déjà en file sous cette clé rendu tel quel (`queued`) | `mail.send`, `mail.relay` ou session système, `mail.worker` (transfert, avis) |
 | `fn::mail_submission_commit` | Fichier contrôlé, destinataires mis en file (route locale posée), une transaction | compte de service, session système ; `mail.relay` pour un module |
 | `fn::mail_submission_abort`, `_get`, `_cancel` | Abandon (compteurs rendus), lecture, annulation des destinataires en attente | titulaire, `mail.relay` (modules), compte de service ; jamais un administrateur |
 | `fn::mail_queue_claim` | Réservation par une plage bornée de l'échéancier : échus et baux expirés (reprise après un arrêt brutal, sans essai compté), destinations suspendues et domaines saturés écartés, jeton et bail | compte de service, session système |
 | `fn::mail_queue_renew`, `_prepare`, `_complete`, `_fail`, `_release` | Bail renouvelé ; préparation à la première réservation (jeton de retour, préfixe, message illisible) ; remises, échecs (échéance suivante, retard une fois, expiration 4.4.7, suspension) ; rendu sans essai ; toujours sous la garde du jeton (`lost`, `MAIL_QUEUE_CLAIM_LOST`) | idem |
 | `fn::mail_queue_dsn_done`, `_stats`, `_purge` | Avis produits notés une fois ; mesures ; maintenance (fichiers des envois finis, envois de plus de 14 jours, dépôts abandonnés, jetons et compteurs échus) | idem |
-| `fn::mail_return_record` | Avis reçu sur une adresse de retour : destinataire remis ou relayé → `bounced` | idem |
+| `fn::mail_return_record` | Avis reçu sur une adresse de retour : chaque élément (`final_recipient`, `original_recipient`, `action`, `status`, `diagnostic`) désigne le destinataire de l'envoi dont l'adresse est l'adresse finale ou d'origine (casse ignorée) ; un échec d'un destinataire remis ou relayé → `bounced` ; les autres comptés | idem |
+| `fn::mail_queue_dsn_pending` | Avis finaux dus et non produits (panne, arrêt du nœud), transferts compris, repris par le worker | idem |
 | `fn::mail_dkim_key_create`, `_activate`, `_signers`, `_pending` | Fiches publiques, activation, clés actives d'un message, travail de `mail.dkim.provision` | idem |
 | `fn::mail_dkim_key_list` | Enregistrements DKIM à publier (`<sélecteur>._domainkey.<domaine>`, `v=DKIM1; k=…; p=…`) | `mail.domain.manage`, compte de service |
 
 `fn::mail_recipient_resolve` rend aussi `kind` (`mailbox` ou `return`), `forward_to` et
 `backscatter_protection` : une adresse `rp=<jeton>@<domaine>` valide se résout vers son envoi
-(`kind: return`) ; la session SMTP la refuse comme inconnue jusqu'au sous-lot 6f. Les éléments des
+(`kind: return`, lue par la session SMTP du port 25, sous-lot 6f) ; `fn::mail_submission_get` rend
+la réception d'origine d'un transfert (`forward`, pour son avis). Les éléments des
 lots du worker (`_complete`, `_fail`, `_renew`, `_release`, `_dsn_done`, `fn::mail_return_record`)
 sont contrôlés par appels directs des primitives de `lyxal_core` et
 `fn::validation_checks_report` (décision E32) ; les autres fonctions par
@@ -304,9 +309,8 @@ SurrealDB compilé sans optimisation : non représentatif).
 
 ## État actuel : worker d'envoi (sous-lot 6d du lot 6)
 
-Plan : `implementation_plan.md` du crate, §5 à §7, §9, §10, §16. Rust : `src/outbound/`,
-`src/dkim.rs`, `src/dsn.rs` (écrits pour Lyxal sur le modèle de Mox, Stalwart et KumoMTA :
-`SOURCES.md` §3.4).
+Décisions E2 à E13, E18, E22, E24, E28. Rust : `src/outbound/`, `src/dkim.rs`, `src/dsn/`
+(écrits pour Lyxal sur le modèle de Mox, Stalwart et KumoMTA : `SOURCES.md` §3.4).
 
 | Élément | Rôle |
 | :--- | :--- |
@@ -316,9 +320,9 @@ Plan : `implementation_plan.md` du crate, §5 à §7, §9, §10, §16. Rust : `s
 | `SmtpConnection` | Accueil, `EHLO` (repli `HELO`), `STARTTLS` opportuniste puis nouvel `EHLO` (une reconnexion en clair après une poignée de main ratée), `AUTH PLAIN` du relais, `PIPELINING` (sinon une commande à la fois), `SIZE`, 8 bits et `SMTPUTF8` contrôlés avant l'envoi (`5.3.4`, `5.6.3`, `5.6.7`), paramètres DSN transmis si `DSN` est annoncé, délais de la RFC 5321 §4.5.3.2, contenu bourré au fil de sa lecture (préfixe puis fichier déchiffré), arrêt avant le `.` final sur un segment altéré |
 | `ConnectionPool`, `DestinationLimiter` | Connexions gardées 60 s par (serveur, adresse, mode TLS), `messages_per_connection` au plus ; connexions du nœud et par destination, messages par minute d'une destination réglée (rendus sans essai compté avec la prochaine place) |
 | Relais | `[outbound.relay]` : TLS vérifié (`webpki-roots`), STARTTLS exigé ou TLS implicite, `AUTH PLAIN`, identifiants JSON lus dans `lyxal_secrets` à chaque connexion ; tout envoi extérieur y passe (destination unique `relay`) |
-| `LocalRoute` | Domaine actif de l'installation : remise par la chaîne de réception du lot 5 sans réseau ; résolution au moment de la remise (inconnu `5.1.1`, désactivé `5.2.1`, quota `4.2.2`) ; DKIM vérifié contre les clés actives du domaine expéditeur (servies depuis le coffre-fort, sans DNS), DMARC calculé, SPF et `iprev` `none` ; idempotence de la remise du lot 5 |
+| `LocalRoute` | Domaine actif de l'installation : remise par le chemin de réception commun avec le port 25 (`Reception` : antivirus une fois, chaîne du lot 5, avis reçus sur une adresse de retour, transferts d'alias ; voir « retours, rétrodiffusion et transfert ») sans réseau ; résolution au moment de la remise (inconnu `5.1.1`, désactivé `5.2.1`, quota `4.2.2`) ; DKIM vérifié contre les clés actives du domaine expéditeur (servies depuis le coffre-fort, sans DNS), DMARC calculé, SPF et `iprev` `none` ; idempotence de la remise du lot 5 |
 | `DkimKeyCache`, `sign_headers`, `DkimProvisioner`, `ReturnToken` | Clés ouvertes 10 minutes ; `DKIM-Signature` `relaxed/relaxed` RSA et Ed25519 (liste de Mox étendue, sur-signée, `t=`, ni `x=` ni `l=`) par `lyxal_crypto::dkim` ; tâche `mail.dkim_provision` (clés générées, `export_pkcs8` vers `lyxal_secrets`, fiche `pending`, activée quand le TXT publié est identique) ; jeton de 128 bits en base 32 de Crockford |
-| `DsnComposer` | Avis des dépôts authentifiés déposés dans la boîte de réception du compte expéditeur (`MAILER-DAEMON@<smtp.hostname>`, déterministe : une reprise ne fait pas de doublon), puis notés (`fn::mail_queue_dsn_done`) ; rien pour un module ; compte sans boîte : aucun avis, compté |
+| `DsnComposer` | Avis des dépôts authentifiés déposés dans la boîte de réception du compte expéditeur (`MAILER-DAEMON@<smtp.hostname>`, déterministe : une reprise ne fait pas de doublon) ; avis d'un transfert **mis en file** vers l'adresse d'enveloppe d'origine (envoi d'origine `dsn`, `MAIL FROM:<>`), seulement si elle était authentifiée à la réception (SPF `pass` sur `MAIL FROM`, ou DKIM `d=` de son domaine ou de son domaine d'organisation : `fn::mail_queue_dsn_wanted`) ; puis notés (`fn::mail_queue_dsn_done`) ; rien pour un module ; compte sans boîte ou adresse refusée par la file : aucun avis, compté |
 | `OutboundMetrics`, sonde | Compteurs nommés sans adresse ni domaine (`/metrics` de l'hôte) ; sonde « dégradé » si l'échéance la plus ancienne a plus de 15 minutes de retard, si une clé DKIM attend sa publication depuis plus de 24 heures, ou si un contenu a été illisible dans l'heure |
 
 Journal (décision E28) : une ligne par transaction (envoi, nombre de destinataires, destination
@@ -517,7 +521,7 @@ sessions ouvertes et lentes (mémoire), résolveur DNS réel, antivirus réel.
 | `AccountQueue`, `QueueStats`, `MAX_BATCH` | Ordre des inscriptions par compte dans le nœud (S11) : 1 024 compartiments, un tour d'écriture chacun ; les inscriptions d'un compte qui attendent déjà sont inscrites ensemble, 32 au plus par appel, sans délai ajouté ; lot refusé en entier (hors conflit rejoué) : repris élément par élément ; relevé des lots, conflits rejoués et lots repris |
 | `MailContent`, `OpenedContent` | Lecture d'un message, entière ou par plage d'octets du message brut (une partie MIME par ses positions) : `fn::mail_content_open` contrôle les droits de l'appelant, `lyxal_storage` ne déchiffre que les segments de la plage ; un segment altéré met fin au flux par une erreur, jamais par une fin normale |
 | `MailMaintenance`, `MaintenanceReport` | Un passage, interrompu entre deux appels à l'arrêt du serveur : `fn::mail_content_expire`, `fn::mail_tombstone_purge`, `fn::mail_delivery_purge`, `fn::mail_account_purge_step` par paquets ; exécutée par `lyxal_scheduler` (tâche `mail.maintenance` de l'hôte, toutes les 10 minutes) |
-| `DeliveryPipeline`, `ReceivedMessage`, `RecipientTarget`, `DeliveryVerdict`, `PipelineResult`, `AccountOutcome` | Chaîne de remise d'un message reçu (S9, S10), ordre fixé par le type (champs nommés `antivirus`, `spam`, `filters`, `index`, `encryption`) : une analyse antivirus par message sur le clair avant tout dépôt (`ContentScanner` de `lyxal_storage` ; infecté : refus définitif, aucune quarantaine ; injoignable : refus temporaire ; sans antivirus : `not_scanned`), anti-spam vide (`none`), filtres (dossier « Junk » si la quarantaine DMARC est appliquée), index vide, puis dépôt chiffré par compte (`MailIngest::receive`), en parallèle ; un compte désigné par plusieurs destinataires (adresse et alias) n'est servi qu'une fois, sous la plus petite de ces adresses (empreinte d'idempotence indépendante de l'ordre des `RCPT TO`) ; réponse unique : tout inscrit (ou déjà inscrit) → accepté, un échec → refus temporaire (S8) |
+| `DeliveryPipeline`, `ReceivedMessage`, `RecipientTarget`, `Screening`, `Screened`, `PipelineResult`, `AccountOutcome` | Chaîne de remise d'un message reçu (S9, S10), ordre fixé par le type (champs nommés `antivirus`, `spam`, `filters`, `index`, `encryption`) ; `deliver` = `screen` (étapes 1 à 4, une analyse) puis `deposit` (dépôt sans seconde analyse) : une analyse antivirus par message sur le clair avant tout dépôt (`ContentScanner` de `lyxal_storage` ; infecté : refus définitif, aucune quarantaine ; injoignable : refus temporaire ; sans antivirus : `not_scanned`), anti-spam vide (`none`), filtres (dossier « Junk » si la quarantaine DMARC est appliquée), index vide, puis dépôt chiffré par compte (`MailIngest::receive`), en parallèle ; un compte désigné par plusieurs destinataires (adresse et alias) n'est servi qu'une fois, sous la plus petite de ces adresses (empreinte d'idempotence indépendante de l'ordre des `RCPT TO`) ; réponse unique : tout inscrit (ou déjà inscrit) → accepté, un échec → refus temporaire (S8) |
 | `smtp::SmtpInboundHandler`, `SmtpConfig`, `SmtpServices` | Réception SMTP (`SessionHandler` de l'écoute `smtp`), décrite ci-dessous (« `lyxal_mail::smtp` ») |
 | `smtp::BlockList`, `BlockRefreshWorker`, `Network`, `Offence` | Liste de blocage du nœud (S18) : réseaux de `mail_network_block` relus toutes les 30 s par le worker `lyxal_mail:mail.block_refresh` (criticité `Optional` ; un échec garde la dernière liste, compté), appliqués par l'hôte à l'acceptation ; bannissement d'une adresse (`/32`, `/64`) après 3 sessions fautives en 10 minutes (trop d'erreurs, recherche d'adresses, contrebande), écrit en base par `fn::mail_block_create` (durée calculée par la base) et appliqué aussitôt sur le nœud |
 | `MailModule`, `MailHealthCheck`, `RequiredHost` | `LyxalModule` du module (descripteur égal au manifeste) ; sonde : réglages lisibles (sinon « malade »), support de stockage et service de clés des fichiers présents (sinon « dégradé »), antivirus de la chaîne joignable (`with_scanner`), DNS qui répond sur le nom témoin `smtp.hostname` (`with_dns_probe`, une requête par minute au plus ; une absence est une réponse, seule une panne dégrade), et, avec `with_required_host`, un nœud vivant de l'hôte requis (`RequiredHost` : `lyxal_server`, lu dans `runtime_node` par `PresenceStore`) vu depuis moins de `REQUIRED_HOST_ABSENCE_LIMIT` (10 minutes ; sinon « dégradé », « aucun nœud lyxal_server vivant… ») ; l'hôte la compose avec celle des écoutes (une sonde par module) |
@@ -656,7 +660,7 @@ SMTP » plus haut.
 
 ## État actuel : `lyxal_mail::submission` (dépôt authentifié, sous-lot 6e)
 
-Plan : `implementation_plan.md` du crate, §8 (décisions E14 à E17). Écoutes `protocol =
+Décisions E14 à E17. Écoutes `protocol =
 "submission"` de l'hôte : port 587 (STARTTLS exigé) et port 465 (TLS implicite, RFC 8314),
 servies par `SubmissionHandler`. La session est celle de la réception (même machine d'états,
 mêmes lectures de `DATA` et de `BDAT`, fins de ligne, budget mémoire, délais et limites de
@@ -692,6 +696,71 @@ refusées avant TLS ou avant `AUTH`, usurpations refusées (`submission_spoofing
 Essais : unitaires (adresses d'expéditeur, groupes, mots encodés, domaines Unicode, `Bcc`
 retiré, `Date` et `Message-ID` ajoutés) ; dans l'hôte, sur de vraies sockets
 (`apps/lyxal-groupware/tests/it/submission.rs`).
+
+## État actuel : retours, rétrodiffusion et transfert (sous-lot 6f du lot 6)
+
+Décisions E20, E21, E23, E25. Rust : `src/delivery/reception.rs` (`Reception` : chemin de
+réception commun au port 25 et à la route locale), `src/dsn/bounce.rs` (`BounceProcessor`),
+`src/smtp/session/returns.rs` (session SMTP du port 25).
+
+Chemin commun (`Reception::receive`), pour toute la transaction et dans cet ordre : **une seule
+analyse antivirus** (`DeliveryPipeline::screen`), puis la remise aux comptes
+(`DeliveryPipeline::deposit`, sans seconde analyse), les avis reçus sur les adresses de retour,
+puis les transferts des alias. Message infecté : `554 5.7.1` (route locale : échec définitif
+`5.7.1`) ; antivirus configuré mais injoignable : `451 4.3.0`, comme la réception du lot 5 ;
+dans les deux cas rien n'est inscrit ni remis, ni aux comptes, ni sur une adresse de retour
+(module, transfert ou avis compris), ni vers l'extérieur.
+
+| Cas, à la réception du port 25 | Règle | Réponse |
+| :--- | :--- | :--- |
+| `RCPT TO:<rp=<jeton>@<domaine>>` | jeton connu, sur le domaine de l'adresse d'enveloppe de son envoi, valable jusqu'à 14 jours après la fin de l'envoi (`fn::mail_recipient_resolve`, `kind: return`) ; jamais réexpédiée vers l'extérieur (aucun relais) | `250 2.1.5` ; jeton inconnu, échu ou sur un autre domaine : `550 5.1.1`, comme une adresse absente |
+| Rapport `delivery-status` sur une adresse de retour | lu par `lyxal_mail_proto::dsn::parse_dsn` après l'antivirus et la remise aux boîtes ordinaires de la transaction ; destinataires inscrits par `fn::mail_return_record` (échec d'un destinataire remis ou relayé → `bounced`, événement `mail.submission.bounced` ; retards, remises et adresses inconnues de l'envoi seulement comptés) ; rejouable : un nouvel essai de l'expéditeur ne change rien | `250` après l'inscription ; panne : `451 4.3.0` |
+| Message sur l'adresse de retour d'un dépôt authentifié | avis, ou réponse automatique qui vise le `Return-Path` (RFC 3834) : remis dans la boîte de réception du compte expéditeur par la chaîne de remise (analyse déjà faite, idempotence) ; compte désactivé ou supprimé : écarté | infecté : `554 5.7.1` |
+| Message sur l'adresse de retour d'un module, d'un transfert ou d'un avis | inscrit s'il est un rapport, puis écarté (aucune boîte où aller), compté | `250` |
+| Rétrodiffusion | rapport `delivery-status` (lisible ou non) à expéditeur vide adressé à une adresse ordinaire d'un domaine dont `backscatter_protection` est vrai (défaut) : forgé, nos envois n'ayant jamais une adresse ordinaire en enveloppe ; les autres messages à expéditeur vide (accusés de lecture RFC 8098, réponses d'agenda) restent acceptés | `550 5.7.1 Delivery status notification refused`, motif `backscatter` compté |
+| Alias à cibles extérieures (`forward_to`) | remis aux comptes de l'alias, **puis** un envoi d'origine `forward` mis en file (1 à 10 cibles) : contenu tel que rangé (nos `Received` et `Authentication-Results`, sans `Return-Path`), adresse de retour `rp=<jeton>@<domaine de l'alias>` tirée par `OsRng` (aucune réécriture SRS : l'adresse d'origine reste en base), ni signature DKIM ni ARC (lot 7), réception d'origine gardée (`envelope_from`, SPF de `MAIL FROM`, `envelope_dkim`) ; clé d'idempotence `delivery_key(alias, expéditeur, octets reçus)` : un nouvel essai de l'expéditeur retrouve le transfert déjà en file (aucun second envoi, limite prise une fois) | `250` seulement après la remise **et** la mise en file ; limite `forward_messages_per_day` de l'organisation atteinte : remise locale seule, transfert compté (`forwards_limited`) et sonde « dégradé » une heure ; transfert refusé par la file (alias désactivé entre-temps) : compté |
+| Avis d'un transfert | échec, retard ou succès demandé d'un destinataire extérieur : avis mis en file vers l'adresse d'enveloppe d'origine **seulement si** elle était authentifiée (SPF `pass` sur `MAIL FROM`, ou signature DKIM valide hors mode d'essai dont `d=` est le domaine de cette adresse ou son domaine d'organisation ; un DMARC `pass` obtenu par le seul `From` ne suffit pas) ; sinon aucun avis n'est dû ; clé d'idempotence (empreinte du destinataire et des octets de l'avis, déterministe) : jamais mis en file deux fois | avis d'origine `dsn`, `MAIL FROM:<>`, envoyé par le worker |
+
+Route locale (envoi d'un compte ou d'un module de l'installation vers un alias à cibles
+extérieures) : même chemin commun, donc même transfert (limite, adresse de retour à jeton, clé
+d'idempotence : une remise reprise par le worker ne transfère pas deux fois). Réception d'origine
+gardée : `envelope_from` = adresse de retour `rp=` de l'envoi, `spf` = `none` (aucun contrôle SPF
+sur la route locale, comme dans son `Authentication-Results`), `envelope_dkim` = **vrai** :
+l'expéditeur est authentifié par l'installation elle-même, preuve au moins aussi forte qu'une
+signature DKIM de son domaine ; `fn::mail_queue_dsn_wanted` rend donc l'avis dû (expéditeur vide :
+aucun avis). Cet avis revient sur l'adresse de retour de l'envoi d'origine par la route locale,
+qui la lit comme le port 25 (`BounceProcessor` : inscrit, remis dans la boîte du compte
+expéditeur d'un dépôt authentifié). Mesures de la route locale (`OutboundMetrics`) :
+`forwards_queued`, `forwards_limited`, `forwards_refused`, `returns_received` ; un transfert non
+fait faute de limite y met aussi la sonde à « dégradé » une heure.
+
+Mesures de la réception (`SmtpInboundHandler::snapshot`, aucune adresse) :
+`messages_refused.backscatter`, `returns_received`, `returns_reports`, `returns_bounced`,
+`returns_counted`, `returns_delivered`, `returns_discarded`, `forwards_queued`,
+`forwards_limited`, `forwards_refused`. Sonde : `MailHealthCheck::with_reception`.
+
+Nouvel essai sans doublon : un refus temporaire après la mise en file d'un transfert (panne d'un
+second transfert, arrêt du nœud avant la réponse `250`) fait renvoyer le message par
+l'expéditeur ; `fn::mail_submission_begin` retrouve alors l'envoi déjà en file sous la même clé
+d'idempotence et le rend tel quel (`queued`), sans second envoi ni compteur ; un dépôt resté
+`pending` (essai interrompu) est abandonné (compteurs rendus) puis refait. De même pour l'avis
+d'un transfert repris avant `fn::mail_queue_dsn_done`.
+
+Essais : `tests/it/returns.rs` (avis reçu sur `rp=` → `bounced`, événement une fois, avis remis
+à l'expéditeur, nouvel essai sans doublon, réponse automatique remise, jeton inconnu et échu
+`550 5.1.1` ; retour d'un envoi de module inscrit puis écarté ; rétrodiffusion refusée, accusé
+de lecture et avis à expéditeur non vide acceptés, `backscatter_protection = false` ; transfert
+envoyé au faux MX avec l'adresse de retour à jeton, contenu intact ; avis du transfert à
+l'expéditeur SPF `pass`, aucun pour un expéditeur forgé ; limite des transferts et sonde ;
+antivirus injoignable `451` et avis infecté `554` sans rien inscrire, aussi sur l'adresse de
+retour d'un module ; transaction réessayée après la panne du second transfert : un transfert
+par alias et une limite prise une fois ; envoi local vers deux alias transférés : copie locale,
+destinataire extérieur servi, avis du transfert refusé remis à l'expéditeur local) ;
+`tests/retours.test.surql` (adresse finale et d'origine, casse, avis dû d'un transfert repris
+par `fn::mail_queue_dsn_pending`, clé d'idempotence exigée, transfert retrouvé sous la même clé
+sans compteur, dépôt `pending` abandonné puis refait) ; `tests/file.test.surql` (avis retrouvé
+sous la même clé) ; unitaires (`envelope_dkim`, rapport reconnu même illisible, `Return-Path`
+retiré de la copie transférée).
 
 ## État actuel : `lyxal_mail::net`
 
@@ -795,7 +864,7 @@ dans [`SOURCES.md`](SOURCES.md). Les conséquences de licence sont traitées par
 | 3 — Hôte et socle réseau (réalisé) | Squelette du module (`lyxal_mail::net`) ; écoutes supervisées, TLS implicite, STARTTLS, certificats rechargés à chaud et PROXY protocol dans `apps/lyxal-groupware` |
 | 4 — Socle courrier (réalisé) | Modèle de données SurrealQL : domaines, adresses, alias, boîtes, messages, quotas, droits, erreurs, événements ; service Rust de dépôt et de lecture, chiffrement au repos (niveau A) par `lyxal_storage`, maintenance par `lyxal_scheduler` |
 | 5 — Réception SMTP (réalisé) | Serveur SMTP entrant, SPF / DKIM / DMARC, antivirus, remise en boîte |
-| 6 — Envoi | File par destination, envoi vers les MX, dépôt authentifié, signature DKIM, avis de non-remise |
+| 6 — Envoi (réalisé) | File par destination, envoi vers les MX, relais facultatif, route locale, dépôt authentifié, signature DKIM, avis de non-remise produits et reçus, adresses de retour, rétrodiffusion, transfert d'alias |
 | 7 — Transport sûr et rapports | MTA-STS, DANE, TLS-RPT, rapports DMARC, ARC |
 | 8 — IMAP | Serveur IMAP4rev2 et rev1, extensions |
 | 9 — Recherche et POP3 | Texte des pièces jointes, index plein texte, POP3 |
@@ -817,7 +886,7 @@ Les lots 1 (mots de passe d'application, dans `lyxal_auth` : réalisé) et 2 (ex
 | `lyxal_crypto` | TLS côté serveur, DKIM, ARC, DANE, ACME, chiffrement au repos — extensions validées lot par lot (décision P6) ; aucune crate crypto dans ce module |
 | `lyxal_auth` | Identités, organisations, permissions `mail.*`, mots de passe d'application (décision P8) |
 | `lyxal_storage` | Octets des messages et des pièces jointes, quotas, antivirus |
-| `lyxal_secrets` | Clés DKIM privées, clé du compte ACME, clés privées TLS, secrets des adresses signées |
+| `lyxal_secrets` | Clés DKIM privées, identifiants du relais sortant, clé du compte ACME, clés privées TLS (les adresses de retour sont à jeton rangé en base, sans secret : décision E20) |
 | `lyxal_scheduler` | Purges, rapports, renouvellement des certificats, apprentissage anti-spam |
 | `lyxal_event`, `lyxal_runtime` | Événements `mail.*`, module, workers supervisés, sondes de santé |
 | Externes (accord de principe P7) | `mail-parser`, `mail-builder`, `mail-send`, `rustls` côté serveur, `hickory-resolver` (sans DNSSEC au lot 5, DNSSEC examiné au lot 7), `idna` ; `mail-auth` jamais (décision S1 : seul l'oracle hors du workspace en dépend) |

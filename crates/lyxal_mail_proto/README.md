@@ -1,6 +1,6 @@
 # `lyxal_mail_proto` — syntaxes du courrier
 
-**État : lot 6 du programme courrier, sous-lot 6b réalisé (client SMTP, `AUTH`, avis).** Crate
+**État : lot 6 du programme courrier réalisé (client SMTP, `AUTH`, avis de non-remise).** Crate
 Rust membre du workspace, sous licence `AGPL-3.0-only`. Il contient trois modules : `mime`, la
 lecture d'un message (lot 4) ; `smtp`, la syntaxe SMTP côté serveur (lot 5, `AUTH` au lot 6) et
 côté client (lot 6) ; `dsn`, l'écriture et la lecture des avis de non-remise (lot 6). Les
@@ -10,8 +10,10 @@ syntaxes des autres protocoles arrivent avec les lots qui les servent (voir
 Le programme courrier, agendas et contacts (architecture, 23 lots, décisions F1 à F5 et P1 à P15
 du CTO) est décrit par `implementation_plan.md` à la racine du dépôt. Utilisé par le dépôt d'un
 message de `lyxal_mail` (`MailIngest`), qui range enveloppe et structure en base, et par la
-session SMTP entrante de `lyxal_mail` (`lyxal_mail::smtp`, lot 5) ; le client d'envoi, le dépôt
-authentifié et les avis de `lyxal_mail` (sous-lots 6d à 6f) s'appuient sur la syntaxe du lot 6.
+session SMTP entrante de `lyxal_mail` (`lyxal_mail::smtp`, lot 5) ; le client d'envoi
+(`lyxal_mail::outbound`), le dépôt authentifié (`AUTH` des ports 587 et 465), les avis produits
+(`DsnBuilder`) et les avis reçus sur les adresses de retour (`parse_dsn`, sous-lot 6f) de
+`lyxal_mail` s'appuient sur la syntaxe du lot 6.
 
 ## Objet
 
@@ -154,7 +156,7 @@ par `lyxal_mail` (mots de passe d'application de `lyxal_auth`).
 
 ## Client SMTP (`lyxal_mail_proto::smtp::client`, lot 6)
 
-Syntaxe du client d'envoi de `lyxal_mail::outbound` (plan du lot 6, §3.1) ; aucune connexion
+Syntaxe du client d'envoi de `lyxal_mail::outbound` (décisions E1, E10) ; aucune connexion
 ouverte, aucune décision (extensions employées, `PIPELINING`, `STARTTLS`, classement des échecs).
 
 | Élément | Rôle |
@@ -166,7 +168,10 @@ ouverte, aucune décision (extensions employées, `PIPELINING`, `STARTTLS`, clas
 
 ## Avis de non-remise (`lyxal_mail_proto::dsn`, lot 6)
 
-Plan du lot 6, §3.3. Le module écrit et lit ; il ne décide d'aucun avis (`lyxal_mail::dsn`).
+Décisions E22, E23. Le module écrit et lit ; il ne décide d'aucun avis (`lyxal_mail::dsn` :
+avis produits par le worker d'envoi, avis reçus lus par `BounceProcessor` ; un message dont
+`parse_dsn` dit qu'il porte un rapport, même illisible, sert aussi la règle contre la
+rétrodiffusion de la réception).
 
 * **Écriture** (`DsnBuilder::build`) : `multipart/report; report-type=delivery-status`
   (RFC 6522) en trois parties — texte lisible en français puis en anglais (UTF-8,

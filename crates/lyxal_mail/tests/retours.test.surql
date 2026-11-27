@@ -133,7 +133,7 @@ RETURN ["rp=5123456789abcdefghjkmnpqrs@alpha.test", "rp=4123456789abcdefghjkmnpq
         fn::mail_recipient_resolve({ address: $a }).error.code == "MAIL_RECIPIENT_UNKNOWN")
     AND fn::mail_recipient_resolve({ address: "rp=4123456789abcdefghjkmnpqrs@ailleurs.test" }).error.code == "MAIL_RELAY_DENIED";
 
--- test: avis reçu : un échec d'un destinataire remis le passe à bounced ; les autres éléments sont comptés ; lot trop grand refusé
+-- test: avis reçu : un échec qui désigne (adresse finale, casse ignorée) un destinataire remis le passe à bounced ; un retard, une adresse inconnue de l'envoi sont comptés ; lot trop grand, élément sans adresse refusés
 -- en tant que: worker
 {
     LET $s = type::record(fn::essai_id("j"));
@@ -141,30 +141,43 @@ RETURN ["rp=5123456789abcdefghjkmnpqrs@alpha.test", "rp=4123456789abcdefghjkmnpq
     LET $r1 = fn::mail_queue_recipient_key($s, 1);
     fn::mail_queue_complete({ claim: fn::essai_id("claim"), items: [{ recipient: <string> $r0, outcome: "delivered" }, { recipient: <string> $r1, outcome: "relayed" }] });
     LET $recorded = fn::mail_return_record({ submission: <string> $s, items: [
-        { recipient: <string> $r0, action: "failed", status: "5.1.1", diagnostic: "smtp; 550 5.1.1 User unknown" },
-        { recipient: <string> $r1, action: "delayed", status: "4.4.1" }
+        { final_recipient: "X@Ailleurs.test", action: "Failed", status: "5.1.1", diagnostic: "smtp; 550 5.1.1 User unknown" },
+        { final_recipient: "y@ailleurs.test", action: "delayed", status: "4.4.1" },
+        { final_recipient: "inconnu@ailleurs.test", action: "failed", status: "5.1.1" }
     ] });
-    LET $again = fn::mail_return_record({ submission: <string> $s, items: [{ recipient: <string> $r0, action: "failed", status: "5.1.1" }] });
-    LET $big = fn::mail_return_record({ submission: <string> $s, items: array::map(<array> (0..101), |$i| { recipient: <string> $r0, action: "failed" }) });
+    LET $again = fn::mail_return_record({ submission: <string> $s, items: [{ final_recipient: "x@ailleurs.test", action: "failed", status: "5.1.1" }] });
+    LET $big = fn::mail_return_record({ submission: <string> $s, items: array::map(<array> (0..101), |$i| { final_recipient: "x@ailleurs.test", action: "failed" }) });
+    LET $missing = fn::mail_return_record({ submission: <string> $s, items: [{ action: "failed" }] });
     LET $row = (SELECT state, last_result FROM ONLY $r0);
-    RETURN $recorded.data == { bounced: 1, ignored: 1 } AND $again.data == { bounced: 0, ignored: 1 } AND $big.error.code == "MAIL_QUEUE_BATCH_TOO_LARGE"
+    RETURN $recorded.data == { bounced: 1, ignored: 2 } AND $again.data == { bounced: 0, ignored: 1 } AND $big.error.code == "MAIL_QUEUE_BATCH_TOO_LARGE"
+        AND $missing.error.code == "MAIL_INVALID_PARAMETERS"
         AND $row.state == "bounced" AND $row.last_result.{ stage, enhanced, text } == { stage: "bounce", enhanced: "5.1.1", text: "smtp; 550 5.1.1 User unknown" }
         AND (SELECT VALUE state FROM ONLY $r1) == "relayed"
-        AND fn::mail_return_record({ submission: "mail_submission:absent", items: [{ recipient: <string> $r0, action: "failed" }] }).error.code == "MAIL_SUBMISSION_NOT_FOUND";
+        AND fn::mail_return_record({ submission: "mail_submission:absent", items: [{ final_recipient: "x@ailleurs.test", action: "failed" }] }).error.code == "MAIL_SUBMISSION_NOT_FOUND";
 };
 
--- test: événement mail.submission.bounced une fois, sans adresse ni texte distant ; fin de l'envoi : adresse de retour valable 14 jours
+-- test: avis reçu : l'adresse d'origine désigne aussi le destinataire (adresse finale réécrite par le serveur distant)
+-- en tant que: worker
+{
+    LET $s = type::record(fn::essai_id("j"));
+    LET $r1 = fn::mail_queue_recipient_key($s, 1);
+    LET $recorded = fn::mail_return_record({ submission: <string> $s, items: [{ final_recipient: "boite-reelle@interne.ailleurs.test", original_recipient: "y@ailleurs.test", action: "failed", status: "5.2.2" }] });
+    RETURN $recorded.data == { bounced: 1, ignored: 0 } AND (SELECT VALUE state FROM ONLY $r1) == "bounced";
+};
+
+-- test: événement mail.submission.bounced une fois par destinataire, sans adresse ni texte distant ; fin de l'envoi : adresse de retour valable 14 jours
 {
     LET $events = fn::essai_evenements("mail.submission.bounced");
     LET $s = (SELECT state, done_at, return_expires_at FROM ONLY type::record(fn::essai_id("j")));
-    RETURN array::len($events) == 1 AND $events[0].{ rank, status, origin } == { rank: 0, status: "5.1.1", origin: "submission" }
+    RETURN array::len($events) == 2 AND $events[0].{ rank, status, origin } == { rank: 0, status: "5.1.1", origin: "submission" }
+        AND $events[1].{ rank, status } == { rank: 1, status: "5.2.2" }
         AND !string::contains(<string> $events, "@") AND !string::contains(<string> $events, "User unknown")
         AND $s.state == "done" AND $s.return_expires_at == $s.done_at + 14d;
 };
 
 -- test: le titulaire lit l'issue de son envoi (bounced, relayed)
 -- en tant que: jean
-RETURN fn::mail_submission_get({ submission: fn::essai_id("j") }).data.recipients.map(|$r| [$r.state, $r.last_result.stage]) == [["bounced", "bounce"], ["relayed", "data"]];
+RETURN fn::mail_submission_get({ submission: fn::essai_id("j") }).data.recipients.map(|$r| [$r.state, $r.last_result.stage]) == [["bounced", "bounce"], ["bounced", "bounce"]];
 
 -- test: adresse de retour échue : inconnue
 {
@@ -176,13 +189,13 @@ RETURN fn::mail_submission_get({ submission: fn::essai_id("j") }).data.recipient
 -- en tant que: worker
 {
     LET $begun = fn::mail_submission_begin({ origin: "forward", from: "equipe@alpha.test", header_from: ["origine@ailleurs.test"], recipients: [{ address: "externe@ailleurs.test" }],
-        size: 200, return_token: "6123456789abcdefghjkmnpqrs", forward: { envelope_from: "origine@ailleurs.test", spf: "pass", envelope_dkim: false } });
+        size: 200, return_token: "6123456789abcdefghjkmnpqrs", forward: { envelope_from: "origine@ailleurs.test", spf: "pass", envelope_dkim: false }, idempotency_key: string::repeat("1", 64) });
     LET $missing = fn::mail_submission_begin({ origin: "forward", from: "equipe@alpha.test", header_from: ["origine@ailleurs.test"], recipients: [{ address: "externe@ailleurs.test" }],
-        size: 200, forward: { spf: "pass", envelope_dkim: false } });
+        size: 200, forward: { spf: "pass", envelope_dkim: false }, idempotency_key: string::repeat("2", 64) });
     LET $unknown = fn::mail_submission_begin({ origin: "forward", from: "inconnu@alpha.test", header_from: ["origine@ailleurs.test"], recipients: [{ address: "externe@ailleurs.test" }],
-        size: 200, return_token: "7123456789abcdefghjkmnpqrs", forward: { spf: "pass", envelope_dkim: false } });
+        size: 200, return_token: "7123456789abcdefghjkmnpqrs", forward: { spf: "pass", envelope_dkim: false }, idempotency_key: string::repeat("3", 64) });
     LET $eleven = fn::mail_submission_begin({ origin: "forward", from: "equipe@alpha.test", header_from: ["origine@ailleurs.test"], recipients: array::map(<array> (0..11), |$i| { address: string::concat("e", <string> $i, "@ailleurs.test") }),
-        size: 200, return_token: "8123456789abcdefghjkmnpqrs", forward: { spf: "pass", envelope_dkim: false } });
+        size: 200, return_token: "8123456789abcdefghjkmnpqrs", forward: { spf: "pass", envelope_dkim: false }, idempotency_key: string::repeat("4", 64) });
     fn::essai_garder("transfert", <string> $begun.data.submission);
     RETURN $begun.data.return_address == "rp=6123456789abcdefghjkmnpqrs@alpha.test" AND $missing.error.code == "MAIL_INVALID_PARAMETERS"
         AND $unknown.error.code == "MAIL_SENDER_FORBIDDEN" AND $eleven.error.details == { max_recipients: 10 }
@@ -214,4 +227,70 @@ RETURN fn::mail_submission_get({ submission: fn::essai_id("j") }).data.recipient
 -- test: transfert d'un titulaire refusé
 -- en tant que: jean
 RETURN fn::mail_submission_begin({ origin: "forward", from: "equipe@alpha.test", header_from: ["origine@ailleurs.test"], recipients: [{ address: "externe@ailleurs.test" }],
-    size: 200, return_token: "9123456789abcdefghjkmnpqrs", forward: { spf: "pass", envelope_dkim: false } }).error.code == "MAIL_PERMISSION_DENIED";
+    size: 200, return_token: "9123456789abcdefghjkmnpqrs", forward: { spf: "pass", envelope_dkim: false }, idempotency_key: string::repeat("5", 64) }).error.code == "MAIL_PERMISSION_DENIED";
+
+-- test: clé d'idempotence exigée d'un transfert ou d'un avis, refusée ailleurs
+-- en tant que: worker
+{
+    LET $base = { origin: "forward", from: "equipe@alpha.test", header_from: ["origine@ailleurs.test"], recipients: [{ address: "externe@ailleurs.test" }],
+        size: 200, return_token: "a123456789abcdefghjkmnpqrs", forward: { spf: "pass", envelope_dkim: false } };
+    LET $missing = fn::mail_submission_begin($base);
+    LET $malformed = fn::mail_submission_begin(object::extend($base, { idempotency_key: "ABC" }));
+    LET $module = fn::mail_submission_begin({ origin: "module", from: "noreply@alpha.test", header_from: ["noreply@alpha.test"], recipients: [{ address: "x@ailleurs.test" }], size: 100, idempotency_key: string::repeat("6", 64) });
+    RETURN $missing.error.details.fields.idempotency_key == ["required"] AND $malformed.error.code == "MAIL_INVALID_PARAMETERS"
+        AND $module.error.details.fields.idempotency_key == ["forward_or_dsn_only"];
+};
+
+-- préparation: clôture du transfert par la session système
+{
+    fn::essai_clore(fn::essai_id("transfert"));
+};
+
+-- test: transfert déjà mis en file sous la même clé (nouvel essai de l'expéditeur) : rendu tel quel, sans second envoi ni compteur
+-- en tant que: worker
+{
+    LET $day = time::format(time::now(), "%Y%m%d");
+    LET $again = fn::mail_submission_begin({ origin: "forward", from: "equipe@alpha.test", header_from: ["origine@ailleurs.test"], recipients: [{ address: "externe@ailleurs.test" }],
+        size: 200, return_token: "b123456789abcdefghjkmnpqrs", forward: { envelope_from: "origine@ailleurs.test", spf: "pass", envelope_dkim: false }, idempotency_key: string::repeat("1", 64) });
+    RETURN $again.ok AND <string> $again.data.submission == fn::essai_id("transfert") AND $again.data.queued.submission == $again.data.submission
+        AND $again.data.queued.recipients == 1 AND $again.data.return_address == "rp=6123456789abcdefghjkmnpqrs@alpha.test"
+        AND count(SELECT id FROM mail_submission WHERE origin = "forward") == 1
+        AND (SELECT VALUE count FROM ONLY type::record("mail_send_counter", string::concat("forward_messages_alpha_", $day))) == 1;
+};
+
+-- test: dépôt d'un transfert resté pending (essai interrompu) : abandonné, compteur rendu, puis refait sous la même clé
+-- en tant que: worker
+{
+    LET $day = time::format(time::now(), "%Y%m%d");
+    LET $counter = type::record("mail_send_counter", string::concat("forward_messages_alpha_", $day));
+    LET $params = { origin: "forward", from: "equipe@alpha.test", header_from: ["origine@ailleurs.test"], recipients: [{ address: "externe@ailleurs.test" }],
+        size: 200, forward: { envelope_from: "origine@ailleurs.test", spf: "pass", envelope_dkim: false }, idempotency_key: string::repeat("7", 64) };
+    LET $first = fn::mail_submission_begin(object::extend($params, { return_token: "c123456789abcdefghjkmnpqrs" }));
+    LET $taken = (SELECT VALUE count FROM ONLY $counter);
+    LET $second = fn::mail_submission_begin(object::extend($params, { return_token: "d123456789abcdefghjkmnpqrs" }));
+    RETURN $first.ok AND $second.ok AND $second.data.queued IS NONE AND $second.data.submission != $first.data.submission
+        AND $taken == 2 AND (SELECT VALUE count FROM ONLY $counter) == 2
+        AND (SELECT VALUE aborted_at FROM ONLY $first.data.submission) IS NOT NONE
+        AND (SELECT VALUE aborted_at FROM ONLY $second.data.submission) IS NONE;
+};
+
+-- test: transfert en échec définitif, expéditeur d'origine authentifié : avis dû, repris par fn::mail_queue_dsn_pending (transferts compris) jusqu'à sa production
+-- en tant que: worker
+{
+    LET $s = type::record(fn::essai_id("transfert"));
+    LET $r0 = fn::mail_queue_recipient_key($s, 0);
+    LET $claimed = fn::mail_queue_claim({ node: "n2" });
+    LET $failed = fn::mail_queue_fail({ claim: $claimed.data.claim, items: [{ recipient: <string> $r0, permanent: true, stage: "rcpt", code: 550, enhanced: "5.1.1" }] });
+    LET $pending = fn::mail_queue_dsn_pending({ grace_seconds: 0 });
+    LET $read = fn::mail_submission_get({ submission: <string> $s });
+    fn::mail_queue_dsn_done({ submission: <string> $s, action: "failed", recipients: [<string> $r0] });
+    RETURN $claimed.data.items.map(|$i| $i.recipient) == [$r0]
+        AND $failed.data.dsn == [{ submission: $s, action: "failed", recipients: [$r0] }]
+        AND array::any($pending.data.dsn, |$g| $g.submission == $s AND $g.recipients == [$r0] AND $g.object IS NOT NONE)
+        AND $read.data.forward == { envelope_from: "origine@ailleurs.test", spf: "pass", envelope_dkim: false }
+        AND !array::any(fn::mail_queue_dsn_pending({ grace_seconds: 0 }).data.dsn, |$g| $g.submission == $s);
+};
+
+-- test: un envoi qui n'est pas un transfert ne rend aucune réception d'origine
+-- en tant que: worker
+RETURN fn::mail_submission_get({ submission: fn::essai_id("j") }).data.forward IS NONE;
