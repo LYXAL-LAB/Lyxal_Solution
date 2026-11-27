@@ -13,10 +13,15 @@
 //! espaces répétées entre paramètres.
 
 use super::address::{
-    parse_domain_or_literal, parse_forward_path, parse_reverse_path, Domain, ForwardPath,
+    parse_domain_or_literal, parse_forward_path, parse_reverse_path, Domain, ForwardPath, Mailbox,
     ReversePath,
 };
+use super::auth::{SaslData, MAX_MECHANISM_BYTES};
 use super::error::SmtpError;
+use super::xtext::{
+    decode_utf8_addr, decode_xtext, encode_utf8_addr_xtext, encode_xtext, is_xtext,
+};
+use crate::dsn::DsnAddress;
 
 /// Nombre maximal de chiffres de `SIZE=` (RFC 1870 §5 : 20 chiffres au plus).
 const MAX_SIZE_DIGITS: usize = 20;
@@ -24,7 +29,9 @@ const MAX_SIZE_DIGITS: usize = 20;
 const MAX_ENVID_BYTES: usize = 100;
 /// Longueur maximale de l'adresse de `ORCPT`, codée en xtext (RFC 3461 §4.2 : 500 caractères
 /// pour le paramètre entier).
-const MAX_ORCPT_BYTES: usize = 500;
+pub(crate) const MAX_ORCPT_BYTES: usize = 500;
+/// Longueur maximale de la valeur de `AUTH=` (une adresse codée en xtext).
+const MAX_AUTH_PARAM_BYTES: usize = 500;
 
 /// Commande lue.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -68,8 +75,15 @@ pub enum Request {
     Expn,
     /// `HELP [texte]` (texte ignoré).
     Help,
-    /// `AUTH` (RFC 4954) : reconnu, refusé au lot 5 ; la réponse initiale n'est jamais gardée.
-    Auth,
+    /// `AUTH <mécanisme> [réponse initiale]` (RFC 4954 §4) ; l'échange est conduit par
+    /// [`super::AuthExchange`].
+    Auth {
+        /// Nom du mécanisme, en capitales (syntaxe SASL vérifiée, mécanisme non vérifié).
+        mechanism: String,
+        /// Réponse initiale, telle que reçue (Base64, ou `=` pour une réponse vide) ; effacée à
+        /// sa libération, jamais affichée.
+        initial: Option<SaslData>,
+    },
     /// `ETRN` (RFC 1985) : reconnu, refusé.
     Etrn,
     /// `ATRN` (RFC 2645) : reconnu, refusé.
@@ -96,7 +110,7 @@ impl Request {
             Request::Vrfy => "VRFY",
             Request::Expn => "EXPN",
             Request::Help => "HELP",
-            Request::Auth => "AUTH",
+            Request::Auth { .. } => "AUTH",
             Request::Etrn => "ETRN",
             Request::Atrn => "ATRN",
             Request::Burl => "BURL",
@@ -119,7 +133,7 @@ impl Request {
                 | Request::Quit
                 | Request::Noop
                 | Request::StartTls
-                | Request::Auth
+                | Request::Auth { .. }
         )
     }
 
@@ -166,7 +180,8 @@ pub struct DsnNotify {
     pub delay: bool,
 }
 
-/// `ORCPT=` de DSN (RFC 3461 §4.2).
+/// `ORCPT=` de DSN (RFC 3461 §4.2). Relayé tel que reçu (RFC 3461 §5.2.1) ; décodé pour
+/// l'avis par [`DsnOrcpt::decode`].
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct DsnOrcpt {
     /// Type d'adresse (`rfc822`, `utf-8`...), tel que reçu.
@@ -174,6 +189,53 @@ pub struct DsnOrcpt {
     /// Adresse d'origine, codée en xtext (RFC 3461 §4) ou en utf-8-addr-xtext (RFC 6533),
     /// telle que reçue (non décodée).
     pub address: String,
+}
+
+impl DsnOrcpt {
+    /// `ORCPT` d'une boîte de l'enveloppe : `rfc822;` et xtext pour une boîte ASCII, `utf-8;` et
+    /// utf-8-addr-xtext (ASCII seul) sinon (RFC 6533 §3).
+    pub fn for_mailbox(mailbox: &Mailbox) -> Self {
+        let address = mailbox.to_string();
+        if address.is_ascii() {
+            Self {
+                address_type: "rfc822".to_owned(),
+                address: encode_xtext(address.as_bytes()),
+            }
+        } else {
+            Self {
+                address_type: "utf-8".to_owned(),
+                address: encode_utf8_addr_xtext(&address),
+            }
+        }
+    }
+
+    /// Vrai si le paramètre est bien formé (mêmes règles qu'à la lecture).
+    pub fn is_valid(&self) -> bool {
+        self.address_type.len() + 1 + self.address.len() <= MAX_ORCPT_BYTES
+            && is_address_type(&self.address_type)
+            && !self.address.is_empty()
+            && (is_xtext(&self.address)
+                || (!self.address.is_ascii() && !self.address.chars().any(char::is_control)))
+    }
+
+    /// Adresse d'origine décodée, pour le champ `Original-Recipient` d'un avis : type en
+    /// minuscules ; `utf-8` décodé par [`decode_utf8_addr`], les autres types par
+    /// [`decode_xtext`]. `None` si le codage est invalide.
+    pub fn decode(&self) -> Option<DsnAddress> {
+        let address_type = self.address_type.to_ascii_lowercase();
+        let address = if address_type == "utf-8" {
+            decode_utf8_addr(&self.address)?
+        } else {
+            String::from_utf8(decode_xtext(&self.address)?).ok()?
+        };
+        if address.is_empty() || address.chars().any(char::is_control) {
+            return None;
+        }
+        Some(DsnAddress {
+            address_type,
+            address,
+        })
+    }
 }
 
 /// `MAIL FROM` lu.
@@ -191,15 +253,33 @@ pub struct MailFrom {
     pub smtputf8: bool,
     /// `RET=` (DSN, non annoncé au lot 5).
     pub dsn_ret: Option<DsnRet>,
-    /// `ENVID=` (DSN, non annoncé au lot 5), xtext tel que reçu.
+    /// `ENVID=` (DSN), xtext tel que reçu ; décodé par [`MailFrom::decoded_envid`].
     pub dsn_envid: Option<String>,
+    /// `AUTH=` (RFC 4954 §5) : identité d'origine, xtext tel que reçu (`<>` : inconnue).
+    pub auth: Option<String>,
 }
 
 impl MailFrom {
-    /// Vrai si un paramètre de DSN (RFC 3461) est présent : refusé tant que `DSN` n'est pas
-    /// annoncé (lot 6).
+    /// Vrai si un paramètre de DSN (RFC 3461) est présent : refusé là où `DSN` n'est pas
+    /// annoncé (port 25, décision E22).
     pub const fn uses_dsn(&self) -> bool {
         self.dsn_ret.is_some() || self.dsn_envid.is_some()
+    }
+
+    /// Vrai si `AUTH=` est présent : refusé là où `AUTH` n'est pas annoncé (RFC 5321
+    /// §4.1.1.11).
+    pub const fn uses_auth(&self) -> bool {
+        self.auth.is_some()
+    }
+
+    /// `ENVID` décodé (RFC 3461 §4.4 : ASCII imprimable), pour le champ `Original-Envelope-Id`
+    /// d'un avis ; `None` s'il est absent ou si son décodage n'est pas de l'ASCII imprimable.
+    pub fn decoded_envid(&self) -> Option<String> {
+        let decoded = decode_xtext(self.dsn_envid.as_deref()?)?;
+        decoded
+            .iter()
+            .all(|b| (b' '..=b'~').contains(b))
+            .then(|| decoded.into_iter().map(char::from).collect())
     }
 }
 
@@ -260,7 +340,7 @@ pub fn parse_command(line: &[u8]) -> Result<Request, SmtpError> {
         b"VRFY" => required_args(args, "VRFY", Request::Vrfy),
         b"EXPN" => required_args(args, "EXPN", Request::Expn),
         b"LHLO" => Ok(Request::Lhlo),
-        b"AUTH" => Ok(Request::Auth),
+        b"AUTH" => parse_auth(args),
         b"ETRN" => Ok(Request::Etrn),
         b"ATRN" => Ok(Request::Atrn),
         b"BURL" => Ok(Request::Burl),
@@ -325,6 +405,7 @@ fn parse_mail(args: Option<&str>) -> Result<MailFrom, SmtpError> {
         smtputf8: false,
         dsn_ret: None,
         dsn_envid: None,
+        auth: None,
     };
     for param in parameters(parsed.rest, "MAIL") {
         let (keyword, value) = param?;
@@ -366,6 +447,15 @@ fn parse_mail(args: Option<&str>) -> Result<MailFrom, SmtpError> {
                     .filter(|value| value.len() <= MAX_ENVID_BYTES && is_xtext(value))
                     .ok_or(SmtpError::InvalidParameter("ENVID"))?;
                 set_once(&mut mail.dsn_envid, envid.to_owned(), "ENVID")?;
+            }
+            "AUTH" => {
+                // RFC 4954 §5 : `AUTH=` ( "<>" / xtext(addr-spec) ).
+                let auth = value
+                    .filter(|value| {
+                        value.len() <= MAX_AUTH_PARAM_BYTES && (*value == "<>" || is_xtext(value))
+                    })
+                    .ok_or(SmtpError::InvalidParameter("AUTH"))?;
+                set_once(&mut mail.auth, auth.to_owned(), "AUTH")?;
             }
             _ => return Err(SmtpError::UnsupportedParameter),
         }
@@ -487,26 +577,50 @@ fn parse_number(value: &str, max_digits: usize) -> Option<u64> {
     value.parse().ok()
 }
 
-/// `xtext = *( xchar / hexchar )` (RFC 3461 §4) ; `hexchar = "+" 2(%x30-39 / %x41-46)`.
-fn is_xtext(value: &str) -> bool {
-    let bytes = value.as_bytes();
-    let mut index = 0;
-    while index < bytes.len() {
-        match bytes[index] {
-            b'+' => {
-                let hex = bytes.get(index + 1..index + 3);
-                if !hex
-                    .is_some_and(|hex| hex.iter().all(|b| matches!(b, b'0'..=b'9' | b'A'..=b'F')))
-                {
-                    return false;
-                }
-                index += 3;
-            }
-            b'!'..=b'~' if bytes[index] != b'=' => index += 1,
-            _ => return false,
-        }
+/// `AUTH SP sasl-mech [SP initial-response]` (RFC 4954 §4) ; `sasl-mech = 1*20(ALPHA / DIGIT
+/// / "-" / "_")` (RFC 4422 §3.1), `initial-response = base64 / "="`.
+fn parse_auth(args: Option<&str>) -> Result<Request, SmtpError> {
+    let syntax = SmtpError::Syntax("AUTH");
+    let args = args.ok_or(syntax)?;
+    let mut words = args.split(' ').filter(|word| !word.is_empty());
+    let mechanism = words.next().ok_or(syntax)?;
+    if mechanism.len() > MAX_MECHANISM_BYTES || !mechanism.bytes().all(is_mechanism_byte) {
+        return Err(syntax);
     }
-    true
+    let initial = match words.next() {
+        None => None,
+        Some(initial) if is_base64_text(initial) => {
+            Some(SaslData::new(initial.as_bytes().to_vec()))
+        }
+        Some(_) => return Err(syntax),
+    };
+    if words.next().is_some() {
+        return Err(syntax);
+    }
+    Ok(Request::Auth {
+        mechanism: mechanism.to_ascii_uppercase(),
+        initial,
+    })
+}
+
+/// Caractère d'un nom de mécanisme SASL (RFC 4422 §3.1), sans égard à la casse.
+pub(crate) const fn is_mechanism_byte(byte: u8) -> bool {
+    byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_'
+}
+
+/// Texte Base64 (alphabet standard, `=` de remplissage) ou `=` seul.
+fn is_base64_text(value: &str) -> bool {
+    value
+        .bytes()
+        .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'+' | b'/' | b'='))
+}
+
+/// `addr-type = atom` (RFC 3461 §4.2) : lettres, chiffres et `-`.
+fn is_address_type(value: &str) -> bool {
+    !value.is_empty()
+        && value
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'-')
 }
 
 /// `NOTIFY=NEVER` ou `NOTIFY=` liste de `SUCCESS`, `FAILURE`, `DELAY` (RFC 3461 §4.1).
@@ -537,13 +651,9 @@ fn parse_orcpt(value: &str) -> Option<DsnOrcpt> {
         return None;
     }
     let (address_type, address) = value.split_once(';')?;
-    let type_ok = !address_type.is_empty()
-        && address_type
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b == b'-');
-    let address_ok = !address.is_empty() && (is_xtext(address) || !address.is_ascii());
-    (type_ok && address_ok).then(|| DsnOrcpt {
+    let orcpt = DsnOrcpt {
         address_type: address_type.to_owned(),
         address: address.to_owned(),
-    })
+    };
+    orcpt.is_valid().then_some(orcpt)
 }

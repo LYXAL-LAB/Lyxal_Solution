@@ -462,7 +462,7 @@ fn normalize_subject(subject: &str) -> Option<String> {
 }
 
 /// Date de `mail-parser` en [`OffsetDateTime`] ; `None` si elle n'existe pas au calendrier.
-fn to_offset_date_time(date: &DateTime) -> Option<OffsetDateTime> {
+pub(crate) fn to_offset_date_time(date: &DateTime) -> Option<OffsetDateTime> {
     let month = Month::try_from(date.month).ok()?;
     let day = Date::from_calendar_date(i32::from(date.year), month, date.day).ok()?;
     let time = Time::from_hms(date.hour, date.minute, date.second).ok()?;

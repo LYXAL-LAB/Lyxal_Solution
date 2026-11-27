@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 //! Outils communs aux essais de la syntaxe SMTP : lecture d'un flux de commandes, lecture des
-//! réponses du serveur (gardée pour les essais jusqu'au client SMTP du lot 6, plan §4).
+//! réponses du serveur par le lecteur du client.
 
 #![allow(dead_code)]
 
+use lyxal_mail_proto::smtp::client::ReplyReader;
 use lyxal_mail_proto::smtp::{
-    BdatReceiver, CommandReceiver, DataOutcome, DataReceiver, Request, SmtpError, SmtpLimits,
+    BdatReceiver, CommandReceiver, DataOutcome, DataReceiver, Request, Response, SmtpError,
+    SmtpLimits,
 };
 
 /// Lit toutes les commandes complètes d'un flux, en morceaux de `chunk` octets au plus.
@@ -87,36 +89,22 @@ pub fn bdat(chunks: &[(&[u8], bool)], split: usize) -> (Vec<u8>, DataOutcome) {
     (out, outcome.expect("dernier morceau"))
 }
 
-/// Ligne de réponse lue : code, séparateur (`-` ou espace), texte.
-#[derive(Debug, PartialEq, Eq)]
-pub struct ReplyLine {
-    pub code: u16,
-    pub last: bool,
-    pub text: String,
-}
-
-/// Lit les lignes d'une réponse du serveur (RFC 5321 §4.2) ; refuse toute ligne sans CRLF,
-/// tout CR ou LF isolé et tout octet hors ASCII imprimable.
-pub fn parse_reply(bytes: &[u8]) -> Vec<ReplyLine> {
-    let text = std::str::from_utf8(bytes).expect("réponse ASCII");
-    assert!(text.ends_with("\r\n"), "{text:?}");
-    let lines: Vec<&str> = text[..text.len() - 2].split("\r\n").collect();
-    let count = lines.len();
-    lines
-        .into_iter()
-        .enumerate()
-        .map(|(index, line)| {
-            assert!(line.len() + 2 <= 512, "ligne trop longue");
-            assert!(line.bytes().all(|b| (0x20..0x7f).contains(&b)), "{line:?}");
-            let code: u16 = line[..3].parse().expect("code");
-            let separator = line.as_bytes().get(3).copied().unwrap_or(b' ');
-            let last = separator == b' ';
-            assert_eq!(last, index + 1 == count, "{line:?}");
-            ReplyLine {
-                code,
-                last,
-                text: line.get(4..).unwrap_or("").to_owned(),
-            }
-        })
-        .collect()
+/// Lit une réponse complète par le lecteur du client ([`ReplyReader`], codes étendus lus) ;
+/// exige que toute l'entrée soit consommée et qu'elle ne contienne que de l'ASCII imprimable et
+/// des CRLF.
+pub fn parse_reply(bytes: &[u8]) -> Response {
+    assert!(
+        bytes
+            .iter()
+            .all(|&b| (0x20..0x7f).contains(&b) || b == b'\r' || b == b'\n'),
+        "{bytes:?}"
+    );
+    let mut reader = ReplyReader::new();
+    reader.set_enhanced_status_codes(true);
+    let ingested = reader.ingest(bytes);
+    assert_eq!(ingested.consumed, bytes.len(), "{bytes:?}");
+    ingested
+        .item
+        .expect("réponse complète")
+        .expect("réponse lisible")
 }

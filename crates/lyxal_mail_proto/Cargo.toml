@@ -19,6 +19,13 @@ mail-parser = { version = "=1.0.1", default-features = false, features = ["full_
 memchr = "2"
 thiserror.workspace = true
 time = { version = "0.3", default-features = false, features = ["std"] }
+# Base64 de `AUTH PLAIN` / `AUTH LOGIN` et des parties d'avis (MIT OR Apache-2.0 ; déjà dans
+# l'arbre par lyxal_mail et lyxal_crypto).
+base64 = "0.22"
+# Effacement des mots de passe lus par `AUTH` (Apache-2.0 OR MIT ; déjà dans l'arbre par
+# lyxal_crypto). Ce n'est pas une primitive cryptographique.
+zeroize = "1.8"
 
 [dev-dependencies]
 proptest = "1.5"
+time = { version = "0.3", default-features = false, features = ["std", "macros"] }

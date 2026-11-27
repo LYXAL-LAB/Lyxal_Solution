@@ -9,6 +9,9 @@
 //! l'appelant, qui décide de leur sort (morceau `BDAT`, refus après `STARTTLS` ou avant la
 //! réponse `354`). Aucune lecture au-delà d'une frontière de protocole.
 
+use zeroize::Zeroize as _;
+
+use super::auth::SaslData;
 use super::command::{parse_command, Request};
 use super::error::SmtpError;
 use super::limits::SmtpLimits;
@@ -47,6 +50,21 @@ impl CommandReceiver {
     /// Consomme `input` jusqu'à la fin de la première ligne au plus. Rend la commande lue (ou
     /// son refus) dès qu'une ligne est complète.
     pub fn ingest(&mut self, input: &[u8]) -> Ingested<Result<Request, SmtpError>> {
+        self.ingest_with(input, parse_command)
+    }
+
+    /// Comme [`CommandReceiver::ingest`], mais rend la ligne sans la lire comme une commande :
+    /// réponse du client pendant un échange `AUTH` (RFC 4954 §4), mêmes contrôles (CRLF strict,
+    /// octet nul, longueur). La ligne est rendue dans un tampon effacé à sa libération.
+    pub fn ingest_line(&mut self, input: &[u8]) -> Ingested<Result<SaslData, SmtpError>> {
+        self.ingest_with(input, |line| Ok(SaslData::new(line.to_vec())))
+    }
+
+    fn ingest_with<T>(
+        &mut self,
+        input: &[u8],
+        read: impl FnOnce(&[u8]) -> Result<T, SmtpError>,
+    ) -> Ingested<Result<T, SmtpError>> {
         let Some(lf) = memchr::memchr(b'\n', input) else {
             self.accumulate(input);
             return Ingested {
@@ -59,12 +77,13 @@ impl CommandReceiver {
         let result = if self.overflow || self.buf.len() + chunk.len() > self.max_line {
             Err(SmtpError::LineTooLong)
         } else if self.buf.is_empty() {
-            check_and_parse(chunk)
+            check_line(chunk).and_then(read)
         } else {
             self.buf.extend_from_slice(chunk);
-            check_and_parse(&self.buf)
+            check_line(&self.buf).and_then(read)
         };
-        self.buf.clear();
+        // La ligne peut porter un secret (`AUTH PLAIN`, réponse `LOGIN`) : effacée.
+        self.buf.zeroize();
         self.overflow = false;
         Ingested {
             consumed,
@@ -81,7 +100,7 @@ impl CommandReceiver {
 
     /// Oublie la ligne commencée (après la mise à niveau TLS, RFC 3207 §4.2).
     pub fn reset(&mut self) {
-        self.buf.clear();
+        self.buf.zeroize();
         self.overflow = false;
     }
 
@@ -91,16 +110,21 @@ impl CommandReceiver {
         }
         // La ligne n'aura pas la place de son LF : elle dépasse déjà la limite.
         if self.buf.len() + input.len() >= self.max_line {
-            self.buf.clear();
+            self.buf.zeroize();
             self.overflow = true;
             return;
+        }
+        // Capacité réservée d'un coup : aucune réallocation ne laisse la copie d'une ligne
+        // secrète dans une zone libérée.
+        if self.buf.is_empty() && self.buf.capacity() < self.max_line {
+            self.buf = Vec::with_capacity(self.max_line);
         }
         self.buf.extend_from_slice(input);
     }
 }
 
-/// Contrôle une ligne complète terminée par LF, puis la lit.
-fn check_and_parse(line: &[u8]) -> Result<Request, SmtpError> {
+/// Contrôle une ligne complète terminée par LF et rend son contenu, sans CRLF.
+fn check_line(line: &[u8]) -> Result<&[u8], SmtpError> {
     let Some(without_lf) = line.strip_suffix(b"\n") else {
         return Err(SmtpError::BareLf);
     };
@@ -113,5 +137,5 @@ fn check_and_parse(line: &[u8]) -> Result<Request, SmtpError> {
     if memchr::memchr(0, content).is_some() {
         return Err(SmtpError::NulByte);
     }
-    parse_command(content)
+    Ok(content)
 }

@@ -4194,11 +4194,13 @@ dependencies = [
 name = "lyxal_mail_proto"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
  "mail-parser",
  "memchr",
  "proptest",
  "thiserror 1.0.69",
  "time",
+ "zeroize",
 ]
 
 [[package]]

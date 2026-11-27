@@ -34,6 +34,15 @@ pub enum Domain {
 }
 
 impl Domain {
+    /// Lit un domaine ou une adresse littérale (`[192.0.2.1]`, `[IPv6:2001:db8::1]`), seul dans
+    /// `value` ; `None` s'il est mal formé.
+    pub fn parse(value: &str) -> Option<Self> {
+        match parse_domain_or_literal(value)? {
+            (domain, "") => Some(domain),
+            _ => None,
+        }
+    }
+
     /// Vrai si le domaine ne contient que des caractères ASCII (toujours vrai pour une adresse
     /// littérale).
     pub fn is_ascii(&self) -> bool {
@@ -67,6 +76,19 @@ pub struct Mailbox {
 }
 
 impl Mailbox {
+    /// Lit une boîte `partie-locale@domaine` sous la forme de l'enveloppe (partie locale entre
+    /// guillemets permise, sans chevrons), seule dans `value` ; `None` si elle est mal formée
+    /// ou plus longue qu'un chemin ([`MAX_PATH_BYTES`], chevrons compris).
+    pub fn parse(value: &str) -> Option<Self> {
+        if value.len() + 2 > MAX_PATH_BYTES {
+            return None;
+        }
+        match parse_mailbox(value)? {
+            (mailbox, "") => Some(mailbox),
+            _ => None,
+        }
+    }
+
     /// Partie locale décodée (guillemets et barres obliques inverses d'une chaîne entre
     /// guillemets retirés), casse gardée.
     pub fn local_part(&self) -> &str {

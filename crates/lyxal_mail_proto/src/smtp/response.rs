@@ -157,6 +157,15 @@ impl Response {
         }
     }
 
+    /// Défi `334` d'un échange `AUTH` (texte Base64 écrit dans ce crate, ASCII connu valide).
+    pub(crate) fn continuation(text: &str) -> Self {
+        Self {
+            code: 334,
+            status: None,
+            lines: vec![text.to_owned()],
+        }
+    }
+
     /// Accueil `220 <hostname> ESMTP` (plan §7.2 : aucun nom ni version de logiciel).
     pub fn greeting(hostname: &str) -> Result<Self, ResponseError> {
         check_hostname(hostname)?;
@@ -216,10 +225,29 @@ impl Response {
         self.write_to(&mut out);
         out
     }
+
+    /// Réponse sur une ligne de texte : code, code étendu, puis le texte des lignes séparé par
+    /// des espaces (forme du champ `Diagnostic-Code: smtp;` d'un avis, RFC 3464 §2.3.6, comme
+    /// Mox). Texte assaini (ASCII imprimable).
+    pub fn diagnostic(&self) -> String {
+        let mut out = self.code.to_string();
+        if let Some(status) = self.status {
+            out.push(' ');
+            out.push_str(&status.to_string());
+        }
+        for line in &self.lines {
+            if !line.is_empty() {
+                out.push(' ');
+                out.push_str(line);
+            }
+        }
+        out
+    }
 }
 
-/// Extensions annoncées en réponse à `EHLO`. Seules celles de la décision S5 existent : `DSN`,
-/// `AUTH`, `BINARYMIME`, `REQUIRETLS` et les autres ne sont pas annoncées au lot 5.
+/// Extensions annoncées en réponse à `EHLO` : celles de la décision S5 (réception, port 25),
+/// plus `DSN` et `AUTH PLAIN LOGIN` pour le dépôt authentifié (lot 6, décisions E14 et E22).
+/// `BINARYMIME`, `REQUIRETLS` (décision E26) et les autres ne sont jamais annoncées.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Extensions {
     /// `PIPELINING` (RFC 2920).
@@ -237,10 +265,17 @@ pub struct Extensions {
     pub starttls: bool,
     /// `CHUNKING` (RFC 3030, commande `BDAT`).
     pub chunking: bool,
+    /// `DSN` (RFC 3461) : paramètres `RET`, `ENVID`, `NOTIFY` et `ORCPT` acceptés. Dépôt
+    /// authentifié seulement (décision E22) ; jamais sur le port 25.
+    pub dsn: bool,
+    /// `AUTH PLAIN LOGIN` (RFC 4954) : dépôt authentifié seulement, et seulement sur une session
+    /// chiffrée (décision E14).
+    pub auth: bool,
 }
 
 impl Extensions {
-    /// Extensions de la réception SMTP (décision S5) : toutes, `STARTTLS` selon l'écoute.
+    /// Extensions de la réception SMTP (décision S5) : toutes, `STARTTLS` selon l'écoute ; ni
+    /// `DSN` ni `AUTH`.
     pub const fn inbound(max_message_bytes: u64, starttls: bool) -> Self {
         Self {
             pipelining: true,
@@ -250,11 +285,22 @@ impl Extensions {
             enhanced_status_codes: true,
             starttls,
             chunking: true,
+            dsn: false,
+            auth: false,
         }
     }
 
+    /// Extensions du dépôt authentifié (ports 587 et 465, décisions E14 et E22) : celles de la
+    /// réception, plus `DSN` ; `STARTTLS` selon l'écoute, `AUTH` quand la session est chiffrée.
+    pub const fn submission(max_message_bytes: u64, starttls: bool, auth: bool) -> Self {
+        let mut extensions = Self::inbound(max_message_bytes, starttls);
+        extensions.dsn = true;
+        extensions.auth = auth;
+        extensions
+    }
+
     fn keywords(&self) -> Vec<String> {
-        let mut keywords = Vec::with_capacity(7);
+        let mut keywords = Vec::with_capacity(9);
         if self.pipelining {
             keywords.push("PIPELINING".to_owned());
         }
@@ -275,6 +321,12 @@ impl Extensions {
         }
         if self.chunking {
             keywords.push("CHUNKING".to_owned());
+        }
+        if self.dsn {
+            keywords.push("DSN".to_owned());
+        }
+        if self.auth {
+            keywords.push("AUTH PLAIN LOGIN".to_owned());
         }
         keywords
     }

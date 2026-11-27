@@ -1,5 +1,6 @@
 # Cibles de fuzzing de lyxal_mail_proto (cargo-fuzz) : mime_parse (lot 4), smtp_request et
-# smtp_data (lot 5) ; lancées brièvement à leur création, longuement au lot 21 :
+# smtp_data (lot 5), smtp_reply et dsn_parse (lot 6) ; lancées brièvement à leur création,
+# longuement au lot 21 :
 #   cargo +nightly-2026-10-20 fuzz run <cible>      (depuis crates/lyxal_mail_proto)
 # Paquet hors du workspace (son propre `[workspace]`) : ni la CI ni `cargo build --workspace` ne
 # le compilent.
@@ -34,6 +35,20 @@ bench = false
 [[bin]]
 name = "smtp_data"
 path = "fuzz_targets/smtp_data.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "smtp_reply"
+path = "fuzz_targets/smtp_reply.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "dsn_parse"
+path = "fuzz_targets/dsn_parse.rs"
 test = false
 doc = false
 bench = false
