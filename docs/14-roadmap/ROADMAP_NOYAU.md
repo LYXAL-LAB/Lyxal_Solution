@@ -69,6 +69,16 @@ Règles propres à ce programme (décisions F4, F5, P2, P3) :
 - aucun crate existant ne reçoit de code porté d'une source AGPL ou GPL, et `lyxal-server` ne
   lie aucun de ces crates : ils sont hébergés par `apps/lyxal-groupware`.
 
+## Crate proposé : pilotage de l'hébergeur
+
+`lyxal_infra` (proposé, licence `MIT OR Apache-2.0`, hébergé par `lyxal-server`) : comptes
+d'hébergeur (premier fournisseur Scaleway, identifiants dans `lyxal_secrets`), zones DNS, état
+désiré déclaré par les modules et réconcilié sans jamais toucher ce qu'un humain a créé,
+vérification de la publication, DNS inverse et inventaire en lecture. Usage principal : publier
+seul le DNS du courrier (MX, SPF, DKIM, DMARC), `lyxal_mail` appelant son contrat SurrealQL
+public. Plan soumis au CTO : [`crates/lyxal_infra/implementation_plan.md`](../../crates/lyxal_infra/implementation_plan.md)
+(recherches : `RECHERCHE_SOURCES.md` du même dossier) ; aucun code avant sa validation.
+
 ---
 
 ## Critère « créé », commun à ces crates
