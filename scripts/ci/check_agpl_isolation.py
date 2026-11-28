@@ -6,7 +6,8 @@ Règle : seuls les paquets du courrier, des agendas et des contacts (`lyxal_mail
 `lyxal_contacts`) sont sous AGPL. Aucun paquet du workspace sous licence permissive
 (`MIT OR Apache-2.0`) ne doit dépendre, même pour ses tests ou sa compilation, d'un paquet sous
 licence GPL ou AGPL : `lyxal-server` et les crates du Noyau ne lient aucun code AGPL. Le sens
-inverse est permis (les essais de `lyxal-groupware` lancent `lyxal-server`).
+inverse est permis (les essais de `lyxal-groupware` lancent `lyxal-server` ; au lot 2 de
+`lyxal_infra`, crate permissif, `lyxal_mail` dépendra de lui).
 
 Le contrôle lit `cargo metadata` (graphe résolu) : pour chaque membre permissif, toutes ses
 dépendances directes (normales, de test, de compilation), puis leurs dépendances normales et de
