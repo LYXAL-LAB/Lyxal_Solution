@@ -78,6 +78,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_step_apply(
             ELSE IF $rule = "datetime_string" { fn::validation_datetime_string($current, $options.format) }
             ELSE IF $rule = "decimal" { fn::validation_decimal($current, $options.min_value, $options.max_value) }
             ELSE IF $rule = "display_name" { fn::validation_display_name($current, $options.min_length, $options.max_length, $options.allow_emoji) }
+            ELSE IF $rule = "dns_name" { fn::validation_dns_name($current, $options.allow_underscore, $options.allow_wildcard, $options.zone) }
             ELSE IF $rule = "domain" { fn::validation_domain($current, $options.allow_subdomains) }
             ELSE IF $rule = "duration" { fn::validation_duration($current, $options.min_value, $options.max_value) }
             ELSE { THROW "CORE_UNSUPPORTED_OPTION" }

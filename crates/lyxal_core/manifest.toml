@@ -349,6 +349,7 @@ functions = [
     "functions/validations/functions/datetime_string.surql",
     "functions/validations/functions/decimal.surql",
     "functions/validations/functions/display_name.surql",
+    "functions/validations/functions/dns_name.surql",
     "functions/validations/functions/domain.surql",
     "functions/validations/functions/dsl_compile.surql",
     "functions/validations/functions/duration.surql",

@@ -25,10 +25,10 @@ Ces éléments appartiennent aux modules. Le Core fournit les briques ; les modu
 
 ```text
 lyxal_core/
-├── manifest.toml            (id lyxal_core, version 0.1.0, 487 fonctions déclarées)
+├── manifest.toml            (id lyxal_core, version 0.1.0, 488 fonctions déclarées)
 ├── Readme.md
 └── functions/
-    ├── validations/   functions/ (199) · tests/ (199)   fn::validation_*
+    ├── validations/   functions/ (200) · tests/ (200)   fn::validation_*
     ├── sanitize/      functions/ (98) · tests/ (98)     fn::sanitize_*
     ├── security/      functions/ (71) · tests/ (71)     fn::security_*
     └── utils/         functions/ (119) · tests/ (119)   fn::utils_*
@@ -82,6 +82,7 @@ IF !$name.valid {
 * Une « date » est un datetime à minuit UTC.
 * `details.scope` précise ce qui est en cause quand ce n'est pas la valeur elle-même : `"item"` (un élément d'un tableau), `"key"` (une clé d'objet), `"value"` (une valeur d'objet) ou `"group"` (un groupe de champs). `details.bound` désigne la borne en cause d'un intervalle.
 * Un identifiant SurrealQL de table, namespace, base ou événement se valide avec `fn::validation_identifier`.
+* Un nom DNS d'enregistrement ou de cible se valide avec `fn::validation_dns_name($value, $allow_underscore, $allow_wildcard, $zone)` (règle `dns_name` du moteur) : labels de service à tiret bas (`_dmarc`, `sel._domainkey`, `_mta-sts`, `_smtp._tls`, `_acme-challenge`), que `fn::validation_domain` refuse (`string::is_domain`) ; joker `*` en premier label sur option ; `$zone` (ou `NONE`) exige l'apex ou un sous-nom de cette zone, et une zone mal formée lève `CORE_INVALID_ARGUMENT`. Valeur rendue en minuscules, sans point final.
 * La taille d'un objet ou d'un tableau libre (données d'un abonné, métadonnées…) se borne avec `fn::validation_max_serialized_length($value, $max_length)` (règle `max_serialized_length` du moteur) : longueur en caractères de son texte JSON (`encoding::json::encode`).
 * Un motif d'expression régulière syntaxiquement invalide (`fn::validation_regex`) provoque l'erreur du moteur (`string::matches`) : SurrealDB 3.3.4 n'offre aucun moyen de le détecter sans lever.
 
@@ -100,7 +101,7 @@ Ce sont des **motifs** de rejet, transmis par le module dans les `details` de sa
 | `CORE_VALIDATION_TOO_SMALL` | valeur (nombre, date, durée) inférieure au minimum | `{ min }` (+ `exclusive` si borne exclue) ; pour un écart ou un âge : `{ min_<nom>, <nom> }` (ex. `{ min_days, days }`) ; `bound` pour une borne d'intervalle |
 | `CORE_VALIDATION_TOO_LARGE` | valeur (nombre, date, durée) supérieure au maximum | `{ max }` (+ `exclusive` si borne exclue) ; pour un écart ou un âge : `{ max_<nom>, <nom> }` ; `bound` pour une borne d'intervalle |
 | `CORE_VALIDATION_FORMAT` | format non respecté (dont date avec heure : `{ expected: "date" }`) | `{ expected }` (+ `bound`), `{ pattern }`, `{ contains_any }`, `{ starts_with_any }` ou `{ ends_with_any }` |
-| `CORE_VALIDATION_NOT_ALLOWED` | valeur hors de la liste autorisée, variante exclue par l'appelant, ou clé d'objet inconnue (moteur) | `{ allowed }`, `{ allowed_prefixes }`, `{ scope: "key", key }`, ou `{ reason }` : `"weekend"`, `"holiday"`, `"subdomain"`, `"single_label"`, `"scheme"`, `"port"`, `"parameters"`, `"wildcard"`, `"encrypted"`, `"macro"`, `"weak"`, `"ipv4"`, `"ipv6"`, `"hostname"`, `"extension"` |
+| `CORE_VALIDATION_NOT_ALLOWED` | valeur hors de la liste autorisée, variante exclue par l'appelant, ou clé d'objet inconnue (moteur) | `{ allowed }`, `{ allowed_prefixes }`, `{ scope: "key", key }`, ou `{ reason }` : `"weekend"`, `"holiday"`, `"subdomain"`, `"single_label"`, `"scheme"`, `"port"`, `"parameters"`, `"wildcard"`, `"encrypted"`, `"macro"`, `"weak"`, `"ipv4"`, `"ipv6"`, `"hostname"`, `"extension"`, `"underscore"`, `"zone"` |
 | `CORE_VALIDATION_FORBIDDEN` | valeur interdite, mot ou nom réservé (rôle, paramètre SurrealQL, champ `id`) | `{}` |
 | `CORE_VALIDATION_NOT_MULTIPLE` | entier non multiple du diviseur | `{ divisor }` |
 | `CORE_VALIDATION_PARITY` | parité inattendue | `{ expected }` (`"even"` ou `"odd"`) |
@@ -191,7 +192,7 @@ Un seul moteur exécute les pipelines de tous les domaines. Il ne connaît aucun
 
 | Domaine | Catalogue | Points d'entrée | Résultat |
 | :--- | :--- | :--- | :--- |
-| `validations` | `fn::validation_step_catalog()` : 177 règles, une par validateur à une seule valeur | `fn::validation_pipeline_execute($value, $pipeline, $max_steps)`, `fn::validation_object_execute($value, $schema, $max_steps)` ; sans catalogue : `fn::validation_fields_execute($value, $fields, $unknown_keys)` (contrôles par fermetures, ci-dessous) ; pour les lots du worker : `fn::validation_checks_report($value, $checks)` (résultats déjà calculés, ci-dessous) | rapport `{ valid, value, errors, warnings, by_field }` ; ne lève jamais pour une donnée invalide |
+| `validations` | `fn::validation_step_catalog()` : 178 règles, une par validateur à une seule valeur | `fn::validation_pipeline_execute($value, $pipeline, $max_steps)`, `fn::validation_object_execute($value, $schema, $max_steps)` ; sans catalogue : `fn::validation_fields_execute($value, $fields, $unknown_keys)` (contrôles par fermetures, ci-dessous) ; pour les lots du worker : `fn::validation_checks_report($value, $checks)` (résultats déjà calculés, ci-dessous) | rapport `{ valid, value, errors, warnings, by_field }` ; ne lève jamais pour une donnée invalide |
 | `sanitize` | `fn::sanitize_step_catalog()` : 94 règles, une par fonction de valeurs (sauf `date_range`), plus `default` | `fn::sanitize_pipeline_execute($value, $pipeline, $max_steps)`, `fn::sanitize_object_execute($value, $schema, $max_steps)` | valeur nettoyée ; donnée non nettoyable → `CORE_SANITIZE_INVALID_TYPE` |
 | `security` | `fn::security_step_catalog()` : 22 règles (masquage et empreintes, détections, `permission_check`) | `fn::security_pipeline_execute($value, $pipeline, $max_steps)`, `fn::security_object_execute($value, $schema, $max_steps)` | `{ value, findings, score, decisions, allowed, errors }` |
 
@@ -211,7 +212,7 @@ LET $clean = fn::sanitize_object_execute($report.value, { fields: { email: { pip
 
 En SurrealDB 3.3, une définition de fonction est relue et réanalysée à chaque transaction, et
 l'appel d'une fonction qui ne fait que lire charge tout son graphe d'appels :
-`fn::validation_object_execute` fait charger les 177 validateurs du catalogue même si un seul
+`fn::validation_object_execute` fait charger les 178 validateurs du catalogue même si un seul
 sert (7 à 9 ms au premier appel d'une transaction, puis 1,5 ms par objet). Pour une fonction
 appelée souvent, `fn::validation_fields_execute($value, $fields, $unknown_keys)` valide le même
 objet avec des contrôles remis par l'appelant, qui ne nomme que les validateurs qu'il utilise :
@@ -333,7 +334,7 @@ IF !$report.valid { RETURN fn::error_result("STOCK_INVALID_PARAMETERS", NONE, { 
 ### Coût d'exécution
 
 SurrealQL est interprété : chaque comparaison, appel de closure ou de fonction coûte de l'ordre
-de la microseconde, et lire une variable en recopie la valeur (un catalogue de 177 règles coûte
+de la microseconde, et lire une variable en recopie la valeur (un catalogue de 178 règles coûte
 environ 65 µs à chaque lecture). Le moteur limite donc le travail, sans changer son contrat :
 
 * **Catalogue réduit** : `fn::utils_engine_schema` et `fn::utils_engine_pipeline` ne transmettent
@@ -384,7 +385,7 @@ Aucun module ne l'appelle encore. L'adoption se fera à la reprise de chaque mod
 
 `scripts/ci/test_lyxal_core.py` démarre un serveur SurrealDB 3.3.4 jetable et :
 
-1. charge les 487 fonctions et vérifie qu'elles sont toutes définies ;
+1. charge les 488 fonctions et vérifie qu'elles sont toutes définies ;
 2. vérifie que chaque fonction a son fichier `<nom>.test.surql`, et inversement ;
 3. exécute chaque fichier de tests.
 
