@@ -140,7 +140,7 @@ DEFINE FUNCTION OVERWRITE fn::infra__declare_refusal($p: object, $items: array) 
     IF !$unique.valid { RETURN { code: "INFRA_INVALID_PARAMETERS", details: { fields: { records: [$unique.code] } } }; };
     -- Autres déclarations actives (autre propriétaire ou autre sujet) des mêmes noms
     LET $fqdns = array::distinct($items.fqdn);
-    LET $others = (SELECT owner, subject, fqdn, type, mode FROM infra_record
+    LET $others = (SELECT owner, subject, fqdn, type, mode, values, singleton_prefix, state FROM infra_record
         WHERE fqdn IN $fqdns AND state != "released" AND (owner != $p.owner OR subject != $p.subject));
     LET $all = array::concat($items, $others);
     -- Un CNAME ne cohabite avec rien
@@ -149,8 +149,20 @@ DEFINE FUNCTION OVERWRITE fn::infra__declare_refusal($p: object, $items: array) 
     -- Même (nom, type) chez un autre propriétaire : refusé si l'un des deux le veut en entier
     LET $owned = array::first(array::filter($items, |$r| array::any($others, |$o| $o.fqdn = $r.fqdn AND $o.type = $r.type AND ($o.mode = "exclusive" OR $r.mode = "exclusive"))));
     IF $owned IS NOT NONE { RETURN { code: "INFRA_RECORD_OWNED", details: { index: array::find_index($items, $owned) } }; };
+    -- Préfixe unique d'un TXT partagé (un seul SPF) : un seul déclarant par nom et préfixe, que le
+    -- préfixe soit déclaré par l'un ou porté par les valeurs de l'autre. Une déclaration en cours de
+    -- retrait (releasing) ne compte plus : sa valeur encore publiée est un conflit au plan jusqu'à sa suppression
+    LET $txt = array::filter($others, |$o| $o.type = "TXT" AND $o.state != "releasing");
+    LET $taken = array::first(array::filter($items, |$r| $r.type = "TXT" AND array::any($txt, |$o| $o.fqdn = $r.fqdn
+        AND (($r.singleton_prefix IS NOT NONE AND array::any($o.values, |$v| string::starts_with($v, $r.singleton_prefix)))
+            OR ($o.singleton_prefix IS NOT NONE AND array::any($r.values, |$v| string::starts_with($v, $o.singleton_prefix)))))));
+    IF $taken IS NOT NONE {
+        LET $prefix = $taken.singleton_prefix ?? array::first(array::filter($txt, |$o| $o.fqdn = $taken.fqdn AND $o.singleton_prefix IS NOT NONE
+            AND array::any($taken.values, |$v| string::starts_with($v, $o.singleton_prefix)))).singleton_prefix;
+        RETURN { code: "INFRA_RECORD_SINGLETON_TAKEN", details: { index: array::find_index($items, $taken), prefix: $prefix } };
+    };
     RETURN NONE;
-} COMMENT "Interne : { code, details } si la déclaration ($p : owner, subject ; $items contrôlés) répète un (nom, type), met un CNAME à côté d'un autre enregistrement (INFRA_RECORD_CNAME_CONFLICT) ou veut un (nom, type) déjà déclaré par un autre propriétaire alors que l'un des deux est exclusif (INFRA_RECORD_OWNED) ; NONE sinon";
+} COMMENT "Interne : { code, details } si la déclaration ($p : owner, subject ; $items contrôlés) répète un (nom, type), met un CNAME à côté d'un autre enregistrement (INFRA_RECORD_CNAME_CONFLICT), veut un (nom, type) déjà déclaré par un autre propriétaire alors que l'un des deux est exclusif (INFRA_RECORD_OWNED), ou un TXT dont le préfixe unique est déjà tenu au même nom par une autre déclaration active (INFRA_RECORD_SINGLETON_TAKEN : { index, prefix }) ; NONE sinon";
 
 -- ----------------------------------------------------------------------------
 -- fn::infra__declare_write (interne)
@@ -229,7 +241,7 @@ DEFINE FUNCTION OVERWRITE fn::infra_records_declare($params: object) {
         changed: array::any($written.outcomes, |$o| $o.changed) OR array::len($written.removed) > 0,
         queued: $queued.queued
     });
-} COMMENT "Contrat public : déclare tout l'ensemble des enregistrements voulus d'un couple (propriétaire, sujet) ({ owner : identifiant de module ou manual, subject : clé opaque, sans nom de domaine ni adresse, tenant : organisation, records : 0 à 50 × { fqdn, type : A, AAAA, CNAME, MX, TXT, SRV, CAA, values : 1 à 20 en forme canonique, ttl, mode : exclusive ou shared, singleton_prefix }, language }) : ce qui n'y figure plus est retiré (liste vide : tout) ; une déclaration identique n'écrit rien (changed faux). Refus : nom couvert par une zone qui n'accepte pas l'organisation (INFRA_RECORD_TENANT_REFUSED), (nom, type) exclusif d'un autre propriétaire (INFRA_RECORD_OWNED), CNAME avec autre chose (INFRA_RECORD_CNAME_CONFLICT), plus de 50 (INFRA_RECORD_LIMIT). Nom sans zone rattachée : unmanaged. Un changement demande une passe de la zone (queued). Rend { items : [{ record, fqdn, type, state, managed }], changed, queued }. Droit infra.records.declare (manual : infra.manage), session système";
+} COMMENT "Contrat public : déclare tout l'ensemble des enregistrements voulus d'un couple (propriétaire, sujet) ({ owner : identifiant de module ou manual, subject : clé opaque, sans nom de domaine ni adresse, tenant : organisation, records : 0 à 50 × { fqdn, type : A, AAAA, CNAME, MX, TXT, SRV, CAA, values : 1 à 20 en forme canonique, ttl, mode : exclusive ou shared, singleton_prefix }, language }) : ce qui n'y figure plus est retiré (liste vide : tout) ; une déclaration identique n'écrit rien (changed faux). Refus : nom couvert par une zone qui n'accepte pas l'organisation (INFRA_RECORD_TENANT_REFUSED), (nom, type) exclusif d'un autre propriétaire (INFRA_RECORD_OWNED), CNAME avec autre chose (INFRA_RECORD_CNAME_CONFLICT), TXT dont le préfixe unique (singleton_prefix, ou préfixe d'une autre déclaration porté par ses valeurs) est déjà tenu au même nom par une autre déclaration active (INFRA_RECORD_SINGLETON_TAKEN), plus de 50 (INFRA_RECORD_LIMIT). Nom sans zone rattachée : unmanaged. Un changement demande une passe de la zone (queued). Rend { items : [{ record, fqdn, type, state, managed }], changed, queued }. Droit infra.records.declare (manual : infra.manage), session système";
 
 -- ----------------------------------------------------------------------------
 -- fn::infra_records_release

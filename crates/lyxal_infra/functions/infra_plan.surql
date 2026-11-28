@@ -6,7 +6,8 @@
 -- changements (add, set par identifiant, delete par identifiant) et les conflits :
 --   * Lyxal ne modifie ni ne supprime que ses propres écritures (ligne rattachée à
 --     l'enregistrement et valeur encore celle qu'il a écrite) ;
---   * valeur étrangère qui gêne (jeu exclusif, préfixe unique d'un TXT partagé, CNAME) ou
+--   * valeur étrangère qui gêne (jeu exclusif, préfixe unique d'un TXT partagé, y compris tenu par
+--     un autre enregistrement de Lyxal, CNAME) ou
 --     écriture de Lyxal modifiée par un humain : conflit, rien n'est écrit, jusqu'à une décision
 --     humaine (take_over, une fois ; yield) ;
 --   * écriture de Lyxal supprimée par un humain : recréée et notée (drift_deleted) ;
@@ -38,8 +39,13 @@ DEFINE FUNCTION OVERWRITE fn::infra__record_plan($r: object, $observed: array) -
     };
     LET $modified = array::filter($mine, |$o| $o.value NOT IN $applied AND $o.value NOT IN $r.values);
     LET $foreign = IF $r.mode = "exclusive" { array::filter($human, |$o| $o.value NOT IN $r.values) } ELSE { [] };
+    -- Préfixe unique : valeur humaine différente, ou toute valeur d'un autre enregistrement de Lyxal
+    -- (en retrait, ou déclarations concurrentes) : jamais un second SPF
     LET $singleton = IF $r.mode = "shared" AND $r.singleton_prefix IS NOT NONE {
-        array::filter($human, |$o| string::starts_with($o.value, $r.singleton_prefix) AND $o.value NOT IN $r.values)
+        array::concat(
+            array::filter($human, |$o| string::starts_with($o.value, $r.singleton_prefix) AND $o.value NOT IN $r.values),
+            array::filter($same, |$o| $o.record IS NOT NONE AND $o.record != $r.id AND string::starts_with($o.value, $r.singleton_prefix))
+        )
     } ELSE { [] };
     LET $reason = IF array::len($cname_rows) > 0 { "cname" }
         ELSE IF array::len($modified) > 0 { "drift_modified" }

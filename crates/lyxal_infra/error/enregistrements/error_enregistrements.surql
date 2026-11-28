@@ -57,6 +57,33 @@ IF !record::exists(error_definition:INFRA_RECORD_OWNED) THEN (
     }
 ) END;
 
+IF !record::exists(error_definition:INFRA_RECORD_SINGLETON_TAKEN) THEN (
+    CREATE error_definition:INFRA_RECORD_SINGLETON_TAKEN CONTENT {
+        code: "INFRA_RECORD_SINGLETON_TAKEN",
+        module: "infra",
+        domain: "enregistrements",
+        category: "conflict",
+        severity: "error",
+        message: "Unique TXT prefix already held by another declarer",
+        default_language: "fr",
+        http_status: 409,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Préfixe unique déjà tenu",
+                description: "Un TXT de ce nom portant ce préfixe unique (par exemple v=spf1) est déjà déclaré par un autre propriétaire ou sujet : deux valeurs casseraient le service.",
+                resolution: "Déclarez la valeur auprès du propriétaire actuel, ou retirez d'abord l'autre déclaration."
+            },
+            en: {
+                label: "Unique prefix already held",
+                description: "A TXT record of this name with this unique prefix (for example v=spf1) is already declared by another owner or subject: two values would break the service.",
+                resolution: "Declare the value through the current owner, or release the other declaration first."
+            }
+        }
+    }
+) END;
+
 IF !record::exists(error_definition:INFRA_RECORD_CNAME_CONFLICT) THEN (
     CREATE error_definition:INFRA_RECORD_CNAME_CONFLICT CONTENT {
         code: "INFRA_RECORD_CNAME_CONFLICT",

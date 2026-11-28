@@ -55,6 +55,11 @@ journal.
    humaine reste, l'enregistrement de Lyxal est mis en sommeil). Écriture de Lyxal supprimée
    par un humain : recréée et notée (`drift_deleted`). Valeur humaine identique à une valeur
    voulue : satisfaite, jamais prise ni dupliquée.
+   **Un seul déclarant par préfixe unique** (jamais deux SPF) : une déclaration d'un TXT dont le
+   préfixe est déjà tenu au même nom par une autre déclaration active est refusée
+   (`INFRA_RECORD_SINGLETON_TAKEN`) ; au plan, la valeur encore publiée d'un autre
+   enregistrement de Lyxal (en retrait) qui porte le préfixe est un conflit `foreign_singleton`,
+   levé de lui-même quand elle disparaît.
 4. **Prudence** : un plan qui supprime plus de `max_deletions` enregistrements, ou plus de
    `max_deletion_percent` % des enregistrements de Lyxal d'une zone qui en a plus de
    `max_deletions`, n'est pas appliqué : la zone passe `blocked` (événement
@@ -82,7 +87,7 @@ Appelées par les modules en SurrealQL (le courrier, au lot 2) ; droit `infra.re
 
 | Fonction | Paramètres → résultat |
 | :--- | :--- |
-| `fn::infra_records_declare` | `{ owner, subject, tenant?, records: [0..50 × { fqdn, type, values: [1..20], ttl?, mode, singleton_prefix? }], language }` → `{ items: [{ record, fqdn, type, state, managed }], changed, queued }`. Remplace l'ensemble (owner, subject) ; liste vide : tout est retiré ; déclaration identique : rien n'est écrit (`changed` faux). Refus : `INFRA_RECORD_TENANT_REFUSED` (zone qui n'accepte pas l'organisation), `INFRA_RECORD_OWNED` (nom et type exclusifs d'un autre propriétaire), `INFRA_RECORD_CNAME_CONFLICT`, `INFRA_RECORD_LIMIT` (plus de 50). Nom non couvert par une zone rattachée : `unmanaged`. Un changement met en file une passe de la zone (`queued`, quand l'appelant peut lancer la tâche ; sinon `infra.tick` la reprend) |
+| `fn::infra_records_declare` | `{ owner, subject, tenant?, records: [0..50 × { fqdn, type, values: [1..20], ttl?, mode, singleton_prefix? }], language }` → `{ items: [{ record, fqdn, type, state, managed }], changed, queued }`. Remplace l'ensemble (owner, subject) ; liste vide : tout est retiré ; déclaration identique : rien n'est écrit (`changed` faux). Refus : `INFRA_RECORD_TENANT_REFUSED` (zone qui n'accepte pas l'organisation), `INFRA_RECORD_OWNED` (nom et type exclusifs d'un autre propriétaire), `INFRA_RECORD_CNAME_CONFLICT`, `INFRA_RECORD_SINGLETON_TAKEN` (préfixe unique d'un TXT déjà tenu au même nom par une autre déclaration active ; détails `{ index, prefix }`), `INFRA_RECORD_LIMIT` (plus de 50). Nom non couvert par une zone rattachée : `unmanaged`. Un changement met en file une passe de la zone (`queued`, quand l'appelant peut lancer la tâche ; sinon `infra.tick` la reprend) |
 | `fn::infra_records_release` | `{ owner, subject, keep_at_provider: false, language }` → `{ released, releasing, queued }` : écrit chez l'hébergeur → `releasing` (supprimé à la passe suivante, seulement si la valeur est encore celle écrite par Lyxal) ; sinon, ou avec `keep_at_provider`, oublié (`released`) |
 | `fn::infra_records_status` | `{ owner, subjects: [1..500], language }` → `{ items: [{ subject, record, fqdn, type, state, managed, conflict_reason, published_at, error_code }] }` |
 | `fn::infra_records_subjects` | `{ owner, after?, limit (1..1000), language }` → `{ subjects, next }` |
@@ -130,7 +135,8 @@ sans valeur** : identifiants opaques et codes.
 `INFRA_SETTINGS_INVALID`. `comptes` : `INFRA_ACCOUNT_NOT_FOUND`, `_EXISTS`, `_IN_USE`,
 `_SECRET_INVALID`. `zones` : `INFRA_ZONE_NOT_FOUND`, `_EXISTS`, `_OVERLAP`, `_NOT_VISIBLE`,
 `_HAS_RECORDS`, `_PLAN_STALE`, `_CLAIM_LOST` (à réessayer). `enregistrements` :
-`INFRA_RECORD_NOT_FOUND`, `_OWNED`, `_CNAME_CONFLICT`, `_TENANT_REFUSED`, `_LIMIT`.
+`INFRA_RECORD_NOT_FOUND`, `_OWNED`, `_CNAME_CONFLICT`, `_SINGLETON_TAKEN`, `_TENANT_REFUSED`,
+`_LIMIT`.
 `fournisseurs` : `INFRA_PROVIDER_AUTH`, `_REJECTED`, `_NOT_FOUND`, `_QUOTA`, `_RATE_LIMITED`,
 `_UNAVAILABLE`, `_RESPONSE_INVALID`, `INFRA_CREDENTIALS_UNAVAILABLE`, `INFRA_DNS_UNAVAILABLE`,
 `INFRA_DNS_NOT_PUBLISHED`.
@@ -149,12 +155,13 @@ circule.
 
 * **SurrealQL** (`tests/*.test.surql`, `scripts/ci/test_lyxal_modules.py`) : comptes (secret
   absent, hors `infra/`, illisible ; suppression refusée en usage), zones (non visible,
-  emboîtée, organisations, adoption, approbation, détachement), déclarations (forme canonique
+  emboîtée, organisations, adoption, approbation, détachement, enregistrements retirés jamais
+  repris), déclarations (forme canonique
   de chaque type, remplacement, identique sans écriture, liste vide, propriétaire concurrent,
-  CNAME, 50 au plus, organisation refusée, `unmanaged`, passe en file une fois), plan (faux
+  CNAME, préfixe unique tenu par un autre déclarant, 50 au plus, organisation refusée, `unmanaged`, passe en file une fois), plan (faux
   fournisseur en SurrealQL : observation, passe gérée, idempotence, conflits, `take_over`,
   `yield`, `drift_modified`, `drift_deleted`, reprise par la marque, retrait si valeur
-  inchangée, seuils et approbation, empreinte stable), worker (réservation, jeton perdu,
+  inchangée, retrait pendant l'écriture d'un ajout, préfixe unique d'un autre enregistrement de Lyxal, seuils et approbation, empreinte stable), worker (réservation, jeton perdu,
   journal `sent` puis `done` / `failed`, chaîne et falsification détectée, événements sans nom,
   vérification, purge, sonde), droits (administrateur de la plateforme, administrateur et membre
   d'organisation, comptes de service avec et sans `infra.records.declare`, worker, session

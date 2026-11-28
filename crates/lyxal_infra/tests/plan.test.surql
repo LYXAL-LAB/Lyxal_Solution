@@ -254,6 +254,24 @@ RETURN fn::infra_zone_plan_approve({ zone: <string> (SELECT VALUE zone FROM ONLY
         AND "p-tard" NOT IN (SELECT VALUE rows.provider_id FROM ONLY passe:photo);
 };
 
+-- test: préfixe unique : la valeur encore publiée d'un autre enregistrement de Lyxal (en retrait) est un conflit foreign_singleton, jamais un second SPF ; levé seul quand elle disparaît
+{
+    fn::infra_records_declare({ owner: "manual", subject: "spf-ancien", records: [{ fqdn: "envoi.exemple.fr", type: "TXT", values: ["v=spf1 a -all"], mode: "shared", singleton_prefix: "v=spf1" }] });
+    LET $written = fn::essai_passe();
+    fn::infra_records_release({ owner: "manual", subject: "spf-ancien" });
+    LET $declared = fn::infra_records_declare({ owner: "manual", subject: "spf-nouveau", records: [{ fqdn: "envoi.exemple.fr", type: "TXT", values: ["v=spf1 mx -all"], mode: "shared", singleton_prefix: "v=spf1" }] });
+    LET $key = fn::infra__record_key("manual", "spf-nouveau", "envoi.exemple.fr", "TXT");
+    LET $first = fn::essai_passe();
+    LET $conflict = (SELECT state, conflict.reason AS reason, conflict.observed AS observed FROM ONLY $key);
+    LET $second = fn::essai_passe();
+    LET $spf = array::filter((SELECT VALUE rows FROM ONLY passe:photo), |$r| $r.fqdn = "envoi.exemple.fr" AND string::starts_with($r.value, "v=spf1"));
+    RETURN $written.applied.data.done == 1 AND $declared.ok
+        AND $first.plan.data.changes.action == ["delete"] AND $first.plan.data.changes[0].value == "v=spf1 a -all"
+        AND $conflict == { state: "conflict", reason: "foreign_singleton", observed: ["v=spf1 a -all"] }
+        AND $second.plan.data.changes.action == ["add"] AND (SELECT VALUE state FROM ONLY $key) == "written"
+        AND $spf.value == ["v=spf1 mx -all"];
+};
+
 -- test: plan identique deux fois de suite : même empreinte (ordre stable)
 {
     LET $zone = <string> (SELECT VALUE zone FROM ONLY passe:photo);

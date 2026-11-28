@@ -162,6 +162,22 @@ RETURN fn::infra_records_declare({ owner: "manual", subject: "trop", records: ar
     RETURN $owned.error.code == "INFRA_RECORD_OWNED" AND $owned.error.details.index == 0 AND $shared_vs_exclusive.error.code == "INFRA_RECORD_OWNED" AND $shared.ok;
 };
 
+-- test: préfixe unique d'un TXT partagé : un second déclarant du même préfixe au même nom est refusé (INFRA_RECORD_SINGLETON_TAKEN), qu'il déclare le préfixe ou seulement une valeur qui le porte ; autre nom ou valeur sans le préfixe : accepté
+{
+    LET $spf = |$owner: string, $subject: string, $record: object| fn::infra_records_declare({ owner: $owner, subject: $subject, records: [$record] });
+    LET $with_prefix = $spf("manual", "spf2", { fqdn: "exemple.fr", type: "TXT", values: ["v=spf1 include:autre.example -all"], mode: "shared", singleton_prefix: "v=spf1" });
+    LET $value_only = $spf("manual", "spf2", { fqdn: "Exemple.fr", type: "TXT", values: ["v=spf1 -all"], mode: "shared" });
+    LET $same_owner = $spf("lyxal_mail", "mail_domain:spf2", { fqdn: "exemple.fr", type: "TXT", values: ["v=spf1 -all"], mode: "shared", singleton_prefix: "v=spf1" });
+    LET $other_name = $spf("manual", "spf2", { fqdn: "autre.exemple.fr", type: "TXT", values: ["v=spf1 -all"], mode: "shared", singleton_prefix: "v=spf1" });
+    LET $reverse = $spf("manual", "spf3", { fqdn: "autre.exemple.fr", type: "TXT", values: ["v=spf1 a -all"], mode: "shared" });
+    LET $unrelated = $spf("manual", "spf3", { fqdn: "autre.exemple.fr", type: "TXT", values: ["google-site-verification=abc"], mode: "shared" });
+    LET $cleared = fn::infra_records_declare({ owner: "manual", subject: "spf2", records: [] }).ok AND fn::infra_records_declare({ owner: "manual", subject: "spf3", records: [] }).ok;
+    RETURN $with_prefix.error.code == "INFRA_RECORD_SINGLETON_TAKEN" AND $with_prefix.error.details == { index: 0, prefix: "v=spf1" }
+        AND $value_only.error.code == "INFRA_RECORD_SINGLETON_TAKEN" AND $same_owner.error.code == "INFRA_RECORD_SINGLETON_TAKEN"
+        AND $other_name.ok AND $reverse.error.code == "INFRA_RECORD_SINGLETON_TAKEN" AND $unrelated.ok AND $cleared
+        AND !string::contains(<string> $with_prefix.error, "exemple.fr");
+};
+
 -- test: un CNAME ne cohabite avec rien (dans la déclaration ou avec un autre propriétaire)
 {
     LET $inside = fn::infra_records_declare({ owner: "manual", subject: "cname", records: [
