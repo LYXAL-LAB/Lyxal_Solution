@@ -166,6 +166,26 @@
         AND fn::infra_zone_detach({ zone: $zone }).error.code == "INFRA_ZONE_NOT_FOUND";
 };
 
+-- test: détachement : un enregistrement retiré (released, ou releasing oublié) reste retiré, sans zone ; rattachement suivant : seuls les enregistrements voulus actifs sont repris
+-- en tant que: plateforme
+{
+    LET $first = fn::infra_zone_attach({ account: "infra_account:scw", name: "client.test", tenants: ["auth_organization:alpha"] });
+    fn::infra_records_declare({ owner: "manual", subject: "ancien", records: [{ fqdn: "ancien.client.test", type: "TXT", values: ["retire"], mode: "shared" }] });
+    fn::infra_records_release({ owner: "manual", subject: "ancien" });
+    fn::infra_records_declare({ owner: "manual", subject: "partant", records: [{ fqdn: "partant.client.test", type: "A", values: ["192.0.2.20"], mode: "exclusive" }] });
+    UPDATE infra_record SET state = "releasing", provider_ids = [{ id: "p2", value: "192.0.2.20" }], applied_values = ["192.0.2.20"] WHERE subject = "partant";
+    LET $detached = fn::infra_zone_detach({ zone: <string> $first.data.id, forget: true });
+    LET $after_detach = (SELECT VALUE [subject, state, zone, provider_ids] FROM infra_record WHERE fqdn CONTAINS "client.test" ORDER BY subject);
+    LET $second = fn::infra_zone_attach({ account: "infra_account:scw", name: "client.test", tenants: ["auth_organization:alpha"] });
+    LET $after_attach = (SELECT VALUE [subject, state, zone, provider_ids] FROM infra_record WHERE fqdn CONTAINS "client.test" ORDER BY subject);
+    LET $final = fn::infra_zone_detach({ zone: <string> $second.data.id });
+    RETURN $first.data.adopted == 1 AND $detached.data == { detached: $first.data.id, records: 3, kept_at_provider: 1 }
+        AND $after_detach == [["ancien", "released", NONE, []], ["mail_domain:alpha", "unmanaged", NONE, []], ["partant", "released", NONE, []]]
+        AND $second.data.adopted == 1
+        AND $after_attach == [["ancien", "released", NONE, []], ["mail_domain:alpha", "pending", $second.data.id, []], ["partant", "released", NONE, []]]
+        AND $final.ok;
+};
+
 -- test: journal lu et vérifié (chaîne intacte)
 -- en tant que: lecteur
 {

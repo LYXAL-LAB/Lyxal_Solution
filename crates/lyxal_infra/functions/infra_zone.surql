@@ -147,22 +147,27 @@ DEFINE FUNCTION OVERWRITE fn::infra_zone_detach($params: object) {
     LET $p = $report.value;
     IF !fn::infra_can({ action: "manage" }) { RETURN fn::error_result("INFRA_PERMISSION_DENIED", $p.language, {}); };
     IF !record::exists($p.zone) { RETURN fn::error_result("INFRA_ZONE_NOT_FOUND", $p.language, { zone: <string> $p.zone }); };
-    LET $records = (SELECT id, provider_ids FROM infra_record WHERE zone = $p.zone);
+    LET $records = (SELECT id, provider_ids, state FROM infra_record WHERE zone = $p.zone);
     LET $written = array::filter($records, |$r| array::len($r.provider_ids) > 0);
     IF array::len($written) > 0 AND !$p.forget {
         RETURN fn::error_result("INFRA_ZONE_HAS_RECORDS", $p.language, { zone: <string> $p.zone, records: array::len($written) });
     };
-    -- Enregistrements oubliés : ce que Lyxal a écrit reste chez le fournisseur, sans propriétaire
-    LET $released = IF array::len($records) = 0 { [] } ELSE {
-        (UPDATE $records.id SET zone = NONE, state = "unmanaged", provider_ids = [], applied_values = [], conflict = NONE, next_verify_at = NONE RETURN id)
-    };
-    IF array::len($released) != array::len($records) { RETURN fn::error_result("INFRA_WRITE_FORBIDDEN", $p.language, { table: "infra_record" }); };
+    -- Enregistrements oubliés : ce que Lyxal a écrit reste chez le fournisseur, sans propriétaire.
+    -- Les déclarations actives redeviennent unmanaged (reprises par un rattachement suivant) ; un
+    -- enregistrement retiré (releasing, released) reste released : jamais remis en état voulu
+    LET $withdrawn = array::filter($records, |$r| $r.state IN ["releasing", "released"]).id;
+    LET $active = array::filter($records, |$r| $r.state NOT IN ["releasing", "released"]).id;
+    LET $unlinked = array::concat(
+        IF array::len($active) = 0 { [] } ELSE { (UPDATE $active SET zone = NONE, state = "unmanaged", provider_ids = [], applied_values = [], conflict = NONE, next_verify_at = NONE RETURN id) },
+        IF array::len($withdrawn) = 0 { [] } ELSE { (UPDATE $withdrawn SET zone = NONE, state = "released", provider_ids = [], applied_values = [], conflict = NONE, next_verify_at = NONE RETURN id) }
+    );
+    IF array::len($unlinked) != array::len($records) { RETURN fn::error_result("INFRA_WRITE_FORBIDDEN", $p.language, { table: "infra_record" }); };
     LET $noted = fn::infra__change_write({ zone: $p.zone, action: "detach", after: { forget: $p.forget, records: array::len($records), kept_at_provider: array::len($written) } });
     IF $noted IS NONE { THROW "INFRA_WRITE_FORBIDDEN"; };
     LET $deleted = (DELETE $p.zone RETURN BEFORE);
     IF array::len($deleted) = 0 { THROW "INFRA_WRITE_FORBIDDEN"; };
     RETURN fn::result_ok({ detached: $p.zone, records: array::len($records), kept_at_provider: array::len($written) });
-} COMMENT "Détache une zone ({ zone, forget }) : refusé tant que des enregistrements de Lyxal y sont écrits (INFRA_ZONE_HAS_RECORDS), sauf forget : ils restent alors chez le fournisseur et Lyxal les oublie (noté au journal) ; les enregistrements voulus redeviennent unmanaged, la photo est supprimée. Droit infra.manage";
+} COMMENT "Détache une zone ({ zone, forget }) : refusé tant que des enregistrements de Lyxal y sont écrits (INFRA_ZONE_HAS_RECORDS), sauf forget : ils restent alors chez le fournisseur et Lyxal les oublie (noté au journal) ; les enregistrements voulus actifs redeviennent unmanaged (repris par un rattachement suivant), les enregistrements retirés (releasing, released) restent released, sans zone ; la photo est supprimée. Droit infra.manage";
 
 -- ----------------------------------------------------------------------------
 -- fn::infra__zone_counts (interne)
