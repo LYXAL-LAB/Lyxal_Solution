@@ -20,9 +20,11 @@ DEFINE FUNCTION OVERWRITE fn::infra__record_key($owner: string, $subject: string
 -- ----------------------------------------------------------------------------
 
 DEFINE FUNCTION OVERWRITE fn::infra__number($text: string, $min: int, $max: int) -> object {
-    IF !string::is_numeric($text) OR string::len($text) > 10 { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "integer" } }; };
-    RETURN fn::validation_integer(<int> $text, $min, $max);
-} COMMENT "Interne : champ numérique d'une valeur DNS (priorité, poids, port, drapeaux) : chiffres seulement, puis bornes par fn::validation_integer";
+    -- Chiffres ASCII seulement (fn::validation_regex) : un chiffre d'une autre écriture (« ١٠ », « ² ») ne passe jamais au cast
+    LET $digits = fn::validation_regex($text, "^[0-9]{1,10}$");
+    IF !$digits.valid { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "integer" } }; };
+    RETURN fn::validation_integer(<int> $digits.value, $min, $max);
+} COMMENT "Interne : champ numérique d'une valeur DNS (priorité, poids, port, drapeaux) : 1 à 10 chiffres ASCII (fn::validation_regex), puis bornes par fn::validation_integer";
 
 -- ----------------------------------------------------------------------------
 -- fn::infra__record_value (interne)
@@ -44,7 +46,7 @@ DEFINE FUNCTION OVERWRITE fn::infra__record_value($type: string, $raw: string) -
         IF fn::security_detect_header_injection($raw).detected { RETURN object::extend($bad, { code: "CORE_VALIDATION_NOT_ALLOWED", details: { reason: "line_break" } }); };
         RETURN { valid: true, value: $raw, code: NONE, details: {} };
     };
-    LET $parts = string::split(string::trim($raw), " ");
+    LET $parts = string::split(fn::sanitize_trim($raw), " ");
     IF $type = "MX" {
         IF array::len($parts) != 2 { RETURN $bad; };
         LET $priority = fn::infra__number($parts[0], 0, 65535);

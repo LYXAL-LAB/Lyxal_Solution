@@ -172,7 +172,7 @@ DEFINE FUNCTION OVERWRITE fn::infra__observed_row($item: any, $index: int) -> ob
         ttl: { checks: [|$v: any| fn::validation_integer($v, 0, 2147483647)], required: true },
         comment: { checks: [|$v: any| fn::validation_max_length($v, 256)] }
     }, "reject");
-    RETURN IF $report.valid { { valid: true, value: object::extend($report.value, { type: string::uppercase($report.value.type) }), errors: {} } }
+    RETURN IF $report.valid { { valid: true, value: object::extend($report.value, { type: fn::sanitize_uppercase($report.value.type) }), errors: {} } }
         ELSE { { valid: false, value: NONE, errors: object::from_entries(array::map(object::entries($report.by_field), |$e| ["records[" + <string> $index + "]." + $e[0], $e[1]])) } };
 } COMMENT "Interne : ligne lue chez le fournisseur ($item, rang $index) contrôlée par fn::validation_fields_execute (provider_id, fqdn : nom DNS, tiret bas et joker permis, type, value : 4 096 caractères au plus, ttl, comment) ; type en majuscules. Rend { valid, value, errors }";
 
@@ -259,7 +259,7 @@ DEFINE FUNCTION OVERWRITE fn::infra_zone_apply_begin($params: object) {
     LET $held = fn::infra__claim_check($p.zone, $p.claim);
     IF $held.code IS NOT NONE { RETURN fn::error_result($held.code, $p.language, { zone: <string> $p.zone }); };
     LET $zone = $held.zone;
-    IF $zone.mode != "managed" OR $zone.state = "blocked" OR $zone.last_plan.hash != string::lowercase($p.plan_hash) {
+    IF $zone.mode != "managed" OR $zone.state = "blocked" OR $zone.last_plan.hash != fn::sanitize_lowercase($p.plan_hash) {
         RETURN fn::error_result("INFRA_ZONE_PLAN_STALE", $p.language, { zone: <string> $zone.id, mode: $zone.mode, state: $zone.state });
     };
     -- Intention notée avant l'appel (sent) ; l'issue est posée par fn::infra_zone_apply_result

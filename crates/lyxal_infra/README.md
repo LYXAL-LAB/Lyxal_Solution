@@ -158,7 +158,7 @@ circule.
   emboîtée, organisations, adoption, approbation, détachement, enregistrements retirés jamais
   repris), déclarations (forme canonique
   de chaque type, remplacement, identique sans écriture, liste vide, propriétaire concurrent,
-  CNAME, préfixe unique tenu par un autre déclarant, 50 au plus, organisation refusée, `unmanaged`, passe en file une fois), plan (faux
+  CNAME, préfixe unique tenu par un autre déclarant, chiffres non ASCII refusés, 50 au plus, organisation refusée, `unmanaged`, passe en file une fois), plan (faux
   fournisseur en SurrealQL : observation, passe gérée, idempotence, conflits, `take_over`,
   `yield`, `drift_modified`, `drift_deleted`, reprise par la marque, retrait si valeur
   inchangée, retrait pendant l'écriture d'un ajout, préfixe unique d'un autre enregistrement de Lyxal, seuils et approbation, empreinte stable), worker (réservation, jeton perdu,

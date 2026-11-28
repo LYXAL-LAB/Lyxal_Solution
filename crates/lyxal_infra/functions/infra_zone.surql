@@ -261,7 +261,7 @@ DEFINE FUNCTION OVERWRITE fn::infra_zone_plan_approve($params: object) {
     IF !fn::infra_can({ action: "manage" }) { RETURN fn::error_result("INFRA_PERMISSION_DENIED", $p.language, {}); };
     LET $zone = (SELECT id, state, last_plan FROM ONLY $p.zone);
     IF $zone == NONE { RETURN fn::error_result("INFRA_ZONE_NOT_FOUND", $p.language, { zone: <string> $p.zone }); };
-    IF $zone.state != "blocked" OR $zone.last_plan.hash != string::lowercase($p.plan_hash) {
+    IF $zone.state != "blocked" OR $zone.last_plan.hash != fn::sanitize_lowercase($p.plan_hash) {
         RETURN fn::error_result("INFRA_ZONE_PLAN_STALE", $p.language, { zone: <string> $p.zone, state: $zone.state });
     };
     LET $updated = (UPDATE ONLY $zone.id SET approved_plan_hash = $zone.last_plan.hash, state = "ok", reconcile_requested_at = time::now());
