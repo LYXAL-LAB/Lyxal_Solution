@@ -228,6 +228,32 @@ RETURN fn::infra_zone_plan_approve({ zone: <string> (SELECT VALUE zone FROM ONLY
         AND count(SELECT id FROM infra_record WHERE subject = "lot" AND state = "released") == 12;
 };
 
+-- test: retrait pendant l'écriture d'un ajout : le résultat tardif garde le retrait et l'identifiant rendu, la passe suivante supprime l'entrée
+{
+    LET $zone = <string> (SELECT VALUE zone FROM ONLY passe:photo);
+    fn::infra_records_declare({ owner: "manual", subject: "tardif", records: [{ fqdn: "tard.exemple.fr", type: "A", values: ["192.0.2.30"], mode: "exclusive" }] });
+    LET $key = fn::infra__record_key("manual", "tardif", "tard.exemple.fr", "A");
+    LET $claim = fn::infra_zone_claim({ zone: $zone }).data.claim;
+    fn::infra_zone_observe({ zone: $zone, claim: $claim, status: "active", delegated: true, records: (SELECT VALUE rows FROM ONLY passe:photo) });
+    LET $plan = fn::infra_zone_plan({ zone: $zone, claim: $claim });
+    LET $begun = fn::infra_zone_apply_begin({ zone: $zone, claim: $claim, plan_hash: $plan.data.hash });
+    -- Retrait arrivé entre le début de l'écriture et son résultat : aucun identifiant encore noté
+    LET $released = fn::infra_records_release({ owner: "manual", subject: "tardif" });
+    LET $between = (SELECT VALUE state FROM ONLY $key);
+    LET $change = $begun.data.changes[0];
+    LET $applied = fn::infra_zone_apply_result({ zone: $zone, claim: $claim, results: [{ change: <string> $change.change, ok: true, provider_status: 200, provider_id: "p-tard" }] });
+    UPDATE passe:photo SET rows += { provider_id: "p-tard", fqdn: "tard.exemple.fr", type: "A", value: "192.0.2.30", ttl: 3600, comment: $change.comment };
+    fn::infra_zone_release({ zone: $zone, claim: $claim, outcome: "applied" });
+    LET $late = (SELECT state, provider_ids, applied_values FROM ONLY $key);
+    LET $next = fn::essai_passe();
+    RETURN $begun.data.changes.action == ["add"] AND $released.data.released == 1 AND $between == "released"
+        AND $applied.data.records == [{ record: $key, state: "releasing" }]
+        AND $late == { state: "releasing", provider_ids: [{ id: "p-tard", value: "192.0.2.30" }], applied_values: ["192.0.2.30"] }
+        AND $next.plan.data.changes.action == ["delete"] AND $next.plan.data.changes[0].provider_id == "p-tard"
+        AND (SELECT VALUE state FROM ONLY $key) == "released"
+        AND "p-tard" NOT IN (SELECT VALUE rows.provider_id FROM ONLY passe:photo);
+};
+
 -- test: plan identique deux fois de suite : même empreinte (ordre stable)
 {
     LET $zone = <string> (SELECT VALUE zone FROM ONLY passe:photo);

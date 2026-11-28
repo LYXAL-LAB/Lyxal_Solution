@@ -289,7 +289,9 @@ DEFINE FUNCTION OVERWRITE fn::infra__apply_record($row: object, $results: array)
     LET $transient = array::any($results, |$x| !$x.ok AND $x.retryable);
     LET $state = IF $permanent IS NOT NONE { "failed" }
         ELSE IF $transient { $row.state }
-        ELSE IF $row.state = "releasing" { IF array::len($ids) = 0 { "released" } ELSE { "releasing" } }
+        -- Retrait demandé pendant l'écriture (même quand aucun identifiant n'était encore noté) : il est
+        -- gardé, et une écriture rendue tardivement reste notée pour être supprimée à la passe suivante
+        ELSE IF $row.state IN ["releasing", "released"] { IF array::len($ids) = 0 { "released" } ELSE { "releasing" } }
         ELSE { "written" };
     LET $updated = (UPDATE ONLY $row.id SET
         provider_ids = $ids,
@@ -302,7 +304,7 @@ DEFINE FUNCTION OVERWRITE fn::infra__apply_record($row: object, $results: array)
         next_verify_at = IF $state = "written" { time::now() + 30s } ELSE { NONE },
         resolution = IF $state = "written" AND resolution.action = "take_over" AND resolution.applied_at IS NONE { object::extend(resolution, { applied_at: time::now() }) } ELSE { resolution });
     RETURN { record: $row.id, state: $state, written: $updated != NONE };
-} COMMENT "Interne : issue des changements d'un enregistrement ($row, $results joints au journal) : identifiants ajoutés et retirés ; échec définitif : failed (code) ; échec passager : état inchangé (passe reprise) ; retrait achevé : released ; sinon written, vérification dans 30 s, take_over consommé";
+} COMMENT "Interne : issue des changements d'un enregistrement ($row, $results joints au journal) : identifiants ajoutés et retirés ; échec définitif : failed (code) ; échec passager : état inchangé (passe reprise) ; enregistrement retiré (releasing, ou released pendant l'écriture) : releasing tant qu'il reste un identifiant noté (écriture tardive supprimée à la passe suivante), sinon released ; sinon written, vérification dans 30 s, take_over consommé";
 
 -- ----------------------------------------------------------------------------
 -- fn::infra_zone_apply_result
