@@ -60,6 +60,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_step_catalog() -> array<object> {
         { rule: "datetime_string", cost: 1 },
         { rule: "decimal", cost: 1 },
         { rule: "display_name", cost: 1, required: ["min_length", "max_length", "allow_emoji"] },
+        { rule: "dns_name", cost: 1, required: ["allow_underscore", "allow_wildcard"] },
         { rule: "domain", cost: 1, required: ["allow_subdomains"] },
         { rule: "duration", cost: 1 },
         { rule: "email", cost: 1 },
