@@ -1,0 +1,62 @@
+manifest_version = 1
+id = "lyxal_infra"
+name = "Lyxal Infra"
+version = "0.1.0"
+description = "Pilotage de l'hébergeur par API : comptes, zones DNS, état désiré et réconciliation, vérification de la publication, DNS inverse et inventaire"
+capabilities = ["database", "events", "workers"]
+
+[runtime]
+min_version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_core"
+version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_error"
+version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_event"
+version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_auth"
+version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_secrets"
+version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_scheduler"
+version = ">=0.1.0"
+
+[resources]
+schemas = [
+    "schema/01_infra_settings.surql",
+    "schema/02_infra_account.surql",
+    "schema/03_infra_zone.surql",
+    "schema/04_infra_record.surql",
+    "schema/05_infra_zone_record.surql",
+    "schema/06_infra_change.surql"
+]
+functions = [
+    "functions/infra_access.surql",
+    "functions/infra_settings.surql",
+    "functions/infra_change.surql",
+    "functions/infra_account.surql",
+    "functions/infra_zone.surql",
+    "functions/infra_record.surql",
+    "functions/infra_plan.surql",
+    "functions/infra_worker.surql"
+]
+error_definitions = [
+    "error/parametres/error_parametres.surql",
+    "error/comptes/error_comptes.surql",
+    "error/zones/error_zones.surql",
+    "error/enregistrements/error_enregistrements.surql",
+    "error/fournisseurs/error_fournisseurs.surql"
+]
+events = ["events/infra_events.surql"]
+seeds = ["seeds/infra_auth.surql", "seeds/infra_initial.surql"]
