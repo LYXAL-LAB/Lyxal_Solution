@@ -3,9 +3,13 @@
 Plan de création d'un module du noyau technique, soumis au CTO (`.agents/AGENTS.md` §3). Aucune
 ligne de code avant sa validation. Recherches et sources : [`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md).
 
-> **État : à valider.** Le CTO a validé la préparation de ce plan (module générique
-> d'infrastructure, un fournisseur par hébergeur, premier fournisseur Scaleway, usage principal
-> le courrier). Il décide ici des points **I1** à **I24** et répond aux questions **Q1** à **Q6**.
+> **État : validé par le CTO** (décisions **I1** à **I24** et réponses **Q1** à **Q6** selon les
+> recommandations du plan). Précision du CTO sur **I18** : l'achat, le renouvellement et la gestion
+> des noms de domaine (titulaire, contacts, transferts, délégation) relèvent d'un **module dédié à
+> la gestion complète des noms de domaine**, à concevoir plus tard : le domaine n'est pas la
+> propriété de `lyxal_infra`, qui ne gère que le contenu DNS des zones qu'on lui confie, le DNS
+> inverse et l'inventaire. Relecture : la clé de `infra_zone` est opaque (aucun nom de domaine dans
+> les événements ni les journaux).
 
 | Brique | Ce que c'est, en clair | Lot |
 | :--- | :--- | :-: |
@@ -275,7 +279,7 @@ migrations = ["migrations/0001_initial.surql"]
 | :--- | :--- |
 | `infra_settings` | Fiche unique `infra_settings:installation` : `reconcile_minutes` (15), `default_ttl` (3 600), `min_ttl` (60), `max_deletions` (10), `max_deletion_percent` (30), `verify_timeout_hours` (24), `requests_per_second` (5, par compte), `change_retention_days` (400), `released_retention_days` (30) |
 | `infra_account` | `infra_account:⟨<clé>⟩` ; `key` (slug, 64), `name`, `provider` (`scaleway` ; plus tard `ovhcloud`, `bunny`), `credentials_path` (commence par `infra/`, jamais une valeur), `settings` (Scaleway : `project_id` UUID, `organization_id` facultatif, `default_zone` `fr-par-1`, `default_region` `fr-par`), `state` (`active`, `disabled`, `failing`), `last_test` { `at`, `ok`, `code` }, `test_requested_at`, `discovered_zones` (noms et statuts rendus par le dernier essai, 1 000 au plus), `created_at`, `updated_at` |
-| `infra_zone` | `infra_zone:⟨<nom>⟩` ; `account`, `name` (zone, A-label), `provider_ref` (nom de zone chez le fournisseur), `mode` (`observe`, `managed`), `tenants` (organisations dont les déclarations sont acceptées ; vide = enregistrements de l'installation seulement), `state` (`ok`, `blocked`, `not_delegated`, `failing`, `pending_provider`), `nameservers` (observés), `delegated`, `claim`, `locked_until` (compte de service seulement), `last_plan` { `hash`, `at`, `changes`, `conflicts`, `deletions` }, `approved_plan_hash`, `reconcile_requested_at`, `reconciled_at`, `next_reconcile_at`, `last_error` { `code`, `at` }, `observed_hash` ; zone emboîtée dans une autre zone rattachée refusée |
+| `infra_zone` | `infra_zone:<UUID v7>` (clé opaque : la clé figure dans les événements et les journaux, jamais le nom) ; `account`, `name` (zone, A-label, unique par index, lu sous les permissions de la table), `provider_ref` (nom de zone chez le fournisseur), `mode` (`observe`, `managed`), `tenants` (organisations dont les déclarations sont acceptées ; vide = enregistrements de l'installation seulement), `state` (`ok`, `blocked`, `not_delegated`, `failing`, `pending_provider`), `nameservers` (observés), `delegated`, `claim`, `locked_until` (compte de service seulement), `last_plan` { `hash`, `at`, `changes`, `conflicts`, `deletions` }, `approved_plan_hash`, `reconcile_requested_at`, `reconciled_at`, `next_reconcile_at`, `last_error` { `code`, `at` }, `observed_hash` ; zone emboîtée dans une autre zone rattachée refusée |
 | `infra_record` | Enregistrement voulu. `infra_record:⟨<empreinte BLAKE3 tronquée de owner+subject+fqdn+type>⟩` ; `owner`, `subject`, `tenant` (`option<record<auth_organization>>`), `zone` (`option` : aucune zone rattachée ne couvre le nom → `unmanaged`), `fqdn`, `type`, `values` (1 à 20, canoniques, triées), `ttl`, `mode` (`exclusive`, `shared`), `singleton_prefix` (`option`), `state` (`unmanaged`, `pending`, `written`, `published`, `conflict`, `yielded`, `failed`, `releasing`, `released`), `conflict` { `reason` (`foreign_value`, `foreign_singleton`, `cname`, `drift_modified`), `observed` (valeurs, 4 Kio au plus), `at` }, `resolution` (`take_over` / `yield`, auteur, date), `provider_ids` (identifiants des valeurs écrites), `applied_values`, `written_at`, `published_at`, `verify_attempts`, `next_verify_at`, `error` { `code`, `at` }, `declared_at`, `updated_at` |
 | `infra_zone_record` | Photo de la zone chez le fournisseur : `infra_zone_record:⟨<clé de zone>_<identifiant du fournisseur>⟩` ; `zone`, `provider_id`, `fqdn`, `type`, `value` (canonique), `ttl`, `comment`, `record` (`option<record<infra_record>>` : à Lyxal), `seen_at` ; écrite par le worker seulement |
 | `infra_change` | Journal : `infra_change:⟨<UUID v7>⟩` ; `rank` (unique), `zone`, `record` (`option`), `action` (`add`, `set`, `delete`, `conflict`, `resolve`, `approve`, `drift_deleted`, `attach`, `detach`, `mode` ; lot 3 : `reverse_set`), `state` (`sent`, `done`, `failed`, `noted`), `before`, `after` (valeurs, jamais de secret), `actor` (identité, compte de service ou `system`), `provider_status`, `code`, `hash`, `previous_hash`, `created_at` ; champs figés après `done` / `failed` |
@@ -825,7 +829,7 @@ permissif, dépendance du courrier).
 | **I15** | Types d'enregistrements de la V1 | A, AAAA, CNAME, MX, TXT, SRV, CAA |
 | **I16** | Vérification | Serveurs faisant autorité, sans cache ; délégation contrôlée ; échec après 24 h |
 | **I17** | Débit | 5 requêtes par seconde et par compte (réglable), `Retry-After` respecté, 3 essais par passe |
-| **I18** | Achat de domaine | Jamais automatique, aucun code d'achat ; le CTO achète à la main |
+| **I18** | Achat de domaine | Jamais dans `lyxal_infra`, aucun code d'achat ; achat à la main en attendant un **module dédié à la gestion complète des noms de domaine** (achat, renouvellement, titulaire et contacts, transferts, délégation), décidé par le CTO |
 | **I19** | Défi `_lyxal-challenge` de `lyxal_auth` | Reporté ; orchestration par l'hôte dans un plan ultérieur |
 | **I20** | Serveurs | Inventaire en lecture seule au lot 3 ; aucune création ni suppression |
 | **I21** | Rotation de la clé | Manuelle en V1 ; automatique seulement si une politique IAM étroite le permet |
