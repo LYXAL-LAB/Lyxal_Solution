@@ -13,6 +13,7 @@ members = [
     "crates/lyxal_storage",
     "crates/lyxal_secrets",
     "crates/lyxal_scheduler",
+    "crates/lyxal_infra",
     "crates/lyxal_pipeline_ingestion",
     "crates/lyxal_host",
     "crates/lyxal_mail",
@@ -40,6 +41,7 @@ lyxal_notification = { path = "crates/lyxal_notification" }
 lyxal_storage = { path = "crates/lyxal_storage" }
 lyxal_secrets = { path = "crates/lyxal_secrets" }
 lyxal_scheduler = { path = "crates/lyxal_scheduler" }
+lyxal_infra = { path = "crates/lyxal_infra" }
 lyxal_pipeline_ingestion = { path = "crates/lyxal_pipeline_ingestion" }
 lyxal_host = { path = "crates/lyxal_host", default-features = false }
 lyxal_mail = { path = "crates/lyxal_mail" }

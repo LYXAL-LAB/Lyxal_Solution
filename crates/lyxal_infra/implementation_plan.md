@@ -316,7 +316,7 @@ Toutes `fn::infra_<action>($params: object)`, résultat `fn::result_ok` / `fn::e
 
 | Fonction | Paramètres → résultat | Droit |
 | :--- | :--- | :--- |
-| `fn::infra_records_declare` | `{ owner, subject, tenant?, records: [0..50 × { fqdn, type, values: [1..20], ttl?, mode, singleton_prefix? }], language }` → `{ items: [{ record, fqdn, type, state, managed }], changed }` ; remplace l'ensemble (owner, subject) ; une liste vide retire tout ; refus : nom couvert par une zone qui n'accepte pas `tenant` (`INFRA_RECORD_TENANT_REFUSED`), même (fqdn, type) déjà `exclusive` chez un autre propriétaire (`INFRA_RECORD_OWNED`), CNAME avec autre chose (`INFRA_RECORD_CNAME_CONFLICT`) ; une déclaration identique n'écrit rien (`changed: false`) ; un changement demande une passe de la zone (`fn::scheduler_run_enqueue`, unique par zone pendant 1 min, départ dans 10 s) | `infra.records.declare`, `infra.manage` (owner `manual` seulement), session système |
+| `fn::infra_records_declare` | `{ owner, subject, tenant?, records: [0..50 × { fqdn, type, values: [1..20], ttl?, mode, singleton_prefix? }], language }` → `{ items: [{ record, fqdn, type, state, managed }], changed }` ; remplace l'ensemble (owner, subject) ; une liste vide retire tout ; refus : nom couvert par une zone qui n'accepte pas `tenant` (`INFRA_RECORD_TENANT_REFUSED`), même (fqdn, type) déjà `exclusive` chez un autre propriétaire (`INFRA_RECORD_OWNED`), CNAME avec autre chose (`INFRA_RECORD_CNAME_CONFLICT`), TXT dont le préfixe unique est déjà tenu au même nom par une autre déclaration active (`INFRA_RECORD_SINGLETON_TAKEN`) ; une déclaration identique n'écrit rien (`changed: false`) ; un changement demande une passe de la zone (`fn::scheduler_run_enqueue`, unique par zone pendant 1 min, départ dans 10 s) | `infra.records.declare`, `infra.manage` (owner `manual` seulement), session système |
 | `fn::infra_records_release` | `{ owner, subject, keep_at_provider: false, language }` → `{ released }` : `releasing` (suppression chez le fournisseur à la passe suivante, seulement si la valeur est encore celle écrite par Lyxal) ou oubli simple | idem |
 | `fn::infra_records_status` | `{ owner, subjects: [1..500], language }` → `{ items: [{ subject, record, fqdn, type, state, conflict_reason, published_at, error_code }] }` | idem |
 | `fn::infra_records_subjects` | `{ owner, after?, limit (1..1000), language }` → `{ subjects, next }` (sert au propriétaire à retirer les sujets disparus) | idem |
@@ -329,7 +329,7 @@ Toutes `fn::infra_<action>($params: object)`, résultat `fn::result_ok` / `fn::e
 | `fn::infra_account_test_request` | Demande un essai (le worker lit les zones visibles et les range dans `discovered_zones`) | `infra.manage` |
 | `fn::infra_zone_attach` | `{ account, name, mode: "observe", tenants: [] }` : zone visible du compte (`discovered_zones`), non emboîtée | `infra.manage` |
 | `fn::infra_zone_update` | `mode`, `tenants` | `infra.manage` |
-| `fn::infra_zone_detach` | Refusé tant que des enregistrements de Lyxal y sont `written` / `published` (`INFRA_ZONE_HAS_RECORDS`) : on les retire d'abord, ou `forget: true` (ils restent chez le fournisseur, Lyxal les oublie, noté) | `infra.manage` |
+| `fn::infra_zone_detach` | Refusé tant que des enregistrements de Lyxal y sont `written` / `published` (`INFRA_ZONE_HAS_RECORDS`) : on les retire d'abord, ou `forget: true` (ils restent chez le fournisseur, Lyxal les oublie, noté) ; les déclarations actives redeviennent `unmanaged`, les enregistrements retirés (`releasing`, `released`) restent `released`, sans zone, et ne sont jamais repris par un rattachement suivant | `infra.manage` |
 | `fn::infra_zone_get`, `_list` | Zone, dernier plan, compteurs par état | `infra.read` |
 | `fn::infra_zone_reconcile_request` | Passe demandée tout de suite | `infra.manage` |
 | `fn::infra_zone_plan_approve` | `{ zone, plan_hash }` : applique une fois un plan `blocked` ; empreinte différente → `INFRA_ZONE_PLAN_STALE` | `infra.manage` |
@@ -378,7 +378,7 @@ l'administrateur de la plateforme (parcours à créer dans son propre plan).
 | `INFRA_ZONE_HAS_RECORDS` | 409 | non | Détachement refusé |
 | `INFRA_ZONE_PLAN_STALE` | 409 | non | Le plan a changé depuis son affichage |
 | `INFRA_ZONE_CLAIM_LOST` | 409 | oui | Réservation perdue (autre passe) |
-| `INFRA_RECORD_NOT_FOUND`, `INFRA_RECORD_OWNED`, `INFRA_RECORD_CNAME_CONFLICT`, `INFRA_RECORD_TENANT_REFUSED`, `INFRA_RECORD_LIMIT` | 404 / 409 / 409 / 403 / 400 | non | Enregistrements voulus |
+| `INFRA_RECORD_NOT_FOUND`, `INFRA_RECORD_OWNED`, `INFRA_RECORD_CNAME_CONFLICT`, `INFRA_RECORD_SINGLETON_TAKEN`, `INFRA_RECORD_TENANT_REFUSED`, `INFRA_RECORD_LIMIT` | 404 / 409 / 409 / 409 / 403 / 400 | non | Enregistrements voulus |
 | `INFRA_PROVIDER_AUTH` | 502 | non | Clé refusée par l'hébergeur (`denied_authentication`, `permissions_denied`) : compte `failing` |
 | `INFRA_PROVIDER_REJECTED` | 502 | non | Changement refusé (`invalid_arguments`, `precondition_failed`, 4xx) |
 | `INFRA_PROVIDER_NOT_FOUND` | 502 | non | Zone ou IP disparue chez l'hébergeur |
