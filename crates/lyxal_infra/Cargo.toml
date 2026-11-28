@@ -1,0 +1,16 @@
+[package]
+name = "lyxal_infra"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Pilotage de l'hébergeur par API de Lyxal OS : comptes, zones DNS, état désiré et réconciliation, vérification de la publication"
+
+[dependencies]
+lyxal_surreal = { workspace = true }
+async-trait = { workspace = true }
+surrealdb = { workspace = true }
+
+[dev-dependencies]
+# Installation de test des ressources des modules (comme l'hôte), base embarquée mem://
+lyxal_runtime = { workspace = true }
+tokio = { workspace = true }
